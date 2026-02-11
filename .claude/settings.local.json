@@ -8,7 +8,10 @@
       "mcp__plugin_github_github__create_pull_request",
       "mcp__plugin_github_github__merge_pull_request",
       "Bash(ls:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(git pull:*)"
     ]
   }
 }

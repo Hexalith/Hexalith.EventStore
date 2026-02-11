@@ -200,8 +200,10 @@ Hexalith.EventStore is a complete event sourcing server built on .NET 10 and DAP
 
 The MVP delivers the complete command-to-event pipeline -- the minimum infrastructure needed to build a Hexalith DDD application on top of EventStore.
 
-**1. Event Envelope (11-field metadata)**
+**1. Event Envelope (11-field metadata + extension bag)**
 - Define the canonical event metadata structure: aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type name, serialization format
+- Extension metadata field: `metadata: Dictionary<string, string>` for future extensibility without breaking the core 11-field shape
+- Event payload is an opaque JSON blob -- EventStore stores it without validation or schema knowledge, reinforcing the "zero domain knowledge" principle
 - This is the single most critical decision -- every event ever stored conforms to this shape
 - JSON serialization for v1 (serialization_format field enables future binary migration)
 
@@ -212,7 +214,7 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 
 **3. Command API Gateway**
 - REST endpoints for command submission
-- JWT authentication with multi-dimensional authorization (tenant + domain + command type)
+- JWT authentication with claims-based authorization: JWT contains tenant/domain claims, EventStore enforces that the command's target matches the token's grants (v1). Extension point for external policy engine (e.g., OpenFGA, OPA) planned for v2
 - Command validation and routing to the correct DAPR actor based on tenant + domain + aggregate ID
 - Command response = "accepted" (async), never "completed"
 
@@ -221,6 +223,9 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 - Single-threaded, turn-based concurrency -- no race conditions by design
 - Actor pulls command, calls external domain service, persists events, publishes events, marks done
 - Actor state IS the processing checkpoint -- crash recovery via state resumption
+- Command idempotency via actor state: actor tracks processed command IDs, duplicate commands are detected and rejected at the actor level
+- Domain service failure handling delegated to DAPR resiliency policies: retry with backoff, circuit-breaker, and timeout configuration applied at the DAPR sidecar level -- no custom retry logic in the actor
+- Actor lifecycle follows DAPR defaults: 60-minute idle timeout with deactivation, state rehydration from latest snapshot + subsequent events on reactivation
 
 **5. Domain Service Integration**
 - Domain services register as handlers scoped by tenant + domain
@@ -231,7 +236,7 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 
 **6. Event Persistence**
 - Append-only event storage via DAPR state store (Redis for dev, PostgreSQL/CosmosDB for prod)
-- Composite key strategy: `{tenant}:{domain}:{aggregateId}-{sequenceNumber}`
+- Composite key strategy: `{tenant}:{domain}:{aggregateId}:{sequenceNumber}`
 - ETag-based optimistic concurrency for append operations
 - Event stream read API: latest snapshot + subsequent events
 
@@ -240,10 +245,12 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 - CloudEvents 1.0 envelope format
 - At-least-once delivery guarantee
 - Subscribers receive events without EventStore needing to know who they are
+- No cross-aggregate event ordering guaranteed -- ordering is only guaranteed within a single aggregate (by sequence number). Subscribers consuming events from multiple aggregates are responsible for handling out-of-order delivery
 
 **8. Snapshot Support**
 - Snapshot as a special event type (uniform data model)
 - EventStore controls WHEN (every N events, configurable), domain controls WHAT (snapshot content)
+- Domain service produces snapshot content inline as part of its event output when the threshold is met -- EventStore signals the threshold, domain service includes the snapshot in its response
 - Event stream read returns latest snapshot + subsequent events for efficient replay
 
 **9. Aspire Orchestration**
@@ -251,19 +258,25 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 - `dotnet aspire run` for single-command local startup
 - OpenTelemetry observability out of the box (distributed tracing, metrics, structured logging via DAPR)
 
-**10. Sample Domain Service**
+**10. Sample Domain Service + Testing Patterns**
 - Reference implementation of a domain processor demonstrating the pure function contract
 - Serves as both documentation and integration test fixture
+- Three-tier testing strategy: (1) pure function unit tests -- `(Command, State?) -> List<Event>` tested directly with no infrastructure; (2) integration tests using an EventStore test fixture with in-memory DAPR for end-to-end pipeline validation; (3) contract tests verifying domain service event output conforms to EventStore's envelope expectations
 
 ### Out of Scope for MVP
+
+**v1 Operational Baseline (No UI):**
+- Dead letter handling via DAPR pub/sub dead-letter topic + structured logging: failed commands land on a dedicated dead-letter topic for automated tooling/scripts, with full command + error context in structured logs for human investigation
+- Operators can replay failed commands manually via the Command API in v1
 
 **Deferred to v2 -- Blazor Admin UI:**
 - System health dashboard
 - Tenant/domain routing management UI
 - Event stream time-travel explorer
-- Dead-letter command inspection and replay UI
+- Dead-letter command inspection and replay UI (upgrading from v1's topic + log approach)
 - Domain service version rollback UI
-- Rationale: Developers can operate v1 via logs, OpenTelemetry traces, and direct API calls. The admin UI adds significant development effort without blocking the core pipeline
+- External authorization policy engine integration (OpenFGA, OPA) as extension to v1's JWT claims-based model
+- Rationale: Developers can operate v1 via logs, OpenTelemetry traces, dead-letter topics, and direct API calls. The admin UI adds significant development effort without blocking the core pipeline
 
 **Deferred to v2 -- DAPR Workflow Orchestration:**
 - Command lifecycle workflow with checkpointed steps
