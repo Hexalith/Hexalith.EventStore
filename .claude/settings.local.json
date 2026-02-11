@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__plugin_github_github__create_pull_request",
+      "mcp__plugin_github_github__merge_pull_request",
+      "Bash(ls:*)",
+      "WebSearch"
     ]
   }
 }
