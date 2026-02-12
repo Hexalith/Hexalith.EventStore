@@ -26,7 +26,13 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
       "Bash(dotnet pack:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(git remote prune:*)",
+      "Bash(git stash:*)",
+      "Bash(git reset:*)",
+      "Bash(git show:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dir:*)"
     ]
   }
 }
