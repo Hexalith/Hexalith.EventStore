@@ -13,6 +13,7 @@
     <Project Path="src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj" />
