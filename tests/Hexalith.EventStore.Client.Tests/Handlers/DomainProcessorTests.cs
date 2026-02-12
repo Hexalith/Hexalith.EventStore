@@ -1,0 +1,119 @@
+namespace Hexalith.EventStore.Client.Tests.Handlers;
+
+using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Results;
+
+public class DomainProcessorTests
+{
+    private sealed class TestState
+    {
+        public string Value { get; init; } = "default";
+    }
+
+    private sealed class WrongState
+    {
+        public int Number { get; init; }
+    }
+
+    private sealed class TestEvent : IEventPayload;
+
+    private sealed class StateCapturingProcessor : DomainProcessorBase<TestState>
+    {
+        public TestState? CapturedState { get; private set; }
+
+        public bool HandleAsyncCalled { get; private set; }
+
+        protected override Task<DomainResult> HandleAsync(CommandEnvelope command, TestState? currentState)
+        {
+            HandleAsyncCalled = true;
+            CapturedState = currentState;
+            var events = new IEventPayload[] { new TestEvent() };
+            return Task.FromResult(DomainResult.Success(events));
+        }
+    }
+
+    private sealed class DirectProcessor : IDomainProcessor
+    {
+        public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
+        {
+            return Task.FromResult(DomainResult.NoOp());
+        }
+    }
+
+    private static CommandEnvelope CreateTestCommand()
+    {
+        return new CommandEnvelope(
+            TenantId: "tenant-1",
+            Domain: "test-domain",
+            AggregateId: "agg-1",
+            CommandType: "TestCommand",
+            Payload: [0x01],
+            CorrelationId: "corr-1",
+            CausationId: null,
+            UserId: "user-1",
+            Extensions: null);
+    }
+
+    [Fact]
+    public async Task DirectProcessor_ProcessAsync_ReturnsDomainResult()
+    {
+        IDomainProcessor processor = new DirectProcessor();
+        CommandEnvelope command = CreateTestCommand();
+
+        DomainResult result = await processor.ProcessAsync(command, null);
+
+        Assert.True(result.IsNoOp);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithValidState_CastsCorrectly()
+    {
+        var processor = new StateCapturingProcessor();
+        var state = new TestState { Value = "test-value" };
+        CommandEnvelope command = CreateTestCommand();
+
+        DomainResult result = await processor.ProcessAsync(command, state);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Events);
+        Assert.Same(state, processor.CapturedState);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithNullState_PassesNullThrough()
+    {
+        var processor = new StateCapturingProcessor();
+        CommandEnvelope command = CreateTestCommand();
+
+        DomainResult result = await processor.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(processor.CapturedState);
+        Assert.True(processor.HandleAsyncCalled);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithNullCommand_ThrowsArgumentNullException()
+    {
+        var processor = new StateCapturingProcessor();
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => processor.ProcessAsync(null!, null));
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithWrongStateType_ThrowsInvalidOperationException()
+    {
+        var processor = new StateCapturingProcessor();
+        var wrongState = new WrongState { Number = 42 };
+        CommandEnvelope command = CreateTestCommand();
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => processor.ProcessAsync(command, wrongState));
+
+        Assert.Contains("TestState", exception.Message);
+        Assert.Contains("WrongState", exception.Message);
+    }
+}
