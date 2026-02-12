@@ -1,0 +1,44 @@
+@inherits LayoutComponentBase
+
+<FluentDesignTheme @bind-Mode="@_themeMode" StorageName="theme" />
+
+<FluentLayout>
+    <FluentHeader Style="height:48px;">
+        <div style="display:flex; align-items:center; gap:16px; width:100%;">
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">
+                Hexalith.EventStore — Design Directions
+            </FluentLabel>
+            <div style="flex:1"></div>
+            <FluentSwitch @bind-Value="@_isDark" Label="Dark mode" />
+        </div>
+    </FluentHeader>
+
+    <FluentStack Orientation="Orientation.Horizontal" Style="height:calc(100vh - 50px);">
+        <FluentNavMenu Width="220" Collapsible="true" Title="Design Directions"
+                       Style="height:100%; overflow-y:auto;">
+            <FluentNavLink Href="/" Icon="@(new Icons.Regular.Size20.Home())" Match="NavLinkMatch.All">Overview</FluentNavLink>
+            <FluentNavGroup Title="Directions" Icon="@(new Icons.Regular.Size20.DesignIdeas())" Expanded="true">
+                <FluentNavLink Href="/direction-1" Icon="@(new Icons.Regular.Size20.Flash())">1. Command-Centric</FluentNavLink>
+                <FluentNavLink Href="/direction-2" Icon="@(new Icons.Regular.Size20.Organization())">2. Topology-Centric</FluentNavLink>
+                <FluentNavLink Href="/direction-3" Icon="@(new Icons.Regular.Size20.Timeline())">3. Timeline-Centric</FluentNavLink>
+                <FluentNavLink Href="/direction-4" Icon="@(new Icons.Regular.Size20.Grid())">4. Operator Console</FluentNavLink>
+                <FluentNavLink Href="/direction-5" Icon="@(new Icons.Regular.Size20.HeartPulse())">5. Health-First</FluentNavLink>
+                <FluentNavLink Href="/direction-6" Icon="@(new Icons.Regular.Size20.Sparkle())">6. Adaptive Hub</FluentNavLink>
+            </FluentNavGroup>
+        </FluentNavMenu>
+
+        <FluentBodyContent Style="overflow-y:auto; padding:24px;">
+            @Body
+        </FluentBodyContent>
+    </FluentStack>
+</FluentLayout>
+
+@code {
+    private DesignThemeModes _themeMode = DesignThemeModes.System;
+
+    private bool _isDark
+    {
+        get => _themeMode == DesignThemeModes.Dark;
+        set => _themeMode = value ? DesignThemeModes.Dark : DesignThemeModes.Light;
+    }
+}

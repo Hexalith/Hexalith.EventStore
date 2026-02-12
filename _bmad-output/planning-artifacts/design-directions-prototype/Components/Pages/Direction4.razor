@@ -1,0 +1,132 @@
+@page "/direction-4"
+@rendermode InteractiveServer
+@using Hexalith.EventStore.DesignDirections.Models
+@using Hexalith.EventStore.DesignDirections.Components.Shared
+
+<PageTitle>Direction 4: Operator Console</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Direction 4: Operator Console</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:24px; display:block;">
+    Dense, multi-panel layout. Maximum information density. No sidebar — all panels visible at once.
+</FluentLabel>
+
+@* Header *@
+<FluentCard Style="margin-bottom:8px; padding:6px 16px;">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center">
+            <FluentLabel Weight="FontWeight.Bold">Hexalith Console</FluentLabel>
+            <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(46,160,67,0.15)" Color="#2ea043">OK</FluentBadge>
+        </FluentStack>
+        <FluentLabel Typo="Typography.Body" Style="opacity:0.5; font-size:12px;">Auto-refresh: 5s</FluentLabel>
+    </FluentStack>
+</FluentCard>
+
+@* Four-panel grid *@
+<FluentGrid Spacing="2">
+    @* Top left: Command list *@
+    <FluentGridItem xs="6">
+        <FluentCard Style="height:300px; overflow:auto;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Style="margin-bottom:8px;">
+                <FluentLabel Weight="FontWeight.Bold">Commands</FluentLabel>
+                <FluentLabel Style="opacity:0.5; font-size:11px;">23 failed · 12 rejected</FluentLabel>
+            </FluentStack>
+            <FluentDataGrid Items="@SampleData.Commands.AsQueryable()" Style="width:100%;" GridTemplateColumns="60px 1fr 1fr 80px" TGridItem="CommandEntry">
+                <TemplateColumn Title="St">
+                    <StatusBadge Status="@context.Status" />
+                </TemplateColumn>
+                <TemplateColumn Title="ID">
+                    <span class="mono">@context.CorrelationId</span>
+                </TemplateColumn>
+                <PropertyColumn Title="Type" Property="@(c => c.CommandType)" />
+                <TemplateColumn Title="Time">
+                    <span class="mono">@context.Timestamp.ToString("HH:mm")</span>
+                </TemplateColumn>
+            </FluentDataGrid>
+        </FluentCard>
+    </FluentGridItem>
+
+    @* Top right: Command detail *@
+    <FluentGridItem xs="6">
+        <FluentCard Style="height:300px;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Style="margin-bottom:12px;">
+                <FluentLabel Weight="FontWeight.Bold">Command Detail</FluentLabel>
+                <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(248,81,73,0.15)" Color="#f85149">
+                    PublishFailed
+                </FluentBadge>
+            </FluentStack>
+
+            <CommandPipeline CurrentStatus="CommandStatus.PublishFailed" />
+
+            <div style="margin-top:16px;">
+                <div class="metric-row">
+                    <span style="opacity:0.6;">Correlation ID</span>
+                    <span class="mono">c8f2a1b3-9d4e-4f5a</span>
+                </div>
+                <div class="metric-row">
+                    <span style="opacity:0.6;">Tenant</span>
+                    <span class="mono">acme</span>
+                </div>
+                <div class="metric-row">
+                    <span style="opacity:0.6;">Domain</span>
+                    <span class="mono">banking</span>
+                </div>
+                <div class="metric-row">
+                    <span style="opacity:0.6;">Error</span>
+                    <span style="color:#f85149;">DAPR pub/sub timeout after 3 retries</span>
+                </div>
+            </div>
+            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small" Style="margin-top:12px;"
+                          IconStart="@(new Icons.Regular.Size16.Play())">
+                Replay Command
+            </FluentButton>
+        </FluentCard>
+    </FluentGridItem>
+
+    @* Bottom left: Activity chart *@
+    <FluentGridItem xs="6">
+        <FluentCard Style="height:200px;">
+            <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Activity (Last Hour)</FluentLabel>
+            <div style="display:flex; align-items:flex-end; gap:3px; height:120px; padding:8px; background:var(--neutral-layer-2); border-radius:4px;">
+                @foreach (var h in new[] { 30, 45, 35, 55, 90, 75, 40, 30, 25, 20 })
+                {
+                    <div style="flex:1; height:@(h)%; background:@(h > 70 ? "#f85149" : "#2ea043"); border-radius:2px 2px 0 0;"></div>
+                }
+            </div>
+        </FluentCard>
+    </FluentGridItem>
+
+    @* Bottom right: Services + Dead letters *@
+    <FluentGridItem xs="6">
+        <FluentCard Style="height:200px; overflow:auto;">
+            <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Services</FluentLabel>
+            @foreach (var svc in SampleData.Services)
+            {
+                <div class="metric-row">
+                    <span>
+                        <FluentIcon Value="@(new Icons.Filled.Size12.Circle())" Color="Color.Success" Style="margin-right:4px;" />
+                        @svc.Name
+                    </span>
+                    <span class="mono" style="font-size:11px;">@svc.Version · @($"{svc.AverageLatency.TotalMilliseconds:F0}ms") avg</span>
+                </div>
+            }
+            <FluentLabel Weight="FontWeight.Bold" Style="margin:8px 0; display:block;">Dead Letters</FluentLabel>
+            <div class="metric-row">
+                <span style="opacity:0.6;">Pending</span>
+                <span style="color:#f85149; font-weight:600;">23</span>
+            </div>
+        </FluentCard>
+    </FluentGridItem>
+</FluentGrid>
+
+<div class="eval-box">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        Direction 4 Characteristics
+    </FluentLabel>
+    <ul style="list-style:none; padding:0; margin:0; opacity:0.8;">
+        <li>&#8594; Primary entry: Four simultaneous panels — commands, detail, chart, services</li>
+        <li>&#8594; Maximum information density — no navigation clicks needed</li>
+        <li>&#8594; Pipeline visualization inline in detail panel</li>
+        <li>&#8594; Alex's Monday: Everything visible at once — zero clicks to see the problem</li>
+        <li>&#8594; Risk: Overwhelming for new users. Requires 1600px+ screen.</li>
+    </ul>
+</div>

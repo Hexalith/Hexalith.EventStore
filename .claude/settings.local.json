@@ -11,7 +11,11 @@
       "WebSearch",
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(dotnet --version:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet add:*)",
+      "Bash(timeout 15 dotnet run:*)"
     ]
   }
 }

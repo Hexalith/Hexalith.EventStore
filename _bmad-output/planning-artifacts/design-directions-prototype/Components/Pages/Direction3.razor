@@ -1,0 +1,111 @@
+@page "/direction-3"
+@rendermode InteractiveServer
+@using Hexalith.EventStore.DesignDirections.Models
+@using Hexalith.EventStore.DesignDirections.Components.Shared
+
+<PageTitle>Direction 3: Timeline-Centric</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Direction 3: Timeline-Centric</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:24px; display:block;">
+    Time is the primary axis. Everything is an event on a timeline.
+</FluentLabel>
+
+@* Header with time range *@
+<FluentCard Style="margin-bottom:16px; padding:8px 16px;">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center">
+            <FluentLabel Weight="FontWeight.Bold">Hexalith</FluentLabel>
+            <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(46,160,67,0.15)" Color="#2ea043">Healthy</FluentBadge>
+        </FluentStack>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4">
+            @foreach (var range in _timeRanges)
+            {
+                <FluentButton Appearance="@(range == _selectedRange ? Appearance.Accent : Appearance.Outline)"
+                              Size="ButtonSize.Small"
+                              OnClick="@(() => _selectedRange = range)">
+                    @range
+                </FluentButton>
+            }
+        </FluentStack>
+    </FluentStack>
+</FluentCard>
+
+@* Activity histogram placeholder *@
+<FluentCard Style="margin-bottom:16px;">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        System Activity
+    </FluentLabel>
+    <FluentLabel Typo="Typography.Body" Style="opacity:0.5; display:block; margin-bottom:8px;">
+        08:30 — 09:30 · 342 events
+    </FluentLabel>
+    <div style="display:flex; align-items:flex-end; gap:3px; height:100px; padding:8px; background:var(--neutral-layer-2); border-radius:4px;">
+        @foreach (var bar in _chartBars)
+        {
+            <div style="flex:1; height:@(bar.Height)%; background:@(bar.IsError ? "#f85149" : bar.IsWarning ? "#d29922" : "#2ea043"); border-radius:2px 2px 0 0;"></div>
+        }
+    </div>
+</FluentCard>
+
+@* Filter chips *@
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" Style="margin-bottom:16px;">
+    <FluentLabel Typo="Typography.Body" Style="opacity:0.5; margin-right:8px;">Show:</FluentLabel>
+    @foreach (var filter in _eventFilters)
+    {
+        <FluentButton Appearance="@(filter == _activeFilter ? Appearance.Accent : Appearance.Outline)"
+                      Size="ButtonSize.Small"
+                      OnClick="@(() => _activeFilter = filter)">
+            @filter
+        </FluentButton>
+    }
+</FluentStack>
+
+@* Timeline entries *@
+@foreach (var cmd in SampleData.Commands.Take(6))
+{
+    <FluentCard Style="margin-bottom:8px; padding:10px 16px;">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center">
+            <span class="mono" style="opacity:0.5; min-width:60px;">@cmd.Timestamp.ToString("HH:mm:ss")</span>
+            <StatusBadge Status="@cmd.Status" />
+            <FluentLabel Weight="FontWeight.Bold">@cmd.CommandType</FluentLabel>
+            <span class="mono" style="opacity:0.5;">@cmd.CorrelationId</span>
+            @if (cmd.ErrorMessage is not null)
+            {
+                <FluentLabel Style="color:#f85149;">— @cmd.ErrorMessage</FluentLabel>
+            }
+            <div style="flex:1;"></div>
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.4; font-size:11px;">
+                @cmd.Tenant / @cmd.Domain / @cmd.AggregateId
+            </FluentLabel>
+        </FluentStack>
+    </FluentCard>
+}
+
+<div class="eval-box">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        Direction 3 Characteristics
+    </FluentLabel>
+    <ul style="list-style:none; padding:0; margin:0; opacity:0.8;">
+        <li>&#8594; Primary entry: Temporal activity chart + event stream</li>
+        <li>&#8594; Time-range picker as primary navigation control</li>
+        <li>&#8594; Error spikes visible instantly in the histogram chart</li>
+        <li>&#8594; Alex's Monday: See red spike → zoom in → see failure cluster</li>
+        <li>&#8594; Risk: Hard to answer "which tenant is having problems?" without filtering</li>
+    </ul>
+</div>
+
+@code {
+    private string _selectedRange = "Last 1h";
+    private string _activeFilter = "All";
+    private static readonly string[] _timeRanges = ["Last 1h", "Last 24h", "Last 7d", "Custom"];
+    private static readonly string[] _eventFilters = ["All", "Commands", "Events", "Errors", "Service Changes"];
+
+    private record ChartBar(int Height, bool IsError, bool IsWarning);
+    private static readonly ChartBar[] _chartBars =
+    [
+        new(20, false, false), new(35, false, false), new(25, false, false),
+        new(45, false, false), new(55, false, false), new(40, false, false),
+        new(30, false, false), new(60, false, false), new(80, true, false),
+        new(70, true, false), new(45, false, true), new(35, false, false),
+        new(30, false, false), new(25, false, false), new(20, false, false),
+    ];
+}

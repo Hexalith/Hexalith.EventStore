@@ -1,0 +1,53 @@
+@using Hexalith.EventStore.DesignDirections.Models
+
+<FluentBadge Appearance="Appearance.Lightweight"
+             BackgroundColor="@GetBackgroundColor()"
+             Color="@GetColor()">
+    @GetIcon() @GetLabel()
+</FluentBadge>
+
+@code {
+    [Parameter] public CommandStatus Status { get; set; }
+
+    private string GetLabel() => Status switch
+    {
+        CommandStatus.Received => "Received",
+        CommandStatus.Processing => "Processing",
+        CommandStatus.EventsStored => "Events Stored",
+        CommandStatus.EventsPublished => "Events Published",
+        CommandStatus.Completed => "Completed",
+        CommandStatus.Rejected => "Rejected",
+        CommandStatus.PublishFailed => "Failed",
+        CommandStatus.TimedOut => "Timed Out",
+        _ => "Unknown",
+    };
+
+    private string GetIcon() => Status switch
+    {
+        CommandStatus.Received => "\u2193",
+        CommandStatus.Processing => "\u25D0",
+        CommandStatus.EventsStored => "\U0001F4BE",
+        CommandStatus.EventsPublished => "\U0001F4E1",
+        CommandStatus.Completed => "\u2713",
+        CommandStatus.Rejected => "\u26A0",
+        CommandStatus.PublishFailed => "\u2718",
+        CommandStatus.TimedOut => "\u23F0",
+        _ => "?",
+    };
+
+    private string GetColor() => Status switch
+    {
+        CommandStatus.Completed => "#2ea043",
+        CommandStatus.Rejected => "#d29922",
+        CommandStatus.PublishFailed or CommandStatus.TimedOut => "#f85149",
+        _ => "#58a6ff",
+    };
+
+    private string GetBackgroundColor() => Status switch
+    {
+        CommandStatus.Completed => "rgba(46,160,67,0.15)",
+        CommandStatus.Rejected => "rgba(210,153,34,0.15)",
+        CommandStatus.PublishFailed or CommandStatus.TimedOut => "rgba(248,81,73,0.15)",
+        _ => "rgba(88,166,255,0.15)",
+    };
+}
