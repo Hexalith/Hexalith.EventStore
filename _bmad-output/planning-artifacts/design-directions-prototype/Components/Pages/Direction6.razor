@@ -1,0 +1,196 @@
+@page "/direction-6"
+@rendermode InteractiveServer
+@using Hexalith.EventStore.DesignDirections.Models
+@using Hexalith.EventStore.DesignDirections.Components.Shared
+
+<PageTitle>Direction 6: Adaptive Hub</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Direction 6: Adaptive Hub</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:16px; display:block;">
+    The landing page transforms based on system state. Toggle to see both modes.
+</FluentLabel>
+
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-bottom:24px;">
+    <FluentButton Appearance="@(_showDegraded ? Appearance.Accent : Appearance.Outline)"
+                  OnClick="@(() => _showDegraded = true)"
+                  IconStart="@(new Icons.Regular.Size16.Warning())">
+        Degraded State
+    </FluentButton>
+    <FluentButton Appearance="@(!_showDegraded ? Appearance.Accent : Appearance.Outline)"
+                  OnClick="@(() => _showDegraded = false)"
+                  IconStart="@(new Icons.Regular.Size16.Checkmark())">
+        Healthy State
+    </FluentButton>
+</FluentStack>
+
+@if (_showDegraded)
+{
+    @* DEGRADED STATE *@
+    <FluentCard Style="margin-bottom:12px; padding:6px 16px;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12">
+            <FluentLabel Weight="FontWeight.Bold">Hexalith</FluentLabel>
+            <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(248,81,73,0.15)" Color="#f85149">
+                1 Active Issue
+            </FluentBadge>
+        </FluentStack>
+    </FluentCard>
+
+    @* Issue banner *@
+    <div class="issue-banner">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Top">
+            <div>
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="color:#f85149; display:block; margin-bottom:4px;">
+                    Event Distribution Degraded
+                </FluentLabel>
+                <FluentLabel Style="opacity:0.7; display:block;">
+                    23 TransferFunds commands failed at pub/sub stage in tenant-acme/banking
+                </FluentLabel>
+                <FluentLabel Style="opacity:0.4; font-size:12px; display:block; margin-top:4px;">
+                    Detected 08:41:58 · Ongoing · Affects 1 of 2 tenants
+                </FluentLabel>
+            </div>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+                <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small">Investigate</FluentButton>
+                <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                              IconStart="@(new Icons.Regular.Size16.Play())">
+                    Batch Replay (23)
+                </FluentButton>
+            </FluentStack>
+        </FluentStack>
+    </div>
+
+    @* Stats *@
+    <FluentGrid Spacing="3" Style="margin-bottom:16px;">
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value" style="font-size:22px;">1,247</div><div class="stat-label">Commands (24h)</div></FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value color-success" style="font-size:22px;">95.3%</div><div class="stat-label">Success Rate</div></FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value" style="font-size:22px;">89ms</div><div class="stat-label">Avg Latency</div></FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value color-error" style="font-size:22px;">23</div><div class="stat-label">Dead Letters</div></FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+
+    @* Recent commands + services *@
+    <FluentGrid Spacing="3">
+        <FluentGridItem xs="6">
+            <FluentCard>
+                <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Recent Commands</FluentLabel>
+                <FluentDataGrid Items="@SampleData.Commands.Take(4).AsQueryable()" Style="width:100%;" GridTemplateColumns="80px 1fr 80px 80px" TGridItem="CommandEntry">
+                    <TemplateColumn Title="Status"><StatusBadge Status="@context.Status" /></TemplateColumn>
+                    <PropertyColumn Title="Type" Property="@(c => c.CommandType)" />
+                    <TemplateColumn Title="Tenant"><span class="mono">@context.Tenant</span></TemplateColumn>
+                    <TemplateColumn Title="Time"><span class="mono">@context.Timestamp.ToString("HH:mm")</span></TemplateColumn>
+                </FluentDataGrid>
+            </FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="6">
+            <FluentCard>
+                <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Services</FluentLabel>
+                @foreach (var svc in SampleData.Services)
+                {
+                    <div class="metric-row">
+                        <span>
+                            <FluentIcon Value="@(new Icons.Filled.Size12.Circle())" Color="Color.Success" Style="margin-right:4px;" />
+                            @svc.Name
+                        </span>
+                        <span class="mono" style="font-size:11px;">@svc.Version</span>
+                    </div>
+                }
+            </FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+}
+else
+{
+    @* HEALTHY STATE *@
+    <FluentCard Style="margin-bottom:12px; padding:6px 16px;">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12">
+            <FluentLabel Weight="FontWeight.Bold">Hexalith</FluentLabel>
+            <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(46,160,67,0.15)" Color="#2ea043">
+                All Systems Healthy
+            </FluentBadge>
+        </FluentStack>
+    </FluentCard>
+
+    @* Stats *@
+    <FluentGrid Spacing="3" Style="margin-bottom:16px;">
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value" style="font-size:22px;">3,891</div><div class="stat-label">Commands (24h)</div></FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value color-success" style="font-size:22px;">99.8%</div><div class="stat-label">Success Rate</div></FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value" style="font-size:22px;">67ms</div><div class="stat-label">Avg Latency</div></FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="3">
+            <FluentCard Class="stat-card"><div class="stat-value color-success" style="font-size:22px;">0</div><div class="stat-label">Dead Letters</div></FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+
+    @* Activity chart placeholder *@
+    <FluentCard Style="margin-bottom:16px;">
+        <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Activity (Last 24h)</FluentLabel>
+        <div style="display:flex; align-items:flex-end; gap:3px; height:140px; padding:8px; background:var(--neutral-layer-2); border-radius:4px;">
+            @foreach (var h in new[] { 30, 35, 45, 55, 65, 75, 85, 90, 80, 70, 55, 40 })
+            {
+                <div style="flex:1; height:@h%; background:#2ea043; border-radius:2px 2px 0 0;"></div>
+            }
+        </div>
+    </FluentCard>
+
+    @* Tenants + services *@
+    <FluentGrid Spacing="3">
+        <FluentGridItem xs="6">
+            <FluentCard>
+                <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Tenants</FluentLabel>
+                @foreach (var t in SampleData.Tenants)
+                {
+                    <div class="metric-row">
+                        <span>
+                            <FluentIcon Value="@(new Icons.Filled.Size12.Circle())" Color="Color.Success" Style="margin-right:4px;" />
+                            @t.TenantId
+                        </span>
+                        <span style="font-size:12px;">@t.CommandCount cmds · @t.SuccessRate.ToString("F1")%</span>
+                    </div>
+                }
+            </FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="6">
+            <FluentCard>
+                <FluentLabel Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">Services</FluentLabel>
+                <div class="metric-row">
+                    <span>
+                        <FluentIcon Value="@(new Icons.Filled.Size12.Circle())" Color="Color.Success" Style="margin-right:4px;" />
+                        All 3 services healthy
+                    </span>
+                    <span style="color:#2ea043; font-size:12px;">100% uptime</span>
+                </div>
+            </FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+}
+
+<div class="eval-box">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        Direction 6 Characteristics (Recommended)
+    </FluentLabel>
+    <ul style="list-style:none; padding:0; margin:0; opacity:0.8;">
+        <li>&#8594; Primary entry: Adaptive — issue banner when degraded, overview when healthy</li>
+        <li>&#8594; Issue banner pushes failures to top with "Batch Replay" action</li>
+        <li>&#8594; Healthy state shows overview dashboard with activity chart</li>
+        <li>&#8594; Alex's Monday: Red banner → "Batch Replay (23)" one click away</li>
+        <li>&#8594; Jerome's daily: When healthy, overview confirms system is fine</li>
+        <li>&#8594; Combines Direction 1 (command access) + Direction 5 (health awareness)</li>
+        <li>&#8594; Risk: Adaptive behavior must be predictable — only hero section changes</li>
+    </ul>
+</div>
+
+@code {
+    private bool _showDegraded = true;
+}

@@ -1,0 +1,83 @@
+@page "/"
+
+<PageTitle>Design Directions — Hexalith.EventStore</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Design Direction Exploration</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:24px; display:block;">
+    Hexalith.EventStore v2 Blazor Dashboard — 6 directions exploring different information architectures
+</FluentLabel>
+
+<FluentLabel Typo="Typography.Body" Style="margin-bottom:24px; display:block; max-width:800px;">
+    Each direction answers the question: <strong>"When Alex opens the dashboard Monday morning, what does she see first?"</strong>
+    All directions apply the same visual foundation (Fluent UI V4, semantic colors, system-preference theme)
+    but organize information differently based on a core philosophy.
+</FluentLabel>
+
+<FluentGrid Spacing="3" Justify="JustifyContent.FlexStart">
+    <FluentGridItem xs="12" sm="6" md="4">
+        <FluentAnchor Href="/direction-1" Appearance="Appearance.Neutral" Style="display:block; text-decoration:none; height:100%;">
+            <FluentCard Style="height:100%;">
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">1. Command-Centric</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="margin:8px 0; display:block;">
+                    Commands are the primary entry point. Everything flows from the command list.
+                </FluentLabel>
+                <FluentBadge Appearance="Appearance.Accent">Best for: Daily developers</FluentBadge>
+            </FluentCard>
+        </FluentAnchor>
+    </FluentGridItem>
+    <FluentGridItem xs="12" sm="6" md="4">
+        <FluentAnchor Href="/direction-2" Appearance="Appearance.Neutral" Style="display:block; text-decoration:none; height:100%;">
+            <FluentCard Style="height:100%;">
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">2. Topology-Centric</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="margin:8px 0; display:block;">
+                    System topology tree (tenants, domains, aggregates) as primary navigation.
+                </FluentLabel>
+                <FluentBadge Appearance="Appearance.Accent">Best for: Multi-tenant operators</FluentBadge>
+            </FluentCard>
+        </FluentAnchor>
+    </FluentGridItem>
+    <FluentGridItem xs="12" sm="6" md="4">
+        <FluentAnchor Href="/direction-3" Appearance="Appearance.Neutral" Style="display:block; text-decoration:none; height:100%;">
+            <FluentCard Style="height:100%;">
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">3. Timeline-Centric</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="margin:8px 0; display:block;">
+                    Temporal view is primary. Everything organized by time with filtering.
+                </FluentLabel>
+                <FluentBadge Appearance="Appearance.Accent">Best for: Event exploration</FluentBadge>
+            </FluentCard>
+        </FluentAnchor>
+    </FluentGridItem>
+    <FluentGridItem xs="12" sm="6" md="4">
+        <FluentAnchor Href="/direction-4" Appearance="Appearance.Neutral" Style="display:block; text-decoration:none; height:100%;">
+            <FluentCard Style="height:100%;">
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">4. Operator Console</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="margin:8px 0; display:block;">
+                    Dense multi-panel layout. Maximum information density.
+                </FluentLabel>
+                <FluentBadge Appearance="Appearance.Accent">Best for: Power users</FluentBadge>
+            </FluentCard>
+        </FluentAnchor>
+    </FluentGridItem>
+    <FluentGridItem xs="12" sm="6" md="4">
+        <FluentAnchor Href="/direction-5" Appearance="Appearance.Neutral" Style="display:block; text-decoration:none; height:100%;">
+            <FluentCard Style="height:100%;">
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">5. Health-First Monitor</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="margin:8px 0; display:block;">
+                    Health cards and active issues as landing view.
+                </FluentLabel>
+                <FluentBadge Appearance="Appearance.Accent">Best for: Support engineers</FluentBadge>
+            </FluentCard>
+        </FluentAnchor>
+    </FluentGridItem>
+    <FluentGridItem xs="12" sm="6" md="4">
+        <FluentAnchor Href="/direction-6" Appearance="Appearance.Neutral" Style="display:block; text-decoration:none; height:100%;">
+            <FluentCard Style="height:100%;">
+                <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold">6. Adaptive Hub</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="margin:8px 0; display:block;">
+                    Landing page adapts to system state. Healthy vs. degraded vs. failing.
+                </FluentLabel>
+                <FluentBadge Appearance="Appearance.Accent">Recommended for all personas</FluentBadge>
+            </FluentCard>
+        </FluentAnchor>
+    </FluentGridItem>
+</FluentGrid>

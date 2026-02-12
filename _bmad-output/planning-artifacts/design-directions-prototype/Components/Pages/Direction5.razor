@@ -1,0 +1,104 @@
+@page "/direction-5"
+@rendermode InteractiveServer
+@using Hexalith.EventStore.DesignDirections.Models
+@using Hexalith.EventStore.DesignDirections.Components.Shared
+
+<PageTitle>Direction 5: Health-First Monitor</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Direction 5: Health-First Monitor</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:24px; display:block;">
+    System health is the landing view. Drill into issues from health indicators.
+</FluentLabel>
+
+@* Health cards *@
+<FluentGrid Spacing="3" Style="margin-bottom:16px;">
+    <FluentGridItem xs="4">
+        <FluentCard Style="border-left:3px solid #2ea043; padding:16px;">
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.5; font-size:12px; display:block; margin-bottom:4px;">Command Pipeline</FluentLabel>
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="color:#2ea043; display:block;">Healthy</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.6; font-size:12px; display:block; margin-top:4px;">95.3% success rate (last 1h)</FluentLabel>
+        </FluentCard>
+    </FluentGridItem>
+    <FluentGridItem xs="4">
+        <FluentCard Style="border-left:3px solid #f85149; padding:16px;">
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.5; font-size:12px; display:block; margin-bottom:4px;">Event Distribution</FluentLabel>
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="color:#f85149; display:block;">Degraded</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.6; font-size:12px; display:block; margin-top:4px;">23 publish failures in last 20 min</FluentLabel>
+        </FluentCard>
+    </FluentGridItem>
+    <FluentGridItem xs="4">
+        <FluentCard Style="border-left:3px solid #2ea043; padding:16px;">
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.5; font-size:12px; display:block; margin-bottom:4px;">Domain Services</FluentLabel>
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="color:#2ea043; display:block;">All Connected</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.6; font-size:12px; display:block; margin-top:4px;">3/3 services responding</FluentLabel>
+        </FluentCard>
+    </FluentGridItem>
+</FluentGrid>
+
+@* Active issues *@
+<FluentCard Style="margin-bottom:16px;">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="color:#f85149; margin-bottom:12px; display:block;">
+        Active Issues (1)
+    </FluentLabel>
+    <div class="issue-banner">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Top">
+            <div>
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold" Style="display:block;">
+                    Event Distribution Failure — DAPR Pub/Sub Timeout
+                </FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="opacity:0.6; font-size:12px; display:block; margin-top:4px;">
+                    23 commands affected · tenant-acme / banking · Started 08:41:58
+                </FluentLabel>
+                <FluentLabel Typo="Typography.Body" Style="opacity:0.4; font-size:12px; display:block; margin-top:2px;">
+                    Pattern: All <span class="mono">TransferFunds</span> commands failing at EventsPublished stage
+                </FluentLabel>
+            </div>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8">
+                <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small">View Commands</FluentButton>
+                <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                              IconStart="@(new Icons.Regular.Size16.Play())">
+                    Batch Replay
+                </FluentButton>
+            </FluentStack>
+        </FluentStack>
+    </div>
+</FluentCard>
+
+@* Tenant health table *@
+<FluentCard>
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:12px; display:block;">
+        Tenant Health
+    </FluentLabel>
+    <FluentDataGrid Items="@SampleData.Tenants.AsQueryable()" Style="width:100%;" GridTemplateColumns="1fr 120px 120px 120px 120px" TGridItem="TenantHealth">
+        <TemplateColumn Title="Tenant">
+            <span class="mono">@context.TenantId</span>
+        </TemplateColumn>
+        <PropertyColumn Title="Commands (1h)" Property="@(t => t.CommandCount)" />
+        <TemplateColumn Title="Success Rate">
+            <span style="color:@(context.SuccessRate >= 99.0 ? "#2ea043" : "#d29922"); font-weight:600;">
+                @context.SuccessRate.ToString("F1")%
+            </span>
+        </TemplateColumn>
+        <TemplateColumn Title="Avg Latency">
+            <span class="mono">@($"{context.AverageLatency.TotalMilliseconds:F0}ms")</span>
+        </TemplateColumn>
+        <TemplateColumn Title="Dead Letters">
+            <span style="@(context.DeadLetterCount > 0 ? "color:#f85149; font-weight:600;" : "")">
+                @context.DeadLetterCount
+            </span>
+        </TemplateColumn>
+    </FluentDataGrid>
+</FluentCard>
+
+<div class="eval-box">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        Direction 5 Characteristics
+    </FluentLabel>
+    <ul style="list-style:none; padding:0; margin:0; opacity:0.8;">
+        <li>&#8594; Primary entry: Health status cards with traffic-light severity</li>
+        <li>&#8594; Active issues section with automatic pattern detection</li>
+        <li>&#8594; One-click "Batch Replay" from the issue card</li>
+        <li>&#8594; Alex's Monday: Red card → Active Issues → "Batch Replay" button</li>
+        <li>&#8594; Risk: When everything is healthy, the page feels empty</li>
+    </ul>
+</div>

@@ -1,0 +1,124 @@
+@page "/direction-1"
+@rendermode InteractiveServer
+@using Hexalith.EventStore.DesignDirections.Models
+@using Hexalith.EventStore.DesignDirections.Components.Shared
+
+<PageTitle>Direction 1: Command-Centric</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Direction 1: Command-Centric</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:24px; display:block;">
+    Commands are the heartbeat. Start from commands, drill into everything else.
+</FluentLabel>
+
+@* Simulated dashboard header *@
+<FluentCard Style="margin-bottom:16px; padding:8px 16px;">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center">
+            <FluentLabel Weight="FontWeight.Bold">Hexalith</FluentLabel>
+            <FluentSelect TOption="string" Style="min-width:140px;" @bind-Value="@_selectedTenant">
+                <FluentOption Value="all">All Tenants</FluentOption>
+                <FluentOption Value="acme">tenant-acme</FluentOption>
+                <FluentOption Value="contoso">tenant-contoso</FluentOption>
+            </FluentSelect>
+            <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(46,160,67,0.15)" Color="#2ea043">
+                All systems healthy
+            </FluentBadge>
+        </FluentStack>
+        <FluentLabel Typo="Typography.Body" Style="opacity:0.6;">3 services connected</FluentLabel>
+    </FluentStack>
+</FluentCard>
+
+@* Stats row *@
+<FluentGrid Spacing="3" Style="margin-bottom:16px;">
+    <FluentGridItem xs="3">
+        <FluentCard Class="stat-card">
+            <div class="stat-value color-success">@SampleData.CompletedCount</div>
+            <div class="stat-label">Completed</div>
+        </FluentCard>
+    </FluentGridItem>
+    <FluentGridItem xs="3">
+        <FluentCard Class="stat-card">
+            <div class="stat-value color-info">@SampleData.ProcessingCount</div>
+            <div class="stat-label">Processing</div>
+        </FluentCard>
+    </FluentGridItem>
+    <FluentGridItem xs="3">
+        <FluentCard Class="stat-card">
+            <div class="stat-value color-warning">@SampleData.RejectedCount</div>
+            <div class="stat-label">Rejected</div>
+        </FluentCard>
+    </FluentGridItem>
+    <FluentGridItem xs="3">
+        <FluentCard Class="stat-card">
+            <div class="stat-value color-error">@SampleData.FailedCount</div>
+            <div class="stat-label">Failed</div>
+        </FluentCard>
+    </FluentGridItem>
+</FluentGrid>
+
+@* Filter chips *@
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" Style="margin-bottom:16px;">
+    <FluentLabel Typo="Typography.Body" Style="opacity:0.5; margin-right:8px;">Filter:</FluentLabel>
+    @foreach (var filter in _filters)
+    {
+        <FluentButton Appearance="@(filter == _activeFilter ? Appearance.Accent : Appearance.Outline)"
+                      Size="ButtonSize.Small"
+                      OnClick="@(() => _activeFilter = filter)">
+            @filter
+        </FluentButton>
+    }
+</FluentStack>
+
+@* Command data grid *@
+<FluentDataGrid Items="@FilteredCommands" Style="width:100%;" GridTemplateColumns="120px 1fr 1fr 100px 100px 100px 80px">
+    <PropertyColumn Title="Status" Property="@(c => c.Status)">
+        <ColumnOptions>
+            <p>Filter by status</p>
+        </ColumnOptions>
+    </PropertyColumn>
+    <TemplateColumn Title="Correlation ID">
+        <span class="mono">@context.CorrelationId</span>
+    </TemplateColumn>
+    <PropertyColumn Title="Command Type" Property="@(c => c.CommandType)" />
+    <TemplateColumn Title="Tenant">
+        <span class="mono">@context.Tenant</span>
+    </TemplateColumn>
+    <TemplateColumn Title="Domain">
+        <span class="mono">@context.Domain</span>
+    </TemplateColumn>
+    <TemplateColumn Title="Time">
+        <span class="mono">@context.Timestamp.ToString("HH:mm:ss")</span>
+    </TemplateColumn>
+    <TemplateColumn Title="Duration">
+        <span class="mono">@(context.Duration.HasValue ? $"{context.Duration.Value.TotalMilliseconds:F0}ms" : "—")</span>
+    </TemplateColumn>
+</FluentDataGrid>
+
+@* Evaluation box *@
+<div class="eval-box">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        Direction 1 Characteristics
+    </FluentLabel>
+    <ul style="list-style:none; padding:0; margin:0; opacity:0.8;">
+        <li>&#8594; Primary entry: Command list with status filter chips</li>
+        <li>&#8594; Failed/errored commands surface via filtering</li>
+        <li>&#8594; Summary stats give instant health overview</li>
+        <li>&#8594; Alex's Monday: Filter "Failed" → batch select → replay</li>
+        <li>&#8594; Risk: Becomes a wall of data at scale without intelligent grouping</li>
+    </ul>
+</div>
+
+@code {
+    private string _selectedTenant = "all";
+    private string _activeFilter = "All";
+    private static readonly string[] _filters = ["All", "Failed", "Rejected", "Processing", "Completed"];
+
+    private IQueryable<CommandEntry> FilteredCommands => _activeFilter switch
+    {
+        "Failed" => SampleData.Commands.Where(c => c.Status is CommandStatus.PublishFailed or CommandStatus.TimedOut).AsQueryable(),
+        "Rejected" => SampleData.Commands.Where(c => c.Status == CommandStatus.Rejected).AsQueryable(),
+        "Processing" => SampleData.Commands.Where(c => c.Status is CommandStatus.Processing or CommandStatus.Received or CommandStatus.EventsStored or CommandStatus.EventsPublished).AsQueryable(),
+        "Completed" => SampleData.Commands.Where(c => c.Status == CommandStatus.Completed).AsQueryable(),
+        _ => SampleData.Commands.AsQueryable(),
+    };
+}

@@ -1,0 +1,121 @@
+@page "/direction-2"
+@rendermode InteractiveServer
+@using Hexalith.EventStore.DesignDirections.Models
+@using Hexalith.EventStore.DesignDirections.Components.Shared
+
+<PageTitle>Direction 2: Topology-Centric</PageTitle>
+
+<FluentLabel Typo="Typography.PageTitle">Direction 2: Topology-Centric</FluentLabel>
+<FluentLabel Typo="Typography.Body" Style="opacity:0.7; margin-bottom:24px; display:block;">
+    Navigate the system as a tree: Tenants → Domains → Aggregates → Commands/Events
+</FluentLabel>
+
+<FluentStack Orientation="Orientation.Horizontal" Style="gap:16px;">
+    @* Topology tree sidebar *@
+    <FluentCard Style="width:260px; min-width:260px; padding:0;">
+        <FluentLabel Typo="Typography.Body" Style="padding:12px 16px; opacity:0.5; display:block; text-transform:uppercase; font-size:11px; letter-spacing:1px;">
+            System Topology
+        </FluentLabel>
+        <FluentTreeView>
+            <FluentTreeItem Text="tenant-acme" Expanded="true">
+                <FluentIcon Value="@(new Icons.Regular.Size16.Building())" Slot="start" />
+                <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(248,81,73,0.15)" Color="#f85149" Slot="end">2</FluentBadge>
+                <FluentTreeItem Text="banking" Expanded="true">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Box())" Slot="start" />
+                    <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="rgba(248,81,73,0.15)" Color="#f85149" Slot="end">2</FluentBadge>
+                    <FluentTreeItem Text="Account" @onclick="@(() => SelectAggregate("acme", "banking", "Account"))">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Diamond())" Slot="start" />
+                    </FluentTreeItem>
+                    <FluentTreeItem Text="Transfer" Selected="@(_selectedAggregate == "Transfer")" @onclick="@(() => SelectAggregate("acme", "banking", "Transfer"))">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Diamond())" Slot="start" />
+                    </FluentTreeItem>
+                </FluentTreeItem>
+                <FluentTreeItem Text="warehouse">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Box())" Slot="start" />
+                </FluentTreeItem>
+                <FluentTreeItem Text="identity">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Box())" Slot="start" />
+                </FluentTreeItem>
+            </FluentTreeItem>
+            <FluentTreeItem Text="tenant-contoso">
+                <FluentIcon Value="@(new Icons.Regular.Size16.Building())" Slot="start" />
+            </FluentTreeItem>
+        </FluentTreeView>
+    </FluentCard>
+
+    @* Content area *@
+    <div style="flex:1;">
+        <FluentCard Style="padding:16px;">
+            <FluentLabel Typo="Typography.Body" Style="opacity:0.5; font-size:12px; display:block; margin-bottom:4px;">
+                @_selectedTenant / @_selectedDomain / @_selectedAggregate
+            </FluentLabel>
+            <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:16px; display:block;">
+                @_selectedAggregate Aggregate
+            </FluentLabel>
+
+            <FluentTabs @bind-ActiveTabId="@_activeTab">
+                <FluentTab Label="Commands (47)" Id="commands" />
+                <FluentTab Label="Events (312)" Id="events" />
+                <FluentTab Label="State" Id="state" />
+                <FluentTab Label="Configuration" Id="config" />
+            </FluentTabs>
+
+            <div style="margin-top:16px;">
+                @if (_activeTab == "commands")
+                {
+                    <FluentDataGrid Items="@TransferCommands" Style="width:100%;" GridTemplateColumns="100px 1fr 1fr 120px 100px">
+                        <TemplateColumn Title="Status">
+                            <StatusBadge Status="@context.Status" />
+                        </TemplateColumn>
+                        <TemplateColumn Title="Correlation ID">
+                            <span class="mono">@context.CorrelationId</span>
+                        </TemplateColumn>
+                        <PropertyColumn Title="Type" Property="@(c => c.CommandType)" />
+                        <TemplateColumn Title="Aggregate ID">
+                            <span class="mono">@context.AggregateId</span>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Time">
+                            <span class="mono">@context.Timestamp.ToString("HH:mm:ss")</span>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+                }
+                else
+                {
+                    <FluentLabel Typo="Typography.Body" Style="opacity:0.5; padding:24px;">
+                        [@_activeTab view content would appear here]
+                    </FluentLabel>
+                }
+            </div>
+        </FluentCard>
+    </div>
+</FluentStack>
+
+<div class="eval-box">
+    <FluentLabel Typo="Typography.Subject" Weight="FontWeight.Bold" Style="margin-bottom:8px; display:block;">
+        Direction 2 Characteristics
+    </FluentLabel>
+    <ul style="list-style:none; padding:0; margin:0; opacity:0.8;">
+        <li>&#8594; Primary entry: System topology tree with error count badges</li>
+        <li>&#8594; Natural DDD hierarchy: tenant → domain → aggregate</li>
+        <li>&#8594; Error badges bubble up from aggregate to domain to tenant</li>
+        <li>&#8594; Alex's Monday: Red badge on tenant → banking → Transfer → see 2 failures</li>
+        <li>&#8594; Risk: Tree navigation is slower for cross-domain investigations</li>
+    </ul>
+</div>
+
+@code {
+    private string _selectedTenant = "acme";
+    private string _selectedDomain = "banking";
+    private string _selectedAggregate = "Transfer";
+    private string _activeTab = "commands";
+
+    private IQueryable<CommandEntry> TransferCommands =>
+        SampleData.Commands.Where(c => c.Domain == "banking" && c.CommandType == "TransferFunds").AsQueryable();
+
+    private void SelectAggregate(string tenant, string domain, string aggregate)
+    {
+        _selectedTenant = tenant;
+        _selectedDomain = domain;
+        _selectedAggregate = aggregate;
+    }
+}

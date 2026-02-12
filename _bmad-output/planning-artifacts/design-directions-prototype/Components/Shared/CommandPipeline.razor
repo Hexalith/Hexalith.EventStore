@@ -1,0 +1,83 @@
+@using Hexalith.EventStore.DesignDirections.Models
+
+<div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap">
+    @foreach (var (stage, index) in _stages.Select((s, i) => (s, i)))
+    {
+        if (index > 0)
+        {
+            <FluentIcon Value="@(new Icons.Regular.Size12.ChevronRight())" Color="Color.Neutral" />
+        }
+        <FluentBadge Appearance="Appearance.Lightweight"
+                     BackgroundColor="@GetStageBackground(stage, index)"
+                     Color="@GetStageColor(stage, index)">
+            @GetStageIcon(stage) @stage
+        </FluentBadge>
+    }
+</div>
+
+@code {
+    [Parameter] public CommandStatus CurrentStatus { get; set; }
+
+    private static readonly string[] _stages = ["Received", "Processing", "EventsStored", "EventsPublished", "Terminal"];
+
+    private int GetCurrentIndex() => CurrentStatus switch
+    {
+        CommandStatus.Received => 0,
+        CommandStatus.Processing => 1,
+        CommandStatus.EventsStored => 2,
+        CommandStatus.EventsPublished => 3,
+        _ => 4,
+    };
+
+    private bool IsTerminalError() => CurrentStatus is CommandStatus.PublishFailed or CommandStatus.TimedOut;
+
+    private string GetStageBackground(string stage, int index)
+    {
+        if (stage == "Terminal")
+        {
+            return CurrentStatus switch
+            {
+                CommandStatus.Completed => "rgba(46,160,67,0.15)",
+                CommandStatus.Rejected => "rgba(210,153,34,0.15)",
+                CommandStatus.PublishFailed or CommandStatus.TimedOut => "rgba(248,81,73,0.15)",
+                _ => "rgba(139,148,158,0.15)",
+            };
+        }
+        if (index <= GetCurrentIndex()) return "rgba(88,166,255,0.15)";
+        if (IsTerminalError() && index == GetCurrentIndex() + 1) return "rgba(248,81,73,0.15)";
+        return "rgba(139,148,158,0.1)";
+    }
+
+    private string GetStageColor(string stage, int index)
+    {
+        if (stage == "Terminal")
+        {
+            return CurrentStatus switch
+            {
+                CommandStatus.Completed => "#2ea043",
+                CommandStatus.Rejected => "#d29922",
+                CommandStatus.PublishFailed or CommandStatus.TimedOut => "#f85149",
+                _ => "#8b949e",
+            };
+        }
+        if (index <= GetCurrentIndex()) return "#58a6ff";
+        return "#8b949e";
+    }
+
+    private string GetStageIcon(string stage) => stage switch
+    {
+        "Received" => "\u2193",
+        "Processing" => "\u25D0",
+        "EventsStored" => "\U0001F4BE",
+        "EventsPublished" => "\U0001F4E1",
+        "Terminal" => CurrentStatus switch
+        {
+            CommandStatus.Completed => "\u2713 Completed",
+            CommandStatus.Rejected => "\u26A0 Rejected",
+            CommandStatus.PublishFailed => "\u2718 Failed",
+            CommandStatus.TimedOut => "\u23F0 Timed Out",
+            _ => "...",
+        },
+        _ => "",
+    };
+}
