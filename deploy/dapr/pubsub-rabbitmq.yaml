@@ -1,0 +1,14 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.rabbitmq
+  version: v1
+  metadata:
+    - name: connectionString
+      value: "TODO: RabbitMQ connection string"
+    - name: durable
+      value: "true"
+    - name: deletedWhenUnused
+      value: "false"
