@@ -15,7 +15,18 @@
       "Bash(dotnet --version:*)",
       "Bash(dotnet new:*)",
       "Bash(dotnet add:*)",
-      "Bash(timeout 15 dotnet run:*)"
+      "Bash(timeout 15 dotnet run:*)",
+      "mcp__plugin_github_github__search_repositories",
+      "Bash(docker:*)",
+      "Bash(dapr --version:*)",
+      "Bash(dotnet workload:*)",
+      "Bash(dotnet --list-sdks:*)",
+      "Bash(dotnet package search:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet pack:*)",
+      "Bash(git status:*)"
     ]
   }
 }
