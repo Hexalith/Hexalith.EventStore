@@ -1,0 +1,117 @@
+# generated: 2026-02-12
+# project: Hexalith.EventStore
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-12
+project: Hexalith.EventStore
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Developer SDK, Core Contracts & Local Development Setup
+  epic-1: in-progress
+  1-1-solution-structure-and-build-infrastructure: review
+  1-2-contracts-package-event-envelope-and-core-types: backlog
+  1-3-client-package-domain-processor-contract-and-registration: backlog
+  1-4-testing-package-in-memory-test-helpers: backlog
+  1-5-aspire-apphost-and-servicedefaults-scaffolding: backlog
+  1-6-contracts-unit-tests-tier-1: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Command API Gateway & Status Tracking
+  epic-2: backlog
+  2-1-commandapi-host-and-minimal-endpoint-scaffolding: backlog
+  2-2-command-validation-and-rfc-7807-error-responses: backlog
+  2-3-mediatr-pipeline-and-logging-behavior: backlog
+  2-4-jwt-authentication-and-claims-transformation: backlog
+  2-5-endpoint-authorization-and-command-rejection: backlog
+  2-6-command-status-tracking-and-query-endpoint: backlog
+  2-7-command-replay-endpoint: backlog
+  2-8-optimistic-concurrency-conflict-handling: backlog
+  2-9-rate-limiting-and-openapi-swagger-ui: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Command Processing, Event Storage & State Management
+  epic-3: backlog
+  3-1-command-router-and-actor-activation: backlog
+  3-2-aggregateactor-orchestrator-and-idempotency-check: backlog
+  3-3-tenant-validation-at-actor-level: backlog
+  3-4-event-stream-reader-and-state-rehydration: backlog
+  3-5-domain-service-registration-and-invocation: backlog
+  3-6-multi-domain-and-multi-tenant-processing: backlog
+  3-7-event-persistence-with-atomic-writes-and-sequence-numbers: backlog
+  3-8-storage-key-isolation-and-composite-key-strategy: backlog
+  3-9-snapshot-creation-at-configurable-intervals: backlog
+  3-10-state-reconstruction-from-snapshot-plus-tail-events: backlog
+  3-11-actor-state-machine-and-checkpointed-stages: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Event Distribution & Dead-Letter Handling
+  epic-4: backlog
+  4-1-event-publisher-with-cloudevents-1-0: backlog
+  4-2-per-tenant-per-domain-topic-isolation: backlog
+  4-3-at-least-once-delivery-and-dapr-retry-policies: backlog
+  4-4-persist-then-publish-resilience: backlog
+  4-5-dead-letter-routing-with-full-context: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Multi-Tenant Security & Access Control Enforcement
+  epic-5: backlog
+  5-1-dapr-access-control-policies: backlog
+  5-2-data-path-isolation-verification: backlog
+  5-3-pubsub-topic-isolation-enforcement: backlog
+  5-4-security-audit-logging-and-payload-protection: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Observability, Health & Operational Readiness
+  epic-6: backlog
+  6-1-end-to-end-opentelemetry-trace-instrumentation: backlog
+  6-2-structured-logging-completeness-verification: backlog
+  6-3-dead-letter-to-origin-tracing: backlog
+  6-4-health-check-endpoints: backlog
+  6-5-readiness-check-endpoints: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Sample Application, Testing, CI/CD & Deployment
+  epic-7: backlog
+  7-1-sample-counter-domain-service: backlog
+  7-2-local-dapr-component-configurations: backlog
+  7-3-production-dapr-component-configurations: backlog
+  7-4-integration-tests-with-dapr-test-containers-tier-2: backlog
+  7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: backlog
+  7-6-cicd-pipeline-and-nuget-publishing: backlog
+  7-7-aspire-publisher-deployment-manifests: backlog
+  7-8-domain-service-hot-reload-validation: backlog
+  epic-7-retrospective: optional

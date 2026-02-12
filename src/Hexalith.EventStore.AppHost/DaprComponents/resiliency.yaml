@@ -1,0 +1,26 @@
+apiVersion: dapr.io/v1alpha1
+kind: Resiliency
+metadata:
+  name: resiliency
+spec:
+  policies:
+    retries:
+      defaultRetry:
+        policy: constant
+        duration: 1s
+        maxRetries: 3
+    timeouts:
+      daprSidecar:
+        general: 5s
+    circuitBreakers:
+      defaultBreaker:
+        maxRequests: 1
+        interval: 10s
+        timeout: 30s
+        trip: consecutiveFailures > 3
+  targets:
+    apps:
+      commandapi:
+        retry: defaultRetry
+        timeout: daprSidecar
+        circuitBreaker: defaultBreaker

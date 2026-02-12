@@ -1,0 +1,23 @@
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: accesscontrol
+spec:
+  accessControl:
+    defaultAction: deny
+    policies:
+      - appId: commandapi
+        defaultAction: allow
+        operations:
+          - name: /v1.0/state/*
+            httpVerb: ["GET", "POST", "DELETE"]
+            action: allow
+          - name: /v1.0/publish/*
+            httpVerb: ["POST"]
+            action: allow
+      - appId: sample
+        defaultAction: allow
+        operations:
+          - name: /v1.0/state/*
+            httpVerb: ["GET"]
+            action: allow
