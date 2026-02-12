@@ -19,6 +19,7 @@
     <RepositoryType>git</RepositoryType>
     <Description>DAPR-native event sourcing server for .NET</Description>
     <PackageTags>eventsourcing;dapr;cqrs;eventstore;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <!-- MinVer: Git tag-based SemVer versioning -->
@@ -29,6 +30,10 @@
 
   <ItemGroup>
     <PackageReference Include="MinVer" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

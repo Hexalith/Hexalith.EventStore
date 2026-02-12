@@ -1,6 +1,6 @@
 # Story 1.1: Solution Structure & Build Infrastructure
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -27,7 +27,7 @@ Before starting this story, the dev agent MUST verify:
 
 3. **Directory.Packages.props Central Package Management** - Given Directory.Packages.props exists, When I examine the file, Then all NuGet dependencies are centrally managed with zero package versions specified in individual .csproj files, and every package referenced across all .csproj files has a pinned version entry.
 
-4. **global.json SDK Pinning** - Given global.json exists, When I run `dotnet --version`, Then the SDK version is pinned to .NET 10 (10.0.103) with rollForward=latestPatch.
+4. **global.json SDK Pinning** - Given global.json exists, When I run `dotnet --version`, Then the SDK version is pinned to .NET 10 (10.0.102) with rollForward=latestPatch. _(Originally specified 10.0.103; user environment has 10.0.102 installed — see Debug Log.)_
 
 5. **EditorConfig Enforcement** - Given .editorconfig exists, When I open any code file in an IDE, Then project coding conventions are enforced (naming, formatting, etc.) with specific analyzer severities set to warning (not error) for initial scaffolding phase.
 
@@ -385,11 +385,11 @@ Test projects inherit `IsPackable=false` from `tests/Directory.Build.props`.
 | **Testing** | Contracts, Server | FluentAssertions, NSubstitute | true | - |
 | **CommandApi** | Server, Contracts, ServiceDefaults | Dapr.AspNetCore, MediatR, FluentValidation.DependencyInjectionExtensions, Microsoft.AspNetCore.Authentication.JwtBearer | false | `commandapi` |
 | **ServiceDefaults** | _(none)_ | Microsoft.Extensions.Http.Resilience, Microsoft.Extensions.ServiceDiscovery, OpenTelemetry.Exporter.OpenTelemetryProtocol, OpenTelemetry.Extensions.Hosting, OpenTelemetry.Instrumentation.AspNetCore, OpenTelemetry.Instrumentation.Http, OpenTelemetry.Instrumentation.Runtime | false | - |
-| **AppHost** | CommandApi, Sample, Aspire | Aspire.Hosting.AppHost, Aspire.Hosting.Redis, CommunityToolkit.Aspire.Hosting.Dapr | false | - |
+| **AppHost** | CommandApi, Sample, Aspire | ~~Aspire.Hosting.AppHost~~ _(replaced by Aspire.AppHost.Sdk)_, Aspire.Hosting.Redis, CommunityToolkit.Aspire.Hosting.Dapr | false | - |
 | **Sample** | Client, ServiceDefaults | Dapr.AspNetCore | false | `sample` |
-| **Contracts.Tests** | Contracts, Testing | Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
-| **Server.Tests** | Server, Testing | Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio, Testcontainers | false | - |
-| **IntegrationTests** | CommandApi, Sample, Testing | Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
+| **Contracts.Tests** | Contracts, Testing | coverlet.collector, Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
+| **Server.Tests** | Server, Testing | coverlet.collector, Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio, Testcontainers | false | - |
+| **IntegrationTests** | CommandApi, Sample, Testing | coverlet.collector, Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
 
 ---
 
@@ -821,16 +821,16 @@ If `dotnet build` produces warnings:
 
 | Technology | Version | NuGet Package | Source |
 |-----------|---------|---------------|--------|
-| .NET SDK | 10.0.103 | _(workload)_ | [Download](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) |
+| .NET SDK | 10.0.102 | _(workload)_ | [Download](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) |
 | Target Framework | net10.0 | - | Architecture doc |
 | C# Language | 14 | - | Ships with .NET 10 |
 | DAPR Runtime | 1.16.6 | _(CLI)_ | [Releases](https://github.com/dapr/dapr/releases) |
-| Dapr.Client | 1.16.0 | Dapr.Client | [NuGet](https://www.nuget.org/packages/Dapr.Client/) |
+| Dapr.Client | 1.16.1 | Dapr.Client | [NuGet](https://www.nuget.org/packages/Dapr.Client/) |
 | Dapr.AspNetCore | 1.16.1 | Dapr.AspNetCore | [NuGet](https://www.nuget.org/packages/Dapr.AspNetCore/) |
-| Dapr.Actors | 1.16.0 | Dapr.Actors | [NuGet](https://www.nuget.org/packages/Dapr.Actors/) |
+| Dapr.Actors | 1.16.1 | Dapr.Actors | [NuGet](https://www.nuget.org/packages/Dapr.Actors/) |
 | Dapr.Actors.AspNetCore | 1.16.1 | Dapr.Actors.AspNetCore | [NuGet](https://www.nuget.org/packages/Dapr.Actors.AspNetCore/) |
-| Aspire Hosting | 9.2.x | Aspire.Hosting, Aspire.Hosting.AppHost, Aspire.Hosting.Redis | [NuGet](https://www.nuget.org/packages/Aspire.Hosting/) |
-| CommunityToolkit Dapr | 9.7.0 | CommunityToolkit.Aspire.Hosting.Dapr | [NuGet](https://www.nuget.org/packages/CommunityToolkit.Aspire.Hosting.Dapr/) |
+| Aspire Hosting | 13.1.1 | Aspire.Hosting, Aspire.AppHost.Sdk, Aspire.Hosting.Redis | [NuGet](https://www.nuget.org/packages/Aspire.Hosting/) |
+| CommunityToolkit Dapr | 13.0.0 | CommunityToolkit.Aspire.Hosting.Dapr | [NuGet](https://www.nuget.org/packages/CommunityToolkit.Aspire.Hosting.Dapr/) |
 | MinVer | 7.0.0 | MinVer | [NuGet](https://www.nuget.org/packages/MinVer/) |
 | MediatR | 14.0.0 | MediatR | [NuGet](https://www.nuget.org/packages/MediatR/) |
 | xUnit | 2.9.3 | xunit | [NuGet](https://www.nuget.org/packages/xunit/) |
@@ -975,6 +975,8 @@ Claude Opus 4.6
 - Aspire package versions updated from 9.2.1 to 13.1.1 per user instruction to use Aspire 13
 - .NET SDK pinned to 10.0.102 (user has 10.0.102 installed; story spec 10.0.103 not available)
 - Aspire workload not needed for .NET 10 (templates available natively)
+- Code review: Added PackageReadmeFile and README.md pack item to Directory.Build.props to resolve NuGet pack missing readme warnings
+- Code review: OpenTelemetry Instrumentation packages at 1.13.0 vs core at 1.13.1 is normal (independent versioning between core and contrib sub-projects); no change needed
 
 ### Completion Notes List
 
@@ -994,6 +996,7 @@ Followed story tasks sequentially: build infrastructure first (global.json, Dire
 ### Change Log
 
 - 2026-02-12: Story 1.1 implemented - complete solution scaffold with 12 projects, build infrastructure, Aspire orchestration, DAPR components, and deploy templates
+- 2026-02-12: Code review fixes applied — added PackageReadmeFile to Directory.Build.props; fixed story File List (5 missing files); corrected AC #4 SDK version text; updated dependency table for AppHost (Aspire.AppHost.Sdk), coverlet.collector in test projects; aligned Dev Notes version table with actual package versions
 
 ### File List
 
@@ -1018,6 +1021,9 @@ Followed story tasks sequentially: build infrastructure first (global.json, Dire
 - src/Hexalith.EventStore.Testing/BuildVerification.cs
 - src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj
 - src/Hexalith.EventStore.CommandApi/Program.cs
+- src/Hexalith.EventStore.CommandApi/Properties/launchSettings.json
+- src/Hexalith.EventStore.CommandApi/appsettings.json
+- src/Hexalith.EventStore.CommandApi/appsettings.Development.json
 - src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 - src/Hexalith.EventStore.AppHost/Program.cs
 - src/Hexalith.EventStore.AppHost/appsettings.json
@@ -1032,6 +1038,8 @@ Followed story tasks sequentially: build infrastructure first (global.json, Dire
 - samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj
 - samples/Hexalith.EventStore.Sample/Program.cs
 - samples/Hexalith.EventStore.Sample/Properties/launchSettings.json
+- samples/Hexalith.EventStore.Sample/appsettings.json
+- samples/Hexalith.EventStore.Sample/appsettings.Development.json
 - tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
 - tests/Hexalith.EventStore.Contracts.Tests/BuildVerificationTests.cs
 - tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj
