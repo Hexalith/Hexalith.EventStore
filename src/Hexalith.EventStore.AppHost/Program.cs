@@ -1,17 +1,19 @@
 using CommunityToolkit.Aspire.Hosting.Dapr;
+using Hexalith.EventStore.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Infrastructure
-var redis = builder.AddRedis("redis");
+// Add EventStore topology using the convenience extension
+var commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
+var eventStoreResources = builder.AddHexalithEventStore(commandApi);
 
-// Services
-var commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi")
-    .WithDaprSidecar(new DaprSidecarOptions { AppId = "commandapi" })
-    .WithReference(redis);
-
+// Add sample domain service with DAPR sidecar
 var sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
-    .WithDaprSidecar(new DaprSidecarOptions { AppId = "sample" })
-    .WithReference(redis);
+    .WithReference(eventStoreResources.Redis)
+    .WaitFor(eventStoreResources.Redis)
+    .WithDaprSidecar(sidecar => sidecar
+        .WithOptions(new DaprSidecarOptions { AppId = "sample", AppPort = 8081 })
+        .WithReference(eventStoreResources.StateStore)
+        .WithReference(eventStoreResources.PubSub));
 
 builder.Build().Run();
