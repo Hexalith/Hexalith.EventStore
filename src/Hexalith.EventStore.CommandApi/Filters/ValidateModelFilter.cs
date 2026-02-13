@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 /// <summary>
 /// Action filter that validates request models using FluentValidation.
+/// Returns RFC 7807 ProblemDetails with application/problem+json content type.
 /// </summary>
 public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActionFilter
 {
@@ -37,13 +38,15 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
             if (!validationResult.IsValid)
             {
                 string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+                string? tenantId = ExtractTenantId(argument);
 
                 var problemDetails = new ProblemDetails
                 {
                     Status = StatusCodes.Status400BadRequest,
                     Title = "Validation Failed",
-                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                    Type = "https://tools.ietf.org/html/rfc9457#section-3",
                     Detail = "One or more validation errors occurred.",
+                    Instance = context.HttpContext.Request.Path,
                     Extensions =
                     {
                         ["correlationId"] = correlationId,
@@ -55,14 +58,29 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
                     },
                 };
 
-                context.Result = new BadRequestObjectResult(problemDetails)
+                if (tenantId is not null)
                 {
-                    ContentTypes = { "application/problem+json" },
-                };
+                    problemDetails.Extensions["tenantId"] = tenantId;
+                }
+
+                context.HttpContext.Response.ContentType = "application/problem+json";
+                context.Result = new BadRequestObjectResult(problemDetails);
                 return;
             }
         }
 
         await next().ConfigureAwait(false);
+    }
+
+    private static string? ExtractTenantId(object argument)
+    {
+        // Use reflection to extract Tenant property if present
+        var tenantProp = argument.GetType().GetProperty("Tenant");
+        if (tenantProp?.GetValue(argument) is string tenant && !string.IsNullOrEmpty(tenant))
+        {
+            return tenant;
+        }
+
+        return null;
     }
 }

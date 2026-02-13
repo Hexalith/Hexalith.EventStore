@@ -4,6 +4,7 @@ using FluentValidation;
 
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Filters;
+using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Validation;
 using Hexalith.EventStore.Server.Pipeline;
 
@@ -24,6 +25,7 @@ public static class CommandApiServiceCollectionExtensions
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
+            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 
         services.AddValidatorsFromAssemblyContaining<SubmitCommandRequestValidator>();

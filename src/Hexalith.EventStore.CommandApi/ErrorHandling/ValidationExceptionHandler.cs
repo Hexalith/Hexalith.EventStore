@@ -27,12 +27,15 @@ public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logg
             correlationId,
             validationException.Errors.Count());
 
+        string? tenantId = ExtractTenantId(httpContext);
+
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status400BadRequest,
             Title = "Validation Failed",
-            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+            Type = "https://tools.ietf.org/html/rfc9457#section-3",
             Detail = "One or more validation errors occurred.",
+            Instance = httpContext.Request.Path,
             Extensions =
             {
                 ["correlationId"] = correlationId,
@@ -44,9 +47,26 @@ public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logg
             },
         };
 
+        if (tenantId is not null)
+        {
+            problemDetails.Extensions["tenantId"] = tenantId;
+        }
+
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken).ConfigureAwait(false);
 
         return true;
+    }
+
+    private static string? ExtractTenantId(HttpContext httpContext)
+    {
+        // Try to extract tenant from validation error context — the property name tells us the request was parsed
+        if (httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string tenant && !string.IsNullOrEmpty(tenant))
+        {
+            return tenant;
+        }
+
+        return null;
     }
 }
