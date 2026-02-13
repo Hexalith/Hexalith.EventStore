@@ -26,7 +26,8 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
       "Bash(dotnet pack:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(dotnet clean:*)"
     ]
   }
 }

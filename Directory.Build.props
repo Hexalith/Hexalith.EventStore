@@ -19,7 +19,12 @@
     <RepositoryType>git</RepositoryType>
     <Description>DAPR-native event sourcing server for .NET</Description>
     <PackageTags>eventsourcing;dapr;cqrs;eventstore;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <!-- MinVer: Git tag-based SemVer versioning -->
   <PropertyGroup>

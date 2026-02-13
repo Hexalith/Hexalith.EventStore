@@ -1,6 +1,6 @@
 # Story 1.1: Solution Structure & Build Infrastructure
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -27,7 +27,7 @@ Before starting this story, the dev agent MUST verify:
 
 3. **Directory.Packages.props Central Package Management** - Given Directory.Packages.props exists, When I examine the file, Then all NuGet dependencies are centrally managed with zero package versions specified in individual .csproj files, and every package referenced across all .csproj files has a pinned version entry.
 
-4. **global.json SDK Pinning** - Given global.json exists, When I run `dotnet --version`, Then the SDK version is pinned to .NET 10 (10.0.103) with rollForward=latestPatch.
+4. **global.json SDK Pinning** - Given global.json exists, When I run `dotnet --version`, Then the SDK version is pinned to .NET 10 (10.0.102) with rollForward=latestPatch. _(Updated from 10.0.103: SDK 10.0.103 was not available at implementation time; 10.0.102 installed on dev machine.)_
 
 5. **EditorConfig Enforcement** - Given .editorconfig exists, When I open any code file in an IDE, Then project coding conventions are enforced (naming, formatting, etc.) with specific analyzer severities set to warning (not error) for initial scaffolding phase.
 
@@ -61,11 +61,16 @@ Before starting this story, the dev agent MUST verify:
 ```json
 {
   "sdk": {
-    "version": "10.0.103",
+    "version": "10.0.102",
     "rollForward": "latestPatch"
+  },
+  "msbuild-sdks": {
+    "Aspire.AppHost.Sdk": "13.1.1"
   }
 }
 ```
+
+> **NOTE**: SDK version updated to 10.0.102 (10.0.103 not available). The `msbuild-sdks` section centralizes the Aspire AppHost SDK version so it is not hardcoded in individual .csproj files.
 
 #### 1.2 Directory.Build.props
 
@@ -106,7 +111,7 @@ Before starting this story, the dev agent MUST verify:
 </Project>
 ```
 
-**IMPORTANT**: MinVer is the ONE exception to the "no versions in .csproj" rule -- it MUST be versioned in Directory.Build.props because it is a build-time-only tool, not a runtime dependency managed via CPM.
+**IMPORTANT**: MinVer version is managed via Central Package Management in Directory.Packages.props (not in Directory.Build.props) due to CPM compatibility requirements. The PackageReference in Directory.Build.props uses `PrivateAssets="All"` without a Version attribute; the version is centralized in Directory.Packages.props alongside all other packages. _(Original spec called for versioning in Directory.Build.props, but CPM does not allow Version attributes on PackageReference when ManagePackageVersionsCentrally=true.)_
 
 #### 1.3 Directory.Packages.props
 
@@ -387,9 +392,9 @@ Test projects inherit `IsPackable=false` from `tests/Directory.Build.props`.
 | **ServiceDefaults** | _(none)_ | Microsoft.Extensions.Http.Resilience, Microsoft.Extensions.ServiceDiscovery, OpenTelemetry.Exporter.OpenTelemetryProtocol, OpenTelemetry.Extensions.Hosting, OpenTelemetry.Instrumentation.AspNetCore, OpenTelemetry.Instrumentation.Http, OpenTelemetry.Instrumentation.Runtime | false | - |
 | **AppHost** | CommandApi, Sample, Aspire | Aspire.Hosting.AppHost, Aspire.Hosting.Redis, CommunityToolkit.Aspire.Hosting.Dapr | false | - |
 | **Sample** | Client, ServiceDefaults | Dapr.AspNetCore | false | `sample` |
-| **Contracts.Tests** | Contracts, Testing | Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
-| **Server.Tests** | Server, Testing | Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio, Testcontainers | false | - |
-| **IntegrationTests** | CommandApi, Sample, Testing | Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
+| **Contracts.Tests** | Contracts, Testing | coverlet.collector, Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
+| **Server.Tests** | Server, Testing | coverlet.collector, Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio, Testcontainers | false | - |
+| **IntegrationTests** | CommandApi, Sample, Testing | coverlet.collector, Microsoft.NET.Test.Sdk, xunit, xunit.runner.visualstudio | false | - |
 
 ---
 
@@ -801,7 +806,9 @@ See the architecture document for deployment guidance.
 ```bash
 dotnet build --verbosity minimal
 dotnet test --verbosity minimal
-dotnet pack --output ./artifacts
+# Pack requires clean state to avoid parallel build race conditions (CS0009)
+dotnet clean --verbosity quiet
+dotnet pack --output ./artifacts --verbosity minimal
 # Verify 5 .nupkg files: Contracts, Client, Server, Aspire, Testing
 ls ./artifacts/*.nupkg
 # Clean up artifacts
@@ -821,7 +828,7 @@ If `dotnet build` produces warnings:
 
 | Technology | Version | NuGet Package | Source |
 |-----------|---------|---------------|--------|
-| .NET SDK | 10.0.103 | _(workload)_ | [Download](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) |
+| .NET SDK | 10.0.102 | _(workload)_ | [Download](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) |
 | Target Framework | net10.0 | - | Architecture doc |
 | C# Language | 14 | - | Ships with .NET 10 |
 | DAPR Runtime | 1.16.6 | _(CLI)_ | [Releases](https://github.com/dapr/dapr/releases) |
@@ -934,10 +941,10 @@ This repository does NOT use the `Hexalith.Builds` Git submodule pattern found i
 
 1. **DO NOT hardcode any specific state store or pub/sub backend** - All persistence via DAPR abstractions
 2. **DO NOT add Aspire.Hosting.Dapr** - It is DEPRECATED; use `CommunityToolkit.Aspire.Hosting.Dapr` instead
-3. **DO NOT put package versions in .csproj files** - All versions MUST be in Directory.Packages.props only (exception: MinVer in Directory.Build.props)
+3. **DO NOT put package versions in .csproj files** - All versions MUST be in Directory.Packages.props only (including MinVer). MSBuild SDK versions go in global.json msbuild-sdks section.
 4. **DO NOT create type-based folders** (Models/, Services/) - Use feature folders (Events/, Commands/, Actors/)
 5. **DO NOT skip MinVer setup** - Versioning from Git tags is the chosen strategy; configure MinVerTagPrefix=v
-6. **DO NOT use .NET SDK version 10.0.102** - Use 10.0.103 (latest as of Feb 10, 2026)
+6. **SDK pinned to 10.0.102** - 10.0.103 was specified but not available at implementation time; update global.json when 10.0.103+ becomes available
 7. **DO NOT add Workflows DAPR building block** - Deferred to v2
 8. **Contracts package MUST have zero internal dependencies** - It is the leaf of the dependency graph
 9. **All async methods MUST use Async suffix** - Per naming conventions
@@ -952,7 +959,7 @@ This repository does NOT use the `Hexalith.Builds` Git submodule pattern found i
 - [Source: _bmad-output/planning-artifacts/epics.md - Epic 1 Story 1.1 Acceptance Criteria and BDD Scenarios]
 - [Source: _bmad-output/planning-artifacts/prd.md - FR11, FR21, FR26, FR40, FR42, FR45, NFR27-NFR32]
 - [Source: _bmad-output/planning-artifacts/ux-design-specification.md - Blazor FluentUI v4 design reference]
-- [Source: https://dotnet.microsoft.com/en-us/download/dotnet/10.0 - .NET 10 SDK 10.0.103]
+- [Source: https://dotnet.microsoft.com/en-us/download/dotnet/10.0 - .NET 10 SDK 10.0.102]
 - [Source: https://github.com/dapr/dapr/releases - DAPR 1.16.6]
 - [Source: https://www.nuget.org/packages/MinVer/ - MinVer 7.0.0]
 - [Source: https://www.nuget.org/packages/MediatR/ - MediatR 14.0.0]
@@ -994,6 +1001,7 @@ Followed story tasks sequentially: build infrastructure first (global.json, Dire
 ### Change Log
 
 - 2026-02-12: Story 1.1 implemented - complete solution scaffold with 12 projects, build infrastructure, Aspire orchestration, DAPR components, and deploy templates
+- 2026-02-13: Code review (AI) - Fixed 8 issues (3 HIGH, 5 MEDIUM): centralized Aspire SDK version in global.json msbuild-sdks, added DAPR auto-discovery comment in AppHost, added PackageReadmeFile to Directory.Build.props, updated story documentation for SDK version consistency (10.0.102), MinVer CPM approach, coverlet.collector in dependency table, 5 missing files in File List, pack verification commands
 
 ### File List
 
@@ -1018,6 +1026,9 @@ Followed story tasks sequentially: build infrastructure first (global.json, Dire
 - src/Hexalith.EventStore.Testing/BuildVerification.cs
 - src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj
 - src/Hexalith.EventStore.CommandApi/Program.cs
+- src/Hexalith.EventStore.CommandApi/Properties/launchSettings.json
+- src/Hexalith.EventStore.CommandApi/appsettings.json
+- src/Hexalith.EventStore.CommandApi/appsettings.Development.json
 - src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 - src/Hexalith.EventStore.AppHost/Program.cs
 - src/Hexalith.EventStore.AppHost/appsettings.json
@@ -1032,6 +1043,8 @@ Followed story tasks sequentially: build infrastructure first (global.json, Dire
 - samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj
 - samples/Hexalith.EventStore.Sample/Program.cs
 - samples/Hexalith.EventStore.Sample/Properties/launchSettings.json
+- samples/Hexalith.EventStore.Sample/appsettings.json
+- samples/Hexalith.EventStore.Sample/appsettings.Development.json
 - tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
 - tests/Hexalith.EventStore.Contracts.Tests/BuildVerificationTests.cs
 - tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj
