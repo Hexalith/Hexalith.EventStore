@@ -3,6 +3,7 @@ using Hexalith.EventStore.CommandApi.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.Services.AddDaprClient();
 builder.Services.AddCommandApi();
 
 var app = builder.Build();
@@ -12,7 +13,20 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.MapDefaultEndpoints();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
+// OpenAPI/Swagger UI (gated by configuration, H13)
+if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true))
+{
+    app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore API v1");
+        options.RoutePrefix = "swagger";
+    });
+}
+
 app.MapControllers();
 
 // Configure global request body size limit (1MB)

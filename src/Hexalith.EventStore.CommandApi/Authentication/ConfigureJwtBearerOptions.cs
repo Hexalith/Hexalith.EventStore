@@ -20,7 +20,7 @@ public class ConfigureJwtBearerOptions(
     IOptions<EventStoreAuthenticationOptions> authOptions,
     ILoggerFactory loggerFactory) : IConfigureNamedOptions<JwtBearerOptions>
 {
-    private readonly ILogger _logger = loggerFactory.CreateLogger("Hexalith.EventStore.Authentication");
+    private readonly ILogger _logger = loggerFactory.CreateLogger<ConfigureJwtBearerOptions>();
 
     public void Configure(string? name, JwtBearerOptions options)
     {
@@ -111,11 +111,11 @@ public class ConfigureJwtBearerOptions(
                     Extensions = { ["correlationId"] = correlationId },
                 };
 
-                // Best-effort: extract tenant from request for ProblemDetails extensions
-                TryAddTenantExtension(context.HttpContext, problemDetails);
+                // Best-effort: extract tenant from request for ProblemDetails extensions.
+                // During auth failure the controller hasn't run, so we try the request body directly.
+                await TryAddTenantExtensionAsync(context.HttpContext, problemDetails).ConfigureAwait(false);
 
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                context.Response.ContentType = "application/problem+json";
                 await context.Response.WriteAsJsonAsync(
                     problemDetails,
                     options: (System.Text.Json.JsonSerializerOptions?)null,
@@ -156,7 +156,7 @@ public class ConfigureJwtBearerOptions(
         return "Authentication is required to access this resource.";
     }
 
-    private static void TryAddTenantExtension(HttpContext httpContext, ProblemDetails problemDetails)
+    private static async Task TryAddTenantExtensionAsync(HttpContext httpContext, ProblemDetails problemDetails)
     {
         // Try HttpContext.Items first (set by controller for valid requests)
         if (httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
@@ -164,6 +164,47 @@ public class ConfigureJwtBearerOptions(
             && !string.IsNullOrEmpty(tenantId))
         {
             problemDetails.Extensions["tenantId"] = tenantId;
+            return;
+        }
+
+        // During auth failure the controller hasn't run, so try extracting tenant from the request body.
+        // Best-effort: do not fail if the body is unreadable or missing the tenant field.
+        try
+        {
+            if (httpContext.Request.Body.CanSeek)
+            {
+                httpContext.Request.Body.Position = 0;
+            }
+            else if (httpContext.Request.Body.CanRead)
+            {
+                httpContext.Request.EnableBuffering();
+                httpContext.Request.Body.Position = 0;
+            }
+            else
+            {
+                return;
+            }
+
+            using JsonDocument doc = await JsonDocument.ParseAsync(httpContext.Request.Body).ConfigureAwait(false);
+            if (doc.RootElement.TryGetProperty("tenant", out JsonElement tenantElement)
+                && tenantElement.ValueKind == JsonValueKind.String)
+            {
+                string? tenant = tenantElement.GetString();
+                if (!string.IsNullOrEmpty(tenant))
+                {
+                    problemDetails.Extensions["tenantId"] = tenant;
+                }
+            }
+
+            // Reset position for any downstream consumers
+            if (httpContext.Request.Body.CanSeek)
+            {
+                httpContext.Request.Body.Position = 0;
+            }
+        }
+        catch (Exception)
+        {
+            // Best-effort: silently ignore failures
         }
     }
 }

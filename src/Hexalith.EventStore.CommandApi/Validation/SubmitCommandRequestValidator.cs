@@ -48,7 +48,10 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
         RuleFor(x => x.CommandType)
             .NotNull().WithMessage("CommandType is required")
             .NotEmpty().WithMessage("CommandType cannot be empty")
-            .MaximumLength(256).WithMessage("CommandType cannot exceed 256 characters");
+            .MaximumLength(256).WithMessage("CommandType cannot exceed 256 characters")
+            .Must(ct => !ContainsDangerousCharacters(ct))
+            .WithMessage("CommandType cannot contain dangerous characters (<, >, &, ', \")")
+            .When(x => !string.IsNullOrEmpty(x.CommandType), ApplyConditionTo.CurrentValidator);
 
         RuleFor(x => x.Payload)
             .Must(p => p.ValueKind != System.Text.Json.JsonValueKind.Undefined)

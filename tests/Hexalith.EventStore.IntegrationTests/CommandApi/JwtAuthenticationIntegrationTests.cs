@@ -2,13 +2,14 @@ extern alias commandapi;
 
 namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -241,7 +242,7 @@ public class JwtAuthenticationIntegrationTests
         await client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert - verify log entries exist for auth failure
-        List<AuthLogEntry> authLogs = _factory.LogProvider.GetEntries()
+        List<TestLogEntry> authLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Level == LogLevel.Warning &&
                        (e.Message.Contains("Authentication failed") || e.Message.Contains("Authentication challenge")))
             .ToList();
@@ -252,7 +253,7 @@ public class JwtAuthenticationIntegrationTests
         authLogs.ShouldContain(e => e.Message.Contains("CorrelationId="));
 
         // CRITICAL: Verify JWT token is NOT present in any log
-        List<AuthLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
+        List<TestLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
         allLogs.ShouldNotContain(
             e => e.Message.Contains(invalidToken),
             "JWT token MUST NOT appear in log output (NFR11)");
@@ -263,7 +264,7 @@ public class JwtAuthenticationIntegrationTests
     /// </summary>
     public class JwtLogCapturingFactory : WebApplicationFactory<CommandApiProgram>
     {
-        public AuthLogProvider LogProvider { get; } = new();
+        public TestLogProvider LogProvider { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -280,44 +281,27 @@ public class JwtAuthenticationIntegrationTests
             });
             builder.ConfigureServices(services =>
             {
+                // Replace Dapr stores with InMemory for tests
+                ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
+                    d => d.ServiceType == typeof(ICommandStatusStore));
+                if (statusDescriptor is not null)
+                {
+                    services.Remove(statusDescriptor);
+                }
+
+                services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
+
+                ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
+                    d => d.ServiceType == typeof(ICommandArchiveStore));
+                if (archiveDescriptor is not null)
+                {
+                    services.Remove(archiveDescriptor);
+                }
+
+                services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
+
                 services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }
     }
 }
-
-public sealed class AuthLogProvider : ILoggerProvider
-{
-    private readonly ConcurrentQueue<AuthLogEntry> _entries = [];
-
-    public ILogger CreateLogger(string categoryName) => new AuthLogger(_entries);
-
-    public void Dispose()
-    {
-        // Nothing to dispose
-    }
-
-    public List<AuthLogEntry> GetEntries() => [.. _entries];
-
-    public void Clear()
-    {
-        while (_entries.TryDequeue(out _))
-        {
-            // Drain
-        }
-    }
-
-    private sealed class AuthLogger(ConcurrentQueue<AuthLogEntry> entries) : ILogger
-    {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
-            entries.Enqueue(new AuthLogEntry(logLevel, formatter(state, exception)));
-        }
-    }
-}
-
-public record AuthLogEntry(LogLevel Level, string Message);

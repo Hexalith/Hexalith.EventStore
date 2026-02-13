@@ -19,8 +19,8 @@ public class EventStoreClaimsTransformation(ILogger<EventStoreClaimsTransformati
     {
         ArgumentNullException.ThrowIfNull(principal);
 
-        // Idempotency: if eventstore:tenant claims already exist, skip transformation
-        if (principal.HasClaim(c => c.Type == TenantClaimType))
+        // Idempotency: if any eventstore:* claims already exist, skip transformation
+        if (principal.HasClaim(c => c.Type is TenantClaimType or DomainClaimType or PermissionClaimType))
         {
             return Task.FromResult(principal);
         }
@@ -49,7 +49,7 @@ public class EventStoreClaimsTransformation(ILogger<EventStoreClaimsTransformati
         return Task.FromResult(principal);
     }
 
-    private static void AddTenantClaims(ClaimsPrincipal principal, ClaimsIdentity identity)
+    private void AddTenantClaims(ClaimsPrincipal principal, ClaimsIdentity identity)
     {
         // Try "tenants" claim (array or space-delimited)
         AddClaimsFromJwt(principal, identity, "tenants", TenantClaimType);
@@ -62,7 +62,7 @@ public class EventStoreClaimsTransformation(ILogger<EventStoreClaimsTransformati
         }
     }
 
-    private static void AddClaimsFromJwt(ClaimsPrincipal principal, ClaimsIdentity identity, string sourceClaimType, string targetClaimType)
+    private void AddClaimsFromJwt(ClaimsPrincipal principal, ClaimsIdentity identity, string sourceClaimType, string targetClaimType)
     {
         Claim? sourceClaim = principal.FindFirst(sourceClaimType);
         if (sourceClaim is null)
@@ -91,9 +91,12 @@ public class EventStoreClaimsTransformation(ILogger<EventStoreClaimsTransformati
                     return;
                 }
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
-                // Fall through to space-delimited parsing
+                logger.LogWarning(
+                    "Failed to parse claim '{ClaimType}' as JSON array, falling back to space-delimited parsing. Error: {Error}",
+                    sourceClaimType,
+                    ex.Message);
             }
         }
 

@@ -20,13 +20,10 @@ public class AuthorizationExceptionHandler(ILogger<AuthorizationExceptionHandler
 
         string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
 
-        logger.LogWarning(
-            "Command authorization failed. CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}",
+        logger.LogDebug(
+            "Handling CommandAuthorizationException. CorrelationId={CorrelationId}, TenantId={TenantId}",
             correlationId,
-            authException.TenantId,
-            authException.Domain,
-            authException.CommandType,
-            authException.Reason);
+            authException.TenantId);
 
         var problemDetails = new ProblemDetails
         {

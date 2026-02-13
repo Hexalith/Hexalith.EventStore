@@ -48,9 +48,11 @@ public class AuthorizationBehavior<TRequest, TResponse>(
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
 
+        string? sourceIp = httpContext.Connection.RemoteIpAddress?.ToString();
+
         if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, command.Domain, StringComparison.OrdinalIgnoreCase)))
         {
-            LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, $"Not authorized for domain '{command.Domain}'.");
+            LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, $"Not authorized for domain '{command.Domain}'.", sourceIp);
             throw new CommandAuthorizationException(
                 command.Tenant,
                 command.Domain,
@@ -70,7 +72,7 @@ public class AuthorizationBehavior<TRequest, TResponse>(
             bool hasSpecific = permissionClaims.Any(p => string.Equals(p, command.CommandType, StringComparison.OrdinalIgnoreCase));
             if (!hasWildcard && !hasSpecific)
             {
-                LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, $"Not authorized for command type '{command.CommandType}'.");
+                LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
                 throw new CommandAuthorizationException(
                     command.Tenant,
                     command.Domain,
@@ -89,14 +91,15 @@ public class AuthorizationBehavior<TRequest, TResponse>(
         return await next().ConfigureAwait(false);
     }
 
-    private void LogAuthorizationFailure(string correlationId, string tenant, string domain, string commandType, string reason)
+    private void LogAuthorizationFailure(string correlationId, string tenant, string domain, string commandType, string reason, string? sourceIp)
     {
         logger.LogWarning(
-            "Authorization failed: CorrelationId={CorrelationId}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}",
+            "Authorization failed: CorrelationId={CorrelationId}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIP={SourceIP}",
             correlationId,
             tenant,
             domain,
             commandType,
-            reason);
+            reason,
+            sourceIp);
     }
 }
