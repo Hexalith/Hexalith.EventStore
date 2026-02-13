@@ -23,6 +23,12 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
 
+        // Store tenant in HttpContext for error handlers to include in ProblemDetails extensions
+        if (!string.IsNullOrEmpty(request.Tenant))
+        {
+            HttpContext.Items["RequestTenantId"] = request.Tenant;
+        }
+
         logger.LogInformation(
             "CommandsController.Submit entry: Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, CorrelationId={CorrelationId}",
             request.Tenant,

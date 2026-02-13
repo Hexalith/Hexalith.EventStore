@@ -13,16 +13,25 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         logger.LogError(exception, "Unhandled exception. CorrelationId={CorrelationId}", correlationId);
 
+        string? tenantId = httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string t && !string.IsNullOrEmpty(t) ? t : null;
+
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
             Title = "Internal Server Error",
-            Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+            Type = "https://tools.ietf.org/html/rfc9457#section-3",
             Detail = "An unexpected error occurred while processing your request.",
+            Instance = httpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
         };
 
+        if (tenantId is not null)
+        {
+            problemDetails.Extensions["tenantId"] = tenantId;
+        }
+
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken).ConfigureAwait(false);
 
         return true;
