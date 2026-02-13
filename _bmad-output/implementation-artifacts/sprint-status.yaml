@@ -45,7 +45,7 @@ development_status:
   1-1-solution-structure-and-build-infrastructure: done
   1-2-contracts-package-event-envelope-and-core-types: done
   1-3-client-package-domain-processor-contract-and-registration: done
-  1-4-testing-package-in-memory-test-helpers: backlog
+  1-4-testing-package-in-memory-test-helpers: done
   1-5-aspire-apphost-and-servicedefaults-scaffolding: backlog
   1-6-contracts-unit-tests-tier-1: backlog
   epic-1-retrospective: optional
