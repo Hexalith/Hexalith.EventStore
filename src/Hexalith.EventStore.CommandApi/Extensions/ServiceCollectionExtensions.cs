@@ -22,9 +22,12 @@ public static class CommandApiServiceCollectionExtensions
         services.AddAuthentication();
         services.AddAuthorization();
 
+        services.AddHttpContextAccessor();
+
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
+            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 

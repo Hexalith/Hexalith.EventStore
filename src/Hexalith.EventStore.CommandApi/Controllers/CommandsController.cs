@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 [ApiController]
 [Route("api/v1/commands")]
 [Consumes("application/json")]
-public class CommandsController(IMediator mediator, ILogger<CommandsController> logger) : ControllerBase
+public class CommandsController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
@@ -29,14 +29,6 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
             HttpContext.Items["RequestTenantId"] = request.Tenant;
         }
 
-        logger.LogInformation(
-            "CommandsController.Submit entry: Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, CorrelationId={CorrelationId}",
-            request.Tenant,
-            request.Domain,
-            request.AggregateId,
-            request.CommandType,
-            correlationId);
-
         var command = new SubmitCommand(
             Tenant: request.Tenant,
             Domain: request.Domain,
@@ -52,10 +44,6 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
         string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{result.CorrelationId}";
         Response.Headers["Location"] = absoluteLocationUri;
         Response.Headers["Retry-After"] = "1";
-
-        logger.LogInformation(
-            "CommandsController.Submit exit: CorrelationId={CorrelationId}, StatusCode=202",
-            result.CorrelationId);
 
         return Accepted(new SubmitCommandResponse(result.CorrelationId));
     }
