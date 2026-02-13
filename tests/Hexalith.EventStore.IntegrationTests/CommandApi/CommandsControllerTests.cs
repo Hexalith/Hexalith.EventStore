@@ -3,21 +3,20 @@ extern alias commandapi;
 namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 
 using commandapi::Hexalith.EventStore.CommandApi.Models;
 
-using Microsoft.AspNetCore.Mvc.Testing;
+using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
 
-using CommandApiProgram = commandapi::Program;
-
-public class CommandsControllerTests(WebApplicationFactory<CommandApiProgram> factory)
-    : IClassFixture<WebApplicationFactory<CommandApiProgram>>
+public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory factory)
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = CreateAuthenticatedClient(factory);
 
     [Fact]
     public async Task PostCommands_ValidRequest_Returns202WithCorrelationIdAndHeaders()
@@ -72,8 +71,6 @@ public class CommandsControllerTests(WebApplicationFactory<CommandApiProgram> fa
 
         problemDetails.TryGetProperty("status", out var statusProperty).ShouldBeTrue();
         statusProperty.GetInt32().ShouldBe(400);
-
-        // CorrelationId may not be present if error occurs during model binding before middleware runs
     }
 
     [Fact]
@@ -165,5 +162,13 @@ public class CommandsControllerTests(WebApplicationFactory<CommandApiProgram> fa
         problemDetails.GetProperty("title").GetString().ShouldBe("Validation Failed");
         problemDetails.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
         problemDetails.GetProperty("validationErrors").GetArrayLength().ShouldBeGreaterThan(0);
+    }
+
+    private static HttpClient CreateAuthenticatedClient(JwtAuthenticatedWebApplicationFactory factory)
+    {
+        HttpClient client = factory.CreateClient();
+        string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["test-domain"]);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }

@@ -1,6 +1,6 @@
 # Story 2.4: JWT Authentication & Claims Transformation
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,62 +24,62 @@ So that only authenticated consumers can submit commands (FR30).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Configure JWT Bearer Authentication in ServiceCollectionExtensions (AC: #1, #3)
-  - [ ] 1.1 Create `Authentication/EventStoreAuthenticationOptions.cs` record with properties: `Authority` (string), `Audience` (string), `Issuer` (string), `SigningKey` (string), `RequireHttpsMetadata` (bool)
-  - [ ] 1.2 In `AddCommandApi()`, replace auth stubs with `AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options => ...)` configured from `EventStoreAuthenticationOptions` bound from `Authentication:JwtBearer` config section
-  - [ ] 1.3 Configure `TokenValidationParameters`: `ValidateIssuer = true`, `ValidateAudience = true`, `ValidateIssuerSigningKey = true`, `ValidateLifetime = true`, `ClockSkew = TimeSpan.FromMinutes(1)`
-  - [ ] 1.4 Support two modes: (a) when `Authority` is set, use OIDC discovery (production); (b) when `SigningKey` is set and `Authority` is empty, use symmetric key validation (development/testing)
-  - [ ] 1.5 Set `options.MapInboundClaims = false` to preserve original JWT claim names (avoid namespace mapping)
-  - [ ] 1.6 Ensure `ConfigureAwait(false)` on all async calls (CA2007), `ArgumentNullException.ThrowIfNull()` on public methods (CA1062)
+- [x] Task 1: Configure JWT Bearer Authentication in ServiceCollectionExtensions (AC: #1, #3)
+  - [x] 1.1 Create `Authentication/EventStoreAuthenticationOptions.cs` record with properties: `Authority` (string), `Audience` (string), `Issuer` (string), `SigningKey` (string), `RequireHttpsMetadata` (bool)
+  - [x] 1.2 In `AddCommandApi()`, replace auth stubs with `AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options => ...)` configured from `EventStoreAuthenticationOptions` bound from `Authentication:JwtBearer` config section
+  - [x] 1.3 Configure `TokenValidationParameters`: `ValidateIssuer = true`, `ValidateAudience = true`, `ValidateIssuerSigningKey = true`, `ValidateLifetime = true`, `ClockSkew = TimeSpan.FromMinutes(1)`
+  - [x] 1.4 Support two modes: (a) when `Authority` is set, use OIDC discovery (production); (b) when `SigningKey` is set and `Authority` is empty, use symmetric key validation (development/testing)
+  - [x] 1.5 Set `options.MapInboundClaims = false` to preserve original JWT claim names (avoid namespace mapping)
+  - [x] 1.6 Ensure `ConfigureAwait(false)` on all async calls (CA2007), `ArgumentNullException.ThrowIfNull()` on public methods (CA1062)
 
-- [ ] Task 2: Add JwtBearerEvents for failure logging and ProblemDetails response (AC: #1, #2)
-  - [ ] 2.1 Configure `JwtBearerEvents.OnAuthenticationFailed` to log at `Warning` level: correlationId (from `HttpContext.Items["CorrelationId"]`), source IP, request path, exception type, exception message. NEVER log the JWT token itself (NFR11)
-  - [ ] 2.2 Configure `JwtBearerEvents.OnChallenge` to return RFC 7807 ProblemDetails with: `Status = 401`, `Title = "Unauthorized"`, `Type = "https://tools.ietf.org/html/rfc9457#section-3"`, `Detail` = human-readable message based on error type, `Instance` = request path, `Extensions` = { `correlationId` }. Call `context.HandleResponse()` to suppress default challenge behavior
-  - [ ] 2.3 In `OnChallenge`, attempt to extract tenant from the request body or query params for `tenantId` extension in ProblemDetails (best-effort, do not fail if unavailable)
-  - [ ] 2.4 Log failed auth at `Warning` level in `OnChallenge` with correlationId, source IP, error, error description (not the JWT token)
+- [x] Task 2: Add JwtBearerEvents for failure logging and ProblemDetails response (AC: #1, #2)
+  - [x] 2.1 Configure `JwtBearerEvents.OnAuthenticationFailed` to log at `Warning` level: correlationId (from `HttpContext.Items["CorrelationId"]`), source IP, request path, exception type, exception message. NEVER log the JWT token itself (NFR11)
+  - [x] 2.2 Configure `JwtBearerEvents.OnChallenge` to return RFC 7807 ProblemDetails with: `Status = 401`, `Title = "Unauthorized"`, `Type = "https://tools.ietf.org/html/rfc9457#section-3"`, `Detail` = human-readable message based on error type, `Instance` = request path, `Extensions` = { `correlationId` }. Call `context.HandleResponse()` to suppress default challenge behavior
+  - [x] 2.3 In `OnChallenge`, attempt to extract tenant from the request body or query params for `tenantId` extension in ProblemDetails (best-effort, do not fail if unavailable)
+  - [x] 2.4 Log failed auth at `Warning` level in `OnChallenge` with correlationId, source IP, error, error description (not the JWT token)
 
-- [ ] Task 3: Implement IClaimsTransformation (AC: #4)
-  - [ ] 3.1 Create `Authentication/EventStoreClaimsTransformation.cs` implementing `IClaimsTransformation`
-  - [ ] 3.2 In `TransformAsync`, extract from JWT claims: `tenants` (JSON array or space-delimited string), `domains` (JSON array or space-delimited string), `permissions` (JSON array or space-delimited string). Also support singular `tenant_id`/`tid` claims mapped to `eventstore:tenant`
-  - [ ] 3.3 Add normalized claims to a new `ClaimsIdentity`: `eventstore:tenant` (one per tenant), `eventstore:domain` (one per domain), `eventstore:permission` (one per permission)
-  - [ ] 3.4 Ensure idempotency: check if `eventstore:tenant` claims already exist before adding (transformation may run multiple times per request)
-  - [ ] 3.5 Inject `ILogger<EventStoreClaimsTransformation>` and log at `Debug` level: subject, tenant count, domain count (no sensitive data)
-  - [ ] 3.6 Register `IClaimsTransformation` in `AddCommandApi()`: `services.AddTransient<IClaimsTransformation, EventStoreClaimsTransformation>()`
+- [x] Task 3: Implement IClaimsTransformation (AC: #4)
+  - [x] 3.1 Create `Authentication/EventStoreClaimsTransformation.cs` implementing `IClaimsTransformation`
+  - [x] 3.2 In `TransformAsync`, extract from JWT claims: `tenants` (JSON array or space-delimited string), `domains` (JSON array or space-delimited string), `permissions` (JSON array or space-delimited string). Also support singular `tenant_id`/`tid` claims mapped to `eventstore:tenant`
+  - [x] 3.3 Add normalized claims to a new `ClaimsIdentity`: `eventstore:tenant` (one per tenant), `eventstore:domain` (one per domain), `eventstore:permission` (one per permission)
+  - [x] 3.4 Ensure idempotency: check if `eventstore:tenant` claims already exist before adding (transformation may run multiple times per request)
+  - [x] 3.5 Inject `ILogger<EventStoreClaimsTransformation>` and log at `Debug` level: subject, tenant count, domain count (no sensitive data)
+  - [x] 3.6 Register `IClaimsTransformation` in `AddCommandApi()`: `services.AddTransient<IClaimsTransformation, EventStoreClaimsTransformation>()`
 
-- [ ] Task 4: Add [Authorize] to CommandsController and configure anonymous endpoints (AC: #5)
-  - [ ] 4.1 Add `[Authorize]` attribute to `CommandsController` class (or to the `Submit` method)
-  - [ ] 4.2 Verify `/health` and `/alive` endpoints remain accessible without authentication (they are mapped via `MapDefaultEndpoints()` which doesn't require auth by default -- verify this still works)
-  - [ ] 4.3 Verify `UseAuthentication()` and `UseAuthorization()` are in correct order in `Program.cs` (already present)
+- [x] Task 4: Add [Authorize] to CommandsController and configure anonymous endpoints (AC: #5)
+  - [x] 4.1 Add `[Authorize]` attribute to `CommandsController` class (or to the `Submit` method)
+  - [x] 4.2 Verify `/health` and `/alive` endpoints remain accessible without authentication (they are mapped via `MapDefaultEndpoints()` which doesn't require auth by default -- verify this still works)
+  - [x] 4.3 Verify `UseAuthentication()` and `UseAuthorization()` are in correct order in `Program.cs` (already present)
 
-- [ ] Task 5: Add JWT configuration to appsettings (AC: #3)
-  - [ ] 5.1 Add `Authentication:JwtBearer` section to `appsettings.json` with empty/default values
-  - [ ] 5.2 Add `Authentication:JwtBearer` section to `appsettings.Development.json` with development symmetric key, issuer "hexalith-dev", audience "hexalith-eventstore", `RequireHttpsMetadata = false`
-  - [ ] 5.3 Ensure the signing key in development settings is at least 256 bits (32 characters) for HS256
+- [x] Task 5: Add JWT configuration to appsettings (AC: #3)
+  - [x] 5.1 Add `Authentication:JwtBearer` section to `appsettings.json` with empty/default values
+  - [x] 5.2 Add `Authentication:JwtBearer` section to `appsettings.Development.json` with development symmetric key, issuer "hexalith-dev", audience "hexalith-eventstore", `RequireHttpsMetadata = false`
+  - [x] 5.3 Ensure the signing key in development settings is at least 256 bits (32 characters) for HS256
 
-- [ ] Task 6: Update existing integration tests to use JWT tokens (AC: #1, #3, #5)
-  - [ ] 6.1 Create a test helper `TestJwtTokenGenerator` in the integration test project that generates valid JWT tokens with configurable claims using `System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler` and a known symmetric key
-  - [ ] 6.2 Configure `WebApplicationFactory` test host with the same symmetric key used by `TestJwtTokenGenerator`
-  - [ ] 6.3 Update ALL existing integration tests (from Stories 2.1 and 2.2) to include a valid JWT `Authorization: Bearer {token}` header in requests
-  - [ ] 6.4 Verify all existing tests still pass after adding JWT authentication
+- [x] Task 6: Update existing integration tests to use JWT tokens (AC: #1, #3, #5)
+  - [x] 6.1 Create a test helper `TestJwtTokenGenerator` in the integration test project that generates valid JWT tokens with configurable claims using `System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler` and a known symmetric key
+  - [x] 6.2 Configure `WebApplicationFactory` test host with the same symmetric key used by `TestJwtTokenGenerator`
+  - [x] 6.3 Update ALL existing integration tests (from Stories 2.1 and 2.2) to include a valid JWT `Authorization: Bearer {token}` header in requests
+  - [x] 6.4 Verify all existing tests still pass after adding JWT authentication
 
-- [ ] Task 7: Write unit tests for EventStoreClaimsTransformation (AC: #4)
-  - [ ] 7.1 `TransformAsync_JwtWithTenantsArray_AddsEventStoreTenantClaims` - verify array of tenants produces correct claims
-  - [ ] 7.2 `TransformAsync_JwtWithSingleTenantId_AddsEventStoreTenantClaim` - verify single `tenant_id` claim works
-  - [ ] 7.3 `TransformAsync_JwtWithDomainsAndPermissions_AddsNormalizedClaims` - verify domains and permissions
-  - [ ] 7.4 `TransformAsync_NoCustomClaims_AddsNoEventStoreClaims` - verify graceful handling of missing custom claims
-  - [ ] 7.5 `TransformAsync_AlreadyTransformed_DoesNotDuplicate` - verify idempotency
-  - [ ] 7.6 `TransformAsync_NullPrincipal_ThrowsArgumentNullException` - verify CA1062 compliance
+- [x] Task 7: Write unit tests for EventStoreClaimsTransformation (AC: #4)
+  - [x] 7.1 `TransformAsync_JwtWithTenantsArray_AddsEventStoreTenantClaims` - verify array of tenants produces correct claims
+  - [x] 7.2 `TransformAsync_JwtWithSingleTenantId_AddsEventStoreTenantClaim` - verify single `tenant_id` claim works
+  - [x] 7.3 `TransformAsync_JwtWithDomainsAndPermissions_AddsNormalizedClaims` - verify domains and permissions
+  - [x] 7.4 `TransformAsync_NoCustomClaims_AddsNoEventStoreClaims` - verify graceful handling of missing custom claims
+  - [x] 7.5 `TransformAsync_AlreadyTransformed_DoesNotDuplicate` - verify idempotency
+  - [x] 7.6 `TransformAsync_NullPrincipal_ThrowsArgumentNullException` - verify CA1062 compliance
 
-- [ ] Task 8: Write integration tests for JWT authentication flow (AC: #1, #2, #3, #5)
-  - [ ] 8.1 `PostCommands_NoAuthToken_Returns401ProblemDetails` - verify 401 with ProblemDetails body including correlationId
-  - [ ] 8.2 `PostCommands_InvalidToken_Returns401ProblemDetails` - verify malformed token returns 401
-  - [ ] 8.3 `PostCommands_ExpiredToken_Returns401ProblemDetails` - verify expired token returns 401
-  - [ ] 8.4 `PostCommands_WrongIssuer_Returns401ProblemDetails` - verify wrong issuer returns 401
-  - [ ] 8.5 `PostCommands_ValidToken_Returns202Accepted` - verify valid JWT allows command submission
-  - [ ] 8.6 `PostCommands_ValidTokenWithTenantClaims_ClaimsTransformedCorrectly` - verify IClaimsTransformation runs
-  - [ ] 8.7 `HealthEndpoint_NoAuth_Returns200` - verify health check is accessible without JWT
-  - [ ] 8.8 `AliveEndpoint_NoAuth_Returns200` - verify aliveness check is accessible without JWT
-  - [ ] 8.9 `PostCommands_AuthFailure_LogsWithoutJwtToken` - verify structured log entry for failed auth contains correlationId and IP but NOT the JWT token
+- [x] Task 8: Write integration tests for JWT authentication flow (AC: #1, #2, #3, #5)
+  - [x] 8.1 `PostCommands_NoAuthToken_Returns401ProblemDetails` - verify 401 with ProblemDetails body including correlationId
+  - [x] 8.2 `PostCommands_InvalidToken_Returns401ProblemDetails` - verify malformed token returns 401
+  - [x] 8.3 `PostCommands_ExpiredToken_Returns401ProblemDetails` - verify expired token returns 401
+  - [x] 8.4 `PostCommands_WrongIssuer_Returns401ProblemDetails` - verify wrong issuer returns 401
+  - [x] 8.5 `PostCommands_ValidToken_Returns202Accepted` - verify valid JWT allows command submission
+  - [x] 8.6 `PostCommands_ValidTokenWithTenantClaims_ClaimsTransformedCorrectly` - verify IClaimsTransformation runs
+  - [x] 8.7 `HealthEndpoint_NoAuth_Returns200` - verify health check is accessible without JWT
+  - [x] 8.8 `AliveEndpoint_NoAuth_Returns200` - verify aliveness check is accessible without JWT
+  - [x] 8.9 `PostCommands_AuthFailure_LogsWithoutJwtToken` - verify structured log entry for failed auth contains correlationId and IP but NOT the JWT token
 
 ## Dev Notes
 
@@ -439,10 +439,56 @@ Tests: Server.Tests -> Server + CommandApi
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+None required.
+
 ### Completion Notes List
 
+- Implemented JWT Bearer authentication with two-mode support (OIDC discovery for production, symmetric key for development/testing)
+- Created `ConfigureJwtBearerOptions` using `IConfigureNamedOptions<JwtBearerOptions>` pattern for clean DI-based configuration
+- Created `EventStoreClaimsTransformation` implementing `IClaimsTransformation` with idempotency, JSON array and space-delimited parsing, and `tenant_id`/`tid` singular claim support
+- Configured `JwtBearerEvents.OnAuthenticationFailed` and `OnChallenge` for structured Warning-level logging (never logging JWT tokens per NFR11) and RFC 7807 ProblemDetails 401 responses with `application/problem+json` content type
+- Added `[Authorize]` attribute to `CommandsController`; verified health/alive endpoints remain anonymous
+- Verified `UseAuthentication()` and `UseAuthorization()` middleware order in `Program.cs` (already correct from Story 2.1)
+- Created `TestJwtTokenGenerator` helper for integration tests with configurable claims, expiry, and issuer
+- Created `JwtAuthenticatedWebApplicationFactory` for shared test host configuration
+- Updated all 20 existing integration tests to include JWT `Authorization: Bearer` headers -- all pass without regression
+- Added 6 unit tests for `EventStoreClaimsTransformation` (tenant arrays, single tenant_id, domains/permissions, no claims, idempotency, null guard)
+- Added 9 integration tests for JWT authentication flow (no token, invalid token, expired token, wrong issuer, valid token, claims transformation, health/alive anonymous, log verification)
+- Total test count: 257 tests (9 Client + 48 Testing + 147 Contracts + 24 Server + 29 Integration), all passing
+
+### Implementation Plan
+
+- Used `IConfigureNamedOptions<JwtBearerOptions>` pattern via `ConfigureJwtBearerOptions` class rather than inline lambda configuration, enabling proper DI injection of `IOptions<EventStoreAuthenticationOptions>` and `ILoggerFactory`
+- `EventStoreAuthenticationOptions` is a record bound from `Authentication:JwtBearer` configuration section
+- `EventStoreClaimsTransformation` parses JWT claims as JSON arrays first, falling back to space-delimited string parsing
+- ProblemDetails 401 responses use `WriteAsJsonAsync` with explicit `contentType: "application/problem+json"` parameter
+- Development signing key uses 33-character string for HS256 (>256 bits)
+- Test infrastructure: `TestJwtTokenGenerator` generates tokens with `JwtSecurityTokenHandler`, `JwtAuthenticatedWebApplicationFactory` provides shared test host configuration
+
 ### File List
+
+**New files:**
+- `src/Hexalith.EventStore.CommandApi/Authentication/EventStoreAuthenticationOptions.cs`
+- `src/Hexalith.EventStore.CommandApi/Authentication/EventStoreClaimsTransformation.cs`
+- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Helpers/TestJwtTokenGenerator.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Helpers/JwtAuthenticatedWebApplicationFactory.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/JwtAuthenticationIntegrationTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Authentication/EventStoreClaimsTransformationTests.cs`
+
+**Modified files:**
+- `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` - Replaced auth stubs with full JWT Bearer configuration
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` - Added [Authorize] attribute
+- `src/Hexalith.EventStore.CommandApi/appsettings.json` - Added Authentication:JwtBearer section
+- `src/Hexalith.EventStore.CommandApi/appsettings.Development.json` - Added dev JWT config with symmetric key
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/CommandsControllerTests.cs` - Updated to use JWT tokens
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/ValidationTests.cs` - Updated to use JWT tokens
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/LoggingBehaviorIntegrationTests.cs` - Updated to use JWT tokens and JWT config
+
+## Change Log
+
+- 2026-02-13: Story 2.4 implementation complete - JWT Bearer authentication, IClaimsTransformation, [Authorize] on CommandsController, 15 new tests (6 unit + 9 integration), all 257 tests passing

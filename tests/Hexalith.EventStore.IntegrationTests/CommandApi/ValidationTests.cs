@@ -3,20 +3,18 @@ extern alias commandapi;
 namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 
-using Microsoft.AspNetCore.Mvc.Testing;
+using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
 
-using CommandApiProgram = commandapi::Program;
-
-public class ValidationTests(WebApplicationFactory<CommandApiProgram> factory)
-    : IClassFixture<WebApplicationFactory<CommandApiProgram>>
+public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = CreateAuthenticatedClient(factory);
 
     [Fact]
     public async Task PostCommands_MissingFields_Returns400WithValidationErrors()
@@ -183,5 +181,13 @@ public class ValidationTests(WebApplicationFactory<CommandApiProgram> factory)
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    private static HttpClient CreateAuthenticatedClient(JwtAuthenticatedWebApplicationFactory factory)
+    {
+        HttpClient client = factory.CreateClient();
+        string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["test-domain"]);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }

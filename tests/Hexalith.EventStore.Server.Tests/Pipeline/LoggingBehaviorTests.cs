@@ -121,6 +121,9 @@ public class LoggingBehaviorTests : IDisposable
 
         LogEntry errorLog = _logEntries.First(e => e.Level == LogLevel.Error);
         errorLog.Message.ShouldContain("test-correlation-id");
+        errorLog.Message.ShouldContain("test-tenant");
+        errorLog.Message.ShouldContain("test-domain");
+        errorLog.Message.ShouldContain("agg-001");
         errorLog.Message.ShouldContain("InvalidOperationException");
         errorLog.Message.ShouldContain("Handler failed");
     }

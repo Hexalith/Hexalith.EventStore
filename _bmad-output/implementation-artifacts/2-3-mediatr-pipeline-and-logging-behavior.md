@@ -1,6 +1,6 @@
 # Story 2.3: MediatR Pipeline & Logging Behavior
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -353,6 +353,29 @@ Claude Opus 4.6
 - `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` (removed redundant logging, removed ILogger dependency)
 - `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` (added ActivitySource to OpenTelemetry tracing)
 
+### Senior Developer Review (AI)
+
+**Reviewed by:** Jerome (AI-assisted adversarial review)
+**Date:** 2026-02-13
+**Outcome:** Approved with fixes applied
+
+**Findings (6 total: 1 High, 3 Medium, 2 Low):**
+
+**Fixed (HIGH + MEDIUM):**
+1. **[HIGH] Exception object not passed to LogError** - `LoggingBehavior.cs` error log now passes `ex` as first parameter to `logger.LogError()`, enabling structured log sinks to capture full stack traces for production debugging.
+2. **[MEDIUM] Error log missing tenant/domain/aggregateId** - Error log template now includes Tenant, Domain, AggregateId fields consistent with entry/exit logs and architecture's structured logging pattern.
+3. **[MEDIUM] Controller magic string for CorrelationId** - `CommandsController.cs` now uses `CorrelationIdMiddleware.HttpContextKey` constant instead of inline `"CorrelationId"` string.
+
+**Action item (MEDIUM - documentation):**
+4. **[MEDIUM] Architecture doc pipeline behavior placement** - Architecture document (`architecture.md`) shows pipeline behaviors in `Server/Pipeline/` but implementation places them in `CommandApi/Pipeline/`. This was a deliberate decision (behaviors depend on `IHttpContextAccessor`), but the architecture doc should be updated to reflect reality.
+
+**Acknowledged (LOW - not fixed):**
+5. **[LOW] Unit test TestLogger uses non-thread-safe List** - Acceptable for single-threaded unit tests; inconsistent with integration test ConcurrentQueue pattern.
+6. **[LOW] Activity name magic string** - `"EventStore.CommandApi.Submit"` appears in both production code and tests without a shared constant.
+
+**Test results after fixes:** 242 passing, 0 failures, 0 regressions.
+
 ### Change Log
 
 - 2026-02-13: Story 2.3 implementation complete. Added MediatR LoggingBehavior with structured logging and OpenTelemetry tracing. 11 new tests (8 unit + 3 integration). Total: 242 tests passing.
+- 2026-02-13: Code review fixes applied. Fixed LogError exception parameter, added tenant/domain/aggregateId to error log, replaced controller CorrelationId magic string with constant. Updated test assertions. All 242 tests passing.
