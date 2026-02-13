@@ -4,10 +4,14 @@ namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+
+using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +28,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
     {
         ArgumentNullException.ThrowIfNull(factory);
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = CreateAuthenticatedClient(factory);
     }
 
     [Fact]
@@ -127,6 +131,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
 
     /// <summary>
     /// Custom WebApplicationFactory that captures log entries for assertion.
+    /// Configured with test JWT authentication.
     /// </summary>
     public class LogCapturingFactory : WebApplicationFactory<CommandApiProgram>
     {
@@ -135,11 +140,29 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             ArgumentNullException.ThrowIfNull(builder);
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
+                    ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
+                    ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
+                    ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
+                });
+            });
             _ = builder.ConfigureServices(services =>
             {
                 _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }
+    }
+
+    private static HttpClient CreateAuthenticatedClient(LogCapturingFactory factory)
+    {
+        HttpClient client = factory.CreateClient();
+        string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["test-domain"]);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 }
 

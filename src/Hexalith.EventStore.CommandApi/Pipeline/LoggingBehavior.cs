@@ -83,9 +83,13 @@ public class LoggingBehavior<TRequest, TResponse>(
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
             logger.LogError(
-                "MediatR pipeline error: CorrelationId={CorrelationId}, CommandType={CommandType}, ExceptionType={ExceptionType}, Message={ExceptionMessage}, DurationMs={DurationMs}",
+                ex,
+                "MediatR pipeline error: CorrelationId={CorrelationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Message={ExceptionMessage}, DurationMs={DurationMs}",
                 correlationId,
                 commandType,
+                tenant,
+                domain,
+                aggregateId,
                 ex.GetType().Name,
                 ex.Message,
                 elapsed.TotalMilliseconds);

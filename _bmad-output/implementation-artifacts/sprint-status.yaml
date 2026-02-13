@@ -54,11 +54,11 @@ development_status:
   epic-2: in-progress
   2-1-commandapi-host-and-minimal-endpoint-scaffolding: done
   2-2-command-validation-and-rfc-7807-error-responses: review
-  2-3-mediatr-pipeline-and-logging-behavior: review
-  2-4-jwt-authentication-and-claims-transformation: ready-for-dev
-  2-5-endpoint-authorization-and-command-rejection: ready-for-dev
-  2-6-command-status-tracking-and-query-endpoint: backlog
-  2-7-command-replay-endpoint: backlog
+  2-3-mediatr-pipeline-and-logging-behavior: done
+  2-4-jwt-authentication-and-claims-transformation: review
+  2-5-endpoint-authorization-and-command-rejection: review
+  2-6-command-status-tracking-and-query-endpoint: ready-for-dev
+  2-7-command-replay-endpoint: ready-for-dev
   2-8-optimistic-concurrency-conflict-handling: backlog
   2-9-rate-limiting-and-openapi-swagger-ui: backlog
   epic-2-retrospective: optional

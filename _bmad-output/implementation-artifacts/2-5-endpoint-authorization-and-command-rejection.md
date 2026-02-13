@@ -1,6 +1,6 @@
 # Story 2.5: Endpoint Authorization & Command Rejection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,79 +34,79 @@ So that the system enforces access control at the perimeter (FR31, FR32).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify Story 2.4 prerequisites are in place (BLOCKING)
-  - [ ] 0.1 Confirm `[Authorize]` attribute exists on `CommandsController`
-  - [ ] 0.2 Confirm `EventStoreClaimsTransformation` implements `IClaimsTransformation` and is registered
-  - [ ] 0.3 Confirm `TestJwtTokenGenerator` exists in `IntegrationTests/Helpers/`
-  - [ ] 0.4 Run all existing tests — they must pass before proceeding
+- [x] Task 0: Verify Story 2.4 prerequisites are in place (BLOCKING)
+  - [x] 0.1 Confirm `[Authorize]` attribute exists on `CommandsController`
+  - [x] 0.2 Confirm `EventStoreClaimsTransformation` implements `IClaimsTransformation` and is registered
+  - [x] 0.3 Confirm `TestJwtTokenGenerator` exists in `IntegrationTests/Helpers/`
+  - [x] 0.4 Run all existing tests — they must pass before proceeding
 
-- [ ] Task 1: Implement pre-pipeline tenant authorization in CommandsController (AC: #1, #4)
-  - [ ] 1.1 In `CommandsController.Submit()`, BEFORE calling `_mediator.Send()`: first guard against null `HttpContext` / `User` (return 403 immediately if null — defensive against misconfigured middleware), then verify `User.Identity?.IsAuthenticated == true` (defensive belt-and-suspenders check beyond `[Authorize]`), then check if `User` has an `eventstore:tenant` claim matching `request.Tenant` (case-insensitive comparison). Filter claims with `.Where(c => !string.IsNullOrWhiteSpace(c.Value))` to reject empty/whitespace-only claim values
-  - [ ] 1.2 If no matching tenant claim found, return 403 ProblemDetails immediately with: `Status = 403`, `Title = "Forbidden"`, `Type = "https://tools.ietf.org/html/rfc9457#section-3"`, `Detail = "Not authorized to submit commands for tenant '{tenant}'."`, `Instance = request path`, `Extensions = { correlationId, tenantId }`
-  - [ ] 1.3 If user has zero `eventstore:tenant` claims at all, return 403 with `Detail = "No tenant authorization claims found. Access denied."`
-  - [ ] 1.4 Log failed tenant authorization at `Warning` level: correlationId, tenantId (attempted), source IP (`HttpContext.Connection.RemoteIpAddress`), commandType, domain. NEVER log the JWT token (NFR11)
-  - [ ] 1.5 Store the authorized tenant in `HttpContext.Items["AuthorizedTenant"]` for downstream use after successful check
-  - [ ] 1.6 Ensure `ConfigureAwait(false)` on all async calls (CA2007), `ArgumentNullException.ThrowIfNull()` on public methods (CA1062)
+- [x] Task 1: Implement pre-pipeline tenant authorization in CommandsController (AC: #1, #4)
+  - [x] 1.1 In `CommandsController.Submit()`, BEFORE calling `_mediator.Send()`: first guard against null `HttpContext` / `User` (return 403 immediately if null — defensive against misconfigured middleware), then verify `User.Identity?.IsAuthenticated == true` (defensive belt-and-suspenders check beyond `[Authorize]`), then check if `User` has an `eventstore:tenant` claim matching `request.Tenant` (case-insensitive comparison). Filter claims with `.Where(c => !string.IsNullOrWhiteSpace(c.Value))` to reject empty/whitespace-only claim values
+  - [x] 1.2 If no matching tenant claim found, return 403 ProblemDetails immediately with: `Status = 403`, `Title = "Forbidden"`, `Type = "https://tools.ietf.org/html/rfc9457#section-3"`, `Detail = "Not authorized to submit commands for tenant '{tenant}'."`, `Instance = request path`, `Extensions = { correlationId, tenantId }`
+  - [x] 1.3 If user has zero `eventstore:tenant` claims at all, return 403 with `Detail = "No tenant authorization claims found. Access denied."`
+  - [x] 1.4 Log failed tenant authorization at `Warning` level: correlationId, tenantId (attempted), source IP (`HttpContext.Connection.RemoteIpAddress`), commandType, domain. NEVER log the JWT token (NFR11)
+  - [x] 1.5 Store the authorized tenant in `HttpContext.Items["AuthorizedTenant"]` for downstream use after successful check
+  - [x] 1.6 Ensure `ConfigureAwait(false)` on all async calls (CA2007), `ArgumentNullException.ThrowIfNull()` on public methods (CA1062)
 
-- [ ] Task 2: Create AuthorizationBehavior<TRequest, TResponse> MediatR behavior (AC: #2, #3, #4, #5)
-  - [ ] 2.1 Create `AuthorizationBehavior.cs` in `CommandApi/Pipeline/` implementing `IPipelineBehavior<TRequest, TResponse>`
-  - [ ] 2.2 Inject `IHttpContextAccessor` and `ILogger<AuthorizationBehavior<TRequest, TResponse>>`
-  - [ ] 2.3 Guard against null `HttpContext` or `HttpContext.User` — throw `InvalidOperationException` if null (indicates middleware misconfiguration, not a user error). Also verify `User.Identity?.IsAuthenticated == true` as defensive check
-  - [ ] 2.4 If `TRequest` is `SubmitCommand`, extract `Domain` and `CommandType` from the command
-  - [ ] 2.5 **Domain authorization**: If user has any `eventstore:domain` claims (after filtering with `.Where(c => !string.IsNullOrWhiteSpace(c.Value))`), verify command's `Domain` matches one of them (case-insensitive). If no `eventstore:domain` claims exist, skip domain check (all domains authorized per AC #5). Note: tenant and domain authorization are independent — they are NOT checked as a pair (having tenant A and domain X does not mean "tenant A with domain X"; it means "any authorized tenant" + "any authorized domain")
-  - [ ] 2.6 **Command type authorization**: If user has any `eventstore:permission` claims (after filtering empty/whitespace), verify command's `CommandType` matches one (case-insensitive). Support wildcard via `AuthorizationConstants.WildcardPermission` constant (`"commands:*"`) matching any command type. If no `eventstore:permission` claims exist, skip command type check (all types authorized per AC #5)
-  - [ ] 2.7 On authorization failure, throw `CommandAuthorizationException` with tenant, domain, commandType, and reason
-  - [ ] 2.8 Log failed authorization at `Warning` level: correlationId, tenant, domain, commandType, failureReason. NEVER log JWT token or payload. On successful authorization, log at `Debug` level: correlationId, tenant, domain, commandType (useful for troubleshooting authorization flow without polluting production logs)
-  - [ ] 2.9 For non-`SubmitCommand` request types, pass through without authorization checks (only command submissions are authorized)
+- [x] Task 2: Create AuthorizationBehavior<TRequest, TResponse> MediatR behavior (AC: #2, #3, #4, #5)
+  - [x] 2.1 Create `AuthorizationBehavior.cs` in `CommandApi/Pipeline/` implementing `IPipelineBehavior<TRequest, TResponse>`
+  - [x] 2.2 Inject `IHttpContextAccessor` and `ILogger<AuthorizationBehavior<TRequest, TResponse>>`
+  - [x] 2.3 Guard against null `HttpContext` or `HttpContext.User` — throw `InvalidOperationException` if null (indicates middleware misconfiguration, not a user error). Also verify `User.Identity?.IsAuthenticated == true` as defensive check
+  - [x] 2.4 If `TRequest` is `SubmitCommand`, extract `Domain` and `CommandType` from the command
+  - [x] 2.5 **Domain authorization**: If user has any `eventstore:domain` claims (after filtering with `.Where(c => !string.IsNullOrWhiteSpace(c.Value))`), verify command's `Domain` matches one of them (case-insensitive). If no `eventstore:domain` claims exist, skip domain check (all domains authorized per AC #5). Note: tenant and domain authorization are independent — they are NOT checked as a pair (having tenant A and domain X does not mean "tenant A with domain X"; it means "any authorized tenant" + "any authorized domain")
+  - [x] 2.6 **Command type authorization**: If user has any `eventstore:permission` claims (after filtering empty/whitespace), verify command's `CommandType` matches one (case-insensitive). Support wildcard via `AuthorizationConstants.WildcardPermission` constant (`"commands:*"`) matching any command type. If no `eventstore:permission` claims exist, skip command type check (all types authorized per AC #5)
+  - [x] 2.7 On authorization failure, throw `CommandAuthorizationException` with tenant, domain, commandType, and reason
+  - [x] 2.8 Log failed authorization at `Warning` level: correlationId, tenant, domain, commandType, failureReason. NEVER log JWT token or payload. On successful authorization, log at `Debug` level: correlationId, tenant, domain, commandType (useful for troubleshooting authorization flow without polluting production logs)
+  - [x] 2.9 For non-`SubmitCommand` request types, pass through without authorization checks (only command submissions are authorized)
 
-- [ ] Task 3: Create CommandAuthorizationException and exception handler (AC: #1, #2)
-  - [ ] 3.1 Create `CommandAuthorizationException` in `CommandApi/ErrorHandling/` with properties: `TenantId` (string), `Domain` (string?), `CommandType` (string?), `Reason` (string)
-  - [ ] 3.2 Create `AuthorizationExceptionHandler` implementing `IExceptionHandler` that handles `CommandAuthorizationException`
-  - [ ] 3.3 Map to 403 ProblemDetails with: `Status = 403`, `Title = "Forbidden"`, `Type = "https://tools.ietf.org/html/rfc9457#section-3"`, `Detail` = human-readable message from exception `Reason`, `Instance` = request path, `Extensions = { correlationId, tenantId }`
-  - [ ] 3.4 Set response content type to `application/problem+json`
-  - [ ] 3.5 Register `AuthorizationExceptionHandler` in `AddCommandApi()` via `services.AddExceptionHandler<AuthorizationExceptionHandler>()` — register BEFORE `GlobalExceptionHandler` so it takes priority for auth exceptions
+- [x] Task 3: Create CommandAuthorizationException and exception handler (AC: #1, #2)
+  - [x] 3.1 Create `CommandAuthorizationException` in `CommandApi/ErrorHandling/` with properties: `TenantId` (string), `Domain` (string?), `CommandType` (string?), `Reason` (string)
+  - [x] 3.2 Create `AuthorizationExceptionHandler` implementing `IExceptionHandler` that handles `CommandAuthorizationException`
+  - [x] 3.3 Map to 403 ProblemDetails with: `Status = 403`, `Title = "Forbidden"`, `Type = "https://tools.ietf.org/html/rfc9457#section-3"`, `Detail` = human-readable message from exception `Reason`, `Instance` = request path, `Extensions = { correlationId, tenantId }`
+  - [x] 3.4 Set response content type to `application/problem+json`
+  - [x] 3.5 Register `AuthorizationExceptionHandler` in `AddCommandApi()` via `services.AddExceptionHandler<AuthorizationExceptionHandler>()` — register BEFORE `GlobalExceptionHandler` so it takes priority for auth exceptions
 
-- [ ] Task 4: Register AuthorizationBehavior in pipeline (AC: #3)
-  - [ ] 4.1 In `ServiceCollectionExtensions.AddCommandApi()`, add `cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>))` AFTER `ValidationBehavior` and BEFORE `SubmitCommandHandler`. Pipeline registration order: LoggingBehavior -> ValidationBehavior -> AuthorizationBehavior
-  - [ ] 4.2 Verify `IHttpContextAccessor` is already registered (should be from Story 2.3)
+- [x] Task 4: Register AuthorizationBehavior in pipeline (AC: #3)
+  - [x] 4.1 In `ServiceCollectionExtensions.AddCommandApi()`, add `cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>))` AFTER `ValidationBehavior` and BEFORE `SubmitCommandHandler`. Pipeline registration order: LoggingBehavior -> ValidationBehavior -> AuthorizationBehavior
+  - [x] 4.2 Verify `IHttpContextAccessor` is already registered (should be from Story 2.3)
 
-- [ ] Task 5: Write unit tests for AuthorizationBehavior (AC: #2, #3, #4, #5)
-  - [ ] 5.1 `AuthorizationBehavior_UserWithMatchingDomain_Succeeds` — verify command passes when user has matching `eventstore:domain` claim
-  - [ ] 5.2 `AuthorizationBehavior_UserWithNoDomainClaims_Succeeds` — verify all domains allowed when no domain claims present (AC #5)
-  - [ ] 5.3 `AuthorizationBehavior_UserWithWrongDomain_ThrowsAuthorizationException` — verify `CommandAuthorizationException` thrown
-  - [ ] 5.4 `AuthorizationBehavior_UserWithMatchingPermission_Succeeds` — verify command passes with matching permission
-  - [ ] 5.5 `AuthorizationBehavior_UserWithNoPermissionClaims_Succeeds` — verify all command types allowed when no permission claims (AC #5)
-  - [ ] 5.6 `AuthorizationBehavior_UserWithWrongPermission_ThrowsAuthorizationException` — verify exception thrown
-  - [ ] 5.7 `AuthorizationBehavior_UserWithWildcardPermission_Succeeds` — verify `commands:*` matches any command type
-  - [ ] 5.8 `AuthorizationBehavior_NonSubmitCommandRequest_PassesThrough` — verify non-SubmitCommand types skip authorization
-  - [ ] 5.9 `AuthorizationBehavior_CaseInsensitiveDomainMatch_Succeeds` — verify case-insensitive domain matching
-  - [ ] 5.10 `AuthorizationBehavior_FailedAuth_LogsWarningWithoutJwtToken` — verify structured log with correlation ID, no JWT token
+- [x] Task 5: Write unit tests for AuthorizationBehavior (AC: #2, #3, #4, #5)
+  - [x] 5.1 `AuthorizationBehavior_UserWithMatchingDomain_Succeeds` — verify command passes when user has matching `eventstore:domain` claim
+  - [x] 5.2 `AuthorizationBehavior_UserWithNoDomainClaims_Succeeds` — verify all domains allowed when no domain claims present (AC #5)
+  - [x] 5.3 `AuthorizationBehavior_UserWithWrongDomain_ThrowsAuthorizationException` — verify `CommandAuthorizationException` thrown
+  - [x] 5.4 `AuthorizationBehavior_UserWithMatchingPermission_Succeeds` — verify command passes with matching permission
+  - [x] 5.5 `AuthorizationBehavior_UserWithNoPermissionClaims_Succeeds` — verify all command types allowed when no permission claims (AC #5)
+  - [x] 5.6 `AuthorizationBehavior_UserWithWrongPermission_ThrowsAuthorizationException` — verify exception thrown
+  - [x] 5.7 `AuthorizationBehavior_UserWithWildcardPermission_Succeeds` — verify `commands:*` matches any command type
+  - [x] 5.8 `AuthorizationBehavior_NonSubmitCommandRequest_PassesThrough` — verify non-SubmitCommand types skip authorization
+  - [x] 5.9 `AuthorizationBehavior_CaseInsensitiveDomainMatch_Succeeds` — verify case-insensitive domain matching
+  - [x] 5.10 `AuthorizationBehavior_FailedAuth_LogsWarningWithoutJwtToken` — verify structured log with correlation ID, no JWT token
 
-- [ ] Task 6: Write unit tests for AuthorizationExceptionHandler and CommandAuthorizationException (AC: #1, #2)
-  - [ ] 6.1 `AuthorizationExceptionHandler_HandlesCommandAuthorizationException_Returns403ProblemDetails` — verify handler produces 403 ProblemDetails with correct structure (status, title, type, detail, correlationId, tenantId extensions)
-  - [ ] 6.2 `AuthorizationExceptionHandler_IgnoresOtherExceptions_ReturnsFalse` — verify handler returns `false` for non-`CommandAuthorizationException` types (e.g., `InvalidOperationException`)
-  - [ ] 6.3 `AuthorizationExceptionHandler_SetsContentType_ApplicationProblemJson` — verify response content type is `application/problem+json`
-  - [ ] 6.4 `CommandAuthorizationException_Properties_SetCorrectly` — verify TenantId, Domain, CommandType, Reason properties are set and accessible
-  - [ ] 6.5 `CommandAuthorizationException_ToString_DoesNotLeakSensitiveData` — verify `ToString()` / `Message` contains only tenant, domain, commandType, reason — NOT JWT token content or event payload
+- [x] Task 6: Write unit tests for AuthorizationExceptionHandler and CommandAuthorizationException (AC: #1, #2)
+  - [x] 6.1 `AuthorizationExceptionHandler_HandlesCommandAuthorizationException_Returns403ProblemDetails` — verify handler produces 403 ProblemDetails with correct structure (status, title, type, detail, correlationId, tenantId extensions)
+  - [x] 6.2 `AuthorizationExceptionHandler_IgnoresOtherExceptions_ReturnsFalse` — verify handler returns `false` for non-`CommandAuthorizationException` types (e.g., `InvalidOperationException`)
+  - [x] 6.3 `AuthorizationExceptionHandler_SetsContentType_ApplicationProblemJson` — verify response content type is `application/problem+json`
+  - [x] 6.4 `CommandAuthorizationException_Properties_SetCorrectly` — verify TenantId, Domain, CommandType, Reason properties are set and accessible
+  - [x] 6.5 `CommandAuthorizationException_ToString_DoesNotLeakSensitiveData` — verify `ToString()` / `Message` contains only tenant, domain, commandType, reason — NOT JWT token content or event payload
 
-- [ ] Task 7: Write integration tests for authorization flow (AC: #1, #2, #4, #5)
-  - [ ] 7.1 `PostCommands_TenantNotInClaims_Returns403ProblemDetails` — verify 403 with `tenantId` extension for unauthorized tenant
-  - [ ] 7.2 `PostCommands_NoTenantClaims_Returns403ProblemDetails` — verify 403 when JWT has zero tenant claims
-  - [ ] 7.3 `PostCommands_DomainNotInClaims_Returns403ProblemDetails` — verify 403 for unauthorized domain (when domain claims exist)
-  - [ ] 7.4 `PostCommands_CommandTypeNotInClaims_Returns403ProblemDetails` — verify 403 for unauthorized command type (when permission claims exist)
-  - [ ] 7.5 `PostCommands_NoDomainClaims_Returns202Accepted` — verify all domains allowed when no domain claims (AC #5)
-  - [ ] 7.6 `PostCommands_NoPermissionClaims_Returns202Accepted` — verify all command types allowed when no permission claims (AC #5)
-  - [ ] 7.7 `PostCommands_WildcardPermission_Returns202Accepted` — verify `commands:*` grants access to any command type
-  - [ ] 7.8 `PostCommands_MatchingTenantDomainPermission_Returns202Accepted` — verify fully authorized request succeeds
-  - [ ] 7.9 `PostCommands_AuthFailure_Returns403BeforeMediatRPipeline` — verify tenant rejection doesn't trigger LoggingBehavior entry log (proving pre-pipeline rejection)
-  - [ ] 7.10 `PostCommands_AuthFailure_LogsWarningWithCorrelationId` — verify structured log entry for failed auth contains correlationId but NOT the JWT token
-  - [ ] 7.11 `PostCommands_PipelineOrder_AuthorizationAfterValidation` — verify that a request failing BOTH validation and authorization returns 400 (validation error), NOT 403 — proving ValidationBehavior runs before AuthorizationBehavior in the pipeline
-  - [ ] 7.12 `PostCommands_AuthorizationException_Returns403Not500` — verify `CommandAuthorizationException` produces 403 ProblemDetails (not 500), confirming `AuthorizationExceptionHandler` is registered before `GlobalExceptionHandler` in the IExceptionHandler chain
+- [x] Task 7: Write integration tests for authorization flow (AC: #1, #2, #4, #5)
+  - [x] 7.1 `PostCommands_TenantNotInClaims_Returns403ProblemDetails` — verify 403 with `tenantId` extension for unauthorized tenant
+  - [x] 7.2 `PostCommands_NoTenantClaims_Returns403ProblemDetails` — verify 403 when JWT has zero tenant claims
+  - [x] 7.3 `PostCommands_DomainNotInClaims_Returns403ProblemDetails` — verify 403 for unauthorized domain (when domain claims exist)
+  - [x] 7.4 `PostCommands_CommandTypeNotInClaims_Returns403ProblemDetails` — verify 403 for unauthorized command type (when permission claims exist)
+  - [x] 7.5 `PostCommands_NoDomainClaims_Returns202Accepted` — verify all domains allowed when no domain claims (AC #5)
+  - [x] 7.6 `PostCommands_NoPermissionClaims_Returns202Accepted` — verify all command types allowed when no permission claims (AC #5)
+  - [x] 7.7 `PostCommands_WildcardPermission_Returns202Accepted` — verify `commands:*` grants access to any command type
+  - [x] 7.8 `PostCommands_MatchingTenantDomainPermission_Returns202Accepted` — verify fully authorized request succeeds
+  - [x] 7.9 `PostCommands_AuthFailure_Returns403BeforeMediatRPipeline` — verify tenant rejection doesn't trigger LoggingBehavior entry log (proving pre-pipeline rejection)
+  - [x] 7.10 `PostCommands_AuthFailure_LogsWarningWithCorrelationId` — verify structured log entry for failed auth contains correlationId but NOT the JWT token
+  - [x] 7.11 `PostCommands_PipelineOrder_AuthorizationAfterValidation` — verify that a request failing BOTH validation and authorization returns 400 (validation error), NOT 403 — proving ValidationBehavior runs before AuthorizationBehavior in the pipeline
+  - [x] 7.12 `PostCommands_AuthorizationException_Returns403Not500` — verify `CommandAuthorizationException` produces 403 ProblemDetails (not 500), confirming `AuthorizationExceptionHandler` is registered before `GlobalExceptionHandler` in the IExceptionHandler chain
 
-- [ ] Task 8: Update existing integration tests if needed (AC: all)
-  - [ ] 8.1 Review existing integration tests from Stories 2.1-2.4 — ensure they use JWT tokens with sufficient claims (tenant, domain, permission) to pass the new authorization checks
-  - [ ] 8.2 Update `TestJwtTokenGenerator.GenerateToken()` default claims to include test tenant, domain, and `commands:*` permission so existing tests don't break
-  - [ ] 8.3 Verify all existing tests still pass after adding authorization
+- [x] Task 8: Update existing integration tests if needed (AC: all)
+  - [x] 8.1 Review existing integration tests from Stories 2.1-2.4 — ensure they use JWT tokens with sufficient claims (tenant, domain, permission) to pass the new authorization checks
+  - [x] 8.2 Update `TestJwtTokenGenerator.GenerateToken()` default claims to include test tenant, domain, and `commands:*` permission so existing tests don't break
+  - [x] 8.3 Verify all existing tests still pass after adding authorization
 
 ## Dev Notes
 
@@ -578,10 +578,42 @@ MediatR Pipeline:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 0: All Story 2.4 prerequisites verified — [Authorize] on controller, EventStoreClaimsTransformation registered, TestJwtTokenGenerator exists, all 257 tests pass.
+- Task 1: Added pre-pipeline tenant authorization to CommandsController.Submit() with null HttpContext/User guards, IsAuthenticated check, tenant claim filtering/matching (case-insensitive), 403 ProblemDetails on failure, and structured Warning log. Stores authorized tenant in HttpContext.Items["AuthorizedTenant"].
+- Task 2: Created AuthorizationBehavior<TRequest, TResponse> MediatR pipeline behavior in CommandApi/Pipeline/. Checks eventstore:domain and eventstore:permission claims for SubmitCommand requests. Supports wildcard (commands:*), case-insensitive matching, and absent-claim-means-all semantics. Non-SubmitCommand requests pass through.
+- Task 3: Created CommandAuthorizationException (with TenantId, Domain, CommandType, Reason properties) and AuthorizationExceptionHandler (IExceptionHandler returning 403 ProblemDetails with correlationId/tenantId extensions, application/problem+json content type).
+- Task 4: Registered AuthorizationBehavior as third MediatR pipeline behavior (after ValidationBehavior) and AuthorizationExceptionHandler between ValidationExceptionHandler and GlobalExceptionHandler in ServiceCollectionExtensions.AddCommandApi().
+- Task 5: Wrote 10 unit tests for AuthorizationBehavior covering: matching/wrong/absent domain claims, matching/wrong/absent/wildcard permission claims, non-SubmitCommand passthrough, case-insensitive matching, and warning log without JWT token leak.
+- Task 6: Wrote 5 unit tests for AuthorizationExceptionHandler and CommandAuthorizationException covering: 403 ProblemDetails structure, ignore non-auth exceptions, content type verification, exception property validation, and no sensitive data leak in ToString().
+- Task 7: Wrote 12 integration tests covering: tenant/domain/command type authorization failures (403), absent domain/permission claims (202), wildcard permission (202), fully authorized request (202), pre-pipeline rejection verification, warning log with correlationId, pipeline order (validation before authorization), and exception handler registration order.
+- Task 8: Fixed existing JwtAuthenticationIntegrationTests.PostCommands_ValidTokenWithTenantClaims_ClaimsTransformedCorrectly — updated request to use tenant="tenant-a" and domain="orders" to match JWT claims after authorization was added. All 257 original tests still pass.
+
+### Change Log
+
+- **AuthorizationExceptionHandler content type fix**: `WriteAsJsonAsync(value, cancellationToken)` overload in .NET 10 always overrides ContentType to `application/json; charset=utf-8`. Fixed by using explicit content type parameter: `WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, "application/problem+json", cancellationToken)`.
+- **DefaultHttpContext.Response.Body in unit tests**: `DefaultHttpContext` uses `Stream.Null` by default, which prevents reading response body in tests. Fixed by assigning `new MemoryStream()` to `Response.Body` in test setup.
+- **Existing test breakage**: `PostCommands_ValidTokenWithTenantClaims_ClaimsTransformedCorrectly` broke because request tenant="test-tenant" didn't match JWT claims tenants=["tenant-a","tenant-b"]. Fixed by aligning request with JWT claims.
+
 ### File List
+
+**New files created:**
+- `src/Hexalith.EventStore.CommandApi/Pipeline/AuthorizationBehavior.cs` — MediatR pipeline behavior #3 for domain/command type ABAC
+- `src/Hexalith.EventStore.CommandApi/Pipeline/AuthorizationConstants.cs` — WildcardPermission constant ("commands:*")
+- `src/Hexalith.EventStore.CommandApi/ErrorHandling/CommandAuthorizationException.cs` — Typed exception for authorization failures
+- `src/Hexalith.EventStore.CommandApi/ErrorHandling/AuthorizationExceptionHandler.cs` — IExceptionHandler returning 403 ProblemDetails
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/AuthorizationBehaviorTests.cs` — 10 unit tests for AuthorizationBehavior
+- `tests/Hexalith.EventStore.Server.Tests/ErrorHandling/AuthorizationExceptionHandlerTests.cs` — 5 unit tests for exception handler + exception type
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/AuthorizationIntegrationTests.cs` — 12 integration tests for authorization flow
+
+**Modified files:**
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` — Added pre-pipeline tenant authorization, ILogger injection, CreateForbiddenProblemDetails helper
+- `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` — Registered AuthorizationBehavior and AuthorizationExceptionHandler
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/JwtAuthenticationIntegrationTests.cs` — Fixed test to align request with JWT claims after authorization added
+
+**Test count: 284 total (257 original + 27 new)**
