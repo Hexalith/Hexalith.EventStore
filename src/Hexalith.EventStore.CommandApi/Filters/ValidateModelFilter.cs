@@ -63,8 +63,9 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
                     problemDetails.Extensions["tenantId"] = tenantId;
                 }
 
-                context.HttpContext.Response.ContentType = "application/problem+json";
-                context.Result = new BadRequestObjectResult(problemDetails);
+                var result = new BadRequestObjectResult(problemDetails);
+                result.ContentTypes.Add("application/problem+json");
+                context.Result = result;
                 return;
             }
         }

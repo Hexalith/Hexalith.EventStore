@@ -53,20 +53,20 @@ development_status:
   # Epic 2: Command API Gateway & Status Tracking
   epic-2: in-progress
   2-1-commandapi-host-and-minimal-endpoint-scaffolding: done
-  2-2-command-validation-and-rfc-7807-error-responses: review
+  2-2-command-validation-and-rfc-7807-error-responses: done
   2-3-mediatr-pipeline-and-logging-behavior: done
-  2-4-jwt-authentication-and-claims-transformation: review
+  2-4-jwt-authentication-and-claims-transformation: done
   2-5-endpoint-authorization-and-command-rejection: review
-  2-6-command-status-tracking-and-query-endpoint: ready-for-dev
-  2-7-command-replay-endpoint: ready-for-dev
-  2-8-optimistic-concurrency-conflict-handling: backlog
-  2-9-rate-limiting-and-openapi-swagger-ui: backlog
+  2-6-command-status-tracking-and-query-endpoint: done
+  2-7-command-replay-endpoint: done
+  2-8-optimistic-concurrency-conflict-handling: review
+  2-9-rate-limiting-and-openapi-swagger-ui: review
   epic-2-retrospective: optional
 
   # Epic 3: Command Processing, Event Storage & State Management
-  epic-3: backlog
-  3-1-command-router-and-actor-activation: backlog
-  3-2-aggregateactor-orchestrator-and-idempotency-check: backlog
+  epic-3: in-progress
+  3-1-command-router-and-actor-activation: ready-for-dev
+  3-2-aggregateactor-orchestrator-and-idempotency-check: ready-for-dev
   3-3-tenant-validation-at-actor-level: backlog
   3-4-event-stream-reader-and-state-rehydration: backlog
   3-5-domain-service-registration-and-invocation: backlog

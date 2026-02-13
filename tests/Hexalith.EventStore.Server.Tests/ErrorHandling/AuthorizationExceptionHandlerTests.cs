@@ -85,7 +85,7 @@ public class AuthorizationExceptionHandlerTests
 
         // Assert - WriteAsJsonAsync may append charset, so check the content type contains problem+json
         httpContext.Response.ContentType.ShouldNotBeNull();
-        httpContext.Response.ContentType.ShouldContain("json");
+        httpContext.Response.ContentType.ShouldContain("problem+json");
         httpContext.Response.StatusCode.ShouldBe(403);
     }
 

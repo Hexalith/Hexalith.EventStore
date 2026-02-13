@@ -1,6 +1,6 @@
 # Story 2.6: Command Status Tracking & Query Endpoint
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -39,92 +39,92 @@ So that I can monitor command lifecycle progression (FR5).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and DAPR state store availability (BLOCKING)
-  - [ ] 0.1 Confirm Stories 2.4-2.5 artifacts are in place (`[Authorize]`, `EventStoreClaimsTransformation`, `TestJwtTokenGenerator`, `AuthorizationBehavior`)
-  - [ ] 0.2 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.3 Verify `Dapr.Client` package is referenced in Server project and `Dapr.AspNetCore` in CommandApi project
+- [x] Task 0: Verify prerequisites and DAPR state store availability (BLOCKING)
+  - [x] 0.1 Confirm Stories 2.4-2.5 artifacts are in place (`[Authorize]`, `EventStoreClaimsTransformation`, `TestJwtTokenGenerator`, `AuthorizationBehavior`)
+  - [x] 0.2 Run all existing tests -- they must pass before proceeding
+  - [x] 0.3 Verify `Dapr.Client` package is referenced in Server project and `Dapr.AspNetCore` in CommandApi project
 
-- [ ] Task 1: Create ICommandStatusStore abstraction and DAPR implementation (AC: #2, #3, #6)
-  - [ ] 1.1 Create `ICommandStatusStore` interface in `Server/Commands/` with methods: `WriteStatusAsync(string tenantId, string correlationId, CommandStatusRecord status, CancellationToken ct)` and `ReadStatusAsync(string tenantId, string correlationId, CancellationToken ct)` returning `CommandStatusRecord?`
-  - [ ] 1.2 Create `DaprCommandStatusStore` in `Server/Commands/` implementing `ICommandStatusStore` using `DaprClient.SaveStateAsync` and `DaprClient.GetStateAsync`
-  - [ ] 1.3 State store key format: `{tenantId}:{correlationId}:status` per D2. Use a constant for the state store name (e.g., `CommandStatusConstants.StateStoreName = "statestore"`)
-  - [ ] 1.4 Write operations include TTL metadata: `new Dictionary<string, string> { { "ttlInSeconds", ttlSeconds.ToString() } }` with default 24 hours (86400 seconds), configurable via `CommandStatusOptions.TtlSeconds`
-  - [ ] 1.5 Read operations: `DaprClient.GetStateAsync<CommandStatusRecord>(storeName, key)` returns `null` for non-existent/expired keys
-  - [ ] 1.6 All DaprClient calls wrapped with `ConfigureAwait(false)` and advisory error handling: catch exceptions, log at Warning level, and return gracefully (enforcement rule #12 -- status writes must never block pipeline)
-  - [ ] 1.7 Create `CommandStatusOptions` record in `Server/Commands/` with `TtlSeconds` (default 86400) and `StateStoreName` (default "statestore")
+- [x] Task 1: Create ICommandStatusStore abstraction and DAPR implementation (AC: #2, #3, #6)
+  - [x] 1.1 Create `ICommandStatusStore` interface in `Server/Commands/` with methods: `WriteStatusAsync(string tenantId, string correlationId, CommandStatusRecord status, CancellationToken ct)` and `ReadStatusAsync(string tenantId, string correlationId, CancellationToken ct)` returning `CommandStatusRecord?`
+  - [x] 1.2 Create `DaprCommandStatusStore` in `Server/Commands/` implementing `ICommandStatusStore` using `DaprClient.SaveStateAsync` and `DaprClient.GetStateAsync`
+  - [x] 1.3 State store key format: `{tenantId}:{correlationId}:status` per D2. Use a constant for the state store name (e.g., `CommandStatusConstants.StateStoreName = "statestore"`)
+  - [x] 1.4 Write operations include TTL metadata: `new Dictionary<string, string> { { "ttlInSeconds", ttlSeconds.ToString() } }` with default 24 hours (86400 seconds), configurable via `CommandStatusOptions.TtlSeconds`
+  - [x] 1.5 Read operations: `DaprClient.GetStateAsync<CommandStatusRecord>(storeName, key)` returns `null` for non-existent/expired keys
+  - [x] 1.6 All DaprClient calls wrapped with `ConfigureAwait(false)` and advisory error handling: catch exceptions, log at Warning level, and return gracefully (enforcement rule #12 -- status writes must never block pipeline)
+  - [x] 1.7 Create `CommandStatusOptions` record in `Server/Commands/` with `TtlSeconds` (default 86400) and `StateStoreName` (default "statestore")
 
-- [ ] Task 2: Create InMemoryCommandStatusStore for testing (AC: #2)
-  - [ ] 2.1 Create `InMemoryCommandStatusStore` in `Testing/Fakes/` implementing `ICommandStatusStore`
-  - [ ] 2.2 Use `ConcurrentDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)>` for storage with key = `{tenantId}:{correlationId}:status`
-  - [ ] 2.3 Implement TTL expiry simulation: `ReadStatusAsync` returns null if entry has expired
-  - [ ] 2.4 Add helper methods for test assertions: `GetAllStatuses()`, `GetStatusCount()`, `Clear()`
+- [x] Task 2: Create InMemoryCommandStatusStore for testing (AC: #2)
+  - [x] 2.1 Create `InMemoryCommandStatusStore` in `Testing/Fakes/` implementing `ICommandStatusStore`
+  - [x] 2.2 Use `ConcurrentDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)>` for storage with key = `{tenantId}:{correlationId}:status`
+  - [x] 2.3 Implement TTL expiry simulation: `ReadStatusAsync` returns null if entry has expired
+  - [x] 2.4 Add helper methods for test assertions: `GetAllStatuses()`, `GetStatusCount()`, `Clear()`
 
-- [ ] Task 3: Modify SubmitCommandHandler to write "Received" status (AC: #6)
-  - [ ] 3.1 Inject `ICommandStatusStore` into `SubmitCommandHandler` via primary constructor
-  - [ ] 3.2 After creating the `SubmitCommandResult`, call `_statusStore.WriteStatusAsync(command.Tenant, command.CorrelationId, new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, command.AggregateId), cancellationToken)` BEFORE returning the result
-  - [ ] 3.3 Wrap the status write in try/catch: log at Warning level if write fails but DO NOT throw -- return the SubmitCommandResult regardless (enforcement rule #12: advisory status writes never block pipeline)
-  - [ ] 3.4 Log successful status write at Debug level: correlationId, tenantId, status=Received
+- [x] Task 3: Modify SubmitCommandHandler to write "Received" status (AC: #6)
+  - [x] 3.1 Inject `ICommandStatusStore` into `SubmitCommandHandler` via primary constructor
+  - [x] 3.2 After creating the `SubmitCommandResult`, call `_statusStore.WriteStatusAsync(command.Tenant, command.CorrelationId, new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, command.AggregateId), cancellationToken)` BEFORE returning the result
+  - [x] 3.3 Wrap the status write in try/catch: log at Warning level if write fails but DO NOT throw -- return the SubmitCommandResult regardless (enforcement rule #12: advisory status writes never block pipeline)
+  - [x] 3.4 Log successful status write at Debug level: correlationId, tenantId, status=Received
 
-- [ ] Task 4: Create CommandStatusController with GET endpoint (AC: #1, #4, #5, #7)
-  - [ ] 4.1 Create `CommandStatusController` in `CommandApi/Controllers/` with route `[Route("api/v1/commands/status")]` and `[Authorize]` attribute
-  - [ ] 4.2 Create `GET /{correlationId}` action that accepts `correlationId` as a route parameter (GUID format validation via `[RegularExpression]` or FluentValidation)
-  - [ ] 4.3 Extract authenticated user's `eventstore:tenant` claims from `User.FindAll("eventstore:tenant")`
-  - [ ] 4.4 Call `_statusStore.ReadStatusAsync(tenantId, correlationId, cancellationToken)` for each authorized tenant until a status is found (the command could be under any authorized tenant)
-  - [ ] 4.5 If status found: return `200 OK` with `CommandStatusResponse` containing status, timestamp, aggregateId, and terminal-state fields
-  - [ ] 4.6 If no status found across all authorized tenants: return `404 Not Found` as ProblemDetails with `correlationId` extension. Detail: `"No command status found for correlation ID '{correlationId}'."`
-  - [ ] 4.7 If user has zero `eventstore:tenant` claims: return `403 Forbidden` as ProblemDetails. Detail: `"No tenant authorization claims found. Access denied."`
-  - [ ] 4.8 Store correlationId and tenantId in HttpContext.Items for error handler access
-  - [ ] 4.9 Add `[ProducesResponseType]` attributes for OpenAPI documentation: 200, 401, 403, 404
+- [x] Task 4: Create CommandStatusController with GET endpoint (AC: #1, #4, #5, #7)
+  - [x] 4.1 Create `CommandStatusController` in `CommandApi/Controllers/` with route `[Route("api/v1/commands/status")]` and `[Authorize]` attribute
+  - [x] 4.2 Create `GET /{correlationId}` action that accepts `correlationId` as a route parameter (GUID format validation via `[RegularExpression]` or FluentValidation)
+  - [x] 4.3 Extract authenticated user's `eventstore:tenant` claims from `User.FindAll("eventstore:tenant")`
+  - [x] 4.4 Call `_statusStore.ReadStatusAsync(tenantId, correlationId, cancellationToken)` for each authorized tenant until a status is found (the command could be under any authorized tenant)
+  - [x] 4.5 If status found: return `200 OK` with `CommandStatusResponse` containing status, timestamp, aggregateId, and terminal-state fields
+  - [x] 4.6 If no status found across all authorized tenants: return `404 Not Found` as ProblemDetails with `correlationId` extension. Detail: `"No command status found for correlation ID '{correlationId}'."`
+  - [x] 4.7 If user has zero `eventstore:tenant` claims: return `403 Forbidden` as ProblemDetails. Detail: `"No tenant authorization claims found. Access denied."`
+  - [x] 4.8 Store correlationId and tenantId in HttpContext.Items for error handler access
+  - [x] 4.9 Add `[ProducesResponseType]` attributes for OpenAPI documentation: 200, 401, 403, 404
 
-- [ ] Task 5: Create CommandStatusResponse model (AC: #1)
-  - [ ] 5.1 Create `CommandStatusResponse` record in `CommandApi/Models/` with: `Status` (string -- enum name), `StatusCode` (int -- enum value), `Timestamp` (DateTimeOffset), `AggregateId` (string?), `EventCount` (int?), `RejectionEventType` (string?), `FailureReason` (string?), `TimeoutDuration` (string? -- ISO 8601 duration format)
-  - [ ] 5.2 Create a static factory method `FromRecord(CommandStatusRecord record)` for mapping from the domain record
+- [x] Task 5: Create CommandStatusResponse model (AC: #1)
+  - [x] 5.1 Create `CommandStatusResponse` record in `CommandApi/Models/` with: `Status` (string -- enum name), `StatusCode` (int -- enum value), `Timestamp` (DateTimeOffset), `AggregateId` (string?), `EventCount` (int?), `RejectionEventType` (string?), `FailureReason` (string?), `TimeoutDuration` (string? -- ISO 8601 duration format)
+  - [x] 5.2 Create a static factory method `FromRecord(CommandStatusRecord record)` for mapping from the domain record
 
-- [ ] Task 6: Register ICommandStatusStore in DI (AC: all)
-  - [ ] 6.1 In `ServiceCollectionExtensions.AddCommandApi()`, register `DaprCommandStatusStore` as `ICommandStatusStore` (singleton, since DaprClient is thread-safe)
-  - [ ] 6.2 Register `CommandStatusOptions` from configuration section "EventStore:CommandStatus"
-  - [ ] 6.3 Ensure `DaprClient` is registered via `builder.Services.AddDaprClient()` in Program.cs (first DAPR client registration in the project)
-  - [ ] 6.4 In integration tests, override registration with `InMemoryCommandStatusStore` via WebApplicationFactory
+- [x] Task 6: Register ICommandStatusStore in DI (AC: all)
+  - [x] 6.1 In `ServiceCollectionExtensions.AddCommandApi()`, register `DaprCommandStatusStore` as `ICommandStatusStore` (singleton, since DaprClient is thread-safe)
+  - [x] 6.2 Register `CommandStatusOptions` from configuration section "EventStore:CommandStatus"
+  - [x] 6.3 Ensure `DaprClient` is registered via `builder.Services.AddDaprClient()` in Program.cs (first DAPR client registration in the project)
+  - [x] 6.4 In integration tests, override registration with `InMemoryCommandStatusStore` via WebApplicationFactory
 
-- [ ] Task 7: Write unit tests for DaprCommandStatusStore (AC: #2, #3)
-  - [ ] 7.1 `WriteStatusAsync_ValidStatus_CallsSaveStateWithCorrectKey` -- verify key format `{tenant}:{correlationId}:status`
-  - [ ] 7.2 `WriteStatusAsync_IncludesTtlMetadata_Default86400Seconds` -- verify TTL metadata passed to SaveStateAsync
-  - [ ] 7.3 `WriteStatusAsync_DaprClientThrows_LogsWarningAndDoesNotThrow` -- verify advisory write behavior (rule #12)
-  - [ ] 7.4 `ReadStatusAsync_ExistingKey_ReturnsRecord` -- verify successful read
-  - [ ] 7.5 `ReadStatusAsync_NonExistentKey_ReturnsNull` -- verify null for missing entry
-  - [ ] 7.6 `ReadStatusAsync_DaprClientThrows_LogsWarningAndReturnsNull` -- verify graceful failure on read
+- [x] Task 7: Write unit tests for DaprCommandStatusStore (AC: #2, #3)
+  - [x] 7.1 `WriteStatusAsync_ValidStatus_CallsSaveStateWithCorrectKey` -- verify key format `{tenant}:{correlationId}:status`
+  - [x] 7.2 `WriteStatusAsync_IncludesTtlMetadata_Default86400Seconds` -- verify TTL metadata passed to SaveStateAsync
+  - [x] 7.3 `WriteStatusAsync_DaprClientThrows_LogsWarningAndDoesNotThrow` -- verify advisory write behavior (rule #12)
+  - [x] 7.4 `ReadStatusAsync_ExistingKey_ReturnsRecord` -- verify successful read
+  - [x] 7.5 `ReadStatusAsync_NonExistentKey_ReturnsNull` -- verify null for missing entry
+  - [x] 7.6 `ReadStatusAsync_DaprClientThrows_LogsWarningAndReturnsNull` -- verify graceful failure on read
 
-- [ ] Task 8: Write unit tests for SubmitCommandHandler status write (AC: #6)
-  - [ ] 8.1 `Handle_ValidCommand_WritesReceivedStatusToStore` -- verify status written with Received, correct tenant, correlationId
-  - [ ] 8.2 `Handle_StatusWriteFails_StillReturnsResult` -- verify handler doesn't fail if status write throws (rule #12)
-  - [ ] 8.3 `Handle_StatusWriteFails_LogsWarning` -- verify warning logged on status write failure
+- [x] Task 8: Write unit tests for SubmitCommandHandler status write (AC: #6)
+  - [x] 8.1 `Handle_ValidCommand_WritesReceivedStatusToStore` -- verify status written with Received, correct tenant, correlationId
+  - [x] 8.2 `Handle_StatusWriteFails_StillReturnsResult` -- verify handler doesn't fail if status write throws (rule #12)
+  - [x] 8.3 `Handle_StatusWriteFails_LogsWarning` -- verify warning logged on status write failure
 
-- [ ] Task 9: Write unit tests for CommandStatusController (AC: #1, #4, #5, #7)
-  - [ ] 9.1 `GetStatus_ExistingStatus_Returns200WithRecord` -- verify successful status retrieval
-  - [ ] 9.2 `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails` -- verify 404 response
-  - [ ] 9.3 `GetStatus_TenantMismatch_Returns404ProblemDetails` -- verify tenant-scoped (SEC-3), returns 404 not 403
-  - [ ] 9.4 `GetStatus_NoTenantClaims_Returns403ProblemDetails` -- verify 403 when no tenant claims
-  - [ ] 9.5 `GetStatus_MultipleTenantClaims_TriesAllTenants` -- verify searches across all authorized tenants
-  - [ ] 9.6 `GetStatus_CompletedStatus_IncludesEventCount` -- verify terminal-state metadata in response
-  - [ ] 9.7 `GetStatus_RejectedStatus_IncludesRejectionEventType` -- verify rejection metadata
-  - [ ] 9.8 `GetStatus_InvalidCorrelationIdFormat_Returns400` -- verify format validation
+- [x] Task 9: Write unit tests for CommandStatusController (AC: #1, #4, #5, #7)
+  - [x] 9.1 `GetStatus_ExistingStatus_Returns200WithRecord` -- verify successful status retrieval
+  - [x] 9.2 `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails` -- verify 404 response
+  - [x] 9.3 `GetStatus_TenantMismatch_Returns404ProblemDetails` -- verify tenant-scoped (SEC-3), returns 404 not 403
+  - [x] 9.4 `GetStatus_NoTenantClaims_Returns403ProblemDetails` -- verify 403 when no tenant claims
+  - [x] 9.5 `GetStatus_MultipleTenantClaims_TriesAllTenants` -- verify searches across all authorized tenants
+  - [x] 9.6 `GetStatus_CompletedStatus_IncludesEventCount` -- verify terminal-state metadata in response
+  - [x] 9.7 `GetStatus_RejectedStatus_IncludesRejectionEventType` -- verify rejection metadata
+  - [x] 9.8 `GetStatus_InvalidCorrelationIdFormat_Returns400` -- verify format validation
 
-- [ ] Task 10: Write integration tests for command status flow (AC: #1, #2, #4, #5, #6, #7)
-  - [ ] 10.1 `PostCommands_ThenGetStatus_Returns200WithReceivedStatus` -- submit command, query status, verify Received
-  - [ ] 10.2 `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails` -- query unknown ID returns 404
-  - [ ] 10.3 `GetStatus_WrongTenant_Returns404ProblemDetails` -- query with JWT for tenant A, status belongs to tenant B -> 404 (SEC-3)
-  - [ ] 10.4 `GetStatus_NoAuthentication_Returns401` -- no JWT token returns 401
-  - [ ] 10.5 `GetStatus_ValidTenant_Returns200` -- query with matching tenant JWT returns 200
-  - [ ] 10.6 `GetStatus_NoTenantClaims_Returns403` -- JWT with no tenant claims returns 403
-  - [ ] 10.7 `PostCommands_StatusWriteIncludesAggregateId` -- verify Received status includes aggregateId from command
-  - [ ] 10.8 `GetStatus_ResponseIncludesCorrelationIdInProblemDetails` -- verify 404 ProblemDetails has correlationId extension
-  - [ ] 10.9 `GetStatus_ExpiredCorrelationId_Returns404` -- verify TTL expiry behavior (InMemory simulation)
-  - [ ] 10.10 `PostCommands_StatusLocationHeader_MatchesGetEndpoint` -- verify Location header from POST matches the GET endpoint path
+- [x] Task 10: Write integration tests for command status flow (AC: #1, #2, #4, #5, #6, #7)
+  - [x] 10.1 `PostCommands_ThenGetStatus_Returns200WithReceivedStatus` -- submit command, query status, verify Received
+  - [x] 10.2 `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails` -- query unknown ID returns 404
+  - [x] 10.3 `GetStatus_WrongTenant_Returns404ProblemDetails` -- query with JWT for tenant A, status belongs to tenant B -> 404 (SEC-3)
+  - [x] 10.4 `GetStatus_NoAuthentication_Returns401` -- no JWT token returns 401
+  - [x] 10.5 `GetStatus_ValidTenant_Returns200` -- query with matching tenant JWT returns 200
+  - [x] 10.6 `GetStatus_NoTenantClaims_Returns403` -- JWT with no tenant claims returns 403
+  - [x] 10.7 `PostCommands_StatusWriteIncludesAggregateId` -- verify Received status includes aggregateId from command
+  - [x] 10.8 `GetStatus_ResponseIncludesCorrelationIdInProblemDetails` -- verify 404 ProblemDetails has correlationId extension
+  - [x] 10.9 `GetStatus_ExpiredCorrelationId_Returns404` -- verify TTL expiry behavior (InMemory simulation)
+  - [x] 10.10 `PostCommands_StatusLocationHeader_MatchesGetEndpoint` -- verify Location header from POST matches the GET endpoint path
 
-- [ ] Task 11: Update existing tests if needed (AC: all)
-  - [ ] 11.1 Update `SubmitCommandHandler` unit tests to provide `ICommandStatusStore` mock (existing tests may break without it)
-  - [ ] 11.2 Update WebApplicationFactory configuration to register `InMemoryCommandStatusStore`
-  - [ ] 11.3 Verify all existing tests still pass after adding DaprClient and status store dependencies
+- [x] Task 11: Update existing tests if needed (AC: all)
+  - [x] 11.1 Update `SubmitCommandHandler` unit tests to provide `ICommandStatusStore` mock (existing tests may break without it)
+  - [x] 11.2 Update WebApplicationFactory configuration to register `InMemoryCommandStatusStore`
+  - [x] 11.3 Verify all existing tests still pass after adding DaprClient and status store dependencies
 
 ## Dev Notes
 
@@ -594,10 +594,57 @@ CommandStatusController.GetStatus()
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Fixed xUnit1030 analyzer errors: test methods must not use `ConfigureAwait(false)` per xUnit rules
+- Fixed CS8620 nullable reference type mismatch in NSubstitute mock for `DaprClient.GetStateAsync<CommandStatusRecord>`
+- Updated existing `SubmitCommandHandlerTests` to inject `InMemoryCommandStatusStore` (required after adding `ICommandStatusStore` dependency)
+
 ### Completion Notes List
 
+- Implemented `ICommandStatusStore` abstraction with `DaprCommandStatusStore` (DAPR state store) and `InMemoryCommandStatusStore` (test fake with TTL simulation)
+- Created `CommandStatusController` with `GET /api/v1/commands/status/{correlationId}` endpoint, tenant-scoped queries (SEC-3), and ProblemDetails error responses
+- Modified `SubmitCommandHandler` to write "Received" status to state store before returning (advisory per rule #12)
+- Registered `DaprClient` in Program.cs (`AddDaprClient()`) -- first DAPR client registration in the project
+- Registered `DaprCommandStatusStore` as singleton `ICommandStatusStore` in `AddCommandApi()`
+- Created `CommandStatusResponse` model with `FromRecord()` factory method, ISO 8601 duration format for TimeoutDuration
+- All 311 tests pass (27 new tests added): 6 DaprCommandStatusStore unit tests, 3 SubmitCommandHandler status tests, 8 CommandStatusController unit tests, 10 integration tests
+- Zero regressions on existing 284 tests
+
+### Change Log
+
+- 2026-02-13: Story 2.6 implementation complete -- Command status tracking & query endpoint with DAPR state store integration, tenant-scoped queries, advisory status writes, and comprehensive test coverage (27 new tests)
+- 2026-02-13: Code review fixes applied (8 issues: 1 CRITICAL, 2 HIGH, 3 MEDIUM, 2 LOW):
+  - [C1] Fixed TimeoutDuration to use XmlConvert.ToString() for ISO 8601 duration (was using TimeSpan "c" format)
+  - [H1] Added OperationCanceledException re-throw in DaprCommandStatusStore and SubmitCommandHandler catch blocks
+  - [H2] Fixed ProblemDetails correlationId for 400 path -- moved requestCorrelationId computation before GUID validation
+  - [M1] Added missing [ProducesResponseType(400)] OpenAPI attribute
+  - [M2] Upgraded ArgumentNullException.ThrowIfNull to ArgumentException.ThrowIfNullOrWhiteSpace for tenantId/correlationId
+  - [M3] Fixed flaky TTL test: changed TTL from 0 to -1, removed Task.Delay(50)
+  - [L1] Removed unnecessary HttpContext null checks in CreateProblemDetails
+  - [L2] Changed GetAllStatuses() to return snapshot copy instead of live reference
+  - Added new test: GetStatus_TimedOutStatus_IncludesIso8601Duration (total: 28 new tests, 312 overall)
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Server/Commands/ICommandStatusStore.cs
+- src/Hexalith.EventStore.Server/Commands/DaprCommandStatusStore.cs
+- src/Hexalith.EventStore.Server/Commands/CommandStatusConstants.cs
+- src/Hexalith.EventStore.Server/Commands/CommandStatusOptions.cs
+- src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs
+- src/Hexalith.EventStore.CommandApi/Models/CommandStatusResponse.cs
+- src/Hexalith.EventStore.Testing/Fakes/InMemoryCommandStatusStore.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/DaprCommandStatusStoreTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/CommandStatusControllerTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/CommandStatusIntegrationTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs (added ICommandStatusStore injection, Received status write)
+- src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs (registered ICommandStatusStore, CommandStatusOptions)
+- src/Hexalith.EventStore.CommandApi/Program.cs (added builder.Services.AddDaprClient())
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs (updated for ICommandStatusStore dependency)
+- tests/Hexalith.EventStore.IntegrationTests/Helpers/JwtAuthenticatedWebApplicationFactory.cs (override DaprCommandStatusStore with InMemoryCommandStatusStore)

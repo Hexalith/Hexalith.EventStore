@@ -31,8 +31,11 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         }
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        httpContext.Response.ContentType = "application/problem+json";
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken).ConfigureAwait(false);
+        await httpContext.Response.WriteAsJsonAsync(
+            problemDetails,
+            (System.Text.Json.JsonSerializerOptions?)null,
+            "application/problem+json",
+            cancellationToken).ConfigureAwait(false);
 
         return true;
     }

@@ -1,175 +1,139 @@
 namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
-using System.Text.Json;
-
 using FluentValidation;
+using FluentValidation.Results;
 
-using Hexalith.EventStore.CommandApi.Models;
-using Hexalith.EventStore.CommandApi.Validation;
+using Hexalith.EventStore.CommandApi.Pipeline;
+
+using MediatR;
 
 using Shouldly;
 
-public class SubmitCommandRequestValidatorTests
+public class ValidationBehaviorTests
 {
-    private readonly SubmitCommandRequestValidator _validator = new();
-
     [Fact]
-    public void SubmitCommandRequestValidator_MissingTenant_ReturnsValidationError()
+    public async Task Handle_NoValidators_CallsNext()
     {
         // Arrange
-        var request = new SubmitCommandRequest(
-            Tenant: "",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement);
+        var validators = Enumerable.Empty<IValidator<TestCommand>>();
+        var behavior = new ValidationBehavior<TestCommand, TestResult>(validators);
+        var request = new TestCommand("test");
+        var expected = new TestResult("ok");
+        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(expected);
 
         // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+        TestResult result = await behavior.Handle(request, next, CancellationToken.None);
 
         // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Tenant");
+        result.ShouldBe(expected);
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_InjectionCharacters_ReturnsValidationError()
+    public async Task Handle_ValidRequest_CallsNext()
     {
         // Arrange
-        var request = new SubmitCommandRequest(
-            Tenant: "test-tenant",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement,
-            Extensions: new Dictionary<string, string> { ["key"] = "<script>alert('xss')</script>" });
+        var validator = new AlwaysValidValidator();
+        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator]);
+        var request = new TestCommand("test");
+        var expected = new TestResult("ok");
+        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(expected);
 
         // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+        TestResult result = await behavior.Handle(request, next, CancellationToken.None);
 
         // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Extensions");
+        result.ShouldBe(expected);
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_ExtensionSizeLimits_ReturnsValidationError()
+    public async Task Handle_InvalidRequest_ThrowsValidationException()
     {
-        // Arrange - 50 entries * (6+1000) chars * 2 bytes > 64KB
-        var extensions = new Dictionary<string, string>();
-        for (int i = 0; i < 50; i++)
+        // Arrange
+        var validator = new FailingValidator("Value", "Value is required");
+        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator]);
+        var request = new TestCommand("");
+        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(new TestResult("should not reach"));
+
+        // Act & Assert
+        ValidationException ex = await Should.ThrowAsync<ValidationException>(
+            behavior.Handle(request, next, CancellationToken.None));
+        ex.Errors.Count().ShouldBe(1);
+        ex.Errors.First().PropertyName.ShouldBe("Value");
+    }
+
+    [Fact]
+    public async Task Handle_MultipleValidators_AggregatesFailures()
+    {
+        // Arrange
+        var validator1 = new FailingValidator("Field1", "Error 1");
+        var validator2 = new FailingValidator("Field2", "Error 2");
+        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator1, validator2]);
+        var request = new TestCommand("");
+        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(new TestResult("should not reach"));
+
+        // Act & Assert
+        ValidationException ex = await Should.ThrowAsync<ValidationException>(
+            behavior.Handle(request, next, CancellationToken.None));
+        ex.Errors.Count().ShouldBe(2);
+        ex.Errors.ShouldContain(e => e.PropertyName == "Field1");
+        ex.Errors.ShouldContain(e => e.PropertyName == "Field2");
+    }
+
+    [Fact]
+    public async Task Handle_InvalidRequest_DoesNotCallNext()
+    {
+        // Arrange
+        var validator = new FailingValidator("Value", "Required");
+        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator]);
+        var request = new TestCommand("");
+        bool nextCalled = false;
+        RequestHandlerDelegate<TestResult> next = (_) =>
         {
-            extensions[$"key{i:D3}"] = new string('x', 1000);
-        }
-
-        var request = new SubmitCommandRequest(
-            Tenant: "test-tenant",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement,
-            Extensions: extensions);
+            nextCalled = true;
+            return Task.FromResult(new TestResult("should not reach"));
+        };
 
         // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+        await Should.ThrowAsync<ValidationException>(
+            behavior.Handle(request, next, CancellationToken.None));
 
         // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Extensions" && e.ErrorMessage.Contains("64KB"));
+        nextCalled.ShouldBeFalse();
     }
 
-    [Fact]
-    public void SubmitCommandRequestValidator_FieldLengthLimits_ReturnsValidationError()
+    // Public types required for FluentValidation (Castle.DynamicProxy compatibility)
+    public record TestCommand(string Value) : IRequest<TestResult>;
+
+    public record TestResult(string Result);
+
+    private sealed class AlwaysValidValidator : AbstractValidator<TestCommand>
     {
-        // Arrange - tenant exceeds 128 chars
-        var request = new SubmitCommandRequest(
-            Tenant: new string('a', 129),
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement);
-
-        // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
-
-        // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Tenant" && e.ErrorMessage.Contains("128"));
+        // No rules = always valid
     }
 
-    [Fact]
-    public void SubmitCommandRequestValidator_InvalidTenantCharacters_ReturnsValidationError()
+    private sealed class FailingValidator : IValidator<TestCommand>
     {
-        // Arrange - uppercase not allowed (AggregateIdentity pattern)
-        var request = new SubmitCommandRequest(
-            Tenant: "INVALID",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement);
+        private readonly ValidationFailure _failure;
 
-        // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+        public FailingValidator(string propertyName, string errorMessage) =>
+            _failure = new ValidationFailure(propertyName, errorMessage);
 
-        // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Tenant" && e.ErrorMessage.Contains("lowercase"));
-    }
+        public ValidationResult Validate(TestCommand instance) =>
+            new([_failure]);
 
-    [Fact]
-    public void SubmitCommandRequestValidator_ValidRequest_Passes()
-    {
-        // Arrange
-        var request = new SubmitCommandRequest(
-            Tenant: "test-tenant",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{\"amount\":100}").RootElement);
+        public ValidationResult Validate(IValidationContext context) =>
+            new([_failure]);
 
-        // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+        public Task<ValidationResult> ValidateAsync(TestCommand instance, CancellationToken cancellation = default) =>
+            Task.FromResult(new ValidationResult([_failure]));
 
-        // Assert
-        result.IsValid.ShouldBeTrue();
-    }
+        public Task<ValidationResult> ValidateAsync(IValidationContext context, CancellationToken cancellation = default) =>
+            Task.FromResult(new ValidationResult([_failure]));
 
-    [Fact]
-    public void SubmitCommandRequestValidator_JavascriptInjection_ReturnsValidationError()
-    {
-        // Arrange
-        var request = new SubmitCommandRequest(
-            Tenant: "test-tenant",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement,
-            Extensions: new Dictionary<string, string> { ["url"] = "javascript:alert(1)" });
+        public IValidatorDescriptor CreateDescriptor() =>
+            throw new NotSupportedException();
 
-        // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
-
-        // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Extensions");
-    }
-
-    [Fact]
-    public void SubmitCommandRequestValidator_AmpersandInExtensions_ReturnsValidationError()
-    {
-        // Arrange
-        var request = new SubmitCommandRequest(
-            Tenant: "test-tenant",
-            Domain: "test-domain",
-            AggregateId: "agg-001",
-            CommandType: "CreateOrder",
-            Payload: JsonDocument.Parse("{}").RootElement,
-            Extensions: new Dictionary<string, string> { ["key"] = "value&other" });
-
-        // Act
-        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
-
-        // Assert
-        result.IsValid.ShouldBeFalse();
+        public bool CanValidateInstancesOfType(Type type) =>
+            type == typeof(TestCommand);
     }
 }

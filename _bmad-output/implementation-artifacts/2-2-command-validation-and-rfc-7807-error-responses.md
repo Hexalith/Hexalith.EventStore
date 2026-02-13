@@ -1,6 +1,6 @@
 # Story 2.2: Command Validation & RFC 7807 Error Responses
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -294,5 +294,39 @@ Claude Opus 4.6 (claude-opus-4-6)
 
 **Created:**
 - `src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandValidator.cs` — MediatR-level validator for SubmitCommand
-- `tests/Hexalith.EventStore.Server.Tests/Pipeline/ValidationBehaviorTests.cs` — 10 unit tests
-- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/ValidationTests.cs` — 7 integration tests
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandRequestValidatorTests.cs` — 9 unit tests for request validator
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/ValidationBehaviorTests.cs` — 5 unit tests for ValidationBehavior pipeline
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/ValidationTests.cs` — 9 integration tests
+
+## Senior Developer Review (AI)
+
+**Reviewed by:** Claude Opus 4.6 (code-review workflow)
+**Date:** 2026-02-13
+
+### Issues Found: 4 High, 4 Medium, 3 Low
+
+### Fixes Applied (8 of 8 HIGH+MEDIUM issues fixed)
+
+**H1 — Missing 500 ProblemDetails integration test:** Added `PostCommands_UnhandledException_Returns500ProblemDetailsWithoutStackTrace` with a `ThrowingSubmitCommandHandler` override to validate GlobalExceptionHandler produces RFC 7807 response with no stack traces.
+
+**H2 — No test verifies `instance` field:** Added `instance` assertions to `PostCommands_EmptyTenant`, `PostCommands_InjectionInExtensions`, `PostCommands_OversizedExtensions`, `PostCommands_ValidTenantInvalidDomain`, and `PostCommands_UnhandledException` tests.
+
+**H3 — No test verifies `tenantId` extension:** Added `PostCommands_ValidTenantInvalidDomain_Returns400WithTenantIdInExtensions` that sends valid tenant + empty domain and verifies `tenantId` appears in ProblemDetails extensions.
+
+**H4 — CommandType SEC-4 gap:** Added `.Must(ct => !ContainsDangerousCharacters(ct))` validation to CommandType in `SubmitCommandRequestValidator` + unit test `SubmitCommandRequestValidator_DangerousCommandType_ReturnsValidationError`.
+
+**M1 — Test file naming mismatch:** Created properly-named `SubmitCommandRequestValidatorTests.cs` with validator tests. Replaced `ValidationBehaviorTests.cs` content with actual `ValidationBehavior<,>` unit tests.
+
+**M2 — Zero ValidationBehavior tests:** Created 5 unit tests: no validators pass-through, valid request pass-through, invalid request throws ValidationException, multiple validators aggregate failures, invalid request doesn't call next.
+
+**M3 — Shallow integration tests:** Strengthened assertions across integration tests to verify `type` URI, `instance` field, `detail` field, `correlationId`, and `tenantId` extensions.
+
+**M4 — ValidateModelFilter ContentType:** Fixed to use `ObjectResult.ContentTypes.Add()` instead of unreliable `HttpContext.Response.ContentType` assignment.
+
+### Additional Bug Found During Review
+
+**WriteAsJsonAsync overwrites ContentType:** Both `GlobalExceptionHandler` and `ValidationExceptionHandler` set `response.ContentType = "application/problem+json"` before calling `WriteAsJsonAsync`, but `WriteAsJsonAsync` overrides it to `application/json`. Fixed by passing `contentType` parameter directly to `WriteAsJsonAsync(value, options, "application/problem+json", cancellationToken)`.
+
+### Post-Review Test Results
+
+All 361 tests pass (9 Client + 48 Testing + 147 Contracts + 89 Server + 68 Integration). Zero regressions.

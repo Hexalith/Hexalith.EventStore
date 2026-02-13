@@ -1,0 +1,332 @@
+namespace Hexalith.EventStore.Server.Tests.Commands;
+
+using System.Text.Json;
+
+using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Testing.Fakes;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
+using Shouldly;
+
+public class ConcurrencyConflictExceptionHandlerTests
+{
+    private readonly InMemoryCommandStatusStore _statusStore;
+    private readonly ILogger<ConcurrencyConflictExceptionHandler> _logger;
+    private readonly ConcurrencyConflictExceptionHandler _handler;
+
+    public ConcurrencyConflictExceptionHandlerTests()
+    {
+        _statusStore = new InMemoryCommandStatusStore();
+        _logger = Substitute.For<ILogger<ConcurrencyConflictExceptionHandler>>();
+        _handler = new ConcurrencyConflictExceptionHandler(_statusStore, _logger);
+    }
+
+    private static DefaultHttpContext CreateHttpContextWithBody()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        return httpContext;
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_Returns409ProblemDetails()
+    {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Status.ShouldBe(409);
+        problemDetails.Title.ShouldBe("Conflict");
+        problemDetails.Type.ShouldBe("https://tools.ietf.org/html/rfc9457#section-3");
+        problemDetails.Instance.ShouldBe("/api/v1/commands");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesCorrelationIdExtension()
+    {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "http-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldContainKey("correlationId");
+        problemDetails.Extensions["correlationId"]!.ToString().ShouldBe("http-correlation-id");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesAggregateIdExtension()
+    {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-456",
+            tenantId: "acme");
+
+        // Act
+        await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldContainKey("aggregateId");
+        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-456");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesTenantIdExtension()
+    {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldContainKey("tenantId");
+        problemDetails.Extensions["tenantId"]!.ToString().ShouldBe("acme");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_WritesRejectedStatus()
+    {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        CommandStatusRecord? status = await _statusStore.ReadStatusAsync("acme", "cmd-corr-id");
+        status.ShouldNotBeNull();
+        status.Status.ShouldBe(CommandStatus.Rejected);
+        status.FailureReason.ShouldBe("ConcurrencyConflict");
+        status.AggregateId.ShouldBe("order-123");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_StatusWriteFails_StillReturns409()
+    {
+        // Arrange - use a mock status store that throws
+        ICommandStatusStore failingStore = Substitute.For<ICommandStatusStore>();
+        failingStore.WriteStatusAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Store unavailable"));
+
+        var handler = new ConcurrencyConflictExceptionHandler(failingStore, _logger);
+
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        bool handled = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert - still returns 409 despite status write failure (rule #12)
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_StatusWriteFails_LogsWarning()
+    {
+        // Arrange - use a mock status store that throws
+        ICommandStatusStore failingStore = Substitute.For<ICommandStatusStore>();
+        failingStore.WriteStatusAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Store unavailable"));
+
+        ILogger<ConcurrencyConflictExceptionHandler> logger = Substitute.For<ILogger<ConcurrencyConflictExceptionHandler>>();
+        var handler = new ConcurrencyConflictExceptionHandler(failingStore, logger);
+
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert - warning logged for status write failure
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Failed to write Rejected status")),
+            Arg.Any<InvalidOperationException>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_OtherException_ReturnsFalse()
+    {
+        // Arrange
+        var httpContext = new DefaultHttpContext();
+        var exception = new InvalidOperationException("some other error");
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_LogsWarning()
+    {
+        // Arrange
+        ILogger<ConcurrencyConflictExceptionHandler> logger = Substitute.For<ILogger<ConcurrencyConflictExceptionHandler>>();
+        var handler = new ConcurrencyConflictExceptionHandler(_statusStore, logger);
+
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert - warning logged with structured properties
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Concurrency conflict")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_WrappedConcurrencyConflictException_Returns409()
+    {
+        // Arrange - simulate DAPR ActorMethodInvocationException wrapping
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+
+        var innerConflict = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+        var wrappedException = new InvalidOperationException("ActorMethodInvocationException", innerConflict);
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, wrappedException, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-123");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_DeeplyNestedConcurrencyConflictException_Returns409()
+    {
+        // Arrange - simulate AggregateException -> ActorMethodInvocationException -> ConcurrencyConflictException
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+
+        var innerConflict = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-789",
+            tenantId: "acme");
+        var actorException = new InvalidOperationException("ActorMethodInvocationException", innerConflict);
+        var outerException = new AggregateException("Wrapper", actorException);
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, outerException, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-789");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_409Response_IncludesRetryAfterHeader()
+    {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        httpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
+    }
+}

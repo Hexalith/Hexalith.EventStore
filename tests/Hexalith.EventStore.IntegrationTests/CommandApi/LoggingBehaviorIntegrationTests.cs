@@ -2,12 +2,13 @@ extern alias commandapi;
 
 namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -51,19 +52,19 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
 
-        List<CapturedLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
+        List<TestLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Message.Contains("MediatR pipeline"))
             .ToList();
 
         pipelineLogs.ShouldContain(e => e.Message.Contains("pipeline entry") && e.Level == LogLevel.Information);
         pipelineLogs.ShouldContain(e => e.Message.Contains("pipeline exit") && e.Level == LogLevel.Information);
 
-        CapturedLogEntry entryLog = pipelineLogs.First(e => e.Message.Contains("pipeline entry"));
+        TestLogEntry entryLog = pipelineLogs.First(e => e.Message.Contains("pipeline entry"));
         entryLog.Message.ShouldContain("test-tenant");
         entryLog.Message.ShouldContain("test-domain");
         entryLog.Message.ShouldContain("CreateOrder");
 
-        CapturedLogEntry exitLog = pipelineLogs.First(e => e.Message.Contains("pipeline exit"));
+        TestLogEntry exitLog = pipelineLogs.First(e => e.Message.Contains("pipeline exit"));
         exitLog.Message.ShouldContain("DurationMs=");
     }
 
@@ -87,7 +88,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Assert - request is rejected at HTTP level, so MediatR pipeline is never reached
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        List<CapturedLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
+        List<TestLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Message.Contains("MediatR pipeline"))
             .ToList();
 
@@ -114,7 +115,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         await _client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert - LoggingBehavior entry should appear before handler log
-        List<CapturedLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
+        List<TestLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
 
         int loggingEntryIndex = allLogs.FindIndex(e => e.Message.Contains("MediatR pipeline entry"));
         int handlerIndex = allLogs.FindIndex(e => e.Message.Contains("Command received:"));
@@ -135,7 +136,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
     /// </summary>
     public class LogCapturingFactory : WebApplicationFactory<CommandApiProgram>
     {
-        public CapturedLogProvider LogProvider { get; } = new();
+        public TestLogProvider LogProvider { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -150,8 +151,27 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
                     ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
                 });
             });
-            _ = builder.ConfigureServices(services =>
+            builder.ConfigureServices(services =>
             {
+                // Replace Dapr stores with InMemory for tests
+                ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
+                    d => d.ServiceType == typeof(ICommandStatusStore));
+                if (statusDescriptor is not null)
+                {
+                    services.Remove(statusDescriptor);
+                }
+
+                services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
+
+                ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
+                    d => d.ServiceType == typeof(ICommandArchiveStore));
+                if (archiveDescriptor is not null)
+                {
+                    services.Remove(archiveDescriptor);
+                }
+
+                services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
+
                 _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }
@@ -165,39 +185,3 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         return client;
     }
 }
-
-public sealed class CapturedLogProvider : ILoggerProvider
-{
-    private readonly ConcurrentQueue<CapturedLogEntry> _entries = [];
-
-    public ILogger CreateLogger(string categoryName) => new CapturedLogger(_entries);
-
-    public void Dispose()
-    {
-        // Nothing to dispose
-    }
-
-    public List<CapturedLogEntry> GetEntries() => [.. _entries];
-
-    public void Clear()
-    {
-        while (_entries.TryDequeue(out _))
-        {
-            // Drain the queue
-        }
-    }
-
-    private sealed class CapturedLogger(ConcurrentQueue<CapturedLogEntry> entries) : ILogger
-    {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
-            entries.Enqueue(new CapturedLogEntry(logLevel, formatter(state, exception)));
-        }
-    }
-}
-
-public record CapturedLogEntry(LogLevel Level, string Message);

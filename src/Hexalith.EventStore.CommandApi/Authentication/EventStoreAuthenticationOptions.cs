@@ -1,5 +1,7 @@
 namespace Hexalith.EventStore.CommandApi.Authentication;
 
+using Microsoft.Extensions.Options;
+
 /// <summary>
 /// Configuration options for JWT authentication.
 /// Bound from the "Authentication:JwtBearer" configuration section.
@@ -33,4 +35,43 @@ public record EventStoreAuthenticationOptions
     /// Should be true in production, false for local development.
     /// </summary>
     public bool RequireHttpsMetadata { get; init; } = true;
+}
+
+/// <summary>
+/// Validates that <see cref="EventStoreAuthenticationOptions"/> is properly configured at startup.
+/// Ensures either Authority (production) or SigningKey (development) is provided,
+/// and that Issuer and Audience are always set.
+/// </summary>
+public class ValidateEventStoreAuthenticationOptions : IValidateOptions<EventStoreAuthenticationOptions>
+{
+    public ValidateOptionsResult Validate(string? name, EventStoreAuthenticationOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (string.IsNullOrEmpty(options.Authority) && string.IsNullOrEmpty(options.SigningKey))
+        {
+            return ValidateOptionsResult.Fail(
+                "Authentication:JwtBearer requires either 'Authority' (production OIDC) or 'SigningKey' (development symmetric key) to be configured.");
+        }
+
+        if (string.IsNullOrEmpty(options.Issuer))
+        {
+            return ValidateOptionsResult.Fail(
+                "Authentication:JwtBearer:Issuer must be configured.");
+        }
+
+        if (string.IsNullOrEmpty(options.Audience))
+        {
+            return ValidateOptionsResult.Fail(
+                "Authentication:JwtBearer:Audience must be configured.");
+        }
+
+        if (!string.IsNullOrEmpty(options.SigningKey) && options.SigningKey.Length < 32)
+        {
+            return ValidateOptionsResult.Fail(
+                "Authentication:JwtBearer:SigningKey must be at least 32 characters (256 bits) for HS256.");
+        }
+
+        return ValidateOptionsResult.Success;
+    }
 }

@@ -305,10 +305,11 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_PipelineOrder_AuthorizationAfterValidation()
+    public async Task PostCommands_InvalidAndUnauthorized_Returns400NotForbidden()
     {
-        // Arrange - request that fails BOTH validation (empty domain) and authorization (wrong tenant)
-        // Should return 400 (validation), NOT 403 (authorization) — proving validation runs first
+        // Arrange - request that fails BOTH validation (empty fields) and authorization (wrong tenant)
+        // ValidateModelFilter runs before controller action, so validation rejects before tenant pre-check.
+        // This verifies correct security behavior: don't leak authorization state for malformed requests.
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new
@@ -323,7 +324,7 @@ public class AuthorizationIntegrationTests
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
-        // Assert - validation error (400) should take priority over authorization (403)
+        // Assert - validation error (400) takes priority over authorization (403)
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 

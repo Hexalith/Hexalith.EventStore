@@ -1,6 +1,6 @@
 # Story 2.4: JWT Authentication & Claims Transformation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -489,6 +489,42 @@ None required.
 - `tests/Hexalith.EventStore.IntegrationTests/CommandApi/ValidationTests.cs` - Updated to use JWT tokens
 - `tests/Hexalith.EventStore.IntegrationTests/CommandApi/LoggingBehaviorIntegrationTests.cs` - Updated to use JWT tokens and JWT config
 
+## Senior Developer Review (AI)
+
+**Reviewer:** Jerome (via adversarial code review workflow)
+**Date:** 2026-02-13
+**Outcome:** Approved (after fixes)
+
+### Issues Found: 3 High, 4 Medium, 1 Low
+
+**HIGH (all fixed):**
+1. Idempotency check in `EventStoreClaimsTransformation` only guarded on tenant claims - domains/permissions could duplicate. Fixed: check all eventstore:* claim types. Added new unit test.
+2. `TryAddTenantExtension` was dead code during auth failures (only checked HttpContext.Items set by controller). Fixed: implemented actual request body parsing with `EnableBuffering` and `JsonDocument`.
+3. No startup validation for JWT configuration - empty config silently produced 401s. Fixed: added `ValidateEventStoreAuthenticationOptions` with `IValidateOptions<T>` and `.ValidateOnStart()`.
+
+**MEDIUM (all fixed):**
+4. Duplicate `ILoggerProvider` implementations across test files. Fixed: extracted shared `TestLogProvider`/`TestLogEntry` into `Helpers/TestLogProvider.cs`.
+5. Silent JSON parsing failure in claims transformation. Fixed: added Warning-level log in `catch (JsonException)` block.
+6. Redundant content type setting in `OnChallenge`. Fixed: removed duplicate `Response.ContentType` line.
+7. Logger used hardcoded category string. Fixed: changed to `CreateLogger<ConfigureJwtBearerOptions>()`.
+
+**LOW (noted, not fixed):**
+8. No `[Required]` attributes on `EventStoreAuthenticationOptions` - mitigated by `IValidateOptions` added in fix #3.
+
+### Files Modified During Review
+- `src/Hexalith.EventStore.CommandApi/Authentication/EventStoreClaimsTransformation.cs` - Idempotency fix, JSON parse warning, methods made non-static
+- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs` - Tenant extraction from body, logger type, content type cleanup
+- `src/Hexalith.EventStore.CommandApi/Authentication/EventStoreAuthenticationOptions.cs` - Added `ValidateEventStoreAuthenticationOptions`
+- `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` - Registered options validator with `ValidateOnStart()`
+- `tests/Hexalith.EventStore.IntegrationTests/Helpers/TestLogProvider.cs` - NEW: Shared test log provider
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/JwtAuthenticationIntegrationTests.cs` - Replaced `AuthLogProvider` with shared `TestLogProvider`, added Dapr store mocks
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/LoggingBehaviorIntegrationTests.cs` - Replaced `CapturedLogProvider` with shared `TestLogProvider`, added Dapr store mocks
+- `tests/Hexalith.EventStore.Server.Tests/Authentication/EventStoreClaimsTransformationTests.cs` - Added `TransformAsync_AlreadyTransformedDomainsOnly_DoesNotDuplicate` test
+
+### Test Results After Review
+All 353 tests passing (9 Client + 48 Testing + 147 Contracts + 83 Server + 66 Integration)
+
 ## Change Log
 
 - 2026-02-13: Story 2.4 implementation complete - JWT Bearer authentication, IClaimsTransformation, [Authorize] on CommandsController, 15 new tests (6 unit + 9 integration), all 257 tests passing
+- 2026-02-13: Code review complete - 7 issues fixed (3 HIGH, 4 MEDIUM). Added startup config validation, fixed idempotency bug, implemented request body tenant extraction, extracted shared test log provider, added 1 new unit test. All 353 tests passing

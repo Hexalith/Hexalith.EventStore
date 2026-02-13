@@ -125,6 +125,28 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
+    public async Task TransformAsync_AlreadyTransformedDomainsOnly_DoesNotDuplicate()
+    {
+        // Arrange - JWT with domains but NO tenants, pre-add eventstore:domain to simulate prior transformation
+        string domainsJson = JsonSerializer.Serialize(new[] { "orders" });
+        var identity = new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim("domains", domainsJson),
+        ], "Bearer");
+        var existingIdentity = new ClaimsIdentity([
+            new Claim(DomainClaimType, "orders"),
+        ]);
+        var principal = new ClaimsPrincipal(identity);
+        principal.AddIdentity(existingIdentity);
+
+        // Act - run transformation again (should be idempotent even without tenant claims)
+        ClaimsPrincipal result = await _sut.TransformAsync(principal);
+
+        // Assert - should still have exactly one domain claim, not duplicated
+        result.FindAll(DomainClaimType).Count().ShouldBe(1);
+    }
+
+    [Fact]
     public async Task TransformAsync_NullPrincipal_ThrowsArgumentNullException()
     {
         // Act & Assert
