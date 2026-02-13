@@ -152,7 +152,7 @@ Before starting this story, the dev agent MUST verify:
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
-    <PackageVersion Include="FluentAssertions" Version="8.2.0" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="Testcontainers" Version="4.4.0" />
   </ItemGroup>
@@ -382,7 +382,7 @@ Test projects inherit `IsPackable=false` from `tests/Directory.Build.props`.
 | **Client** | Contracts | Dapr.Client | true | - |
 | **Server** | Contracts | Dapr.Client, Dapr.Actors, Dapr.Actors.AspNetCore, MediatR | true | - |
 | **Aspire** | _(none)_ | Aspire.Hosting, CommunityToolkit.Aspire.Hosting.Dapr | true | - |
-| **Testing** | Contracts, Server | FluentAssertions, NSubstitute | true | - |
+| **Testing** | Contracts, Server | Shouldly, NSubstitute | true | - |
 | **CommandApi** | Server, Contracts, ServiceDefaults | Dapr.AspNetCore, MediatR, FluentValidation.DependencyInjectionExtensions, Microsoft.AspNetCore.Authentication.JwtBearer | false | `commandapi` |
 | **ServiceDefaults** | _(none)_ | Microsoft.Extensions.Http.Resilience, Microsoft.Extensions.ServiceDiscovery, OpenTelemetry.Exporter.OpenTelemetryProtocol, OpenTelemetry.Extensions.Hosting, OpenTelemetry.Instrumentation.AspNetCore, OpenTelemetry.Instrumentation.Http, OpenTelemetry.Instrumentation.Runtime | false | - |
 | **AppHost** | CommandApi, Sample, Aspire | ~~Aspire.Hosting.AppHost~~ _(replaced by Aspire.AppHost.Sdk)_, Aspire.Hosting.Redis, CommunityToolkit.Aspire.Hosting.Dapr | false | - |
@@ -834,7 +834,7 @@ If `dotnet build` produces warnings:
 | MinVer | 7.0.0 | MinVer | [NuGet](https://www.nuget.org/packages/MinVer/) |
 | MediatR | 14.0.0 | MediatR | [NuGet](https://www.nuget.org/packages/MediatR/) |
 | xUnit | 2.9.3 | xunit | [NuGet](https://www.nuget.org/packages/xunit/) |
-| FluentAssertions | 8.2.0 | FluentAssertions | [NuGet](https://www.nuget.org/packages/FluentAssertions/) |
+| Shouldly | 4.3.0 | Shouldly | [NuGet](https://www.nuget.org/packages/Shouldly/) |
 | FluentValidation | 11.11.0 | FluentValidation | [NuGet](https://www.nuget.org/packages/FluentValidation/) |
 | NSubstitute | 5.3.0 | NSubstitute | [NuGet](https://www.nuget.org/packages/NSubstitute/) |
 

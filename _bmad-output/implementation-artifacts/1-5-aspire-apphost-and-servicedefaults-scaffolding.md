@@ -161,7 +161,7 @@ Before starting this story, the dev agent MUST verify:
 - `TreatWarningsAsErrors=true` — all warnings must be fixed
 - CPM active — no `Version=` on PackageReference entries in .csproj files
 - XML doc comments required on all public types/members
-- Tests use `Assert.*` (xUnit), NOT FluentAssertions
+- Tests use `Assert.*` (xUnit), NOT Shouldly
 - Code review catches validation gaps — be thorough with all acceptance criteria
 - 48 existing tests across solution (Story 1.4 count)
 - Delete BuildVerification.cs placeholders when replacing with real types
