@@ -110,7 +110,7 @@ Before starting this story, the dev agent MUST verify:
 - [x] 7.1 Delete `src/Hexalith.EventStore.Testing/BuildVerification.cs`
 - [x] 7.2 Run `dotnet build` — zero errors, zero warnings
 - [x] 7.3 Run `dotnet pack` — Testing .nupkg produced
-- [x] 7.4 Verify Testing.csproj has correct dependencies (Contracts + Server + FluentAssertions + NSubstitute + xunit)
+- [x] 7.4 Verify Testing.csproj has correct dependencies (Contracts + Server + Shouldly + NSubstitute + xunit)
 
 ## Dev Notes
 
@@ -166,7 +166,7 @@ public sealed class CommandEnvelopeBuilder
 - Builder defaults must produce instances that pass all validation in the Contracts types (AggregateIdentity regex, CommandEnvelope required fields)
 
 **Assertion helpers — static methods with xUnit Assert:**
-- Use `Assert.*` methods (project pattern — existing tests use Assert, not FluentAssertions)
+- Use `Assert.*` methods (project pattern — existing tests use Assert, not Shouldly)
 - Static classes with descriptive assertion methods
 - Throw `Xunit.Sdk.XunitException` (via Assert) on failure with clear messages
 - `ShouldContainEvent<TEvent>` uses LINQ `.OfType<TEvent>()` on `result.Events`
@@ -178,7 +178,7 @@ public sealed class CommandEnvelopeBuilder
 **Target file structure (architecture-mandated):**
 ```
 src/Hexalith.EventStore.Testing/
-├── Hexalith.EventStore.Testing.csproj  # Contracts + Server + FluentAssertions + NSubstitute
+├── Hexalith.EventStore.Testing.csproj  # Contracts + Server + Shouldly + NSubstitute
 ├── Builders/
 │   ├── CommandEnvelopeBuilder.cs       # Fluent builder for CommandEnvelope
 │   ├── AggregateIdentityBuilder.cs     # Fluent builder for AggregateIdentity
@@ -217,7 +217,7 @@ src/Hexalith.EventStore.Server/
 - `TreatWarningsAsErrors=true` — all warnings must be fixed
 - CPM active — no `Version=` on PackageReference entries in .csproj
 - Code review caught validation gaps in previous stories — be thorough
-- Tests use `Assert.*` (xUnit), NOT FluentAssertions despite FluentAssertions being available
+- Tests use `Assert.*` (xUnit), NOT Shouldly despite Shouldly being available
 - Previous story created a dedicated test project (Client.Tests) for Client package tests
 - Naming: `EventStoreServiceCollectionExtensions` (prefixed to avoid namespace collision)
 
@@ -251,7 +251,7 @@ src/Hexalith.EventStore.Server/
 1. **InMemoryStateManager implements `Dapr.Actors.Runtime.IActorStateManager`** — the interface comes from `Dapr.Actors` package (1.16.1) via Server transitive dependency. Do NOT create a custom IActorStateManager interface
 2. **IDomainServiceInvoker goes in Server project** — `src/Hexalith.EventStore.Server/DomainServices/IDomainServiceInvoker.cs`. Single method: `Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState)`. This is a minimal placeholder interface; the full implementation (DaprDomainServiceInvoker) comes in Story 3.5
 3. **Builder defaults must pass validation** — CommandEnvelopeBuilder defaults must satisfy all CommandEnvelope constructor validation (non-empty strings, valid AggregateIdentity regex patterns). AggregateIdentityBuilder defaults must be lowercase alphanum+hyphens
-4. **Use `Assert.*` for assertions** — existing codebase uses xUnit Assert, NOT FluentAssertions. Keep consistency. FluentAssertions is in the .csproj for the Testing NuGet consumers, not for internal assertions
+4. **Use `Assert.*` for assertions** — existing codebase uses xUnit Assert, NOT Shouldly. Keep consistency. Shouldly is in the .csproj for the Testing NuGet consumers, not for internal assertions
 5. **Feature folders ONLY** — Builders/, Fakes/, Assertions/. No Models/, Services/, Interfaces/, Helpers/ folders
 6. **One public type per file** — filename must match type name exactly
 7. **File-scoped namespaces** — `namespace Hexalith.EventStore.Testing.Builders;` etc.
@@ -262,7 +262,7 @@ src/Hexalith.EventStore.Server/
 12. **SaveStateAsync must be called to commit** — mimics DAPR actor behavior where state changes are pending until SaveStateAsync. This is critical for testing atomic write semantics (D1)
 13. **FakeDomainServiceInvoker tracks invocations** — `Invocations` property lets tests verify the correct commands were sent to the domain service
 14. **AddStateAsync throws if key exists** — mimics DAPR behavior; this is important for testing write-once event keys (enforcement rule #11)
-15. **Testing .csproj should keep FluentAssertions and NSubstitute** — these are for consumers of the Testing NuGet package, not for internal use
+15. **Testing .csproj should keep Shouldly and NSubstitute** — these are for consumers of the Testing NuGet package, not for internal use
 16. **Test project for Testing package** — create tests either in a new `Hexalith.EventStore.Testing.Tests` project or within an existing test project. Follow the pattern from Story 1.3 (dedicated test project preferred)
 17. **EventMetadata constructor parameters** — check the actual constructor of EventMetadata before building defaults. Read the file `src/Hexalith.EventStore.Contracts/Events/EventMetadata.cs` to get exact parameter names and types
 
@@ -275,9 +275,9 @@ src/Hexalith.EventStore.Server/
 - [Source: _bmad-output/planning-artifacts/epics.md#Story 1.4 - Acceptance criteria: InMemoryStateManager, FakeDomainServiceInvoker, builders, assertions]
 - [Source: _bmad-output/planning-artifacts/epics.md#Story 1.4 - FR45: Unit tests without DAPR runtime dependency]
 - [Source: _bmad-output/implementation-artifacts/1-3-client-package-domain-processor-contract-and-registration.md - Previous story patterns and learnings]
-- [Source: src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj - Current project dependencies: Contracts + Server + FluentAssertions + NSubstitute]
+- [Source: src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj - Current project dependencies: Contracts + Server + Shouldly + NSubstitute]
 - [Source: src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj - Server dependencies: Contracts + Dapr.Client + Dapr.Actors + Dapr.Actors.AspNetCore + MediatR]
-- [Source: Directory.Packages.props - Package versions: Dapr.Actors 1.16.1, FluentAssertions 8.2.0, NSubstitute 5.3.0, xunit 2.9.3]
+- [Source: Directory.Packages.props - Package versions: Dapr.Actors 1.16.1, Shouldly 8.2.0, NSubstitute 5.3.0, xunit 2.9.3]
 
 ## Dev Agent Record
 
