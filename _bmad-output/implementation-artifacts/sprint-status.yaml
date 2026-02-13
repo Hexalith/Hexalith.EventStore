@@ -56,7 +56,7 @@ development_status:
   2-2-command-validation-and-rfc-7807-error-responses: done
   2-3-mediatr-pipeline-and-logging-behavior: done
   2-4-jwt-authentication-and-claims-transformation: done
-  2-5-endpoint-authorization-and-command-rejection: review
+  2-5-endpoint-authorization-and-command-rejection: done
   2-6-command-status-tracking-and-query-endpoint: done
   2-7-command-replay-endpoint: done
   2-8-optimistic-concurrency-conflict-handling: review
