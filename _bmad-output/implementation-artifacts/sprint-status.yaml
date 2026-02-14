@@ -74,7 +74,7 @@ development_status:
   3-7-event-persistence-with-atomic-writes-and-sequence-numbers: done
   3-8-storage-key-isolation-and-composite-key-strategy: done
   3-9-snapshot-creation-at-configurable-intervals: done
-  3-10-state-reconstruction-from-snapshot-plus-tail-events: ready-for-dev
+  3-10-state-reconstruction-from-snapshot-plus-tail-events: review
   3-11-actor-state-machine-and-checkpointed-stages: backlog
   epic-3-retrospective: optional
 

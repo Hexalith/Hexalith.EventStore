@@ -118,12 +118,12 @@ public class EventPersistenceIntegrationTests
         await stateManager.SaveStateAsync();
 
         // Assert -- read all events via EventStreamReader
-        object? state = await reader.RehydrateAsync(TestIdentity);
-        var events = state.ShouldBeOfType<List<EventEnvelope>>();
-        events.Count.ShouldBe(3);
-        events[0].SequenceNumber.ShouldBe(1);
-        events[1].SequenceNumber.ShouldBe(2);
-        events[2].SequenceNumber.ShouldBe(3);
+        RehydrationResult? rehydrationResult = await reader.RehydrateAsync(TestIdentity);
+        rehydrationResult.ShouldNotBeNull();
+        rehydrationResult.Events.Count.ShouldBe(3);
+        rehydrationResult.Events[0].SequenceNumber.ShouldBe(1);
+        rehydrationResult.Events[1].SequenceNumber.ShouldBe(2);
+        rehydrationResult.Events[2].SequenceNumber.ShouldBe(3);
     }
 
     // === 8.3: Events readable after persistence via EventStreamReader (round-trip) ===
@@ -145,14 +145,14 @@ public class EventPersistenceIntegrationTests
         await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
         await stateManager.SaveStateAsync();
 
-        object? state = await reader.RehydrateAsync(TestIdentity);
+        RehydrationResult? rehydrationResult = await reader.RehydrateAsync(TestIdentity);
 
         // Assert
-        var events = state.ShouldBeOfType<List<EventEnvelope>>();
-        events.Count.ShouldBe(3);
-        events[0].EventTypeName.ShouldContain("OrderCreated");
-        events[1].EventTypeName.ShouldContain("OrderItemAdded");
-        events[2].EventTypeName.ShouldContain("OrderItemAdded");
+        rehydrationResult.ShouldNotBeNull();
+        rehydrationResult.Events.Count.ShouldBe(3);
+        rehydrationResult.Events[0].EventTypeName.ShouldContain("OrderCreated");
+        rehydrationResult.Events[1].EventTypeName.ShouldContain("OrderItemAdded");
+        rehydrationResult.Events[2].EventTypeName.ShouldContain("OrderItemAdded");
     }
 
     // === 8.4: Atomic write -- all events visible together ===

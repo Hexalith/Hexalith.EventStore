@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 /// Story 3.2: Implements 5-step delegation pipeline.
 /// Steps 1-4 (idempotency, tenant validation, state rehydration, domain invocation) are real.
 /// Step 5: Event persistence (Story 3.7). Step 5b: Snapshot creation (Story 3.9).
+/// Story 3.10: Step 3 now loads snapshot FIRST, passes to EventStreamReader for tail-only reads.
 /// State machine checkpointing deferred to Story 3.11.
 /// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
 /// filtering. DAPR query API does not enforce actor state scoping. See FR28.
@@ -91,25 +92,26 @@ public class AggregateActor(
             return rejectionResult;
         }
 
-        // Step 3: State rehydration (Story 3.4)
-        // Story 3.10 will modify this to load snapshot first, then replay tail events only.
-        // For now, lastSnapshotSequence tracks the sequence of the last snapshot created
-        // during this actor activation (loaded from existing snapshot if present).
-        var eventStreamReader = new EventStreamReader(
-            StateManager,
-            Host.LoggerFactory.CreateLogger<EventStreamReader>());
-
-        object? currentState = await eventStreamReader
-            .RehydrateAsync(command.AggregateIdentity)
-            .ConfigureAwait(false);
-
-        // Load existing snapshot to determine lastSnapshotSequence (H2 fix).
-        // This avoids re-snapshotting on every call after the interval is first reached.
+        // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
+        // Load snapshot FIRST, then pass to EventStreamReader for tail-only reads.
+        // This eliminates the redundant separate snapshot load that previously happened after full replay.
         SnapshotRecord? existingSnapshot = await snapshotManager
             .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId)
             .ConfigureAwait(false);
 
-        long lastSnapshotSequence = existingSnapshot?.SequenceNumber ?? 0;
+        var eventStreamReader = new EventStreamReader(
+            StateManager,
+            Host.LoggerFactory.CreateLogger<EventStreamReader>());
+
+        RehydrationResult? rehydrationResult = await eventStreamReader
+            .RehydrateAsync(command.AggregateIdentity, existingSnapshot)
+            .ConfigureAwait(false);
+
+        // Derive lastSnapshotSequence from RehydrationResult (AC #6, #10)
+        long lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
+
+        // Construct currentState for Step 4 domain invocation (AC #11)
+        object? currentState = ConstructDomainState(rehydrationResult);
 
         logger.LogInformation(
             "State rehydrated: {StateType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
@@ -160,13 +162,13 @@ public class AggregateActor(
             }
 
 
-            var rejectionResult = new CommandProcessingResult(
+            var rejectionProcessingResult = new CommandProcessingResult(
                 Accepted: false,
                 ErrorMessage: $"Domain rejection: {domainResult.Events[0].GetType().Name}",
                 CorrelationId: command.CorrelationId,
                 EventCount: domainResult.Events.Count);
 
-            await idempotencyChecker.RecordAsync(causationId, rejectionResult).ConfigureAwait(false);
+            await idempotencyChecker.RecordAsync(causationId, rejectionProcessingResult).ConfigureAwait(false);
 
             try
             {
@@ -182,7 +184,7 @@ public class AggregateActor(
                     innerException: ex);
             }
 
-            return rejectionResult;
+            return rejectionProcessingResult;
         }
 
         // Step 5: Event persistence (Story 3.7)
@@ -245,5 +247,35 @@ public class AggregateActor(
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Constructs the currentState for domain service invocation from the RehydrationResult (AC #11).
+    /// Three cases:
+    /// - SnapshotState non-null + Events non-empty: pass RehydrationResult (domain applies tail events to snapshot)
+    /// - SnapshotState non-null + Events empty: pass SnapshotState directly (snapshot IS current state)
+    /// - SnapshotState null: pass Events list (full replay, backward compatible)
+    /// </summary>
+    private static object? ConstructDomainState(RehydrationResult? rehydrationResult)
+    {
+        if (rehydrationResult is null)
+        {
+            return null; // New aggregate
+        }
+
+        if (rehydrationResult.SnapshotState is not null && rehydrationResult.Events.Count > 0)
+        {
+            // Snapshot + tail events: domain service must apply tail events to snapshot state
+            return rehydrationResult;
+        }
+
+        if (rehydrationResult.SnapshotState is not null)
+        {
+            // Snapshot at current sequence: snapshot IS the current state
+            return rehydrationResult.SnapshotState;
+        }
+
+        // No snapshot: full event list (backward compatible with pre-3.10 behavior)
+        return rehydrationResult.Events;
     }
 }
