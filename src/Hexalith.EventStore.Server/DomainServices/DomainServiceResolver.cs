@@ -48,12 +48,37 @@ public class DomainServiceResolver(
             return null;
         }
 
-        DomainServiceRegistration? registration = JsonSerializer.Deserialize<DomainServiceRegistration>(configItem.Value);
+        DomainServiceRegistration? registration;
+        try
+        {
+            registration = JsonSerializer.Deserialize<DomainServiceRegistration>(configItem.Value);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to deserialize domain service registration: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}, RawValue={RawValue}",
+                tenantId,
+                domain,
+                configKey,
+                configItem.Value);
+            return null;
+        }
+
+        if (registration is null)
+        {
+            logger.LogWarning(
+                "Domain service registration deserialized to null: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}",
+                tenantId,
+                domain,
+                configKey);
+            return null;
+        }
 
         logger.LogDebug(
             "Resolved domain service: AppId={AppId}, Method={MethodName}, Tenant={TenantId}, Domain={Domain}",
-            registration?.AppId,
-            registration?.MethodName,
+            registration.AppId,
+            registration.MethodName,
             tenantId,
             domain);
 

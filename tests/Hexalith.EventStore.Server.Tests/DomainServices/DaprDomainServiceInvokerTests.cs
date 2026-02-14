@@ -145,6 +145,12 @@ public class DaprDomainServiceInvokerTests
         request.CurrentState.ShouldBeNull();
     }
 
+    // NOTE: DaprClient.InvokeMethodAsync<TReq,TResp> is non-virtual and cannot be mocked with NSubstitute.
+    // Happy-path invocation tests (success/rejection/no-op result flows) are covered at the actor level
+    // in AggregateActorTests (ProcessCommandAsync_DomainSuccess_*, ProcessCommandAsync_DomainRejection_*,
+    // ProcessCommandAsync_DomainNoOp_*) via the mocked IDomainServiceInvoker interface.
+    // Direct DaprDomainServiceInvoker integration testing with real DAPR is deferred to Tier 2 (Story 7.4).
+
     // Test event types
     private sealed record TestEvent : IEventPayload;
 

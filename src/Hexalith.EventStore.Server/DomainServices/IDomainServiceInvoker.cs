@@ -15,5 +15,5 @@ public interface IDomainServiceInvoker
     /// <param name="command">The command envelope to process.</param>
     /// <param name="currentState">The current aggregate state, or null for new aggregates.</param>
     /// <returns>A <see cref="DomainResult"/> containing the resulting domain events.</returns>
-    Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState);
+    Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default);
 }

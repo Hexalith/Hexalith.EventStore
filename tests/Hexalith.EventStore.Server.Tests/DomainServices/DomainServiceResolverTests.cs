@@ -132,4 +132,32 @@ public class DomainServiceResolverTests
         // Assert
         result.ShouldBeNull();
     }
+
+    [Fact]
+    public async Task ResolveAsync_MalformedJson_ReturnsNull()
+    {
+        // Arrange
+        ConfigureConfigStore("tenant-a:orders:service", "NOT-VALID-JSON{{{");
+        var resolver = CreateResolver();
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
+
+        // Assert
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_JsonNull_ReturnsNull()
+    {
+        // Arrange
+        ConfigureConfigStore("tenant-a:orders:service", "null");
+        var resolver = CreateResolver();
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
+
+        // Assert
+        result.ShouldBeNull();
+    }
 }

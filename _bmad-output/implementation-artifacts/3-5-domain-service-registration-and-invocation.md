@@ -1,6 +1,6 @@
 # Story 3.5: Domain Service Registration & Invocation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -833,12 +833,34 @@ None
 - `AddEventStoreServer()` now requires `IConfiguration` parameter for config binding
 - Handles all 3 result types: success (events to Step 5), rejection (short-circuit with cached result), no-op (accept with no events)
 - Infrastructure failures propagate to caller — no custom retry (rule #4)
-- All 526 tests pass: 505 existing (zero regressions) + 21 new tests
-- 6 resolver tests, 8 invoker/DTO tests, 7 actor domain invocation tests
+- All 519 tests pass: 497 existing (zero regressions) + 22 new tests
+- 8 resolver tests (6 original + 2 review fixes: malformed JSON, null JSON), 8 invoker/DTO tests, 7 actor domain invocation tests
+- Note: DaprClient.InvokeMethodAsync is non-virtual and cannot be mocked — happy-path invoker tests are covered at the actor level via mocked IDomainServiceInvoker
 
 ### Change Log
 
 - 2026-02-14: Story 3.5 implementation complete — domain service registration & invocation
+- 2026-02-14: Code review fixes applied (see Senior Developer Review below)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Jerome (via Claude Opus 4.6 adversarial review)
+**Date:** 2026-02-14
+**Outcome:** Changes Requested → Fixed
+
+**Issues Found & Resolved:**
+
+| # | Severity | Issue | Resolution |
+|---|----------|-------|------------|
+| H1 | HIGH | Story claimed 526 tests but actual count was 517 | Corrected test count to 519 (post-fix) |
+| H2 | HIGH | 3 happy-path invoker tests missing (Task 11.2-11.4) | Documented: DaprClient non-virtual prevents mocking; covered at actor level |
+| H3 | HIGH | No CancellationToken on IDomainServiceInvoker.InvokeAsync | Added CancellationToken parameter to interface, DaprDomainServiceInvoker, FakeDomainServiceInvoker |
+| M1 | MEDIUM | DI injection deviates from per-call creation pattern | Accepted: documented tradeoff (DaprClient non-virtual) |
+| M2 | MEDIUM | DomainServiceNotFoundException missing CA1032 constructors | Added parameterless, message, and message+inner constructors |
+| M3 | MEDIUM | DomainServiceResolver no error handling for malformed JSON | Added try/catch with diagnostic logging; added 2 new tests |
+| M4 | MEDIUM | FakeDomainServiceInvoker used AggregateIdentity.TenantId | Changed to command.TenantId/Domain to match real implementation |
+| L1 | LOW | InvocationTimeoutSeconds unused | Noted: acceptable placeholder for future DAPR config |
+| L2 | LOW | File Structure section says Program.cs NO CHANGE but it was modified | Noted: doc inconsistency in planning vs actual |
 
 ### File List
 
@@ -858,3 +880,12 @@ None
 - src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
 - src/Hexalith.EventStore.CommandApi/Program.cs
 - tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs
+
+**Modified by review:**
+- src/Hexalith.EventStore.Server/DomainServices/IDomainServiceInvoker.cs (CancellationToken)
+- src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs (CancellationToken pass-through)
+- src/Hexalith.EventStore.Server/DomainServices/DomainServiceResolver.cs (JSON error handling)
+- src/Hexalith.EventStore.Server/DomainServices/DomainServiceNotFoundException.cs (CA1032 constructors)
+- src/Hexalith.EventStore.Testing/Fakes/FakeDomainServiceInvoker.cs (CancellationToken + property access fix)
+- tests/Hexalith.EventStore.Server.Tests/DomainServices/DomainServiceResolverTests.cs (2 new tests)
+- tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs (documented limitation)
