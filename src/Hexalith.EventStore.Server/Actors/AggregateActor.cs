@@ -14,7 +14,8 @@ using Microsoft.Extensions.Logging;
 /// Aggregate actor -- thin orchestrator for command processing.
 /// Story 3.2: Implements 5-step delegation pipeline.
 /// Steps 1-4 (idempotency, tenant validation, state rehydration, domain invocation) are real.
-/// Step 5: Event persistence (Story 3.7). State machine checkpointing deferred to Story 3.11.
+/// Step 5: Event persistence (Story 3.7). Step 5b: Snapshot creation (Story 3.9).
+/// State machine checkpointing deferred to Story 3.11.
 /// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
 /// filtering. DAPR query API does not enforce actor state scoping. See FR28.
 /// SECURITY: Never bypass IActorStateManager with direct DaprClient.GetStateAsync/SetStateAsync.
@@ -23,7 +24,8 @@ using Microsoft.Extensions.Logging;
 public class AggregateActor(
     ActorHost host,
     ILogger<AggregateActor> logger,
-    IDomainServiceInvoker domainServiceInvoker)
+    IDomainServiceInvoker domainServiceInvoker,
+    ISnapshotManager snapshotManager)
     : Actor(host), IAggregateActor
 {
     /// <inheritdoc/>
@@ -90,6 +92,9 @@ public class AggregateActor(
         }
 
         // Step 3: State rehydration (Story 3.4)
+        // Story 3.10 will modify this to load snapshot first, then replay tail events only.
+        // For now, lastSnapshotSequence tracks the sequence of the last snapshot created
+        // during this actor activation (loaded from existing snapshot if present).
         var eventStreamReader = new EventStreamReader(
             StateManager,
             Host.LoggerFactory.CreateLogger<EventStreamReader>());
@@ -97,6 +102,14 @@ public class AggregateActor(
         object? currentState = await eventStreamReader
             .RehydrateAsync(command.AggregateIdentity)
             .ConfigureAwait(false);
+
+        // Load existing snapshot to determine lastSnapshotSequence (H2 fix).
+        // This avoids re-snapshotting on every call after the interval is first reached.
+        SnapshotRecord? existingSnapshot = await snapshotManager
+            .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId)
+            .ConfigureAwait(false);
+
+        long lastSnapshotSequence = existingSnapshot?.SequenceNumber ?? 0;
 
         logger.LogInformation(
             "State rehydrated: {StateType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
@@ -126,9 +139,25 @@ public class AggregateActor(
                 StateManager,
                 Host.LoggerFactory.CreateLogger<EventPersister>());
 
-            await eventPersister
+            long rejectionSequence = await eventPersister
                 .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
                 .ConfigureAwait(false);
+
+            // M2 fix: Rejection events count toward snapshot interval (D3).
+            if (rejectionSequence > 0 && currentState is not null)
+            {
+                bool shouldSnapshot = await snapshotManager
+                    .ShouldCreateSnapshotAsync(command.Domain, rejectionSequence, lastSnapshotSequence)
+                    .ConfigureAwait(false);
+
+                if (shouldSnapshot)
+                {
+                    long preEventSequence = rejectionSequence - domainResult.Events.Count;
+                    await snapshotManager
+                        .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
+                        .ConfigureAwait(false);
+                }
+            }
 
             var rejectionResult = new CommandProcessingResult(
                 Accepted: false,
@@ -156,15 +185,37 @@ public class AggregateActor(
         }
 
         // Step 5: Event persistence (Story 3.7)
+        long newSequence = 0;
         if (!domainResult.IsNoOp)
         {
             var eventPersister = new EventPersister(
                 StateManager,
                 Host.LoggerFactory.CreateLogger<EventPersister>());
 
-            await eventPersister
+            newSequence = await eventPersister
                 .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
                 .ConfigureAwait(false);
+
+            // Step 5b: Snapshot creation (Story 3.9)
+            // Check if snapshot is due after event persistence. Snapshot is staged in the same
+            // actor state batch and committed atomically with events by SaveStateAsync (AC #10).
+            // Snapshot creation is advisory -- failure does not block command processing (rule #12).
+            // H3 fix: currentState is the PRE-event state (before domain invocation). The snapshot
+            // must record preEventSequence so that replay after snapshot load doesn't skip events.
+            if (newSequence > 0 && currentState is not null)
+            {
+                bool shouldSnapshot = await snapshotManager
+                    .ShouldCreateSnapshotAsync(command.Domain, newSequence, lastSnapshotSequence)
+                    .ConfigureAwait(false);
+
+                if (shouldSnapshot)
+                {
+                    long preEventSequence = newSequence - domainResult.Events.Count;
+                    await snapshotManager
+                        .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
+                        .ConfigureAwait(false);
+                }
+            }
         }
 
         // Create result and store for idempotency
@@ -177,7 +228,7 @@ public class AggregateActor(
             .RecordAsync(causationId, result)
             .ConfigureAwait(false);
 
-        // Atomic commit of all state changes (D1: idempotency record + events + metadata)
+        // Atomic commit of all state changes (D1: idempotency record + events + metadata + snapshot)
         try
         {
             await StateManager.SaveStateAsync().ConfigureAwait(false);

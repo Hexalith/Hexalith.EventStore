@@ -26,7 +26,7 @@ public class EventPersister(
     ILogger<EventPersister> logger) : IEventPersister
 {
     /// <inheritdoc/>
-    public async Task PersistEventsAsync(
+    public async Task<long> PersistEventsAsync(
         AggregateIdentity identity,
         CommandEnvelope command,
         DomainResult domainResult,
@@ -39,7 +39,7 @@ public class EventPersister(
 
         if (domainResult.Events.Count == 0)
         {
-            return;
+            return 0;
         }
 
         // Load current metadata to get sequence number
@@ -102,5 +102,7 @@ public class EventPersister(
             newSequence,
             identity.ActorId,
             command.CorrelationId);
+
+        return newSequence;
     }
 }

@@ -42,9 +42,10 @@ public class AggregateActorTests
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
+        var snapshotManager = Substitute.For<ISnapshotManager>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -785,6 +786,145 @@ public class AggregateActorTests
         // Act & Assert -- should propagate directly, not wrapped
         await Should.ThrowAsync<OperationCanceledException>(
             () => actor.ProcessCommandAsync(envelope));
+    }
+
+    // === Story 3.9: Snapshot Integration Tests ===
+
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager) CreateActorWithAllMocks()
+    {
+        var stateManager = Substitute.For<IActorStateManager>();
+        var logger = Substitute.For<ILogger<AggregateActor>>();
+        var invoker = Substitute.For<IDomainServiceInvoker>();
+        var snapshotManager = Substitute.For<ISnapshotManager>();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager);
+
+        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
+        prop?.SetValue(actor, stateManager);
+
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.NoOp());
+
+        return (actor, stateManager, logger, invoker, snapshotManager);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainSuccess_CallsShouldCreateSnapshotWithCorrectSequence()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
+        ConfigureNoDuplicate(stateManager);
+        ConfigureExistingAggregate(stateManager, 3);
+
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- ShouldCreateSnapshotAsync called with newSequence=4 (3 existing + 1 new), lastSnapshotSequence=0
+        await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 0);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_ShouldSnapshotTrue_CallsCreateSnapshotWithPreEventSequence()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
+        ConfigureNoDuplicate(stateManager);
+        ConfigureExistingAggregate(stateManager, 3);
+
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+            .Returns(true);
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- H3 fix: snapshot created at preEventSequence (4-1=3), not newSequence (4)
+        await snapshotManager.Received(1).CreateSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            3, // preEventSequence = newSequence(4) - events.Count(1)
+            Arg.Any<object>(),
+            stateManager,
+            envelope.CorrelationId);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_ShouldSnapshotFalse_DoesNotCallCreateSnapshot()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
+        ConfigureNoDuplicate(stateManager);
+        ConfigureExistingAggregate(stateManager, 3);
+
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+            .Returns(false);
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        await snapshotManager.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<long>(),
+            Arg.Any<object>(),
+            Arg.Any<IActorStateManager>(),
+            Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_ExistingSnapshot_UsesSnapshotSequenceForInterval()
+    {
+        // Arrange -- H2 fix: existing snapshot at seq 100 means lastSnapshotSequence=100
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
+        ConfigureNoDuplicate(stateManager);
+        ConfigureExistingAggregate(stateManager, 3);
+
+        var existingSnapshot = new SnapshotRecord(100, new object(), DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
+        snapshotManager.LoadSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IActorStateManager>(),
+            Arg.Any<string?>())
+            .Returns(existingSnapshot);
+
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- ShouldCreateSnapshotAsync called with lastSnapshotSequence=100 from loaded snapshot
+        await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 100);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainRejection_AlsoChecksSnapshotInterval()
+    {
+        // Arrange -- M2 fix: rejection events count toward snapshot interval
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
+        ConfigureNoDuplicate(stateManager);
+        ConfigureExistingAggregate(stateManager, 3);
+
+        var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- ShouldCreateSnapshotAsync called on rejection path
+        await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", Arg.Any<long>(), Arg.Is<long>(0));
     }
 
     // Test event types for domain invocation tests
