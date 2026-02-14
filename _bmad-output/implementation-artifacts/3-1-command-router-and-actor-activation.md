@@ -1,6 +1,6 @@
 # Story 3.1: Command Router & Actor Activation
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -39,122 +39,122 @@ So that each aggregate has a dedicated processing context (FR3).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and existing artifacts (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Confirm `SubmitCommandHandler` exists with status write + archive write
-  - [ ] 0.3 Confirm `CommandEnvelope` exists in Contracts with all required fields
-  - [ ] 0.4 Confirm `AggregateIdentity` exists with `ActorId` property deriving `{tenant}:{domain}:{aggregateId}`
-  - [ ] 0.5 Confirm `DaprClient` is registered via `AddDaprClient()` in Program.cs
-  - [ ] 0.6 Confirm Server project has `Dapr.Actors` and `Dapr.Actors.AspNetCore` NuGet packages (add if missing)
+- [x] Task 0: Verify prerequisites and existing artifacts (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Confirm `SubmitCommandHandler` exists with status write + archive write
+  - [x] 0.3 Confirm `CommandEnvelope` exists in Contracts with all required fields
+  - [x] 0.4 Confirm `AggregateIdentity` exists with `ActorId` property deriving `{tenant}:{domain}:{aggregateId}`
+  - [x] 0.5 Confirm `DaprClient` is registered via `AddDaprClient()` in Program.cs
+  - [x] 0.6 Confirm Server project has `Dapr.Actors` and `Dapr.Actors.AspNetCore` NuGet packages (add if missing)
 
-- [ ] Task 1: Create IAggregateActor interface (AC: #2)
-  - [ ] 1.1 Create `IAggregateActor` interface in `Server/Actors/` extending `Dapr.Actors.IActor`
-  - [ ] 1.2 Define single method: `Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)`
-  - [ ] 1.3 `CommandProcessingResult` is a new record in `Server/Actors/`: `record CommandProcessingResult(bool Accepted, string? ErrorMessage = null, string? CorrelationId = null)`
-  - [ ] 1.4 Namespace: `Hexalith.EventStore.Server.Actors`
+- [x] Task 1: Create IAggregateActor interface (AC: #2)
+  - [x] 1.1 Create `IAggregateActor` interface in `Server/Actors/` extending `Dapr.Actors.IActor`
+  - [x] 1.2 Define single method: `Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)`
+  - [x] 1.3 `CommandProcessingResult` is a new record in `Server/Actors/`: `record CommandProcessingResult(bool Accepted, string? ErrorMessage = null, string? CorrelationId = null)`
+  - [x] 1.4 Namespace: `Hexalith.EventStore.Server.Actors`
 
-- [ ] Task 2: Create AggregateActor STUB implementation (AC: #2)
-  - [ ] 2.1 Create `AggregateActor` class in `Server/Actors/` extending `Dapr.Actors.Runtime.Actor` and implementing `IAggregateActor`
-  - [ ] 2.2 Constructor: `AggregateActor(ActorHost host, ILogger<AggregateActor> logger)` -- call `base(host)`
-  - [ ] 2.3 `ProcessCommandAsync` STUB implementation: log command receipt at Information level with structured properties (correlationId, tenantId, domain, aggregateId), return `new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId)`
-  - [ ] 2.4 Log format: `"Actor {ActorId} received command: CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}"` -- NEVER log payload (rule #5, SEC-5)
-  - [ ] 2.5 Add XML doc comment noting this is a stub -- Steps 1-5 of the orchestration pipeline will be implemented in Stories 3.2-3.11
+- [x] Task 2: Create AggregateActor STUB implementation (AC: #2)
+  - [x] 2.1 Create `AggregateActor` class in `Server/Actors/` extending `Dapr.Actors.Runtime.Actor` and implementing `IAggregateActor`
+  - [x] 2.2 Constructor: `AggregateActor(ActorHost host, ILogger<AggregateActor> logger)` -- call `base(host)`
+  - [x] 2.3 `ProcessCommandAsync` STUB implementation: log command receipt at Information level with structured properties (correlationId, tenantId, domain, aggregateId), return `new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId)`
+  - [x] 2.4 Log format: `"Actor {ActorId} received command: CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}"` -- NEVER log payload (rule #5, SEC-5)
+  - [x] 2.5 Add XML doc comment noting this is a stub -- Steps 1-5 of the orchestration pipeline will be implemented in Stories 3.2-3.11
 
-- [ ] Task 3: Create CommandRouter (AC: #1, #3, #5)
-  - [ ] 3.1 Create `ICommandRouter` interface in `Server/Commands/`: `Task<CommandProcessingResult> RouteCommandAsync(SubmitCommand command, CancellationToken cancellationToken = default)`
-  - [ ] 3.2 Create `CommandRouter` class in `Server/Commands/` implementing `ICommandRouter`
-  - [ ] 3.3 Constructor: `CommandRouter(IActorProxyFactory actorProxyFactory, ILogger<CommandRouter> logger)`
-  - [ ] 3.4 `RouteCommandAsync` implementation:
+- [x]Task 3: Create CommandRouter (AC: #1, #3, #5)
+  - [x]3.1 Create `ICommandRouter` interface in `Server/Commands/`: `Task<CommandProcessingResult> RouteCommandAsync(SubmitCommand command, CancellationToken cancellationToken = default)`
+  - [x]3.2 Create `CommandRouter` class in `Server/Commands/` implementing `ICommandRouter`
+  - [x]3.3 Constructor: `CommandRouter(IActorProxyFactory actorProxyFactory, ILogger<CommandRouter> logger)`
+  - [x]3.4 `RouteCommandAsync` implementation:
     - Create `AggregateIdentity` from command (Tenant, Domain, AggregateId) -- this validates the identity components
     - Derive actor ID: `identity.ActorId` (format: `{tenant}:{domain}:{aggregateId}`)
     - Convert `SubmitCommand` to `CommandEnvelope` (AC #5): map all fields, set CausationId = CorrelationId (initial), UserId = "system" (placeholder)
     - Create actor proxy: `actorProxyFactory.CreateActorProxy<IAggregateActor>(new ActorId(actorId), nameof(AggregateActor))`
     - Invoke: `await proxy.ProcessCommandAsync(envelope).ConfigureAwait(false)`
     - Return the `CommandProcessingResult`
-  - [ ] 3.5 Log at Information level before actor invocation: `"Routing command to actor: CorrelationId={CorrelationId}, ActorId={ActorId}"` -- NEVER log payload (rule #5)
-  - [ ] 3.6 Catch `Exception` from actor invocation, log at Error level with correlationId and actorId, re-throw (let exception handlers deal with it)
-  - [ ] 3.7 Use `ArgumentNullException.ThrowIfNull()` on public method parameters (CA1062)
+  - [x]3.5 Log at Information level before actor invocation: `"Routing command to actor: CorrelationId={CorrelationId}, ActorId={ActorId}"` -- NEVER log payload (rule #5)
+  - [x]3.6 Catch `Exception` from actor invocation, log at Error level with correlationId and actorId, re-throw (let exception handlers deal with it)
+  - [x]3.7 Use `ArgumentNullException.ThrowIfNull()` on public method parameters (CA1062)
 
-- [ ] Task 4: Create SubmitCommand to CommandEnvelope conversion (AC: #5)
-  - [ ] 4.1 Create `SubmitCommandExtensions` class in `Server/Commands/` with static method `ToCommandEnvelope(this SubmitCommand command)` returning `CommandEnvelope`
-  - [ ] 4.2 Map fields: Tenant -> TenantId, Domain -> Domain, AggregateId -> AggregateId, CommandType -> CommandType, Payload -> Payload, CorrelationId -> CorrelationId, Extensions -> Extensions (note: `Dictionary<string, string>?` converts implicitly to `IReadOnlyDictionary<string, string>?` in CommandEnvelope)
-  - [ ] 4.3 Set CausationId = command.CorrelationId (for initial submission, correlation IS the causation; replays will have distinct causation in later stories)
-  - [ ] 4.4 Set UserId = "system" (placeholder -- will be populated from JWT claims in Story 3.3 when tenant validation flows user identity through)
-  - [ ] 4.5 Verify `CommandEnvelope` constructor validates all fields -- if it throws, let the exception propagate (it means the command was malformed and should have been caught by validation)
+- [x]Task 4: Create SubmitCommand to CommandEnvelope conversion (AC: #5)
+  - [x]4.1 Create `SubmitCommandExtensions` class in `Server/Commands/` with static method `ToCommandEnvelope(this SubmitCommand command)` returning `CommandEnvelope`
+  - [x]4.2 Map fields: Tenant -> TenantId, Domain -> Domain, AggregateId -> AggregateId, CommandType -> CommandType, Payload -> Payload, CorrelationId -> CorrelationId, Extensions -> Extensions (note: `Dictionary<string, string>?` converts implicitly to `IReadOnlyDictionary<string, string>?` in CommandEnvelope)
+  - [x]4.3 Set CausationId = command.CorrelationId (for initial submission, correlation IS the causation; replays will have distinct causation in later stories)
+  - [x]4.4 Set UserId = "system" (placeholder -- will be populated from JWT claims in Story 3.3 when tenant validation flows user identity through)
+  - [x]4.5 Verify `CommandEnvelope` constructor validates all fields -- if it throws, let the exception propagate (it means the command was malformed and should have been caught by validation)
 
-- [ ] Task 5: Modify SubmitCommandHandler to call CommandRouter (AC: #1, #6)
-  - [ ] 5.1 Add `ICommandRouter` as an additional dependency in `SubmitCommandHandler` primary constructor
-  - [ ] 5.2 After the existing status write and archive write, call `await _commandRouter.RouteCommandAsync(request, cancellationToken).ConfigureAwait(false)`
-  - [ ] 5.3 The actor invocation is AWAITED -- the handler waits for the actor to acknowledge receipt before returning. For Story 3.1, the stub actor returns instantly so there's no latency impact. (Note: latency implications must be revisited in Stories 3.7+ when actor does real work)
-  - [ ] 5.4 If the actor invocation throws, let the exception propagate up through MediatR to the exception handler chain (ConcurrencyConflictExceptionHandler from Story 2.8 will handle concurrency exceptions; GlobalExceptionHandler handles the rest)
-  - [ ] 5.5 Do NOT wrap the router call in try/catch -- unlike advisory status/archive writes (rule #12), actor invocation failure IS a real error that should surface to the consumer
-  - [ ] 5.6 Log at Debug level after successful routing: `"Command routed to actor: CorrelationId={CorrelationId}"`
+- [x]Task 5: Modify SubmitCommandHandler to call CommandRouter (AC: #1, #6)
+  - [x]5.1 Add `ICommandRouter` as an additional dependency in `SubmitCommandHandler` primary constructor
+  - [x]5.2 After the existing status write and archive write, call `await _commandRouter.RouteCommandAsync(request, cancellationToken).ConfigureAwait(false)`
+  - [x]5.3 The actor invocation is AWAITED -- the handler waits for the actor to acknowledge receipt before returning. For Story 3.1, the stub actor returns instantly so there's no latency impact. (Note: latency implications must be revisited in Stories 3.7+ when actor does real work)
+  - [x]5.4 If the actor invocation throws, let the exception propagate up through MediatR to the exception handler chain (ConcurrencyConflictExceptionHandler from Story 2.8 will handle concurrency exceptions; GlobalExceptionHandler handles the rest)
+  - [x]5.5 Do NOT wrap the router call in try/catch -- unlike advisory status/archive writes (rule #12), actor invocation failure IS a real error that should surface to the consumer
+  - [x]5.6 Log at Debug level after successful routing: `"Command routed to actor: CorrelationId={CorrelationId}"`
 
-- [ ] Task 6: Create AddEventStoreServer() extension method (AC: #3, #4)
-  - [ ] 6.1 Create `ServiceCollectionExtensions` class in `Server/Configuration/` (or enhance if exists) with `AddEventStoreServer(this IServiceCollection services)` method
-  - [ ] 6.2 Register `ICommandRouter` as `CommandRouter` (singleton or scoped -- singleton is preferred since it only holds IActorProxyFactory which is singleton)
-  - [ ] 6.3 Register DAPR actors: `services.AddActors(options => { options.Actors.RegisterActor<AggregateActor>(); })`
-  - [ ] 6.4 Return `IServiceCollection` for fluent chaining
-  - [ ] 6.5 Namespace: `Hexalith.EventStore.Server.Configuration`
+- [x]Task 6: Create AddEventStoreServer() extension method (AC: #3, #4)
+  - [x]6.1 Create `ServiceCollectionExtensions` class in `Server/Configuration/` (or enhance if exists) with `AddEventStoreServer(this IServiceCollection services)` method
+  - [x]6.2 Register `ICommandRouter` as `CommandRouter` (singleton or scoped -- singleton is preferred since it only holds IActorProxyFactory which is singleton)
+  - [x]6.3 Register DAPR actors: `services.AddActors(options => { options.Actors.RegisterActor<AggregateActor>(); })`
+  - [x]6.4 Return `IServiceCollection` for fluent chaining
+  - [x]6.5 Namespace: `Hexalith.EventStore.Server.Configuration`
 
-- [ ] Task 7: Update CommandApi Program.cs (AC: #3, #4)
-  - [ ] 7.1 Add `builder.Services.AddEventStoreServer()` call in Program.cs DI registration section (after `AddCommandApi()`)
-  - [ ] 7.2 Add `app.MapActorsHandlers()` call in the middleware pipeline (after `app.MapControllers()` or equivalent)
-  - [ ] 7.3 Verify DI registration order per architecture: AddServiceDefaults -> AddAuthentication -> AddAuthorization -> AddRateLimiter -> AddMediatR -> AddCommandApi -> AddEventStoreServer -> AddActors (included in AddEventStoreServer)
+- [x]Task 7: Update CommandApi Program.cs (AC: #3, #4)
+  - [x]7.1 Add `builder.Services.AddEventStoreServer()` call in Program.cs DI registration section (after `AddCommandApi()`)
+  - [x]7.2 Add `app.MapActorsHandlers()` call in the middleware pipeline (after `app.MapControllers()` or equivalent)
+  - [x]7.3 Verify DI registration order per architecture: AddServiceDefaults -> AddAuthentication -> AddAuthorization -> AddRateLimiter -> AddMediatR -> AddCommandApi -> AddEventStoreServer -> AddActors (included in AddEventStoreServer)
 
-- [ ] Task 8: Update existing ServiceCollectionExtensions in CommandApi (AC: #3)
-  - [ ] 8.1 In `CommandApi/Extensions/ServiceCollectionExtensions.AddCommandApi()`, add `ICommandRouter` registration if not already done via `AddEventStoreServer()`
-  - [ ] 8.2 Alternatively: `AddCommandApi()` calls `AddEventStoreServer()` internally to keep a single registration entry point. Choose whichever pattern is cleaner with existing code. Document the chosen approach.
+- [x]Task 8: Update existing ServiceCollectionExtensions in CommandApi (AC: #3)
+  - [x]8.1 In `CommandApi/Extensions/ServiceCollectionExtensions.AddCommandApi()`, add `ICommandRouter` registration if not already done via `AddEventStoreServer()`
+  - [x]8.2 Alternatively: `AddCommandApi()` calls `AddEventStoreServer()` internally to keep a single registration entry point. Choose whichever pattern is cleaner with existing code. Document the chosen approach.
 
-- [ ] Task 9: Write unit tests for CommandRouter (AC: #1, #5)
-  - [ ] 9.1 `RouteCommandAsync_ValidCommand_CreatesCorrectActorId` -- verify actor ID = `{tenant}:{domain}:{aggregateId}`
-  - [ ] 9.2 `RouteCommandAsync_ValidCommand_InvokesActorProxy` -- verify `IActorProxyFactory.CreateActorProxy` called with correct ActorId and actor type name
-  - [ ] 9.3 `RouteCommandAsync_ValidCommand_PassesCommandEnvelope` -- verify `ProcessCommandAsync` called with correctly-mapped CommandEnvelope
-  - [ ] 9.4 `RouteCommandAsync_ValidCommand_ReturnsActorResult` -- verify result from actor is returned
-  - [ ] 9.5 `RouteCommandAsync_ActorThrows_PropagatesException` -- verify exceptions from actor proxy are not swallowed
-  - [ ] 9.6 `RouteCommandAsync_CommandEnvelope_HasCorrectCorrelationId` -- verify correlationId preserved
-  - [ ] 9.7 `RouteCommandAsync_CommandEnvelope_HasCausationIdEqualToCorrelationId` -- verify initial causation chain
-  - [ ] 9.8 `RouteCommandAsync_NullCommand_ThrowsArgumentNullException` -- verify guard clause
+- [x]Task 9: Write unit tests for CommandRouter (AC: #1, #5)
+  - [x]9.1 `RouteCommandAsync_ValidCommand_CreatesCorrectActorId` -- verify actor ID = `{tenant}:{domain}:{aggregateId}`
+  - [x]9.2 `RouteCommandAsync_ValidCommand_InvokesActorProxy` -- verify `IActorProxyFactory.CreateActorProxy` called with correct ActorId and actor type name
+  - [x]9.3 `RouteCommandAsync_ValidCommand_PassesCommandEnvelope` -- verify `ProcessCommandAsync` called with correctly-mapped CommandEnvelope
+  - [x]9.4 `RouteCommandAsync_ValidCommand_ReturnsActorResult` -- verify result from actor is returned
+  - [x]9.5 `RouteCommandAsync_ActorThrows_PropagatesException` -- verify exceptions from actor proxy are not swallowed
+  - [x]9.6 `RouteCommandAsync_CommandEnvelope_HasCorrectCorrelationId` -- verify correlationId preserved
+  - [x]9.7 `RouteCommandAsync_CommandEnvelope_HasCausationIdEqualToCorrelationId` -- verify initial causation chain
+  - [x]9.8 `RouteCommandAsync_NullCommand_ThrowsArgumentNullException` -- verify guard clause
 
-- [ ] Task 10: Write unit tests for SubmitCommandExtensions (AC: #5)
-  - [ ] 10.1 `ToCommandEnvelope_ValidCommand_MapsAllFields` -- verify all fields correctly mapped
-  - [ ] 10.2 `ToCommandEnvelope_NullExtensions_MapsAsNull` -- verify nullable extensions handled
-  - [ ] 10.3 `ToCommandEnvelope_CausationId_EqualsCorrelationId` -- verify initial causation
-  - [ ] 10.4 `ToCommandEnvelope_UserId_IsSystem` -- verify placeholder userId
+- [x]Task 10: Write unit tests for SubmitCommandExtensions (AC: #5)
+  - [x]10.1 `ToCommandEnvelope_ValidCommand_MapsAllFields` -- verify all fields correctly mapped
+  - [x]10.2 `ToCommandEnvelope_NullExtensions_MapsAsNull` -- verify nullable extensions handled
+  - [x]10.3 `ToCommandEnvelope_CausationId_EqualsCorrelationId` -- verify initial causation
+  - [x]10.4 `ToCommandEnvelope_UserId_IsSystem` -- verify placeholder userId
 
-- [ ] Task 11: Write unit tests for AggregateActor (AC: #2)
-  - [ ] 11.1 `ProcessCommandAsync_ValidCommand_ReturnsAccepted` -- verify stub returns Accepted=true
-  - [ ] 11.2 `ProcessCommandAsync_ValidCommand_ReturnsCorrelationId` -- verify correlationId in result
-  - [ ] 11.3 `ProcessCommandAsync_ValidCommand_LogsCommandReceipt` -- verify structured logging with correct properties
+- [x]Task 11: Write unit tests for AggregateActor (AC: #2)
+  - [x]11.1 `ProcessCommandAsync_ValidCommand_ReturnsAccepted` -- verify stub returns Accepted=true
+  - [x]11.2 `ProcessCommandAsync_ValidCommand_ReturnsCorrelationId` -- verify correlationId in result
+  - [x]11.3 `ProcessCommandAsync_ValidCommand_LogsCommandReceipt` -- verify structured logging with correct properties
 
-- [ ] Task 12: Update existing SubmitCommandHandler tests (AC: #6)
-  - [ ] 12.1 Update `SubmitCommandHandler` unit tests to provide `ICommandRouter` mock (NSubstitute)
-  - [ ] 12.2 Configure mock `ICommandRouter.RouteCommandAsync` to return `new CommandProcessingResult(true)`
-  - [ ] 12.3 Add test: `Handle_ValidCommand_RoutesToActor` -- verify `_commandRouter.RouteCommandAsync` called with correct command
-  - [ ] 12.4 Add test: `Handle_RouterThrows_PropagatesException` -- verify exception propagation (not swallowed)
-  - [ ] 12.5 Verify ALL existing SubmitCommandHandler tests still pass (status write, archive write behavior unchanged)
+- [x]Task 12: Update existing SubmitCommandHandler tests (AC: #6)
+  - [x]12.1 Update `SubmitCommandHandler` unit tests to provide `ICommandRouter` mock (NSubstitute)
+  - [x]12.2 Configure mock `ICommandRouter.RouteCommandAsync` to return `new CommandProcessingResult(true)`
+  - [x]12.3 Add test: `Handle_ValidCommand_RoutesToActor` -- verify `_commandRouter.RouteCommandAsync` called with correct command
+  - [x]12.4 Add test: `Handle_RouterThrows_PropagatesException` -- verify exception propagation (not swallowed)
+  - [x]12.5 Verify ALL existing SubmitCommandHandler tests still pass (status write, archive write behavior unchanged)
 
-- [ ] Task 13: Write integration tests (AC: #1, #2, #6)
-  - [ ] 13.1 Create `FakeAggregateActor` in `Testing/Fakes/` implementing `IAggregateActor` -- records invocations for assertion, returns configurable results
-  - [ ] 13.2 In `JwtAuthenticatedWebApplicationFactory`, override actor registration to use `FakeAggregateActor` instead of real DAPR actor
-  - [ ] 13.3 `PostCommands_ValidCommand_RoutesToActor` -- submit command via POST, verify FakeAggregateActor received it with correct fields
-  - [ ] 13.4 `PostCommands_ValidCommand_ActorReceivesCorrectTenant` -- verify tenant propagated
-  - [ ] 13.5 `PostCommands_ValidCommand_ActorReceivesCorrectAggregateId` -- verify aggregateId propagated
-  - [ ] 13.6 `PostCommands_ValidCommand_Returns202Accepted` -- verify existing 202 behavior unchanged
-  - [ ] 13.7 `PostCommands_ValidCommand_ActorReceivesCommandEnvelope` -- verify SubmitCommand -> CommandEnvelope conversion
-  - [ ] 13.8 `PostCommands_ActorThrows_Returns500ProblemDetails` -- verify exception propagation to GlobalExceptionHandler
-  - [ ] 13.9 Verify all existing integration tests still pass (authentication, authorization, validation, replay, status)
+- [x]Task 13: Write integration tests (AC: #1, #2, #6)
+  - [x]13.1 Create `FakeAggregateActor` in `Testing/Fakes/` implementing `IAggregateActor` -- records invocations for assertion, returns configurable results
+  - [x]13.2 In `JwtAuthenticatedWebApplicationFactory`, override actor registration to use `FakeAggregateActor` instead of real DAPR actor
+  - [x]13.3 `PostCommands_ValidCommand_RoutesToActor` -- submit command via POST, verify FakeAggregateActor received it with correct fields
+  - [x]13.4 `PostCommands_ValidCommand_ActorReceivesCorrectTenant` -- verify tenant propagated
+  - [x]13.5 `PostCommands_ValidCommand_ActorReceivesCorrectAggregateId` -- verify aggregateId propagated
+  - [x]13.6 `PostCommands_ValidCommand_Returns202Accepted` -- verify existing 202 behavior unchanged
+  - [x]13.7 `PostCommands_ValidCommand_ActorReceivesCommandEnvelope` -- verify SubmitCommand -> CommandEnvelope conversion
+  - [x]13.8 `PostCommands_ActorThrows_Returns500ProblemDetails` -- verify exception propagation to GlobalExceptionHandler
+  - [x]13.9 Verify all existing integration tests still pass (authentication, authorization, validation, replay, status)
 
-- [ ] Task 14: Verify CommandEnvelope DAPR serialization (AC: #2)
-  - [ ] 14.1 Write a unit test that serializes `CommandEnvelope` to JSON and deserializes back -- verify roundtrip fidelity
-  - [ ] 14.2 Verify `byte[] Payload` serializes as base64 string and deserializes correctly
-  - [ ] 14.3 Verify nullable `Extensions` dictionary roundtrips correctly
-  - [ ] 14.4 This catches serialization issues that would only surface at DAPR actor invocation time
+- [x]Task 14: Verify CommandEnvelope DAPR serialization (AC: #2)
+  - [x]14.1 Write a unit test that serializes `CommandEnvelope` to JSON and deserializes back -- verify roundtrip fidelity
+  - [x]14.2 Verify `byte[] Payload` serializes as base64 string and deserializes correctly
+  - [x]14.3 Verify nullable `Extensions` dictionary roundtrips correctly
+  - [x]14.4 This catches serialization issues that would only surface at DAPR actor invocation time
 
-- [ ] Task 15: Run all tests and verify zero regressions (AC: #6)
-  - [ ] 15.1 Run all existing tests -- zero regressions expected
-  - [ ] 15.2 Run new tests -- all must pass
-  - [ ] 15.3 Verify total test count (estimated: ~346 existing + ~25 new = ~371)
+- [x]Task 15: Run all tests and verify zero regressions (AC: #6)
+  - [x]15.1 Run all existing tests -- zero regressions expected
+  - [x]15.2 Run new tests -- all must pass
+  - [x]15.3 Verify total test count (estimated: ~346 existing + ~25 new = ~371)
 
 ## Dev Notes
 
@@ -685,10 +685,69 @@ Testing -> Contracts + Server
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+None
+
 ### Completion Notes List
 
+- All 6 prerequisites verified (Task 0): existing tests pass (413), all required types exist, DAPR packages present
+- Created IAggregateActor interface, AggregateActor stub, CommandProcessingResult record in Server/Actors/ (Tasks 1-2)
+- Created ICommandRouter, CommandRouter, SubmitCommandExtensions in Server/Commands/ (Tasks 3-4)
+- Modified SubmitCommandHandler to call CommandRouter after advisory status/archive writes (Task 5)
+- Created AddEventStoreServer() DI extension in Server/Configuration/ (Task 6)
+- Updated Program.cs with AddEventStoreServer() and MapActorsHandlers() (Task 7)
+- Task 8: Chose pattern where AddEventStoreServer() is called separately from AddCommandApi() in Program.cs, keeping clean separation between API and Server concerns
+- Created FakeAggregateActor, FakeCommandRouter, TestServiceOverrides in Testing/Fakes/ (Tasks 13.1-13.2)
+- Updated 4 integration test WebApplicationFactory instances to override ICommandRouter with FakeCommandRouter
+- All 447 tests pass (34 new tests added): 8 CommandRouter + 4 SubmitCommandExtensions + 3 AggregateActor + 2 SubmitCommandHandler routing + 3 serialization + 5 integration routing + existing 413 tests with ICommandRouter mock updates
+- Zero regressions confirmed across all test projects
+- Code review fixes applied (448 tests pass after +1 new test):
+  - H1: Removed catch-all in FakeCommandRouter that silently swallowed conversion exceptions
+  - H2: Added cancellationToken.ThrowIfCancellationRequested() in CommandRouter before proxy creation
+  - M1: Changed CommandRouter logging from Information to Debug (handler already logs at Information)
+  - M2: Changed AddEventStoreServer() to use TryAddSingleton for idempotent registration
+  - M3: Wrapped integration test actor-throws scenario in try/finally for reliable cleanup
+  - M4: Added ServiceCollectionExtensionsTests.cs to File List
+  - L1: Deleted spurious `nul` file from repo root
+  - L2: Added ToCommandEnvelope_NullCommand_ThrowsArgumentNullException test
+
+### Change Log
+
+- 2026-02-14: Story 3.1 implementation complete -- Command Router & Actor Activation
+- 2026-02-14: Code review fixes -- 8 issues fixed (2 HIGH, 4 MEDIUM, 2 LOW)
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Server/Actors/IAggregateActor.cs
+- src/Hexalith.EventStore.Server/Actors/AggregateActor.cs
+- src/Hexalith.EventStore.Server/Actors/CommandProcessingResult.cs
+- src/Hexalith.EventStore.Server/Commands/ICommandRouter.cs
+- src/Hexalith.EventStore.Server/Commands/CommandRouter.cs
+- src/Hexalith.EventStore.Server/Commands/SubmitCommandExtensions.cs
+- src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+- src/Hexalith.EventStore.Testing/Fakes/FakeAggregateActor.cs
+- src/Hexalith.EventStore.Testing/Fakes/FakeCommandRouter.cs
+- src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/CommandRouterTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandExtensionsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerRoutingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/CommandRoutingIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Serialization/CommandEnvelopeSerializationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/ServiceCollectionExtensionsTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
+- src/Hexalith.EventStore.CommandApi/Program.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Helpers/JwtAuthenticatedWebApplicationFactory.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/AuthorizationIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/LoggingBehaviorIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/JwtAuthenticationIntegrationTests.cs

@@ -68,6 +68,15 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
         // Store authorized tenant for downstream use
         HttpContext.Items["AuthorizedTenant"] = request.Tenant;
 
+        // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
+        string userId = User.FindFirst("sub")?.Value ?? "unknown";
+        if (userId == "unknown")
+        {
+            logger.LogWarning(
+                "JWT 'sub' claim missing for command submission. Using 'unknown' as UserId. CorrelationId={CorrelationId}. Check identity provider configuration.",
+                correlationId);
+        }
+
         var command = new SubmitCommand(
             Tenant: request.Tenant,
             Domain: request.Domain,
@@ -75,6 +84,7 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
             CommandType: request.CommandType,
             Payload: JsonSerializer.SerializeToUtf8Bytes(request.Payload),
             CorrelationId: correlationId,
+            UserId: userId,
             Extensions: request.Extensions);
 
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);

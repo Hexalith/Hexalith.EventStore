@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -16,13 +17,22 @@ using Shouldly;
 
 public class SubmitCommandHandlerStatusTests
 {
+    private static ICommandRouter CreateMockRouter()
+    {
+        var router = Substitute.For<ICommandRouter>();
+        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(true));
+        return router;
+    }
+
     private static SubmitCommand CreateTestCommand(string? correlationId = null) => new(
         Tenant: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",
         CommandType: "CreateOrder",
         Payload: [1, 2, 3],
-        CorrelationId: correlationId ?? Guid.NewGuid().ToString());
+        CorrelationId: correlationId ?? Guid.NewGuid().ToString(),
+        UserId: "test-user");
 
     [Fact]
     public async Task Handle_ValidCommand_WritesReceivedStatusToStore()
@@ -30,7 +40,7 @@ public class SubmitCommandHandlerStatusTests
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
-        var handler = new SubmitCommandHandler(statusStore, archiveStore, NullLogger<SubmitCommandHandler>.Instance);
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
         SubmitCommand command = CreateTestCommand();
 
         // Act
@@ -58,7 +68,7 @@ public class SubmitCommandHandlerStatusTests
             .ThrowsAsync(new InvalidOperationException("Store unavailable"));
 
         var archiveStore = new InMemoryCommandArchiveStore();
-        var handler = new SubmitCommandHandler(mockStore, archiveStore, NullLogger<SubmitCommandHandler>.Instance);
+        var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
         SubmitCommand command = CreateTestCommand();
 
         // Act
@@ -83,7 +93,7 @@ public class SubmitCommandHandlerStatusTests
 
         var archiveStore = new InMemoryCommandArchiveStore();
         var logger = Substitute.For<ILogger<SubmitCommandHandler>>();
-        var handler = new SubmitCommandHandler(mockStore, archiveStore, logger);
+        var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), logger);
         SubmitCommand command = CreateTestCommand();
 
         // Act

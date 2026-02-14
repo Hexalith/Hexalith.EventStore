@@ -65,6 +65,7 @@ public class ConcurrencyConflictException : Exception
     /// <summary>
     /// Optional identifier for the source of the conflict (e.g., "StateStore", "ActorReentrancy").
     /// Provides future extensibility for distinguishing conflict origins without breaking changes.
+    /// Reserved for Epic 3 (Story 3.7) when ETag-based concurrency is implemented. Currently unused in v1.
     /// </summary>
     public string? ConflictSource { get; }
 }

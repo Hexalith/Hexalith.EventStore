@@ -383,6 +383,27 @@ public class AuthorizationIntegrationTests
             });
             builder.ConfigureServices(services =>
             {
+                // Replace DAPR-dependent services with test fakes
+                ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
+                    d => d.ServiceType == typeof(Server.Commands.ICommandStatusStore));
+                if (statusDescriptor is not null)
+                {
+                    services.Remove(statusDescriptor);
+                }
+
+                services.AddSingleton<Server.Commands.ICommandStatusStore>(new Testing.Fakes.InMemoryCommandStatusStore());
+
+                ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
+                    d => d.ServiceType == typeof(Server.Commands.ICommandArchiveStore));
+                if (archiveDescriptor is not null)
+                {
+                    services.Remove(archiveDescriptor);
+                }
+
+                services.AddSingleton<Server.Commands.ICommandArchiveStore>(new Testing.Fakes.InMemoryCommandArchiveStore());
+
+                Testing.Fakes.TestServiceOverrides.ReplaceCommandRouter(services);
+
                 services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }

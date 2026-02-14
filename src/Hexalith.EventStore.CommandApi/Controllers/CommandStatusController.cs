@@ -31,6 +31,7 @@ public class CommandStatusController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
     public async Task<IActionResult> GetStatus(string correlationId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(correlationId);

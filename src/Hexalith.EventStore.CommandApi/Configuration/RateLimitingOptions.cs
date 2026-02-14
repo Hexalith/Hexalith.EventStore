@@ -58,6 +58,12 @@ public class ValidateRateLimitingOptions : IValidateOptions<RateLimitingOptions>
                 "EventStore:RateLimiting:SegmentsPerWindow must be at least 1.");
         }
 
+        if (options.QueueLimit < 0)
+        {
+            return ValidateOptionsResult.Fail(
+                "EventStore:RateLimiting:QueueLimit must be 0 or greater.");
+        }
+
         return ValidateOptionsResult.Success;
     }
 }

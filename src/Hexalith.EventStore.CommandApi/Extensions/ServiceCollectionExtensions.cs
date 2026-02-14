@@ -151,9 +151,10 @@ public static class CommandApiServiceCollectionExtensions
                 catch (Exception ex)
                 {
                     // Fallback: if OnRejected throws, ASP.NET Core returns bare 500. Write minimal 429 instead.
-                    ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
+                    // Use GetService (not GetRequiredService) to avoid a secondary throw if DI is unavailable.
+                    ILogger? logger = context.HttpContext.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.RateLimiting");
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
-                    logger.LogError(ex, "OnRejected callback failed: CorrelationId={CorrelationId}", correlationId);
+                    logger?.LogError(ex, "OnRejected callback failed: CorrelationId={CorrelationId}", correlationId);
 
                     context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                     context.HttpContext.Response.ContentType = "application/problem+json";

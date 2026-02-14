@@ -25,6 +25,9 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
     /// <summary>Gets the shared InMemoryCommandArchiveStore instance used across all tests.</summary>
     public InMemoryCommandArchiveStore ArchiveStore { get; } = new();
 
+    /// <summary>Gets the shared FakeCommandRouter instance used across all tests.</summary>
+    public FakeCommandRouter Router { get; } = new() { FakeActor = new FakeAggregateActor() };
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -62,6 +65,9 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
             }
 
             services.AddSingleton<ICommandArchiveStore>(ArchiveStore);
+
+            // Replace CommandRouter with fake (no DAPR actor infrastructure needed)
+            TestServiceOverrides.ReplaceCommandRouter(services, Router);
         });
     }
 }
