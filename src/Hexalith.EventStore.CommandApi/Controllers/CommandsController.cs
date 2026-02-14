@@ -59,7 +59,7 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
             return CreateForbiddenProblemDetails("No tenant authorization claims found. Access denied.", correlationId, request.Tenant);
         }
 
-        if (!tenantClaims.Any(t => string.Equals(t, request.Tenant, StringComparison.OrdinalIgnoreCase)))
+        if (!tenantClaims.Any(t => string.Equals(t, request.Tenant, StringComparison.Ordinal)))
         {
             LogTenantAuthorizationFailure(correlationId, request.Tenant, request.CommandType, request.Domain, "Tenant not authorized");
             return CreateForbiddenProblemDetails($"Not authorized to submit commands for tenant '{request.Tenant}'.", correlationId, request.Tenant);

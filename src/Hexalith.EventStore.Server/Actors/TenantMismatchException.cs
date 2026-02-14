@@ -14,6 +14,8 @@ public class TenantMismatchException : InvalidOperationException
     public TenantMismatchException(string commandTenant, string actorTenant)
         : base($"TenantMismatch: command tenant '{commandTenant}' does not match actor tenant '{actorTenant}'")
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(commandTenant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorTenant);
         CommandTenant = commandTenant;
         ActorTenant = actorTenant;
     }

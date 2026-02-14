@@ -1,6 +1,6 @@
 # Story 3.3: Tenant Validation at Actor Level
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -675,6 +675,15 @@ None
 - Added 10 TenantValidator unit tests covering: matching tenant, mismatch, case sensitivity, null/empty guards, malformed actor IDs
 - Added 7 AggregateActor tenant validation tests covering: rejection result, no step 3-5 execution, idempotency caching, SaveStateAsync, matching tenant proceeds, duplicate rejection caching, error message content
 - All 478 tests pass (48 Testing + 147 Contracts + 173 Server + 110 Integration), 17 new tests added
+
+### Code Review Fixes Applied
+
+- **[H1] Fixed case-sensitivity mismatch (SECURITY):** Changed `CommandsController.cs` tenant claim comparison from `OrdinalIgnoreCase` to `Ordinal` to match `TenantValidator`'s case-sensitive comparison. AggregateIdentity enforces lowercase tenants, so case-insensitive matching at the controller was inconsistent with actor-level enforcement.
+- **[H2] Added guard clauses to TenantMismatchException:** Constructor now validates `commandTenant` and `actorTenant` with `ArgumentException.ThrowIfNullOrWhiteSpace()`, matching the pattern used in `TenantValidator`.
+- **[M1] Accepted as design limitation:** `TenantValidator.Validate()` log doesn't include CorrelationId (validator has no access to it). AC #3 is satisfied by the actor-level catch block log which includes CorrelationId.
+- **[M2] Test count note:** Story estimated ~21 new tests; 17 were added. Difference is because UserId flow tests (Tasks 8.4-8.6) were covered by updating existing tests rather than creating new ones. Coverage is adequate.
+- **[M3] ArchivedCommandExtensions.ToSubmitCommand() hardcodes UserId="system":** Documented limitation -- replayed commands lose original UserId because ArchivedCommand doesn't store it. Future story should add UserId to ArchivedCommand for audit trail preservation.
+- All 478 tests pass after review fixes
 
 ### File List
 
