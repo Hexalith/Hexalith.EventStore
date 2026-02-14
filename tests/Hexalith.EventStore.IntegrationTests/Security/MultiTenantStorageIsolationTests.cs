@@ -128,7 +128,7 @@ public class MultiTenantStorageIsolationTests
 
         // Act - attempt to read tenant-b's events from tenant-a's state manager
         var identityBFromA = new AggregateIdentity("tenant-b", "orders", "order-001");
-        object? stateFromA = await readerA.RehydrateAsync(identityBFromA);
+        RehydrationResult? stateFromA = await readerA.RehydrateAsync(identityBFromA);
 
         // Assert - tenant-a's state manager has no data for tenant-b
         stateFromA.ShouldBeNull();
@@ -198,21 +198,21 @@ public class MultiTenantStorageIsolationTests
         await stateManagerB.SaveStateAsync();
 
         // Assert - each tenant's reader only sees its own events
-        object? stateA = await readerA.RehydrateAsync(identityA);
-        var eventsA = stateA.ShouldBeOfType<List<EventEnvelope>>();
-        eventsA.Count.ShouldBe(2);
-        eventsA.ShouldAllBe(e => e.TenantId == "tenant-a");
+        RehydrationResult? stateA = await readerA.RehydrateAsync(identityA);
+        stateA.ShouldNotBeNull();
+        stateA.Events.Count.ShouldBe(2);
+        stateA.Events.ShouldAllBe(e => e.TenantId == "tenant-a");
 
-        object? stateB = await readerB.RehydrateAsync(identityB);
-        var eventsB = stateB.ShouldBeOfType<List<EventEnvelope>>();
-        eventsB.Count.ShouldBe(1);
-        eventsB.ShouldAllBe(e => e.TenantId == "tenant-b");
+        RehydrationResult? stateB = await readerB.RehydrateAsync(identityB);
+        stateB.ShouldNotBeNull();
+        stateB.Events.Count.ShouldBe(1);
+        stateB.Events.ShouldAllBe(e => e.TenantId == "tenant-b");
 
         // Cross-tenant reads return null
-        object? crossA = await readerA.RehydrateAsync(identityB);
+        RehydrationResult? crossA = await readerA.RehydrateAsync(identityB);
         crossA.ShouldBeNull();
 
-        object? crossB = await readerB.RehydrateAsync(identityA);
+        RehydrationResult? crossB = await readerB.RehydrateAsync(identityA);
         crossB.ShouldBeNull();
     }
 
@@ -264,14 +264,14 @@ public class MultiTenantStorageIsolationTests
         await stateManagerA.SaveStateAsync();
 
         // Act - tenant-b attempts to read tenant-a's events
-        object? stateFromB = await readerB.RehydrateAsync(identityA);
+        RehydrationResult? stateFromB = await readerB.RehydrateAsync(identityA);
 
         // Assert
         stateFromB.ShouldBeNull();
 
         // Also verify using tenant-b's identity but same aggregate name
         var identityBSameName = new AggregateIdentity("tenant-b", "orders", "order-001");
-        object? stateFromBSameName = await readerB.RehydrateAsync(identityBSameName);
+        RehydrationResult? stateFromBSameName = await readerB.RehydrateAsync(identityBSameName);
         stateFromBSameName.ShouldBeNull();
     }
 }

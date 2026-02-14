@@ -9,7 +9,9 @@ using Hexalith.EventStore.Contracts.Identity;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Reads events from the actor state store and rehydrates aggregate state by replaying all events.
+/// Reads events from the actor state store and rehydrates aggregate state.
+/// Supports snapshot-aware rehydration: when a snapshot is provided, only tail events
+/// after the snapshot sequence are loaded (Story 3.10).
 /// Created per-call (not DI-registered) -- same pattern as IdempotencyChecker and TenantValidator.
 /// </summary>
 public class EventStreamReader(
@@ -17,7 +19,7 @@ public class EventStreamReader(
     ILogger<EventStreamReader> logger) : IEventStreamReader
 {
     /// <inheritdoc/>
-    public async Task<object?> RehydrateAsync(AggregateIdentity identity)
+    public async Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
 
@@ -38,8 +40,25 @@ public class EventStreamReader(
 
         if (!metadataResult.HasValue)
         {
+            // AC #3 / AC #8: new aggregate with no events
+            if (snapshot is not null)
+            {
+                // Snapshot exists but no events -- return snapshot state directly
+                sw.Stop();
+                logger.LogDebug(
+                    "Rehydration complete (snapshot-only, no events): {ElapsedMs}ms for {ActorId}",
+                    sw.ElapsedMilliseconds,
+                    identity.ActorId);
+
+                return new RehydrationResult(
+                    SnapshotState: snapshot.State,
+                    Events: [],
+                    LastSnapshotSequence: snapshot.SequenceNumber,
+                    CurrentSequence: snapshot.SequenceNumber);
+            }
+
             logger.LogDebug("New aggregate detected: no events found for {ActorId}", identity.ActorId);
-            return null; // AC #1: new aggregate
+            return null; // New aggregate, no snapshot, no events
         }
 
         AggregateMetadata metadata = metadataResult.Value;
@@ -49,11 +68,46 @@ public class EventStreamReader(
                 $"Invalid aggregate metadata: CurrentSequence={metadata.CurrentSequence} for {identity.ActorId}");
         }
 
-        // Load all events from sequence 1 to currentSequence using parallel reads (F5: NFR6 performance)
-        string keyPrefix = identity.EventStreamKeyPrefix;
-        int eventCount = checked((int)metadata.CurrentSequence);
+        long currentSequence = metadata.CurrentSequence;
+        long lastSnapshotSequence = snapshot?.SequenceNumber ?? 0;
 
-        var loadTasks = Enumerable.Range(1, eventCount)
+        // Determine read range based on snapshot presence
+        int startSequence;
+        int eventCount;
+
+        if (snapshot is not null)
+        {
+            // AC #8: snapshot at current sequence -- no tail events needed
+            if (snapshot.SequenceNumber >= currentSequence)
+            {
+                sw.Stop();
+                logger.LogDebug(
+                    "Rehydration complete (snapshot at current sequence, no tail events): {ElapsedMs}ms for {ActorId}",
+                    sw.ElapsedMilliseconds,
+                    identity.ActorId);
+
+                return new RehydrationResult(
+                    SnapshotState: snapshot.State,
+                    Events: [],
+                    LastSnapshotSequence: lastSnapshotSequence,
+                    CurrentSequence: currentSequence);
+            }
+
+            // AC #4: read only tail events from snapshot.SequenceNumber + 1
+            startSequence = checked((int)(snapshot.SequenceNumber + 1));
+            eventCount = checked((int)(currentSequence - snapshot.SequenceNumber));
+        }
+        else
+        {
+            // AC #3: no snapshot, full replay from sequence 1
+            startSequence = 1;
+            eventCount = checked((int)currentSequence);
+        }
+
+        // Load events using parallel reads (F5: NFR6 performance)
+        string keyPrefix = identity.EventStreamKeyPrefix;
+
+        var loadTasks = Enumerable.Range(startSequence, eventCount)
             .Select(async seq =>
             {
                 ConditionalValue<EventEnvelope> eventResult;
@@ -79,21 +133,27 @@ public class EventStreamReader(
 
         var loadedEvents = await Task.WhenAll(loadTasks).ConfigureAwait(false);
 
-        // Sort by sequence to ensure strict order
+        // Sort by sequence to ensure strict order (AC #9)
         var events = loadedEvents
             .OrderBy(x => x.Sequence)
             .Select(x => x.Event)
             .ToList();
 
         sw.Stop();
+
+        // Log rehydration mode (AC #7 logging)
+        string mode = snapshot is not null ? "snapshot+tail" : "full-replay";
         logger.LogDebug(
-            "State rehydrated: {EventCount} events in {ElapsedMs}ms for {ActorId}",
+            "State rehydrated ({Mode}): {EventCount} events in {ElapsedMs}ms for {ActorId}",
+            mode,
             events.Count,
             sw.ElapsedMilliseconds,
             identity.ActorId);
 
-        // F4: For Story 3.4, return the list of events as the "state"
-        // Stories 3.5+ will apply domain-specific state reconstruction
-        return events;
+        return new RehydrationResult(
+            SnapshotState: snapshot?.State,
+            Events: events,
+            LastSnapshotSequence: lastSnapshotSequence,
+            CurrentSequence: currentSequence);
     }
 }
