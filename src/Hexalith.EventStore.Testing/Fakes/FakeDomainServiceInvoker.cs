@@ -56,7 +56,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker
     }
 
     /// <inheritdoc/>
-    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState)
+    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         _invocations.Add(command);
@@ -66,7 +66,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker
             return Task.FromResult(commandTypeResult);
         }
 
-        string tenantDomainKey = $"{command.AggregateIdentity.TenantId}:{command.AggregateIdentity.Domain}";
+        string tenantDomainKey = $"{command.TenantId}:{command.Domain}";
         if (_tenantDomainResponses.TryGetValue(tenantDomainKey, out DomainResult? tenantDomainResult))
         {
             return Task.FromResult(tenantDomainResult);

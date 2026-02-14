@@ -9,6 +9,39 @@ public class DomainServiceNotFoundException : InvalidOperationException
     /// <summary>
     /// Initializes a new instance of the <see cref="DomainServiceNotFoundException"/> class.
     /// </summary>
+    public DomainServiceNotFoundException()
+        : base("No domain service registered.")
+    {
+        TenantId = string.Empty;
+        Domain = string.Empty;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DomainServiceNotFoundException"/> class.
+    /// </summary>
+    /// <param name="message">The error message.</param>
+    public DomainServiceNotFoundException(string message)
+        : base(message)
+    {
+        TenantId = string.Empty;
+        Domain = string.Empty;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DomainServiceNotFoundException"/> class.
+    /// </summary>
+    /// <param name="message">The error message.</param>
+    /// <param name="innerException">The inner exception.</param>
+    public DomainServiceNotFoundException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+        TenantId = string.Empty;
+        Domain = string.Empty;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DomainServiceNotFoundException"/> class.
+    /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="domain">The domain name.</param>
     public DomainServiceNotFoundException(string tenantId, string domain)

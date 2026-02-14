@@ -18,13 +18,13 @@ public class DaprDomainServiceInvoker(
     ILogger<DaprDomainServiceInvoker> logger) : IDomainServiceInvoker
 {
     /// <inheritdoc/>
-    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState)
+    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
 
         // Resolve domain service registration
         DomainServiceRegistration? registration = await resolver
-            .ResolveAsync(command.TenantId, command.Domain)
+            .ResolveAsync(command.TenantId, command.Domain, cancellationToken)
             .ConfigureAwait(false);
 
         if (registration is null)
@@ -48,7 +48,8 @@ public class DaprDomainServiceInvoker(
             .InvokeMethodAsync<DomainServiceRequest, DomainResult>(
                 registration.AppId,
                 registration.MethodName,
-                request)
+                request,
+                cancellationToken)
             .ConfigureAwait(false);
 
         logger.LogInformation(
