@@ -1,6 +1,6 @@
 # Story 4.5: Dead-Letter Routing with Full Context
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -236,6 +236,13 @@ So that I can diagnose and recover from failures (FR8).
   - [x] 13.4 All new dead-letter routing integration tests pass
   - [x] 13.5 All new fake dead-letter publisher tests pass
   - [x] 13.6 All existing Story 4.1-4.4 tests still pass
+
+### Review Follow-ups (AI)
+
+- [x] AI-Review (HIGH): Included `errorMessage` in successful dead-letter lifecycle warning logs (`src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs`).
+- [x] AI-Review (MEDIUM): Added explicit OpenTelemetry verification for `EventStore.Events.PublishDeadLetter` activity and required tags (`tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterPublisherTests.cs`).
+- [x] AI-Review (MEDIUM): Aligned `FakeDeadLetterPublisher` cancellation behavior with `IDeadLetterPublisher` contract by honoring canceled tokens and adding cancellation-path test coverage (`src/Hexalith.EventStore.Testing/Fakes/FakeDeadLetterPublisher.cs`, `tests/Hexalith.EventStore.Server.Tests/Events/FakeDeadLetterPublisherTests.cs`).
+- [x] AI-Review (MEDIUM): Reconciled review traceability by recording that the active git working tree contains multi-story in-flight changes (including Story 5.x and DAPR security config files) outside Story 4.5 scope.
 
 ## Dev Notes
 
@@ -646,6 +653,8 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-14: Story 4.5 implementation complete -- all 14 tasks done, 879 tests pass
+- 2026-02-14: Senior code review completed; status moved to in-progress with 4 follow-up actions (1 HIGH, 3 MEDIUM)
+- 2026-02-14: Review follow-ups auto-fixed; targeted dead-letter test suite re-run clean; status moved to done
 
 ### File List
 
@@ -670,3 +679,39 @@ Claude Opus 4.6
 - `tests/Hexalith.EventStore.Server.Tests/Actors/MultiTenantPublicationTests.cs` -- added FakeDeadLetterPublisher
 - `tests/Hexalith.EventStore.Server.Tests/Events/AtLeastOnceDeliveryTests.cs` -- added IDeadLetterPublisher mock
 - `tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs` -- added IDeadLetterPublisher mock
+
+## Senior Developer Review (AI)
+
+### Outcome
+
+**Approved after fixes**.
+
+### Findings
+
+1. **[HIGH] AC #10 logging completeness gap on successful dead-letter publication**
+  - **Claim checked:** dead-letter publication success warning log includes `errorMessage` and full context.
+  - **Evidence:** `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs` success log template includes correlation/tenant/domain/aggregate/command/failureStage/exceptionType/topic but omits `ErrorMessage`.
+  - **Risk:** Operator triage loses primary failure message in success-path dead-letter logs; AC #10 is only partially satisfied.
+
+2. **[MEDIUM] Task 9.7 marked done but no explicit telemetry assertion exists**
+  - **Claim checked:** `PublishDeadLetter_Success_CreatesOpenTelemetryActivity` implemented and validating tags.
+  - **Evidence:** `tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterPublisherTests.cs` contains no test asserting `EventStore.Events.PublishDeadLetter` activity creation or required tags.
+  - **Risk:** Telemetry regressions can ship undetected while story task remains marked complete.
+
+3. **[MEDIUM] Test fake contract drift for cancellation semantics**
+  - **Claim checked:** `IDeadLetterPublisher` cancellation contract consistency across implementations.
+  - **Evidence:** `src/Hexalith.EventStore.Server/Events/IDeadLetterPublisher.cs` documents `OperationCanceledException` behavior; `src/Hexalith.EventStore.Testing/Fakes/FakeDeadLetterPublisher.cs` does not observe canceled tokens and always returns `Task<bool>`.
+  - **Risk:** Tests can mask cancellation-path bugs and diverge from production behavior.
+
+4. **[MEDIUM] Git/story traceability discrepancy during review**
+  - **Claim checked:** Story `File List` coverage vs active git changes.
+  - **Evidence:** additional changed files outside Story 4.5 scope are present in git (e.g., `deploy/dapr/accesscontrol.yaml`, `tests/Hexalith.EventStore.Server.Tests/Security/AccessControlPolicyTests.cs`, and Story 5.x artifact files) but are not reconciled in this story’s record.
+  - **Risk:** auditability and review isolation degrade; story-level verification confidence drops.
+
+### Validation Snapshot
+
+- Targeted tests executed in this review session: **34 passed, 0 failed**
+  - `DeadLetterPublisherTests.cs`
+  - `DeadLetterRoutingTests.cs`
+  - `DeadLetterMessageTests.cs`
+  - `FakeDeadLetterPublisherTests.cs`

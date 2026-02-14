@@ -284,6 +284,42 @@ public class AccessControlPolicyTests
             "Local pub/sub publishingScopes must explicitly deny sample publishing access");
     }
 
+    // --- Production dead-letter scoping (AC #12 consistency) ---
+
+    [Fact]
+    public void ProductionPubSubYaml_DeadLetterTopics_ScopedToCommandApiOnly()
+    {
+        // AC #12: dead-letter scoping must be consistent across local and production.
+        // Production configs restrict dead-letter access via component-level scoping.
+        string rabbitContent = File.ReadAllText(ProductionPubSubRabbitMqPath);
+        rabbitContent.ShouldContain("enableDeadLetter", customMessage:
+            "Production RabbitMQ pub/sub must have dead-letter enabled");
+        rabbitContent.ShouldContain("deadLetterTopic", customMessage:
+            "Production RabbitMQ pub/sub must configure a dead-letter topic");
+        VerifyComponentScopedToCommandApi(rabbitContent, "production RabbitMQ pub/sub (dead-letter check)");
+
+        string kafkaContent = File.ReadAllText(ProductionPubSubKafkaPath);
+        kafkaContent.ShouldContain("enableDeadLetter", customMessage:
+            "Production Kafka pub/sub must have dead-letter enabled");
+        kafkaContent.ShouldContain("deadLetterTopic", customMessage:
+            "Production Kafka pub/sub must configure a dead-letter topic");
+        VerifyComponentScopedToCommandApi(kafkaContent, "production Kafka pub/sub (dead-letter check)");
+    }
+
+    // --- Namespace configuration validation ---
+
+    [Fact]
+    public void AccessControlYaml_HasNamespace_IdentityConfigured()
+    {
+        string localContent = File.ReadAllText(LocalAccessControlPath);
+        localContent.ShouldContain("namespace:", customMessage:
+            "Local access control must configure namespace for SPIFFE identity scoping");
+
+        string prodContent = File.ReadAllText(ProductionAccessControlPath);
+        prodContent.ShouldContain("namespace:", customMessage:
+            "Production access control must configure namespace for SPIFFE identity scoping");
+    }
+
     // --- Task 5.13: Domain service zero-infrastructure-access ---
 
     [Fact]

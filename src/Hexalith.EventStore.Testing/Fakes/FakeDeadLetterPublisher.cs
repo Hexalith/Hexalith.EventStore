@@ -23,6 +23,7 @@ public sealed class FakeDeadLetterPublisher : IDeadLetterPublisher
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(message);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (_failureMessage is not null)
         {

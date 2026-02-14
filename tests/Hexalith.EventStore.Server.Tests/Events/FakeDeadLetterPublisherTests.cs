@@ -165,6 +165,21 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
+    public async Task PublishDeadLetter_CanceledToken_ThrowsOperationCanceledException()
+    {
+        // Arrange
+        var publisher = new FakeDeadLetterPublisher();
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        var message = CreateTestDeadLetterMessage();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act / Assert
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => publisher.PublishDeadLetterAsync(identity, message, cts.Token));
+    }
+
+    [Fact]
     public async Task AssertNoDeadLetters_ThrowsWhenMessagesExist()
     {
         // Arrange

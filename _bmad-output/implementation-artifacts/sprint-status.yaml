@@ -84,20 +84,20 @@ development_status:
   4-2-per-tenant-per-domain-topic-isolation: done
   4-3-at-least-once-delivery-and-dapr-retry-policies: done
   4-4-persist-then-publish-resilience: done
-  4-5-dead-letter-routing-with-full-context: review
+  4-5-dead-letter-routing-with-full-context: done
   epic-4-retrospective: optional
 
   # Epic 5: Multi-Tenant Security & Access Control Enforcement
   epic-5: in-progress
-  5-1-dapr-access-control-policies: review
+  5-1-dapr-access-control-policies: in-progress
   5-2-data-path-isolation-verification: ready-for-dev
   5-3-pubsub-topic-isolation-enforcement: ready-for-dev
   5-4-security-audit-logging-and-payload-protection: ready-for-dev
   epic-5-retrospective: optional
 
   # Epic 6: Observability, Health & Operational Readiness
-  epic-6: backlog
-  6-1-end-to-end-opentelemetry-trace-instrumentation: backlog
+  epic-6: in-progress
+  6-1-end-to-end-opentelemetry-trace-instrumentation: ready-for-dev
   6-2-structured-logging-completeness-verification: backlog
   6-3-dead-letter-to-origin-tracing: backlog
   6-4-health-check-endpoints: backlog
