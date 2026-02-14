@@ -9,6 +9,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 
@@ -43,9 +44,10 @@ public class AggregateActorTests
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
+        var commandStatusStore = Substitute.For<ICommandStatusStore>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -54,6 +56,10 @@ public class AggregateActorTests
         // Default: domain service returns NoOp
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
+
+        // Default: no pipeline state (fresh command, not a resume)
+        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         return (actor, stateManager, logger, invoker);
     }
@@ -181,8 +187,8 @@ public class AggregateActorTests
         // Act
         await actor.ProcessCommandAsync(envelope);
 
-        // Assert
-        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Assert -- Story 3.11: 2 SaveStateAsync calls for no-op (Processing checkpoint + terminal)
+        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -640,9 +646,9 @@ public class AggregateActorTests
     // === Story 3.7: Event Persistence (Step 5) Tests ===
 
     [Fact]
-    public async Task ProcessCommandAsync_AfterEventPersistence_SaveStateAsyncCalledExactlyOnce()
+    public async Task ProcessCommandAsync_AfterEventPersistence_SaveStateAsyncCalledThreeTimes()
     {
-        // Arrange -- AC #4: atomic commit
+        // Arrange -- Story 3.11: Processing checkpoint + EventsStored atomic commit + terminal commit
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -652,14 +658,14 @@ public class AggregateActorTests
         // Act
         await actor.ProcessCommandAsync(envelope);
 
-        // Assert -- SaveStateAsync called exactly once for atomic commit
-        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Assert -- 3 SaveStateAsync calls: Processing checkpoint, EventsStored+events, terminal
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ProcessCommandAsync_NoOpResult_SaveStateAsyncStillCalled()
     {
-        // Arrange -- no-op still saves (idempotency record)
+        // Arrange -- no-op still saves (idempotency record + pipeline cleanup)
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
@@ -668,8 +674,8 @@ public class AggregateActorTests
         // Act
         await actor.ProcessCommandAsync(envelope);
 
-        // Assert
-        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Assert -- Story 3.11: 2 SaveStateAsync calls for no-op (Processing checkpoint + terminal)
+        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -712,13 +718,27 @@ public class AggregateActorTests
     public async Task ProcessCommandAsync_SaveStateAsyncThrows_ThrowsConcurrencyConflictException()
     {
         // Arrange -- AC #6: concurrency exception handling
+        // Story 3.11: allow Processing checkpoint SaveStateAsync to succeed,
+        // then throw on the EventsStored batch commit
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
 
+        int saveCallCount = 0;
         stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("ETag mismatch")));
+            .Returns(_ =>
+            {
+                saveCallCount++;
+                // First call: Processing checkpoint (succeeds)
+                if (saveCallCount == 1)
+                {
+                    return Task.CompletedTask;
+                }
+
+                // Second call: EventsStored batch (throws -- simulating concurrency conflict)
+                return Task.FromException(new InvalidOperationException("ETag mismatch"));
+            });
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict");
 
@@ -796,15 +816,20 @@ public class AggregateActorTests
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
+        var commandStatusStore = Substitute.For<ICommandStatusStore>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
+
+        // Default: no pipeline state (fresh command, not a resume)
+        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         return (actor, stateManager, logger, invoker, snapshotManager);
     }

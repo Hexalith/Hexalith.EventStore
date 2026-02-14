@@ -333,6 +333,35 @@ public class AggregateIdentityTests
     }
 
     [Fact]
+    public void PipelineKeyPrefix_ReturnsCorrectFormat()
+    {
+        var identity = new AggregateIdentity("acme", "payments", "order-123");
+
+        Assert.Equal("acme:payments:order-123:pipeline:", identity.PipelineKeyPrefix);
+    }
+
+    [Fact]
+    public void PipelineKeyPrefix_IncludesTenantPrefix()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
+        string pipelineKey = identity.PipelineKeyPrefix + "corr-123";
+
+        Assert.Equal("tenant-a:orders:order-001:pipeline:corr-123", pipelineKey);
+        Assert.StartsWith("tenant-a:", pipelineKey);
+    }
+
+    [Fact]
+    public void PipelineKeyPrefix_DifferentTenants_AreDisjoint()
+    {
+        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+
+        Assert.NotEqual(identityA.PipelineKeyPrefix, identityB.PipelineKeyPrefix);
+        Assert.StartsWith("tenant-a:", identityA.PipelineKeyPrefix);
+        Assert.StartsWith("tenant-b:", identityB.PipelineKeyPrefix);
+    }
+
+    [Fact]
     public void AllStateStoreKeys_TenantAAndTenantB_NoOverlap()
     {
         // Task 3.4: tenant A's keys are structurally disjoint from tenant B's keys
@@ -345,6 +374,7 @@ public class AggregateIdentityTests
             identityA.EventStreamKeyPrefix + "1",
             identityA.SnapshotKey,
             identityA.MetadataKey,
+            identityA.PipelineKeyPrefix + "corr-1",
         ];
 
         string[] keysB =
@@ -352,6 +382,7 @@ public class AggregateIdentityTests
             identityB.EventStreamKeyPrefix + "1",
             identityB.SnapshotKey,
             identityB.MetadataKey,
+            identityB.PipelineKeyPrefix + "corr-1",
         ];
 
         // No overlap: no key from A equals any key from B

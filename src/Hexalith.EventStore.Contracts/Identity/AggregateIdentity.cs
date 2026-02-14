@@ -83,6 +83,13 @@ public record AggregateIdentity
     /// </summary>
     public string SnapshotKey => $"{TenantId}:{Domain}:{AggregateId}:snapshot";
 
+    /// <summary>
+    /// Gets the pipeline state key prefix for state machine checkpoints (append correlationId for full key).
+    /// Pattern: {tenant}:{domain}:{aggId}:pipeline: — used by ActorStateMachine to track in-flight
+    /// command lifecycle stages for crash-recovery resume (NFR25, Story 3.11).
+    /// </summary>
+    public string PipelineKeyPrefix => $"{TenantId}:{Domain}:{AggregateId}:pipeline:";
+
     /// <summary>Gets the pub/sub topic in dot-separated form.</summary>
     public string PubSubTopic => $"{TenantId}.{Domain}.events";
 
