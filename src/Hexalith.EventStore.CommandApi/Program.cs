@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddCommandApi();
-builder.Services.AddEventStoreServer();
+builder.Services.AddEventStoreServer(builder.Configuration);
 
 var app = builder.Build();
 
