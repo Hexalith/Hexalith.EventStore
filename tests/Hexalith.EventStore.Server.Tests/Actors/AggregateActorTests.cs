@@ -510,7 +510,7 @@ public class AggregateActorTests
     // === Story 3.5: Domain Service Invocation Tests ===
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainSuccess_ProceedsToStep5()
+    public async Task ProcessCommandAsync_DomainSuccess_PersistsEventsViaStep5()
     {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker) = CreateActorWithMockState();
@@ -522,14 +522,13 @@ public class AggregateActorTests
         // Act
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
-        // Assert
+        // Assert -- Step 5 (EventPersister) writes event to state store
         result.Accepted.ShouldBeTrue();
-        logger.Received().Log(
-            LogLevel.Debug,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("Step 5")),
-            Arg.Any<Exception?>(),
-            Arg.Any<Func<object, Exception?, string>>());
+        result.EventCount.ShouldBe(1);
+        await stateManager.Received().SetStateAsync(
+            Arg.Is<string>(s => s.Contains(":events:")),
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -635,6 +634,157 @@ public class AggregateActorTests
             Arg.Is<object>(o => o.ToString()!.Contains("Domain service result") && o.ToString()!.Contains("Success")),
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    // === Story 3.7: Event Persistence (Step 5) Tests ===
+
+    [Fact]
+    public async Task ProcessCommandAsync_AfterEventPersistence_SaveStateAsyncCalledExactlyOnce()
+    {
+        // Arrange -- AC #4: atomic commit
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- SaveStateAsync called exactly once for atomic commit
+        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_NoOpResult_SaveStateAsyncStillCalled()
+    {
+        // Arrange -- no-op still saves (idempotency record)
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainSuccess_ResultIncludesCorrectEventCount()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[]
+        {
+            new TestEvent(), new TestEvent(), new TestEvent(),
+        });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.EventCount.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_NoOpResult_EventCountIsZero()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.EventCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_SaveStateAsyncThrows_ThrowsConcurrencyConflictException()
+    {
+        // Arrange -- AC #6: concurrency exception handling
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+
+        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("ETag mismatch")));
+
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<Server.Commands.ConcurrencyConflictException>(
+            () => actor.ProcessCommandAsync(envelope));
+        ex.CorrelationId.ShouldBe("corr-conflict");
+        ex.AggregateId.ShouldBe("agg-001");
+    }
+
+    // === Code Review Fix: D3 -- Rejection events persisted ===
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainRejection_PersistsRejectionEventsViaEventPersister()
+    {
+        // Arrange -- D3: rejection events are events, they must be persisted
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- EventPersister should have written rejection event to state store
+        await stateManager.Received().SetStateAsync(
+            Arg.Is<string>(s => s.Contains(":events:")),
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainRejection_ResultIncludesEventCount()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.EventCount.ShouldBe(1);
+    }
+
+    // === Code Review Fix: M2 -- OperationCanceledException passthrough ===
+
+    [Fact]
+    public async Task ProcessCommandAsync_SaveStateAsyncThrowsOperationCanceled_PropagatesDirectly()
+    {
+        // Arrange -- OperationCanceledException should NOT be wrapped as ConcurrencyConflictException
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+
+        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new OperationCanceledException("Shutdown")));
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act & Assert -- should propagate directly, not wrapped
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => actor.ProcessCommandAsync(envelope));
     }
 
     // Test event types for domain invocation tests

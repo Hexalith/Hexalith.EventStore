@@ -6,4 +6,5 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="Accepted">Whether the command was accepted for processing.</param>
 /// <param name="ErrorMessage">Optional error message if the command was rejected.</param>
 /// <param name="CorrelationId">The correlation identifier from the processed command.</param>
-public record CommandProcessingResult(bool Accepted, string? ErrorMessage = null, string? CorrelationId = null);
+/// <param name="EventCount">The number of events persisted (0 for rejections and no-ops).</param>
+public record CommandProcessingResult(bool Accepted, string? ErrorMessage = null, string? CorrelationId = null, int EventCount = 0);

@@ -1,6 +1,6 @@
 # Story 3.7: Event Persistence with Atomic Writes & Sequence Numbers
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -45,24 +45,24 @@ So that event streams are consistent and trustworthy (FR9, FR10, FR16).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and existing artifacts (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Confirm `AggregateActor` has 5-step orchestrator with Step 5 as STUB (Story 3.2)
-  - [ ] 0.3 Confirm `EventEnvelope` and `EventMetadata` records exist in Contracts
-  - [ ] 0.4 Confirm `AggregateIdentity` has `EventStreamKeyPrefix`, `MetadataKey` properties
-  - [ ] 0.5 Confirm `DomainResult` has `Events` property returning `IReadOnlyList<IEventPayload>`
-  - [ ] 0.6 Confirm `IActorStateManager` available on `AggregateActor` via `this.StateManager`
+- [x] Task 0: Verify prerequisites and existing artifacts (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Confirm `AggregateActor` has 5-step orchestrator with Step 5 as STUB (Story 3.2)
+  - [x] 0.3 Confirm `EventEnvelope` and `EventMetadata` records exist in Contracts
+  - [x] 0.4 Confirm `AggregateIdentity` has `EventStreamKeyPrefix`, `MetadataKey` properties
+  - [x] 0.5 Confirm `DomainResult` has `Events` property returning `IReadOnlyList<IEventPayload>`
+  - [x] 0.6 Confirm `IActorStateManager` available on `AggregateActor` via `this.StateManager`
 
-- [ ] Task 1: Create IEventPersister interface (AC: #1, #4)
-  - [ ] 1.1 Create `IEventPersister` interface in `Server/Events/`
-  - [ ] 1.2 Define method: `Task PersistEventsAsync(AggregateIdentity identity, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion)`
-  - [ ] 1.3 This method takes the identity, original command (for metadata extraction), domain result (event payloads), and domain service version
-  - [ ] 1.4 Namespace: `Hexalith.EventStore.Server.Events`
+- [x] Task 1: Create IEventPersister interface (AC: #1, #4)
+  - [x] 1.1 Create `IEventPersister` interface in `Server/Events/`
+  - [x] 1.2 Define method: `Task PersistEventsAsync(AggregateIdentity identity, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion)`
+  - [x] 1.3 This method takes the identity, original command (for metadata extraction), domain result (event payloads), and domain service version
+  - [x] 1.4 Namespace: `Hexalith.EventStore.Server.Events`
 
-- [ ] Task 2: Create EventPersister implementation (AC: #1, #2, #3, #4, #5, #8)
-  - [ ] 2.1 Create `EventPersister` class in `Server/Events/` implementing `IEventPersister`
-  - [ ] 2.2 Constructor: `EventPersister(IActorStateManager stateManager, ILogger<EventPersister> logger)` -- lightweight, created per actor call (same pattern as IdempotencyChecker, EventStreamReader)
-  - [ ] 2.3 `PersistEventsAsync` implementation:
+- [x] Task 2: Create EventPersister implementation (AC: #1, #2, #3, #4, #5, #8)
+  - [x] 2.1 Create `EventPersister` class in `Server/Events/` implementing `IEventPersister`
+  - [x] 2.2 Constructor: `EventPersister(IActorStateManager stateManager, ILogger<EventPersister> logger)` -- lightweight, created per actor call (same pattern as IdempotencyChecker, EventStreamReader)
+  - [x] 2.3 `PersistEventsAsync` implementation:
     - Load current `AggregateMetadata` from `stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)` to get current sequence number
     - If metadata not found, start at sequence 0 (first event will be sequence 1)
     - For each `IEventPayload` in `domainResult.Events`:
@@ -85,60 +85,60 @@ So that event streams are consistent and trustworthy (FR9, FR10, FR16).
     - Update `AggregateMetadata` with new `CurrentSequence` and `LastModified`:
       - `stateManager.SetStateAsync(identity.MetadataKey, new AggregateMetadata(newSequence, DateTimeOffset.UtcNow, null))`
     - Do NOT call `SaveStateAsync()` here -- the caller (AggregateActor) calls it once to commit all changes atomically (D1)
-  - [ ] 2.4 Log at Information level: `"Events persisted: Count={EventCount}, Sequences={FirstSeq}-{LastSeq}, AggregateId={ActorId}, CorrelationId={CorrelationId}"` (rule #9)
-  - [ ] 2.5 Log at Debug level each individual event write: `"Persisting event: Key={Key}, Type={EventTypeName}, Seq={Seq}"`
-  - [ ] 2.6 NEVER log event payload data (enforcement rule #5)
-  - [ ] 2.7 Use `ArgumentNullException.ThrowIfNull()` on all parameters (CA1062)
-  - [ ] 2.8 `ConfigureAwait(false)` on all async calls (CA2007)
+  - [x] 2.4 Log at Information level: `"Events persisted: Count={EventCount}, Sequences={FirstSeq}-{LastSeq}, AggregateId={ActorId}, CorrelationId={CorrelationId}"` (rule #9)
+  - [x] 2.5 Log at Debug level each individual event write: `"Persisting event: Key={Key}, Type={EventTypeName}, Seq={Seq}"`
+  - [x] 2.6 NEVER log event payload data (enforcement rule #5)
+  - [x] 2.7 Use `ArgumentNullException.ThrowIfNull()` on all parameters (CA1062)
+  - [x] 2.8 `ConfigureAwait(false)` on all async calls (CA2007)
 
-- [ ] Task 3: Verify AggregateMetadata record exists (from Story 3.4) (AC: #2, #8)
-  - [ ] 3.1 Confirm `AggregateMetadata` record exists in `Server/Events/` with properties: `long CurrentSequence`, `DateTimeOffset LastModified`, `string? ETag`
-  - [ ] 3.2 If not present, create it (Story 3.4 should have created this)
+- [x] Task 3: Verify AggregateMetadata record exists (from Story 3.4) (AC: #2, #8)
+  - [x] 3.1 Confirm `AggregateMetadata` record exists in `Server/Events/` with properties: `long CurrentSequence`, `DateTimeOffset LastModified`, `string? ETag`
+  - [x] 3.2 If not present, create it (Story 3.4 should have created this)
 
-- [ ] Task 4: Update AggregateActor to integrate EventPersister in Step 5 (AC: #1, #4)
-  - [ ] 4.1 In `AggregateActor.ProcessCommandAsync`, replace the Step 5 STUB with EventPersister call
-  - [ ] 4.2 Create `EventPersister` by resolving `ILogger<EventPersister>` from `host.LoggerFactory.CreateLogger<EventPersister>()` and passing `this.StateManager` (same pattern as IdempotencyChecker, EventStreamReader, TenantValidator)
-  - [ ] 4.3 After domain service invocation (Step 4) returns `DomainResult`:
+- [x] Task 4: Update AggregateActor to integrate EventPersister in Step 5 (AC: #1, #4)
+  - [x] 4.1 In `AggregateActor.ProcessCommandAsync`, replace the Step 5 STUB with EventPersister call
+  - [x] 4.2 Create `EventPersister` by resolving `ILogger<EventPersister>` from `host.LoggerFactory.CreateLogger<EventPersister>()` and passing `this.StateManager` (same pattern as IdempotencyChecker, EventStreamReader, TenantValidator)
+  - [x] 4.3 After domain service invocation (Step 4) returns `DomainResult`:
     - If `domainResult.IsNoOp`, skip persistence (no events to store)
     - Otherwise, call `await eventPersister.PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion).ConfigureAwait(false)`
-  - [ ] 4.4 After ALL state changes (idempotency record + events + metadata), call `await StateManager.SaveStateAsync().ConfigureAwait(false)` ONCE for atomic commit (D1)
-  - [ ] 4.5 Update `CommandProcessingResult` to include event count: add `int EventCount` property
-  - [ ] 4.6 If `SaveStateAsync` throws a concurrency exception (ETag mismatch), catch and rethrow as `ConcurrencyConflictException` from Story 2.8
+  - [x] 4.4 After ALL state changes (idempotency record + events + metadata), call `await StateManager.SaveStateAsync().ConfigureAwait(false)` ONCE for atomic commit (D1)
+  - [x] 4.5 Update `CommandProcessingResult` to include event count: add `int EventCount` property
+  - [x] 4.6 If `SaveStateAsync` throws a concurrency exception (ETag mismatch), catch and rethrow as `ConcurrencyConflictException` from Story 2.8
 
-- [ ] Task 5: Create FakeEventPersister for testing (AC: all)
-  - [ ] 5.1 Create `FakeEventPersister` in `Testing/Fakes/` implementing `IEventPersister`
-  - [ ] 5.2 Store persisted events in an in-memory list for test assertions
-  - [ ] 5.3 Expose `IReadOnlyList<EventEnvelope> PersistedEvents` for verification
-  - [ ] 5.4 Support configurable failure (throw exception on demand) for error path testing
+- [x] Task 5: Create FakeEventPersister for testing (AC: all)
+  - [x] 5.1 Create `FakeEventPersister` in `Testing/Fakes/` implementing `IEventPersister`
+  - [x] 5.2 Store persisted events in an in-memory list for test assertions
+  - [x] 5.3 Expose `IReadOnlyList<EventEnvelope> PersistedEvents` for verification
+  - [x] 5.4 Support configurable failure (throw exception on demand) for error path testing
 
-- [ ] Task 6: Unit tests for EventPersister (AC: #1, #2, #3, #4, #5, #8)
-  - [ ] 6.1 Test: New aggregate -- first event gets sequence 1, metadata created with CurrentSequence=1
-  - [ ] 6.2 Test: Existing aggregate with CurrentSequence=5 -- next event gets sequence 6
-  - [ ] 6.3 Test: Multiple events from single command -- sequences are gapless (e.g., 6, 7, 8)
-  - [ ] 6.4 Test: All 11 metadata fields populated correctly from command and identity (SEC-1)
-  - [ ] 6.5 Test: Event payload serialized to JSON bytes
-  - [ ] 6.6 Test: Event keys follow write-once pattern `{tenant}:{domain}:{aggId}:events:{seq}` (rule #11)
-  - [ ] 6.7 Test: AggregateMetadata updated with new CurrentSequence and LastModified
-  - [ ] 6.8 Test: No-op result (empty events) -- no events persisted, no metadata change
-  - [ ] 6.9 Test: SaveStateAsync NOT called by EventPersister (caller responsibility)
-  - [ ] 6.10 Test: EventPersister never calls RemoveStateAsync on event keys (immutability, FR9)
-  - [ ] 6.11 Test: Rejection events persisted same as regular events (D3 -- everything is an event)
+- [x] Task 6: Unit tests for EventPersister (AC: #1, #2, #3, #4, #5, #8)
+  - [x] 6.1 Test: New aggregate -- first event gets sequence 1, metadata created with CurrentSequence=1
+  - [x] 6.2 Test: Existing aggregate with CurrentSequence=5 -- next event gets sequence 6
+  - [x] 6.3 Test: Multiple events from single command -- sequences are gapless (e.g., 6, 7, 8)
+  - [x] 6.4 Test: All 11 metadata fields populated correctly from command and identity (SEC-1)
+  - [x] 6.5 Test: Event payload serialized to JSON bytes
+  - [x] 6.6 Test: Event keys follow write-once pattern `{tenant}:{domain}:{aggId}:events:{seq}` (rule #11)
+  - [x] 6.7 Test: AggregateMetadata updated with new CurrentSequence and LastModified
+  - [x] 6.8 Test: No-op result (empty events) -- no events persisted, no metadata change
+  - [x] 6.9 Test: SaveStateAsync NOT called by EventPersister (caller responsibility)
+  - [x] 6.10 Test: EventPersister never calls RemoveStateAsync on event keys (immutability, FR9)
+  - [x] 6.11 Test: Rejection events persisted same as regular events (D3 -- everything is an event)
 
-- [ ] Task 7: Unit tests for AggregateActor Step 5 integration (AC: #4, #6)
-  - [ ] 7.1 Test: After Step 5, SaveStateAsync called exactly once (atomic commit)
-  - [ ] 7.2 Test: No-op domain result -- SaveStateAsync still called (for idempotency record)
-  - [ ] 7.3 Test: CommandProcessingResult includes correct EventCount
-  - [ ] 7.4 Test: Concurrency exception from SaveStateAsync rethrown as ConcurrencyConflictException
+- [x] Task 7: Unit tests for AggregateActor Step 5 integration (AC: #4, #6)
+  - [x] 7.1 Test: After Step 5, SaveStateAsync called exactly once (atomic commit)
+  - [x] 7.2 Test: No-op domain result -- SaveStateAsync still called (for idempotency record)
+  - [x] 7.3 Test: CommandProcessingResult includes correct EventCount
+  - [x] 7.4 Test: Concurrency exception from SaveStateAsync rethrown as ConcurrencyConflictException
 
-- [ ] Task 8: Integration tests (AC: #1-#8)
-  - [ ] 8.1 Test: Full command processing pipeline persists events with correct keys and metadata
-  - [ ] 8.2 Test: Multiple commands to same aggregate produce gapless sequence numbers
-  - [ ] 8.3 Test: Events readable after persistence via EventStreamReader (round-trip validation)
-  - [ ] 8.4 Test: Atomic write -- all events from single command visible together (not partial)
+- [x] Task 8: Integration tests (AC: #1-#8)
+  - [x] 8.1 Test: Full command processing pipeline persists events with correct keys and metadata
+  - [x] 8.2 Test: Multiple commands to same aggregate produce gapless sequence numbers
+  - [x] 8.3 Test: Events readable after persistence via EventStreamReader (round-trip validation)
+  - [x] 8.4 Test: Atomic write -- all events from single command visible together (not partial)
 
-- [ ] Task 9: Verify all existing tests pass
-  - [ ] 9.1 Run `dotnet test` to confirm no regressions
-  - [ ] 9.2 Estimate: ~500+ existing tests should still pass
+- [x] Task 9: Verify all existing tests pass
+  - [x] 9.1 Run `dotnet test` to confirm no regressions
+  - [x] 9.2 Estimate: ~500+ existing tests should still pass
 
 ## Dev Notes
 
@@ -262,10 +262,55 @@ Recent commits show Epic 2 completion and Epic 3 stories 3.1-3.2 infrastructure.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- No blocking issues encountered during implementation.
+
 ### Completion Notes List
 
+- Created `IEventPersister` interface and `EventPersister` implementation in `Server/Events/`
+- EventPersister writes events via `IActorStateManager.SetStateAsync` using write-once keys `{tenant}:{domain}:{aggId}:events:{seq}`
+- All 11 envelope metadata fields populated by EventStore (SEC-1): AggregateId, TenantId, Domain, SequenceNumber, Timestamp, CorrelationId, CausationId, UserId, DomainServiceVersion, EventTypeName, SerializationFormat
+- EventPersister does NOT call `SaveStateAsync` -- caller (AggregateActor) commits atomically (D1)
+- Replaced AggregateActor Step 5 STUB with real EventPersister integration
+- Added `EventCount` property to `CommandProcessingResult`
+- Added concurrency exception handling: `InvalidOperationException` from `SaveStateAsync` wrapped as `ConcurrencyConflictException`
+- Domain service version extracted from command extensions via `DaprDomainServiceInvoker.ExtractVersion`
+- No-op results skip persistence but still commit idempotency record
+- Created `FakeEventPersister` in Testing for downstream test support
+- 19 unit tests for EventPersister (sequence assignment, metadata population, key patterns, immutability, no-op, rejection events, guard clauses incl. empty/whitespace version)
+- 8 unit tests for AggregateActor Step 5 integration (atomic commit, event count, concurrency exception, rejection event persistence, OperationCanceledException passthrough)
+- 5 integration tests (round-trip, gapless sequences, atomic write verification)
+- 1 existing test updated to reflect new Step 5 behavior (no longer a STUB)
+- Updated existing test `ProcessCommandAsync_DomainSuccess_ProceedsToStep5` → `ProcessCommandAsync_DomainSuccess_PersistsEventsViaStep5`
+- All 608 tests pass (576 original + 32 new, 0 regressions)
+
+### Change Log
+
+- 2026-02-14: Story 3.7 implementation complete -- event persistence with atomic writes and gapless sequence numbers
+- 2026-02-14: Code review fixes applied:
+  - H1: AggregateActor now persists rejection events via EventPersister (D3 compliance)
+  - H2: Narrowed SaveStateAsync catch from all exceptions to InvalidOperationException
+  - M1: FakeEventPersister uses per-aggregate sequence tracking
+  - M2: Added OperationCanceledException passthrough test
+  - M3: EventPersister validates domainServiceVersion for empty/whitespace
+  - M4: Updated File List documentation
+  - L1: Corrected test counts
+  - L2: Rejection result now includes EventCount
+
 ### File List
+
+**New files:**
+- `src/Hexalith.EventStore.Server/Events/IEventPersister.cs`
+- `src/Hexalith.EventStore.Server/Events/EventPersister.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventPersister.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Events/EventPersistenceIntegrationTests.cs`
+
+**Modified files:**
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (Step 5 STUB replaced with EventPersister integration; rejection path now persists events per D3; narrowed concurrency catch)
+- `src/Hexalith.EventStore.Server/Actors/CommandProcessingResult.cs` (added EventCount property)
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs` (updated Step 5 test, added 8 new Step 5 integration tests)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (sprint tracking sync)
