@@ -44,11 +44,13 @@ public class DomainServiceNotFoundException : InvalidOperationException
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="domain">The domain name.</param>
-    public DomainServiceNotFoundException(string tenantId, string domain)
-        : base($"No domain service registered for tenant '{tenantId}' and domain '{domain}'. Register via DAPR config store with key '{tenantId}:{domain}:service'.")
+    /// <param name="version">The service version (defaults to "v1").</param>
+    public DomainServiceNotFoundException(string tenantId, string domain, string version = "v1")
+        : base($"No domain service registered for tenant '{tenantId}', domain '{domain}', version '{version}'. Register via DAPR config store with key '{tenantId}:{domain}:{version}'.")
     {
         TenantId = tenantId;
         Domain = domain;
+        Version = version;
     }
 
     /// <summary>Gets the tenant identifier.</summary>
@@ -56,4 +58,7 @@ public class DomainServiceNotFoundException : InvalidOperationException
 
     /// <summary>Gets the domain name.</summary>
     public string Domain { get; }
+
+    /// <summary>Gets the service version.</summary>
+    public string Version { get; } = "v1";
 }
