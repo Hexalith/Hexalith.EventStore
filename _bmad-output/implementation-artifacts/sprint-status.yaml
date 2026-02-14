@@ -75,12 +75,12 @@ development_status:
   3-8-storage-key-isolation-and-composite-key-strategy: done
   3-9-snapshot-creation-at-configurable-intervals: done
   3-10-state-reconstruction-from-snapshot-plus-tail-events: review
-  3-11-actor-state-machine-and-checkpointed-stages: backlog
+  3-11-actor-state-machine-and-checkpointed-stages: review
   epic-3-retrospective: optional
 
   # Epic 4: Event Distribution & Dead-Letter Handling
-  epic-4: backlog
-  4-1-event-publisher-with-cloudevents-1-0: backlog
+  epic-4: in-progress
+  4-1-event-publisher-with-cloudevents-1-0: ready-for-dev
   4-2-per-tenant-per-domain-topic-isolation: backlog
   4-3-at-least-once-delivery-and-dapr-retry-policies: backlog
   4-4-persist-then-publish-resilience: backlog
