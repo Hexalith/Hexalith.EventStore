@@ -15,6 +15,10 @@ using Microsoft.Extensions.Logging;
 /// Story 3.2: Implements 5-step delegation pipeline.
 /// Steps 1-4 (idempotency, tenant validation, state rehydration, domain invocation) are real.
 /// Step 5: Event persistence (Story 3.7). State machine checkpointing deferred to Story 3.11.
+/// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
+/// filtering. DAPR query API does not enforce actor state scoping. See FR28.
+/// SECURITY: Never bypass IActorStateManager with direct DaprClient.GetStateAsync/SetStateAsync.
+/// Rule #6 exists to prevent this -- direct state store access bypasses actor state namespacing.
 /// </summary>
 public class AggregateActor(
     ActorHost host,

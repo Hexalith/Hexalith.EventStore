@@ -51,16 +51,36 @@ public record AggregateIdentity
     /// <summary>Gets the aggregate identifier (case-sensitive).</summary>
     public string AggregateId { get; }
 
-    /// <summary>Gets the DAPR actor ID in canonical colon-separated form.</summary>
+    /// <summary>
+    /// Gets the DAPR actor ID in canonical colon-separated form.
+    /// Isolation guarantee: each actor instance's state is scoped by DAPR to this ID,
+    /// preventing cross-tenant state access. Colons are forbidden in components to ensure
+    /// structural disjointness between tenants (FR15, FR28).
+    /// </summary>
     public string ActorId => $"{TenantId}:{Domain}:{AggregateId}";
 
-    /// <summary>Gets the event stream key prefix for state store lookups (append sequence number for full key).</summary>
+    /// <summary>
+    /// Gets the event stream key prefix for state store lookups (append sequence number for full key).
+    /// Pattern: {tenant}:{domain}:{aggId}:events: — isolation is guaranteed because colons are
+    /// forbidden in tenant/domain/aggregateId components, making each tenant's key space structurally
+    /// disjoint from all other tenants (D1, FR15, FR28).
+    /// </summary>
     public string EventStreamKeyPrefix => $"{TenantId}:{Domain}:{AggregateId}:events:";
 
-    /// <summary>Gets the metadata key for state store lookups.</summary>
+    /// <summary>
+    /// Gets the metadata key for state store lookups.
+    /// Pattern: {tenant}:{domain}:{aggId}:metadata — tenant-scoped by the same 4-layer isolation model:
+    /// (1) input validation rejects colons, (2) composite key prefixing, (3) DAPR actor scoping,
+    /// (4) JWT tenant enforcement (FR15, FR28).
+    /// </summary>
     public string MetadataKey => $"{TenantId}:{Domain}:{AggregateId}:metadata";
 
-    /// <summary>Gets the snapshot key for state store lookups.</summary>
+    /// <summary>
+    /// Gets the snapshot key for state store lookups.
+    /// Pattern: {tenant}:{domain}:{aggId}:snapshot — tenant-scoped by the same 4-layer isolation model:
+    /// (1) input validation rejects colons, (2) composite key prefixing, (3) DAPR actor scoping,
+    /// (4) JWT tenant enforcement (FR15, FR28).
+    /// </summary>
     public string SnapshotKey => $"{TenantId}:{Domain}:{AggregateId}:snapshot";
 
     /// <summary>Gets the pub/sub topic in dot-separated form.</summary>
@@ -125,7 +145,7 @@ public record AggregateIdentity
     {
         foreach (char c in value)
         {
-            if (c < 0x20 || c > 0x7F)
+            if (c < 0x20 || c >= 0x7F)
             {
                 return true;
             }

@@ -15,6 +15,11 @@ using Microsoft.Extensions.Logging;
 /// Persists domain events to the actor state store using write-once keys with gapless sequence numbers.
 /// Created per-actor-call (same pattern as IdempotencyChecker, EventStreamReader).
 /// Does NOT call SaveStateAsync -- the caller (AggregateActor) commits atomically (D1).
+/// Storage key isolation (FR15, FR28): all keys are derived from AggregateIdentity which enforces
+/// tenant-scoped composite keys. Cross-tenant access is structurally impossible because colons are
+/// forbidden in identity components, ensuring disjoint key spaces per tenant.
+/// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
+/// filtering. DAPR query API does not enforce actor state scoping. See FR28.
 /// </summary>
 public class EventPersister(
     IActorStateManager stateManager,

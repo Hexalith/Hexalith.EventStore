@@ -72,7 +72,7 @@ development_status:
   3-5-domain-service-registration-and-invocation: done
   3-6-multi-domain-and-multi-tenant-processing: done
   3-7-event-persistence-with-atomic-writes-and-sequence-numbers: done
-  3-8-storage-key-isolation-and-composite-key-strategy: ready-for-dev
+  3-8-storage-key-isolation-and-composite-key-strategy: done
   3-9-snapshot-creation-at-configurable-intervals: ready-for-dev
   3-10-state-reconstruction-from-snapshot-plus-tail-events: backlog
   3-11-actor-state-machine-and-checkpointed-stages: backlog

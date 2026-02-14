@@ -1,6 +1,6 @@
 # Story 3.8: Storage Key Isolation & Composite Key Strategy
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -48,64 +48,64 @@ So that multi-tenant data isolation is enforced at the storage layer (FR15, FR28
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and existing isolation mechanisms (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Confirm `AggregateIdentity` key derivation properties exist: `EventStreamKeyPrefix`, `MetadataKey`, `SnapshotKey`, `ActorId`
-  - [ ] 0.3 Confirm `AggregateIdentity` validation rejects colons, control characters, and non-ASCII in tenant/domain/aggregateId
-  - [ ] 0.4 Confirm `IdempotencyChecker` uses actor-scoped keys (via `IActorStateManager` which is already actor-scoped)
-  - [ ] 0.5 Confirm `DaprCommandStatusStore` uses `{tenant}:{correlationId}:status` key pattern
-  - [ ] 0.6 Document current key patterns used across the codebase
+- [x] Task 0: Verify prerequisites and existing isolation mechanisms (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Confirm `AggregateIdentity` key derivation properties exist: `EventStreamKeyPrefix`, `MetadataKey`, `SnapshotKey`, `ActorId`
+  - [x] 0.3 Confirm `AggregateIdentity` validation rejects colons, control characters, and non-ASCII in tenant/domain/aggregateId
+  - [x] 0.4 Confirm `IdempotencyChecker` uses actor-scoped keys (via `IActorStateManager` which is already actor-scoped)
+  - [x] 0.5 Confirm `DaprCommandStatusStore` uses `{tenant}:{correlationId}:status` key pattern
+  - [x] 0.6 Document current key patterns used across the codebase
 
-- [ ] Task 1: Create StorageKeyIsolationAssertions test utility (AC: #4, #6)
-  - [ ] 1.1 Create `StorageKeyIsolationAssertions` in `Testing/Assertions/` (test project, NOT production code)
-  - [ ] 1.2 Provide static assertion methods for test verification:
+- [x] Task 1: Create StorageKeyIsolationAssertions test utility (AC: #4, #6)
+  - [x] 1.1 Create `StorageKeyIsolationAssertions` in `Testing/Assertions/` (test project, NOT production code)
+  - [x] 1.2 Provide static assertion methods for test verification:
     - `AssertKeyBelongsToTenant(string key, string expectedTenant)` -- asserts key starts with `{expectedTenant}:`
     - `AssertKeysDisjoint(string keyA, string keyB)` -- asserts two keys share no common prefix up to first segment
     - `AssertEventStreamKey(string key, AggregateIdentity identity)` -- validates full key structure matches identity
-  - [ ] 1.3 These are test assertion helpers only -- NOT production runtime guards. Isolation is guaranteed by construction (AggregateIdentity validation), not by runtime checking.
-  - [ ] 1.4 Namespace: `Hexalith.EventStore.Testing.Assertions`
+  - [x] 1.3 These are test assertion helpers only -- NOT production runtime guards. Isolation is guaranteed by construction (AggregateIdentity validation), not by runtime checking.
+  - [x] 1.4 Namespace: `Hexalith.EventStore.Testing.Assertions`
 
-- [ ] Task 2: Create comprehensive isolation test suite -- unit tests (AC: #1, #2, #3, #4, #6, #9, #10)
-  - [ ] 2.1 Create `StorageKeyIsolationTests` in `Server.Tests/Security/`
-  - [ ] 2.2 Test: Two different tenants produce structurally disjoint event stream key prefixes
-  - [ ] 2.3 Test: Two different tenants produce structurally disjoint metadata keys
-  - [ ] 2.4 Test: Two different tenants produce structurally disjoint snapshot keys
-  - [ ] 2.5 Test: Same aggregate ID in different tenants produces different keys (no collision)
-  - [ ] 2.6 Test: Same aggregate ID in same tenant but different domains produces different keys
-  - [ ] 2.7 Test: AggregateIdentity rejects tenant IDs containing colons (key injection prevention)
-  - [ ] 2.8 Test: AggregateIdentity rejects domain names containing colons
-  - [ ] 2.9 Test: AggregateIdentity rejects aggregate IDs containing colons
-  - [ ] 2.10 Test: Key prefix `{tenantA}:` never appears as a prefix of any key derived for `{tenantB}`
-  - [ ] 2.11 Test: StorageKeyIsolationAssertions correctly validates keys belong to expected tenant
-  - [ ] 2.12 Test: StorageKeyIsolationAssertions rejects keys that don't match expected tenant
-  - [ ] 2.13 Test: CommandRouter always uses `command.AggregateIdentity.ActorId` for actor ID derivation (AC: #10)
-  - [ ] 2.14 Test: Tenant value chain-of-custody -- CommandEnvelope.TenantId == AggregateIdentity.TenantId == first segment of all derived keys
-  - [ ] 2.15 Test: URL-encoded colons (`%3A`) rejected by AggregateIdentity regex (percent sign not in allowed chars)
-  - [ ] 2.16 Test: NEGATIVE -- reading key `{tenantB}:{domain}:{aggId}:events:1` returns null when queried from tenantA's context
+- [x] Task 2: Create comprehensive isolation test suite -- unit tests (AC: #1, #2, #3, #4, #6, #9, #10)
+  - [x] 2.1 Create `StorageKeyIsolationTests` in `Server.Tests/Security/`
+  - [x] 2.2 Test: Two different tenants produce structurally disjoint event stream key prefixes
+  - [x] 2.3 Test: Two different tenants produce structurally disjoint metadata keys
+  - [x] 2.4 Test: Two different tenants produce structurally disjoint snapshot keys
+  - [x] 2.5 Test: Same aggregate ID in different tenants produces different keys (no collision)
+  - [x] 2.6 Test: Same aggregate ID in same tenant but different domains produces different keys
+  - [x] 2.7 Test: AggregateIdentity rejects tenant IDs containing colons (key injection prevention)
+  - [x] 2.8 Test: AggregateIdentity rejects domain names containing colons
+  - [x] 2.9 Test: AggregateIdentity rejects aggregate IDs containing colons
+  - [x] 2.10 Test: Key prefix `{tenantA}:` never appears as a prefix of any key derived for `{tenantB}`
+  - [x] 2.11 Test: StorageKeyIsolationAssertions correctly validates keys belong to expected tenant
+  - [x] 2.12 Test: StorageKeyIsolationAssertions rejects keys that don't match expected tenant
+  - [x] 2.13 Test: CommandRouter always uses `command.AggregateIdentity.ActorId` for actor ID derivation (AC: #10)
+  - [x] 2.14 Test: Tenant value chain-of-custody -- CommandEnvelope.TenantId == AggregateIdentity.TenantId == first segment of all derived keys
+  - [x] 2.15 Test: URL-encoded colons (`%3A`) rejected by AggregateIdentity regex (percent sign not in allowed chars)
+  - [x] 2.16 Test: NEGATIVE -- reading key `{tenantB}:{domain}:{aggId}:events:1` returns null when queried from tenantA's context
 
-- [ ] Task 3: Create multi-tenant isolation integration tests (AC: #1, #4, #5, #7, #9)
-  - [ ] 3.1 Create `MultiTenantStorageIsolationTests` in `IntegrationTests/Security/`
-  - [ ] 3.2 Test: Commands for tenant-a and tenant-b produce events with non-overlapping state store keys
-  - [ ] 3.3 Test: Actor for tenant-a cannot access state store keys belonging to tenant-b (DAPR actor scope isolation via actor ID)
-  - [ ] 3.4 Test: Idempotency records for tenant-a are invisible to tenant-b's actor instance
-  - [ ] 3.5 Test: Full pipeline test -- submit commands for two tenants, verify complete key isolation in state store
-  - [ ] 3.6 Test: NEGATIVE -- explicitly attempt to read tenant-b's event from tenant-a's actor, assert null/failure (AC: #9)
-  - [ ] 3.7 Test: NEGATIVE -- submit command for tenant-a, verify tenant-b cannot retrieve those events via any code path
+- [x] Task 3: Create multi-tenant isolation integration tests (AC: #1, #4, #5, #7, #9)
+  - [x] 3.1 Create `MultiTenantStorageIsolationTests` in `IntegrationTests/Security/`
+  - [x] 3.2 Test: Commands for tenant-a and tenant-b produce events with non-overlapping state store keys
+  - [x] 3.3 Test: Actor for tenant-a cannot access state store keys belonging to tenant-b (DAPR actor scope isolation via actor ID)
+  - [x] 3.4 Test: Idempotency records for tenant-a are invisible to tenant-b's actor instance
+  - [x] 3.5 Test: Full pipeline test -- submit commands for two tenants, verify complete key isolation in state store
+  - [x] 3.6 Test: NEGATIVE -- explicitly attempt to read tenant-b's event from tenant-a's actor, assert null/failure (AC: #9)
+  - [x] 3.7 Test: NEGATIVE -- submit command for tenant-a, verify tenant-b cannot retrieve those events via any code path
 
-- [ ] Task 4: Create command status isolation tests (AC: #8)
-  - [ ] 4.1 Create `CommandStatusIsolationTests` in `IntegrationTests/Security/` or extend existing status tests
-  - [ ] 4.2 Test: Command status for tenant-a is not retrievable with tenant-b's JWT
-  - [ ] 4.3 Test: Status key `{tenantA}:{correlationId}:status` structurally disjoint from `{tenantB}:{correlationId}:status` even with same correlationId
+- [x] Task 4: Create command status isolation tests (AC: #8)
+  - [x] 4.1 Create `CommandStatusIsolationTests` in `IntegrationTests/Security/` or extend existing status tests
+  - [x] 4.2 Test: Command status for tenant-a is not retrievable with tenant-b's JWT
+  - [x] 4.3 Test: Status key `{tenantA}:{correlationId}:status` structurally disjoint from `{tenantB}:{correlationId}:status` even with same correlationId
 
-- [ ] Task 5: Document composite key strategy and future-proofing (AC: #5)
-  - [ ] 5.1 Add XML doc comments to `AggregateIdentity` key derivation properties documenting: (a) the isolation guarantee, (b) why colons are forbidden in components, (c) the 4-layer isolation model
-  - [ ] 5.2 Add inline comments in `EventPersister` (from Story 3.7) referencing FR15, FR28 isolation requirements
-  - [ ] 5.3 Add warning comment in `EventPersister` or `AggregateActor`: "SECURITY: Never use `DaprClient.QueryStateAsync` or bulk state queries without explicit tenant filtering. DAPR query API does not enforce actor state scoping. See FR28."
-  - [ ] 5.4 Add warning comment in `CommandRouter`: "SECURITY: Always derive actor ID from `AggregateIdentity.ActorId`. Never construct actor IDs via manual string concatenation. See FR15, FR28."
+- [x] Task 5: Document composite key strategy and future-proofing (AC: #5)
+  - [x] 5.1 Add XML doc comments to `AggregateIdentity` key derivation properties documenting: (a) the isolation guarantee, (b) why colons are forbidden in components, (c) the 4-layer isolation model
+  - [x] 5.2 Add inline comments in `EventPersister` (from Story 3.7) referencing FR15, FR28 isolation requirements
+  - [x] 5.3 Add warning comment in `EventPersister` or `AggregateActor`: "SECURITY: Never use `DaprClient.QueryStateAsync` or bulk state queries without explicit tenant filtering. DAPR query API does not enforce actor state scoping. See FR28."
+  - [x] 5.4 Add warning comment in `CommandRouter`: "SECURITY: Always derive actor ID from `AggregateIdentity.ActorId`. Never construct actor IDs via manual string concatenation. See FR15, FR28."
 
-- [ ] Task 6: Verify all existing tests pass
-  - [ ] 6.1 Run `dotnet test` to confirm no regressions
-  - [ ] 6.2 All new isolation tests pass
+- [x] Task 6: Verify all existing tests pass
+  - [x] 6.1 Run `dotnet test` to confirm no regressions
+  - [x] 6.2 All new isolation tests pass
 
 ## Dev Notes
 
@@ -119,6 +119,10 @@ This story is primarily a **verification and validation story** rather than a fe
 4. **DaprCommandStatusStore** (Story 2.6) -- uses `{tenant}:{correlationId}:status` pattern
 
 The primary work in this story is creating a comprehensive test suite that **proves** the isolation guarantees hold under various scenarios, plus a small utility for audit/assertion purposes. There is minimal new production code -- mostly tests.
+
+### Known Limitations
+
+- **AC #2 (Snapshot key isolation):** Verified at key derivation level only. Snapshot persistence is implemented in Story 3.9 -- full end-to-end snapshot key isolation cannot be validated until that story is complete. The `AggregateIdentity.SnapshotKey` pattern is structurally identical to other key types and uses the same tenant-prefixed derivation, so the isolation guarantee holds by construction.
 
 ### Architecture Compliance
 
@@ -264,10 +268,68 @@ public string ActorId => $"{TenantId}:{Domain}:{AggregateId}";
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 0: All 608 existing tests pass. AggregateIdentity key derivation confirmed (EventStreamKeyPrefix, MetadataKey, SnapshotKey, ActorId). Validation rejects colons/control/non-ASCII. IdempotencyChecker uses IActorStateManager (actor-scoped). DaprCommandStatusStore uses {tenant}:{correlationId}:status pattern. Key patterns: events={tenant}:{domain}:{aggId}:events:{seq}, metadata={tenant}:{domain}:{aggId}:metadata, snapshot={tenant}:{domain}:{aggId}:snapshot, actorId={tenant}:{domain}:{aggId}, idempotency=idempotency:{causationId} (actor-scoped), status={tenant}:{correlationId}:status.
+- Task 1: Created StorageKeyIsolationAssertions in Testing/Assertions/ with 3 static assertion methods (AssertKeyBelongsToTenant, AssertKeysDisjoint, AssertEventStreamKey). Test-only utility, not production code.
+- Task 2: Created StorageKeyIsolationTests with 26 unit tests covering: disjoint keys across tenants (event/metadata/snapshot), colon injection rejection, URL-encoded colon rejection, CommandRouter actor ID derivation, chain-of-custody verification, StorageKeyIsolationAssertions validation, and negative cross-tenant read.
+- Task 3: Created MultiTenantStorageIsolationTests with 6 integration tests covering: non-overlapping state store keys, actor scope isolation, idempotency record isolation, full pipeline two-tenant isolation, and negative cross-tenant read attempts.
+- Task 4: Created CommandStatusIsolationTests with 3 integration tests covering: cross-tenant status inaccessibility, key structural disjointness, and multi-tenant independent storage with same correlationId.
+- Task 5: Enhanced XML doc comments on AggregateIdentity key derivation properties (ActorId, EventStreamKeyPrefix, MetadataKey, SnapshotKey) documenting isolation guarantees, 4-layer isolation model, and FR15/FR28 references. Added SECURITY warnings to EventPersister, AggregateActor, and CommandRouter.
+- Task 6: Full regression suite passed -- 643 tests (0 failures). 35 new tests added (26 unit + 9 integration).
+
+### Implementation Plan
+
+This story was primarily a verification and validation story. No new production logic was added. Changes:
+1. New test utility: StorageKeyIsolationAssertions (3 assertion methods)
+2. New unit test suite: StorageKeyIsolationTests (26 tests)
+3. New integration test suites: MultiTenantStorageIsolationTests (6 tests) + CommandStatusIsolationTests (3 tests)
+4. Enhanced XML doc comments on AggregateIdentity key derivation properties
+5. Security warning comments on EventPersister, AggregateActor, and CommandRouter
+
+### Senior Developer Review (AI)
+
+**Reviewed by:** Jerome (via Claude Opus 4.6 adversarial code review)
+**Date:** 2026-02-14
+**Outcome:** Approved with fixes applied
+
+**Issues Found:** 2 High, 4 Medium, 2 Low
+**Issues Fixed:** 6 (all HIGH and MEDIUM)
+**Action Items:** 0
+
+**Fixes Applied:**
+1. **H1 (Trivially true cross-tenant tests):** Added `SharedStateManager_TenantPrefixedKeys_PreventCrossTenantRead` test using a single shared InMemoryStateManager to validate Layer 2 isolation (composite key prefixing) independently of Layer 3 (actor scoping).
+2. **H2 (DEL character validation gap):** Fixed `ContainsInvalidCharacters` in AggregateIdentity.cs (`c > 0x7F` → `c >= 0x7F`) to properly reject DEL (0x7F). Added 3 DEL character rejection tests.
+3. **M1 (Assertion API inconsistency):** Converted StorageKeyIsolationAssertions from xUnit Assert to Shouldly to match project conventions.
+4. **M2 (Over-broad exception catching):** Replaced `Assert.ThrowsAny<Exception>` with `Should.Throw<ShouldAssertException>` for precise assertion failure verification.
+5. **M3 (Integration test classification):** Added clarifying XML doc comments explaining component-level integration test classification.
+6. **M4 (AC #2 limitation):** Documented AC #2 Story 3.9 dependency in Known Limitations section.
+
+**Remaining LOW issues (accepted):**
+- L1: `AssertKeysDisjoint` naming could be more precise (accepted -- meaning is clear in context)
+- L2: No edge case tests for NULL/tab control characters beyond DEL (accepted -- regex catches them)
+
+**Post-fix test count:** 647 tests (0 failures). 4 new tests added during review.
+
 ### File List
+
+New files:
+- src/Hexalith.EventStore.Testing/Assertions/StorageKeyIsolationAssertions.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Security/MultiTenantStorageIsolationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Security/CommandStatusIsolationTests.cs
+
+Modified files:
+- src/Hexalith.EventStore.Contracts/Identity/AggregateIdentity.cs (enhanced XML doc comments + DEL char fix in ContainsInvalidCharacters)
+- src/Hexalith.EventStore.Server/Events/EventPersister.cs (security warning comments)
+- src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (security warning comments)
+- src/Hexalith.EventStore.Server/Commands/CommandRouter.cs (security warning comments)
+
+### Change Log
+
+- 2026-02-14: Story 3.8 implementation complete -- 35 new tests proving 4-layer storage key isolation (input validation, composite key prefixing, DAPR actor scoping, JWT enforcement). StorageKeyIsolationAssertions test utility created. Security documentation enhanced on AggregateIdentity, EventPersister, AggregateActor, and CommandRouter.
+- 2026-02-14: Code review fixes -- 6 issues fixed (2H, 4M). Added Layer 2 isolation test with shared state manager. Fixed DEL character (0x7F) rejection in AggregateIdentity.ContainsInvalidCharacters. Converted assertions to Shouldly. Tightened exception catching in tests. Enhanced integration test documentation. 647 total tests passing.
