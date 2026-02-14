@@ -12,6 +12,7 @@ public record SubmitCommand(
     string CommandType,
     byte[] Payload,
     string CorrelationId,
+    string UserId,
     Dictionary<string, string>? Extensions = null) : IRequest<SubmitCommandResult>;
 
 /// <summary>

@@ -1,6 +1,6 @@
 # Story 2.9: Rate Limiting & OpenAPI/Swagger UI
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -622,7 +622,7 @@ Claude Opus 4.6
 - **Task 2**: Created `RateLimitingOptions` record with defaults (100/60s/6 segments/0 queue) and `ValidateRateLimitingOptions` startup validator.
 - **Task 3**: Registered per-tenant `PartitionedRateLimiter` with sliding window, health endpoint exclusion (`/health`, `/alive`), and RFC 7807 OnRejected callback with try/catch resilience and Retry-After fallback.
 - **Task 4**: Registered OpenAPI 3.1 document generation with JWT Bearer security scheme, global security requirement, and 429 response documentation on all operations.
-- **Task 5**: Added `[ProducesResponseType]` attributes to CommandsController (202, 400, 401, 403, 429) and ReplayController (added 429).
+- **Task 5**: Added `[ProducesResponseType]` attributes to CommandsController (202, 400, 401, 403, 429), CommandStatusController (added 429), and ReplayController (added 429).
 - **Task 6**: Updated Program.cs: added `UseRateLimiter()` after auth, conditional `MapOpenApi()` + `UseSwaggerUI()` gated by `EventStore:OpenApi:Enabled`.
 - **Task 7**: Updated `JwtAuthenticatedWebApplicationFactory` with `PermitLimit=10000` to prevent existing tests from hitting rate limits.
 - **Task 8**: 4 unit tests for RateLimitingOptions defaults and validation. All pass.
@@ -632,7 +632,8 @@ Claude Opus 4.6
 
 ### Change Log
 
-- 2026-02-13: Story 2.9 implementation complete. Added per-tenant rate limiting, OpenAPI 3.1 document generation, Swagger UI, and comprehensive tests. 24 new tests added (4 unit + 13 rate limiting integration + 8 OpenAPI integration = 25 tests, minus 1 that was folded into existing test pattern). Total test count: 416.
+- 2026-02-13: Story 2.9 implementation complete. Added per-tenant rate limiting, OpenAPI 3.1 document generation, Swagger UI, and comprehensive tests. 25 new tests added (4 unit + 13 rate limiting integration + 8 OpenAPI integration). Total test count: 413.
+- 2026-02-14: Code review fixes applied. (1) Added missing 429 ProducesResponseType to CommandStatusController. (2) Fixed placeholder test `PostCommands_RateLimitReset_AllowsRequestsAfterWindow` to actually verify rate limit enforcement and Retry-After header. (3) Made OnRejected catch block resilient by using GetService instead of GetRequiredService. (4) Added QueueLimit >= 0 validation to ValidateRateLimitingOptions with unit test. Total test count: 413 (118 server + 100 integration + 147 contracts + 48 testing).
 
 ### File List
 

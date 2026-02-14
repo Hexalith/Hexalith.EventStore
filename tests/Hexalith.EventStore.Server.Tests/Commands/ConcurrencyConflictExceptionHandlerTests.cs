@@ -329,4 +329,120 @@ public class ConcurrencyConflictExceptionHandlerTests
         // Assert
         httpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
     }
+
+    [Fact]
+    public async Task TryHandleAsync_NullTenantId_SkipsStatusWrite()
+    {
+        // Arrange - exception with null tenantId
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: null); // Null tenant ID
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert - 409 returned but status NOT written
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+
+        // Verify status was NOT written (null tenantId means no state store key)
+        CommandStatusRecord? status = await _statusStore.ReadStatusAsync("any-tenant", "cmd-corr-id");
+        status.ShouldBeNull();
+
+        // Verify tenantId is NOT in ProblemDetails extensions
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldNotContainKey("tenantId");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_Depth10Nesting_Returns409()
+    {
+        // Arrange - nest ConcurrencyConflictException at depth 10 (max depth limit)
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+
+        Exception innermost = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-depth10",
+            tenantId: "acme");
+
+        // Wrap it 9 times (total depth = 10)
+        Exception current = innermost;
+        for (int i = 0; i < 9; i++)
+        {
+            current = new InvalidOperationException($"Wrapper level {i + 1}", current);
+        }
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, current, CancellationToken.None);
+
+        // Assert - should still find the conflict at depth 10
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-depth10");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_AggregateExceptionWithMultipleInners_FindsConflict()
+    {
+        // Arrange - ConcurrencyConflictException is NOT the first inner exception
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+
+        var unrelatedError = new InvalidOperationException("Unrelated error");
+        var conflict = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-aggregate-multi",
+            tenantId: "acme");
+        var aggregate = new AggregateException("Multiple failures", unrelatedError, conflict);
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, aggregate, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeTrue();
+        httpContext.Response.StatusCode.ShouldBe(409);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-aggregate-multi");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_Depth11Nesting_ReturnsFalse()
+    {
+        // Arrange - nest ConcurrencyConflictException at depth 11 (exceeds max depth limit)
+        var httpContext = new DefaultHttpContext();
+
+        Exception innermost = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-depth11",
+            tenantId: "acme");
+
+        // Wrap it 10 times (total depth = 11, exceeds maxDepth of 10)
+        Exception current = innermost;
+        for (int i = 0; i < 10; i++)
+        {
+            current = new InvalidOperationException($"Wrapper level {i + 1}", current);
+        }
+
+        // Act
+        bool handled = await _handler.TryHandleAsync(httpContext, current, CancellationToken.None);
+
+        // Assert - should NOT find the conflict (depth limit exceeded)
+        handled.ShouldBeFalse();
+    }
 }

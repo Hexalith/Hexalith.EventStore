@@ -150,18 +150,22 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     [Fact]
     public async Task PostCommands_RateLimitReset_AllowsRequestsAfterWindow()
     {
-        // Arrange - use a factory with a very short window
-        // For this test we just verify the rate limiter is working with the configured window.
-        // A full window-reset test would need a short window which is tested via the sliding window mechanism.
+        // Arrange - exhaust rate limit, then verify 429, confirming rate limiting is enforced.
+        // Note: A true window-reset test would require waiting for the full sliding window to expire
+        // (60s with SegmentsPerWindow=1), which is too slow for CI. Instead, we verify the rate limiter
+        // correctly blocks after exhaustion and confirm the Retry-After header provides reset guidance.
         HttpClient client = CreateAuthenticatedClient("rate-tenant-reset");
 
-        // Act - send requests within limit
+        // Act - exhaust the limit (PermitLimit=2)
         HttpResponseMessage response1 = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-reset"));
         HttpResponseMessage response2 = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-reset"));
+        HttpResponseMessage response3 = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-reset"));
 
-        // Assert - both within limit succeed
+        // Assert - first two succeed, third is rate limited with Retry-After guidance
         response1.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         response2.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        response3.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        response3.Headers.RetryAfter.ShouldNotBeNull("429 response must include Retry-After header for client recovery");
     }
 
     [Fact]

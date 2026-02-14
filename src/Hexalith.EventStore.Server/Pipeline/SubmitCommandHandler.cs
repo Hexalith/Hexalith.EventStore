@@ -9,14 +9,15 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Stub handler for Story 2.1 — logs receipt and returns the correlation ID.
-/// Story 2.6: Writes "Received" status to state store before returning (advisory, rule #12).
+/// Handles command submission: writes status, archives, and routes to the aggregate actor.
+/// Story 2.6: Writes "Received" status to state store (advisory, rule #12).
 /// Story 2.7: Archives original command for replay (advisory, rule #12).
-/// Full command processing (CommandEnvelope creation, actor invocation) comes in Story 3.1.
+/// Story 3.1: Routes command to aggregate actor via CommandRouter.
 /// </summary>
 public class SubmitCommandHandler(
     ICommandStatusStore statusStore,
     ICommandArchiveStore archiveStore,
+    ICommandRouter commandRouter,
     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
 {
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
@@ -83,6 +84,14 @@ public class SubmitCommandHandler(
                 request.CorrelationId,
                 request.Tenant);
         }
+
+        // Route to aggregate actor (NOT advisory -- failure must propagate)
+        await commandRouter.RouteCommandAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+
+        logger.LogDebug(
+            "Command routed to actor: CorrelationId={CorrelationId}",
+            request.CorrelationId);
 
         return result;
     }

@@ -87,7 +87,15 @@
       "Bash(dotnet tool run ilspycmd:*)",
       "Bash(dotnet list:*)",
       "WebFetch(domain:github.com)",
-      "Bash(dotnet script eval:*)"
+      "Bash(dotnet script eval:*)",
+      "Bash(bc:*)",
+      "Bash(test:*)",
+      "Bash(powershell:*)",
+      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && head -30 \"\"{}\"\"')",
+      "Bash(git -C \"D:\\\\Hexalith.EventStore\" log --oneline -10)",
+      "Bash(git -C \"D:\\\\Hexalith.EventStore\" diff --stat HEAD~1..HEAD)",
+      "Bash(git -C \"D:\\\\Hexalith.EventStore\" diff --name-only HEAD~5..HEAD)",
+      "Bash(dotnet-script:*)"
     ]
   }
 }

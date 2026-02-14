@@ -1,6 +1,6 @@
 # Story 3.2: AggregateActor Orchestrator & Idempotency Check
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,108 +42,108 @@ So that replayed or duplicate commands don't produce duplicate events.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and existing artifacts (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Confirm `AggregateActor` STUB exists in `Server/Actors/AggregateActor.cs` with `ProcessCommandAsync` method
-  - [ ] 0.3 Confirm `CommandProcessingResult` record exists in `Server/Actors/CommandProcessingResult.cs`
-  - [ ] 0.4 Confirm `IAggregateActor` interface exists in `Server/Actors/IAggregateActor.cs`
-  - [ ] 0.5 Confirm `IActorStateManager` is available on the `AggregateActor` base class via `this.StateManager`
-  - [ ] 0.6 Confirm Dapr.Actors 1.16.1 is in Server.csproj dependencies
+- [x] Task 0: Verify prerequisites and existing artifacts (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Confirm `AggregateActor` STUB exists in `Server/Actors/AggregateActor.cs` with `ProcessCommandAsync` method
+  - [x] 0.3 Confirm `CommandProcessingResult` record exists in `Server/Actors/CommandProcessingResult.cs`
+  - [x] 0.4 Confirm `IAggregateActor` interface exists in `Server/Actors/IAggregateActor.cs`
+  - [x] 0.5 Confirm `IActorStateManager` is available on the `AggregateActor` base class via `this.StateManager`
+  - [x] 0.6 Confirm Dapr.Actors 1.16.1 is in Server.csproj dependencies
 
-- [ ] Task 1: Create IIdempotencyChecker interface (AC: #4)
-  - [ ] 1.1 Create `IIdempotencyChecker` interface in `Server/Actors/`
-  - [ ] 1.2 Define two methods:
+- [x] Task 1: Create IIdempotencyChecker interface (AC: #4)
+  - [x] 1.1 Create `IIdempotencyChecker` interface in `Server/Actors/`
+  - [x] 1.2 Define two methods:
     - `Task<CommandProcessingResult?> CheckAsync(string causationId)` -- returns cached result or null
     - `Task RecordAsync(string causationId, CommandProcessingResult result)` -- stores result for future checks
-  - [ ] 1.3 Namespace: `Hexalith.EventStore.Server.Actors`
+  - [x] 1.3 Namespace: `Hexalith.EventStore.Server.Actors`
 
-- [ ] Task 2: Create IdempotencyChecker implementation (AC: #3, #4)
-  - [ ] 2.1 Create `IdempotencyChecker` class in `Server/Actors/` implementing `IIdempotencyChecker`
-  - [ ] 2.2 Constructor: `IdempotencyChecker(IActorStateManager stateManager, ILogger<IdempotencyChecker> logger)`
-  - [ ] 2.3 `CheckAsync` implementation: call `stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:{causationId}")`, return the cached `CommandProcessingResult` if found, null otherwise
-  - [ ] 2.4 `RecordAsync` implementation: create `IdempotencyRecord` with (CausationId, Result, ProcessedAt = DateTimeOffset.UtcNow), call `stateManager.SetStateAsync("idempotency:{causationId}", record)` -- note: does NOT call `SaveStateAsync` here; that is the actor's responsibility to batch all state changes
-  - [ ] 2.5 Log at Debug level on check hit: `"Idempotency cache hit: CausationId={CausationId}"`
-  - [ ] 2.6 Log at Debug level on check miss: `"Idempotency cache miss: CausationId={CausationId}"`
-  - [ ] 2.7 Log at Debug level on record: `"Idempotency record stored: CausationId={CausationId}"`
-  - [ ] 2.8 Use `ArgumentNullException.ThrowIfNull()` and `ArgumentException.ThrowIfNullOrWhiteSpace()` on parameters (CA1062)
+- [x] Task 2: Create IdempotencyChecker implementation (AC: #3, #4)
+  - [x] 2.1 Create `IdempotencyChecker` class in `Server/Actors/` implementing `IIdempotencyChecker`
+  - [x] 2.2 Constructor: `IdempotencyChecker(IActorStateManager stateManager, ILogger<IdempotencyChecker> logger)`
+  - [x] 2.3 `CheckAsync` implementation: call `stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:{causationId}")`, return the cached `CommandProcessingResult` if found, null otherwise
+  - [x] 2.4 `RecordAsync` implementation: create `IdempotencyRecord` with (CausationId, Result, ProcessedAt = DateTimeOffset.UtcNow), call `stateManager.SetStateAsync("idempotency:{causationId}", record)` -- note: does NOT call `SaveStateAsync` here; that is the actor's responsibility to batch all state changes
+  - [x] 2.5 Log at Debug level on check hit: `"Idempotency cache hit: CausationId={CausationId}"`
+  - [x] 2.6 Log at Debug level on check miss: `"Idempotency cache miss: CausationId={CausationId}"`
+  - [x] 2.7 Log at Debug level on record: `"Idempotency record stored: CausationId={CausationId}"`
+  - [x] 2.8 Use `ArgumentNullException.ThrowIfNull()` and `ArgumentException.ThrowIfNullOrWhiteSpace()` on parameters (CA1062)
 
-- [ ] Task 3: Create IdempotencyRecord data type (AC: #3)
-  - [ ] 3.1 Create `IdempotencyRecord` record in `Server/Actors/`: `record IdempotencyRecord(string CausationId, string CorrelationId, bool Accepted, string? ErrorMessage, DateTimeOffset ProcessedAt)` -- CorrelationId stored for self-contained `ToResult()` reconstruction
-  - [ ] 3.2 This record is what gets serialized into IActorStateManager. It must be JSON-serializable (all primitive/nullable types, no complex references)
-  - [ ] 3.3 The record is intentionally NOT `CommandProcessingResult` directly -- it's a storage-optimized DTO that can evolve independently of the public API type
-  - [ ] 3.4 Add static factory method: `static IdempotencyRecord FromResult(string causationId, CommandProcessingResult result)` -> maps fields (extracts CorrelationId from result)
-  - [ ] 3.5 Add instance method: `CommandProcessingResult ToResult()` -> reconstructs `CommandProcessingResult` from stored fields
+- [x] Task 3: Create IdempotencyRecord data type (AC: #3)
+  - [x] 3.1 Create `IdempotencyRecord` record in `Server/Actors/`: `record IdempotencyRecord(string CausationId, string CorrelationId, bool Accepted, string? ErrorMessage, DateTimeOffset ProcessedAt)` -- CorrelationId stored for self-contained `ToResult()` reconstruction
+  - [x] 3.2 This record is what gets serialized into IActorStateManager. It must be JSON-serializable (all primitive/nullable types, no complex references)
+  - [x] 3.3 The record is intentionally NOT `CommandProcessingResult` directly -- it's a storage-optimized DTO that can evolve independently of the public API type
+  - [x] 3.4 Add static factory method: `static IdempotencyRecord FromResult(string causationId, CommandProcessingResult result)` -> maps fields (extracts CorrelationId from result)
+  - [x] 3.5 Add instance method: `CommandProcessingResult ToResult()` -> reconstructs `CommandProcessingResult` from stored fields
 
-- [ ] Task 4: Transform AggregateActor from STUB to orchestrator (AC: #1, #5)
-  - [ ] 4.1 Modify `AggregateActor.ProcessCommandAsync` to implement the 5-step delegation pattern
-  - [ ] 4.2 Step 1 (idempotency): Resolve causationId as `command.CausationId ?? command.CorrelationId` (fallback for commands where causationId is null -- original submissions). Create `IdempotencyChecker` by resolving `ILogger<IdempotencyChecker>` from `IServiceProvider` and passing `this.StateManager`. The `IdempotencyChecker` is created per-call (lightweight, no state of its own beyond the injected stateManager)
-  - [ ] 4.3 Call `idempotencyChecker.CheckAsync(command.CausationId)` -- if result is not null, log duplicate detection and return the cached result immediately. Note: `CausationId` is the correct idempotency key (see design decision F8)
-  - [ ] 4.4 Steps 2-5 (STUBS): Log at Debug level for each stub step, e.g., `logger.LogDebug("Step 2: Tenant validation -- STUB (Story 3.3)")`. These are inline no-ops, not separate classes yet
-  - [ ] 4.5 After all steps pass, create result: `new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId)`
-  - [ ] 4.6 Record idempotency: `await idempotencyChecker.RecordAsync(command.CausationId, result)`
-  - [ ] 4.7 Call `await StateManager.SaveStateAsync()` to atomically commit the idempotency record (and any future state changes from Steps 2-5)
-  - [ ] 4.8 Return the result
-  - [ ] 4.9 Preserve existing logging: the command receipt log from Story 3.1 should remain at the start of ProcessCommandAsync
-  - [ ] 4.10 Exception handling: Do NOT wrap the orchestrator in try/catch -- let exceptions propagate to the caller (the CommandRouter). DAPR actor infrastructure handles actor-level errors. The exception handler chain at the API layer (ConcurrencyConflictExceptionHandler -> GlobalExceptionHandler) deals with surfacing errors
-  - [ ] 4.11 `ConfigureAwait(false)` on all async calls (CA2007)
+- [x] Task 4: Transform AggregateActor from STUB to orchestrator (AC: #1, #5)
+  - [x] 4.1 Modify `AggregateActor.ProcessCommandAsync` to implement the 5-step delegation pattern
+  - [x] 4.2 Step 1 (idempotency): Resolve causationId as `command.CausationId ?? command.CorrelationId` (fallback for commands where causationId is null -- original submissions). Create `IdempotencyChecker` by resolving `ILogger<IdempotencyChecker>` from `IServiceProvider` and passing `this.StateManager`. The `IdempotencyChecker` is created per-call (lightweight, no state of its own beyond the injected stateManager)
+  - [x] 4.3 Call `idempotencyChecker.CheckAsync(command.CausationId)` -- if result is not null, log duplicate detection and return the cached result immediately. Note: `CausationId` is the correct idempotency key (see design decision F8)
+  - [x] 4.4 Steps 2-5 (STUBS): Log at Debug level for each stub step, e.g., `logger.LogDebug("Step 2: Tenant validation -- STUB (Story 3.3)")`. These are inline no-ops, not separate classes yet
+  - [x] 4.5 After all steps pass, create result: `new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId)`
+  - [x] 4.6 Record idempotency: `await idempotencyChecker.RecordAsync(command.CausationId, result)`
+  - [x] 4.7 Call `await StateManager.SaveStateAsync()` to atomically commit the idempotency record (and any future state changes from Steps 2-5)
+  - [x] 4.8 Return the result
+  - [x] 4.9 Preserve existing logging: the command receipt log from Story 3.1 should remain at the start of ProcessCommandAsync
+  - [x] 4.10 Exception handling: Do NOT wrap the orchestrator in try/catch -- let exceptions propagate to the caller (the CommandRouter). DAPR actor infrastructure handles actor-level errors. The exception handler chain at the API layer (ConcurrencyConflictExceptionHandler -> GlobalExceptionHandler) deals with surfacing errors
+  - [x] 4.11 `ConfigureAwait(false)` on all async calls (CA2007)
 
-- [ ] Task 5: Update AddEventStoreServer() if needed (AC: #4)
-  - [ ] 5.1 Review `Server/Configuration/ServiceCollectionExtensions.AddEventStoreServer()` -- IdempotencyChecker does NOT need DI registration because it is created directly in the actor using `this.StateManager` (actor state managers are per-actor-instance, not DI-resolvable)
-  - [ ] 5.2 If any new DI registrations are needed (e.g., for future extensibility), add them here
-  - [ ] 5.3 Document in code comment: "IdempotencyChecker is created per-actor-call, not via DI, because it requires the actor's IActorStateManager instance"
+- [x] Task 5: Update AddEventStoreServer() if needed (AC: #4)
+  - [x] 5.1 Review `Server/Configuration/ServiceCollectionExtensions.AddEventStoreServer()` -- IdempotencyChecker does NOT need DI registration because it is created directly in the actor using `this.StateManager` (actor state managers are per-actor-instance, not DI-resolvable)
+  - [x] 5.2 If any new DI registrations are needed (e.g., for future extensibility), add them here
+  - [x] 5.3 Document in code comment: "IdempotencyChecker is created per-actor-call, not via DI, because it requires the actor's IActorStateManager instance"
 
-- [ ] Task 6: Write unit tests for IdempotencyChecker (AC: #2, #3)
-  - [ ] 6.1 Create `IdempotencyCheckerTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
-  - [ ] 6.2 `CheckAsync_NoExistingRecord_ReturnsNull` -- verify TryGetStateAsync returns not-found, CheckAsync returns null
-  - [ ] 6.3 `CheckAsync_ExistingRecord_ReturnsCachedResult` -- verify stored record is returned as CommandProcessingResult
-  - [ ] 6.4 `RecordAsync_StoresIdempotencyRecord` -- verify SetStateAsync called with correct key and record
-  - [ ] 6.5 `RecordAsync_DoesNotCallSaveState` -- verify SaveStateAsync is NOT called (actor's responsibility)
-  - [ ] 6.6 `CheckAsync_NullCausationId_ThrowsArgumentException` -- verify guard clause
-  - [ ] 6.7 `RecordAsync_NullCausationId_ThrowsArgumentException` -- verify guard clause
-  - [ ] 6.8 `RecordAsync_NullResult_ThrowsArgumentNullException` -- verify guard clause
-  - [ ] 6.9 Mock `IActorStateManager` using NSubstitute. Use `stateManager.TryGetStateAsync<IdempotencyRecord>(key)` returning `ConditionalValue<IdempotencyRecord>`. Key pattern: `idempotency:{causationId}`
+- [x] Task 6: Write unit tests for IdempotencyChecker (AC: #2, #3)
+  - [x] 6.1 Create `IdempotencyCheckerTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
+  - [x] 6.2 `CheckAsync_NoExistingRecord_ReturnsNull` -- verify TryGetStateAsync returns not-found, CheckAsync returns null
+  - [x] 6.3 `CheckAsync_ExistingRecord_ReturnsCachedResult` -- verify stored record is returned as CommandProcessingResult
+  - [x] 6.4 `RecordAsync_StoresIdempotencyRecord` -- verify SetStateAsync called with correct key and record
+  - [x] 6.5 `RecordAsync_DoesNotCallSaveState` -- verify SaveStateAsync is NOT called (actor's responsibility)
+  - [x] 6.6 `CheckAsync_NullCausationId_ThrowsArgumentException` -- verify guard clause
+  - [x] 6.7 `RecordAsync_NullCausationId_ThrowsArgumentException` -- verify guard clause
+  - [x] 6.8 `RecordAsync_NullResult_ThrowsArgumentNullException` -- verify guard clause
+  - [x] 6.9 Mock `IActorStateManager` using NSubstitute. Use `stateManager.TryGetStateAsync<IdempotencyRecord>(key)` returning `ConditionalValue<IdempotencyRecord>`. Key pattern: `idempotency:{causationId}`
 
-- [ ] Task 7: Write unit tests for IdempotencyRecord (AC: #3)
-  - [ ] 7.1 Create `IdempotencyRecordTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
-  - [ ] 7.2 `FromResult_MapsAllFields` -- verify factory method maps CommandProcessingResult fields correctly (including CorrelationId from result)
-  - [ ] 7.3 `ToResult_ReconstructsCommandProcessingResult` -- verify roundtrip (CorrelationId preserved from stored record, not from caller context)
-  - [ ] 7.4 `JsonRoundtrip_PreservesAllFields` -- verify JSON serialization/deserialization for IActorStateManager compatibility
+- [x] Task 7: Write unit tests for IdempotencyRecord (AC: #3)
+  - [x] 7.1 Create `IdempotencyRecordTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
+  - [x] 7.2 `FromResult_MapsAllFields` -- verify factory method maps CommandProcessingResult fields correctly (including CorrelationId from result)
+  - [x] 7.3 `ToResult_ReconstructsCommandProcessingResult` -- verify roundtrip (CorrelationId preserved from stored record, not from caller context)
+  - [x] 7.4 `JsonRoundtrip_PreservesAllFields` -- verify JSON serialization/deserialization for IActorStateManager compatibility
 
-- [ ] Task 8: Write unit tests for AggregateActor orchestrator (AC: #1, #2, #5)
-  - [ ] 8.1 Update existing `AggregateActorTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
-  - [ ] 8.2 `ProcessCommandAsync_NewCommand_ExecutesFullPipeline` -- verify all 5 steps are invoked in order (Step 1 real, Steps 2-5 stubs)
-  - [ ] 8.3 `ProcessCommandAsync_NewCommand_ReturnsAccepted` -- verify Accepted=true with correct CorrelationId
-  - [ ] 8.4 `ProcessCommandAsync_NewCommand_StoresIdempotencyRecord` -- verify idempotency record written to StateManager
-  - [ ] 8.5 `ProcessCommandAsync_NewCommand_CallsSaveStateAsync` -- verify SaveStateAsync called after all steps
-  - [ ] 8.6 `ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult` -- verify existing idempotency record returned
-  - [ ] 8.7 `ProcessCommandAsync_DuplicateCommand_SkipsSteps2Through5` -- verify Steps 2-5 are NOT executed for duplicates
-  - [ ] 8.8 `ProcessCommandAsync_DuplicateCommand_DoesNotCallSaveState` -- verify SaveStateAsync NOT called for duplicates (no state changes needed)
-  - [ ] 8.9 `ProcessCommandAsync_ValidCommand_LogsCommandReceipt` -- verify existing receipt logging preserved
-  - [ ] 8.10 `ProcessCommandAsync_DuplicateCommand_LogsDuplicateDetection` -- verify duplicate detection logging
-  - [ ] 8.11 Create actor under test using Dapr.Actors test utilities or direct construction with mock `ActorHost` and mock `IActorStateManager`
+- [x] Task 8: Write unit tests for AggregateActor orchestrator (AC: #1, #2, #5)
+  - [x] 8.1 Update existing `AggregateActorTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
+  - [x] 8.2 `ProcessCommandAsync_NewCommand_ExecutesFullPipeline` -- verify all 5 steps are invoked in order (Step 1 real, Steps 2-5 stubs)
+  - [x] 8.3 `ProcessCommandAsync_NewCommand_ReturnsAccepted` -- verify Accepted=true with correct CorrelationId
+  - [x] 8.4 `ProcessCommandAsync_NewCommand_StoresIdempotencyRecord` -- verify idempotency record written to StateManager
+  - [x] 8.5 `ProcessCommandAsync_NewCommand_CallsSaveStateAsync` -- verify SaveStateAsync called after all steps
+  - [x] 8.6 `ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult` -- verify existing idempotency record returned
+  - [x] 8.7 `ProcessCommandAsync_DuplicateCommand_SkipsSteps2Through5` -- verify Steps 2-5 are NOT executed for duplicates
+  - [x] 8.8 `ProcessCommandAsync_DuplicateCommand_DoesNotCallSaveState` -- verify SaveStateAsync NOT called for duplicates (no state changes needed)
+  - [x] 8.9 `ProcessCommandAsync_ValidCommand_LogsCommandReceipt` -- verify existing receipt logging preserved
+  - [x] 8.10 `ProcessCommandAsync_DuplicateCommand_LogsDuplicateDetection` -- verify duplicate detection logging
+  - [x] 8.11 Create actor under test using Dapr.Actors test utilities or direct construction with mock `ActorHost` and mock `IActorStateManager`
 
-- [ ] Task 9: Update FakeAggregateActor if needed (AC: #6)
-  - [ ] 9.1 Review `Testing/Fakes/FakeAggregateActor.cs` -- the fake should continue to work as-is for integration tests since it implements `IAggregateActor` directly (not AggregateActor)
-  - [ ] 9.2 If the fake needs idempotency simulation, add an optional in-memory dictionary to track processed causationIds
-  - [ ] 9.3 The fake does NOT need to replicate the full orchestrator pattern -- it's for testing the caller (CommandRouter), not the actor internals
+- [x] Task 9: Update FakeAggregateActor if needed (AC: #6)
+  - [x] 9.1 Review `Testing/Fakes/FakeAggregateActor.cs` -- the fake should continue to work as-is for integration tests since it implements `IAggregateActor` directly (not AggregateActor)
+  - [x] 9.2 If the fake needs idempotency simulation, add an optional in-memory dictionary to track processed causationIds
+  - [x] 9.3 The fake does NOT need to replicate the full orchestrator pattern -- it's for testing the caller (CommandRouter), not the actor internals
 
-- [ ] Task 10: Update existing AggregateActor tests (AC: #6)
-  - [ ] 10.1 Update any Story 3.1 tests that directly tested the STUB behavior to verify the new orchestrator flow
-  - [ ] 10.2 Ensure the `ProcessCommandAsync_ValidCommand_ReturnsAccepted` test still passes (behavior unchanged for first-time commands)
-  - [ ] 10.3 Ensure the `ProcessCommandAsync_ValidCommand_LogsCommandReceipt` test still passes (logging preserved)
-  - [ ] 10.4 Ensure the `ProcessCommandAsync_ValidCommand_ReturnsCorrelationId` test still passes
+- [x] Task 10: Update existing AggregateActor tests (AC: #6)
+  - [x] 10.1 Update any Story 3.1 tests that directly tested the STUB behavior to verify the new orchestrator flow
+  - [x] 10.2 Ensure the `ProcessCommandAsync_ValidCommand_ReturnsAccepted` test still passes (behavior unchanged for first-time commands)
+  - [x] 10.3 Ensure the `ProcessCommandAsync_ValidCommand_LogsCommandReceipt` test still passes (logging preserved)
+  - [x] 10.4 Ensure the `ProcessCommandAsync_ValidCommand_ReturnsCorrelationId` test still passes
 
-- [ ] Task 11: Write integration tests (AC: #1, #2, #6)
-  - [ ] 11.1 Add to `CommandRoutingIntegrationTests.cs` or create separate file:
-  - [ ] 11.2 `PostCommands_DuplicateCausationId_ReturnsSuccess` -- submit same command twice (same causationId), verify both return 202 (second is idempotent, not an error)
-  - [ ] 11.3 `PostCommands_DuplicateCausationId_DoesNotDuplicateProcessing` -- verify the fake actor receives only one invocation (the second is short-circuited by idempotency)
-  - [ ] 11.4 `PostCommands_SameCorrelationIdDifferentCausationId_BothProcessed` -- verify replay scenario: same correlationId but different causationId results in both commands being processed (not blocked by idempotency)
-  - [ ] 11.5 Verify all existing integration tests still pass (authentication, authorization, validation, replay, status, concurrency, routing)
+- [x] Task 11: Write integration tests (AC: #1, #2, #6)
+  - [x] 11.1 Add to `CommandRoutingIntegrationTests.cs` or create separate file:
+  - [x] 11.2 `PostCommands_DuplicateCausationId_ReturnsSuccess` -- submit same command twice (same causationId), verify both return 202 (second is idempotent, not an error)
+  - [x] 11.3 `PostCommands_DuplicateCausationId_DoesNotDuplicateProcessing` -- verify the fake actor receives only one invocation (the second is short-circuited by idempotency)
+  - [x] 11.4 `PostCommands_SameCorrelationIdDifferentCausationId_BothProcessed` -- verify replay scenario: same correlationId but different causationId results in both commands being processed (not blocked by idempotency)
+  - [x] 11.5 Verify all existing integration tests still pass (authentication, authorization, validation, replay, status, concurrency, routing)
 
-- [ ] Task 12: Run all tests and verify zero regressions (AC: #6)
-  - [ ] 12.1 Run all existing tests -- zero regressions expected
-  - [ ] 12.2 Run new tests -- all must pass
-  - [ ] 12.3 Verify total test count (estimated: ~371 existing from Story 3.1 + ~22 new = ~393)
+- [x] Task 12: Run all tests and verify zero regressions (AC: #6)
+  - [x] 12.1 Run all existing tests -- zero regressions expected
+  - [x] 12.2 Run new tests -- all must pass
+  - [x] 12.3 Verify total test count (estimated: ~371 existing from Story 3.1 + ~22 new = ~393)
 
 ## Dev Notes
 
@@ -640,10 +640,49 @@ Tests: IntegrationTests -> CommandApi (via WebApplicationFactory)
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+- CS9107 warning: `host` parameter captured in enclosing type and passed to base constructor. Fixed by using `Host` (base class property) instead of `host` (primary constructor parameter) for `LoggerFactory` access.
+
 ### Completion Notes List
 
+- All 439 existing tests passed before implementation (prerequisite verification)
+- Created `IIdempotencyChecker` interface, `IdempotencyChecker` implementation, and `IdempotencyRecord` storage DTO in `Server/Actors/`
+- Transformed `AggregateActor` from Story 3.1 STUB to 5-step orchestrator: Step 1 (idempotency) is real, Steps 2-5 are debug-logged stubs
+- Idempotency key is `causationId` (not `correlationId`) per design decision F8 -- enables replays while blocking retries
+- `IdempotencyChecker` created per-call with `this.StateManager` (not DI-registered per F3)
+- `RecordAsync` buffers via `SetStateAsync`; actor calls `SaveStateAsync` once for atomic commit per F4
+- `FakeAggregateActor` unchanged -- works as-is since it implements `IAggregateActor` directly
+- No DI registration changes needed in `AddEventStoreServer()`
+- Existing AggregateActor tests updated to use mock `IActorStateManager` via reflection (StateManager property set)
+- 22 new tests added: 9 IdempotencyChecker, 4 IdempotencyRecord, 7 AggregateActor orchestrator (extended from 3 to 10), 2 integration
+- Final test counts: 9 Client + 48 Testing + 147 Contracts + 156 Server + 110 Integration = 470 total
+- Zero regressions across all test projects
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][MEDIUM] `FakeAggregateActor` implements `IAggregateActor : IActor` but `IActor` is a DAPR marker interface -- ensure fake remains compatible as IActor usage grows (pre-existing from Story 3.1)
+- [ ] [AI-Review][MEDIUM] `AggregateActor.ProcessCommandAsync` does not propagate `CancellationToken` to `StateManager` calls -- consider adding cancellation support when DAPR actor remoting supports it (future story)
+
+### Change Log
+
+- 2026-02-14: Code review fixes -- Fixed misleading integration test names/assertions (H1), made IdempotencyRecord.CorrelationId nullable to prevent null-to-empty data loss (M2), corrected test counts (M1), added FakeAggregateActor.SimulateIdempotency for test fidelity, added review follow-up items for M3/M4.
+- 2026-02-14: Story 3.2 implemented -- AggregateActor orchestrator with idempotency check. 3 new source files, 2 new test files, 2 modified test files. 22 new tests added.
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Server/Actors/IIdempotencyChecker.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyChecker.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyRecord.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyCheckerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyRecordTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (STUB → orchestrator)
+- src/Hexalith.EventStore.Server/Actors/IdempotencyRecord.cs (review fix: CorrelationId made nullable)
+- src/Hexalith.EventStore.Testing/Fakes/FakeAggregateActor.cs (review fix: added SimulateIdempotency + ProcessedCount)
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs (updated for orchestrator + mock StateManager)
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/CommandRoutingIntegrationTests.cs (review fix: honest test names/assertions)

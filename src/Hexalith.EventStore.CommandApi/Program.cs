@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddCommandApi();
+builder.Services.AddEventStoreServer();
 
 var app = builder.Build();
 
@@ -28,6 +29,7 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true))
 }
 
 app.MapControllers();
+app.MapActorsHandlers();
 
 // Configure global request body size limit (1MB)
 app.Lifetime.ApplicationStarted.Register(() =>

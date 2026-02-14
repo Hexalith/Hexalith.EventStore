@@ -39,6 +39,7 @@ public static class ArchivedCommandExtensions
             CommandType: archived.CommandType,
             Payload: archived.Payload,
             CorrelationId: correlationId,
+            UserId: "system",
             Extensions: archived.Extensions);
     }
 }

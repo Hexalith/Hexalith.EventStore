@@ -300,6 +300,8 @@ public class JwtAuthenticationIntegrationTests
 
                 services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
 
+                TestServiceOverrides.ReplaceCommandRouter(services);
+
                 services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }

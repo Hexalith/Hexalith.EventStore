@@ -284,6 +284,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
                     new ConcurrencyConflictSimulatingHandler(
                         sp.GetRequiredService<ICommandStatusStore>(),
                         sp.GetRequiredService<ICommandArchiveStore>(),
+                        sp.GetRequiredService<ICommandRouter>(),
                         sp.GetRequiredService<ILogger<SubmitCommandHandler>>()));
             });
         });
@@ -296,9 +297,10 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     private sealed class ConcurrencyConflictSimulatingHandler(
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
+        ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
     {
-        private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, logger);
+        private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, commandRouter, logger);
 
         public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
         {

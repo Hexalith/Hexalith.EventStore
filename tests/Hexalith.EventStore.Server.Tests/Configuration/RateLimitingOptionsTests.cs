@@ -52,6 +52,21 @@ public class RateLimitingOptionsTests
     }
 
     [Fact]
+    public void Validation_QueueLimitNegative_Fails()
+    {
+        // Arrange
+        var options = new RateLimitingOptions { QueueLimit = -1 };
+        var validator = new ValidateRateLimitingOptions();
+
+        // Act
+        ValidateOptionsResult result = validator.Validate(null, options);
+
+        // Assert
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("QueueLimit");
+    }
+
+    [Fact]
     public void Validation_ValidConfiguration_Succeeds()
     {
         // Arrange

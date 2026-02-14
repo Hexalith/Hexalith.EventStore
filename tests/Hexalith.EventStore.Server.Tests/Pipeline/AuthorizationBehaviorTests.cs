@@ -35,7 +35,8 @@ public class AuthorizationBehaviorTests
             AggregateId: "agg-001",
             CommandType: commandType,
             Payload: [0x01],
-            CorrelationId: "test-correlation-id");
+            CorrelationId: "test-correlation-id",
+            UserId: "test-user");
 
     private static RequestHandlerDelegate<SubmitCommandResult> CreateSuccessDelegate() =>
         new((_) => Task.FromResult(new SubmitCommandResult("test-correlation-id")));

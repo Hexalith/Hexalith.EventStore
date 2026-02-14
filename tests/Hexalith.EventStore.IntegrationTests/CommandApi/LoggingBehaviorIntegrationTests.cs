@@ -172,6 +172,8 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
 
                 services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
 
+                TestServiceOverrides.ReplaceCommandRouter(services);
+
                 _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }
