@@ -29,7 +29,7 @@ public sealed class FakeEventPersister : IEventPersister
     }
 
     /// <inheritdoc/>
-    public Task<long> PersistEventsAsync(
+    public Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
         CommandEnvelope command,
         DomainResult domainResult,
@@ -51,6 +51,7 @@ public sealed class FakeEventPersister : IEventPersister
         _ = _sequenceByAggregate.TryGetValue(aggregateKey, out long currentSequence);
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
+        var envelopes = new List<EventEnvelope>();
 
         foreach (Hexalith.EventStore.Contracts.Events.IEventPayload eventPayload in domainResult.Events)
         {
@@ -74,9 +75,10 @@ public sealed class FakeEventPersister : IEventPersister
                 Extensions: null);
 
             _persistedEvents.Add(envelope);
+            envelopes.Add(envelope);
         }
 
         _sequenceByAggregate[aggregateKey] = currentSequence;
-        return Task.FromResult(currentSequence);
+        return Task.FromResult(new EventPersistResult(currentSequence, envelopes));
     }
 }

@@ -26,7 +26,7 @@ public class EventPersister(
     ILogger<EventPersister> logger) : IEventPersister
 {
     /// <inheritdoc/>
-    public async Task<long> PersistEventsAsync(
+    public async Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
         CommandEnvelope command,
         DomainResult domainResult,
@@ -39,7 +39,7 @@ public class EventPersister(
 
         if (domainResult.Events.Count == 0)
         {
-            return 0;
+            return new EventPersistResult(0, []);
         }
 
         // Load current metadata to get sequence number
@@ -52,6 +52,7 @@ public class EventPersister(
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         long firstSeq = currentSequence + 1;
+        var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
         for (int i = 0; i < domainResult.Events.Count; i++)
         {
@@ -75,6 +76,8 @@ public class EventPersister(
                 SerializationFormat: "json",
                 Payload: payloadBytes,
                 Extensions: null);
+
+            envelopes.Add(envelope);
 
             string key = $"{identity.EventStreamKeyPrefix}{sequenceNumber}";
 
@@ -103,6 +106,6 @@ public class EventPersister(
             identity.ActorId,
             command.CorrelationId);
 
-        return newSequence;
+        return new EventPersistResult(newSequence, envelopes);
     }
 }

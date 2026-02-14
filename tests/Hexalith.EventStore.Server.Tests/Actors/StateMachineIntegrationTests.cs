@@ -49,9 +49,10 @@ public class StateMachineIntegrationTests
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
         var statusStore = Substitute.For<ICommandStatusStore>();
+        var eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -71,6 +72,14 @@ public class StateMachineIntegrationTests
         // Default: domain returns NoOp
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
+
+        // Default: event publisher succeeds
+        eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, invoker, snapshotManager, statusStore);
     }
