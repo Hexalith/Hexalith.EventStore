@@ -1,3 +1,17 @@
+# DAPR State Store Component -- Local Development (D1, NFR13)
+# =============================================================
+# Redis-backed state store for actor state, snapshots, and command status tracking.
+# Composite key pattern: {tenant}||{domain}||{aggregateId} (D1)
+#
+# Component Scoping (AC #2, AC #4, AC #13):
+#   Only commandapi can access this state store. Actors run in-process under the
+#   commandapi app-id, so no other app-id needs state store access. Domain services
+#   (sample) have zero state store access -- no read, no write.
+#
+# Adding New Domain Services:
+#   DO NOT add new domain services to scopes. Domain services have zero state store
+#   access (D4). If a domain service needs configuration data, use a separate scoped
+#   component (not the actor state store).
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -12,3 +26,8 @@ spec:
       value: "{env:REDIS_PASSWORD}"
     - name: actorStateStore
       value: "true"
+# Component-level scoping: only commandapi can access this state store (AC #2, AC #4, AC #13).
+# Actors run in-process under the commandapi app-id. Domain services (sample) have zero
+# state store access -- no read, no write. This enforces the zero-trust posture (D4).
+scopes:
+  - commandapi

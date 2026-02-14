@@ -30,9 +30,12 @@ public static class EventStoreServerServiceCollectionExtensions
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
+        services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
         services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
         services.AddOptions<EventPublisherOptions>()
             .Bind(configuration.GetSection("EventStore:Publisher"));
+        services.AddOptions<EventDrainOptions>()
+            .Bind(configuration.GetSection("EventStore:Drain"));
         services.AddOptions<SnapshotOptions>()
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")

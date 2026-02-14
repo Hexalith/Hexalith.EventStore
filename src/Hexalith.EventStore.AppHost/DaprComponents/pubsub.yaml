@@ -1,3 +1,24 @@
+# DAPR Pub/Sub Component -- Local Development (D6, NFR13)
+# ========================================================
+# Redis-backed pub/sub for event distribution with per-tenant-per-domain topics.
+# Topic pattern: {tenant}.{domain}.events (D6)
+# Dead-letter topic pattern: deadletter.{tenant}.{domain}.events (Story 4.5)
+#
+# Component Scoping (AC #7, AC #13):
+#   Only commandapi can access this pub/sub component. Domain services (sample)
+#   have zero pub/sub access -- no publish, no subscribe, no component access.
+#   This is enforced by the scopes field below.
+#
+# Topic Scoping (AC #7, AC #12):
+#   publishingScopes restricts sample from publishing to any topic.
+#   subscriptionScopes restricts sample from subscribing to any topic.
+#   commandapi is not listed in scoping metadata = can publish/subscribe to all topics,
+#   including dynamic tenant topics ({tenant}.{domain}.events) and dead-letter topics.
+#
+# Adding New Domain Services:
+#   DO NOT add new domain services to scopes, publishingScopes, or subscriptionScopes.
+#   Domain services have zero pub/sub access (D4). If external subscribers need access,
+#   add them to scopes and use subscriptionScopes to restrict their topic access.
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -17,3 +38,18 @@ spec:
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
+    # Pub/sub topic scoping (AC #7, AC #12)
+    # sample= (empty) denies sample from publishing to any topic.
+    # commandapi is not listed = unrestricted publishing to all topics including
+    # dynamic tenant topics and dead-letter topics (AC #12).
+    - name: publishingScopes
+      value: "sample="
+    # sample= (empty) denies sample from subscribing to any topic.
+    # commandapi is not listed = unrestricted subscription to all topics.
+    - name: subscriptionScopes
+      value: "sample="
+# Component-level scoping: only commandapi can access this pub/sub component (AC #7, AC #13).
+# Domain services (sample) have zero pub/sub access -- cannot publish, subscribe, or
+# interact with this component in any way. This enforces the zero-trust posture (D4).
+scopes:
+  - commandapi

@@ -67,6 +67,20 @@ public class ResiliencyConfigurationTests
         content.ShouldContain("inbound:");
         content.ShouldContain("retry: pubsubRetryOutbound");
         content.ShouldContain("retry: pubsubRetryInbound");
+        content.ShouldContain("circuitBreaker: pubsubBreaker", customMessage:
+            "Local pub/sub outbound target must reference pubsubBreaker for fast-fail behavior");
+    }
+
+    [Fact]
+    public void ProductionResiliency_TargetsPubSubCircuitBreaker()
+    {
+        string content = File.ReadAllText(ProductionResiliencyPath);
+
+        content.ShouldContain("components:");
+        content.ShouldContain("pubsub:");
+        content.ShouldContain("outbound:");
+        content.ShouldContain("circuitBreaker: pubsubBreaker", customMessage:
+            "Production pub/sub outbound target must reference pubsubBreaker for fast-fail behavior");
     }
 
     // --- Task 6.6: Production pub/sub retry policies ---

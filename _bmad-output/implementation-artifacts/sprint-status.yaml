@@ -81,18 +81,18 @@ development_status:
   # Epic 4: Event Distribution & Dead-Letter Handling
   epic-4: in-progress
   4-1-event-publisher-with-cloudevents-1-0: done
-  4-2-per-tenant-per-domain-topic-isolation: review
-  4-3-at-least-once-delivery-and-dapr-retry-policies: review
-  4-4-persist-then-publish-resilience: ready-for-dev
-  4-5-dead-letter-routing-with-full-context: backlog
+  4-2-per-tenant-per-domain-topic-isolation: done
+  4-3-at-least-once-delivery-and-dapr-retry-policies: done
+  4-4-persist-then-publish-resilience: done
+  4-5-dead-letter-routing-with-full-context: review
   epic-4-retrospective: optional
 
   # Epic 5: Multi-Tenant Security & Access Control Enforcement
-  epic-5: backlog
-  5-1-dapr-access-control-policies: backlog
-  5-2-data-path-isolation-verification: backlog
-  5-3-pubsub-topic-isolation-enforcement: backlog
-  5-4-security-audit-logging-and-payload-protection: backlog
+  epic-5: in-progress
+  5-1-dapr-access-control-policies: review
+  5-2-data-path-isolation-verification: ready-for-dev
+  5-3-pubsub-topic-isolation-enforcement: ready-for-dev
+  5-4-security-audit-logging-and-payload-protection: ready-for-dev
   epic-5-retrospective: optional
 
   # Epic 6: Observability, Health & Operational Readiness

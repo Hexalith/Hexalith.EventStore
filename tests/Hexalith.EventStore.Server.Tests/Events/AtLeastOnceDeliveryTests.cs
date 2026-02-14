@@ -15,7 +15,10 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
 
+using Hexalith.EventStore.Server.Configuration;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
@@ -112,6 +115,8 @@ public class AtLeastOnceDeliveryTests
         result.Success.ShouldBeFalse();
         result.PublishedCount.ShouldBe(2, "First 2 events should be published before failure at index 2");
         result.FailureReason.ShouldNotBeNullOrEmpty();
+        fakePublisher.TotalEventsPublished.ShouldBe(2);
+        fakePublisher.GetEventsForTopic("test-tenant.test-domain.events").Count.ShouldBe(2);
     }
 
     // --- Task 9.4: Total failure -- events safe in state store ---
@@ -138,6 +143,8 @@ public class AtLeastOnceDeliveryTests
         result.Success.ShouldBeFalse();
         result.PublishedCount.ShouldBe(0);
         events.Count.ShouldBe(3, "Events remain in state store (not lost) even when publication fails (NFR22)");
+        fakePublisher.TotalEventsPublished.ShouldBe(0);
+        fakePublisher.GetPublishedTopics().ShouldBeEmpty();
     }
 
     // --- Task 9.5: Actor pipeline -- publish fails, events remain in state store ---
@@ -259,7 +266,7 @@ public class AtLeastOnceDeliveryTests
         var eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
 
         // Set the mock state manager via reflection
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);

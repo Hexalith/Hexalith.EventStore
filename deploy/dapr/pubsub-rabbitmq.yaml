@@ -1,3 +1,22 @@
+# DAPR Pub/Sub Component -- Production RabbitMQ (D6, NFR13)
+# ==========================================================
+# RabbitMQ-backed pub/sub for event distribution with per-tenant-per-domain topics.
+# Topic pattern: {tenant}.{domain}.events (D6)
+# Dead-letter topic pattern: deadletter.{tenant}.{domain}.events (Story 4.5)
+#
+# Component Scoping (AC #7, AC #13):
+#   Only commandapi can access this pub/sub component. Domain services have zero
+#   pub/sub access -- no publish, no subscribe, no component access.
+#
+# Topic Scoping (AC #7, AC #12):
+#   Production domain services are intentionally omitted from scoping metadata
+#   since they have zero pub/sub access (enforced by component scopes).
+#   External subscribers should be added to scopes and subscriptionScopes
+#   when onboarded (Story 5.3).
+#
+# Adding New Domain Services:
+#   DO NOT add new domain services to scopes, publishingScopes, or subscriptionScopes.
+#   Domain services have zero pub/sub access (D4).
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -20,3 +39,17 @@ spec:
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
+    # Pub/sub topic scoping (AC #7, AC #12)
+    # commandapi is not listed = unrestricted publishing to all topics including
+    # dynamic tenant topics and dead-letter topics (AC #12).
+    # Production domain services are omitted (enforced by component scopes).
+    - name: publishingScopes
+      value: ""
+    # commandapi is not listed = unrestricted subscription to all topics.
+    - name: subscriptionScopes
+      value: ""
+# Component-level scoping: only commandapi can access this pub/sub component (AC #7, AC #13).
+# Domain services have zero pub/sub access (D4). External subscribers should be added
+# to this list when onboarded (Story 5.3).
+scopes:
+  - commandapi

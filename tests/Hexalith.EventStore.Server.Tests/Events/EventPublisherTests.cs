@@ -291,24 +291,19 @@ public class EventPublisherTests
     public async Task PublishEventsAsync_CreatesOpenTelemetryActivity_WithCorrectTags()
     {
         // Arrange
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-        };
-        ActivitySource.AddActivityListener(listener);
-
         (EventPublisher publisher, _, _) = CreatePublisher();
         var events = new List<EventEnvelope> { CreateTestEnvelope(), CreateTestEnvelope(2) };
+        string expectedCorrelationId = $"corr-activity-{Guid.NewGuid():N}";
         Activity? capturedActivity = null;
 
         using var listener2 = new ActivityListener
         {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStarted = activity =>
+            ActivityStopped = activity =>
             {
-                if (activity.OperationName == EventStoreActivitySource.EventsPublish)
+                if (activity.OperationName == EventStoreActivitySource.EventsPublish
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), expectedCorrelationId))
                 {
                     capturedActivity = activity;
                 }
@@ -317,11 +312,11 @@ public class EventPublisherTests
         ActivitySource.AddActivityListener(listener2);
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, events, "corr-activity");
+        await publisher.PublishEventsAsync(TestIdentity, events, expectedCorrelationId);
 
         // Assert
         capturedActivity.ShouldNotBeNull();
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe("corr-activity");
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe(expectedCorrelationId);
         capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
         capturedActivity.GetTagItem(EventStoreActivitySource.TagDomain).ShouldBe("test-domain");
         capturedActivity.GetTagItem(EventStoreActivitySource.TagAggregateId).ShouldBe("agg-001");

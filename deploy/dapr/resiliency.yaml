@@ -18,7 +18,7 @@ spec:
       #   Azure Service Bus: 3 built-in (SDK default) -> effective ~15 (3 x 5)
       pubsubRetryOutbound:
         policy: exponential
-        maxInterval: 15s
+        maxInterval: 10s
         maxRetries: 5
       # Pub/sub inbound: broker -> sidecar -> subscriber app
       # Effective inbound retry count = subscriber-side retries x resiliency retries
