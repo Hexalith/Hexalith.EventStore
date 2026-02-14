@@ -96,13 +96,9 @@
       "Bash(git -C \"D:\\\\Hexalith.EventStore\" diff --stat HEAD~1..HEAD)",
       "Bash(git -C \"D:\\\\Hexalith.EventStore\" diff --name-only HEAD~5..HEAD)",
       "Bash(dotnet-script:*)",
-      "Bash(git diff:*)",
-      "mcp__plugin_github_github__update_pull_request",
-      "mcp__plugin_github_github__pull_request_read",
-      "Bash(git fetch:*)",
-      "Bash(git rebase:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(git merge:*)"
+      "Bash(dotnet run:*)",
+      "Bash(dotnet metadata-dump:*)",
+      "Bash(git -C D:Hexalith.EventStore status)"
     ]
   }
 }
