@@ -6,11 +6,12 @@ namespace Hexalith.EventStore.Server.DomainServices;
 public interface IDomainServiceResolver
 {
     /// <summary>
-    /// Resolves the domain service registration for the specified tenant and domain.
+    /// Resolves the domain service registration for the specified tenant, domain, and version.
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="domain">The domain name.</param>
+    /// <param name="version">The service version (e.g., "v1"). Defaults to "v1".</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The registration, or null if no service is registered.</returns>
-    Task<DomainServiceRegistration?> ResolveAsync(string tenantId, string domain, CancellationToken cancellationToken = default);
+    Task<DomainServiceRegistration?> ResolveAsync(string tenantId, string domain, string version = "v1", CancellationToken cancellationToken = default);
 }

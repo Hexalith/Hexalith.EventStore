@@ -192,4 +192,58 @@ public class CommandRouterTests
         await Should.ThrowAsync<ArgumentNullException>(
             () => router.RouteCommandAsync(null!));
     }
+
+    // --- Task 2.1: Multi-tenant actor isolation ---
+
+    [Fact]
+    public async Task RouteCommandAsync_DifferentTenants_CreatesDistinctActorIds()
+    {
+        // Arrange
+        var capturedActorIds = new List<ActorId>();
+        var actorProxy = Substitute.For<IAggregateActor>();
+        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+            .Returns(new CommandProcessingResult(true));
+
+        var proxyFactory = Substitute.For<IActorProxyFactory>();
+        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorIds.Add(id)), Arg.Any<string>())
+            .Returns(actorProxy);
+
+        var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
+
+        // Act
+        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "orders", aggregateId: "order-001"));
+        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-b", domain: "orders", aggregateId: "order-001"));
+
+        // Assert
+        capturedActorIds.Count.ShouldBe(2);
+        capturedActorIds[0].ToString().ShouldBe("tenant-a:orders:order-001");
+        capturedActorIds[1].ToString().ShouldBe("tenant-b:orders:order-001");
+        capturedActorIds[0].ShouldNotBe(capturedActorIds[1]);
+    }
+
+    [Fact]
+    public async Task RouteCommandAsync_DifferentDomains_CreatesDistinctActorIds()
+    {
+        // Arrange
+        var capturedActorIds = new List<ActorId>();
+        var actorProxy = Substitute.For<IAggregateActor>();
+        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+            .Returns(new CommandProcessingResult(true));
+
+        var proxyFactory = Substitute.For<IActorProxyFactory>();
+        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorIds.Add(id)), Arg.Any<string>())
+            .Returns(actorProxy);
+
+        var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
+
+        // Act
+        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "orders", aggregateId: "item-001"));
+        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "inventory", aggregateId: "item-001"));
+
+        // Assert
+        capturedActorIds.Count.ShouldBe(2);
+        capturedActorIds[0].ToString().ShouldBe("tenant-a:orders:item-001");
+        capturedActorIds[1].ToString().ShouldBe("tenant-a:inventory:item-001");
+        capturedActorIds[0].ShouldNotBe(capturedActorIds[1]);
+    }
 }

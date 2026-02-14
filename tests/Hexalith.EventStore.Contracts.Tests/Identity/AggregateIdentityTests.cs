@@ -251,4 +251,130 @@ public class AggregateIdentityTests
 
         Assert.Equal("Order-123", identity.AggregateId);
     }
+
+    // --- Task 2: Multi-tenant actor isolation verification ---
+
+    [Fact]
+    public void ActorId_DifferentTenantsSameDomainAndAggregate_ProducesDistinctActorIds()
+    {
+        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+
+        Assert.NotEqual(identityA.ActorId, identityB.ActorId);
+        Assert.Equal("tenant-a:orders:order-001", identityA.ActorId);
+        Assert.Equal("tenant-b:orders:order-001", identityB.ActorId);
+    }
+
+    [Fact]
+    public void ActorId_SameTenantDifferentDomains_ProducesDistinctActorIds()
+    {
+        var identityOrders = new AggregateIdentity("tenant-a", "orders", "item-001");
+        var identityInventory = new AggregateIdentity("tenant-a", "inventory", "item-001");
+
+        Assert.NotEqual(identityOrders.ActorId, identityInventory.ActorId);
+        Assert.Equal("tenant-a:orders:item-001", identityOrders.ActorId);
+        Assert.Equal("tenant-a:inventory:item-001", identityInventory.ActorId);
+    }
+
+    [Fact]
+    public void AllKeys_DifferentTenants_AreStructurallyDisjoint()
+    {
+        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+
+        // Actor IDs are distinct
+        Assert.NotEqual(identityA.ActorId, identityB.ActorId);
+
+        // Event stream key prefixes are distinct
+        Assert.NotEqual(identityA.EventStreamKeyPrefix, identityB.EventStreamKeyPrefix);
+
+        // Metadata keys are distinct
+        Assert.NotEqual(identityA.MetadataKey, identityB.MetadataKey);
+
+        // Snapshot keys are distinct
+        Assert.NotEqual(identityA.SnapshotKey, identityB.SnapshotKey);
+
+        // No key from tenant A starts with tenant B's prefix
+        Assert.DoesNotContain("tenant-b", identityA.EventStreamKeyPrefix);
+        Assert.DoesNotContain("tenant-a", identityB.EventStreamKeyPrefix);
+    }
+
+    // --- Task 3: Composite key isolation in state store ---
+
+    [Fact]
+    public void EventStreamKeyPrefix_IncludesTenantPrefix()
+    {
+        // AC #2: Event keys include tenant prefix: {tenant}:{domain}:{aggId}:events:{seq}
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
+        string eventKey = identity.EventStreamKeyPrefix + "42";
+
+        Assert.Equal("tenant-a:orders:order-001:events:42", eventKey);
+        Assert.StartsWith("tenant-a:", eventKey);
+    }
+
+    [Fact]
+    public void SnapshotKey_IncludesTenantPrefix()
+    {
+        // Task 3.2: snapshot keys include tenant prefix: {tenant}:{domain}:{aggId}:snapshot
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
+
+        Assert.Equal("tenant-a:orders:order-001:snapshot", identity.SnapshotKey);
+        Assert.StartsWith("tenant-a:", identity.SnapshotKey);
+    }
+
+    [Fact]
+    public void MetadataKey_IncludesTenantPrefix()
+    {
+        // Task 3.3: metadata keys follow {tenant}:{domain}:{aggId}:metadata pattern
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
+
+        Assert.Equal("tenant-a:orders:order-001:metadata", identity.MetadataKey);
+        Assert.StartsWith("tenant-a:", identity.MetadataKey);
+    }
+
+    [Fact]
+    public void AllStateStoreKeys_TenantAAndTenantB_NoOverlap()
+    {
+        // Task 3.4: tenant A's keys are structurally disjoint from tenant B's keys
+        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+
+        // Collect all key patterns for both tenants
+        string[] keysA =
+        [
+            identityA.EventStreamKeyPrefix + "1",
+            identityA.SnapshotKey,
+            identityA.MetadataKey,
+        ];
+
+        string[] keysB =
+        [
+            identityB.EventStreamKeyPrefix + "1",
+            identityB.SnapshotKey,
+            identityB.MetadataKey,
+        ];
+
+        // No overlap: no key from A equals any key from B
+        foreach (string keyA in keysA)
+        {
+            foreach (string keyB in keysB)
+            {
+                Assert.NotEqual(keyA, keyB);
+            }
+        }
+
+        // All keys from A start with "tenant-a:" and none start with "tenant-b:"
+        foreach (string keyA in keysA)
+        {
+            Assert.StartsWith("tenant-a:", keyA);
+            Assert.False(keyA.StartsWith("tenant-b:"));
+        }
+
+        // All keys from B start with "tenant-b:" and none start with "tenant-a:"
+        foreach (string keyB in keysB)
+        {
+            Assert.StartsWith("tenant-b:", keyB);
+            Assert.False(keyB.StartsWith("tenant-a:"));
+        }
+    }
 }

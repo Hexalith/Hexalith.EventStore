@@ -1,6 +1,6 @@
 # Story 3.6: Multi-Domain & Multi-Tenant Processing
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,53 +42,53 @@ So that a single deployment serves diverse workloads (FR24, FR25).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Verify and extend DomainServiceResolver for multi-tenant multi-domain routing (AC: #1, #2, #5)
-  - [ ] 1.1 Ensure DomainServiceResolver correctly maps `tenant:domain:version` -> service endpoint for multiple registrations
-  - [ ] 1.2 Verify config store lookup supports dynamic tenant/domain additions (AC: #3, NFR20)
-  - [ ] 1.3 Handle missing registrations with `DomainServiceNotFoundException` (AC: #5)
-- [ ] Task 2: Verify AggregateIdentity-based actor isolation (AC: #1, #2, #4)
-  - [ ] 2.1 Confirm CommandRouter derives distinct actor IDs for different tenant+domain combos
-  - [ ] 2.2 Validate that `AggregateIdentity.ActorId` produces unique IDs per tenant:domain:aggregate-id
-  - [ ] 2.3 Verify no shared state between actors for different tenants
-- [ ] Task 3: Verify composite key isolation in state store (AC: #2, #4)
-  - [ ] 3.1 Confirm event keys include tenant prefix: `{tenant}:{domain}:{aggId}:events:{seq}`
-  - [ ] 3.2 Confirm snapshot keys include tenant prefix: `{tenant}:{domain}:{aggId}:snapshot`
-  - [ ] 3.3 Confirm metadata keys follow `{tenant}:{domain}:{aggId}:metadata` pattern (from Story 3.4 AggregateMetadata)
-  - [ ] 3.4 Verify tenant A's keys are structurally disjoint from tenant B's keys
-- [ ] Task 4: Integration tests for multi-domain/multi-tenant scenarios (AC: #1-#5)
-  - [ ] 4.1 Test: Two domains within same tenant route to different domain services
-  - [ ] 4.2 Test: Two tenants within same domain have isolated actors and event streams
-  - [ ] 4.3 Test: Dynamic tenant/domain addition without restart (config store update)
-  - [ ] 4.4 Test: Unregistered tenant+domain returns DomainServiceNotFoundException
-  - [ ] 4.5 Test: Actor state isolation between tenants (no cross-tenant leakage)
-- [ ] Task 5: Unit tests for DomainServiceResolver multi-tenant routing
-  - [ ] 5.1 Test: Resolver returns correct endpoint for each tenant+domain combo
-  - [ ] 5.2 Test: Resolver throws DomainServiceNotFoundException for unknown combo
-  - [ ] 5.3 Test: Resolver refreshes config without restart
-- [ ] Task 6: Verify DomainServiceResolver has no application-level caching (AC: #3, ADR-1)
-  - [ ] 6.1 Unit test: mock `DaprClient.GetConfiguration`, invoke resolver twice with same tenant+domain, assert `GetConfiguration` called TWICE (not cached)
-  - [ ] 6.2 Integration test: update config store registration, invoke resolver immediately, assert new registration returned
-- [ ] Task 7: Add domain service response size validation (AC: #6)
-  - [ ] 7.1 Extend existing `DomainServiceOptions.cs` (from Story 3.5) with `MaxEventsPerResult` (default 1000) and `MaxEventSizeBytes` (default 1_048_576)
-  - [ ] 7.2 Create `DomainServiceException.cs` in `Server/DomainServices/` (fields: TenantId, Domain, Reason, EventCount?, EventSizeBytes?)
-  - [ ] 7.3 Validate event count AND individual event payload size in `DaprDomainServiceInvoker.InvokeAsync()` AFTER deserialization
-  - [ ] 7.4 Log WARNING with CorrelationId when `DomainResult.IsNoOp` (empty events) to detect silent failures
-  - [ ] 7.5 Test: Response exceeding max events throws DomainServiceException
-  - [ ] 7.6 Test: Single event exceeding max payload size throws DomainServiceException
-  - [ ] 7.7 Test: No-op result logs WARNING
-- [ ] Task 8: Validate config store key pattern includes version (AC: #7, ADR-4)
-  - [ ] 8.1 Update `DomainServiceResolver` key pattern from Story 3.5's `{tenant}:{domain}:service` to `{tenant}:{domain}:{version}` (replace `:service` suffix with version)
-  - [ ] 8.2 Default version to `v1` when not specified; read version from `command.Extensions["domain-service-version"]` or default to `v1` if key not present
-  - [ ] 8.3 Validate version format against regex `^v[0-9]+$`, normalize to lowercase via `ToLowerInvariant()`
-  - [ ] 8.4 Log INFO when version defaults to v1 (audit trail for implicit decisions)
-  - [ ] 8.5 Test: Versioned key lookup resolves correctly
-  - [ ] 8.6 Test: Invalid version formats rejected: `"version1"` (no v prefix), `"v1a"` (non-numeric), `"v1:evil"` (injection)
-  - [ ] 8.7 Test: Version `"V1"` normalized to `"v1"`
-- [ ] Task 9: Document deployment security requirements
-  - [ ] 9.1 Document DAPR sidecar port 3500 network isolation requirement (Red Team H1)
-  - [ ] 9.2 Document config store write access restrictions (Red Team H2)
-  - [ ] 9.3 Note Story 5.1 (DAPR ACLs) as blocking for production multi-tenant deployments
-- [ ] Task 10: Verify existing tests pass (~459+ from Story 3.5)
+- [x] Task 1: Verify and extend DomainServiceResolver for multi-tenant multi-domain routing (AC: #1, #2, #5)
+  - [x] 1.1 Ensure DomainServiceResolver correctly maps `tenant:domain:version` -> service endpoint for multiple registrations
+  - [x] 1.2 Verify config store lookup supports dynamic tenant/domain additions (AC: #3, NFR20)
+  - [x] 1.3 Handle missing registrations with `DomainServiceNotFoundException` (AC: #5)
+- [x] Task 2: Verify AggregateIdentity-based actor isolation (AC: #1, #2, #4)
+  - [x] 2.1 Confirm CommandRouter derives distinct actor IDs for different tenant+domain combos
+  - [x] 2.2 Validate that `AggregateIdentity.ActorId` produces unique IDs per tenant:domain:aggregate-id
+  - [x] 2.3 Verify no shared state between actors for different tenants
+- [x] Task 3: Verify composite key isolation in state store (AC: #2, #4)
+  - [x] 3.1 Confirm event keys include tenant prefix: `{tenant}:{domain}:{aggId}:events:{seq}`
+  - [x] 3.2 Confirm snapshot keys include tenant prefix: `{tenant}:{domain}:{aggId}:snapshot`
+  - [x] 3.3 Confirm metadata keys follow `{tenant}:{domain}:{aggId}:metadata` pattern (from Story 3.4 AggregateMetadata)
+  - [x] 3.4 Verify tenant A's keys are structurally disjoint from tenant B's keys
+- [x] Task 4: Integration tests for multi-domain/multi-tenant scenarios (AC: #1-#5)
+  - [x] 4.1 Test: Two domains within same tenant route to different domain services
+  - [x] 4.2 Test: Two tenants within same domain have isolated actors and event streams
+  - [x] 4.3 Test: Dynamic tenant/domain addition without restart (config store update)
+  - [x] 4.4 Test: Unregistered tenant+domain returns DomainServiceNotFoundException
+  - [x] 4.5 Test: Actor state isolation between tenants (no cross-tenant leakage)
+- [x] Task 5: Unit tests for DomainServiceResolver multi-tenant routing
+  - [x] 5.1 Test: Resolver returns correct endpoint for each tenant+domain combo
+  - [x] 5.2 Test: Resolver throws DomainServiceNotFoundException for unknown combo
+  - [x] 5.3 Test: Resolver refreshes config without restart
+- [x] Task 6: Verify DomainServiceResolver has no application-level caching (AC: #3, ADR-1)
+  - [x] 6.1 Unit test: mock `DaprClient.GetConfiguration`, invoke resolver twice with same tenant+domain, assert `GetConfiguration` called TWICE (not cached)
+  - [x] 6.2 Integration test: update config store registration, invoke resolver immediately, assert new registration returned
+- [x] Task 7: Add domain service response size validation (AC: #6)
+  - [x] 7.1 Extend existing `DomainServiceOptions.cs` (from Story 3.5) with `MaxEventsPerResult` (default 1000) and `MaxEventSizeBytes` (default 1_048_576)
+  - [x] 7.2 Create `DomainServiceException.cs` in `Server/DomainServices/` (fields: TenantId, Domain, Reason, EventCount?, EventSizeBytes?)
+  - [x] 7.3 Validate event count AND individual event payload size in `DaprDomainServiceInvoker.InvokeAsync()` AFTER deserialization
+  - [x] 7.4 Log WARNING with CorrelationId when `DomainResult.IsNoOp` (empty events) to detect silent failures
+  - [x] 7.5 Test: Response exceeding max events throws DomainServiceException
+  - [x] 7.6 Test: Single event exceeding max payload size throws DomainServiceException
+  - [x] 7.7 Test: No-op result logs WARNING
+- [x] Task 8: Validate config store key pattern includes version (AC: #7, ADR-4)
+  - [x] 8.1 Update `DomainServiceResolver` key pattern from Story 3.5's `{tenant}:{domain}:service` to `{tenant}:{domain}:{version}` (replace `:service` suffix with version)
+  - [x] 8.2 Default version to `v1` when not specified; read version from `command.Extensions["domain-service-version"]` or default to `v1` if key not present
+  - [x] 8.3 Validate version format against regex `^v[0-9]+$`, normalize to lowercase via `ToLowerInvariant()`
+  - [x] 8.4 Log INFO when version defaults to v1 (audit trail for implicit decisions)
+  - [x] 8.5 Test: Versioned key lookup resolves correctly
+  - [x] 8.6 Test: Invalid version formats rejected: `"version1"` (no v prefix), `"v1a"` (non-numeric), `"v1:evil"` (injection)
+  - [x] 8.7 Test: Version `"V1"` normalized to `"v1"`
+- [x] Task 9: Document deployment security requirements
+  - [x] 9.1 Document DAPR sidecar port 3500 network isolation requirement (Red Team H1)
+  - [x] 9.2 Document config store write access restrictions (Red Team H2)
+  - [x] 9.3 Note Story 5.1 (DAPR ACLs) as blocking for production multi-tenant deployments
+- [x] Task 10: Verify existing tests pass (~459+ from Story 3.5)
 
 ## Dev Notes
 
@@ -279,6 +279,27 @@ Recent commits show Epic 2 completion (Stories 2.4-2.9: JWT Auth, Endpoint Autho
 **Total estimated new tests: ~35-42**
 **Total after story: ~494-501 tests**
 
+### Deployment Security Requirements (Task 9)
+
+**CRITICAL - DAPR Sidecar Network Isolation (Red Team H1, Task 9.1):**
+- The DAPR sidecar (default port 3500) MUST be network-isolated to the pod/container
+- Direct sidecar access bypasses HTTP security layers 1-4 (API gateway, JWT auth, rate limiting, request validation)
+- Use Kubernetes NetworkPolicy or equivalent to restrict sidecar access to the EventStore container only
+- Document in XML doc comments on `DomainServiceResolver.cs`
+
+**CRITICAL - Config Store Write Access Restrictions (Red Team H2, Task 9.2):**
+- Config store write access MUST be restricted to admin service accounts only
+- Config store poisoning can redirect domain service registrations to malicious endpoints (e.g., `tenant-a:orders:v1` → attacker-controlled service)
+- Use DAPR component-level RBAC or infrastructure-level access controls
+- The `DomainServiceOptions.ConfigStoreName` references the target config store component
+- Document in XML doc comments on `DomainServiceOptions.cs` and `DomainServiceResolver.cs`
+
+**BLOCKING - Story 5.1 DAPR ACLs Required for Production (Task 9.3):**
+- Story 5.1 (DAPR app-level access control policies) is BLOCKING for production multi-tenant deployments
+- Without DAPR ACLs, any sidecar-accessible service can invoke any other service via `DaprClient.InvokeMethodAsync`
+- This means a compromised tenant's domain service could invoke another tenant's domain service
+- Story 5.1 adds `app-level` access policies in DAPR configuration to restrict service-to-service communication
+
 ### References
 
 - [Source: _bmad-output/planning-artifacts/epics.md#Epic 3, Story 3.6]
@@ -292,14 +313,67 @@ Recent commits show Epic 2 completion (Stories 2.4-2.9: JWT Auth, Endpoint Autho
 - [Source: _bmad-output/implementation-artifacts/3-4-event-stream-reader-and-state-rehydration.md]
 - [Source: _bmad-output/implementation-artifacts/3-5-domain-service-registration-and-invocation.md]
 
+## Change Log
+
+- Extended `IDomainServiceResolver.ResolveAsync` with `version` parameter (default "v1") and updated `DomainServiceResolver` key pattern from `{tenant}:{domain}:service` to `{tenant}:{domain}:{version}` (ADR-4)
+- Added version extraction from `command.Extensions["domain-service-version"]` in `DaprDomainServiceInvoker` with format validation (`^v[0-9]+$`) and lowercase normalization
+- Extended `DomainServiceOptions` with `MaxEventsPerResult` (default 1000) and `MaxEventSizeBytes` (default 1MB)
+- Created `DomainServiceException` for response limit violations (event count, payload size)
+- Added response size validation in `DaprDomainServiceInvoker.ValidateResponseLimits()`
+- Added no-op WARNING logging for empty domain service results (silent failure detection)
+- Updated `DomainServiceNotFoundException` with version context
+- Added deployment security documentation (Red Team H1/H2, Story 5.1 blocking)
+- Added 47 new tests across unit, integration, and contract test projects (528 → 575 total)
+
+### Code Review Fixes (2026-02-14)
+
+- **[H1]** Fixed `DaprDomainServiceInvoker.InvokeAsync` to pass extracted `version` to `DomainServiceNotFoundException` constructor (was always showing "v1" regardless of requested version)
+- **[H2]** Added missing Task 4.3 integration test: `PostCommands_DynamicTenantAddition_SucceedsAfterReconfiguration` (AC #3, NFR20)
+- **[M1]** Optimized `ValidateResponseLimits` to reuse a single `MemoryStream` instead of allocating per-event `byte[]` via `SerializeToUtf8Bytes`
+- **[M2]** Changed `DomainServiceResolver` to throw `DomainServiceException` on corrupted config store JSON instead of silently returning null (distinguishes corruption from missing registration; improves Red Team H2 attack detection)
+- **[M3]** Documented `.github/instructions/codacy.instructions.md` staged change (line-ending normalization, not story-related)
+- Updated test: `ResolveAsync_MalformedJson_ReturnsNull` → `ResolveAsync_MalformedJson_ThrowsDomainServiceException`
+- Test count: 575 → 576 total (1 new integration test)
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Build error CS0313: nullable int `ShouldBeGreaterThan` — resolved by using `.Value` accessor
+- NSubstitute mock signature mismatch after adding `version` parameter — resolved by updating all mock setups to 4-parameter signature
+
 ### Completion Notes List
 
+- Task 1: DomainServiceResolver extended for `{tenant}:{domain}:{version}` key pattern with multi-tenant/multi-domain routing
+- Task 2: AggregateIdentity actor isolation verified — different tenants/domains produce distinct ActorIds
+- Task 3: Composite key isolation verified — all state store keys include tenant prefix, no cross-tenant overlap
+- Task 4: Integration tests cover multi-domain routing, multi-tenant isolation, dynamic additions, error handling
+- Task 5: Covered by Task 1 tests (DomainServiceResolver multi-tenant routing)
+- Task 6: Explicit test verifies GetConfiguration called on every invocation (no caching per ADR-1)
+- Task 7: Response size validation added — event count limit, individual payload size limit, DomainServiceException
+- Task 8: Version extraction from command extensions, format validation, lowercase normalization, audit logging
+- Task 9: Deployment security documented in XML doc comments and story artifact (H1: sidecar isolation, H2: config store RBAC, Story 5.1 blocking)
+- Task 10: All 576 tests pass (0 failures, 0 skipped) — updated after code review fixes
+
 ### File List
+
+**New Files:**
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceException.cs` — Exception for domain service response limit violations
+- `tests/Hexalith.EventStore.IntegrationTests/CommandApi/MultiTenantRoutingIntegrationTests.cs` — Multi-tenant/multi-domain integration tests
+
+**Modified Files:**
+- `src/Hexalith.EventStore.Server/DomainServices/IDomainServiceResolver.cs` — Added `version` parameter to `ResolveAsync`
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceResolver.cs` — Version normalization, format validation, security documentation
+- `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs` — Version extraction, response validation, no-op logging, `IOptions<DomainServiceOptions>`
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceOptions.cs` — Added `MaxEventsPerResult`, `MaxEventSizeBytes`, security documentation
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceNotFoundException.cs` — Added `Version` property and version context in message
+- `tests/Hexalith.EventStore.Server.Tests/DomainServices/DomainServiceResolverTests.cs` — Multi-tenant routing, version validation, normalization tests
+- `tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs` — Version extraction, response validation, exception tests
+- `tests/Hexalith.EventStore.Contracts.Tests/Identity/AggregateIdentityTests.cs` — Actor isolation, composite key isolation tests
+- `tests/Hexalith.EventStore.Server.Tests/Commands/CommandRouterTests.cs` — Multi-tenant/multi-domain routing tests
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — Status updated to review
+- `_bmad-output/implementation-artifacts/3-6-multi-domain-and-multi-tenant-processing.md` — Task checkboxes, change log, file list, dev agent record
