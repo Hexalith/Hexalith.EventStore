@@ -30,7 +30,8 @@ public class AggregateActor(
     ILogger<AggregateActor> logger,
     IDomainServiceInvoker domainServiceInvoker,
     ISnapshotManager snapshotManager,
-    ICommandStatusStore commandStatusStore)
+    ICommandStatusStore commandStatusStore,
+    IEventPublisher eventPublisher)
     : Actor(host), IAggregateActor
 {
     /// <inheritdoc/>
@@ -230,6 +231,7 @@ public class AggregateActor(
         }
 
         // Step 5: Event persistence (Story 3.7)
+        EventPersistResult persistResult;
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPersist))
         {
@@ -239,20 +241,20 @@ public class AggregateActor(
                 StateManager,
                 Host.LoggerFactory.CreateLogger<EventPersister>());
 
-            long newSequence = await eventPersister
+            persistResult = await eventPersister
                 .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
                 .ConfigureAwait(false);
 
             // Step 5b: Snapshot creation (Story 3.9)
-            if (newSequence > 0 && currentState is not null)
+            if (persistResult.NewSequenceNumber > 0 && currentState is not null)
             {
                 bool shouldSnapshot = await snapshotManager
-                    .ShouldCreateSnapshotAsync(command.Domain, newSequence, lastSnapshotSequence)
+                    .ShouldCreateSnapshotAsync(command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)
                     .ConfigureAwait(false);
 
                 if (shouldSnapshot)
                 {
-                    long preEventSequence = newSequence - domainResult.Events.Count;
+                    long preEventSequence = persistResult.NewSequenceNumber - domainResult.Events.Count;
                     await snapshotManager
                         .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
                         .ConfigureAwait(false);
@@ -291,22 +293,82 @@ public class AggregateActor(
             await WriteAdvisoryStatusAsync(command, CommandStatus.EventsStored).ConfigureAwait(false);
         }
 
-        // Epic 4 integration point: EventPublisher.PublishAsync() goes HERE.
-        // When Story 4.1 implements the EventPublisher, insert the publish call between
-        // the EventsStored checkpoint commit above and the terminal completion below.
-        // If publish succeeds: checkpoint EventsPublished, then proceed to Completed.
-        // If publish permanently fails: checkpoint PublishFailed (terminal).
+        // Story 4.1: Publish events via DAPR pub/sub with CloudEvents 1.0
+        // Rejection events ARE published (D3: rejection events are normal events).
+        EventPublishResult publishResult = await eventPublisher
+            .PublishEventsAsync(command.AggregateIdentity, persistResult.PersistedEnvelopes, command.CorrelationId)
+            .ConfigureAwait(false);
 
-        // Terminal state
-        bool accepted = !domainResult.IsRejection;
-        string? errorMessage = domainResult.IsRejection
-            ? $"Domain rejection: {domainResult.Events[0].GetType().Name}"
-            : null;
+        if (publishResult.Success)
+        {
+            // Checkpoint EventsPublished
+            var eventsPublishedState = new PipelineState(
+                command.CorrelationId,
+                CommandStatus.EventsPublished,
+                command.CommandType,
+                pipelineState.StartedAt,
+                EventCount: domainResult.Events.Count,
+                RejectionEventType: domainResult.IsRejection ? domainResult.Events[0].GetType().Name : null);
+            await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
-        return await CompleteTerminalAsync(
-            command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
-            accepted, domainResult.Events.Count, errorMessage,
-            processActivity, startTicks).ConfigureAwait(false);
+            LogStageTransition(CommandStatus.EventsPublished, command, startTicks);
+            await WriteAdvisoryStatusAsync(command, CommandStatus.EventsPublished).ConfigureAwait(false);
+
+            // Terminal state: Completed (or Rejected advisory)
+            bool accepted = !domainResult.IsRejection;
+            string? errorMessage = domainResult.IsRejection
+                ? $"Domain rejection: {domainResult.Events[0].GetType().Name}"
+                : null;
+
+            return await CompleteTerminalAsync(
+                command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
+                accepted, domainResult.Events.Count, errorMessage,
+                processActivity, startTicks).ConfigureAwait(false);
+        }
+        else
+        {
+            // Publication failed: transition to PublishFailed terminal state
+            var publishFailedState = new PipelineState(
+                command.CorrelationId,
+                CommandStatus.PublishFailed,
+                command.CommandType,
+                pipelineState.StartedAt,
+                EventCount: domainResult.Events.Count,
+                RejectionEventType: domainResult.IsRejection ? domainResult.Events[0].GetType().Name : null);
+            await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
+
+            // Cleanup pipeline and commit atomically
+            await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
+                .ConfigureAwait(false);
+
+            var failResult = new CommandProcessingResult(
+                Accepted: false,
+                ErrorMessage: $"Event publication failed: {publishResult.FailureReason}",
+                CorrelationId: command.CorrelationId,
+                EventCount: domainResult.Events.Count);
+
+            await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
+
+            try
+            {
+                await StateManager.SaveStateAsync().ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ConcurrencyConflictException(
+                    command.CorrelationId,
+                    command.AggregateId,
+                    command.TenantId,
+                    conflictSource: "StateStore",
+                    innerException: ex);
+            }
+
+            LogStageTransition(CommandStatus.PublishFailed, command, startTicks);
+            await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
+
+            processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
+            return failResult;
+        }
     }
 
     /// <summary>

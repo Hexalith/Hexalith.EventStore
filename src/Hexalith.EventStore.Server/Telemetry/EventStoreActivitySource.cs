@@ -30,6 +30,9 @@ public static class EventStoreActivitySource
     /// <summary>Event persistence stage.</summary>
     public const string EventsPersist = "EventStore.Events.Persist";
 
+    /// <summary>Event publication stage (Story 4.1).</summary>
+    public const string EventsPublish = "EventStore.Events.Publish";
+
     /// <summary>State machine transition stage.</summary>
     public const string StateMachineTransition = "EventStore.Actor.StateMachineTransition";
 
@@ -47,6 +50,12 @@ public static class EventStoreActivitySource
 
     /// <summary>Tag key for command type.</summary>
     public const string TagCommandType = "eventstore.command_type";
+
+    /// <summary>Tag key for event count.</summary>
+    public const string TagEventCount = "eventstore.event_count";
+
+    /// <summary>Tag key for pub/sub topic.</summary>
+    public const string TagTopic = "eventstore.topic";
 
     /// <summary>Gets the singleton <see cref="ActivitySource"/> instance.</summary>
     public static ActivitySource Instance { get; } = new(SourceName);

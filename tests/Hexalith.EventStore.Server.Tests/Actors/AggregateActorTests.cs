@@ -45,9 +45,10 @@ public class AggregateActorTests
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
         var commandStatusStore = Substitute.For<ICommandStatusStore>();
+        var eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -60,6 +61,14 @@ public class AggregateActorTests
         // Default: no pipeline state (fresh command, not a resume)
         stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
+
+        // Default: event publisher succeeds
+        eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, logger, invoker);
     }
@@ -817,9 +826,10 @@ public class AggregateActorTests
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
         var commandStatusStore = Substitute.For<ICommandStatusStore>();
+        var eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -830,6 +840,14 @@ public class AggregateActorTests
         // Default: no pipeline state (fresh command, not a resume)
         stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
+
+        // Default: event publisher succeeds
+        eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, logger, invoker, snapshotManager);
     }
