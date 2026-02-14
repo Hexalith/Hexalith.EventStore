@@ -12,6 +12,9 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Routes commands to the correct aggregate actor based on canonical identity derivation.
+/// SECURITY: Always derive actor ID from AggregateIdentity.ActorId. Never construct actor IDs
+/// via manual string concatenation. The chain of custody from CommandEnvelope through
+/// AggregateIdentity to actor ID must be unbroken. See FR15, FR28.
 /// </summary>
 public class CommandRouter(
     IActorProxyFactory actorProxyFactory,
