@@ -18,10 +18,12 @@ public static class HexalithEventStoreExtensions
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="commandApi">The CommandApi project resource builder.</param>
+    /// <param name="daprConfigPath">Optional path to a Dapr sidecar configuration file (for example, access control policies).</param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<ProjectResource> commandApi)
+        IResourceBuilder<ProjectResource> commandApi,
+        string? daprConfigPath = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(commandApi);
@@ -38,7 +40,12 @@ public static class HexalithEventStoreExtensions
             .WithReference(redis)
             .WaitFor(redis)
             .WithDaprSidecar(sidecar => sidecar
-                .WithOptions(new DaprSidecarOptions { AppId = "commandapi", AppPort = 8080 })
+                .WithOptions(new DaprSidecarOptions
+                {
+                    AppId = "commandapi",
+                    AppPort = 8080,
+                    Config = daprConfigPath,
+                })
                 .WithReference(stateStore)
                 .WithReference(pubSub));
 

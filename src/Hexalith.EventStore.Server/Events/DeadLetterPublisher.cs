@@ -64,7 +64,7 @@ public class DeadLetterPublisher(
             // Rule #5: Never log command payload or event payload data (SEC-5).
             // Rule #9: correlationId in every structured log entry.
             logger.LogWarning(
-                "Dead-letter published: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, DeadLetterTopic={DeadLetterTopic}",
+                "Dead-letter published: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, ErrorMessage={ErrorMessage}, DeadLetterTopic={DeadLetterTopic}",
                 message.CorrelationId,
                 identity.TenantId,
                 identity.Domain,
@@ -72,6 +72,7 @@ public class DeadLetterPublisher(
                 message.CommandType,
                 message.FailureStage,
                 message.ExceptionType,
+                message.ErrorMessage,
                 deadLetterTopic);
 
             activity?.SetStatus(ActivityStatusCode.Ok);

@@ -39,15 +39,14 @@ spec:
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
-    # Pub/sub topic scoping (AC #7, AC #12)
-    # commandapi is not listed = unrestricted publishing to all topics including
-    # dynamic tenant topics and dead-letter topics (AC #12).
-    # Production domain services are omitted (enforced by component scopes).
-    - name: publishingScopes
-      value: ""
-    # commandapi is not listed = unrestricted subscription to all topics.
-    - name: subscriptionScopes
-      value: ""
+    # Pub/sub topic scoping (AC #7, AC #12):
+    # Component-level scoping (below) restricts component access to commandapi only.
+    # When production domain services are deployed, add explicit publishingScopes
+    # and subscriptionScopes metadata for defense-in-depth (matching local config pattern):
+    #   - name: publishingScopes
+    #     value: "<domain-service-app-id>="
+    #   - name: subscriptionScopes
+    #     value: "<domain-service-app-id>="
 # Component-level scoping: only commandapi can access this pub/sub component (AC #7, AC #13).
 # Domain services have zero pub/sub access (D4). External subscribers should be added
 # to this list when onboarded (Story 5.3).

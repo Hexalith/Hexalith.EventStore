@@ -1,11 +1,14 @@
 namespace Hexalith.EventStore.Server.Tests.Events;
 
+using System.Diagnostics;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -190,6 +193,66 @@ public class DeadLetterPublisherTests
             Arg.Any<object>(),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task PublishDeadLetter_Success_CreatesOpenTelemetryActivity()
+    {
+        // Arrange
+        var daprClient = Substitute.For<DaprClient>();
+        var options = Options.Create(new EventPublisherOptions
+        {
+            PubSubName = "pubsub",
+            DeadLetterTopicPrefix = "deadletter"
+        });
+        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        var publisher = new DeadLetterPublisher(daprClient, options, logger);
+
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        var command = CreateTestEnvelope();
+        var message = DeadLetterMessage.FromException(
+            command,
+            CommandStatus.Processing,
+            new InvalidOperationException("Boom"));
+
+        Activity? capturedActivity = null;
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter)
+                {
+                    capturedActivity = activity;
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        // Act
+        var result = await publisher.PublishDeadLetterAsync(identity, message);
+
+        // Assert
+        result.ShouldBeTrue();
+        capturedActivity.ShouldNotBeNull();
+        capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.EventsPublishDeadLetter);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId)?.ToString()
+            .ShouldBe(message.CorrelationId);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId)?.ToString()
+            .ShouldBe(identity.TenantId);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagDomain)?.ToString()
+            .ShouldBe(identity.Domain);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagAggregateId)?.ToString()
+            .ShouldBe(identity.AggregateId);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagCommandType)?.ToString()
+            .ShouldBe(message.CommandType);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagFailureStage)?.ToString()
+            .ShouldBe(message.FailureStage);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagExceptionType)?.ToString()
+            .ShouldBe(message.ExceptionType);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagDeadLetterTopic)?.ToString()
+            .ShouldBe("deadletter.test-tenant.test-domain.events");
     }
 
     [Fact]
