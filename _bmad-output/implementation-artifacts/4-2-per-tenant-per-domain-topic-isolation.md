@@ -1,6 +1,6 @@
 # Story 4.2: Per-Tenant-Per-Domain Topic Isolation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -397,22 +397,24 @@ Claude Opus 4.6
 
 ### Completion Notes List
 
-- **Task 0:** All 756 existing tests pass. Prerequisites verified: EventPublisher uses `identity.PubSubTopic`, AggregateIdentity forces lowercase, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` ensures topic-safe chars.
+- **Task 0:** Existing tests were re-verified in current workspace context prior to review/fix work.
 - **Task 1:** Created `ITopicNameValidator` interface and `TopicNameValidator` class with `IsValidTopicName()` (D6 pattern + Kafka/RabbitMQ/ASB length limits) and `DeriveTopicName()` (delegates to `AggregateIdentity.PubSubTopic` with validation). Warning logged at >200 chars.
 - **Task 2:** Added `ITopicNameValidator?` as optional constructor parameter to `EventPublisher` (backward compatible). Validation check added before publication loop. Error logged and failure result returned on invalid topic. Registered as singleton in `ServiceCollectionExtensions`.
 - **Task 3:** Created 9 multi-tenant topic isolation tests covering: different tenants/same domain, same tenant/different domains, tenant+domain matrix, deterministic derivation, case normalization, concurrent multi-tenant, hyphens, single-char, and max-length edge cases.
 - **Task 4:** Created 13 TopicNameValidator unit tests covering: valid D6 patterns, invalid patterns (empty, missing suffix, special chars, uppercase, exceeds Kafka max), length warning threshold, deterministic derivation, null guards.
 - **Task 5:** Created 5 AggregateActor integration tests using FakeEventPublisher to verify full pipeline produces correct per-tenant-per-domain topics.
 - **Task 6:** Enhanced FakeEventPublisher with `GetPublishedTopics()`, `GetEventsForTopic()`, `AssertNoEventsForTopic()`, and thread-safe `ConcurrentDictionary<string, ConcurrentBag<EventEnvelope>>` + `ConcurrentBag<PublishCall>` for concurrent verification.
-- **Task 7:** All 784 tests pass (756 existing + 28 new). Zero regressions.
+- **Task 7:** Post-review verification completed with current test execution: focused Story 4.2 suite passed (41/41) and full discovered suite passed (343/343) in this workspace context.
 
 ### Change Log
 
 - 2026-02-14: Story 4.2 implementation complete. Added TopicNameValidator (defense-in-depth D6 validation), integrated optional topic validation into EventPublisher, enhanced FakeEventPublisher for multi-tenant topic verification, added 28 new tests proving per-tenant-per-domain topic isolation.
+- 2026-02-14: Code review follow-up applied. Fixed FakeEventPublisher partial-failure accounting to record only successfully published events; added regression assertions in AtLeastOnceDelivery tests; updated story evidence to reflect current test execution context.
 
 ### File List
 
 **New files:**
+
 - `src/Hexalith.EventStore.Server/Events/ITopicNameValidator.cs`
 - `src/Hexalith.EventStore.Server/Events/TopicNameValidator.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Events/TopicIsolationTests.cs`
@@ -420,6 +422,12 @@ Claude Opus 4.6
 - `tests/Hexalith.EventStore.Server.Tests/Actors/MultiTenantPublicationTests.cs`
 
 **Modified files:**
+
 - `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` (added optional ITopicNameValidator parameter, topic validation before publication)
 - `src/Hexalith.EventStore.Testing/Fakes/FakeEventPublisher.cs` (added topic-aware querying methods, thread-safe concurrent collections)
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` (registered ITopicNameValidator singleton)
+
+### Review Follow-up Notes (2026-02-14)
+
+- This story was reviewed and all review findings were fixed.
+- Additional in-progress git changes exist for other stories (notably Story 4.4/5.1 scope) and are intentionally not part of Story 4.2 implementation claims.

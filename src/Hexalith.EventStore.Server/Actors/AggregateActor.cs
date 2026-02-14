@@ -9,10 +9,12 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Aggregate actor -- thin orchestrator for command processing.
@@ -21,6 +23,8 @@ using Microsoft.Extensions.Logging;
 /// Step 5: Event persistence (Story 3.7). Step 5b: Snapshot creation (Story 3.9).
 /// Story 3.10: Step 3 now loads snapshot FIRST, passes to EventStreamReader for tail-only reads.
 /// Story 3.11: Checkpointed state machine, OpenTelemetry activities, advisory status writes.
+/// Story 4.4: IRemindable for drain recovery of unpublished events after pub/sub outage.
+/// Story 4.5: Dead-letter routing for infrastructure failures at Steps 3-5.
 /// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
 /// filtering. DAPR query API does not enforce actor state scoping. See FR28.
 /// SECURITY: Never bypass IActorStateManager with direct DaprClient.GetStateAsync/SetStateAsync.
@@ -32,9 +36,12 @@ public class AggregateActor(
     IDomainServiceInvoker domainServiceInvoker,
     ISnapshotManager snapshotManager,
     ICommandStatusStore commandStatusStore,
-    IEventPublisher eventPublisher)
-    : Actor(host), IAggregateActor
+    IEventPublisher eventPublisher,
+    IOptions<EventDrainOptions> drainOptions,
+    IDeadLetterPublisher deadLetterPublisher)
+    : Actor(host), IAggregateActor, IRemindable
 {
+    private const int MaxConcurrentStateReads = 32;
     /// <inheritdoc/>
     public async Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
     {
@@ -170,6 +177,7 @@ public class AggregateActor(
         await WriteAdvisoryStatusAsync(command, CommandStatus.Processing).ConfigureAwait(false);
 
         // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
+        // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
         SnapshotRecord? existingSnapshot;
         RehydrationResult? rehydrationResult;
         long lastSnapshotSequence;
@@ -180,64 +188,88 @@ public class AggregateActor(
         {
             SetActivityTags(activity, command);
 
-            existingSnapshot = await snapshotManager
-                .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId)
-                .ConfigureAwait(false);
-
-            var eventStreamReader = new EventStreamReader(
-                StateManager,
-                Host.LoggerFactory.CreateLogger<EventStreamReader>());
-
-            rehydrationResult = await eventStreamReader
-                .RehydrateAsync(command.AggregateIdentity, existingSnapshot)
-                .ConfigureAwait(false);
-
-            lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
-
-            // Maintain domain processor contract compatibility: always pass List<EventEnvelope> (or null)
-            // to the domain service. Snapshot-assisted rehydration is still used for lastSnapshotSequence
-            // tracking and optimized actor-level state loading, but domain invocation remains backward-compatible.
-            if (rehydrationResult?.UsedSnapshot == true)
+            try
             {
-                logger.LogDebug(
-                    "Snapshot-assisted rehydration detected for ActorId={ActorId}, CorrelationId={CorrelationId}. Using full replay event list for domain compatibility.",
-                    Host.Id,
-                    command.CorrelationId);
-
-                RehydrationResult? fullReplayResult = await eventStreamReader
-                    .RehydrateAsync(command.AggregateIdentity)
+                existingSnapshot = await snapshotManager
+                    .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId)
                     .ConfigureAwait(false);
 
-                currentState = fullReplayResult?.Events;
-            }
-            else
-            {
-                currentState = rehydrationResult?.Events;
-            }
+                var eventStreamReader = new EventStreamReader(
+                    StateManager,
+                    Host.LoggerFactory.CreateLogger<EventStreamReader>());
 
-            logger.LogInformation(
-                "State rehydrated: {StateType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
-                currentState?.GetType().Name ?? "null",
-                Host.Id,
-                command.CorrelationId);
+                rehydrationResult = await eventStreamReader
+                    .RehydrateAsync(command.AggregateIdentity, existingSnapshot)
+                    .ConfigureAwait(false);
+
+                lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
+
+                // Maintain domain processor contract compatibility: always pass List<EventEnvelope> (or null)
+                // to the domain service. Snapshot-assisted rehydration is still used for lastSnapshotSequence
+                // tracking and optimized actor-level state loading, but domain invocation remains backward-compatible.
+                if (rehydrationResult?.UsedSnapshot == true)
+                {
+                    logger.LogDebug(
+                        "Snapshot-assisted rehydration detected for ActorId={ActorId}, CorrelationId={CorrelationId}. Using full replay event list for domain compatibility.",
+                        Host.Id,
+                        command.CorrelationId);
+
+                    RehydrationResult? fullReplayResult = await eventStreamReader
+                        .RehydrateAsync(command.AggregateIdentity)
+                        .ConfigureAwait(false);
+
+                    currentState = fullReplayResult?.Events;
+                }
+                else
+                {
+                    currentState = rehydrationResult?.Events;
+                }
+
+                logger.LogInformation(
+                    "State rehydrated: {StateType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
+                    currentState?.GetType().Name ?? "null",
+                    Host.Id,
+                    command.CorrelationId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Story 4.5: State rehydration infrastructure failure -- dead-letter routing
+                return await HandleInfrastructureFailureAsync(
+                    command, causationId, CommandStatus.Processing, ex,
+                    idempotencyChecker, stateMachine, pipelineKeyPrefix,
+                    processActivity, startTicks, eventCount: null).ConfigureAwait(false);
+            }
         }
 
         // Step 4: Domain service invocation (Story 3.5)
+        // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
+        // D3: Domain rejections (IRejectionEvent) are normal events, NOT dead-letter triggers.
         DomainResult domainResult;
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.DomainServiceInvoke))
         {
             SetActivityTags(activity, command);
 
-            domainResult = await domainServiceInvoker
-                .InvokeAsync(command, currentState)
-                .ConfigureAwait(false);
+            try
+            {
+                domainResult = await domainServiceInvoker
+                    .InvokeAsync(command, currentState)
+                    .ConfigureAwait(false);
 
-            logger.LogInformation(
-                "Domain service result: {ResultType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
-                domainResult.IsSuccess ? "Success" : domainResult.IsRejection ? "Rejection" : "NoOp",
-                Host.Id,
-                command.CorrelationId);
+                logger.LogInformation(
+                    "Domain service result: {ResultType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
+                    domainResult.IsSuccess ? "Success" : domainResult.IsRejection ? "Rejection" : "NoOp",
+                    Host.Id,
+                    command.CorrelationId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Story 4.5: Domain service invocation infrastructure failure -- dead-letter routing
+                return await HandleInfrastructureFailureAsync(
+                    command, causationId, CommandStatus.Processing, ex,
+                    idempotencyChecker, stateMachine, pipelineKeyPrefix,
+                    processActivity, startTicks, eventCount: null).ConfigureAwait(false);
+            }
         }
 
         string domainServiceVersion = DaprDomainServiceInvoker.ExtractVersion(command, logger);
@@ -252,66 +284,78 @@ public class AggregateActor(
         }
 
         // Step 5: Event persistence (Story 3.7)
+        // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
         EventPersistResult persistResult;
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPersist))
         {
             SetActivityTags(activity, command);
 
-            var eventPersister = new EventPersister(
-                StateManager,
-                Host.LoggerFactory.CreateLogger<EventPersister>());
-
-            persistResult = await eventPersister
-                .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
-                .ConfigureAwait(false);
-
-            // Step 5b: Snapshot creation (Story 3.9)
-            if (persistResult.NewSequenceNumber > 0 && currentState is not null)
-            {
-                bool shouldSnapshot = await snapshotManager
-                    .ShouldCreateSnapshotAsync(command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)
-                    .ConfigureAwait(false);
-
-                if (shouldSnapshot)
-                {
-                    long preEventSequence = persistResult.NewSequenceNumber - domainResult.Events.Count;
-                    await snapshotManager
-                        .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
-                        .ConfigureAwait(false);
-                }
-            }
-
-            // Checkpoint EventsStored in SAME batch as events (AC #9)
-            string? rejectionEventType = domainResult.IsRejection
-                ? domainResult.Events[0].GetType().Name
-                : null;
-            var eventsStoredState = new PipelineState(
-                command.CorrelationId,
-                CommandStatus.EventsStored,
-                command.CommandType,
-                pipelineState.StartedAt,
-                EventCount: domainResult.Events.Count,
-                RejectionEventType: rejectionEventType);
-            await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsStoredState).ConfigureAwait(false);
-
-            // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
             try
             {
-                await StateManager.SaveStateAsync().ConfigureAwait(false);
-            }
-            catch (InvalidOperationException ex)
-            {
-                throw new ConcurrencyConflictException(
-                    command.CorrelationId,
-                    command.AggregateId,
-                    command.TenantId,
-                    conflictSource: "StateStore",
-                    innerException: ex);
-            }
+                var eventPersister = new EventPersister(
+                    StateManager,
+                    Host.LoggerFactory.CreateLogger<EventPersister>());
 
-            LogStageTransition(CommandStatus.EventsStored, command, startTicks);
-            await WriteAdvisoryStatusAsync(command, CommandStatus.EventsStored).ConfigureAwait(false);
+                persistResult = await eventPersister
+                    .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
+                    .ConfigureAwait(false);
+
+                // Step 5b: Snapshot creation (Story 3.9)
+                if (persistResult.NewSequenceNumber > 0 && currentState is not null)
+                {
+                    bool shouldSnapshot = await snapshotManager
+                        .ShouldCreateSnapshotAsync(command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)
+                        .ConfigureAwait(false);
+
+                    if (shouldSnapshot)
+                    {
+                        long preEventSequence = persistResult.NewSequenceNumber - domainResult.Events.Count;
+                        await snapshotManager
+                            .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
+                            .ConfigureAwait(false);
+                    }
+                }
+
+                // Checkpoint EventsStored in SAME batch as events (AC #9)
+                string? rejectionEventType = domainResult.IsRejection
+                    ? domainResult.Events[0].GetType().Name
+                    : null;
+                var eventsStoredState = new PipelineState(
+                    command.CorrelationId,
+                    CommandStatus.EventsStored,
+                    command.CommandType,
+                    pipelineState.StartedAt,
+                    EventCount: domainResult.Events.Count,
+                    RejectionEventType: rejectionEventType);
+                await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsStoredState).ConfigureAwait(false);
+
+                // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
+                try
+                {
+                    await StateManager.SaveStateAsync().ConfigureAwait(false);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    throw new ConcurrencyConflictException(
+                        command.CorrelationId,
+                        command.AggregateId,
+                        command.TenantId,
+                        conflictSource: "StateStore",
+                        innerException: ex);
+                }
+
+                LogStageTransition(CommandStatus.EventsStored, command, startTicks);
+                await WriteAdvisoryStatusAsync(command, CommandStatus.EventsStored).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException)
+            {
+                // Story 4.5: Event persistence infrastructure failure -- dead-letter routing
+                return await HandleInfrastructureFailureAsync(
+                    command, causationId, CommandStatus.EventsStored, ex,
+                    idempotencyChecker, stateMachine, pipelineKeyPrefix,
+                    processActivity, startTicks, eventCount: domainResult.Events.Count).ConfigureAwait(false);
+            }
         }
 
         // Story 4.1: Publish events via DAPR pub/sub with CloudEvents 1.0
@@ -370,6 +414,21 @@ public class AggregateActor(
 
             await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 
+            // Story 4.4: Store drain record for recovery (committed in same atomic batch)
+            long startSequence = persistResult.NewSequenceNumber - domainResult.Events.Count + 1;
+            var unpublishedRecord = new UnpublishedEventsRecord(
+                command.CorrelationId,
+                startSequence,
+                persistResult.NewSequenceNumber,
+                domainResult.Events.Count,
+                command.CommandType,
+                domainResult.IsRejection,
+                DateTimeOffset.UtcNow,
+                RetryCount: 0,
+                LastFailureReason: publishResult.FailureReason);
+            await StoreDrainRecordAndRegisterReminderAsync(command.CorrelationId, unpublishedRecord)
+                .ConfigureAwait(false);
+
             try
             {
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
@@ -384,12 +443,298 @@ public class AggregateActor(
                     innerException: ex);
             }
 
+            // Story 4.4: Register drain reminder AFTER successful commit
+            await RegisterDrainReminderAsync(command.CorrelationId).ConfigureAwait(false);
+
             LogStageTransition(CommandStatus.PublishFailed, command, startTicks);
             await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
 
             processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
             return failResult;
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
+    {
+        ArgumentNullException.ThrowIfNull(reminderName);
+
+        if (!reminderName.StartsWith("drain-unpublished-", StringComparison.Ordinal))
+        {
+            logger.LogWarning(
+                "Unknown reminder ignored: ReminderName={ReminderName}, ActorId={ActorId}",
+                reminderName,
+                Host.Id);
+            return;
+        }
+
+        string correlationId = reminderName["drain-unpublished-".Length..];
+        await DrainUnpublishedEventsAsync(correlationId).ConfigureAwait(false);
+    }
+
+    private async Task DrainUnpublishedEventsAsync(string correlationId)
+    {
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+
+        using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
+            EventStoreActivitySource.EventsDrain);
+        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+        activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId);
+        activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain);
+        activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId);
+
+        // Load the unpublished events record
+        ConditionalValue<UnpublishedEventsRecord> recordResult = await StateManager
+            .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(correlationId))
+            .ConfigureAwait(false);
+
+        if (!recordResult.HasValue)
+        {
+            // Orphaned reminder -- record was already drained or removed
+            logger.LogWarning(
+                "Drain record not found (orphaned reminder): CorrelationId={CorrelationId}, ActorId={ActorId}",
+                correlationId,
+                Host.Id);
+
+            try
+            {
+                await UnregisterReminderAsync(UnpublishedEventsRecord.GetReminderName(correlationId))
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Failed to unregister orphaned drain reminder: CorrelationId={CorrelationId}",
+                    correlationId);
+            }
+
+            return;
+        }
+
+        UnpublishedEventsRecord record = recordResult.Value;
+        activity?.SetTag("eventstore.retry_count", record.RetryCount);
+        activity?.SetTag(EventStoreActivitySource.TagEventCount, record.EventCount);
+
+        logger.LogInformation(
+            "Drain attempt starting: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
+            correlationId,
+            identity.TenantId,
+            identity.Domain,
+            identity.AggregateId,
+            record.RetryCount,
+            record.EventCount);
+
+        try
+        {
+            // Load exact persisted event range for this failed command
+            IReadOnlyList<EventEnvelope> events = await LoadPersistedEventsRangeAsync(
+                identity,
+                record.StartSequence,
+                record.EndSequence)
+                .ConfigureAwait(false);
+
+            // Re-publish events
+            EventPublishResult publishResult = await eventPublisher
+                .PublishEventsAsync(identity, events, correlationId)
+                .ConfigureAwait(false);
+
+            if (publishResult.Success)
+            {
+                // Success: remove record, unregister reminder, update advisory status
+                await StateManager.RemoveStateAsync(UnpublishedEventsRecord.GetStateKey(correlationId))
+                    .ConfigureAwait(false);
+                await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+                try
+                {
+                    await UnregisterReminderAsync(UnpublishedEventsRecord.GetReminderName(correlationId))
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "Failed to unregister drain reminder after success: CorrelationId={CorrelationId}",
+                        correlationId);
+                }
+
+                // Advisory status: Completed or Rejected based on event type
+                CommandStatus drainStatus = record.IsRejection ? CommandStatus.Rejected : CommandStatus.Completed;
+                try
+                {
+                    await commandStatusStore.WriteStatusAsync(
+                        identity.TenantId,
+                        correlationId,
+                        new CommandStatusRecord(
+                            drainStatus,
+                            DateTimeOffset.UtcNow,
+                            identity.AggregateId,
+                            EventCount: record.EventCount,
+                            RejectionEventType: null,
+                            FailureReason: null,
+                            TimeoutDuration: null)).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // Rule #12: Advisory status writes -- failure logged, never thrown.
+                    logger.LogWarning(
+                        ex,
+                        "Advisory status write failed after drain success: CorrelationId={CorrelationId}, Status={Status}",
+                        correlationId,
+                        drainStatus);
+                }
+
+                logger.LogInformation(
+                    "Drain succeeded: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
+                    correlationId,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    record.RetryCount,
+                    record.EventCount);
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            else
+            {
+                // Failure: increment retry, save updated record, reminder continues
+                UnpublishedEventsRecord updatedRecord = record.IncrementRetry(publishResult.FailureReason);
+                await StateManager.SetStateAsync(
+                    UnpublishedEventsRecord.GetStateKey(correlationId),
+                    updatedRecord).ConfigureAwait(false);
+                await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+                logger.LogWarning(
+                    "Drain failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
+                    correlationId,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    updatedRecord.RetryCount,
+                    updatedRecord.EventCount);
+
+                activity?.SetStatus(ActivityStatusCode.Error, publishResult.FailureReason);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Drain infrastructure failure: increment retry, save, reminder continues
+            UnpublishedEventsRecord updatedRecord = record.IncrementRetry(ex.Message);
+            await StateManager.SetStateAsync(
+                UnpublishedEventsRecord.GetStateKey(correlationId),
+                updatedRecord).ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+            logger.LogWarning(
+                ex,
+                "Drain failed with exception: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}",
+                correlationId,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                updatedRecord.RetryCount);
+
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        }
+    }
+
+    private AggregateIdentity GetAggregateIdentityFromActorId()
+    {
+        string actorId = Host.Id.GetId();
+        string[] parts = actorId.Split(':', 3);
+        if (parts.Length != 3)
+        {
+            logger.LogError(
+                "Cannot parse actor ID into AggregateIdentity: ActorId={ActorId}",
+                actorId);
+
+            throw new InvalidOperationException(
+                $"Cannot parse actor ID into AggregateIdentity: {actorId}");
+        }
+
+        return new AggregateIdentity(parts[0], parts[1], parts[2]);
+    }
+
+    private async Task StoreDrainRecordAndRegisterReminderAsync(
+        string correlationId,
+        UnpublishedEventsRecord record)
+    {
+        // Stage the drain record (committed with the same SaveStateAsync batch)
+        await StateManager.SetStateAsync(
+            UnpublishedEventsRecord.GetStateKey(correlationId),
+            record).ConfigureAwait(false);
+    }
+
+    private async Task RegisterDrainReminderAsync(string correlationId)
+    {
+        try
+        {
+            (TimeSpan dueTime, TimeSpan period) = GetDrainReminderSchedule();
+            await RegisterReminderAsync(
+                UnpublishedEventsRecord.GetReminderName(correlationId),
+                null,
+                dueTime,
+                period).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "Drain reminder registration failed: CorrelationId={CorrelationId}. Manual recovery may be needed.",
+                correlationId);
+        }
+    }
+
+    private (TimeSpan DueTime, TimeSpan Period) GetDrainReminderSchedule()
+    {
+        EventDrainOptions options = drainOptions.Value;
+
+        TimeSpan dueTime = options.InitialDrainDelay;
+        if (dueTime < TimeSpan.Zero)
+        {
+            logger.LogWarning(
+                "Invalid EventStore:Drain:InitialDrainDelay value {InitialDrainDelay}; defaulting to zero.",
+                dueTime);
+            dueTime = TimeSpan.Zero;
+        }
+
+        TimeSpan period = options.DrainPeriod;
+        if (period <= TimeSpan.Zero)
+        {
+            logger.LogWarning(
+                "Invalid EventStore:Drain:DrainPeriod value {DrainPeriod}; defaulting to 00:01:00.",
+                period);
+            period = TimeSpan.FromMinutes(1);
+        }
+
+        TimeSpan maxPeriod = options.MaxDrainPeriod;
+        if (maxPeriod <= TimeSpan.Zero)
+        {
+            logger.LogWarning(
+                "Invalid EventStore:Drain:MaxDrainPeriod value {MaxDrainPeriod}; defaulting to 00:30:00.",
+                maxPeriod);
+            maxPeriod = TimeSpan.FromMinutes(30);
+        }
+
+        if (period > maxPeriod)
+        {
+            logger.LogWarning(
+                "EventStore:Drain:DrainPeriod ({DrainPeriod}) exceeds MaxDrainPeriod ({MaxDrainPeriod}); clamping to max.",
+                period,
+                maxPeriod);
+            period = maxPeriod;
+        }
+
+        return (dueTime, period);
     }
 
     private static void SetActivityTags(Activity? activity, CommandEnvelope command)
@@ -449,6 +794,7 @@ public class AggregateActor(
                     idempotencyChecker,
                     existingPipeline,
                     "Unable to prepare persisted events for resume publication",
+                    persistedEvents: null,
                     processActivity,
                     startTicks).ConfigureAwait(false);
             }
@@ -467,6 +813,7 @@ public class AggregateActor(
                     idempotencyChecker,
                     existingPipeline,
                     publishResult.FailureReason,
+                    persistedEvents,
                     processActivity,
                     startTicks).ConfigureAwait(false);
             }
@@ -540,23 +887,39 @@ public class AggregateActor(
                 $"Invalid resume event range for {identity.ActorId}: startSequence={startSequence}, currentSequence={currentSequence}, eventCount={eventCount}.");
         }
 
-        var readTasks = Enumerable.Range((int)startSequence, eventCount)
-            .Select(async seq =>
-            {
-                ConditionalValue<EventEnvelope> result = await StateManager
-                    .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
-                    .ConfigureAwait(false);
+        EventEnvelope[] events = await ReadEventsRangeAsync(identity, (int)startSequence, eventCount)
+            .ConfigureAwait(false);
 
-                if (!result.HasValue)
-                {
-                    throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
-                }
+        return events
+            .OrderBy(x => x.SequenceNumber)
+            .ToList();
+    }
 
-                return result.Value;
-            })
-            .ToArray();
+    private async Task<IReadOnlyList<EventEnvelope>> LoadPersistedEventsRangeAsync(
+        AggregateIdentity identity,
+        long startSequence,
+        long endSequence)
+    {
+        if (startSequence < 1)
+        {
+            throw new InvalidOperationException(
+                $"Invalid drain event range for {identity.ActorId}: startSequence={startSequence}, endSequence={endSequence}.");
+        }
 
-        EventEnvelope[] events = await Task.WhenAll(readTasks).ConfigureAwait(false);
+        if (endSequence < startSequence)
+        {
+            throw new InvalidOperationException(
+                $"Invalid drain event range for {identity.ActorId}: startSequence={startSequence}, endSequence={endSequence}.");
+        }
+
+        int count = checked((int)(endSequence - startSequence + 1));
+        if (count == 0)
+        {
+            return [];
+        }
+
+        EventEnvelope[] events = await ReadEventsRangeAsync(identity, (int)startSequence, count)
+            .ConfigureAwait(false);
 
         return events
             .OrderBy(x => x.SequenceNumber)
@@ -571,6 +934,7 @@ public class AggregateActor(
         IdempotencyChecker idempotencyChecker,
         PipelineState existingPipeline,
         string? failureReason,
+        IReadOnlyList<EventEnvelope>? persistedEvents,
         Activity? processActivity,
         long startTicks)
     {
@@ -594,6 +958,61 @@ public class AggregateActor(
 
         await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 
+        // Story 4.4: Store drain record for recovery on resume path (committed in same atomic batch)
+        int eventCount = existingPipeline.EventCount ?? 0;
+        bool shouldRegisterReminder = false;
+        if (eventCount > 0)
+        {
+            bool hasRange = false;
+            long startSequence = 0;
+            long endSequence = 0;
+
+            if (persistedEvents is { Count: > 0 })
+            {
+                startSequence = persistedEvents.Min(e => e.SequenceNumber);
+                endSequence = persistedEvents.Max(e => e.SequenceNumber);
+                hasRange = true;
+            }
+            else
+            {
+                ConditionalValue<AggregateMetadata> metadataResult = await StateManager
+                    .TryGetStateAsync<AggregateMetadata>(command.AggregateIdentity.MetadataKey)
+                    .ConfigureAwait(false);
+
+                if (metadataResult.HasValue)
+                {
+                    endSequence = metadataResult.Value.CurrentSequence;
+                    startSequence = endSequence - eventCount + 1;
+                    hasRange = true;
+                }
+            }
+
+            if (hasRange
+                && startSequence >= 1
+                && endSequence >= startSequence
+                && (endSequence - startSequence + 1) == eventCount)
+            {
+                var unpublishedRecord = new UnpublishedEventsRecord(
+                    command.CorrelationId,
+                    startSequence,
+                    endSequence,
+                    eventCount,
+                    command.CommandType,
+                    existingPipeline.RejectionEventType is not null,
+                    DateTimeOffset.UtcNow,
+                    RetryCount: 0,
+                    LastFailureReason: failureReason);
+                await StoreDrainRecordAndRegisterReminderAsync(command.CorrelationId, unpublishedRecord)
+                    .ConfigureAwait(false);
+                shouldRegisterReminder = true;
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Unable to determine drain sequence range during resume publish failure: CorrelationId={command.CorrelationId}, EventCount={eventCount}, StartSequence={startSequence}, EndSequence={endSequence}.");
+            }
+        }
+
         try
         {
             await StateManager.SaveStateAsync().ConfigureAwait(false);
@@ -608,10 +1027,130 @@ public class AggregateActor(
                 innerException: ex);
         }
 
+        // Story 4.4: Register drain reminder AFTER successful commit
+        if (shouldRegisterReminder)
+        {
+            await RegisterDrainReminderAsync(command.CorrelationId).ConfigureAwait(false);
+        }
+
         LogStageTransition(CommandStatus.PublishFailed, command, startTicks);
         await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
 
         processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
+        return failResult;
+    }
+
+    private async Task<EventEnvelope[]> ReadEventsRangeAsync(
+        AggregateIdentity identity,
+        int startSequence,
+        int count)
+    {
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var events = new List<EventEnvelope>(count);
+        int cursor = startSequence;
+
+        while (cursor < startSequence + count)
+        {
+            int batchSize = Math.Min(MaxConcurrentStateReads, (startSequence + count) - cursor);
+            var readTasks = Enumerable.Range(cursor, batchSize)
+                .Select(async seq =>
+                {
+                    ConditionalValue<EventEnvelope> result = await StateManager
+                        .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
+                        .ConfigureAwait(false);
+
+                    if (!result.HasValue)
+                    {
+                        throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+                    }
+
+                    return result.Value;
+                })
+                .ToArray();
+
+            EventEnvelope[] batch = await Task.WhenAll(readTasks).ConfigureAwait(false);
+            events.AddRange(batch);
+            cursor += batchSize;
+        }
+
+        return [.. events];
+    }
+
+    /// <summary>
+    /// Story 4.5: Handles infrastructure failures by routing to dead-letter and transitioning to Rejected.
+    /// Dead-letter publication is best-effort and non-blocking (AC #7).
+    /// Dead-letter publication happens BEFORE SaveStateAsync (task 6.7).
+    /// </summary>
+    private async Task<CommandProcessingResult> HandleInfrastructureFailureAsync(
+        CommandEnvelope command,
+        string causationId,
+        CommandStatus failureStage,
+        Exception exception,
+        IdempotencyChecker idempotencyChecker,
+        ActorStateMachine stateMachine,
+        string pipelineKeyPrefix,
+        Activity? processActivity,
+        long startTicks,
+        int? eventCount)
+    {
+        logger.LogWarning(
+            "Infrastructure failure during command processing: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, ErrorMessage={ErrorMessage}",
+            command.CorrelationId,
+            command.TenantId,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType,
+            failureStage,
+            exception.GetType().Name,
+            exception.Message);
+
+        DeadLetterMessage deadLetterMessage = DeadLetterMessage.FromException(
+            command, failureStage, exception, eventCount);
+
+        // Best-effort dead-letter publication (AC #7) -- BEFORE SaveStateAsync (task 6.7)
+        bool published = await deadLetterPublisher
+            .PublishDeadLetterAsync(command.AggregateIdentity, deadLetterMessage)
+            .ConfigureAwait(false);
+        if (!published)
+        {
+            logger.LogError(
+                "Dead-letter publication failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
+                command.CorrelationId,
+                command.TenantId,
+                command.Domain,
+                command.AggregateId);
+        }
+
+        // Transition to Rejected terminal state
+        var rejectedState = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.Rejected,
+            command.CommandType,
+            DateTimeOffset.UtcNow,
+            EventCount: null,
+            RejectionEventType: null);
+        await stateMachine.CheckpointAsync(pipelineKeyPrefix, rejectedState).ConfigureAwait(false);
+        await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
+            .ConfigureAwait(false);
+
+        var failResult = new CommandProcessingResult(
+            Accepted: false,
+            ErrorMessage: exception.Message,
+            CorrelationId: command.CorrelationId,
+            EventCount: 0);
+
+        await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+        // Advisory status write (non-blocking per rule #12)
+        await WriteAdvisoryStatusAsync(command, CommandStatus.Rejected, exception.Message).ConfigureAwait(false);
+
+        LogStageTransition(CommandStatus.Rejected, command, startTicks);
+        processActivity?.SetStatus(ActivityStatusCode.Error, "InfrastructureFailure");
         return failResult;
     }
 
@@ -665,7 +1204,10 @@ public class AggregateActor(
     /// <summary>
     /// Writes advisory command status. Failures are logged at Warning level and never thrown (rule #12).
     /// </summary>
-    private async Task WriteAdvisoryStatusAsync(CommandEnvelope command, CommandStatus status)
+    private async Task WriteAdvisoryStatusAsync(
+        CommandEnvelope command,
+        CommandStatus status,
+        string? failureReason = null)
     {
         try
         {
@@ -678,7 +1220,7 @@ public class AggregateActor(
                     command.AggregateId,
                     EventCount: null,
                     RejectionEventType: null,
-                    FailureReason: null,
+                    FailureReason: failureReason,
                     TimeoutDuration: null)).ConfigureAwait(false);
         }
         catch (OperationCanceledException)

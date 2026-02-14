@@ -13,7 +13,10 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 
+using Hexalith.EventStore.Server.Configuration;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -48,7 +51,13 @@ public class AggregateActorTests
         var eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher);
+        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        deadLetterPublisher.PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns(true);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -476,9 +485,10 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_UnknownEvent_PropagatesException()
+    public async Task ProcessCommandAsync_UnknownEvent_DeadLettersAndRejectsCommand()
     {
         // Arrange -- metadata says 2 events but event 2 is missing (simulates gap)
+        // Story 4.5: Infrastructure exceptions (MissingEventException) trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
@@ -498,8 +508,11 @@ public class AggregateActorTests
 
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        // Act & Assert -- MissingEventException propagates from actor
-        await Should.ThrowAsync<MissingEventException>(() => actor.ProcessCommandAsync(envelope));
+        // Act -- Story 4.5: dead-letter routing returns Rejected result instead of propagating
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeFalse();
     }
 
     [Fact]
@@ -628,31 +641,38 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainServiceNotFound_PropagatesException()
+    public async Task ProcessCommandAsync_DomainServiceNotFound_DeadLettersAndRejectsCommand()
     {
-        // Arrange
+        // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new DomainServiceNotFoundException("test-tenant", "test-domain"));
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        // Act & Assert
-        await Should.ThrowAsync<DomainServiceNotFoundException>(() => actor.ProcessCommandAsync(envelope));
+        // Act -- dead-letter routing returns Rejected result
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainInfrastructureFailure_PropagatesException()
+    public async Task ProcessCommandAsync_DomainInfrastructureFailure_DeadLettersAndRejectsCommand()
     {
-        // Arrange
+        // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Service unavailable"));
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        // Act & Assert
-        await Should.ThrowAsync<HttpRequestException>(() => actor.ProcessCommandAsync(envelope));
+        // Act -- dead-letter routing returns Rejected result
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage!.ShouldContain("Service unavailable");
     }
 
     [Fact]
@@ -854,7 +874,13 @@ public class AggregateActorTests
         var eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher);
+        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        deadLetterPublisher.PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns(true);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);

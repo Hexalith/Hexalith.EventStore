@@ -16,12 +16,13 @@ public sealed class FakeEventPublisher : IEventPublisher
     private readonly ConcurrentDictionary<string, ConcurrentBag<EventEnvelope>> _eventsByTopic = new();
     private int? _failOnEventIndex;
     private string? _failureMessage;
+    private int _publishedEventCount;
 
     /// <summary>Gets the list of all publish calls for test assertions.</summary>
     public IReadOnlyList<PublishCall> PublishCalls => [.. _publishCalls];
 
     /// <summary>Gets the total number of events published across all calls.</summary>
-    public int TotalEventsPublished => _publishCalls.Sum(c => c.Events.Count);
+    public int TotalEventsPublished => _publishedEventCount;
 
     /// <summary>
     /// Gets all unique topic names that events have been published to.
@@ -94,24 +95,35 @@ public sealed class FakeEventPublisher : IEventPublisher
         string topic = identity.PubSubTopic;
         _publishCalls.Add(new PublishCall(identity, events, correlationId, topic));
 
-        // Track events by topic for multi-tenant verification
-        ConcurrentBag<EventEnvelope> topicEvents = _eventsByTopic.GetOrAdd(topic, _ => []);
-        foreach (EventEnvelope envelope in events)
-        {
-            topicEvents.Add(envelope);
-        }
+        int publishedCount = events.Count;
+        bool success = true;
+        string? failureReason = null;
 
         if (_failOnEventIndex.HasValue && _failOnEventIndex.Value < events.Count)
         {
-            return Task.FromResult(new EventPublishResult(false, _failOnEventIndex.Value, _failureMessage));
+            publishedCount = _failOnEventIndex.Value;
+            success = false;
+            failureReason = _failureMessage;
         }
-
-        if (_failureMessage is not null && _failOnEventIndex is null)
+        else if (_failureMessage is not null && _failOnEventIndex is null)
         {
-            return Task.FromResult(new EventPublishResult(false, 0, _failureMessage));
+            publishedCount = 0;
+            success = false;
+            failureReason = _failureMessage;
         }
 
-        return Task.FromResult(new EventPublishResult(true, events.Count, null));
+        // Track only events that were actually published.
+        if (publishedCount > 0)
+        {
+            ConcurrentBag<EventEnvelope> topicEvents = _eventsByTopic.GetOrAdd(topic, _ => []);
+            for (int i = 0; i < publishedCount; i++)
+            {
+                topicEvents.Add(events[i]);
+            }
+        }
+
+        _ = Interlocked.Add(ref _publishedEventCount, publishedCount);
+        return Task.FromResult(new EventPublishResult(success, publishedCount, failureReason));
     }
 
     /// <summary>

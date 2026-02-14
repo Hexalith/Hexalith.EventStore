@@ -1,6 +1,6 @@
 # Story 4.3: At-Least-Once Delivery & DAPR Retry Policies
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -596,6 +596,30 @@ Claude Opus 4.6
 - deploy/dapr/pubsub-kafka.yaml
 - src/Hexalith.EventStore.Server/Configuration/EventPublisherOptions.cs
 
+**Review fix files (post-implementation CR):**
+- src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.yaml
+- deploy/dapr/subscription-sample-counter.yaml
+- tests/Hexalith.EventStore.Server.Tests/Configuration/SubscriptionConfigurationTests.cs
+- deploy/dapr/resiliency.yaml (pubsub outbound maxInterval aligned to 10s)
+
 ## Change Log
 
 - 2026-02-14: Story 4.3 implementation complete. Added DAPR resiliency policies for pub/sub (outbound/inbound retry, circuit breaker, timeouts) for local and production. Configured dead-letter topics on all pub/sub components. Added EventPublisherOptions.DeadLetterTopicPrefix and GetDeadLetterTopic(). Created 31 new tests covering resiliency config validation, no-retry compliance, subscriber idempotency contract, at-least-once delivery behavior, and dead-letter topic configuration. Total: 815 tests, zero regressions.
+- 2026-02-14: Senior Developer Review (AI) auto-fixes applied. Aligned production pub/sub outbound maxInterval to 10s, added declarative subscription dead-letter configuration examples (local + deploy templates), and added automated tests validating subscription dead-letter configuration.
+
+## Senior Developer Review (AI)
+
+### Outcome
+
+- HIGH and MEDIUM findings addressed via automated fixes.
+- Story status updated to `done` after successful verification.
+
+### Fixes Applied
+
+1. **AC #5 alignment:** production `pubsubRetryOutbound.maxInterval` set to `10s`.
+2. **AC #3 subscription dead-letter evidence:** added declarative DAPR subscription templates with `deadLetterTopic: deadletter.sample.counter.events`.
+3. **Regression protection:** added `SubscriptionConfigurationTests` to validate local/production subscription dead-letter configuration.
+
+### Verification
+
+- Story 4.3 targeted tests executed successfully (existing + new subscription config tests).
