@@ -523,6 +523,31 @@ public class AggregateActorTests
             Arg.Any<Func<object, Exception?, string>>());
     }
 
+    [Fact]
+    public async Task ProcessCommandAsync_WithSnapshot_RehydratesUsingListStateForDomainCompatibility()
+    {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
+        ConfigureNoDuplicate(stateManager);
+        ConfigureExistingAggregate(stateManager, 2);
+
+        snapshotManager.LoadSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IActorStateManager>(),
+            Arg.Any<string?>())
+            .Returns(new SnapshotRecord(1, new { State = "snapshot-state" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant"));
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- domain invocation gets a List<EventEnvelope> (backward-compatible contract), not RehydrationResult
+        await invoker.Received(1).InvokeAsync(
+            Arg.Any<CommandEnvelope>(),
+            Arg.Is<object?>(o => o is List<EventEnvelope> && ((List<EventEnvelope>)o).Count == 2));
+    }
+
     // === Story 3.5: Domain Service Invocation Tests ===
 
     [Fact]

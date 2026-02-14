@@ -1,6 +1,6 @@
 # Story 4.2: Per-Tenant-Per-Domain Topic Isolation
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -52,71 +52,71 @@ So that I only receive events for my authorized scope (FR19).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and understand current state (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Review `EventPublisher.cs` (Story 4.1) -- understand how `AggregateIdentity.PubSubTopic` is used for topic derivation
-  - [ ] 0.3 Review `AggregateIdentity.cs` -- confirm `PubSubTopic` returns `$"{TenantId}.{Domain}.events"` and that TenantId/Domain are forced lowercase
-  - [ ] 0.4 Review existing EventPublisher tests (Story 4.1) -- identify what topic isolation tests already exist
-  - [ ] 0.5 Review `FakeEventPublisher.cs` (Story 4.1) -- understand tracked publish calls for topic verification
-  - [ ] 0.6 Verify AggregateIdentity input validation: TenantId/Domain regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` ensures topic-safe characters
+- [x] Task 0: Verify prerequisites and understand current state (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Review `EventPublisher.cs` (Story 4.1) -- understand how `AggregateIdentity.PubSubTopic` is used for topic derivation
+  - [x] 0.3 Review `AggregateIdentity.cs` -- confirm `PubSubTopic` returns `$"{TenantId}.{Domain}.events"` and that TenantId/Domain are forced lowercase
+  - [x] 0.4 Review existing EventPublisher tests (Story 4.1) -- identify what topic isolation tests already exist
+  - [x] 0.5 Review `FakeEventPublisher.cs` (Story 4.1) -- understand tracked publish calls for topic verification
+  - [x] 0.6 Verify AggregateIdentity input validation: TenantId/Domain regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` ensures topic-safe characters
 
-- [ ] Task 1: Create TopicNameValidator utility (AC: #5, #6)
-  - [ ] 1.1 Create `ITopicNameValidator.cs` in `src/Hexalith.EventStore.Server/Events/`
-  - [ ] 1.2 Create `TopicNameValidator.cs` in `src/Hexalith.EventStore.Server/Events/`
-  - [ ] 1.3 Method: `bool IsValidTopicName(string topicName)` -- validates topic conforms to D6 pattern and is compatible with target pub/sub backends
-  - [ ] 1.4 Validation rules: non-empty, matches `{segment}.{segment}.events` pattern, segments are lowercase alphanumeric + hyphens, max length compatible with Kafka (249 chars), RabbitMQ (255 chars), Azure Service Bus (260 chars)
-  - [ ] 1.5 Method: `string DeriveTopicName(AggregateIdentity identity)` -- canonical topic derivation (delegates to `identity.PubSubTopic` but adds validation)
-  - [ ] 1.6 Log Warning if topic name approaches backend length limits (>200 chars)
+- [x] Task 1: Create TopicNameValidator utility (AC: #5, #6)
+  - [x] 1.1 Create `ITopicNameValidator.cs` in `src/Hexalith.EventStore.Server/Events/`
+  - [x] 1.2 Create `TopicNameValidator.cs` in `src/Hexalith.EventStore.Server/Events/`
+  - [x] 1.3 Method: `bool IsValidTopicName(string topicName)` -- validates topic conforms to D6 pattern and is compatible with target pub/sub backends
+  - [x] 1.4 Validation rules: non-empty, matches `{segment}.{segment}.events` pattern, segments are lowercase alphanumeric + hyphens, max length compatible with Kafka (249 chars), RabbitMQ (255 chars), Azure Service Bus (260 chars)
+  - [x] 1.5 Method: `string DeriveTopicName(AggregateIdentity identity)` -- canonical topic derivation (delegates to `identity.PubSubTopic` but adds validation)
+  - [x] 1.6 Log Warning if topic name approaches backend length limits (>200 chars)
 
-- [ ] Task 2: Integrate TopicNameValidator into EventPublisher (AC: #5)
-  - [ ] 2.1 Add `ITopicNameValidator` as optional constructor dependency to `EventPublisher` (backward compatible -- if null, skip validation)
-  - [ ] 2.2 Before publication, validate topic name via `ITopicNameValidator.IsValidTopicName()` if validator is available
-  - [ ] 2.3 If topic validation fails, log Error and return `EventPublishResult(false, 0, "Invalid topic name: ...")`
-  - [ ] 2.4 Register `ITopicNameValidator` -> `TopicNameValidator` in `ServiceCollectionExtensions.cs`
+- [x] Task 2: Integrate TopicNameValidator into EventPublisher (AC: #5)
+  - [x] 2.1 Add `ITopicNameValidator` as optional constructor dependency to `EventPublisher` (backward compatible -- if null, skip validation)
+  - [x] 2.2 Before publication, validate topic name via `ITopicNameValidator.IsValidTopicName()` if validator is available
+  - [x] 2.3 If topic validation fails, log Error and return `EventPublishResult(false, 0, "Invalid topic name: ...")`
+  - [x] 2.4 Register `ITopicNameValidator` -> `TopicNameValidator` in `ServiceCollectionExtensions.cs`
 
-- [ ] Task 3: Create comprehensive multi-tenant topic isolation tests (AC: #1, #2, #3, #4, #6, #9)
-  - [ ] 3.1 Create `TopicIsolationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 3.2 Test: `PublishEvents_DifferentTenants_SameDomain_UseDifferentTopics` -- Verify events for tenant "acme" go to `acme.orders.events` and tenant "globex" go to `globex.orders.events`
-  - [ ] 3.3 Test: `PublishEvents_SameTenant_DifferentDomains_UseDifferentTopics` -- Verify events for "orders" go to `acme.orders.events` and "inventory" go to `acme.inventory.events`
-  - [ ] 3.4 Test: `PublishEvents_DifferentTenants_DifferentDomains_AllDistinctTopics` -- Matrix test: (tenantA, domainX), (tenantA, domainY), (tenantB, domainX), (tenantB, domainY) all produce distinct topics
-  - [ ] 3.5 Test: `PublishEvents_SameTenantDomain_MultipleCalls_SameTopic` -- Deterministic: repeated calls for same identity produce same topic
-  - [ ] 3.6 Test: `PublishEvents_CaseNormalization_ProducesSameTopic` -- "Acme" and "acme" produce the same topic (guaranteed by AggregateIdentity lowercase enforcement)
-  - [ ] 3.7 Test: `PublishEvents_ConcurrentTenants_NoTopicCrossContamination` -- Parallel publish calls for different tenants never cross-publish
-  - [ ] 3.8 Test: `PublishEvents_TenantWithHyphens_ValidTopic` -- Tenant "acme-corp" produces valid topic `acme-corp.orders.events`
-  - [ ] 3.9 Test: `PublishEvents_SingleCharTenantDomain_ValidTopic` -- Edge case: minimal tenant/domain names
-  - [ ] 3.10 Test: `PublishEvents_MaxLengthTenantDomain_ValidTopic` -- Edge case: 64-char tenant + 64-char domain
+- [x] Task 3: Create comprehensive multi-tenant topic isolation tests (AC: #1, #2, #3, #4, #6, #9)
+  - [x] 3.1 Create `TopicIsolationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 3.2 Test: `PublishEvents_DifferentTenants_SameDomain_UseDifferentTopics` -- Verify events for tenant "acme" go to `acme.orders.events` and tenant "globex" go to `globex.orders.events`
+  - [x] 3.3 Test: `PublishEvents_SameTenant_DifferentDomains_UseDifferentTopics` -- Verify events for "orders" go to `acme.orders.events` and "inventory" go to `acme.inventory.events`
+  - [x] 3.4 Test: `PublishEvents_DifferentTenants_DifferentDomains_AllDistinctTopics` -- Matrix test: (tenantA, domainX), (tenantA, domainY), (tenantB, domainX), (tenantB, domainY) all produce distinct topics
+  - [x] 3.5 Test: `PublishEvents_SameTenantDomain_MultipleCalls_SameTopic` -- Deterministic: repeated calls for same identity produce same topic
+  - [x] 3.6 Test: `PublishEvents_CaseNormalization_ProducesSameTopic` -- "Acme" and "acme" produce the same topic (guaranteed by AggregateIdentity lowercase enforcement)
+  - [x] 3.7 Test: `PublishEvents_ConcurrentTenants_NoTopicCrossContamination` -- Parallel publish calls for different tenants never cross-publish
+  - [x] 3.8 Test: `PublishEvents_TenantWithHyphens_ValidTopic` -- Tenant "acme-corp" produces valid topic `acme-corp.orders.events`
+  - [x] 3.9 Test: `PublishEvents_SingleCharTenantDomain_ValidTopic` -- Edge case: minimal tenant/domain names
+  - [x] 3.10 Test: `PublishEvents_MaxLengthTenantDomain_ValidTopic` -- Edge case: 64-char tenant + 64-char domain
 
-- [ ] Task 4: Create TopicNameValidator unit tests (AC: #5)
-  - [ ] 4.1 Create `TopicNameValidatorTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 4.2 Test: `IsValidTopicName_ValidD6Pattern_ReturnsTrue` -- `acme.orders.events` is valid
-  - [ ] 4.3 Test: `IsValidTopicName_HyphenatedSegments_ReturnsTrue` -- `acme-corp.order-service.events` is valid
-  - [ ] 4.4 Test: `IsValidTopicName_EmptyString_ReturnsFalse`
-  - [ ] 4.5 Test: `IsValidTopicName_MissingSuffix_ReturnsFalse` -- `acme.orders` is invalid (missing `.events` suffix)
-  - [ ] 4.6 Test: `IsValidTopicName_SpecialCharacters_ReturnsFalse` -- `acme.orders!.events` is invalid
-  - [ ] 4.7 Test: `IsValidTopicName_UppercaseSegments_ReturnsFalse` -- `Acme.Orders.events` is invalid (uppercase)
-  - [ ] 4.8 Test: `IsValidTopicName_MaxLengthTopic_ReturnsTrue` -- 64+64+7 = 135 chars is within all backend limits
-  - [ ] 4.9 Test: `DeriveTopicName_ValidIdentity_MatchesPubSubTopic` -- Validates `DeriveTopicName` produces same result as `AggregateIdentity.PubSubTopic`
-  - [ ] 4.10 Test: `DeriveTopicName_IdenticalIdentities_ProduceDeterministicTopics`
+- [x] Task 4: Create TopicNameValidator unit tests (AC: #5)
+  - [x] 4.1 Create `TopicNameValidatorTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 4.2 Test: `IsValidTopicName_ValidD6Pattern_ReturnsTrue` -- `acme.orders.events` is valid
+  - [x] 4.3 Test: `IsValidTopicName_HyphenatedSegments_ReturnsTrue` -- `acme-corp.order-service.events` is valid
+  - [x] 4.4 Test: `IsValidTopicName_EmptyString_ReturnsFalse`
+  - [x] 4.5 Test: `IsValidTopicName_MissingSuffix_ReturnsFalse` -- `acme.orders` is invalid (missing `.events` suffix)
+  - [x] 4.6 Test: `IsValidTopicName_SpecialCharacters_ReturnsFalse` -- `acme.orders!.events` is invalid
+  - [x] 4.7 Test: `IsValidTopicName_UppercaseSegments_ReturnsFalse` -- `Acme.Orders.events` is invalid (uppercase)
+  - [x] 4.8 Test: `IsValidTopicName_MaxLengthTopic_ReturnsTrue` -- 64+64+8 = 136 chars is within all backend limits
+  - [x] 4.9 Test: `DeriveTopicName_ValidIdentity_MatchesPubSubTopic` -- Validates `DeriveTopicName` produces same result as `AggregateIdentity.PubSubTopic`
+  - [x] 4.10 Test: `DeriveTopicName_IdenticalIdentities_ProduceDeterministicTopics`
 
-- [ ] Task 5: Create AggregateActor multi-tenant topic isolation integration tests (AC: #2, #3, #4, #9)
-  - [ ] 5.1 Create `MultiTenantPublicationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
-  - [ ] 5.2 Test: `ProcessCommand_TenantA_PublishesToTenantATopic` -- Full pipeline for tenant A, verify FakeEventPublisher receives correct topic
-  - [ ] 5.3 Test: `ProcessCommand_TenantB_PublishesToTenantBTopic` -- Full pipeline for tenant B, verify different topic
-  - [ ] 5.4 Test: `ProcessCommand_MultipleTenants_Sequential_CorrectTopicsPerTenant`
-  - [ ] 5.5 Test: `ProcessCommand_MultipleDomains_Sequential_CorrectTopicsPerDomain`
-  - [ ] 5.6 Test: `ProcessCommand_TenantDomainMatrix_AllTopicsDistinct` -- 4-way matrix test
+- [x] Task 5: Create AggregateActor multi-tenant topic isolation integration tests (AC: #2, #3, #4, #9)
+  - [x] 5.1 Create `MultiTenantPublicationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Actors/`
+  - [x] 5.2 Test: `ProcessCommand_TenantA_PublishesToTenantATopic` -- Full pipeline for tenant A, verify FakeEventPublisher receives correct topic
+  - [x] 5.3 Test: `ProcessCommand_TenantB_PublishesToTenantBTopic` -- Full pipeline for tenant B, verify different topic
+  - [x] 5.4 Test: `ProcessCommand_MultipleTenants_Sequential_CorrectTopicsPerTenant`
+  - [x] 5.5 Test: `ProcessCommand_MultipleDomains_Sequential_CorrectTopicsPerDomain`
+  - [x] 5.6 Test: `ProcessCommand_TenantDomainMatrix_AllTopicsDistinct` -- 4-way matrix test
 
-- [ ] Task 6: Update FakeEventPublisher for multi-tenant verification (AC: #4, #9)
-  - [ ] 6.1 Add `GetPublishedTopics()` method to FakeEventPublisher -- returns all unique topics published to
-  - [ ] 6.2 Add `GetEventsForTopic(string topic)` method -- returns events published to a specific topic
-  - [ ] 6.3 Add `AssertNoEventsForTopic(string topic)` method -- asserts a specific topic received zero events
-  - [ ] 6.4 Add thread-safe collection for concurrent verification (ConcurrentDictionary for topic -> events mapping)
+- [x] Task 6: Update FakeEventPublisher for multi-tenant verification (AC: #4, #9)
+  - [x] 6.1 Add `GetPublishedTopics()` method to FakeEventPublisher -- returns all unique topics published to
+  - [x] 6.2 Add `GetEventsForTopic(string topic)` method -- returns events published to a specific topic
+  - [x] 6.3 Add `AssertNoEventsForTopic(string topic)` method -- asserts a specific topic received zero events
+  - [x] 6.4 Add thread-safe collection for concurrent verification (ConcurrentDictionary for topic -> events mapping)
 
-- [ ] Task 7: Verify all tests pass
-  - [ ] 7.1 Run `dotnet test` to confirm no regressions
-  - [ ] 7.2 All new topic isolation tests pass
-  - [ ] 7.3 All existing Story 4.1 tests still pass
-  - [ ] 7.4 All existing Story 3.1-3.11 tests still pass
+- [x] Task 7: Verify all tests pass
+  - [x] 7.1 Run `dotnet test` to confirm no regressions
+  - [x] 7.2 All new topic isolation tests pass
+  - [x] 7.3 All existing Story 4.1 tests still pass
+  - [x] 7.4 All existing Story 3.1-3.11 tests still pass
 
 ## Dev Notes
 
@@ -389,10 +389,37 @@ Recent commits show the progression through Epic 3 into Epic 4:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Fixed topic length calculation in tests: `{64}.{64}.events` = 136 chars (not 135 as stated in story Dev Notes; the two dot separators were not counted)
+
 ### Completion Notes List
 
+- **Task 0:** All 756 existing tests pass. Prerequisites verified: EventPublisher uses `identity.PubSubTopic`, AggregateIdentity forces lowercase, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` ensures topic-safe chars.
+- **Task 1:** Created `ITopicNameValidator` interface and `TopicNameValidator` class with `IsValidTopicName()` (D6 pattern + Kafka/RabbitMQ/ASB length limits) and `DeriveTopicName()` (delegates to `AggregateIdentity.PubSubTopic` with validation). Warning logged at >200 chars.
+- **Task 2:** Added `ITopicNameValidator?` as optional constructor parameter to `EventPublisher` (backward compatible). Validation check added before publication loop. Error logged and failure result returned on invalid topic. Registered as singleton in `ServiceCollectionExtensions`.
+- **Task 3:** Created 9 multi-tenant topic isolation tests covering: different tenants/same domain, same tenant/different domains, tenant+domain matrix, deterministic derivation, case normalization, concurrent multi-tenant, hyphens, single-char, and max-length edge cases.
+- **Task 4:** Created 13 TopicNameValidator unit tests covering: valid D6 patterns, invalid patterns (empty, missing suffix, special chars, uppercase, exceeds Kafka max), length warning threshold, deterministic derivation, null guards.
+- **Task 5:** Created 5 AggregateActor integration tests using FakeEventPublisher to verify full pipeline produces correct per-tenant-per-domain topics.
+- **Task 6:** Enhanced FakeEventPublisher with `GetPublishedTopics()`, `GetEventsForTopic()`, `AssertNoEventsForTopic()`, and thread-safe `ConcurrentDictionary<string, ConcurrentBag<EventEnvelope>>` + `ConcurrentBag<PublishCall>` for concurrent verification.
+- **Task 7:** All 784 tests pass (756 existing + 28 new). Zero regressions.
+
+### Change Log
+
+- 2026-02-14: Story 4.2 implementation complete. Added TopicNameValidator (defense-in-depth D6 validation), integrated optional topic validation into EventPublisher, enhanced FakeEventPublisher for multi-tenant topic verification, added 28 new tests proving per-tenant-per-domain topic isolation.
+
 ### File List
+
+**New files:**
+- `src/Hexalith.EventStore.Server/Events/ITopicNameValidator.cs`
+- `src/Hexalith.EventStore.Server/Events/TopicNameValidator.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/TopicIsolationTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/TopicNameValidatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/MultiTenantPublicationTests.cs`
+
+**Modified files:**
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` (added optional ITopicNameValidator parameter, topic validation before publication)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventPublisher.cs` (added topic-aware querying methods, thread-safe concurrent collections)
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` (registered ITopicNameValidator singleton)

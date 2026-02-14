@@ -1,6 +1,6 @@
 # Story 4.3: At-Least-Once Delivery & DAPR Retry Policies
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -60,100 +60,100 @@ So that no events are silently lost during distribution (FR18, NFR22).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and understand current state (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Review `EventPublisher.cs` (Story 4.1) -- confirm ZERO custom retry logic exists (rule #4 compliance)
-  - [ ] 0.3 Review current `resiliency.yaml` (local) -- note it only targets `apps.commandapi`, NOT `components.pubsub`
-  - [ ] 0.4 Review current `pubsub.yaml` (local) -- note it has no dead-letter configuration
-  - [ ] 0.5 Review `deploy/dapr/resiliency.yaml` (production) -- note it only targets `apps.commandapi`
-  - [ ] 0.6 Review `deploy/dapr/pubsub-rabbitmq.yaml` and `deploy/dapr/pubsub-kafka.yaml` -- note no dead-letter configuration
-  - [ ] 0.7 Review `FakeEventPublisher.cs` -- understand configurable failure modes for retry testing
+- [x] Task 0: Verify prerequisites and understand current state (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Review `EventPublisher.cs` (Story 4.1) -- confirm ZERO custom retry logic exists (rule #4 compliance)
+  - [x] 0.3 Review current `resiliency.yaml` (local) -- note it only targets `apps.commandapi`, NOT `components.pubsub`
+  - [x] 0.4 Review current `pubsub.yaml` (local) -- note it has no dead-letter configuration
+  - [x] 0.5 Review `deploy/dapr/resiliency.yaml` (production) -- note it only targets `apps.commandapi`
+  - [x] 0.6 Review `deploy/dapr/pubsub-rabbitmq.yaml` and `deploy/dapr/pubsub-kafka.yaml` -- note no dead-letter configuration
+  - [x] 0.7 Review `FakeEventPublisher.cs` -- understand configurable failure modes for retry testing
 
-- [ ] Task 1: Update local DAPR resiliency configuration for pub/sub (AC: #1, #5, #6)
-  - [ ] 1.1 Edit `src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml`
-  - [ ] 1.2 Add `pubsubRetryOutbound` policy: exponential backoff, `maxInterval: 10s`, `maxRetries: 3` (conservative -- Story 4.4 recovery handles prolonged outages)
-  - [ ] 1.3 Add `pubsubRetryInbound` policy: exponential backoff, `maxInterval: 30s`, `maxRetries: 10`
-  - [ ] 1.4 Add `pubsubBreaker` circuit breaker: `consecutiveFailures > 5`, `interval: 10s`, `timeout: 30s`, `maxRequests: 1` (single probe in half-open state)
-  - [ ] 1.5 Add `pubsubTimeout` timeout policy: `10s` (outbound publisher -> sidecar -> broker path)
-  - [ ] 1.6 Add `subscriberTimeout` timeout policy: `30s` (inbound broker -> sidecar -> subscriber processing path)
-  - [ ] 1.7 Add `targets.components.pubsub` section with `outbound.retry: pubsubRetryOutbound`, `outbound.timeout: pubsubTimeout`, `inbound.retry: pubsubRetryInbound`, `inbound.timeout: subscriberTimeout`, circuit breaker
-  - [ ] 1.8 Add comments documenting that resiliency policies AUGMENT built-in pub/sub component retries
-  - [ ] 1.9 Preserve existing `targets.apps.commandapi` configuration unchanged
+- [x] Task 1: Update local DAPR resiliency configuration for pub/sub (AC: #1, #5, #6)
+  - [x] 1.1 Edit `src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml`
+  - [x] 1.2 Add `pubsubRetryOutbound` policy: exponential backoff, `maxInterval: 10s`, `maxRetries: 3` (conservative -- Story 4.4 recovery handles prolonged outages)
+  - [x] 1.3 Add `pubsubRetryInbound` policy: exponential backoff, `maxInterval: 30s`, `maxRetries: 10`
+  - [x] 1.4 Add `pubsubBreaker` circuit breaker: `consecutiveFailures > 5`, `interval: 10s`, `timeout: 30s`, `maxRequests: 1` (single probe in half-open state)
+  - [x] 1.5 Add `pubsubTimeout` timeout policy: `10s` (outbound publisher -> sidecar -> broker path)
+  - [x] 1.6 Add `subscriberTimeout` timeout policy: `30s` (inbound broker -> sidecar -> subscriber processing path)
+  - [x] 1.7 Add `targets.components.pubsub` section with `outbound.retry: pubsubRetryOutbound`, `outbound.timeout: pubsubTimeout`, `inbound.retry: pubsubRetryInbound`, `inbound.timeout: subscriberTimeout`, circuit breaker
+  - [x] 1.8 Add comments documenting that resiliency policies AUGMENT built-in pub/sub component retries
+  - [x] 1.9 Preserve existing `targets.apps.commandapi` configuration unchanged
 
-- [ ] Task 2: Update production DAPR resiliency configuration for pub/sub (AC: #1, #5, #6)
-  - [ ] 2.1 Edit `deploy/dapr/resiliency.yaml`
-  - [ ] 2.2 Add `pubsubRetryOutbound` policy: exponential backoff, `maxInterval: 15s`, `maxRetries: 5` (conservative -- Story 4.4 recovery handles prolonged outages)
-  - [ ] 2.3 Add `pubsubRetryInbound` policy: exponential backoff, `maxInterval: 60s`, `maxRetries: 20`
-  - [ ] 2.4 Add `pubsubBreaker` circuit breaker: `consecutiveFailures > 10`, `interval: 60s`, `timeout: 60s`, `maxRequests: 1`
-  - [ ] 2.5 Add `pubsubTimeout` timeout policy: `10s` (outbound)
-  - [ ] 2.6 Add `subscriberTimeout` timeout policy: `30s` (inbound)
-  - [ ] 2.7 Add `targets.components.pubsub` section with outbound/inbound policies including timeouts
-  - [ ] 2.8 Add documentation comments explaining policy rationale, augmentation behavior, and effective retry count per backend
+- [x] Task 2: Update production DAPR resiliency configuration for pub/sub (AC: #1, #5, #6)
+  - [x] 2.1 Edit `deploy/dapr/resiliency.yaml`
+  - [x] 2.2 Add `pubsubRetryOutbound` policy: exponential backoff, `maxInterval: 15s`, `maxRetries: 5` (conservative -- Story 4.4 recovery handles prolonged outages)
+  - [x] 2.3 Add `pubsubRetryInbound` policy: exponential backoff, `maxInterval: 60s`, `maxRetries: 20`
+  - [x] 2.4 Add `pubsubBreaker` circuit breaker: `consecutiveFailures > 10`, `interval: 60s`, `timeout: 60s`, `maxRequests: 1`
+  - [x] 2.5 Add `pubsubTimeout` timeout policy: `10s` (outbound)
+  - [x] 2.6 Add `subscriberTimeout` timeout policy: `30s` (inbound)
+  - [x] 2.7 Add `targets.components.pubsub` section with outbound/inbound policies including timeouts
+  - [x] 2.8 Add documentation comments explaining policy rationale, augmentation behavior, and effective retry count per backend
 
-- [ ] Task 3: Configure dead-letter topic on local pub/sub component (AC: #3, #7)
-  - [ ] 3.1 Update `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml` -- add `deadLetterTopic` metadata
-  - [ ] 3.2 Dead-letter topic naming: `deadletter` (DAPR routes undeliverable messages to this topic by default; the actual per-tenant dead-letter routing is handled at subscription level in Story 4.5)
-  - [ ] 3.3 Add comments explaining that per-tenant dead-letter topic naming (`deadletter.{tenant}.{domain}.events`) will be configured per-subscription in Story 4.5
+- [x] Task 3: Configure dead-letter topic on local pub/sub component (AC: #3, #7)
+  - [x] 3.1 Update `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml` -- add `deadLetterTopic` metadata
+  - [x] 3.2 Dead-letter topic naming: `deadletter` (DAPR routes undeliverable messages to this topic by default; the actual per-tenant dead-letter routing is handled at subscription level in Story 4.5)
+  - [x] 3.3 Add comments explaining that per-tenant dead-letter topic naming (`deadletter.{tenant}.{domain}.events`) will be configured per-subscription in Story 4.5
 
-- [ ] Task 4: Configure dead-letter topics on production pub/sub components (AC: #7)
-  - [ ] 4.1 Update `deploy/dapr/pubsub-rabbitmq.yaml` -- add dead-letter configuration metadata
-  - [ ] 4.2 Update `deploy/dapr/pubsub-kafka.yaml` -- add dead-letter configuration metadata (if file exists)
-  - [ ] 4.3 Add `enableDeadLetter: true` and default `deadLetterTopic: deadletter` metadata
-  - [ ] 4.4 Verify dead-letter configuration is compatible with RabbitMQ, Kafka, Azure Service Bus (NFR28)
+- [x] Task 4: Configure dead-letter topics on production pub/sub components (AC: #7)
+  - [x] 4.1 Update `deploy/dapr/pubsub-rabbitmq.yaml` -- add dead-letter configuration metadata
+  - [x] 4.2 Update `deploy/dapr/pubsub-kafka.yaml` -- add dead-letter configuration metadata (if file exists)
+  - [x] 4.3 Add `enableDeadLetter: true` and default `deadLetterTopic: deadletter` metadata
+  - [x] 4.4 Verify dead-letter configuration is compatible with RabbitMQ, Kafka, Azure Service Bus (NFR28)
 
-- [ ] Task 5: Create EventPublisherOptions dead-letter topic support (AC: #3)
-  - [ ] 5.1 Add `DeadLetterTopicPrefix` property to `EventPublisherOptions` -- default: `"deadletter"`
-  - [ ] 5.2 Add helper method `GetDeadLetterTopic(AggregateIdentity identity)` returning `$"{DeadLetterTopicPrefix}.{identity.TenantId}.{identity.Domain}.events"`
-  - [ ] 5.3 This is for Story 4.5 to use when explicitly routing to dead-letter topics, but the configuration belongs in 4.3
+- [x] Task 5: Create EventPublisherOptions dead-letter topic support (AC: #3)
+  - [x] 5.1 Add `DeadLetterTopicPrefix` property to `EventPublisherOptions` -- default: `"deadletter"`
+  - [x] 5.2 Add helper method `GetDeadLetterTopic(AggregateIdentity identity)` returning `$"{DeadLetterTopicPrefix}.{identity.TenantId}.{identity.Domain}.events"`
+  - [x] 5.3 This is for Story 4.5 to use when explicitly routing to dead-letter topics, but the configuration belongs in 4.3
 
-- [ ] Task 6: Create DAPR resiliency configuration validation tests (AC: #1, #5, #6, #8, #10)
-  - [ ] 6.1 Create `ResiliencyConfigurationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Configuration/`
-  - [ ] 6.2 Test: `LocalResiliency_ContainsPubSubOutboundRetryPolicy` -- parse local resiliency.yaml, verify `pubsubRetryOutbound` exists with exponential policy
-  - [ ] 6.3 Test: `LocalResiliency_ContainsPubSubInboundRetryPolicy` -- verify `pubsubRetryInbound` exists with exponential policy
-  - [ ] 6.4 Test: `LocalResiliency_ContainsPubSubCircuitBreaker` -- verify `pubsubBreaker` exists
-  - [ ] 6.5 Test: `LocalResiliency_TargetsPubSubComponent` -- verify `targets.components.pubsub` section exists
-  - [ ] 6.6 Test: `ProductionResiliency_ContainsPubSubRetryPolicies` -- verify production config has pub/sub policies
-  - [ ] 6.7 Test: `ProductionResiliency_HigherRetryLimits` -- verify production has higher maxRetries than local
-  - [ ] 6.8 Test: `LocalResiliency_ContainsPubSubTimeoutPolicy` -- verify `pubsubTimeout` (10s) and `subscriberTimeout` (30s) exist
-  - [ ] 6.9 Test: `ProductionResiliency_ContainsPubSubTimeoutPolicy` -- verify production timeout policies exist
-  - [ ] 6.10 Test: `Resiliency_AllTargetPolicyNamesExistInPolicies` -- cross-reference validation: every policy name referenced in `targets` section must exist in `policies` section (prevents silent YAML typo-based policy disabling)
+- [x] Task 6: Create DAPR resiliency configuration validation tests (AC: #1, #5, #6, #8, #10)
+  - [x] 6.1 Create `ResiliencyConfigurationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Configuration/`
+  - [x] 6.2 Test: `LocalResiliency_ContainsPubSubOutboundRetryPolicy` -- parse local resiliency.yaml, verify `pubsubRetryOutbound` exists with exponential policy
+  - [x] 6.3 Test: `LocalResiliency_ContainsPubSubInboundRetryPolicy` -- verify `pubsubRetryInbound` exists with exponential policy
+  - [x] 6.4 Test: `LocalResiliency_ContainsPubSubCircuitBreaker` -- verify `pubsubBreaker` exists
+  - [x] 6.5 Test: `LocalResiliency_TargetsPubSubComponent` -- verify `targets.components.pubsub` section exists
+  - [x] 6.6 Test: `ProductionResiliency_ContainsPubSubRetryPolicies` -- verify production config has pub/sub policies
+  - [x] 6.7 Test: `ProductionResiliency_HigherRetryLimits` -- verify production has higher maxRetries than local
+  - [x] 6.8 Test: `LocalResiliency_ContainsPubSubTimeoutPolicy` -- verify `pubsubTimeout` (10s) and `subscriberTimeout` (30s) exist
+  - [x] 6.9 Test: `ProductionResiliency_ContainsPubSubTimeoutPolicy` -- verify production timeout policies exist
+  - [x] 6.10 Test: `Resiliency_AllTargetPolicyNamesExistInPolicies` -- cross-reference validation: every policy name referenced in `targets` section must exist in `policies` section (prevents silent YAML typo-based policy disabling)
 
-- [ ] Task 7: Create EventPublisher no-retry compliance tests (AC: #2)
-  - [ ] 7.1 Create `EventPublisherRetryComplianceTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 7.2 Test: `PublishEventsAsync_TransientFailure_NoRetry_ReturnsFailed` -- Verify EventPublisher calls `PublishEventAsync` exactly once per event (no retry loop)
-  - [ ] 7.3 Test: `PublishEventsAsync_SingleCallPerEvent_Verified` -- Mock DaprClient, verify each event gets exactly 1 `PublishEventAsync` call
-  - [ ] 7.4 Test: `EventPublisher_NoRetryPolicyImported_NoPollyReference` -- Code inspection test: verify no `Polly`, `System.Net.Http.Retry`, or custom retry patterns in EventPublisher source
-  - [ ] 7.5 Test: `PublishEventsAsync_DaprClientException_CaughtNotRetried` -- Verify exception from DaprClient is caught and returned as failure, not retried
+- [x] Task 7: Create EventPublisher no-retry compliance tests (AC: #2)
+  - [x] 7.1 Create `EventPublisherRetryComplianceTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 7.2 Test: `PublishEventsAsync_TransientFailure_NoRetry_ReturnsFailed` -- Verify EventPublisher calls `PublishEventAsync` exactly once per event (no retry loop)
+  - [x] 7.3 Test: `PublishEventsAsync_SingleCallPerEvent_Verified` -- Mock DaprClient, verify each event gets exactly 1 `PublishEventAsync` call
+  - [x] 7.4 Test: `EventPublisher_NoRetryPolicyImported_NoPollyReference` -- Code inspection test: verify no `Polly`, `System.Net.Http.Retry`, or custom retry patterns in EventPublisher source
+  - [x] 7.5 Test: `PublishEventsAsync_DaprClientException_CaughtNotRetried` -- Verify exception from DaprClient is caught and returned as failure, not retried
 
-- [ ] Task 8: Create subscriber idempotency contract tests (AC: #4)
-  - [ ] 8.1 Create `SubscriberIdempotencyTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 8.2 Test: `CloudEventsId_UniquePerEvent_CorrelationIdPlusSequence` -- Verify the CloudEvents `id` format `{correlationId}:{sequenceNumber}` is globally unique
-  - [ ] 8.3 Test: `CloudEventsId_SameEventPublishedTwice_IdenticalId` -- Verify re-publishing the same event produces the same CloudEvents `id` (enables dedup)
-  - [ ] 8.4 Test: `CloudEventsId_DifferentEvents_SameCorrelation_DifferentIds` -- Verify events within the same command have different `id` values (different sequence numbers)
-  - [ ] 8.5 Test: `CloudEventsId_DifferentCorrelations_SameSequence_DifferentIds` -- Verify events from different commands with same sequence have different `id` values
+- [x] Task 8: Create subscriber idempotency contract tests (AC: #4)
+  - [x] 8.1 Create `SubscriberIdempotencyTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 8.2 Test: `CloudEventsId_UniquePerEvent_CorrelationIdPlusSequence` -- Verify the CloudEvents `id` format `{correlationId}:{sequenceNumber}` is globally unique
+  - [x] 8.3 Test: `CloudEventsId_SameEventPublishedTwice_IdenticalId` -- Verify re-publishing the same event produces the same CloudEvents `id` (enables dedup)
+  - [x] 8.4 Test: `CloudEventsId_DifferentEvents_SameCorrelation_DifferentIds` -- Verify events within the same command have different `id` values (different sequence numbers)
+  - [x] 8.5 Test: `CloudEventsId_DifferentCorrelations_SameSequence_DifferentIds` -- Verify events from different commands with same sequence have different `id` values
 
-- [ ] Task 9: Create at-least-once delivery behavior tests (AC: #1, #3, #6, #8, #9)
-  - [ ] 9.1 Create `AtLeastOnceDeliveryTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 9.2 Test: `PublishEventsAsync_Success_EventsDeliveredAtLeastOnce` -- Full pipeline: events persisted -> published -> verify FakeEventPublisher received all events
-  - [ ] 9.3 Test: `PublishEventsAsync_PartialFailure_SomeEventsDelivered` -- Verify partial delivery: first N events published, rest failed (at-least-once allows partial)
-  - [ ] 9.4 Test: `PublishEventsAsync_TotalFailure_EventsSafeInStateStore` -- Verify events remain in state store when publication fails completely (persist-then-publish guarantee)
-  - [ ] 9.5 Test: `AggregateActor_PublishFailed_EventsNotLostInStateStore` -- Full actor pipeline: events persisted, publish fails, verify events are still in state store (NFR22)
-  - [ ] 9.6 Test: `AggregateActor_PublishFailed_StatusTransitionsToPublishFailed` -- Verify state machine transitions correctly on publish failure
-  - [ ] 9.7 Test: `CircuitBreaker_Open_PublisherReceivesImmediateFailure` -- Verify that when circuit breaker is open, AggregateActor receives immediate failure and transitions to PublishFailed without waiting (fast-fail behavior)
+- [x] Task 9: Create at-least-once delivery behavior tests (AC: #1, #3, #6, #8, #9)
+  - [x] 9.1 Create `AtLeastOnceDeliveryTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 9.2 Test: `PublishEventsAsync_Success_EventsDeliveredAtLeastOnce` -- Full pipeline: events persisted -> published -> verify FakeEventPublisher received all events
+  - [x] 9.3 Test: `PublishEventsAsync_PartialFailure_SomeEventsDelivered` -- Verify partial delivery: first N events published, rest failed (at-least-once allows partial)
+  - [x] 9.4 Test: `PublishEventsAsync_TotalFailure_EventsSafeInStateStore` -- Verify events remain in state store when publication fails completely (persist-then-publish guarantee)
+  - [x] 9.5 Test: `AggregateActor_PublishFailed_EventsNotLostInStateStore` -- Full actor pipeline: events persisted, publish fails, verify events are still in state store (NFR22)
+  - [x] 9.6 Test: `AggregateActor_PublishFailed_StatusTransitionsToPublishFailed` -- Verify state machine transitions correctly on publish failure
+  - [x] 9.7 Test: `CircuitBreaker_Open_PublisherReceivesImmediateFailure` -- Verify that when circuit breaker is open, AggregateActor receives immediate failure and transitions to PublishFailed without waiting (fast-fail behavior)
 
-- [ ] Task 10: Create EventPublisherOptions dead-letter tests (AC: #3)
-  - [ ] 10.1 Create `EventPublisherOptionsTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Configuration/` (or add to existing)
-  - [ ] 10.2 Test: `DeadLetterTopicPrefix_Default_IsDeadletter` -- Default value
-  - [ ] 10.3 Test: `GetDeadLetterTopic_ValidIdentity_ReturnsCorrectPattern` -- `deadletter.acme.orders.events`
-  - [ ] 10.4 Test: `GetDeadLetterTopic_DifferentTenants_DifferentTopics` -- Tenant isolation in dead-letter
+- [x] Task 10: Create EventPublisherOptions dead-letter tests (AC: #3)
+  - [x] 10.1 Create `EventPublisherOptionsTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Configuration/` (or add to existing)
+  - [x] 10.2 Test: `DeadLetterTopicPrefix_Default_IsDeadletter` -- Default value
+  - [x] 10.3 Test: `GetDeadLetterTopic_ValidIdentity_ReturnsCorrectPattern` -- `deadletter.acme.orders.events`
+  - [x] 10.4 Test: `GetDeadLetterTopic_DifferentTenants_DifferentTopics` -- Tenant isolation in dead-letter
 
-- [ ] Task 11: Verify all tests pass
-  - [ ] 11.1 Run `dotnet test` to confirm no regressions
-  - [ ] 11.2 All new resiliency configuration tests pass
-  - [ ] 11.3 All new retry compliance tests pass
-  - [ ] 11.4 All new subscriber idempotency tests pass
-  - [ ] 11.5 All new at-least-once delivery tests pass
-  - [ ] 11.6 All existing Story 4.1 + 4.2 tests still pass
+- [x] Task 11: Verify all tests pass
+  - [x] 11.1 Run `dotnet test` to confirm no regressions
+  - [x] 11.2 All new resiliency configuration tests pass
+  - [x] 11.3 All new retry compliance tests pass
+  - [x] 11.4 All new subscriber idempotency tests pass
+  - [x] 11.5 All new at-least-once delivery tests pass
+  - [x] 11.6 All existing Story 4.1 + 4.2 tests still pass
 
 ## Dev Notes
 
@@ -550,10 +550,52 @@ Recent commits show the progression through Epic 4:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Initial YAML parser only collected block-style policy names (`name:`); fixed to also collect inline `name: value` forms for the cross-reference validation test.
+
 ### Completion Notes List
 
+- **Task 0**: Verified all 784 existing tests pass. Confirmed EventPublisher has ZERO custom retry logic (rule #4). Reviewed all prerequisite files.
+- **Task 1**: Updated local resiliency.yaml with pubsubRetryOutbound (exponential, 3 retries), pubsubRetryInbound (exponential, 10 retries), pubsubBreaker (consecutiveFailures > 5), pubsubTimeout (10s), subscriberTimeout (30s), and targets.components.pubsub section. Preserved existing apps.commandapi config.
+- **Task 2**: Updated production resiliency.yaml with higher limits: pubsubRetryOutbound (5 retries), pubsubRetryInbound (20 retries), pubsubBreaker (consecutiveFailures > 10). Added effective retry count documentation per backend.
+- **Task 3**: Added enableDeadLetter and deadLetterTopic metadata to local pubsub.yaml (Redis). Documented per-tenant dead-letter routing deferred to Story 4.5.
+- **Task 4**: Added dead-letter configuration to production pubsub-rabbitmq.yaml and pubsub-kafka.yaml. Compatible with RabbitMQ DLX, Kafka dead-letter topics, and Azure Service Bus (NFR28).
+- **Task 5**: Added DeadLetterTopicPrefix property (default: "deadletter") and GetDeadLetterTopic() method to EventPublisherOptions. Format: `{prefix}.{tenantId}.{domain}.events`.
+- **Task 6**: Created ResiliencyConfigurationTests with 11 tests: policy existence, production higher limits, timeout policies, cross-reference validation (policy names in targets must exist in policies), augmentation documentation, existing config preservation.
+- **Task 7**: Created EventPublisherRetryComplianceTests with 4 tests: single call per event on failure, no retry libraries imported, exception caught not retried.
+- **Task 8**: Created SubscriberIdempotencyTests with 4 tests: CloudEvents id uniqueness, deterministic re-publish, different events same correlation, different correlations same sequence.
+- **Task 9**: Created AtLeastOnceDeliveryTests with 6 tests: success delivery, partial failure, total failure with state store safety, actor pipeline publish failure with state store safety (NFR22), PublishFailed state transition, circuit breaker fast-fail behavior.
+- **Task 10**: Created EventPublisherOptionsTests with 6 tests: default prefix, correct pattern, tenant isolation, custom prefix, null identity guard, existing PubSubName default preserved.
+- **Task 11**: Full test suite passes: 815 tests (784 existing + 31 new), zero regressions.
+
+### Implementation Plan
+
+- DAPR resiliency policies configured at `targets.components.pubsub` level (separate from existing app-level policies)
+- Conservative outbound retries (3 local / 5 production) because Story 4.4 recovery drain handles prolonged outages
+- Dead-letter topic at component level (`deadletter` default); per-tenant routing deferred to Story 4.5
+- No changes to EventPublisher.cs -- ZERO application-level retry logic (rule #4 enforced by automated tests)
+- Cross-reference validation test prevents silent policy disabling from YAML typos
+
 ### File List
+
+**New files:**
+- tests/Hexalith.EventStore.Server.Tests/Configuration/ResiliencyConfigurationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Configuration/EventPublisherOptionsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherRetryComplianceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/SubscriberIdempotencyTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/AtLeastOnceDeliveryTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml
+- src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml
+- deploy/dapr/resiliency.yaml
+- deploy/dapr/pubsub-rabbitmq.yaml
+- deploy/dapr/pubsub-kafka.yaml
+- src/Hexalith.EventStore.Server/Configuration/EventPublisherOptions.cs
+
+## Change Log
+
+- 2026-02-14: Story 4.3 implementation complete. Added DAPR resiliency policies for pub/sub (outbound/inbound retry, circuit breaker, timeouts) for local and production. Configured dead-letter topics on all pub/sub components. Added EventPublisherOptions.DeadLetterTopicPrefix and GetDeadLetterTopic(). Created 31 new tests covering resiliency config validation, no-retry compliance, subscriber idempotency contract, at-least-once delivery behavior, and dead-letter topic configuration. Total: 815 tests, zero regressions.
