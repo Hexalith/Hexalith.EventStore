@@ -159,6 +159,7 @@ public class AggregateActor(
                 }
             }
 
+
             var rejectionResult = new CommandProcessingResult(
                 Accepted: false,
                 ErrorMessage: $"Domain rejection: {domainResult.Events[0].GetType().Name}",

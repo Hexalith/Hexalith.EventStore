@@ -927,6 +927,7 @@ public class AggregateActorTests
         await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", Arg.Any<long>(), Arg.Is<long>(0));
     }
 
+
     // Test event types for domain invocation tests
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
 
