@@ -29,7 +29,7 @@ public sealed class FakeEventPersister : IEventPersister
     }
 
     /// <inheritdoc/>
-    public Task PersistEventsAsync(
+    public Task<long> PersistEventsAsync(
         AggregateIdentity identity,
         CommandEnvelope command,
         DomainResult domainResult,
@@ -77,6 +77,6 @@ public sealed class FakeEventPersister : IEventPersister
         }
 
         _sequenceByAggregate[aggregateKey] = currentSequence;
-        return Task.CompletedTask;
+        return Task.FromResult(currentSequence);
     }
 }

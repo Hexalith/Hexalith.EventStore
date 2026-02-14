@@ -2,7 +2,9 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -25,7 +27,12 @@ public static class EventStoreServerServiceCollectionExtensions
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
+        services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
+        services.AddOptions<SnapshotOptions>()
+            .Bind(configuration.GetSection("EventStore:Snapshots"))
+            .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
+            .ValidateOnStart();
         services.AddActors(options =>
         {
             options.Actors.RegisterActor<AggregateActor>();

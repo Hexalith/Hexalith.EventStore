@@ -1,6 +1,6 @@
 # Story 3.9: Snapshot Creation at Configurable Intervals
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -52,92 +52,92 @@ So that state rehydration remains fast regardless of total event count (FR13, NF
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and understand current state (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Confirm `AggregateIdentity.SnapshotKey` property exists and returns `{TenantId}:{Domain}:{AggregateId}:snapshot`
-  - [ ] 0.3 Review `EventPersister` (Story 3.7) to understand event write flow and where snapshot creation integrates
-  - [ ] 0.4 Review `EventStreamReader` (Story 3.4) to understand how it will consume snapshots (Story 3.10)
-  - [ ] 0.5 Review `InMemoryStateManager` to understand actor state batch semantics
+- [x] Task 0: Verify prerequisites and understand current state (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Confirm `AggregateIdentity.SnapshotKey` property exists and returns `{TenantId}:{Domain}:{AggregateId}:snapshot`
+  - [x] 0.3 Review `EventPersister` (Story 3.7) to understand event write flow and where snapshot creation integrates
+  - [x] 0.4 Review `EventStreamReader` (Story 3.4) to understand how it will consume snapshots (Story 3.10)
+  - [x] 0.5 Review `InMemoryStateManager` to understand actor state batch semantics
 
-- [ ] Task 1: Create SnapshotOptions configuration (AC: #4, #5)
-  - [ ] 1.1 Create `SnapshotOptions.cs` in `src/Hexalith.EventStore.Server/Configuration/`
-  - [ ] 1.2 Properties: `DefaultInterval` (int, default 100), `DomainIntervals` (Dictionary<string, int> for per-domain overrides)
-  - [ ] 1.3 Validation: interval must be >= 10 (mandatory per rule #15; minimum 10 prevents accidental performance degradation from overly frequent snapshots)
-  - [ ] 1.4 Register via `AddEventStoreServer()` DI extension (rule #10)
-  - [ ] 1.5 Support loading from DAPR config store for dynamic updates (NFR20)
+- [x] Task 1: Create SnapshotOptions configuration (AC: #4, #5)
+  - [x] 1.1 Create `SnapshotOptions.cs` in `src/Hexalith.EventStore.Server/Configuration/`
+  - [x] 1.2 Properties: `DefaultInterval` (int, default 100), `DomainIntervals` (Dictionary<string, int> for per-domain overrides)
+  - [x] 1.3 Validation: interval must be >= 10 (mandatory per rule #15; minimum 10 prevents accidental performance degradation from overly frequent snapshots)
+  - [x] 1.4 Register via `AddEventStoreServer()` DI extension (rule #10)
+  - [x] 1.5 Support loading from DAPR config store for dynamic updates (NFR20)
 
-- [ ] Task 2: Create SnapshotRecord model (AC: #3, #8)
-  - [ ] 2.1 Create `SnapshotRecord.cs` in `src/Hexalith.EventStore.Server/Events/`
-  - [ ] 2.2 Properties: `SequenceNumber` (long), `State` (object -- serialized aggregate state), `CreatedAt` (DateTimeOffset), `Domain` (string), `AggregateId` (string), `TenantId` (string)
-  - [ ] 2.3 Use a record type for immutability
+- [x] Task 2: Create SnapshotRecord model (AC: #3, #8)
+  - [x] 2.1 Create `SnapshotRecord.cs` in `src/Hexalith.EventStore.Server/Events/`
+  - [x] 2.2 Properties: `SequenceNumber` (long), `State` (object -- serialized aggregate state), `CreatedAt` (DateTimeOffset), `Domain` (string), `AggregateId` (string), `TenantId` (string)
+  - [x] 2.3 Use a record type for immutability
 
-- [ ] Task 3: Create ISnapshotManager interface (AC: #1, #2, #6)
-  - [ ] 3.1 Create `ISnapshotManager.cs` in `src/Hexalith.EventStore.Server/Events/`
-  - [ ] 3.2 Methods:
+- [x] Task 3: Create ISnapshotManager interface (AC: #1, #2, #6)
+  - [x] 3.1 Create `ISnapshotManager.cs` in `src/Hexalith.EventStore.Server/Events/`
+  - [x] 3.2 Methods:
     - `Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence)` -- determines if snapshot is due
     - `Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager)` -- creates snapshot via actor state manager
     - `Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager)` -- reads existing snapshot (used by Story 3.10, but interface defined now)
-  - [ ] 3.3 Namespace: `Hexalith.EventStore.Server.Events`
+  - [x] 3.3 Namespace: `Hexalith.EventStore.Server.Events`
 
-- [ ] Task 4: Implement SnapshotManager (AC: #1, #2, #3, #6, #7, #10)
-  - [ ] 4.1 Create `SnapshotManager.cs` in `src/Hexalith.EventStore.Server/Events/`
-  - [ ] 4.2 Constructor: `SnapshotManager(IOptions<SnapshotOptions> options, ILogger<SnapshotManager> logger)`
-  - [ ] 4.3 `ShouldCreateSnapshotAsync`: Check if `(currentSequence - lastSnapshotSequence) >= interval` for the domain
-  - [ ] 4.4 `CreateSnapshotAsync`: Wrap in try/catch. Use `stateManager.SetStateAsync(identity.SnapshotKey, snapshotRecord)` -- this stages the write in the actor's pending state batch. On serialization or any failure: log warning, skip snapshot, do NOT fail command processing (advisory per rule #12)
-  - [ ] 4.5 `LoadSnapshotAsync`: Use `stateManager.TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)`. If deserialization fails (schema change, corruption): catch exception, log warning, call `stateManager.RemoveStateAsync(identity.SnapshotKey)` to delete corrupt snapshot, return null (caller falls back to full event replay)
-  - [ ] 4.6 Log snapshot creation with: correlationId (if available), tenantId, domain, aggregateId, sequenceNumber (rule #9 -- correlationId in every log)
-  - [ ] 4.7 NEVER log the snapshot state content (rule #5 -- no payload in logs)
-  - [ ] 4.8 Use `ConfigureAwait(false)` on all async calls
+- [x] Task 4: Implement SnapshotManager (AC: #1, #2, #3, #6, #7, #10)
+  - [x] 4.1 Create `SnapshotManager.cs` in `src/Hexalith.EventStore.Server/Events/`
+  - [x] 4.2 Constructor: `SnapshotManager(IOptions<SnapshotOptions> options, ILogger<SnapshotManager> logger)`
+  - [x] 4.3 `ShouldCreateSnapshotAsync`: Check if `(currentSequence - lastSnapshotSequence) >= interval` for the domain
+  - [x] 4.4 `CreateSnapshotAsync`: Wrap in try/catch. Use `stateManager.SetStateAsync(identity.SnapshotKey, snapshotRecord)` -- this stages the write in the actor's pending state batch. On serialization or any failure: log warning, skip snapshot, do NOT fail command processing (advisory per rule #12)
+  - [x] 4.5 `LoadSnapshotAsync`: Use `stateManager.TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)`. If deserialization fails (schema change, corruption): catch exception, log warning, call `stateManager.RemoveStateAsync(identity.SnapshotKey)` to delete corrupt snapshot, return null (caller falls back to full event replay)
+  - [x] 4.6 Log snapshot creation with: correlationId (if available), tenantId, domain, aggregateId, sequenceNumber (rule #9 -- correlationId in every log)
+  - [x] 4.7 NEVER log the snapshot state content (rule #5 -- no payload in logs)
+  - [x] 4.8 Use `ConfigureAwait(false)` on all async calls
 
-- [ ] Task 5: Integrate SnapshotManager into event persistence flow (AC: #6, #10)
-  - [ ] 5.1 Modify `EventPersister` (or the actor state machine step that calls it) to check `ShouldCreateSnapshotAsync` after event persistence
-  - [ ] 5.2 If snapshot is due, call `CreateSnapshotAsync` BEFORE `SaveStateAsync` -- this stages the snapshot in the same actor state batch
-  - [ ] 5.3 The snapshot write is part of the same `IActorStateManager.SaveStateAsync()` call that commits events, ensuring atomicity (AC: #10)
-  - [ ] 5.4 If snapshot creation fails (e.g., serialization error), log a warning but DO NOT fail the command processing (advisory per rule #12 spirit)
-  - [ ] 5.5 Determine last snapshot sequence: prefer reading the snapshot record's own `SequenceNumber` field as the authoritative source (avoids metadata sync risk). Alternatively, accept `lastSnapshotSequence` as a parameter from the caller who already loaded the snapshot during state rehydration (Story 3.10 will load the snapshot in Step 3). Avoid duplicating this value in aggregate metadata to prevent drift.
+- [x] Task 5: Integrate SnapshotManager into event persistence flow (AC: #6, #10)
+  - [x] 5.1 Modify `EventPersister` (or the actor state machine step that calls it) to check `ShouldCreateSnapshotAsync` after event persistence
+  - [x] 5.2 If snapshot is due, call `CreateSnapshotAsync` BEFORE `SaveStateAsync` -- this stages the snapshot in the same actor state batch
+  - [x] 5.3 The snapshot write is part of the same `IActorStateManager.SaveStateAsync()` call that commits events, ensuring atomicity (AC: #10)
+  - [x] 5.4 If snapshot creation fails (e.g., serialization error), log a warning but DO NOT fail the command processing (advisory per rule #12 spirit)
+  - [x] 5.5 Determine last snapshot sequence: prefer reading the snapshot record's own `SequenceNumber` field as the authoritative source (avoids metadata sync risk). Alternatively, accept `lastSnapshotSequence` as a parameter from the caller who already loaded the snapshot during state rehydration (Story 3.10 will load the snapshot in Step 3). Avoid duplicating this value in aggregate metadata to prevent drift.
 
-- [ ] Task 6: Register SnapshotManager in DI (AC: #4)
-  - [ ] 6.1 Add `ISnapshotManager` -> `SnapshotManager` registration in `AddEventStoreServer()`
-  - [ ] 6.2 Add `SnapshotOptions` configuration binding
-  - [ ] 6.3 Follow existing DI patterns (rule #10)
+- [x] Task 6: Register SnapshotManager in DI (AC: #4)
+  - [x] 6.1 Add `ISnapshotManager` -> `SnapshotManager` registration in `AddEventStoreServer()`
+  - [x] 6.2 Add `SnapshotOptions` configuration binding
+  - [x] 6.3 Follow existing DI patterns (rule #10)
 
-- [ ] Task 7: Create FakeSnapshotManager test double
-  - [ ] 7.1 Create `FakeSnapshotManager.cs` in `src/Hexalith.EventStore.Testing/Fakes/`
-  - [ ] 7.2 In-memory implementation for unit tests
-  - [ ] 7.3 Allow test assertions on: snapshots created, snapshot intervals checked, snapshot content
+- [x] Task 7: Create FakeSnapshotManager test double
+  - [x] 7.1 Create `FakeSnapshotManager.cs` in `src/Hexalith.EventStore.Testing/Fakes/`
+  - [x] 7.2 In-memory implementation for unit tests
+  - [x] 7.3 Allow test assertions on: snapshots created, snapshot intervals checked, snapshot content
 
-- [ ] Task 8: Create unit tests for SnapshotManager (AC: #1, #3, #4, #6, #7, #9)
-  - [ ] 8.1 Create `SnapshotManagerTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 8.2 Test: `ShouldCreateSnapshot_AtDefaultInterval_ReturnsTrue` -- at sequence 100 (0 events since last), should create
-  - [ ] 8.3 Test: `ShouldCreateSnapshot_BelowInterval_ReturnsFalse` -- at sequence 50, should not create
-  - [ ] 8.4 Test: `ShouldCreateSnapshot_AtMultipleOfInterval_ReturnsTrue` -- at sequence 200, 300, etc.
-  - [ ] 8.5 Test: `ShouldCreateSnapshot_WithCustomDomainInterval_UsesOverride` -- per-domain config
-  - [ ] 8.6 Test: `CreateSnapshot_StoresViaActorStateManager` -- verifies SetStateAsync called with correct key
-  - [ ] 8.7 Test: `CreateSnapshot_IncludesSequenceNumber` -- snapshot record has correct sequence
-  - [ ] 8.8 Test: `CreateSnapshot_OverwritesPrevious` -- second snapshot at same key replaces first
-  - [ ] 8.9 Test: `LoadSnapshot_ReturnsNullWhenNoSnapshot` -- no snapshot exists
-  - [ ] 8.10 Test: `LoadSnapshot_ReturnsStoredSnapshot` -- snapshot round-trips correctly
-  - [ ] 8.11 Test: `SnapshotOptions_DefaultIntervalIs100` -- mandatory configuration
-  - [ ] 8.12 Test: `SnapshotOptions_IntervalMustBeAtLeast10` -- values below 10 rejected
-  - [ ] 8.13 Test: `CreateSnapshot_SerializationFailure_LogsWarningAndSkips` -- serialization error does not throw
-  - [ ] 8.14 Test: `LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt` -- schema mismatch returns null, corrupt key removed
+- [x] Task 8: Create unit tests for SnapshotManager (AC: #1, #3, #4, #6, #7, #9)
+  - [x] 8.1 Create `SnapshotManagerTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 8.2 Test: `ShouldCreateSnapshot_AtDefaultInterval_ReturnsTrue` -- at sequence 100 (0 events since last), should create
+  - [x] 8.3 Test: `ShouldCreateSnapshot_BelowInterval_ReturnsFalse` -- at sequence 50, should not create
+  - [x] 8.4 Test: `ShouldCreateSnapshot_AtMultipleOfInterval_ReturnsTrue` -- at sequence 200, 300, etc.
+  - [x] 8.5 Test: `ShouldCreateSnapshot_WithCustomDomainInterval_UsesOverride` -- per-domain config
+  - [x] 8.6 Test: `CreateSnapshot_StoresViaActorStateManager` -- verifies SetStateAsync called with correct key
+  - [x] 8.7 Test: `CreateSnapshot_IncludesSequenceNumber` -- snapshot record has correct sequence
+  - [x] 8.8 Test: `CreateSnapshot_OverwritesPrevious` -- second snapshot at same key replaces first
+  - [x] 8.9 Test: `LoadSnapshot_ReturnsNullWhenNoSnapshot` -- no snapshot exists
+  - [x] 8.10 Test: `LoadSnapshot_ReturnsStoredSnapshot` -- snapshot round-trips correctly
+  - [x] 8.11 Test: `SnapshotOptions_DefaultIntervalIs100` -- mandatory configuration
+  - [x] 8.12 Test: `SnapshotOptions_IntervalMustBeAtLeast10` -- values below 10 rejected
+  - [x] 8.13 Test: `CreateSnapshot_SerializationFailure_LogsWarningAndSkips` -- serialization error does not throw
+  - [x] 8.14 Test: `LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt` -- schema mismatch returns null, corrupt key removed
 
-- [ ] Task 9: Create unit tests for SnapshotRecord (AC: #3, #8)
-  - [ ] 9.1 Test: `SnapshotRecord_CreatedWithCorrectProperties` -- all fields populated
-  - [ ] 9.2 Test: `SnapshotRecord_IsImmutable` -- record type guarantees
+- [x] Task 9: Create unit tests for SnapshotRecord (AC: #3, #8)
+  - [x] 9.1 Test: `SnapshotRecord_CreatedWithCorrectProperties` -- all fields populated
+  - [x] 9.2 Test: `SnapshotRecord_IsImmutable` -- record type guarantees
 
-- [ ] Task 10: Create integration test for snapshot in event pipeline (AC: #6, #10)
-  - [ ] 10.1 Create `SnapshotCreationIntegrationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
-  - [ ] 10.2 Test: Process 100 commands for an aggregate, verify snapshot created at sequence 100
-  - [ ] 10.3 Test: Process 250 commands, verify snapshot at 100 and then at 200 (overwritten, only latest snapshot exists)
-  - [ ] 10.4 Test: Process 50 commands, verify no snapshot created
-  - [ ] 10.5 Test: Snapshot key matches `AggregateIdentity.SnapshotKey` pattern
-  - [ ] 10.6 Test: Snapshot creation is atomic with event persistence (both in same SaveStateAsync batch)
+- [x] Task 10: Create integration test for snapshot in event pipeline (AC: #6, #10)
+  - [x] 10.1 Create `SnapshotCreationIntegrationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Events/`
+  - [x] 10.2 Test: Process 100 commands for an aggregate, verify snapshot created at sequence 100
+  - [x] 10.3 Test: Process 250 commands, verify snapshot at 100 and then at 200 (overwritten, only latest snapshot exists)
+  - [x] 10.4 Test: Process 50 commands, verify no snapshot created
+  - [x] 10.5 Test: Snapshot key matches `AggregateIdentity.SnapshotKey` pattern
+  - [x] 10.6 Test: Snapshot creation is atomic with event persistence (both in same SaveStateAsync batch)
 
-- [ ] Task 11: Verify all tests pass
-  - [ ] 11.1 Run `dotnet test` to confirm no regressions
-  - [ ] 11.2 All new snapshot tests pass
-  - [ ] 11.3 Verify existing Story 3.4-3.8 tests still pass
+- [x] Task 11: Verify all tests pass
+  - [x] 11.1 Run `dotnet test` to confirm no regressions
+  - [x] 11.2 All new snapshot tests pass
+  - [x] 11.3 Verify existing Story 3.4-3.8 tests still pass
 
 ## Dev Notes
 
@@ -292,10 +292,49 @@ Recent commit `00b7880` implements Stories 3.1-3.8 in a single PR. The codebase 
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 0: All 647 tests pass. Prerequisites verified: AggregateIdentity.SnapshotKey exists, EventPersister/EventStreamReader/InMemoryStateManager reviewed.
+- Tasks 1-4: Created SnapshotOptions (record, DefaultInterval=100, DomainIntervals, validation >= 10), SnapshotRecord (immutable record), ISnapshotManager interface, and SnapshotManager implementation with advisory error handling (rule #12) and ConfigureAwait(false) on all async calls.
+- Task 5: Integrated snapshot creation into AggregateActor Step 5b, after event persistence and before SaveStateAsync. Modified IEventPersister to return new sequence number (Task<long>). Snapshot staged in same actor state batch for atomicity (AC #10). lastSnapshotSequence = 0 until Story 3.10 adds snapshot-based rehydration.
+- Task 6: Registered ISnapshotManager -> SnapshotManager (singleton) and SnapshotOptions binding in AddEventStoreServer().
+- Task 7: Created FakeSnapshotManager in Testing project with assertion tracking for ShouldCreateCalls, CreateCalls, LoadCalls.
+- Tasks 8-9: 28 unit tests covering: interval logic, default/custom intervals, snapshot storage/overwrite, load/round-trip, options validation, serialization failure resilience, deserialization failure with corrupt snapshot deletion, guard clauses, record immutability.
+- Task 10: 7 integration tests using InMemoryStateManager for real batch semantics: 100-event snapshot trigger, 250-event overwrite, 50-event no-snapshot, key format verification, atomicity with event persistence, load round-trip.
+- Task 11: All 682 tests pass (35 new, 647 existing). Zero regressions.
+
+### Implementation Plan
+
+- SnapshotOptions: record with DefaultInterval=100, DomainIntervals dictionary, validation >= 10
+- SnapshotRecord: immutable record with SequenceNumber, State, CreatedAt, Domain, AggregateId, TenantId
+- ISnapshotManager/SnapshotManager: ShouldCreateSnapshotAsync, CreateSnapshotAsync, LoadSnapshotAsync
+- Integration: AggregateActor calls SnapshotManager after EventPersister stages events, before SaveStateAsync
+- Snapshot state: passed from AggregateActor (currentState from rehydration); Story 3.10 will refine with domain-specific state reconstruction
+
 ### File List
+
+**New files:**
+- `src/Hexalith.EventStore.Server/Configuration/SnapshotOptions.cs`
+- `src/Hexalith.EventStore.Server/Events/ISnapshotManager.cs`
+- `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs`
+- `src/Hexalith.EventStore.Server/Events/SnapshotRecord.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeSnapshotManager.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/SnapshotRecordTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/SnapshotCreationIntegrationTests.cs`
+
+**Modified files:**
+- `src/Hexalith.EventStore.Server/Events/IEventPersister.cs` (return type Task -> Task<long>)
+- `src/Hexalith.EventStore.Server/Events/EventPersister.cs` (return new sequence number)
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (added ISnapshotManager dependency, Step 5b snapshot creation)
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` (ISnapshotManager + SnapshotOptions DI registration)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventPersister.cs` (return type Task -> Task<long>)
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs` (added ISnapshotManager mock to CreateActorWithMockState)
+
+## Change Log
+
+- 2026-02-14: Story 3.9 implementation complete -- SnapshotManager with configurable intervals (default 100, per-domain overrides), integrated into AggregateActor event persistence flow with atomic snapshot+event commits via IActorStateManager batch. 35 new tests (28 unit + 7 integration), 0 regressions.

@@ -18,6 +18,6 @@ public interface IEventPersister
     /// <param name="command">The original command envelope for metadata extraction.</param>
     /// <param name="domainResult">The domain result containing event payloads.</param>
     /// <param name="domainServiceVersion">The version of the domain service that produced the events.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    Task PersistEventsAsync(AggregateIdentity identity, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion);
+    /// <returns>The new aggregate sequence number after persistence, or 0 if no events were persisted.</returns>
+    Task<long> PersistEventsAsync(AggregateIdentity identity, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion);
 }
