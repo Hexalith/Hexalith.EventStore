@@ -82,7 +82,7 @@ development_status:
   epic-4: in-progress
   4-1-event-publisher-with-cloudevents-1-0: review
   4-2-per-tenant-per-domain-topic-isolation: ready-for-dev
-  4-3-at-least-once-delivery-and-dapr-retry-policies: backlog
+  4-3-at-least-once-delivery-and-dapr-retry-policies: ready-for-dev
   4-4-persist-then-publish-resilience: backlog
   4-5-dead-letter-routing-with-full-context: backlog
   epic-4-retrospective: optional

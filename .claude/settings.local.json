@@ -98,7 +98,11 @@
       "Bash(dotnet-script:*)",
       "Bash(dotnet run:*)",
       "Bash(dotnet metadata-dump:*)",
-      "Bash(git -C D:Hexalith.EventStore status)"
+      "Bash(git -C D:Hexalith.EventStore status)",
+      "Bash(git fetch:*)",
+      "Bash(for branch in origin/chore/update-claude-local-settings origin/feature/sprint-2-stories-2.6-through-2.9 origin/feature/stories-2.4-2.5-jwt-auth-and-authorization origin/feature/story-3.10-snapshot-rehydration origin/feature/story-3.11-actor-state-machine origin/feature/story-3.6-multi-domain-multi-tenant-processing origin/feature/story-4.1-event-publisher-cloudevents)",
+      "Bash(do echo \"=== $branch ===\")",
+      "Bash(done)"
     ]
   }
 }
