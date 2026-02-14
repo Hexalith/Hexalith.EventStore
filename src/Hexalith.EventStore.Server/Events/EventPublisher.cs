@@ -19,7 +19,8 @@ using Microsoft.Extensions.Options;
 public class EventPublisher(
     DaprClient daprClient,
     IOptions<EventPublisherOptions> options,
-    ILogger<EventPublisher> logger) : IEventPublisher
+    ILogger<EventPublisher> logger,
+    ITopicNameValidator? topicNameValidator = null) : IEventPublisher
 {
     /// <inheritdoc/>
     public async Task<EventPublishResult> PublishEventsAsync(
@@ -39,6 +40,17 @@ public class EventPublisher(
 
         string pubSubName = options.Value.PubSubName;
         string topic = identity.PubSubTopic;
+
+        if (topicNameValidator is not null && !topicNameValidator.IsValidTopicName(topic))
+        {
+            logger.LogError(
+                "Invalid topic name: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, Topic={Topic}",
+                correlationId,
+                identity.TenantId,
+                identity.Domain,
+                topic);
+            return new EventPublishResult(false, 0, $"Invalid topic name: {topic}");
+        }
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPublish);

@@ -28,6 +28,7 @@ public static class EventStoreServerServiceCollectionExtensions
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
+        services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
         services.AddOptions<EventPublisherOptions>()

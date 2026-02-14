@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
@@ -107,7 +108,7 @@ public class AggregateActor(
                     // Events already persisted (AC #2). Skip re-persistence, proceed to terminal.
                     return await ResumeFromEventsStoredAsync(
                         command, causationId, existingPipeline, idempotencyChecker, stateMachine,
-                        pipelineKeyPrefix, processActivity).ConfigureAwait(false);
+                        pipelineKeyPrefix, processActivity, startTicks).ConfigureAwait(false);
                 }
 
                 // Processing or unexpected stage: crash happened before events were persisted.
@@ -192,7 +193,27 @@ public class AggregateActor(
                 .ConfigureAwait(false);
 
             lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
-            currentState = ConstructDomainState(rehydrationResult);
+
+            // Maintain domain processor contract compatibility: always pass List<EventEnvelope> (or null)
+            // to the domain service. Snapshot-assisted rehydration is still used for lastSnapshotSequence
+            // tracking and optimized actor-level state loading, but domain invocation remains backward-compatible.
+            if (rehydrationResult?.UsedSnapshot == true)
+            {
+                logger.LogDebug(
+                    "Snapshot-assisted rehydration detected for ActorId={ActorId}, CorrelationId={CorrelationId}. Using full replay event list for domain compatibility.",
+                    Host.Id,
+                    command.CorrelationId);
+
+                RehydrationResult? fullReplayResult = await eventStreamReader
+                    .RehydrateAsync(command.AggregateIdentity)
+                    .ConfigureAwait(false);
+
+                currentState = fullReplayResult?.Events;
+            }
+            else
+            {
+                currentState = rehydrationResult?.Events;
+            }
 
             logger.LogInformation(
                 "State rehydrated: {StateType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
@@ -371,36 +392,6 @@ public class AggregateActor(
         }
     }
 
-    /// <summary>
-    /// Constructs the currentState for domain service invocation from the RehydrationResult (AC #11).
-    /// Three cases:
-    /// - SnapshotState non-null + Events non-empty: pass RehydrationResult (domain applies tail events to snapshot)
-    /// - SnapshotState non-null + Events empty: pass SnapshotState directly (snapshot IS current state)
-    /// - SnapshotState null: pass Events list (full replay, backward compatible)
-    /// </summary>
-    private static object? ConstructDomainState(RehydrationResult? rehydrationResult)
-    {
-        if (rehydrationResult is null)
-        {
-            return null; // New aggregate
-        }
-
-        if (rehydrationResult.SnapshotState is not null && rehydrationResult.Events.Count > 0)
-        {
-            // Snapshot + tail events: domain service must apply tail events to snapshot state
-            return rehydrationResult;
-        }
-
-        if (rehydrationResult.SnapshotState is not null)
-        {
-            // Snapshot at current sequence: snapshot IS the current state
-            return rehydrationResult.SnapshotState;
-        }
-
-        // No snapshot: full event list (backward compatible with pre-3.10 behavior)
-        return rehydrationResult.Events;
-    }
-
     private static void SetActivityTags(Activity? activity, CommandEnvelope command)
     {
         if (activity is null)
@@ -426,22 +417,182 @@ public class AggregateActor(
         IdempotencyChecker idempotencyChecker,
         ActorStateMachine stateMachine,
         string pipelineKeyPrefix,
-        Activity? processActivity)
+        Activity? processActivity,
+        long startTicks)
     {
+        int eventCount = existingPipeline.EventCount ?? 0;
+
+        if (eventCount > 0)
+        {
+            IReadOnlyList<EventEnvelope> persistedEvents;
+            try
+            {
+                persistedEvents = await LoadPersistedEventsForResumeAsync(command.AggregateIdentity, eventCount)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(
+                    ex,
+                    "Resume publication preparation failed: CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExpectedEventCount={EventCount}",
+                    command.CorrelationId,
+                    command.TenantId,
+                    command.Domain,
+                    command.AggregateId,
+                    eventCount);
+
+                return await CompletePublishFailedAsync(
+                    command,
+                    causationId,
+                    stateMachine,
+                    pipelineKeyPrefix,
+                    idempotencyChecker,
+                    existingPipeline,
+                    "Unable to prepare persisted events for resume publication",
+                    processActivity,
+                    startTicks).ConfigureAwait(false);
+            }
+
+            EventPublishResult publishResult = await eventPublisher
+                .PublishEventsAsync(command.AggregateIdentity, persistedEvents, command.CorrelationId)
+                .ConfigureAwait(false);
+
+            if (!publishResult.Success)
+            {
+                return await CompletePublishFailedAsync(
+                    command,
+                    causationId,
+                    stateMachine,
+                    pipelineKeyPrefix,
+                    idempotencyChecker,
+                    existingPipeline,
+                    publishResult.FailureReason,
+                    processActivity,
+                    startTicks).ConfigureAwait(false);
+            }
+
+            var eventsPublishedState = new PipelineState(
+                command.CorrelationId,
+                CommandStatus.EventsPublished,
+                command.CommandType,
+                existingPipeline.StartedAt,
+                EventCount: existingPipeline.EventCount,
+                RejectionEventType: existingPipeline.RejectionEventType);
+
+            await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
+
+            LogStageTransition(CommandStatus.EventsPublished, command, startTicks);
+            await WriteAdvisoryStatusAsync(command, CommandStatus.EventsPublished).ConfigureAwait(false);
+        }
+
         bool accepted = existingPipeline.RejectionEventType is null;
         string? errorMessage = existingPipeline.RejectionEventType is not null
             ? $"Domain rejection: {existingPipeline.RejectionEventType}"
             : null;
 
-        var result = new CommandProcessingResult(
-            Accepted: accepted,
-            ErrorMessage: errorMessage,
+        CommandProcessingResult result = await CompleteTerminalAsync(
+            command,
+            causationId,
+            idempotencyChecker,
+            stateMachine,
+            pipelineKeyPrefix,
+            accepted,
+            eventCount,
+            errorMessage,
+            processActivity,
+            startTicks).ConfigureAwait(false);
+
+        logger.LogInformation(
+            "Resume completed: Actor {ActorId}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
+            Host.Id,
+            command.CorrelationId,
+            command.TenantId,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType);
+
+        return result;
+    }
+
+    private async Task<IReadOnlyList<EventEnvelope>> LoadPersistedEventsForResumeAsync(AggregateIdentity identity, int eventCount)
+    {
+        if (eventCount <= 0)
+        {
+            return [];
+        }
+
+        ConditionalValue<AggregateMetadata> metadataResult = await StateManager
+            .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
+            .ConfigureAwait(false);
+
+        if (!metadataResult.HasValue)
+        {
+            throw new InvalidOperationException(
+                $"Cannot resume publication without aggregate metadata for {identity.ActorId}.");
+        }
+
+        long currentSequence = metadataResult.Value.CurrentSequence;
+        long startSequence = currentSequence - eventCount + 1;
+
+        if (startSequence < 1)
+        {
+            throw new InvalidOperationException(
+                $"Invalid resume event range for {identity.ActorId}: startSequence={startSequence}, currentSequence={currentSequence}, eventCount={eventCount}.");
+        }
+
+        var readTasks = Enumerable.Range((int)startSequence, eventCount)
+            .Select(async seq =>
+            {
+                ConditionalValue<EventEnvelope> result = await StateManager
+                    .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
+                    .ConfigureAwait(false);
+
+                if (!result.HasValue)
+                {
+                    throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+                }
+
+                return result.Value;
+            })
+            .ToArray();
+
+        EventEnvelope[] events = await Task.WhenAll(readTasks).ConfigureAwait(false);
+
+        return events
+            .OrderBy(x => x.SequenceNumber)
+            .ToList();
+    }
+
+    private async Task<CommandProcessingResult> CompletePublishFailedAsync(
+        CommandEnvelope command,
+        string causationId,
+        ActorStateMachine stateMachine,
+        string pipelineKeyPrefix,
+        IdempotencyChecker idempotencyChecker,
+        PipelineState existingPipeline,
+        string? failureReason,
+        Activity? processActivity,
+        long startTicks)
+    {
+        var publishFailedState = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.PublishFailed,
+            command.CommandType,
+            existingPipeline.StartedAt,
+            EventCount: existingPipeline.EventCount,
+            RejectionEventType: existingPipeline.RejectionEventType);
+        await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
+
+        await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
+            .ConfigureAwait(false);
+
+        var failResult = new CommandProcessingResult(
+            Accepted: false,
+            ErrorMessage: $"Event publication failed: {failureReason}",
             CorrelationId: command.CorrelationId,
             EventCount: existingPipeline.EventCount ?? 0);
 
-        await idempotencyChecker.RecordAsync(causationId, result).ConfigureAwait(false);
-        await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
-            .ConfigureAwait(false);
+        await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 
         try
         {
@@ -457,21 +608,11 @@ public class AggregateActor(
                 innerException: ex);
         }
 
-        CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;
-        await WriteAdvisoryStatusAsync(command, terminalStatus).ConfigureAwait(false);
+        LogStageTransition(CommandStatus.PublishFailed, command, startTicks);
+        await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
 
-        logger.LogInformation(
-            "Resume completed: Actor {ActorId} stage transition: Stage={Stage}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
-            Host.Id,
-            terminalStatus,
-            command.CorrelationId,
-            command.TenantId,
-            command.Domain,
-            command.AggregateId,
-            command.CommandType);
-
-        processActivity?.SetStatus(ActivityStatusCode.Ok);
-        return result;
+        processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
+        return failResult;
     }
 
     /// <summary>

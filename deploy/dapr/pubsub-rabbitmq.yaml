@@ -12,3 +12,11 @@ spec:
       value: "true"
     - name: deletedWhenUnused
       value: "false"
+    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
+    # Compatible with RabbitMQ dead-letter exchanges (DLX).
+    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
+    # per-subscription in Story 4.5.
+    - name: enableDeadLetter
+      value: "true"
+    - name: deadLetterTopic
+      value: "deadletter"

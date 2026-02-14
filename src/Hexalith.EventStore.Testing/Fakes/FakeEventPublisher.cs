@@ -1,23 +1,62 @@
 namespace Hexalith.EventStore.Testing.Fakes;
 
+using System.Collections.Concurrent;
+
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 
 /// <summary>
 /// Fake implementation of <see cref="IEventPublisher"/> for unit testing.
 /// Tracks all publish calls for test assertions and supports configurable failure modes.
+/// Thread-safe for concurrent multi-tenant verification (Story 4.2).
 /// </summary>
 public sealed class FakeEventPublisher : IEventPublisher
 {
-    private readonly List<PublishCall> _publishCalls = [];
+    private readonly ConcurrentBag<PublishCall> _publishCalls = [];
+    private readonly ConcurrentDictionary<string, ConcurrentBag<EventEnvelope>> _eventsByTopic = new();
     private int? _failOnEventIndex;
     private string? _failureMessage;
 
     /// <summary>Gets the list of all publish calls for test assertions.</summary>
-    public IReadOnlyList<PublishCall> PublishCalls => _publishCalls;
+    public IReadOnlyList<PublishCall> PublishCalls => [.. _publishCalls];
 
     /// <summary>Gets the total number of events published across all calls.</summary>
     public int TotalEventsPublished => _publishCalls.Sum(c => c.Events.Count);
+
+    /// <summary>
+    /// Gets all unique topic names that events have been published to.
+    /// </summary>
+    /// <returns>A collection of distinct topic names.</returns>
+    public IReadOnlyList<string> GetPublishedTopics()
+        => [.. _eventsByTopic.Keys.Order()];
+
+    /// <summary>
+    /// Gets all events published to a specific topic.
+    /// </summary>
+    /// <param name="topic">The topic name to query.</param>
+    /// <returns>The events published to the specified topic, or an empty list if none.</returns>
+    public IReadOnlyList<EventEnvelope> GetEventsForTopic(string topic)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        return _eventsByTopic.TryGetValue(topic, out ConcurrentBag<EventEnvelope>? events)
+            ? [.. events]
+            : [];
+    }
+
+    /// <summary>
+    /// Asserts that no events were published to the specified topic.
+    /// </summary>
+    /// <param name="topic">The topic that should have zero events.</param>
+    /// <exception cref="InvalidOperationException">Thrown when events were found on the specified topic.</exception>
+    public void AssertNoEventsForTopic(string topic)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        if (_eventsByTopic.TryGetValue(topic, out ConcurrentBag<EventEnvelope>? events) && !events.IsEmpty)
+        {
+            throw new InvalidOperationException(
+                $"Expected no events for topic '{topic}', but found {events.Count} event(s).");
+        }
+    }
 
     /// <summary>
     /// Configures the fake to always return failure with the specified message.
@@ -52,7 +91,15 @@ public sealed class FakeEventPublisher : IEventPublisher
         ArgumentNullException.ThrowIfNull(events);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
-        _publishCalls.Add(new PublishCall(identity, events, correlationId, identity.PubSubTopic));
+        string topic = identity.PubSubTopic;
+        _publishCalls.Add(new PublishCall(identity, events, correlationId, topic));
+
+        // Track events by topic for multi-tenant verification
+        ConcurrentBag<EventEnvelope> topicEvents = _eventsByTopic.GetOrAdd(topic, _ => []);
+        foreach (EventEnvelope envelope in events)
+        {
+            topicEvents.Add(envelope);
+        }
 
         if (_failOnEventIndex.HasValue && _failOnEventIndex.Value < events.Count)
         {

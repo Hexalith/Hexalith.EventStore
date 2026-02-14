@@ -10,3 +10,11 @@ spec:
       value: "TODO: Kafka broker addresses"
     - name: authType
       value: "TODO: none|password|mtls|oidc"
+    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
+    # Kafka dead-letter: messages routed to a separate Kafka topic after consumer failure.
+    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
+    # per-subscription in Story 4.5.
+    - name: enableDeadLetter
+      value: "true"
+    - name: deadLetterTopic
+      value: "deadletter"

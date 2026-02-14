@@ -10,3 +10,10 @@ spec:
       value: "{env:REDIS_HOST|localhost:6379}"
     - name: redisPassword
       value: "{env:REDIS_PASSWORD}"
+    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
+    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
+    # per-subscription in Story 4.5.
+    - name: enableDeadLetter
+      value: "true"
+    - name: deadLetterTopic
+      value: "deadletter"

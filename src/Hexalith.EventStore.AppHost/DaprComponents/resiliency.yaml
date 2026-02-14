@@ -9,18 +9,55 @@ spec:
         policy: constant
         duration: 1s
         maxRetries: 3
+      # Pub/sub outbound: publisher -> sidecar -> broker
+      # Conservative: Story 4.4 recovery drain handles prolonged outages
+      pubsubRetryOutbound:
+        policy: exponential
+        maxInterval: 10s
+        maxRetries: 3
+      # Pub/sub inbound: broker -> sidecar -> subscriber app
+      pubsubRetryInbound:
+        policy: exponential
+        maxInterval: 30s
+        maxRetries: 10
     timeouts:
       daprSidecar:
         general: 5s
+      # Pub/sub outbound: prevent hung sidecar->broker calls from blocking actor turns
+      pubsubTimeout: 10s
+      # Pub/sub inbound: allow more time for subscriber processing
+      subscriberTimeout: 30s
     circuitBreakers:
       defaultBreaker:
         maxRequests: 1
         interval: 10s
         timeout: 30s
         trip: consecutiveFailures > 3
+      # Pub/sub circuit breaker for prolonged broker outages
+      # When open, AggregateActor receives immediate failure (fast-fail) and transitions to PublishFailed
+      pubsubBreaker:
+        maxRequests: 1
+        interval: 10s
+        timeout: 30s
+        trip: consecutiveFailures > 5
   targets:
     apps:
       commandapi:
         retry: defaultRetry
         timeout: daprSidecar
         circuitBreaker: defaultBreaker
+    # IMPORTANT: These policies AUGMENT built-in pub/sub component retries.
+    # Effective retry count = component built-in retries x resiliency retries.
+    # Redis Streams: 0 built-in -> effective = 3 (resiliency only)
+    # RabbitMQ: ~3 built-in -> effective ~9 (3 x 3)
+    # Kafka: ~infinite built-in -> resiliency rarely fires
+    # Azure Service Bus: 3 built-in -> effective ~9 (3 x 3)
+    components:
+      pubsub:
+        outbound:
+          retry: pubsubRetryOutbound
+          timeout: pubsubTimeout
+          circuitBreaker: pubsubBreaker
+        inbound:
+          retry: pubsubRetryInbound
+          timeout: subscriberTimeout
