@@ -418,5 +418,8 @@ FodyWeavers.xsd
 *.msp
 
 
+# Windows NUL device artifact
+NUL
+
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md
