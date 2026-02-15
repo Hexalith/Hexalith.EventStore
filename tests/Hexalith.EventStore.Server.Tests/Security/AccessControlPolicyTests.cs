@@ -72,6 +72,13 @@ public class AccessControlPolicyTests
 
         content.ShouldContain("defaultAction: deny", customMessage:
             "Local access control must use defaultAction: deny for secure-by-default posture (D4)");
+
+        // Verify the GLOBAL default is deny (must appear before the first policies: line)
+        int policiesIndex = content.IndexOf("policies:", StringComparison.Ordinal);
+        policiesIndex.ShouldBeGreaterThan(-1, "Access control must have a policies section");
+        string globalSection = content[..policiesIndex];
+        globalSection.ShouldContain("defaultAction: deny", customMessage:
+            "Global-level defaultAction must be deny (not just per-policy defaults)");
     }
 
     // --- Task 5.4: CommandApi policy completeness ---
@@ -145,6 +152,13 @@ public class AccessControlPolicyTests
 
         content.ShouldContain("defaultAction: deny", customMessage:
             "Production access control must use defaultAction: deny for secure-by-default posture (D4)");
+
+        // Verify the GLOBAL default is deny (must appear before the first policies: line)
+        int policiesIndex = content.IndexOf("policies:", StringComparison.Ordinal);
+        policiesIndex.ShouldBeGreaterThan(-1, "Production access control must have a policies section");
+        string globalSection = content[..policiesIndex];
+        globalSection.ShouldContain("defaultAction: deny", customMessage:
+            "Production global-level defaultAction must be deny (not just per-policy defaults)");
     }
 
     // --- Task 5.8: Pub/sub scoping validation ---
@@ -314,10 +328,15 @@ public class AccessControlPolicyTests
         string localContent = File.ReadAllText(LocalAccessControlPath);
         localContent.ShouldContain("namespace:", customMessage:
             "Local access control must configure namespace for SPIFFE identity scoping");
+        // Verify namespace has a non-empty value (not just "namespace:" or "namespace: ")
+        localContent.ShouldContain("namespace: \"default\"", customMessage:
+            "Local access control namespace must be 'default' for local development");
 
         string prodContent = File.ReadAllText(ProductionAccessControlPath);
         prodContent.ShouldContain("namespace:", customMessage:
             "Production access control must configure namespace for SPIFFE identity scoping");
+        prodContent.ShouldContain("namespace: \"hexalith\"", customMessage:
+            "Production access control namespace must be 'hexalith' (production Kubernetes namespace)");
     }
 
     // --- Task 5.13: Domain service zero-infrastructure-access ---
@@ -351,6 +370,23 @@ public class AccessControlPolicyTests
             "Pub/sub must have publishingScopes restricting sample");
         pubSubContent.ShouldContain("subscriptionScopes", customMessage:
             "Pub/sub must have subscriptionScopes restricting sample");
+
+        // 5. Production configs: scopes must contain ONLY commandapi (no unauthorized app-ids)
+        string prodPubSubRabbit = File.ReadAllText(ProductionPubSubRabbitMqPath);
+        VerifyComponentScopedToCommandApi(prodPubSubRabbit, "production RabbitMQ pub/sub");
+        VerifyScopesContainOnlyCommandApi(prodPubSubRabbit, "production RabbitMQ pub/sub");
+
+        string prodPubSubKafka = File.ReadAllText(ProductionPubSubKafkaPath);
+        VerifyComponentScopedToCommandApi(prodPubSubKafka, "production Kafka pub/sub");
+        VerifyScopesContainOnlyCommandApi(prodPubSubKafka, "production Kafka pub/sub");
+
+        string prodStatePostgres = File.ReadAllText(ProductionStateStorePostgresPath);
+        VerifyComponentScopedToCommandApi(prodStatePostgres, "production PostgreSQL state store");
+        VerifyScopesContainOnlyCommandApi(prodStatePostgres, "production PostgreSQL state store");
+
+        string prodStateCosmos = File.ReadAllText(ProductionStateStoreCosmosPath);
+        VerifyComponentScopedToCommandApi(prodStateCosmos, "production Cosmos DB state store");
+        VerifyScopesContainOnlyCommandApi(prodStateCosmos, "production Cosmos DB state store");
     }
 
     // --- Helper methods ---
@@ -361,6 +397,43 @@ public class AccessControlPolicyTests
             $"{componentName} must have component-level scopes");
         content.ShouldContain("commandapi", customMessage:
             $"{componentName} scopes must include commandapi");
+    }
+
+    private static void VerifyScopesContainOnlyCommandApi(string content, string componentName)
+    {
+        // Extract lines in the scopes section and verify no unauthorized app-ids.
+        // Stop at the next top-level YAML key (non-indented, non-comment, non-list line)
+        // to avoid false matches against list items in subsequent sections.
+        int scopesStart = content.IndexOf("scopes:", StringComparison.Ordinal);
+        scopesStart.ShouldBeGreaterThan(-1, $"{componentName} must have a scopes section");
+        string scopesSection = content[scopesStart..];
+
+        string[] lines = scopesSection.Split('\n');
+        bool foundEntries = false;
+        for (int i = 1; i < lines.Length; i++) // skip the "scopes:" line itself
+        {
+            string trimmed = lines[i].Trim();
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
+            {
+                continue;
+            }
+
+            // A non-indented, non-list line means we've left the scopes block
+            if (!lines[i].StartsWith(' ') && !lines[i].StartsWith('\t') && !trimmed.StartsWith("- ", StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            if (trimmed.StartsWith("- ", StringComparison.Ordinal))
+            {
+                string appId = trimmed[2..].Trim();
+                appId.ShouldBe("commandapi",
+                    $"{componentName} scopes must contain ONLY commandapi, found '{appId}'");
+                foundEntries = true;
+            }
+        }
+
+        foundEntries.ShouldBeTrue($"{componentName} scopes section must have at least one entry");
     }
 
     private static void VerifySampleExcludedFromScopes(string content, string componentName)

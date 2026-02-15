@@ -90,7 +90,7 @@ development_status:
   # Epic 5: Multi-Tenant Security & Access Control Enforcement
   epic-5: in-progress
   5-1-dapr-access-control-policies: in-progress
-  5-2-data-path-isolation-verification: ready-for-dev
+  5-2-data-path-isolation-verification: review
   5-3-pubsub-topic-isolation-enforcement: ready-for-dev
   5-4-security-audit-logging-and-payload-protection: ready-for-dev
   epic-5-retrospective: optional

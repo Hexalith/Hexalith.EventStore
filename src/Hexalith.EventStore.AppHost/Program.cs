@@ -36,8 +36,9 @@ var sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
     // DAPR sidecar for sample is configured with AppPort=8081.
     // Keep ASP.NET Core listening port aligned to avoid ERR_DIRECT_INVOKE.
     .WithEnvironment("ASPNETCORE_URLS", "http://localhost:8081")
-    .WithReference(eventStoreResources.Redis)
-    .WaitFor(eventStoreResources.Redis)
+    // NOTE: sample does NOT reference Redis, StateStore, or PubSub.
+    // Domain services have zero infrastructure access (D4, AC #13).
+    // Direct Redis access would bypass DAPR component scoping entirely.
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(new DaprSidecarOptions
         {

@@ -44,6 +44,8 @@ spec:
           # DaprClient.InvokeMethodAsync with POST to configurable method paths (D7).
           # Wildcard (/**) allows any method path since domain service method names
           # are dynamically resolved from the domain service registry.
+          # INTENTIONALLY POST-ONLY: DaprClient.InvokeMethodAsync uses POST by default.
+          # GET/PUT/DELETE are blocked. If domain services need other verbs, add them here.
           - name: /**
             httpVerb: ['POST']
             action: allow

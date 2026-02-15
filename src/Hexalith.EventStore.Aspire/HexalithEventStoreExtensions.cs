@@ -18,7 +18,11 @@ public static class HexalithEventStoreExtensions
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="commandApi">The CommandApi project resource builder.</param>
-    /// <param name="daprConfigPath">Optional path to a Dapr sidecar configuration file (for example, access control policies).</param>
+    /// <param name="daprConfigPath">
+    /// Path to the Dapr sidecar configuration file (access control policies, D4/FR34).
+    /// When null, the sidecar starts without access control -- all service-to-service
+    /// calls are allowed. This is a security risk in production environments.
+    /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
