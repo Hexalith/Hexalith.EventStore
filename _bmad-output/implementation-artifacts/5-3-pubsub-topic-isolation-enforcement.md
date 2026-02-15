@@ -1,6 +1,6 @@
 # Story 5.3: Pub/Sub Topic Isolation Enforcement
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -59,92 +59,92 @@ So that cross-tenant event leakage is impossible (FR29).
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and understand current state (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Review existing `AppHost/DaprComponents/pubsub.yaml` -- understand scoping added by Story 5.1 (publishingScopes, scopes)
-  - [ ] 0.3 Review existing `deploy/dapr/pubsub-rabbitmq.yaml` -- understand production pub/sub scoping from Story 5.1
-  - [ ] 0.4 Review existing `deploy/dapr/pubsub-kafka.yaml` -- understand production pub/sub scoping from Story 5.1
-  - [ ] 0.5 Review existing `TopicIsolationTests.cs` and `MultiTenantPublicationTests.cs` -- understand what publisher-side isolation is already tested
-  - [ ] 0.6 Review Story 5.1 `AccessControlPolicyTests.cs` -- understand what pub/sub scoping tests already exist
-  - [ ] 0.7 Research DAPR 1.16 pub/sub subscription scoping behavior:
+- [x] Task 0: Verify prerequisites and understand current state (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Review existing `AppHost/DaprComponents/pubsub.yaml` -- understand scoping added by Story 5.1 (publishingScopes, scopes)
+  - [x] 0.3 Review existing `deploy/dapr/pubsub-rabbitmq.yaml` -- understand production pub/sub scoping from Story 5.1
+  - [x] 0.4 Review existing `deploy/dapr/pubsub-kafka.yaml` -- understand production pub/sub scoping from Story 5.1
+  - [x] 0.5 Review existing `TopicIsolationTests.cs` and `MultiTenantPublicationTests.cs` -- understand what publisher-side isolation is already tested
+  - [x] 0.6 Review Story 5.1 `AccessControlPolicyTests.cs` -- understand what pub/sub scoping tests already exist
+  - [x] 0.7 Research DAPR 1.16 pub/sub subscription scoping behavior:
     - How `subscriptionScopes` metadata works per pub/sub component type (Redis, RabbitMQ, Kafka)
     - How `allowedTopics` restricts which topics an app can subscribe to
     - Whether wildcard patterns are supported in subscription scoping
     - How DAPR rejects unauthorized subscriptions (error behavior, logging)
-  - [ ] 0.8 Identify the gap between Story 5.1's publisher-side scoping and this story's subscriber-side scoping
+  - [x] 0.8 Identify the gap between Story 5.1's publisher-side scoping and this story's subscriber-side scoping
 
-- [ ] Task 1: Enhance subscriber-side scoping in local pub/sub configuration (AC: #1, #2, #3, #4, #10, #11)
-  - [ ] 1.1 Review and enhance `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`:
+- [x] Task 1: Enhance subscriber-side scoping in local pub/sub configuration (AC: #1, #2, #3, #4, #10, #11)
+  - [x] 1.1 Review and enhance `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`:
     - Verify `publishingScopes` from Story 5.1 is correct: only `commandapi` can publish
     - Add or enhance `subscriptionScopes` metadata to demonstrate tenant-scoped subscriber access
     - Add example subscriber entries showing how a subscriber would be scoped to specific tenants
     - Document the dynamic topic tension: publisher has wildcard access, subscribers are per-tenant
-  - [ ] 1.2 Add `allowedTopics` or `subscriptionScopes` entries showing:
+  - [x] 1.2 Add `allowedTopics` or `subscriptionScopes` entries showing:
     - `commandapi` can subscribe to any topic (for internal needs if applicable)
     - Example subscriber app-id scoped to specific tenant topics only
     - Dead-letter topics scoped separately from regular event topics
-  - [ ] 1.3 CRITICAL: Understand DAPR pub/sub scoping limitations:
+  - [x] 1.3 CRITICAL: Understand DAPR pub/sub scoping limitations:
     - DAPR `scopes` field on Component controls which app-ids can USE the component at all
     - `publishingScopes` and `subscriptionScopes` are metadata-level controls that may not be supported by all pub/sub components
     - `allowedTopics` restricts which topics an app can subscribe to
     - If DAPR pub/sub scoping is insufficient for dynamic per-tenant topics, document the recommended approach (e.g., separate pub/sub components per tenant, application-level filtering, or operational procedures)
-  - [ ] 1.4 Document the subscriber scoping strategy in YAML comments:
+  - [x] 1.4 Document the subscriber scoping strategy in YAML comments:
     - Explain the distinction between publisher-side (Story 5.1) and subscriber-side (this story) scoping
     - Document how to add a new subscriber app-id
     - Document how to grant a subscriber access to a specific tenant's topics
     - Document the operational procedure for new tenant onboarding
 
-- [ ] Task 2: Enhance subscriber-side scoping in production pub/sub configurations (AC: #3, #8)
-  - [ ] 2.1 Enhance `deploy/dapr/pubsub-rabbitmq.yaml`:
+- [x] Task 2: Enhance subscriber-side scoping in production pub/sub configurations (AC: #3, #8)
+  - [x] 2.1 Enhance `deploy/dapr/pubsub-rabbitmq.yaml`:
     - Add subscriber scoping metadata matching the local development pattern
     - Use placeholder subscriber app-ids with documentation for deployment-time configuration
     - Add comments explaining how to scope subscribers per tenant
     - Document RabbitMQ-specific subscription scoping behavior (exchanges, bindings, topic permissions)
-  - [ ] 2.2 Enhance `deploy/dapr/pubsub-kafka.yaml`:
+  - [x] 2.2 Enhance `deploy/dapr/pubsub-kafka.yaml`:
     - Add subscriber scoping metadata matching the local development pattern
     - Use placeholder subscriber app-ids with documentation for deployment-time configuration
     - Add comments explaining how to scope subscribers per tenant
     - Document Kafka-specific subscription scoping behavior (consumer groups, ACLs, topic authorization)
-  - [ ] 2.3 Ensure dead-letter topic subscription scoping is consistent across all configs:
+  - [x] 2.3 Ensure dead-letter topic subscription scoping is consistent across all configs:
     - Dead-letter topics (`deadletter.{tenant}.{domain}.events`) should have separate subscriber scoping from regular event topics
     - Only authorized operational/monitoring app-ids should subscribe to dead-letter topics
-  - [ ] 2.4 Add documentation comments to each YAML explaining:
+  - [x] 2.4 Add documentation comments to each YAML explaining:
     - The subscriber scoping strategy
     - How to add/remove subscriber access
     - The difference between local (development) and production scoping
     - NFR20 implications for dynamic tenant provisioning
 
-- [ ] Task 3: Create PubSubTopicIsolationEnforcementTests.cs (AC: #1, #2, #5, #6, #9)
-  - [ ] 3.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs`
-  - [ ] 3.2 Test: `LocalPubSubYaml_HasSubscriptionScoping_RestrictsSubscribers` -- Verify local pubsub.yaml contains subscription scoping metadata (subscriptionScopes or allowedTopics)
-  - [ ] 3.3 Test: `LocalPubSubYaml_PublishingScopes_OnlyCommandApiCanPublish` -- Regression test: verify Story 5.1's publisher scoping is intact (commandapi only can publish)
-  - [ ] 3.4 Test: `LocalPubSubYaml_DeadLetterTopics_SeparateSubscriptionScope` -- Verify dead-letter topic subscription is scoped separately from regular event topics
-  - [ ] 3.5 Test: `ProductionRabbitMqYaml_HasSubscriptionScoping_RestrictsSubscribers` -- Verify production RabbitMQ config has subscriber scoping
-  - [ ] 3.6 Test: `ProductionKafkaYaml_HasSubscriptionScoping_RestrictsSubscribers` -- Verify production Kafka config has subscriber scoping
-  - [ ] 3.7 Test: `AllPubSubConfigs_SubscriptionScopingTopology_Consistent` -- Verify local and production configs have the same logical subscriber scoping patterns
-  - [ ] 3.8 Test: `AllPubSubConfigs_CommandApiPublishScope_NotRestricted` -- Verify commandapi can publish to any topic (wildcard or unrestricted) for NFR20 dynamic tenant support
-  - [ ] 3.9 Test: `AllPubSubConfigs_DomainServices_NoPubSubAccess` -- Regression test: verify domain services (`sample`) have no pub/sub access at all (Story 5.1 enforcement)
+- [x] Task 3: Create PubSubTopicIsolationEnforcementTests.cs (AC: #1, #2, #5, #6, #9)
+  - [x] 3.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs`
+  - [x] 3.2 Test: `LocalPubSubYaml_HasSubscriptionScoping_RestrictsSubscribers` -- Verify local pubsub.yaml contains subscription scoping metadata (subscriptionScopes or allowedTopics)
+  - [x] 3.3 Test: `LocalPubSubYaml_PublishingScopes_OnlyCommandApiCanPublish` -- Regression test: verify Story 5.1's publisher scoping is intact (commandapi only can publish)
+  - [x] 3.4 Test: `LocalPubSubYaml_DeadLetterTopics_SeparateSubscriptionScope` -- Verify dead-letter topic subscription is scoped separately from regular event topics
+  - [x] 3.5 Test: `ProductionRabbitMqYaml_HasSubscriptionScoping_RestrictsSubscribers` -- Verify production RabbitMQ config has subscriber scoping
+  - [x] 3.6 Test: `ProductionKafkaYaml_HasSubscriptionScoping_RestrictsSubscribers` -- Verify production Kafka config has subscriber scoping
+  - [x] 3.7 Test: `AllPubSubConfigs_SubscriptionScopingTopology_Consistent` -- Verify local and production configs have the same logical subscriber scoping patterns
+  - [x] 3.8 Test: `AllPubSubConfigs_CommandApiPublishScope_NotRestricted` -- Verify commandapi can publish to any topic (wildcard or unrestricted) for NFR20 dynamic tenant support
+  - [x] 3.9 Test: `AllPubSubConfigs_DomainServices_NoPubSubAccess` -- Regression test: verify domain services (`sample`) have no pub/sub access at all (Story 5.1 enforcement)
 
-- [ ] Task 4: Create SubscriptionScopingDocumentationTests.cs (AC: #7, #8, #10, #11)
-  - [ ] 4.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/SubscriptionScopingDocumentationTests.cs`
-  - [ ] 4.2 Test: `LocalPubSubYaml_ContainsSubscriberOnboardingDocumentation` -- Verify YAML comments document how to add a new subscriber
-  - [ ] 4.3 Test: `LocalPubSubYaml_ContainsTenantScopingDocumentation` -- Verify YAML comments document how to scope a subscriber to specific tenants
-  - [ ] 4.4 Test: `ProductionPubSubYamls_ContainDeploymentSubstitutionGuidance` -- Verify production configs document placeholder values and deployment-time substitution
-  - [ ] 4.5 Test: `AllPubSubConfigs_DocumentDynamicTenantStrategy` -- Verify YAML comments document the NFR20 dynamic tenant provisioning strategy and its interaction with static YAML scoping
+- [x] Task 4: Create SubscriptionScopingDocumentationTests.cs (AC: #7, #8, #10, #11)
+  - [x] 4.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/SubscriptionScopingDocumentationTests.cs`
+  - [x] 4.2 Test: `LocalPubSubYaml_ContainsSubscriberOnboardingDocumentation` -- Verify YAML comments document how to add a new subscriber
+  - [x] 4.3 Test: `LocalPubSubYaml_ContainsTenantScopingDocumentation` -- Verify YAML comments document how to scope a subscriber to specific tenants
+  - [x] 4.4 Test: `ProductionPubSubYamls_ContainDeploymentSubstitutionGuidance` -- Verify production configs document placeholder values and deployment-time substitution
+  - [x] 4.5 Test: `AllPubSubConfigs_DocumentDynamicTenantStrategy` -- Verify YAML comments document the NFR20 dynamic tenant provisioning strategy and its interaction with static YAML scoping
 
-- [ ] Task 5: Verify TopicNameValidator prevents cross-tenant topic confusion (AC: #1, #2)
-  - [ ] 5.1 Review existing `TopicIsolationTests.cs` for coverage of tenant topic isolation
-  - [ ] 5.2 If not already covered, add tests to verify:
+- [x] Task 5: Verify TopicNameValidator prevents cross-tenant topic confusion (AC: #1, #2)
+  - [x] 5.1 Review existing `TopicIsolationTests.cs` for coverage of tenant topic isolation
+  - [x] 5.2 If not already covered, add tests to verify:
     - TopicNameValidator rejects topic names that don't match D6 pattern
     - Different tenants always produce structurally disjoint topic names
     - Topic names are deterministic (same identity always produces same topic)
-  - [ ] 5.3 NOTE: Most of this is already covered by existing Story 4.2 tests. Only add tests if gaps are identified.
+  - [x] 5.3 NOTE: Most of this is already covered by existing Story 4.2 tests. Only add tests if gaps are identified.
 
-- [ ] Task 6: Verify no regressions and full pipeline works (AC: #5, #8, #9)
-  - [ ] 6.1 Run `dotnet test` to confirm all existing + new tests pass
-  - [ ] 6.2 Verify that Story 5.1 publisher scoping tests still pass (regression check)
-  - [ ] 6.3 Verify that Story 4.2 topic isolation tests still pass (regression check)
-  - [ ] 6.4 Confirm the subscriber scoping strategy is documented consistently across all YAML files
+- [x] Task 6: Verify no regressions and full pipeline works (AC: #5, #8, #9)
+  - [x] 6.1 Run `dotnet test` to confirm all existing + new tests pass
+  - [x] 6.2 Verify that Story 5.1 publisher scoping tests still pass (regression check)
+  - [x] 6.3 Verify that Story 4.2 topic isolation tests still pass (regression check)
+  - [x] 6.4 Confirm the subscriber scoping strategy is documented consistently across all YAML files
 
 ## Dev Notes
 
@@ -477,10 +477,63 @@ This procedure should be documented as comments in each YAML file.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+### Implementation Plan
+
+**Task 0 Findings (2026-02-15):**
+- All 595 server unit tests pass. Integration tests have pre-existing Keycloak infrastructure failures (unrelated).
+- Local pubsub.yaml: correctly uses `sample=` (empty=deny) pattern. `commandapi` unlisted = unrestricted. CORRECT.
+- Production RabbitMQ/Kafka: use `commandapi=*` which is a BUG — `*` is a literal topic name, NOT a wildcard. Dapr does not support wildcards in scoping. Fix: change to match local pattern (deny unauthorized apps, leave commandapi unlisted for unrestricted access).
+- Dapr scoping is runtime-level, works identically for Redis, RabbitMQ, Kafka, all others.
+- `subscriptionScopes` uses identical format to `publishingScopes`: `"app1=topic1,topic2;app2=topic3"`.
+- `protectedTopics` metadata available for defense-in-depth on sensitive topics.
+- Unauthorized publish: HTTP 403. Unauthorized subscribe: subscription silently filtered, warning logged.
+- AccessControlPolicyTests.cs uses YamlDotNet for parsing — new tests should follow same pattern.
+
 ### Completion Notes List
 
+- Task 0: Verified all 595 existing unit tests pass. Reviewed all YAML configs and existing test coverage. Researched DAPR 1.16 pub/sub scoping: discovered that `commandapi=*` in production configs is a bug (DAPR treats `*` as literal topic name, not wildcard). No wildcard support exists. Correct approach: leave `commandapi` unlisted for unrestricted access.
+- Task 1: Enhanced local `pubsub.yaml` with comprehensive three-layer scoping architecture documentation, subscriber onboarding guide (5-step procedure), NFR20 dynamic tenant strategy, DAPR 1.16 scoping field reference, example subscriber/ops-monitor entries, and dead-letter topic separation documentation.
+- Task 2: Fixed production RabbitMQ and Kafka configs -- removed `commandapi=*` bug (literal topic, not wildcard), changed to empty publishingScopes/subscriptionScopes (commandapi unlisted = unrestricted). Added subscriber onboarding documentation, placeholder app-ids for deployment substitution, component-specific notes, and NFR20 dynamic tenant strategy.
+- Task 3: Created PubSubTopicIsolationEnforcementTests.cs with 8 tests covering: subscription scoping presence (local, RabbitMQ, Kafka), publisher scoping regression (Story 5.1), dead-letter topic separation, local-production topology consistency, commandapi unrestricted publish scope (NFR20), and domain service zero-access regression (Story 5.1).
+- Task 4: Created SubscriptionScopingDocumentationTests.cs with 4 tests covering: subscriber onboarding documentation, tenant scoping documentation, deployment substitution guidance, and NFR20 dynamic tenant strategy documentation.
+- Task 5: Verified existing TopicNameValidatorTests.cs and TopicIsolationTests.cs comprehensively cover D6 pattern validation, cross-tenant topic disjointness, and topic derivation determinism. No gaps found -- no additional tests needed.
+- Task 6: Full regression suite passes (607 server tests, 0 failures). Story 5.1 publisher scoping tests pass. Story 4.2 topic isolation tests pass. Subscriber scoping strategy documented consistently across all YAML files.
+- Code Review Auto-Fix (2026-02-15): Activated explicit subscriber/dead-letter subscription scopes in local and production pub/sub YAMLs, added unauthorized-subscription sidecar-log observability guidance, and aligned security assertions with authorized-subscriber topology.
+- Code Review transparency note: Working tree includes additional unrelated changes outside Story 5.3 scope; this story file list tracks only Story 5.3 and review-pass artifacts.
+
+### Senior Developer Review (AI)
+
+- Review date: 2026-02-15
+- High/Medium findings resolved in this pass:
+  - Active subscriber-side scoping now enforced in YAML values (not documentation-only).
+  - Dead-letter subscription scope is explicitly separated from regular event scopes.
+  - Unauthorized subscription handling observability is documented at DAPR sidecar log level.
+  - Access-control tests updated for authorized-subscriber topology while preserving `sample` deny posture.
+- Verification run: `PubSubTopicIsolationEnforcementTests`, `SubscriptionScopingDocumentationTests`, `AccessControlPolicyTests` => 27 passed, 0 failed.
+
+### Change Log
+
+- 2026-02-15: Story 5.3 implementation complete -- subscriber-side pub/sub topic isolation enforcement
+  - Enhanced local pubsub.yaml with subscriber scoping documentation and examples
+  - Fixed production RabbitMQ/Kafka configs: removed `commandapi=*` bug (DAPR treats * as literal, not wildcard)
+  - Created PubSubTopicIsolationEnforcementTests.cs (8 tests)
+  - Created SubscriptionScopingDocumentationTests.cs (4 tests)
+  - All 607 server tests pass (12 new, 595 existing, 0 regressions)
+- 2026-02-15: Code review auto-fixes applied
+  - Activated explicit subscriber/dead-letter scope values in local and production pub/sub configs
+  - Added unauthorized subscription sidecar-log observability documentation
+  - Updated access-control assertions for authorized-subscriber component scopes
+  - Re-ran targeted security suite: 27/27 passing
+
 ### File List
+
+- `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml` (modified) -- Enhanced with subscriber scoping documentation, NFR20 strategy, three-layer architecture docs, subscriber onboarding guide
+- `deploy/dapr/pubsub-rabbitmq.yaml` (modified) -- Fixed commandapi=* bug, added subscriber scoping, deployment documentation, RabbitMQ-specific notes
+- `deploy/dapr/pubsub-kafka.yaml` (modified) -- Fixed commandapi=* bug, added subscriber scoping, deployment documentation, Kafka-specific notes
+- `tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs` (new) -- 8 subscriber scoping validation tests
+- `tests/Hexalith.EventStore.Server.Tests/Security/SubscriptionScopingDocumentationTests.cs` (new) -- 4 documentation presence tests
+- `tests/Hexalith.EventStore.Server.Tests/Security/AccessControlPolicyTests.cs` (modified) -- Adjusted pub/sub scope assertions for authorized subscriber app-ids while preserving sample deny guarantees

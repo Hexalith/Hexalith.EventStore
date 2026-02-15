@@ -423,3 +423,7 @@ NUL
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md
+
+# Test debug output
+test_debug_output.txt
+test_output.txt
