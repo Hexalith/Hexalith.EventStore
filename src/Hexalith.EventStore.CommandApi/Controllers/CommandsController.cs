@@ -149,10 +149,12 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
     private void LogTenantAuthorizationFailure(string correlationId, string tenantId, string commandType, string domain, string reason)
     {
         string? sourceIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
+        string causationId = correlationId; // For original submissions, CausationId = CorrelationId
         logger.LogWarning(
-            "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}",
+            "Authorization failed: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, CausationId={CausationId}, Tenant={TenantId}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}",
             "AuthorizationDenied",
             correlationId,
+            causationId,
             tenantId,
             domain,
             commandType,

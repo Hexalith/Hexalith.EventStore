@@ -1,181 +1,324 @@
-namespace Hexalith.EventStore.Server.Tests.Telemetry;
-
 using System.Diagnostics;
+using System.Security.Claims;
 
+using Hexalith.EventStore.CommandApi.Controllers;
+using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Telemetry;
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
+
+using MediatR;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
+using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Telemetry;
+
 /// <summary>
-/// Story 6.1 Task 9: CommandApi controller activity tests.
-/// Verifies that the CommandApi ActivitySource creates activities with correct names and tags.
-/// Uses direct ActivitySource testing to avoid full controller pipeline setup.
-/// Each test uses a unique correlation ID to avoid parallel test interference.
+/// Story 6.1 Task 9: CommandApi tracing tests exercising real controller/pipeline execution paths.
 /// </summary>
 public class CommandApiTraceTests
 {
     [Fact]
-    public void SubmitCommand_CreatesSubmitActivity()
+    public async Task SubmitCommand_ThroughLoggingBehavior_CreatesSubmitActivityWithServerKindAsync()
     {
         // Arrange
         string correlationId = $"submit-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
+        using var listener = CreateCommandApiListener((activity) =>
         {
-            ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
+            if (activity.OperationName == EventStoreActivitySources.Submit
+                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
             {
-                if (activity.OperationName == EventStoreActivitySources.Submit
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
-                    capturedActivity = activity;
-                }
-            },
-        };
-        ActivitySource.AddActivityListener(listener);
+                capturedActivity = activity;
+            }
+        });
 
-        // Act -- simulate what LoggingBehavior does
-        using (Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
-            EventStoreActivitySources.Submit))
-        {
-            activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
-            activity?.SetTag(EventStoreActivitySource.TagTenantId, "test-tenant");
-            activity?.SetTag(EventStoreActivitySource.TagDomain, "test-domain");
-            activity?.SetTag(EventStoreActivitySource.TagCommandType, "CreateOrder");
-            activity?.SetStatus(ActivityStatusCode.Ok);
-        }
+        ILogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>> logger =
+            Substitute.For<ILogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>>();
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = correlationId;
+        accessor.HttpContext.Returns(httpContext);
+
+        var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, accessor);
+        var command = new SubmitCommand(
+            Tenant: "tenant-a",
+            Domain: "orders",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: [1],
+            CorrelationId: correlationId,
+            UserId: "user-1",
+            Extensions: null);
+
+        // Act
+        await behavior.Handle(
+            command,
+            (_) => Task.FromResult(new SubmitCommandResult(correlationId)),
+            CancellationToken.None);
 
         // Assert
         capturedActivity.ShouldNotBeNull();
-        capturedActivity.OperationName.ShouldBe("EventStore.CommandApi.Submit");
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe(correlationId);
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
+        capturedActivity.Kind.ShouldBe(ActivityKind.Server);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
     }
 
     [Fact]
-    public void QueryStatus_CreatesQueryStatusActivity()
+    public async Task QueryStatus_Controller_CreatesQueryStatusActivity_OnSuccessAsync()
     {
         // Arrange
-        string correlationId = $"query-{Guid.NewGuid()}";
+        string correlationId = Guid.NewGuid().ToString();
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
+        using var listener = CreateCommandApiListener((activity) =>
         {
-            ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
+            if (activity.OperationName == EventStoreActivitySources.QueryStatus
+                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
             {
-                if (activity.OperationName == EventStoreActivitySources.QueryStatus
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
-                    capturedActivity = activity;
-                }
+                capturedActivity = activity;
+            }
+        });
+
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+            .Returns(new CommandStatusRecord(
+                CommandStatus.Completed,
+                DateTimeOffset.UtcNow,
+                "agg-001",
+                EventCount: 1,
+                RejectionEventType: null,
+                FailureReason: null,
+                TimeoutDuration: null));
+
+        var logger = Substitute.For<ILogger<CommandStatusController>>();
+        var controller = new CommandStatusController(statusStore, logger)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = CreateHttpContext(
+                    correlationId,
+                    ["tenant-a"]),
             },
         };
-        ActivitySource.AddActivityListener(listener);
 
-        // Act -- simulate what CommandStatusController does
-        using (Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
-            EventStoreActivitySources.QueryStatus, ActivityKind.Server))
-        {
-            activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
-            activity?.SetTag(EventStoreActivitySource.TagTenantId, "test-tenant");
-            activity?.SetStatus(ActivityStatusCode.Ok);
-        }
+        // Act
+        IActionResult action = await controller.GetStatus(correlationId, CancellationToken.None);
 
         // Assert
+        action.ShouldBeOfType<OkObjectResult>();
         capturedActivity.ShouldNotBeNull();
-        capturedActivity.OperationName.ShouldBe("EventStore.CommandApi.QueryStatus");
         capturedActivity.Kind.ShouldBe(ActivityKind.Server);
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe(correlationId);
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("tenant-a");
     }
 
     [Fact]
-    public void ReplayCommand_CreatesReplayActivity()
+    public async Task QueryStatus_Controller_SetsErrorStatus_OnNotFoundAsync()
+    {
+        // Arrange
+        string correlationId = Guid.NewGuid().ToString();
+        Activity? capturedActivity = null;
+
+        using var listener = CreateCommandApiListener((activity) =>
+        {
+            if (activity.OperationName == EventStoreActivitySources.QueryStatus
+                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
+            {
+                capturedActivity = activity;
+            }
+        });
+
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+            .Returns((CommandStatusRecord?)null);
+
+        var logger = Substitute.For<ILogger<CommandStatusController>>();
+        var controller = new CommandStatusController(statusStore, logger)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = CreateHttpContext(
+                    correlationId,
+                    ["tenant-a"]),
+            },
+        };
+
+        // Act
+        IActionResult action = await controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        ObjectResult result = action.ShouldBeOfType<ObjectResult>();
+        result.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
+        capturedActivity.ShouldNotBeNull();
+        capturedActivity.Status.ShouldBe(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task Replay_Controller_CreatesReplayActivity_OnSuccessAsync()
     {
         // Arrange
         string correlationId = $"replay-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
+        using var listener = CreateCommandApiListener((activity) =>
         {
-            ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
+            if (activity.OperationName == EventStoreActivitySources.Replay
+                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
             {
-                if (activity.OperationName == EventStoreActivitySources.Replay
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
-                    capturedActivity = activity;
-                }
+                capturedActivity = activity;
+            }
+        });
+
+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
+        archiveStore.ReadCommandAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+            .Returns(new ArchivedCommand(
+                Tenant: "tenant-a",
+                Domain: "orders",
+                AggregateId: "agg-001",
+                CommandType: "CreateOrder",
+                Payload: [1],
+                Extensions: null,
+                OriginalTimestamp: DateTimeOffset.UtcNow));
+
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+            .Returns(new CommandStatusRecord(
+                CommandStatus.Rejected,
+                DateTimeOffset.UtcNow,
+                "agg-001",
+                EventCount: null,
+                RejectionEventType: "OrderRejected",
+                FailureReason: null,
+                TimeoutDuration: null));
+
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitCommandResult(correlationId));
+
+        var logger = Substitute.For<ILogger<ReplayController>>();
+        var controller = new ReplayController(archiveStore, statusStore, mediator, logger)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = CreateHttpContext(
+                    correlationId,
+                    ["tenant-a"]),
             },
         };
-        ActivitySource.AddActivityListener(listener);
 
-        // Act -- simulate what ReplayController does
-        using (Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
-            EventStoreActivitySources.Replay, ActivityKind.Server))
-        {
-            activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
-            activity?.SetTag(EventStoreActivitySource.TagTenantId, "test-tenant");
-            activity?.SetStatus(ActivityStatusCode.Ok);
-        }
+        // Act
+        IActionResult action = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
+        action.ShouldBeOfType<AcceptedResult>();
         capturedActivity.ShouldNotBeNull();
-        capturedActivity.OperationName.ShouldBe("EventStore.CommandApi.Replay");
         capturedActivity.Kind.ShouldBe(ActivityKind.Server);
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe(correlationId);
-        capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
+        capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("tenant-a");
     }
 
     [Fact]
-    public void ControllerActivities_IncludeCorrelationIdTag()
+    public async Task Replay_Controller_SetsErrorStatus_OnConflictAsync()
     {
         // Arrange
-        string testId = Guid.NewGuid().ToString();
-        List<Activity> capturedActivities = [];
-        string[] activityNames = [EventStoreActivitySources.Submit, EventStoreActivitySources.QueryStatus, EventStoreActivitySources.Replay];
+        string correlationId = $"conflict-{Guid.NewGuid()}";
+        Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
+        using var listener = CreateCommandApiListener((activity) =>
         {
-            ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
+            if (activity.OperationName == EventStoreActivitySources.Replay
+                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
             {
-                if (activityNames.Contains(activity.OperationName)
-                    && activity.GetTagItem(EventStoreActivitySource.TagCorrelationId) is string corr
-                    && corr.StartsWith($"corr-{testId}-", StringComparison.Ordinal))
-                {
-                    capturedActivities.Add(activity);
-                }
+                capturedActivity = activity;
+            }
+        });
+
+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
+        archiveStore.ReadCommandAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+            .Returns(new ArchivedCommand(
+                Tenant: "tenant-a",
+                Domain: "orders",
+                AggregateId: "agg-001",
+                CommandType: "CreateOrder",
+                Payload: [1],
+                Extensions: null,
+                OriginalTimestamp: DateTimeOffset.UtcNow));
+
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+            .Returns(new CommandStatusRecord(
+                CommandStatus.Completed,
+                DateTimeOffset.UtcNow,
+                "agg-001",
+                EventCount: 1,
+                RejectionEventType: null,
+                FailureReason: null,
+                TimeoutDuration: null));
+
+        IMediator mediator = Substitute.For<IMediator>();
+        var logger = Substitute.For<ILogger<ReplayController>>();
+
+        var controller = new ReplayController(archiveStore, statusStore, mediator, logger)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = CreateHttpContext(
+                    correlationId,
+                    ["tenant-a"]),
             },
         };
+
+        // Act
+        IActionResult action = await controller.Replay(correlationId, CancellationToken.None);
+
+        // Assert
+        ObjectResult result = action.ShouldBeOfType<ObjectResult>();
+        result.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        capturedActivity.ShouldNotBeNull();
+        capturedActivity.Status.ShouldBe(ActivityStatusCode.Error);
+    }
+
+    private static ActivityListener CreateCommandApiListener(Action<Activity> onActivityStopped)
+    {
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EventStoreActivitySources.CommandApi.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = onActivityStopped,
+        };
+
         ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
 
-        // Act -- create all three controller activities
-        foreach (string name in activityNames)
+    private static DefaultHttpContext CreateHttpContext(string requestCorrelationId, IReadOnlyCollection<string> tenantClaims)
+    {
+        var context = new DefaultHttpContext();
+        context.Items[CorrelationIdMiddleware.HttpContextKey] = requestCorrelationId;
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("localhost");
+
+        var claims = new List<Claim>();
+        foreach (string tenant in tenantClaims)
         {
-            using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(name, ActivityKind.Server);
-            activity?.SetTag(EventStoreActivitySource.TagCorrelationId, $"corr-{testId}-{name}");
-            activity?.SetTag(EventStoreActivitySource.TagTenantId, "test-tenant");
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            claims.Add(new Claim("eventstore:tenant", tenant));
         }
 
-        // Assert -- all have correlation ID tag
-        capturedActivities.Count.ShouldBe(3);
-        foreach (Activity activity in capturedActivities)
-        {
-            activity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldNotBeNull(
-                $"Activity '{activity.OperationName}' should have correlation ID tag");
-            activity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
-        }
+        claims.Add(new Claim("sub", "test-user"));
+
+        var identity = new ClaimsIdentity(claims, authenticationType: "TestAuth");
+        context.User = new ClaimsPrincipal(identity);
+
+        return context;
     }
 }

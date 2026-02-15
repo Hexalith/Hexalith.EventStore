@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.IntegrationTests.Security;
 
 using System.Net.Http;
+using System.Net;
 
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
@@ -64,10 +65,31 @@ public class AspireTopologyFixture : IAsyncLifetime
 
         // Create HTTP client for CommandApi
         _commandApiClient = _app.CreateHttpClient("commandapi");
+        _commandApiClient.Timeout = TimeSpan.FromSeconds(30);
 
         // Get the Keycloak base URL for token acquisition
         var keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
         _keycloakBaseUrl = keycloakEndpoint.ToString().TrimEnd('/');
+
+        // Wait for infrastructure readiness to avoid startup race conditions in E2E tests.
+        await WaitForEndpointAsync(
+            _commandApiClient,
+            "/api/v1/commands",
+            expectedStatusCodes: [HttpStatusCode.Unauthorized, HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound],
+            timeout: TimeSpan.FromMinutes(5),
+            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+
+        using var keycloakProbeClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(15),
+        };
+
+        await WaitForEndpointAsync(
+            keycloakProbeClient,
+            $"{_keycloakBaseUrl}/realms/hexalith/.well-known/openid-configuration",
+            expectedStatusCodes: [HttpStatusCode.OK],
+            timeout: TimeSpan.FromMinutes(5),
+            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
     }
 
     public async Task DisposeAsync()
@@ -96,5 +118,40 @@ public class AspireTopologyFixture : IAsyncLifetime
         return await KeycloakTokenHelper
             .AcquireTokenAsync(tokenEndpoint, "hexalith-eventstore", username, password)
             .ConfigureAwait(false);
+    }
+
+    private static async Task WaitForEndpointAsync(
+        HttpClient client,
+        string url,
+        IReadOnlyCollection<HttpStatusCode> expectedStatusCodes,
+        TimeSpan timeout,
+        TimeSpan pollInterval)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
+        Exception? lastException = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                using HttpResponseMessage response = await client
+                    .GetAsync(url)
+                    .ConfigureAwait(false);
+
+                if (expectedStatusCodes.Contains(response.StatusCode))
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+            }
+
+            await Task.Delay(pollInterval).ConfigureAwait(false);
+        }
+
+        throw new TimeoutException(
+            $"Endpoint did not become ready within {timeout}. Url: {url}. Last error: {lastException?.Message ?? "n/a"}");
     }
 }

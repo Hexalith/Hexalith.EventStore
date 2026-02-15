@@ -97,10 +97,10 @@ development_status:
 
   # Epic 6: Observability, Health & Operational Readiness
   epic-6: in-progress
-  6-1-end-to-end-opentelemetry-trace-instrumentation: review
+  6-1-end-to-end-opentelemetry-trace-instrumentation: done
   6-2-structured-logging-completeness-verification: review
-  6-3-dead-letter-to-origin-tracing: ready-for-dev
-  6-4-health-check-endpoints: backlog
+  6-3-dead-letter-to-origin-tracing: review
+  6-4-health-check-endpoints: ready-for-dev
   6-5-readiness-check-endpoints: backlog
   epic-6-retrospective: optional
 

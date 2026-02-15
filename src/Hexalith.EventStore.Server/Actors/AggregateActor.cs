@@ -1087,6 +1087,7 @@ public partial class AggregateActor(
 
         LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
         await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
+        LogCommandCompletedSummary(command, causationId, CommandStatus.PublishFailed, startTicks);
 
         processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
         return failResult;
@@ -1193,6 +1194,7 @@ public partial class AggregateActor(
         await WriteAdvisoryStatusAsync(command, CommandStatus.Rejected, exception.Message).ConfigureAwait(false);
 
         LogStageTransition(CommandStatus.Rejected, command, causationId, startTicks);
+        LogCommandCompletedSummary(command, causationId, CommandStatus.Rejected, startTicks);
         processActivity?.SetStatus(ActivityStatusCode.Error, "InfrastructureFailure");
         return failResult;
     }
@@ -1239,9 +1241,25 @@ public partial class AggregateActor(
         CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;
         LogStageTransition(terminalStatus, command, causationId, startTicks);
         await WriteAdvisoryStatusAsync(command, terminalStatus).ConfigureAwait(false);
+        LogCommandCompletedSummary(command, causationId, terminalStatus, startTicks);
 
         processActivity?.SetStatus(ActivityStatusCode.Ok);
         return result;
+    }
+
+    private void LogCommandCompletedSummary(CommandEnvelope command, string causationId, CommandStatus status, long startTicks)
+    {
+        double durationMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+        Log.CommandCompletedSummary(
+            logger,
+            command.CorrelationId,
+            causationId,
+            command.TenantId,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType,
+            status.ToString(),
+            durationMs);
     }
 
     /// <summary>
@@ -1366,5 +1384,20 @@ public partial class AggregateActor(
             string failureStage,
             string exceptionType,
             string errorMessage);
+
+        [LoggerMessage(
+            EventId = 2004,
+            Level = LogLevel.Information,
+            Message = "Command completed summary: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, Status={Status}, DurationMs={DurationMs}, Stage=CommandCompleted")]
+        public static partial void CommandCompletedSummary(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            string status,
+            double durationMs);
     }
 }

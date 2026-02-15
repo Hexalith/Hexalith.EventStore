@@ -111,7 +111,7 @@ public class ReplayController(
                     correlationId,
                     string.Join(",", tenantClaims));
 
-                activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.SetStatus(ActivityStatusCode.Error, "NotFound");
                 return CreateProblemDetails(
                     StatusCodes.Status404NotFound,
                     "Not Found",
@@ -130,7 +130,7 @@ public class ReplayController(
             // H5: Null status (expired or never written) -- cannot determine replayability
             if (statusRecord is null)
             {
-                activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.SetStatus(ActivityStatusCode.Error, "Conflict");
                 return CreateConflictProblemDetails(
                     "Unknown",
                     $"Status tracking for command '{correlationId}' has expired. Cannot determine replayability. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut).",
@@ -144,7 +144,7 @@ public class ReplayController(
                     ? $"Command '{correlationId}' has already completed successfully. Replay is not permitted for completed commands. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut)."
                     : $"Command '{correlationId}' is currently in-flight (status: {statusRecord.Status}). Wait for processing to complete or time out before replaying. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut).";
 
-                activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.SetStatus(ActivityStatusCode.Error, "Conflict");
                 return CreateConflictProblemDetails(
                     statusRecord.Status.ToString(),
                     detail,

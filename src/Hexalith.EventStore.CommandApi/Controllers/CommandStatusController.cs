@@ -111,7 +111,7 @@ public class CommandStatusController(
                 correlationId,
                 string.Join(",", tenantClaims));
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            activity?.SetStatus(ActivityStatusCode.Error, "NotFound");
             return CreateProblemDetails(
                 StatusCodes.Status404NotFound,
                 "Not Found",

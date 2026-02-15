@@ -41,6 +41,7 @@ public class AuthorizationBehavior<TRequest, TResponse>(
 
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? "unknown";
+        string causationId = correlationId; // For original submissions, CausationId = CorrelationId
 
         List<string> tenantClaims = user.FindAll("eventstore:tenant")
             .Select(c => c.Value)
@@ -57,7 +58,7 @@ public class AuthorizationBehavior<TRequest, TResponse>(
 
         if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, command.Domain, StringComparison.OrdinalIgnoreCase)))
         {
-            LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, tenantClaims, $"Not authorized for domain '{command.Domain}'.", sourceIp);
+            LogAuthorizationFailure(correlationId, causationId, command.Tenant, command.Domain, command.CommandType, tenantClaims, $"Not authorized for domain '{command.Domain}'.", sourceIp);
             throw new CommandAuthorizationException(
                 command.Tenant,
                 command.Domain,
@@ -77,7 +78,7 @@ public class AuthorizationBehavior<TRequest, TResponse>(
             bool hasSpecific = permissionClaims.Any(p => string.Equals(p, command.CommandType, StringComparison.OrdinalIgnoreCase));
             if (!hasWildcard && !hasSpecific)
             {
-                LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, tenantClaims, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
+                LogAuthorizationFailure(correlationId, causationId, command.Tenant, command.Domain, command.CommandType, tenantClaims, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
                 throw new CommandAuthorizationException(
                     command.Tenant,
                     command.Domain,
@@ -85,8 +86,6 @@ public class AuthorizationBehavior<TRequest, TResponse>(
                     $"Not authorized for command type '{command.CommandType}'.");
             }
         }
-
-        string causationId = correlationId; // For original submissions, CausationId = CorrelationId
 
         logger.LogDebug(
             "Authorization succeeded: CorrelationId={CorrelationId}, CausationId={CausationId}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Stage=AuthorizationPassed",
@@ -99,16 +98,17 @@ public class AuthorizationBehavior<TRequest, TResponse>(
         return await next().ConfigureAwait(false);
     }
 
-    private void LogAuthorizationFailure(string correlationId, string tenant, string domain, string commandType, IReadOnlyCollection<string> tenantClaims, string reason, string? sourceIp)
+    private void LogAuthorizationFailure(string correlationId, string causationId, string tenant, string domain, string commandType, IReadOnlyCollection<string> tenantClaims, string reason, string? sourceIp)
     {
         string tenantClaimsCsv = tenantClaims.Count == 0
             ? "none"
             : string.Join(",", tenantClaims);
 
         logger.LogWarning(
-            "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, TenantClaims={TenantClaims}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}, FailureLayer={FailureLayer}",
+            "Authorization failed: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, CausationId={CausationId}, TenantClaims={TenantClaims}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}, FailureLayer={FailureLayer}",
             "AuthorizationDenied",
             correlationId,
+            causationId,
             tenantClaimsCsv,
             tenant,
             domain,

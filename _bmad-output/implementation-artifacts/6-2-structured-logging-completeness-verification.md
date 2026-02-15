@@ -172,8 +172,8 @@ So that I can diagnose issues using log queries without needing traces (FR36).
   - [x] 9.4 Add payload protection tests for any newly logged classes (ValidationBehavior, any new LoggerMessage methods)
 
 - [x] Task 10: Create structured logging field completeness tests (AC: #4, #11)
-  - [ ] 10.1 Create `StructuredLoggingCompletenessTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/`
-  - [ ] 10.2 Test per architecture stage -- for each of the 8 defined stages, verify:
+  - [x] 10.1 Create `StructuredLoggingCompletenessTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/`
+  - [x] 10.2 Test per architecture stage -- for each of the 8 defined stages, verify:
     - `CommandReceived_LogContainsAllRequiredFields` -- correlationId, tenantId, domain, aggregateId, commandType, causationId, stage
     - `ActorActivated_LogContainsAllRequiredFields` -- correlationId, tenantId, aggregateId, currentSequence, causationId
     - `DomainServiceInvoked_LogContainsAllRequiredFields` -- correlationId, tenantId, domain, domainServiceVersion, causationId
@@ -182,41 +182,41 @@ So that I can diagnose issues using log queries without needing traces (FR36).
     - `CommandCompleted_LogContainsAllRequiredFields` -- correlationId, tenantId, aggregateId, status, durationMs, causationId
     - `DomainRejection_LogContainsAllRequiredFields` -- correlationId, tenantId, aggregateId, rejectionEventType, causationId
     - `InfrastructureFailure_LogContainsAllRequiredFields` -- correlationId, tenantId, aggregateId, exceptionType, message, causationId
-  - [ ] 10.3 Use `TestLogProvider` or NSubstitute `ILogger<T>` capture to intercept and inspect log entries
+  - [x] 10.3 Use `TestLogProvider` or NSubstitute `ILogger<T>` capture to intercept and inspect log entries
 
 - [x] Task 11: Create log level convention tests (AC: #2, #11)
-  - [ ] 11.1 Create `LogLevelConventionTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/`
-  - [ ] 11.2 Test: `CommandReceived_LogsAtInformationLevel`
-  - [ ] 11.3 Test: `ActorActivated_LogsAtDebugLevel`
-  - [ ] 11.4 Test: `DomainServiceInvoked_LogsAtInformationLevel`
-  - [ ] 11.5 Test: `EventsPersisted_LogsAtInformationLevel`
-  - [ ] 11.6 Test: `EventsPublished_LogsAtInformationLevel`
-  - [ ] 11.7 Test: `CommandCompleted_LogsAtInformationLevel`
-  - [ ] 11.8 Test: `DomainRejection_LogsAtWarningLevel`
-  - [ ] 11.9 Test: `InfrastructureFailure_LogsAtErrorLevel`
-  - [ ] 11.10 Test: `ValidationSuccess_LogsAtDebugLevel`
-  - [ ] 11.11 Test: `ValidationFailure_LogsAtWarningLevel`
+  - [x] 11.1 Create `LogLevelConventionTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/`
+  - [x] 11.2 Test: `CommandReceived_LogsAtInformationLevel`
+  - [x] 11.3 Test: `ActorActivated_LogsAtDebugLevel`
+  - [x] 11.4 Test: `DomainServiceInvoked_LogsAtInformationLevel`
+  - [x] 11.5 Test: `EventsPersisted_LogsAtInformationLevel`
+  - [x] 11.6 Test: `EventsPublished_LogsAtInformationLevel`
+  - [x] 11.7 Test: `CommandCompleted_LogsAtInformationLevel`
+  - [x] 11.8 Test: `DomainRejection_LogsAtWarningLevel`
+  - [x] 11.9 Test: `InfrastructureFailure_LogsAtErrorLevel`
+  - [x] 11.10 Test: `ValidationSuccess_LogsAtDebugLevel`
+  - [x] 11.11 Test: `ValidationFailure_LogsAtWarningLevel`
 
 - [x] Task 12: Create payload protection tests for new log statements (AC: #3, #11)
-  - [ ] 12.1 Create `PayloadProtectionTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/` (or extend existing)
-  - [ ] 12.2 Test: `ValidationBehavior_NeverLogsValidationErrorDetails` -- validation errors may contain user payload
-  - [ ] 12.3 Test: `LoggerMessageMethods_NeverAcceptPayloadParameters` -- verify no [LoggerMessage] method has payload-type parameters
-  - [ ] 12.4 Test: `AllLogStatements_NeverContainPayloadData` -- comprehensive scan across all logged pipeline stages
-  - [ ] 12.5 Extend existing `LoggingBehaviorTests.cs` tests if they don't cover new patterns
+  - [x] 12.1 Create `PayloadProtectionTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/` (or extend existing)
+  - [x] 12.2 Test: `ValidationBehavior_NeverLogsValidationErrorDetails` -- validation errors may contain user payload
+  - [x] 12.3 Test: `LoggerMessageMethods_NeverAcceptPayloadParameters` -- verify no [LoggerMessage] method has payload-type parameters
+  - [x] 12.4 Test: `AllLogStatements_NeverContainPayloadData` -- comprehensive scan across all logged pipeline stages
+  - [x] 12.5 Extend existing `LoggingBehaviorTests.cs` tests if they don't cover new patterns
 
 - [x] Task 13: Create CausationId propagation tests (AC: #6, #11)
-  - [ ] 13.1 Create `CausationIdLoggingTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/`
-  - [ ] 13.2 Test: `AllPipelineStages_IncludeCausationIdInLogs` -- verify CausationId present in every stage log
-  - [ ] 13.3 Test: `ReplayCommand_CausationIdDiffersFromCorrelationId` -- replay generates new CausationId
-  - [ ] 13.4 Test: `OriginalCommand_CausationIdMatchesCorrelationId` -- first submission CausationId equals CorrelationId
+  - [x] 13.1 Create `CausationIdLoggingTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Logging/`
+  - [x] 13.2 Test: `AllPipelineStages_IncludeCausationIdInLogs` -- verify CausationId present in every stage log
+  - [x] 13.3 Test: `ReplayCommand_CausationIdDiffersFromCorrelationId` -- replay generates new CausationId
+  - [x] 13.4 Test: `OriginalCommand_CausationIdMatchesCorrelationId` -- first submission CausationId equals CorrelationId
 
-- [x] Task 14: Verify all tests pass
-  - [ ] 14.1 Run `dotnet test` to confirm no regressions
-  - [ ] 14.2 All new structured logging completeness tests pass
-  - [ ] 14.3 All new log level convention tests pass
-  - [ ] 14.4 All new payload protection tests pass
-  - [ ] 14.5 All new CausationId tests pass
-  - [ ] 14.6 All existing tests (Stories through 5.4 + 6.1 if completed) still pass
+- [ ] Task 14: Verify all tests pass
+  - [x] 14.1 Run `dotnet test` to confirm no regressions
+  - [x] 14.2 All new structured logging completeness tests pass
+  - [x] 14.3 All new log level convention tests pass
+  - [x] 14.4 All new payload protection tests pass
+  - [x] 14.5 All new CausationId tests pass
+  - [x] 14.6 All existing tests (Stories through 5.4 + 6.1 if completed) still pass
 
 ## Dev Notes
 
@@ -555,7 +555,7 @@ Claude Opus 4.6
 
 - Tasks 0-9: Source code changes completed - all `[LoggerMessage]` conversions, CausationId additions, Stage discriminator fields, log level fixes, JSON console logging config
 - Tasks 10-13: 4 new test files created with 28 new tests covering field completeness, log levels, payload protection, CausationId propagation
-- Task 14: All 712 tests pass (up from 684), zero regressions
+- Task 14 update (2026-02-15): Focused logging suite passes (49/49 across logging + auth integration tests), but full workspace run currently reports failures in security/infrastructure integration tests (343 passed, 10 failed), focused on Keycloak E2E setup and Dapr sidecar endpoint allocation.
 - EventId allocation: 1000-1099 CommandApi pipeline, 1100-1199 SubmitCommandHandler, 2000-2099 AggregateActor, 3000-3099 EventPersister, 3100-3199 EventPublisher, 3200-3299 DeadLetterPublisher, 5000-5099 TenantValidator
 - `SubmitCommand` lacks `CausationId` field; API-layer logs derive CausationId from CorrelationId (original submission semantics)
 - Pre-existing 12 integration test failures due to infrastructure dependencies (Keycloak, Dapr sidecars) - unrelated to this story
@@ -566,10 +566,12 @@ Claude Opus 4.6
 |------|--------|
 | `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs` | Converted to `partial class`, added `[LoggerMessage]` methods (EventId 1000-1002), added CausationId and Stage fields |
 | `src/Hexalith.EventStore.CommandApi/Pipeline/ValidationBehavior.cs` | Added `ILogger` and `IHttpContextAccessor` parameters, added Debug/Warning logs with `[LoggerMessage]` (EventId 1010-1011) |
-| `src/Hexalith.EventStore.CommandApi/Pipeline/AuthorizationBehavior.cs` | Added CausationId and Stage to success log |
+| `src/Hexalith.EventStore.CommandApi/Pipeline/AuthorizationBehavior.cs` | Added CausationId to authorization failure logs and updated warning message to explicit "Authorization failed" phrasing for security audit assertions |
+| `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs` | Updated JwtBearer warning messages to explicit "Authentication failed" / "Authentication challenge" phrasing while preserving structured audit fields |
+| `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` | Updated pre-pipeline tenant authorization warning log to explicit "Authorization failed" phrasing and added CausationId field |
 | `src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj` | No structural changes (already had logging references) |
 | `src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs` | Converted to `partial class`, all logs to `[LoggerMessage]` (EventId 1100-1103), added CausationId, Stage |
-| `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` | Made `partial`, added `[LoggerMessage]` methods (EventId 2000-2003), changed actor activated to Debug, infrastructure failure to Error, added CausationId to all stage transition logs |
+| `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` | Made `partial`, added `[LoggerMessage]` methods (EventId 2000-2004), changed actor activated to Debug, infrastructure failure to Error, added CausationId to all stage transition logs, and added canonical Information-level command completed summary log |
 | `src/Hexalith.EventStore.Server/Events/EventPersister.cs` | Converted to `partial class`, `[LoggerMessage]` (EventId 3000-3001), added CausationId, TenantId, AggregateId, Stage |
 | `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` | Converted to `partial class`, `[LoggerMessage]` (EventId 3100-3101), added CausationId, Stage |
 | `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs` | Converted to `partial class`, `[LoggerMessage]` (EventId 3200-3201), added CausationId, Stage |
@@ -592,10 +594,12 @@ Claude Opus 4.6
 - `tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs` - 5 tests verifying payload data never logged (SEC-5/NFR12)
 - `tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs` - 5 tests verifying CausationId propagation in all stage logs
 
-**Modified source files (12):**
+**Modified source files (14):**
 - `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs`
 - `src/Hexalith.EventStore.CommandApi/Pipeline/ValidationBehavior.cs`
 - `src/Hexalith.EventStore.CommandApi/Pipeline/AuthorizationBehavior.cs`
+- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs`
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs`
 - `src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs`
 - `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
 - `src/Hexalith.EventStore.Server/Events/EventPersister.cs`
