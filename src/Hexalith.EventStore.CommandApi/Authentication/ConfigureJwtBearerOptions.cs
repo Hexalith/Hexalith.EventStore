@@ -20,6 +20,7 @@ public class ConfigureJwtBearerOptions(
     IOptions<EventStoreAuthenticationOptions> authOptions,
     ILoggerFactory loggerFactory) : IConfigureNamedOptions<JwtBearerOptions>
 {
+    private const string RequestAuditMetadataKey = "AuthFailureRequestAuditMetadata";
     private readonly ILogger _logger = loggerFactory.CreateLogger<ConfigureJwtBearerOptions>();
 
     public void Configure(string? name, JwtBearerOptions options)
@@ -63,23 +64,37 @@ public class ConfigureJwtBearerOptions(
         // Configure events for failure logging and ProblemDetails responses
         options.Events = new JwtBearerEvents
         {
-            OnAuthenticationFailed = context =>
+            OnAuthenticationFailed = async context =>
             {
                 string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
                 string sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 string requestPath = context.Request.Path;
+                RequestAuditMetadata metadata = await TryExtractRequestAuditMetadataAsync(context.HttpContext).ConfigureAwait(false);
 
-                // Log at Warning level: correlationId, source IP, request path, exception type/message
-                // NEVER log the JWT token itself (NFR11)
+                // Determine failure reason from exception type
+                string failureReason = context.Exception switch
+                {
+                    SecurityTokenExpiredException => "TokenExpired",
+                    SecurityTokenInvalidSignatureException => "InvalidSignature",
+                    SecurityTokenInvalidIssuerException => "InvalidIssuer",
+                    SecurityTokenInvalidAudienceException => "InvalidAudience",
+                    _ => context.Exception?.GetType().Name ?? "Unknown",
+                };
+
+                // Log at Warning level with SecurityEvent field (AC #7, NFR11)
+                // NEVER log the JWT token itself
                 _logger.LogWarning(
-                    "Authentication failed. CorrelationId={CorrelationId}, SourceIP={SourceIP}, Path={RequestPath}, ExceptionType={ExceptionType}, Message={ExceptionMessage}",
+                    "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
+                    "AuthenticationFailed",
                     correlationId,
                     sourceIp,
                     requestPath,
-                    context.Exception?.GetType().Name,
-                    context.Exception?.Message);
+                    metadata.TenantId,
+                    metadata.CommandType,
+                    failureReason,
+                    "JwtValidation");
 
-                return Task.CompletedTask;
+                await Task.CompletedTask.ConfigureAwait(false);
             },
 
             OnChallenge = async context =>
@@ -89,14 +104,26 @@ public class ConfigureJwtBearerOptions(
 
                 string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
                 string sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                string requestPath = context.Request.Path;
+                RequestAuditMetadata metadata = await TryExtractRequestAuditMetadataAsync(context.HttpContext).ConfigureAwait(false);
 
-                // Log failed auth at Warning level (not the JWT token)
+                // Determine challenge reason
+                string challengeReason = string.IsNullOrEmpty(context.Error)
+                    ? "MissingToken"
+                    : context.Error;
+
+                // Log failed auth at Warning level with SecurityEvent field (AC #7, NFR11)
+                // NEVER log the JWT token itself
                 _logger.LogWarning(
-                    "Authentication challenge. CorrelationId={CorrelationId}, SourceIP={SourceIP}, Error={Error}, ErrorDescription={ErrorDescription}",
+                    "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
+                    "AuthenticationFailed",
                     correlationId,
                     sourceIp,
-                    context.Error,
-                    context.ErrorDescription);
+                    requestPath,
+                    metadata.TenantId,
+                    metadata.CommandType,
+                    challengeReason,
+                    "JwtChallenge");
 
                 // Determine human-readable detail message based on error type
                 string detail = GetDetailMessage(context.Error, context.ErrorDescription, context.AuthenticateFailure);
@@ -207,4 +234,63 @@ public class ConfigureJwtBearerOptions(
             // Best-effort: silently ignore failures
         }
     }
+
+    private static async Task<RequestAuditMetadata> TryExtractRequestAuditMetadataAsync(HttpContext httpContext)
+    {
+        if (httpContext.Items.TryGetValue(RequestAuditMetadataKey, out object? cached)
+            && cached is RequestAuditMetadata cachedMetadata)
+        {
+            return cachedMetadata;
+        }
+
+        var metadata = new RequestAuditMetadata("unknown", "unknown");
+
+        if (!httpContext.Request.Body.CanRead)
+        {
+            httpContext.Items[RequestAuditMetadataKey] = metadata;
+            return metadata;
+        }
+
+        try
+        {
+            if (!httpContext.Request.Body.CanSeek)
+            {
+                httpContext.Request.EnableBuffering();
+            }
+
+            httpContext.Request.Body.Position = 0;
+            using JsonDocument doc = await JsonDocument.ParseAsync(httpContext.Request.Body).ConfigureAwait(false);
+
+            string tenant = "unknown";
+            if (doc.RootElement.TryGetProperty("tenant", out JsonElement tenantElement)
+                && tenantElement.ValueKind == JsonValueKind.String)
+            {
+                tenant = tenantElement.GetString() ?? "unknown";
+            }
+
+            string commandType = "unknown";
+            if (doc.RootElement.TryGetProperty("commandType", out JsonElement commandTypeElement)
+                && commandTypeElement.ValueKind == JsonValueKind.String)
+            {
+                commandType = commandTypeElement.GetString() ?? "unknown";
+            }
+
+            metadata = new RequestAuditMetadata(tenant, commandType);
+
+            if (httpContext.Request.Body.CanSeek)
+            {
+                httpContext.Request.Body.Position = 0;
+            }
+        }
+        catch (Exception)
+        {
+            // Best-effort: do not fail auth flow on metadata extraction errors.
+            metadata = new RequestAuditMetadata("unknown", "unknown");
+        }
+
+        httpContext.Items[RequestAuditMetadataKey] = metadata;
+        return metadata;
+    }
+
+    private sealed record RequestAuditMetadata(string TenantId, string CommandType);
 }

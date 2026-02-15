@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Models;
+using Hexalith.EventStore.CommandApi.Validation;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using MediatR;
@@ -15,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 [Authorize]
 [Route("api/v1/commands")]
 [Consumes("application/json")]
-public class CommandsController(IMediator mediator, ILogger<CommandsController> logger) : ControllerBase
+public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase
 {
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
@@ -77,6 +78,34 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
                 correlationId);
         }
 
+        // SEC-4: Extension metadata sanitization at API gateway
+        SanitizeResult sanitizeResult = extensionSanitizer.Sanitize(request.Extensions);
+        if (!sanitizeResult.IsSuccess)
+        {
+            logger.LogWarning(
+                "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, Reason={Reason}",
+                "ExtensionMetadataRejected",
+                correlationId,
+                request.Tenant,
+                request.Domain,
+                sanitizeResult.RejectionReason);
+
+            return new ObjectResult(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Type = "https://tools.ietf.org/html/rfc9457#section-3",
+                Detail = $"Extension metadata validation failed: {sanitizeResult.RejectionReason}",
+                Instance = HttpContext?.Request.Path,
+                Extensions =
+                {
+                    ["correlationId"] = correlationId,
+                    ["tenantId"] = request.Tenant,
+                },
+            })
+            { StatusCode = StatusCodes.Status400BadRequest };
+        }
+
         var command = new SubmitCommand(
             Tenant: request.Tenant,
             Domain: request.Domain,
@@ -121,11 +150,12 @@ public class CommandsController(IMediator mediator, ILogger<CommandsController> 
     {
         string? sourceIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
         logger.LogWarning(
-            "Tenant authorization failed: CorrelationId={CorrelationId}, TenantId={TenantId}, CommandType={CommandType}, Domain={Domain}, Reason={Reason}, SourceIP={SourceIP}",
+            "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}",
+            "AuthorizationDenied",
             correlationId,
             tenantId,
-            commandType,
             domain,
+            commandType,
             reason,
             sourceIp);
     }

@@ -53,4 +53,17 @@ public record CommandEnvelope(
     public IReadOnlyDictionary<string, string>? Extensions { get; } = Extensions is not null
         ? new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(Extensions))
         : null;
+
+    /// <summary>
+    /// Returns a string representation with Payload redacted (SEC-5, Rule #5).
+    /// Framework-level enforcement: even if a developer logs the entire CommandEnvelope,
+    /// the payload is never exposed.
+    /// </summary>
+    public override string ToString()
+    {
+        string extensionKeys = Extensions is not null
+            ? string.Join(", ", Extensions.Keys)
+            : "none";
+        return $"CommandEnvelope {{ TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, CommandType = {CommandType}, CorrelationId = {CorrelationId}, CausationId = {CausationId}, UserId = {UserId}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
+    }
 }

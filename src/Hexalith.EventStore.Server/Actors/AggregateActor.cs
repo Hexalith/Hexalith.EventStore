@@ -143,7 +143,8 @@ public class AggregateActor(
             catch (TenantMismatchException ex) // F-PM4: catch specifically BEFORE any broader catch blocks
             {
                 logger.LogWarning(
-                    "Tenant validation rejected command: CorrelationId={CorrelationId}, CommandTenant={CommandTenant}, ActorTenant={ActorTenant}",
+                    "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, CommandTenant={CommandTenant}, ActorTenant={ActorTenant}",
+                    "TenantMismatch",
                     command.CorrelationId,
                     ex.CommandTenant,
                     ex.ActorTenant);

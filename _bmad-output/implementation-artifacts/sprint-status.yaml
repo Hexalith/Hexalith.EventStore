@@ -92,7 +92,7 @@ development_status:
   5-1-dapr-access-control-policies: done
   5-2-data-path-isolation-verification: done
   5-3-pubsub-topic-isolation-enforcement: done
-  5-4-security-audit-logging-and-payload-protection: ready-for-dev
+  5-4-security-audit-logging-and-payload-protection: done
   epic-5-retrospective: optional
 
   # Epic 6: Observability, Health & Operational Readiness

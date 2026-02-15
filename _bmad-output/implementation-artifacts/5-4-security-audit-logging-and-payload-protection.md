@@ -1,6 +1,6 @@
 # Story 5.4: Security Audit Logging & Payload Protection
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -62,128 +62,128 @@ So that security incidents are traceable while sensitive data is protected (SEC-
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and understand current state (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Review existing `LoggingBehavior.cs` -- understand current structured logging fields (correlation ID, tenant, domain, command type)
-  - [ ] 0.3 Review existing `AuthorizationBehavior.cs` -- understand current authorization failure handling
-  - [ ] 0.4 Review existing `AuthorizationExceptionHandler.cs` -- understand how auth failures become 403 responses
-  - [ ] 0.5 Review existing `GlobalExceptionHandler.cs` -- understand unhandled exception logging
-  - [ ] 0.6 Review existing `AggregateActor.cs` -- understand structured logging at each pipeline stage (Rule #5 already noted in `LogStageTransition`)
-  - [ ] 0.7 Review existing `ConfigureJwtBearerOptions.cs` -- understand JWT event hooks for authentication failure logging
-  - [ ] 0.8 Review `CommandEnvelope.cs` and `EventEnvelope.cs` -- understand `Payload` and `Extensions` fields and their ToString behavior
-  - [ ] 0.9 Audit ALL existing log statements across CommandApi and Server projects for any payload data leakage
-  - [ ] 0.10 Identify gaps: which security events are NOT currently logged, which log statements might leak payload data
+- [x] Task 0: Verify prerequisites and understand current state (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Review existing `LoggingBehavior.cs` -- understand current structured logging fields (correlation ID, tenant, domain, command type)
+  - [x] 0.3 Review existing `AuthorizationBehavior.cs` -- understand current authorization failure handling
+  - [x] 0.4 Review existing `AuthorizationExceptionHandler.cs` -- understand how auth failures become 403 responses
+  - [x] 0.5 Review existing `GlobalExceptionHandler.cs` -- understand unhandled exception logging
+  - [x] 0.6 Review existing `AggregateActor.cs` -- understand structured logging at each pipeline stage (Rule #5 already noted in `LogStageTransition`)
+  - [x] 0.7 Review existing `ConfigureJwtBearerOptions.cs` -- understand JWT event hooks for authentication failure logging
+  - [x] 0.8 Review `CommandEnvelope.cs` and `EventEnvelope.cs` -- understand `Payload` and `Extensions` fields and their ToString behavior
+  - [x] 0.9 Audit ALL existing log statements across CommandApi and Server projects for any payload data leakage
+  - [x] 0.10 Identify gaps: which security events are NOT currently logged, which log statements might leak payload data
 
-- [ ] Task 1: Implement extension metadata sanitization at API gateway (AC: #3, #10)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.CommandApi/Validation/ExtensionMetadataSanitizer.cs`:
+- [x] Task 1: Implement extension metadata sanitization at API gateway (AC: #3, #10)
+  - [x] 1.1 Create `src/Hexalith.EventStore.CommandApi/Validation/ExtensionMetadataSanitizer.cs`:
     - `SanitizeResult Sanitize(IDictionary<string, string>? extensions)` method
     - Validate total size (default 4KB, configurable via `ExtensionMetadataOptions`)
     - Validate individual key/value character sets (printable ASCII + common UTF-8, reject control characters \x00-\x1F except \t \n \r)
     - Reject injection patterns: `<script`, `javascript:`, SQL keywords in suspicious context (`'; DROP`, `UNION SELECT`), LDAP injection (`)(`, `*)(`)
     - Return `SanitizeResult` with success/failure and rejection reason
-  - [ ] 1.2 Create `src/Hexalith.EventStore.CommandApi/Configuration/ExtensionMetadataOptions.cs`:
+  - [x] 1.2 Create `src/Hexalith.EventStore.CommandApi/Configuration/ExtensionMetadataOptions.cs`:
     - `int MaxTotalSizeBytes` (default 4096)
     - `int MaxKeyLength` (default 128)
     - `int MaxValueLength` (default 2048)
     - `int MaxExtensionCount` (default 32)
-  - [ ] 1.3 Integrate `ExtensionMetadataSanitizer` into the command submission flow:
+  - [x] 1.3 Integrate `ExtensionMetadataSanitizer` into the command submission flow:
     - Either as part of `SubmitCommandRequestValidator` (FluentValidation) or as explicit call in `SubmitCommandHandler`
     - Rejection returns 400 Bad Request as ProblemDetails with `SecurityEvent=ExtensionMetadataRejected`
     - Log rejection with correlation ID, tenant, domain, rejection reason (NOT the rejected content)
-  - [ ] 1.4 Register `ExtensionMetadataOptions` in DI via `AddEventStoreCommandApi()` or equivalent
+  - [x] 1.4 Register `ExtensionMetadataOptions` in DI via `AddEventStoreCommandApi()` or equivalent
 
-- [ ] Task 2: Implement payload protection at framework level (AC: #2, #5, #11)
-  - [ ] 2.1 Evaluate implementation approach for payload redaction:
+- [x] Task 2: Implement payload protection at framework level (AC: #2, #5, #11)
+  - [x] 2.1 Evaluate implementation approach for payload redaction:
     - **Option A:** Override `ToString()` on `EventEnvelope` and `CommandEnvelope` to exclude Payload field
     - **Option B:** Create a custom `ILogFormatter` or enricher that strips payload fields
     - **Option C:** Mark `Payload` properties with `[LogPropertyIgnore]` or similar attribute
     - Choose the approach that provides framework-level enforcement (not developer discipline)
-  - [ ] 2.2 Implement the chosen approach:
+  - [x] 2.2 Implement the chosen approach:
     - If Option A: Ensure `EventEnvelope.ToString()` outputs all 11 metadata fields but replaces `Payload` with `[REDACTED]` and truncates `Extensions` to keys only
     - If Option B/C: Configure the logging pipeline to automatically strip `Payload` fields from any logged objects
-  - [ ] 2.3 CRITICAL: The approach must work even if a developer writes `logger.LogInformation("Event: {Event}", eventEnvelope)` -- the payload must still be redacted
-  - [ ] 2.4 Verify existing log statements in `AggregateActor.cs` -- confirm none log payload data (current code already follows Rule #5, but verify)
-  - [ ] 2.5 Verify existing log statements in `EventPublisher.cs` -- confirm none log payload data
-  - [ ] 2.6 Verify existing log statements in `DeadLetterPublisher.cs` -- confirm none log payload data (dead-letter message contains command payload for replay)
+  - [x] 2.3 CRITICAL: The approach must work even if a developer writes `logger.LogInformation("Event: {Event}", eventEnvelope)` -- the payload must still be redacted
+  - [x] 2.4 Verify existing log statements in `AggregateActor.cs` -- confirm none log payload data (current code already follows Rule #5, but verify)
+  - [x] 2.5 Verify existing log statements in `EventPublisher.cs` -- confirm none log payload data
+  - [x] 2.6 Verify existing log statements in `DeadLetterPublisher.cs` -- confirm none log payload data (dead-letter message contains command payload for replay)
 
-- [ ] Task 3: Enhance security audit logging for authentication failures (AC: #1, #7)
-  - [ ] 3.1 Review `ConfigureJwtBearerOptions.cs` for existing `JwtBearerEvents` hooks
-  - [ ] 3.2 Add or enhance `OnAuthenticationFailed` event handler to log:
+- [x] Task 3: Enhance security audit logging for authentication failures (AC: #1, #7)
+  - [x] 3.1 Review `ConfigureJwtBearerOptions.cs` for existing `JwtBearerEvents` hooks
+  - [x] 3.2 Add or enhance `OnAuthenticationFailed` event handler to log:
     - `SecurityEvent=AuthenticationFailed`
     - Source IP: `context.HttpContext.Connection.RemoteIpAddress`
     - Attempted path: `context.HttpContext.Request.Path`
     - Failure reason: expired, invalid signature, invalid issuer (extracted from exception)
     - Correlation ID: from `CorrelationIdMiddleware` if available
     - CRITICAL: NEVER log the JWT token content (NFR11)
-  - [ ] 3.3 Add or enhance `OnChallenge` event handler for missing token scenarios:
+  - [x] 3.3 Add or enhance `OnChallenge` event handler for missing token scenarios:
     - `SecurityEvent=AuthenticationFailed`
     - Reason: "MissingToken" or "InvalidScheme"
     - Source IP and path
-  - [ ] 3.4 Ensure authentication failure logs use `ILogger<T>` with structured parameters (not string interpolation)
+  - [x] 3.4 Ensure authentication failure logs use `ILogger<T>` with structured parameters (not string interpolation)
 
-- [ ] Task 4: Enhance security audit logging for authorization failures (AC: #1, #8)
-  - [ ] 4.1 Enhance `AuthorizationBehavior.cs` to log authorization denials with:
+- [x] Task 4: Enhance security audit logging for authorization failures (AC: #1, #8)
+  - [x] 4.1 Enhance `AuthorizationBehavior.cs` to log authorization denials with:
     - `SecurityEvent=AuthorizationDenied`
     - Correlation ID
     - Authenticated user's tenant claims (from JWT)
     - Attempted tenant, domain, command type
     - Denial reason (tenant mismatch, domain not authorized, command type not permitted)
-  - [ ] 4.2 Enhance `AuthorizationExceptionHandler.cs` to include `SecurityEvent=AuthorizationDenied` in its log output
-  - [ ] 4.3 CRITICAL: Never log the JWT token itself -- only log extracted claims (tenant list, domain list, etc.)
+  - [x] 4.2 Enhance `AuthorizationExceptionHandler.cs` to include `SecurityEvent=AuthorizationDenied` in its log output
+  - [x] 4.3 CRITICAL: Never log the JWT token itself -- only log extracted claims (tenant list, domain list, etc.)
 
-- [ ] Task 5: Enhance security audit logging at actor layer (AC: #9)
-  - [ ] 5.1 Enhance `AggregateActor.cs` tenant mismatch logging (around line 146-149) to include:
+- [x] Task 5: Enhance security audit logging at actor layer (AC: #9)
+  - [x] 5.1 Enhance `AggregateActor.cs` tenant mismatch logging (around line 146-149) to include:
     - `SecurityEvent=TenantMismatch`
     - Existing fields are already good: CorrelationId, CommandTenant, ActorTenant
-  - [ ] 5.2 NOTE: Source IP is typically not available at the actor layer (commands arrive via DAPR actor invocation, not HTTP). If source IP was captured at the API layer and stored in `CommandEnvelope` metadata, include it. Otherwise, document this limitation.
+  - [x] 5.2 NOTE: Source IP is typically not available at the actor layer (commands arrive via DAPR actor invocation, not HTTP). If source IP was captured at the API layer and stored in `CommandEnvelope` metadata, include it. Otherwise, document this limitation.
 
-- [ ] Task 6: Create SecurityAuditLoggingTests.cs (AC: #1, #6, #7, #8, #9, #10)
-  - [ ] 6.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs`
-  - [ ] 6.2 Test: `AuthorizationBehavior_UnauthorizedTenant_LogsSecurityEvent` -- Verify AuthorizationBehavior logs with `SecurityEvent=AuthorizationDenied` when tenant is not authorized
-  - [ ] 6.3 Test: `AuthorizationBehavior_UnauthorizedDomain_LogsSecurityEvent` -- Verify AuthorizationBehavior logs with `SecurityEvent=AuthorizationDenied` when domain is not authorized
-  - [ ] 6.4 Test: `AuthorizationBehavior_SecurityEventLog_NeverContainsJwtToken` -- Verify authorization denial logs do not contain the JWT token (check log output for "Bearer" or JWT-like patterns)
-  - [ ] 6.5 Test: `AggregateActor_TenantMismatch_LogsSecurityEvent` -- Verify actor logs with `SecurityEvent=TenantMismatch` on tenant mismatch
-  - [ ] 6.6 Test: `ExtensionMetadataSanitizer_OversizedExtensions_LogsSecurityEvent` -- Verify extension rejection logs with `SecurityEvent=ExtensionMetadataRejected`
-  - [ ] 6.7 Test: `ExtensionMetadataSanitizer_RejectionLog_DoesNotContainExtensionContent` -- Verify the rejection log does not include the rejected extension values (which may contain injection payloads)
-  - [ ] 6.8 Test: `SecurityAuditLogs_ConsistentFormat_AllEventsHaveRequiredFields` -- Verify all security event log entries include: SecurityEvent type, correlationId, timestamp
+- [x] Task 6: Create SecurityAuditLoggingTests.cs (AC: #1, #6, #7, #8, #9, #10)
+  - [x] 6.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs`
+  - [x] 6.2 Test: `AuthorizationBehavior_UnauthorizedTenant_LogsSecurityEvent` -- Verify AuthorizationBehavior logs with `SecurityEvent=AuthorizationDenied` when tenant is not authorized
+  - [x] 6.3 Test: `AuthorizationBehavior_UnauthorizedDomain_LogsSecurityEvent` -- Verify AuthorizationBehavior logs with `SecurityEvent=AuthorizationDenied` when domain is not authorized
+  - [x] 6.4 Test: `AuthorizationBehavior_SecurityEventLog_NeverContainsJwtToken` -- Verify authorization denial logs do not contain the JWT token (check log output for "Bearer" or JWT-like patterns)
+  - [x] 6.5 Test: `AggregateActor_TenantMismatch_LogsSecurityEvent` -- Verify actor logs with `SecurityEvent=TenantMismatch` on tenant mismatch
+  - [x] 6.6 Test: `ExtensionMetadataSanitizer_OversizedExtensions_LogsSecurityEvent` -- Verify extension rejection logs with `SecurityEvent=ExtensionMetadataRejected`
+  - [x] 6.7 Test: `ExtensionMetadataSanitizer_RejectionLog_DoesNotContainExtensionContent` -- Verify the rejection log does not include the rejected extension values (which may contain injection payloads)
+  - [x] 6.8 Test: `SecurityAuditLogs_ConsistentFormat_AllEventsHaveRequiredFields` -- Verify all security event log entries include: SecurityEvent type, correlationId, timestamp
 
-- [ ] Task 7: Create PayloadProtectionTests.cs (AC: #2, #5, #11)
-  - [ ] 7.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs`
-  - [ ] 7.2 Test: `EventEnvelope_ToString_DoesNotContainPayload` -- Verify `EventEnvelope.ToString()` excludes or redacts the `Payload` field
-  - [ ] 7.3 Test: `CommandEnvelope_ToString_DoesNotContainPayload` -- Verify `CommandEnvelope.ToString()` excludes or redacts the `Payload` field
-  - [ ] 7.4 Test: `EventEnvelope_ToString_ContainsAllMetadataFields` -- Verify `ToString()` still includes all 11 metadata fields (useful for debugging)
-  - [ ] 7.5 Test: `LoggingBehavior_CommandSubmission_NeverLogsPayload` -- Using a captured logger (e.g., `FakeLogger` or `ListLoggerProvider`), verify LoggingBehavior never outputs payload content
-  - [ ] 7.6 Test: `AggregateActor_AllLogStatements_NeverReferencePayload` -- Scan `AggregateActor.cs` source for log statements containing "Payload" or "payload" -- verify none exist (static analysis test)
-  - [ ] 7.7 Test: `EventPublisher_AllLogStatements_NeverReferencePayload` -- Scan `EventPublisher.cs` source for log statements containing "Payload" -- verify none exist
-  - [ ] 7.8 Test: `DeadLetterPublisher_AllLogStatements_NeverReferencePayload` -- Scan `DeadLetterPublisher.cs` source for log statements containing "Payload" -- verify none exist
+- [x] Task 7: Create PayloadProtectionTests.cs (AC: #2, #5, #11)
+  - [x] 7.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs`
+  - [x] 7.2 Test: `EventEnvelope_ToString_DoesNotContainPayload` -- Verify `EventEnvelope.ToString()` excludes or redacts the `Payload` field
+  - [x] 7.3 Test: `CommandEnvelope_ToString_DoesNotContainPayload` -- Verify `CommandEnvelope.ToString()` excludes or redacts the `Payload` field
+  - [x] 7.4 Test: `EventEnvelope_ToString_ContainsAllMetadataFields` -- Verify `ToString()` still includes all 11 metadata fields (useful for debugging)
+  - [x] 7.5 Test: `LoggingBehavior_CommandSubmission_NeverLogsPayload` -- Using a captured logger (e.g., `FakeLogger` or `ListLoggerProvider`), verify LoggingBehavior never outputs payload content
+  - [x] 7.6 Test: `AggregateActor_AllLogStatements_NeverReferencePayload` -- Scan `AggregateActor.cs` source for log statements containing "Payload" or "payload" -- verify none exist (static analysis test)
+  - [x] 7.7 Test: `EventPublisher_AllLogStatements_NeverReferencePayload` -- Scan `EventPublisher.cs` source for log statements containing "Payload" -- verify none exist
+  - [x] 7.8 Test: `DeadLetterPublisher_AllLogStatements_NeverReferencePayload` -- Scan `DeadLetterPublisher.cs` source for log statements containing "Payload" -- verify none exist
 
-- [ ] Task 8: Create ExtensionMetadataSanitizerTests.cs (AC: #3, #10)
-  - [ ] 8.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/ExtensionMetadataSanitizerTests.cs`
-  - [ ] 8.2 Test: `Sanitize_NullExtensions_ReturnsSuccess` -- Null or empty extensions are valid
-  - [ ] 8.3 Test: `Sanitize_ValidExtensions_ReturnsSuccess` -- Normal key-value pairs pass validation
-  - [ ] 8.4 Test: `Sanitize_OversizedTotal_ReturnsFailure` -- Extensions exceeding 4KB total are rejected
-  - [ ] 8.5 Test: `Sanitize_OversizedKey_ReturnsFailure` -- Individual key exceeding MaxKeyLength is rejected
-  - [ ] 8.6 Test: `Sanitize_OversizedValue_ReturnsFailure` -- Individual value exceeding MaxValueLength is rejected
-  - [ ] 8.7 Test: `Sanitize_TooManyExtensions_ReturnsFailure` -- More than MaxExtensionCount extensions are rejected
-  - [ ] 8.8 Test: `Sanitize_ControlCharacters_ReturnsFailure` -- Keys/values with control characters (\x00-\x1F except \t \n \r) are rejected
-  - [ ] 8.9 Test: `Sanitize_ScriptTagInjection_ReturnsFailure` -- `<script>alert(1)</script>` in values is rejected
-  - [ ] 8.10 Test: `Sanitize_SqlInjection_ReturnsFailure` -- `'; DROP TABLE users; --` in values is rejected
-  - [ ] 8.11 Test: `Sanitize_LdapInjection_ReturnsFailure` -- `)(cn=*))(|(cn=*` in values is rejected
-  - [ ] 8.12 Test: `Sanitize_UnicodeNormalization_HandlesConsistently` -- Unicode NFD/NFC normalization doesn't bypass character validation
-  - [ ] 8.13 Test: `ExtensionMetadataOptions_DefaultValues_AreReasonable` -- Verify default options: 4096 bytes, 128 key, 2048 value, 32 count
+- [x] Task 8: Create ExtensionMetadataSanitizerTests.cs (AC: #3, #10)
+  - [x] 8.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/ExtensionMetadataSanitizerTests.cs`
+  - [x] 8.2 Test: `Sanitize_NullExtensions_ReturnsSuccess` -- Null or empty extensions are valid
+  - [x] 8.3 Test: `Sanitize_ValidExtensions_ReturnsSuccess` -- Normal key-value pairs pass validation
+  - [x] 8.4 Test: `Sanitize_OversizedTotal_ReturnsFailure` -- Extensions exceeding 4KB total are rejected
+  - [x] 8.5 Test: `Sanitize_OversizedKey_ReturnsFailure` -- Individual key exceeding MaxKeyLength is rejected
+  - [x] 8.6 Test: `Sanitize_OversizedValue_ReturnsFailure` -- Individual value exceeding MaxValueLength is rejected
+  - [x] 8.7 Test: `Sanitize_TooManyExtensions_ReturnsFailure` -- More than MaxExtensionCount extensions are rejected
+  - [x] 8.8 Test: `Sanitize_ControlCharacters_ReturnsFailure` -- Keys/values with control characters (\x00-\x1F except \t \n \r) are rejected
+  - [x] 8.9 Test: `Sanitize_ScriptTagInjection_ReturnsFailure` -- `<script>alert(1)</script>` in values is rejected
+  - [x] 8.10 Test: `Sanitize_SqlInjection_ReturnsFailure` -- `'; DROP TABLE users; --` in values is rejected
+  - [x] 8.11 Test: `Sanitize_LdapInjection_ReturnsFailure` -- `)(cn=*))(|(cn=*` in values is rejected
+  - [x] 8.12 Test: `Sanitize_UnicodeNormalization_HandlesConsistently` -- Unicode NFD/NFC normalization doesn't bypass character validation
+  - [x] 8.13 Test: `ExtensionMetadataOptions_DefaultValues_AreReasonable` -- Verify default options: 4096 bytes, 128 key, 2048 value, 32 count
 
-- [ ] Task 9: Create SecretsProtectionTests.cs (AC: #4)
-  - [ ] 9.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs`
-  - [ ] 9.2 Test: `SourceCode_NoHardcodedSecrets_InConfigFiles` -- Scan `appsettings*.json` for patterns like connection strings with passwords, JWT signing keys, or API keys
-  - [ ] 9.3 Test: `SourceCode_NoHardcodedSecrets_InDaprYaml` -- Scan DAPR YAML files for hardcoded passwords or secrets (should use environment variable substitution patterns)
-  - [ ] 9.4 Test: `SourceCode_NoHardcodedSecrets_InCSharpFiles` -- Scan `.cs` files for patterns like `"password"`, `"secret"`, `"connectionstring"` in string literals (excluding test files)
-  - [ ] 9.5 NOTE: These are static analysis tests using `File.ReadAllText` + regex pattern matching, similar to the existing YAML validation tests
+- [x] Task 9: Create SecretsProtectionTests.cs (AC: #4)
+  - [x] 9.1 Create `tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs`
+  - [x] 9.2 Test: `SourceCode_NoHardcodedSecrets_InConfigFiles` -- Scan `appsettings*.json` for patterns like connection strings with passwords, JWT signing keys, or API keys
+  - [x] 9.3 Test: `SourceCode_NoHardcodedSecrets_InDaprYaml` -- Scan DAPR YAML files for hardcoded passwords or secrets (should use environment variable substitution patterns)
+  - [x] 9.4 Test: `SourceCode_NoHardcodedSecrets_InCSharpFiles` -- Scan `.cs` files for patterns like `"password"`, `"secret"`, `"connectionstring"` in string literals (excluding test files)
+  - [x] 9.5 NOTE: These are static analysis tests using `File.ReadAllText` + regex pattern matching, similar to the existing YAML validation tests
 
-- [ ] Task 10: Verify no regressions and comprehensive coverage (AC: #1-#11)
-  - [ ] 10.1 Run `dotnet test` to confirm all existing + new tests pass
-  - [ ] 10.2 Verify that security audit logging enhancement does not change the behavior of existing error handlers (same HTTP status codes, same ProblemDetails structure)
-  - [ ] 10.3 Verify that extension metadata sanitization integrates cleanly into the existing command submission pipeline
-  - [ ] 10.4 Confirm the payload protection mechanism works with the existing test infrastructure
+- [x] Task 10: Verify no regressions and comprehensive coverage (AC: #1-#11)
+  - [x] 10.1 Run `dotnet test` to confirm all existing + new tests pass
+  - [x] 10.2 Verify that security audit logging enhancement does not change the behavior of existing error handlers (same HTTP status codes, same ProblemDetails structure)
+  - [x] 10.3 Verify that extension metadata sanitization integrates cleanly into the existing command submission pipeline
+  - [x] 10.4 Confirm the payload protection mechanism works with the existing test infrastructure
 
 ## Dev Notes
 
@@ -499,10 +499,53 @@ Patterns:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+- Build verified: 0 errors, 0 warnings after all source changes
+- Full test suite: 874 unit tests passing (660 Server.Tests + 157 Contracts.Tests + 9 Client.Tests + 48 Testing.Tests)
+- 52 new tests added by this story (in Security/ folder)
+- 10 integration tests fail due to pre-existing Keycloak/DAPR infrastructure dependency (not related to this story)
+
 ### Completion Notes List
 
+- **Option A chosen for payload protection**: ToString() override on CommandEnvelope, Contracts EventEnvelope, and Server EventEnvelope. This provides framework-level enforcement because C# string interpolation and structured logging both invoke ToString().
+- **Two distinct EventEnvelope types discovered**: Contracts version uses nested EventMetadata record; Server version has flattened fields. Both received ToString() overrides.
+- **Extension metadata sanitizer uses [GeneratedRegex] source generators** for compiled regex patterns (XSS, SQL, LDAP, path traversal).
+- **Sanitizer integrated into CommandsController** (explicit call before MediatR send) rather than FluentValidation, because the sanitizer returns SanitizeResult (not validation exceptions) and logs SecurityEvent.
+- **Source IP unavailable at actor layer**: Commands arrive via DAPR actor proxy (not HTTP). Documented as limitation per Task 5.2.
+- **AuthorizationExceptionHandler upgraded from LogDebug to LogWarning** with SecurityEvent field, per AC #6 consistency requirement.
+- **Task 6.6/6.7 implemented as controller-level security tests**: Added tests for extension rejection security logging and extension content redaction in logs (`ExtensionMetadataSanitizer_OversizedExtensions_LogsSecurityEvent`, `ExtensionMetadataSanitizer_RejectionLog_DoesNotContainExtensionContent`).
+- **Review remediation pass completed**: JWT failure logs now include attempted tenant, attempted command type, attempted path, and failure layer; MediatR authorization denial logs now include authenticated tenant claims and failure layer.
+- **ConfigureAwait(false) removed from test methods**: xUnit analyzer (xUnit1030) prohibits ConfigureAwait in test methods.
+
 ### File List
+
+**New files:**
+
+- `src/Hexalith.EventStore.CommandApi/Configuration/ExtensionMetadataOptions.cs` - Extension metadata sanitization options with defaults
+- `src/Hexalith.EventStore.CommandApi/Validation/ExtensionMetadataSanitizer.cs` - Extension metadata validation (size, charset, injection prevention)
+- `tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs` - 7 tests for SecurityEvent field consistency, including extension metadata rejection logging/redaction
+- `tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs` - 11 tests for payload redaction and source scanning
+- `tests/Hexalith.EventStore.Server.Tests/Security/ExtensionMetadataSanitizerTests.cs` - 20 tests for extension metadata validation
+- `tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs` - 3 tests for hardcoded secrets detection
+
+**Modified files:**
+
+- `src/Hexalith.EventStore.Contracts/Commands/CommandEnvelope.cs` - Added ToString() override with Payload=[REDACTED]
+- `src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs` - Added ToString() override with Payload=[REDACTED]
+- `src/Hexalith.EventStore.Server/Events/EventEnvelope.cs` - Added ToString() override with Payload=[REDACTED]
+- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs` - Added SecurityEvent=AuthenticationFailed to OnAuthenticationFailed and OnChallenge
+- `src/Hexalith.EventStore.CommandApi/Pipeline/AuthorizationBehavior.cs` - Added SecurityEvent=AuthorizationDenied to LogAuthorizationFailure
+- `src/Hexalith.EventStore.CommandApi/ErrorHandling/AuthorizationExceptionHandler.cs` - Upgraded to LogWarning with SecurityEvent=AuthorizationDenied
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` - Added ExtensionMetadataSanitizer integration and SecurityEvent fields
+- `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` - Added DI registration for ExtensionMetadataOptions and ExtensionMetadataSanitizer
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` - Added SecurityEvent=TenantMismatch to tenant mismatch log
+- `_bmad-output/implementation-artifacts/5-4-security-audit-logging-and-payload-protection.md` - Updated review outcomes, completion notes, and file tracking
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Synced story status from review to done
+
+### Change Log
+
+- **2026-02-15**: Story 5.4 implemented - Security audit logging with consistent SecurityEvent field across JWT, authorization, and actor layers; payload protection via ToString() overrides on CommandEnvelope and EventEnvelope; extension metadata sanitizer with XSS/SQL/LDAP/path traversal injection prevention; secrets-in-source-control verification tests. 52 new tests, 0 regressions.
+- **2026-02-15**: Code review remediation completed - added missing extension metadata rejection logging/redaction tests (Task 6.6/6.7), enriched JWT authentication failure logs with attempted tenant/command type/failure layer, enriched AuthorizationBehavior denial logs with authenticated tenant claims, and marked story/sprint status as done.

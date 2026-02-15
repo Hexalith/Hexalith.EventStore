@@ -12,6 +12,8 @@ using Hexalith.EventStore.CommandApi.Filters;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Validation;
+
+using ExtensionMetadataSanitizer = Hexalith.EventStore.CommandApi.Validation.ExtensionMetadataSanitizer;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
 
@@ -63,6 +65,14 @@ public static class CommandApiServiceCollectionExtensions
 
         // Command archive for replay (Story 2.7)
         services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();
+
+        // Extension metadata sanitization (Story 5.4, SEC-4)
+        services.AddOptions<ExtensionMetadataOptions>()
+            .BindConfiguration("EventStore:ExtensionMetadata")
+            .ValidateOnStart();
+
+        services.AddSingleton<IValidateOptions<ExtensionMetadataOptions>, ValidateExtensionMetadataOptions>();
+        services.AddSingleton<ExtensionMetadataSanitizer>();
 
         // Rate limiting (Story 2.9)
         services.AddOptions<RateLimitingOptions>()
