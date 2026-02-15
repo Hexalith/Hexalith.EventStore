@@ -27,6 +27,35 @@ var commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("co
     .WithEnvironment("ASPNETCORE_URLS", "http://localhost:8080");
 var eventStoreResources = builder.AddHexalithEventStore(commandApi, accessControlConfigPath);
 
+// Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
+// Enabled by default for local development with real OIDC token testing.
+// Set EnableKeycloak=false in environment or appsettings to run without Keycloak
+// (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
+if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase))
+{
+    // Realm-as-code: hexalith-realm.json auto-imported on container start.
+    // Port 8180 avoids conflict with commandapi on 8080.
+    var keycloak = builder.AddKeycloak("keycloak", 8180)
+        .WithRealmImport("./KeycloakRealms");
+
+    // Wire Keycloak OIDC auth (D11, Story 5.1 Task 8).
+    // The existing ConfigureJwtBearerOptions.cs OIDC discovery path handles everything
+    // when Authentication:JwtBearer:Authority is set to the Keycloak realm URL.
+    var keycloakEndpoint = keycloak.GetEndpoint("http");
+    var realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
+    commandApi
+        .WithReference(keycloak)
+        .WaitFor(keycloak)
+        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
+        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
+        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+        // Explicitly clear SigningKey to prevent dual-mode auth conflict.
+        // If SigningKey exists in appsettings/secrets, clearing it ensures
+        // ConfigureJwtBearerOptions.cs uses OIDC discovery (Authority) mode only.
+        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+}
+
 // Add sample domain service with DAPR sidecar.
 // NOTE: sample does NOT reference StateStore or PubSub components.
 // Domain services have zero infrastructure access (D4, AC #13).

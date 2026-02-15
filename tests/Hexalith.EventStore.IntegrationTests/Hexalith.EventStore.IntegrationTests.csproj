@@ -6,9 +6,13 @@
     </ProjectReference>
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj">
+      <IsAspireProjectResource>false</IsAspireProjectResource>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />

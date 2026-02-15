@@ -1,6 +1,6 @@
 # Story 5.2: Data Path Isolation Verification
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -352,7 +352,7 @@ None
 ### Completion Notes List
 
 - All 5 tasks implemented (Task 0-3 + Task 4 skipped per story note -- inline Shouldly assertions sufficient)
-- 36 new tests created across 3 test files (7 + 8 + 12 + 9 from existing = 36 net new)
+- 36 new test cases across 3 test files (25 methods, 36 xUnit cases via Theory expansion): DataPathIsolationTests (6 methods/8 cases), DomainServiceIsolationTests (7 methods/9 cases), TenantInjectionPreventionTests (12 methods/19 cases)
 - Final regression: 929 tests pass (893 existing + 36 new), zero failures
 - No application code changes -- verification-only story as specified
 - Fixed xUnit1030 (ConfigureAwait in tests), DaprClient.GetConfiguration 4-param signature, NSubstitute InvokeMethodAsync mock limitation (switched to resolver verification)
@@ -361,9 +361,9 @@ None
 
 ### File List
 
-- `tests/Hexalith.EventStore.Server.Tests/Security/DataPathIsolationTests.cs` (NEW - 7 tests)
-- `tests/Hexalith.EventStore.Server.Tests/Security/DomainServiceIsolationTests.cs` (NEW - 8 tests)
-- `tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs` (NEW - 12 tests)
+- `tests/Hexalith.EventStore.Server.Tests/Security/DataPathIsolationTests.cs` (NEW - 6 methods, 8 test cases)
+- `tests/Hexalith.EventStore.Server.Tests/Security/DomainServiceIsolationTests.cs` (NEW - 7 methods, 9 test cases)
+- `tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs` (NEW - 12 methods, 19 test cases)
 
 ### Change Log
 
@@ -372,3 +372,15 @@ None
 | Created | DataPathIsolationTests.cs | AC #1, #3, #5, #6, #9, #12, #13 -- end-to-end routing isolation, three-layer verification, TenantId flow tracing |
 | Created | DomainServiceIsolationTests.cs | AC #2, #7 -- domain service tenant-scoped config lookup, invoker context, fake invoker routing |
 | Created | TenantInjectionPreventionTests.cs | AC #4, #8, #10, #11, #12 -- injection prevention, state access prevention, Unicode homoglyphs, boundary tests |
+
+### Review 10: Adversarial Code Review (Winston, 2026-02-15)
+
+**Findings: 0 CRITICAL, 1 MEDIUM, 4 LOW**
+
+| # | Severity | Finding | Resolution |
+|---|----------|---------|------------|
+| 1 | MEDIUM | `TenantValidator_UsesOrdinalStringComparison` did not verify ordinal-specific behavior -- test would pass with any StringComparison mode | Added case-sensitivity assertion: `Validate("Tenant-A", "tenant-a:...")` must throw, proving ordinal (not case-insensitive) comparison |
+| 2 | LOW | File List test counts (7+8+12=27) inconsistent with xUnit runner (36 cases) and method counts (6+7+12=25) | Corrected File List to show both method and case counts |
+| 3 | LOW | Status discrepancy: story file `done` vs sprint-status.yaml `review` | Synchronized sprint-status.yaml to `done` |
+| 4 | LOW | Actor test setup boilerplate repeated 6 times across DataPathIsolationTests and TenantInjectionPreventionTests | Accepted: matches existing codebase convention (AggregateActorTests.cs uses same pattern). Future epic may extract shared test builder. |
+| 5 | LOW | AC #4 logging requirement ("logged with correlationId, commandTenant, actorTenant") not verified by tests | Accepted: core security behavior (rejection before state access) IS tested. Structured log field verification deferred to Story 6.2 (structured logging completeness). |

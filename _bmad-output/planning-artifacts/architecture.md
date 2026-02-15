@@ -3,6 +3,9 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-02-12'
+amendedAt: '2026-02-15'
+amendments:
+  - D11: E2E Security Testing Infrastructure (Keycloak in Aspire)
 inputDocuments:
   - product-brief-Hexalith.EventStore-2026-02-11.md
   - prd.md
@@ -327,6 +330,7 @@ Hexalith.EventStore/
 | D8 | Rate Limiting Strategy | ASP.NET Core built-in `RateLimiting` middleware, per-tenant sliding window | GAP-9 |
 | D9 | NuGet Package Versioning | MinVer (version from Git tags, zero config) | -- |
 | D10 | CI/CD Pipeline | GitHub Actions | -- |
+| D11 | E2E Security Testing Infrastructure | Keycloak in Aspire with realm-as-code | Story 5.1 Task 7, AC #5/#6, runtime security verification for all Epic 5 stories |
 
 **Decisions Already Made (PRD + Starter Template):**
 
@@ -435,6 +439,30 @@ Hexalith.EventStore/
 - **Pipelines:** Build + test on PR, pack + publish NuGet on release tag, DAPR integration tests with containerized DAPR sidecar
 - **Rationale:** Native GitHub integration, excellent .NET and DAPR ecosystem support, free for open-source
 
+**D11: E2E Security Testing Infrastructure -- Keycloak in Aspire**
+
+- **Context:** Story 5.1 has 14 passing static YAML validation tests but lacks runtime verification (Task 7.1/7.2). Current integration tests use symmetric key JWT (HS256) via `TestJwtTokenGenerator`, which bypasses OIDC discovery, JWKS validation, and real IdP token issuance. Multiple security stories (5.1, 5.3, 5.4) require runtime proof of the six-layer auth pipeline with real tokens.
+- **Decision:** Add `Aspire.Hosting.Keycloak` to the AppHost with a checked-in realm export (`hexalith-realm.json`) containing pre-configured client, protocol mappers, and test users. E2E tests acquire real OIDC tokens via Resource Owner Password Grant and validate through the full auth pipeline.
+- **Key Components:**
+  - **Package:** `Aspire.Hosting.Keycloak` in AppHost (hosting only -- no `Aspire.Keycloak.Authentication` client package needed; existing `ConfigureJwtBearerOptions` OIDC discovery path is sufficient)
+  - **Port:** `8180` (avoids conflict with `commandapi` on `8080`)
+  - **Realm:** `hexalith` with client `hexalith-eventstore`, OIDC protocol mappers for `tenants`, `domains`, `permissions` (JSON array claims matching `EventStoreClaimsTransformation` expectations)
+  - **CommandApi wiring:** Environment variable overrides set `Authority` to Keycloak realm URL, triggering existing OIDC discovery at `ConfigureJwtBearerOptions:50-54`. Zero auth code changes
+- **Test Users (realm-as-code):**
+
+| User | Tenants | Domains | Permissions | E2E Scenario |
+|------|---------|---------|-------------|-------------|
+| `admin-user` | tenant-a, tenant-b | orders, inventory | command:submit, command:replay, command:query | Multi-tenant admin |
+| `tenant-a-user` | tenant-a | orders | command:submit, command:query | Cross-tenant isolation proof |
+| `tenant-b-user` | tenant-b | inventory | command:submit | Lateral isolation proof |
+| `readonly-user` | tenant-a | orders | command:query | Permission enforcement |
+| `no-tenant-user` | *(none)* | orders | command:submit | Tenant validation rejection |
+
+- **Test placement:** Inside existing `Hexalith.EventStore.IntegrationTests` with `[Trait("Category", "E2E")]` to separate from fast symmetric-key tests
+- **Scope:** Shared foundation for all security-requiring stories across Epic 5 and beyond. The realm export is a living artifact -- new users/roles added as stories progress
+- **What this proves that symmetric keys cannot:** Real OIDC discovery flow, asymmetric key validation via JWKS, IdP-issued claims structure, issuer URL validation, token expiry management by Keycloak
+- **Rationale:** Minimal investment (one package, one realm JSON, environment variable overrides) that unlocks runtime verification for the entire security story backlog. No auth code changes. Existing fast tests remain untouched
+
 ### Decision Impact Analysis
 
 **Implementation Sequence:**
@@ -455,6 +483,7 @@ Hexalith.EventStore/
 - D3 flows through D1 (rejection events persisted), D2 (status reflects rejection), D6 (rejection events published to topics)
 - D7 + D4 must be consistent -- DAPR access control allows the invocation paths D7 requires
 - D8 operates at the API gateway layer, before D1/D2/D3 processing begins
+- D11 validates the full auth chain (D4 DAPR access control + six-layer auth) at runtime with real OIDC tokens. Depends on existing `ConfigureJwtBearerOptions` OIDC discovery path -- zero auth code changes
 
 ## Implementation Patterns & Consistency Rules
 
@@ -635,6 +664,7 @@ builder.Services.AddActors();           // DAPR actors
 13. No stack traces in production error responses -- `ProblemDetails.detail` contains human-readable message only; stack traces logged server-side at Error level, never exposed to clients
 14. DAPR sidecar call timeout is 5 seconds -- all `DaprClient` and `IActorStateManager` calls must complete within 5s, enforced via DAPR resiliency timeout policy. Prevents hung sidecars from blocking actor turns indefinitely
 15. Snapshot configuration is mandatory -- every domain registration must specify a snapshot interval (recommended default: 100 events). No "never snapshot" behavior allowed. Keeps actor activation reads ≤102 state store calls
+16. E2E security tests use real Keycloak OIDC tokens -- never synthetic JWTs for runtime security verification. `TestJwtTokenGenerator` (HS256) is for fast unit/integration tests only. Runtime proof of the six-layer auth pipeline requires real IdP-issued tokens via Keycloak (D11)
 
 ## Project Structure & Boundaries
 
@@ -750,6 +780,8 @@ Hexalith.EventStore/
 │   ├── Hexalith.EventStore.AppHost/            # Aspire orchestration
 │   │   ├── Hexalith.EventStore.AppHost.csproj
 │   │   ├── Program.cs                          # Full local topology definition
+│   │   ├── KeycloakRealms/
+│   │   │   └── hexalith-realm.json             # Realm import: users, client, claim mappers (D11)
 │   │   └── DaprComponents/
 │   │       ├── statestore.yaml                 # Redis (local) state store config
 │   │       ├── pubsub.yaml                     # Redis (local) pub/sub config
@@ -1027,7 +1059,7 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 - **Resolution:** Default 24-hour TTL on status entries via DAPR `ttlInSeconds` metadata, configurable per-tenant
 - **Impact:** Affects D2 specification, operational guidance
 
-### Enforcement Rules Summary (Final: 15 Rules)
+### Enforcement Rules Summary (Final: 16 Rules)
 
 | # | Rule | Category |
 |---|------|----------|
@@ -1046,6 +1078,7 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 | 13 | No stack traces in production error responses | Security |
 | 14 | DAPR sidecar call timeout is 5 seconds | Resilience |
 | 15 | Snapshot configuration is mandatory (default 100 events) | Performance |
+| 16 | E2E security tests use real Keycloak OIDC tokens -- never synthetic JWTs for runtime security verification | Testing |
 
 ### Security Constraints Summary (Final: 5 Constraints)
 

@@ -233,6 +233,8 @@ public class TenantInjectionPreventionTests
     public void TenantValidator_UsesOrdinalStringComparison()
     {
         // TenantValidator must use Ordinal comparison, not culture-sensitive.
+        // This test verifies case-sensitivity which distinguishes Ordinal from
+        // OrdinalIgnoreCase, CurrentCultureIgnoreCase, and InvariantCultureIgnoreCase.
         var validator = new TenantValidator(NullLogger<TenantValidator>.Instance);
 
         // Different tenants should not match
@@ -242,6 +244,11 @@ public class TenantInjectionPreventionTests
         // Same tenant should pass
         Should.NotThrow(
             () => validator.Validate("tenant-a", "tenant-a:orders:order-001"));
+
+        // Case-sensitive: Ordinal treats "Tenant-A" != "tenant-a".
+        // This assertion would NOT catch a regression to OrdinalIgnoreCase without it.
+        Should.Throw<TenantMismatchException>(
+            () => validator.Validate("Tenant-A", "tenant-a:orders:order-001"));
     }
 
     // --- Task 3.12: AC #12, GAP-C1 ---

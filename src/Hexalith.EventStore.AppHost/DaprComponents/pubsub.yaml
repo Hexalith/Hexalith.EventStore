@@ -1,24 +1,90 @@
-# DAPR Pub/Sub Component -- Local Development (D6, NFR13)
-# ========================================================
+# DAPR Pub/Sub Component -- Local Development (D6, NFR13, FR29)
+# ================================================================
 # Redis-backed pub/sub for event distribution with per-tenant-per-domain topics.
 # Topic pattern: {tenant}.{domain}.events (D6)
 # Dead-letter topic pattern: deadletter.{tenant}.{domain}.events (Story 4.5)
 #
-# Component Scoping (AC #7, AC #13):
-#   Only commandapi can access this pub/sub component. Domain services (sample)
-#   have zero pub/sub access -- no publish, no subscribe, no component access.
-#   This is enforced by the scopes field below.
+# SCOPING ARCHITECTURE (Three Layers)
+# ====================================
 #
-# Topic Scoping (AC #7, AC #12):
-#   publishingScopes restricts sample from publishing to any topic.
-#   subscriptionScopes restricts sample from subscribing to any topic.
-#   commandapi is not listed in scoping metadata = can publish/subscribe to all topics,
-#   including dynamic tenant topics ({tenant}.{domain}.events) and dead-letter topics.
+# Layer 1 -- Component Scoping (scopes field):
+#   Controls which app-ids can USE this pub/sub component at all.
+#   Only commandapi and authorized subscriber app-ids are listed.
+#   Domain services (sample) have zero pub/sub access (D4).
 #
-# Adding New Domain Services:
-#   DO NOT add new domain services to scopes, publishingScopes, or subscriptionScopes.
-#   Domain services have zero pub/sub access (D4). If external subscribers need access,
-#   add them to scopes and use subscriptionScopes to restrict their topic access.
+# Layer 2 -- Publishing Scoping (publishingScopes metadata):
+#   Controls which app-ids can PUBLISH to which topics.
+#   Format: "app1=topic1,topic2;app2=" (semicolon-separated, empty=deny all).
+#   Apps NOT listed in publishingScopes have unrestricted publish access.
+#   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
+#
+# Layer 3 -- Subscription Scoping (subscriptionScopes metadata):
+#   Controls which app-ids can SUBSCRIBE to which topics.
+#   Same format as publishingScopes.
+#   Apps NOT listed in subscriptionScopes have unrestricted subscribe access.
+#   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
+#
+# PUBLISHER-SIDE SCOPING (Story 5.1):
+#   commandapi is NOT listed in publishingScopes = can publish to ANY topic.
+#   This supports NFR20 (dynamic tenant provisioning without restart).
+#   sample= (empty) denies sample from publishing to any topic.
+#
+# SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
+#   commandapi is NOT listed in subscriptionScopes = can subscribe to all topics.
+#   sample= (empty) denies sample from subscribing to any topic.
+#   External subscribers are explicitly scoped to authorized tenant topics only.
+#   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
+#   Unauthorized subscription attempts are rejected at the DAPR sidecar and are
+#   observable in DAPR sidecar warning/error logs.
+#
+# ADDING A NEW SUBSCRIBER SERVICE
+# ================================
+# When a new external subscriber needs to receive events for specific tenants:
+#
+# Step 1: Add the subscriber app-id to the 'scopes' list below.
+#         This grants component-level access (Layer 1).
+#         Example: Add "- my-subscriber" under scopes.
+#
+# Step 2: Add the subscriber to 'subscriptionScopes' with authorized tenant topics.
+#         Format: ";my-subscriber=acme.orders.events,acme.inventory.events"
+#         Append to existing value with semicolon separator.
+#         This restricts the subscriber to ONLY the listed topics (Layer 3).
+#
+# Step 3: Ensure the subscriber is NOT listed in 'publishingScopes'.
+#         External subscribers should NEVER publish -- only commandapi publishes.
+#         If defense-in-depth is needed, add ";my-subscriber=" to deny publishing.
+#
+# Step 4: Dead-letter access is SEPARATE. If the subscriber needs dead-letter
+#         topic access, add those topics explicitly:
+#         ";my-subscriber=deadletter.acme.orders.events"
+#         Do NOT combine regular and dead-letter topic access -- they serve
+#         different purposes (event consumption vs. operational monitoring).
+#
+# Step 5: Update tests in PubSubTopicIsolationEnforcementTests.cs to reflect
+#         the new subscriber topology.
+#
+# DYNAMIC TENANT PROVISIONING (NFR20)
+# =====================================
+# Topic names include tenant IDs (e.g., acme.orders.events, globex.orders.events).
+# New tenants create new topics dynamically. DAPR YAML scoping is static.
+#
+# Resolution:
+#   - Publisher (commandapi): NOT listed in scoping = unrestricted. Can publish to
+#     any new tenant topic immediately without YAML changes.
+#   - Subscriber: MUST be explicitly granted access per tenant topic in
+#     subscriptionScopes. This requires a YAML config update (acceptable
+#     operational step because subscriber access is a security-critical
+#     decision requiring human approval).
+#
+# SCOPING FIELD REFERENCE (DAPR 1.16)
+# =====================================
+# publishingScopes: "app1=topic1,topic2;app2=" -- per-app publish restrictions
+# subscriptionScopes: "app1=topic1,topic2;app2=" -- per-app subscribe restrictions
+# allowedTopics: "topic1,topic2" -- global whitelist (all apps, publish + subscribe)
+# protectedTopics: "topic1,topic2" -- require explicit grant in scoping metadata
+# IMPORTANT: No wildcard support. Strict string equality match only.
+# Apps NOT listed in a scoping field have UNRESTRICTED access (default-open).
+# Apps listed with empty value (app=) are DENIED all access (explicit deny).
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -38,18 +104,37 @@ spec:
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
-    # Pub/sub topic scoping (AC #7, AC #12)
+    # Publishing scoping (Story 5.1, AC #7, AC #12):
     # sample= (empty) denies sample from publishing to any topic.
-    # commandapi is not listed = unrestricted publishing to all topics including
-    # dynamic tenant topics and dead-letter topics (AC #12).
+    # commandapi is NOT listed = unrestricted publishing to all topics including
+    # dynamic tenant topics and dead-letter topics (NFR20).
+    # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
+    # not a wildcard. Omitting commandapi achieves unrestricted access.
     - name: publishingScopes
       value: "sample="
+    # Subscription scoping (Story 5.3, FR29):
     # sample= (empty) denies sample from subscribing to any topic.
-    # commandapi is not listed = unrestricted subscription to all topics.
+    # commandapi is NOT listed = unrestricted subscription to all topics.
+    # External subscribers are scoped to specific tenant topics (see examples below).
+    #
+    # Example with external subscriber scoped to specific tenant topics:
+    #   value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events"
+    # Example with ops-monitor scoped to dead-letter topics only:
+    #   value: "sample=;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
     - name: subscriptionScopes
-      value: "sample="
-# Component-level scoping: only commandapi can access this pub/sub component (AC #7, AC #13).
-# Domain services (sample) have zero pub/sub access -- cannot publish, subscribe, or
-# interact with this component in any way. This enforces the zero-trust posture (D4).
+      value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+# Component-level scoping: commandapi and explicitly authorized subscriber app-ids
+# can access this pub/sub component.
+# Domain services (sample) have zero pub/sub access -- cannot publish, subscribe,
+# or interact with this component in any way. This enforces zero-trust posture (D4).
+#
+# When adding external subscribers, add their app-id here AND scope their
+# topic access via subscriptionScopes above. Example:
+#   scopes:
+#     - commandapi
+#     - example-subscriber
+#     - ops-monitor
 scopes:
   - commandapi
+  - example-subscriber
+  - ops-monitor

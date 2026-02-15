@@ -1,22 +1,89 @@
-# DAPR Pub/Sub Component -- Production Kafka (D6, NFR13)
-# =======================================================
+# DAPR Pub/Sub Component -- Production Kafka (D6, NFR13, FR29)
+# ===============================================================
 # Kafka-backed pub/sub for event distribution with per-tenant-per-domain topics.
 # Topic pattern: {tenant}.{domain}.events (D6)
 # Dead-letter topic pattern: deadletter.{tenant}.{domain}.events (Story 4.5)
 #
-# Component Scoping (AC #7, AC #13):
-#   Only commandapi can access this pub/sub component. Domain services have zero
-#   pub/sub access -- no publish, no subscribe, no component access.
+# SCOPING ARCHITECTURE (Three Layers)
+# ====================================
 #
-# Topic Scoping (AC #7, AC #12):
-#   Production domain services are intentionally omitted from scoping metadata
-#   since they have zero pub/sub access (enforced by component scopes).
-#   External subscribers should be added to scopes and subscriptionScopes
-#   when onboarded (Story 5.3).
-#
-# Adding New Domain Services:
-#   DO NOT add new domain services to scopes, publishingScopes, or subscriptionScopes.
+# Layer 1 -- Component Scoping (scopes field):
+#   Controls which app-ids can USE this pub/sub component at all.
+#   Only commandapi and authorized subscriber app-ids are listed.
 #   Domain services have zero pub/sub access (D4).
+#
+# Layer 2 -- Publishing Scoping (publishingScopes metadata):
+#   Controls which app-ids can PUBLISH to which topics.
+#   Format: "app1=topic1,topic2;app2=" (semicolon-separated, empty=deny all).
+#   Apps NOT listed in publishingScopes have unrestricted publish access.
+#   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
+#   Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name, not a wildcard.
+#
+# Layer 3 -- Subscription Scoping (subscriptionScopes metadata):
+#   Controls which app-ids can SUBSCRIBE to which topics.
+#   Same format as publishingScopes.
+#   Apps NOT listed in subscriptionScopes have unrestricted subscribe access.
+#   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
+#
+# PUBLISHER-SIDE SCOPING (Story 5.1):
+#   commandapi is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
+#   Production domain services are not in component scopes = zero pub/sub access.
+#
+# SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
+#   commandapi is NOT listed in subscriptionScopes = can subscribe to all topics.
+#   External subscribers must be explicitly scoped to authorized tenant topics.
+#   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
+#   Unauthorized subscription attempts are rejected at the DAPR sidecar and are
+#   observable in DAPR sidecar warning/error logs.
+#
+# ADDING A NEW SUBSCRIBER SERVICE (Production)
+# ==============================================
+# When deploying a new external subscriber service:
+#
+# Step 1: Add the subscriber app-id to the 'scopes' list below.
+#         Use the production app-id (may differ from local development).
+#
+# Step 2: Add the subscriber to 'subscriptionScopes' with authorized tenant topics.
+#         Format: ";{subscriber-app-id}={tenant1}.{domain1}.events,{tenant2}.{domain2}.events"
+#         Append to existing value with semicolon separator.
+#
+# Step 3: Do NOT add the subscriber to 'publishingScopes'.
+#         External subscribers should NEVER publish -- only commandapi publishes.
+#
+# Step 4: Dead-letter access is SEPARATE. Only add dead-letter topics if the
+#         subscriber is an operational/monitoring tool.
+#         Format: ";{ops-tool-app-id}=deadletter.{tenant}.{domain}.events"
+#
+# Step 5: Update PubSubTopicIsolationEnforcementTests.cs to reflect the new topology.
+#
+# DYNAMIC TENANT PROVISIONING (NFR20)
+# =====================================
+# Publisher (commandapi): NOT listed in scoping = unrestricted. Can publish to any
+#   new tenant topic immediately without YAML changes.
+# Subscriber: MUST be explicitly granted access per tenant topic. This requires a
+#   YAML config update and redeployment (acceptable operational step -- subscriber
+#   access is a security-critical decision requiring human approval).
+#
+# KAFKA-SPECIFIC NOTES
+# =====================
+# Kafka pub/sub component uses Kafka topics and consumer groups internally. DAPR
+# scoping metadata (publishingScopes, subscriptionScopes) is enforced at the DAPR
+# runtime level BEFORE messages reach Kafka. This means:
+#   - Scoping is identical across all pub/sub component types (Redis, RabbitMQ, Kafka)
+#   - Kafka-level ACLs (broker authorization) are a SEPARATE layer (configure independently)
+#   - Consumer group isolation is managed by Kafka -- each subscriber app-id uses
+#     its own consumer group by default
+#   - Kafka topic auto-creation supports NFR20 dynamic tenant provisioning
+#
+# SCOPING FIELD REFERENCE (DAPR 1.16)
+# =====================================
+# publishingScopes: "app1=topic1,topic2;app2=" -- per-app publish restrictions
+# subscriptionScopes: "app1=topic1,topic2;app2=" -- per-app subscribe restrictions
+# allowedTopics: "topic1,topic2" -- global whitelist (all apps, publish + subscribe)
+# protectedTopics: "topic1,topic2" -- require explicit grant in scoping metadata
+# IMPORTANT: No wildcard support. Strict string equality match only.
+# Apps NOT listed in a scoping field have UNRESTRICTED access (default-open).
+# Apps listed with empty value (app=) are DENIED all access (explicit deny).
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -37,16 +104,35 @@ spec:
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
-    # Pub/sub topic scoping (AC #7, AC #12):
-    # Component-level scoping (below) restricts component access to commandapi only.
-    # When production domain services are deployed, add explicit publishingScopes
-    # and subscriptionScopes metadata for defense-in-depth (matching local config pattern):
-    #   - name: publishingScopes
-    #     value: "<domain-service-app-id>="
-    #   - name: subscriptionScopes
-    #     value: "<domain-service-app-id>="
-# Component-level scoping: only commandapi can access this pub/sub component (AC #7, AC #13).
-# Domain services have zero pub/sub access (D4). External subscribers should be added
-# to this list when onboarded (Story 5.3).
+    # Publishing scoping (Story 5.1):
+    # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
+    # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
+    # not a wildcard. Omitting commandapi achieves unrestricted access.
+    #
+    # When adding production domain services to component scopes, you MUST add
+    # denial entries here: ";{domain-service-app-id}=" to deny publishing.
+    - name: publishingScopes
+      value: "{subscriber-app-id}=;{ops-monitor-app-id}="
+    # Subscription scoping (Story 5.3, FR29):
+    # commandapi is NOT listed = unrestricted subscription to all topics.
+    # External subscribers must be explicitly added with authorized tenant topics.
+    #
+    # Example with production subscriber:
+    #   value: ";{subscriber-app-id}=acme.orders.events,acme.inventory.events"
+    # Example with ops-monitor for dead-letter topics:
+    #   value: ";{ops-monitor-app-id}=deadletter.acme.orders.events"
+    - name: subscriptionScopes
+      value: "{subscriber-app-id}=acme.orders.events,acme.inventory.events;{ops-monitor-app-id}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+# Component-level scoping: commandapi and explicitly authorized subscriber app-ids
+# can access this pub/sub component. Domain services have zero pub/sub access (D4).
+#
+# When deploying external subscribers, add their production app-id here
+# AND scope their topic access via subscriptionScopes above:
+#   scopes:
+#     - commandapi
+#     - {subscriber-app-id}
+#     - {ops-monitor-app-id}
 scopes:
   - commandapi
+  - "{subscriber-app-id}"
+  - "{ops-monitor-app-id}"
