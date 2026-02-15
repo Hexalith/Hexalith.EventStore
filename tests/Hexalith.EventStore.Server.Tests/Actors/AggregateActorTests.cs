@@ -45,6 +45,7 @@ public class AggregateActorTests
     {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
         var commandStatusStore = Substitute.For<ICommandStatusStore>();
@@ -168,9 +169,9 @@ public class AggregateActorTests
 
         // Assert
         logger.Received().Log(
-            LogLevel.Information,
+            LogLevel.Debug,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("received command")),
+            Arg.Is<object>(o => o.ToString()!.Contains("Actor activated")),
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -868,6 +869,7 @@ public class AggregateActorTests
     {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var invoker = Substitute.For<IDomainServiceInvoker>();
         var snapshotManager = Substitute.For<ISnapshotManager>();
         var commandStatusStore = Substitute.For<ICommandStatusStore>();

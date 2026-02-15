@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 /// Story 2.7: Archives original command for replay (advisory, rule #12).
 /// Story 3.1: Routes command to aggregate actor via CommandRouter.
 /// </summary>
-public class SubmitCommandHandler(
+public partial class SubmitCommandHandler(
     ICommandStatusStore statusStore,
     ICommandArchiveStore archiveStore,
     ICommandRouter commandRouter,
@@ -24,13 +24,9 @@ public class SubmitCommandHandler(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        logger.LogInformation(
-            "Command received: {CommandType} for {Tenant}/{Domain}/{AggregateId}, CorrelationId={CorrelationId}",
-            request.CommandType,
-            request.Tenant,
-            request.Domain,
-            request.AggregateId,
-            request.CorrelationId);
+        string causationId = request.CorrelationId; // For original submissions, CausationId = CorrelationId
+
+        Log.CommandReceived(logger, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
 
         var result = new SubmitCommandResult(request.CorrelationId);
 
@@ -56,11 +52,7 @@ public class SubmitCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(
-                ex,
-                "Failed to write command status for {CorrelationId}, TenantId={TenantId}. Status tracking may be incomplete. Command processing continues.",
-                request.CorrelationId,
-                request.Tenant);
+            Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
         // Archive original command for replay (advisory per rule #12)
@@ -78,21 +70,59 @@ public class SubmitCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(
-                ex,
-                "Failed to archive command for {CorrelationId}, TenantId={TenantId}. Replay may be unavailable. Command processing continues.",
-                request.CorrelationId,
-                request.Tenant);
+            Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
         // Route to aggregate actor (NOT advisory -- failure must propagate)
         await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);
 
-        logger.LogDebug(
-            "Command routed to actor: CorrelationId={CorrelationId}",
-            request.CorrelationId);
+        Log.CommandRouted(logger, request.CorrelationId);
 
         return result;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 1100,
+            Level = LogLevel.Information,
+            Message = "Command received: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
+        public static partial void CommandReceived(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string commandType,
+            string tenantId,
+            string domain,
+            string aggregateId);
+
+        [LoggerMessage(
+            EventId = 1101,
+            Level = LogLevel.Warning,
+            Message = "Failed to write command status: CorrelationId={CorrelationId}, TenantId={TenantId}. Status tracking may be incomplete. Command processing continues. Stage=StatusWriteFailed")]
+        public static partial void StatusWriteFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId);
+
+        [LoggerMessage(
+            EventId = 1102,
+            Level = LogLevel.Warning,
+            Message = "Failed to archive command: CorrelationId={CorrelationId}, TenantId={TenantId}. Replay may be unavailable. Command processing continues. Stage=ArchiveWriteFailed")]
+        public static partial void ArchiveWriteFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId);
+
+        [LoggerMessage(
+            EventId = 1103,
+            Level = LogLevel.Debug,
+            Message = "Command routed to actor: CorrelationId={CorrelationId}, Stage=CommandRouted")]
+        public static partial void CommandRouted(
+            ILogger logger,
+            string correlationId);
     }
 }

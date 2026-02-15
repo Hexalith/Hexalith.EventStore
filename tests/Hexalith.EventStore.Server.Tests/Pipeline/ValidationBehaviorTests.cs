@@ -7,16 +7,31 @@ using Hexalith.EventStore.CommandApi.Pipeline;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+
+using NSubstitute;
+
 using Shouldly;
 
 public class ValidationBehaviorTests
 {
+    private static ValidationBehavior<TestCommand, TestResult> CreateBehavior(IEnumerable<IValidator<TestCommand>> validators)
+    {
+        var logger = Substitute.For<ILogger<ValidationBehavior<TestCommand, TestResult>>>();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContextAccessor.HttpContext.Returns(httpContext);
+        return new ValidationBehavior<TestCommand, TestResult>(validators, logger, httpContextAccessor);
+    }
+
     [Fact]
     public async Task Handle_NoValidators_CallsNext()
     {
         // Arrange
         var validators = Enumerable.Empty<IValidator<TestCommand>>();
-        var behavior = new ValidationBehavior<TestCommand, TestResult>(validators);
+        var behavior = CreateBehavior(validators);
         var request = new TestCommand("test");
         var expected = new TestResult("ok");
         RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(expected);
@@ -33,7 +48,7 @@ public class ValidationBehaviorTests
     {
         // Arrange
         var validator = new AlwaysValidValidator();
-        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator]);
+        var behavior = CreateBehavior([validator]);
         var request = new TestCommand("test");
         var expected = new TestResult("ok");
         RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(expected);
@@ -50,7 +65,7 @@ public class ValidationBehaviorTests
     {
         // Arrange
         var validator = new FailingValidator("Value", "Value is required");
-        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator]);
+        var behavior = CreateBehavior([validator]);
         var request = new TestCommand("");
         RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(new TestResult("should not reach"));
 
@@ -67,7 +82,7 @@ public class ValidationBehaviorTests
         // Arrange
         var validator1 = new FailingValidator("Field1", "Error 1");
         var validator2 = new FailingValidator("Field2", "Error 2");
-        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator1, validator2]);
+        var behavior = CreateBehavior([validator1, validator2]);
         var request = new TestCommand("");
         RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(new TestResult("should not reach"));
 
@@ -84,7 +99,7 @@ public class ValidationBehaviorTests
     {
         // Arrange
         var validator = new FailingValidator("Value", "Required");
-        var behavior = new ValidationBehavior<TestCommand, TestResult>([validator]);
+        var behavior = CreateBehavior([validator]);
         var request = new TestCommand("");
         bool nextCalled = false;
         RequestHandlerDelegate<TestResult> next = (_) =>

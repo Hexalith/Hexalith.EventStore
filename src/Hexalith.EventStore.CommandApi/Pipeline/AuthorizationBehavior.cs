@@ -86,9 +86,12 @@ public class AuthorizationBehavior<TRequest, TResponse>(
             }
         }
 
+        string causationId = correlationId; // For original submissions, CausationId = CorrelationId
+
         logger.LogDebug(
-            "Authorization succeeded for {CorrelationId}: tenant={Tenant}, domain={Domain}, commandType={CommandType}",
+            "Authorization succeeded: CorrelationId={CorrelationId}, CausationId={CausationId}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Stage=AuthorizationPassed",
             correlationId,
+            causationId,
             command.Tenant,
             command.Domain,
             command.CommandType);

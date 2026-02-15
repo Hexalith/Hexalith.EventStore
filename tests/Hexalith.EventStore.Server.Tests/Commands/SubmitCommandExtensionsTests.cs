@@ -1,5 +1,7 @@
 namespace Hexalith.EventStore.Server.Tests.Commands;
 
+using System.Diagnostics;
+
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -8,6 +10,8 @@ using Shouldly;
 
 public class SubmitCommandExtensionsTests
 {
+    private const string TestActivitySourceName = "Hexalith.EventStore.Tests.SubmitCommandExtensions";
+
     private static SubmitCommand CreateTestCommand(
         string userId = "test-user",
         Dictionary<string, string>? extensions = null) => new(
@@ -86,5 +90,58 @@ public class SubmitCommandExtensionsTests
 
         // Assert
         envelope.UserId.ShouldBe("jwt-sub-user");
+    }
+
+    [Fact]
+    public void ToCommandEnvelope_WhenActivityCurrent_AddsTraceParentExtension()
+    {
+        // Arrange
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == TestActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var activitySource = new ActivitySource(TestActivitySourceName);
+
+        SubmitCommand command = CreateTestCommand(extensions: null);
+
+        // Act
+        using Activity? activity = activitySource.StartActivity("test", ActivityKind.Internal);
+        CommandEnvelope envelope = command.ToCommandEnvelope();
+
+        // Assert
+        envelope.Extensions.ShouldNotBeNull();
+        envelope.Extensions.ContainsKey("traceparent").ShouldBeTrue();
+        envelope.Extensions["traceparent"].ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void ToCommandEnvelope_WhenExtensionAlreadyExists_OverwritesWithCurrentTraceContext()
+    {
+        // Arrange
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == TestActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var activitySource = new ActivitySource(TestActivitySourceName);
+
+        var extensions = new Dictionary<string, string>
+        {
+            ["traceparent"] = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
+            ["custom"] = "value",
+        };
+        SubmitCommand command = CreateTestCommand(extensions: extensions);
+
+        // Act
+        using Activity? activity = activitySource.StartActivity("test", ActivityKind.Internal);
+        CommandEnvelope envelope = command.ToCommandEnvelope();
+
+        // Assert
+        envelope.Extensions.ShouldNotBeNull();
+        envelope.Extensions["custom"].ShouldBe("value");
+        envelope.Extensions["traceparent"].ShouldBe(activity?.Id);
     }
 }

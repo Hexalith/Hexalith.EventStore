@@ -1,9 +1,13 @@
 namespace Hexalith.EventStore.CommandApi.Controllers;
 
+using System.Diagnostics;
+
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Models;
+using Hexalith.EventStore.CommandApi.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -36,71 +40,90 @@ public class CommandStatusController(
     {
         ArgumentNullException.ThrowIfNull(correlationId);
 
+        using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
+            EventStoreActivitySources.QueryStatus, ActivityKind.Server);
+        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? correlationId;
 
-        // Validate GUID format
-        if (!Guid.TryParse(correlationId, out _))
+        try
         {
-            return CreateProblemDetails(
-                StatusCodes.Status400BadRequest,
-                "Bad Request",
-                $"Correlation ID '{correlationId}' is not a valid GUID format.",
-                requestCorrelationId);
-        }
-
-        // Store correlationId in HttpContext.Items for error handler access
-        HttpContext.Items["StatusCorrelationId"] = correlationId;
-
-        // Extract tenant claims
-        List<string> tenantClaims = User.FindAll("eventstore:tenant")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
-
-        if (tenantClaims.Count == 0)
-        {
-            logger.LogWarning(
-                "Status query denied: no tenant claims. CorrelationId={CorrelationId}",
-                requestCorrelationId);
-
-            return CreateProblemDetails(
-                StatusCodes.Status403Forbidden,
-                "Forbidden",
-                "No tenant authorization claims found. Access denied.",
-                requestCorrelationId);
-        }
-
-        // Try each authorized tenant (SEC-3: command could be under any authorized tenant)
-        foreach (string tenant in tenantClaims)
-        {
-            CommandStatusRecord? record = await statusStore
-                .ReadStatusAsync(tenant, correlationId, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (record is not null)
+            // Validate GUID format
+            if (!Guid.TryParse(correlationId, out _))
             {
-                logger.LogDebug(
-                    "Status found: CorrelationId={CorrelationId}, Tenant={Tenant}, Status={Status}",
-                    correlationId,
-                    tenant,
-                    record.Status);
-
-                return Ok(CommandStatusResponse.FromRecord(record));
+                activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId");
+                return CreateProblemDetails(
+                    StatusCodes.Status400BadRequest,
+                    "Bad Request",
+                    $"Correlation ID '{correlationId}' is not a valid GUID format.",
+                    requestCorrelationId);
             }
+
+            // Store correlationId in HttpContext.Items for error handler access
+            HttpContext.Items["StatusCorrelationId"] = correlationId;
+
+            // Extract tenant claims
+            List<string> tenantClaims = User.FindAll("eventstore:tenant")
+                .Select(c => c.Value)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToList();
+
+            if (tenantClaims.Count == 0)
+            {
+                logger.LogWarning(
+                    "Status query denied: no tenant claims. CorrelationId={CorrelationId}",
+                    requestCorrelationId);
+
+                activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims");
+                return CreateProblemDetails(
+                    StatusCodes.Status403Forbidden,
+                    "Forbidden",
+                    "No tenant authorization claims found. Access denied.",
+                    requestCorrelationId);
+            }
+
+            // Try each authorized tenant (SEC-3: command could be under any authorized tenant)
+            foreach (string tenant in tenantClaims)
+            {
+                activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant);
+
+                CommandStatusRecord? record = await statusStore
+                    .ReadStatusAsync(tenant, correlationId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (record is not null)
+                {
+                    logger.LogDebug(
+                        "Status found: CorrelationId={CorrelationId}, Tenant={Tenant}, Status={Status}",
+                        correlationId,
+                        tenant,
+                        record.Status);
+
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    return Ok(CommandStatusResponse.FromRecord(record));
+                }
+            }
+
+            // Not found in any authorized tenant -> 404 (also covers tenant mismatch per SEC-3)
+            logger.LogDebug(
+                "Status not found: CorrelationId={CorrelationId}, TenantsSearched={Tenants}",
+                correlationId,
+                string.Join(",", tenantClaims));
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return CreateProblemDetails(
+                StatusCodes.Status404NotFound,
+                "Not Found",
+                $"No command status found for correlation ID '{correlationId}'.",
+                requestCorrelationId);
         }
-
-        // Not found in any authorized tenant -> 404 (also covers tenant mismatch per SEC-3)
-        logger.LogDebug(
-            "Status not found: CorrelationId={CorrelationId}, TenantsSearched={Tenants}",
-            correlationId,
-            string.Join(",", tenantClaims));
-
-        return CreateProblemDetails(
-            StatusCodes.Status404NotFound,
-            "Not Found",
-            $"No command status found for correlation ID '{correlationId}'.",
-            requestCorrelationId);
+        catch (Exception ex)
+        {
+            activity?.AddException(ex);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId)

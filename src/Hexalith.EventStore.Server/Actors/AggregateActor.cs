@@ -30,7 +30,7 @@ using Microsoft.Extensions.Options;
 /// SECURITY: Never bypass IActorStateManager with direct DaprClient.GetStateAsync/SetStateAsync.
 /// Rule #6 exists to prevent this -- direct state store access bypasses actor state namespacing.
 /// </summary>
-public class AggregateActor(
+public partial class AggregateActor(
     ActorHost host,
     ILogger<AggregateActor> logger,
     IDomainServiceInvoker domainServiceInvoker,
@@ -41,26 +41,39 @@ public class AggregateActor(
     IDeadLetterPublisher deadLetterPublisher)
     : Actor(host), IAggregateActor, IRemindable
 {
+    private const string TraceParentExtensionKey = "traceparent";
+    private const string TraceStateExtensionKey = "tracestate";
+
     private const int MaxConcurrentStateReads = 32;
     /// <inheritdoc/>
     public async Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        using Activity? processActivity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.ProcessCommand);
+        Activity? processActivity;
+        if (Activity.Current is null && TryGetFallbackParentContext(command, out ActivityContext fallbackParent))
+        {
+            processActivity = EventStoreActivitySource.Instance.StartActivity(
+                EventStoreActivitySource.ProcessCommand,
+                ActivityKind.Internal,
+                fallbackParent);
+        }
+        else
+        {
+            processActivity = EventStoreActivitySource.Instance.StartActivity(
+                EventStoreActivitySource.ProcessCommand,
+                ActivityKind.Internal);
+        }
+
+        using (processActivity)
+        {
         SetActivityTags(processActivity, command);
 
         long startTicks = Stopwatch.GetTimestamp();
 
-        logger.LogInformation(
-            "Actor {ActorId} received command: CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
-            Host.Id,
-            command.CorrelationId,
-            command.TenantId,
-            command.Domain,
-            command.AggregateId,
-            command.CommandType);
+        string causationId = command.CausationId ?? command.CorrelationId;
+
+        Log.ActorActivated(logger, Host.Id.GetId(), command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType);
 
         // Per-call helpers (require actor's IActorStateManager)
         var idempotencyChecker = new IdempotencyChecker(
@@ -70,11 +83,11 @@ public class AggregateActor(
             StateManager,
             Host.LoggerFactory.CreateLogger<ActorStateMachine>());
         string pipelineKeyPrefix = command.AggregateIdentity.PipelineKeyPrefix;
-        string causationId = command.CausationId ?? command.CorrelationId;
 
         // Step 1: Idempotency check (keyed by CausationId -- see design decision F8)
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.IdempotencyCheck))
+            EventStoreActivitySource.IdempotencyCheck,
+            ActivityKind.Internal))
         {
             SetActivityTags(activity, command);
 
@@ -89,6 +102,7 @@ public class AggregateActor(
                     causationId,
                     command.CorrelationId,
                     Host.Id);
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 processActivity?.SetStatus(ActivityStatusCode.Ok);
                 return cached;
             }
@@ -113,6 +127,7 @@ public class AggregateActor(
                 if (existingPipeline.CurrentStage == CommandStatus.EventsStored)
                 {
                     // Events already persisted (AC #2). Skip re-persistence, proceed to terminal.
+                    activity?.SetStatus(ActivityStatusCode.Ok);
                     return await ResumeFromEventsStoredAsync(
                         command, causationId, existingPipeline, idempotencyChecker, stateMachine,
                         pipelineKeyPrefix, processActivity, startTicks).ConfigureAwait(false);
@@ -125,12 +140,15 @@ public class AggregateActor(
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
                 // Fall through to normal processing below
             }
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
         }
 
         // SEC-2 CRITICAL: This MUST execute before any state access (Step 3+) (F-PM2)
         // Step 2: Tenant validation (SEC-2 -- BEFORE state access)
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.TenantValidation))
+            EventStoreActivitySource.TenantValidation,
+            ActivityKind.Internal))
         {
             SetActivityTags(activity, command);
 
@@ -139,6 +157,7 @@ public class AggregateActor(
             try
             {
                 tenantValidator.Validate(command.TenantId, Host.Id.GetId());
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (TenantMismatchException ex) // F-PM4: catch specifically BEFORE any broader catch blocks
             {
@@ -157,6 +176,7 @@ public class AggregateActor(
                 await idempotencyChecker.RecordAsync(causationId, rejectionResult).ConfigureAwait(false);
                 // F-PM7: This SaveStateAsync commits ONLY the idempotency rejection record.
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
+                activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, "TenantMismatch");
                 processActivity?.SetStatus(ActivityStatusCode.Error, "TenantMismatch");
                 return rejectionResult;
@@ -174,7 +194,7 @@ public class AggregateActor(
         await stateMachine.CheckpointAsync(pipelineKeyPrefix, pipelineState).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
 
-        LogStageTransition(CommandStatus.Processing, command, startTicks);
+        LogStageTransition(CommandStatus.Processing, command, causationId, startTicks);
         await WriteAdvisoryStatusAsync(command, CommandStatus.Processing).ConfigureAwait(false);
 
         // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
@@ -185,7 +205,8 @@ public class AggregateActor(
         object? currentState;
 
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.StateRehydration))
+            EventStoreActivitySource.StateRehydration,
+            ActivityKind.Internal))
         {
             SetActivityTags(activity, command);
 
@@ -231,9 +252,13 @@ public class AggregateActor(
                     currentState?.GetType().Name ?? "null",
                     Host.Id,
                     command.CorrelationId);
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                activity?.AddException(ex);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 // Story 4.5: State rehydration infrastructure failure -- dead-letter routing
                 return await HandleInfrastructureFailureAsync(
                     command, causationId, CommandStatus.Processing, ex,
@@ -247,7 +272,8 @@ public class AggregateActor(
         // D3: Domain rejections (IRejectionEvent) are normal events, NOT dead-letter triggers.
         DomainResult domainResult;
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.DomainServiceInvoke))
+            EventStoreActivitySource.DomainServiceInvoke,
+            ActivityKind.Client))
         {
             SetActivityTags(activity, command);
 
@@ -262,9 +288,13 @@ public class AggregateActor(
                     domainResult.IsSuccess ? "Success" : domainResult.IsRejection ? "Rejection" : "NoOp",
                     Host.Id,
                     command.CorrelationId);
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                activity?.AddException(ex);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 // Story 4.5: Domain service invocation infrastructure failure -- dead-letter routing
                 return await HandleInfrastructureFailureAsync(
                     command, causationId, CommandStatus.Processing, ex,
@@ -288,7 +318,8 @@ public class AggregateActor(
         // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
         EventPersistResult persistResult;
         using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.EventsPersist))
+            EventStoreActivitySource.EventsPersist,
+            ActivityKind.Internal))
         {
             SetActivityTags(activity, command);
 
@@ -346,11 +377,15 @@ public class AggregateActor(
                         innerException: ex);
                 }
 
-                LogStageTransition(CommandStatus.EventsStored, command, startTicks);
+                LogStageTransition(CommandStatus.EventsStored, command, causationId, startTicks);
                 await WriteAdvisoryStatusAsync(command, CommandStatus.EventsStored).ConfigureAwait(false);
+
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException)
             {
+                activity?.AddException(ex);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 // Story 4.5: Event persistence infrastructure failure -- dead-letter routing
                 return await HandleInfrastructureFailureAsync(
                     command, causationId, CommandStatus.EventsStored, ex,
@@ -377,7 +412,7 @@ public class AggregateActor(
                 RejectionEventType: domainResult.IsRejection ? domainResult.Events[0].GetType().Name : null);
             await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
-            LogStageTransition(CommandStatus.EventsPublished, command, startTicks);
+            LogStageTransition(CommandStatus.EventsPublished, command, causationId, startTicks);
             await WriteAdvisoryStatusAsync(command, CommandStatus.EventsPublished).ConfigureAwait(false);
 
             // Terminal state: Completed (or Rejected advisory)
@@ -447,11 +482,12 @@ public class AggregateActor(
             // Story 4.4: Register drain reminder AFTER successful commit
             await RegisterDrainReminderAsync(command.CorrelationId).ConfigureAwait(false);
 
-            LogStageTransition(CommandStatus.PublishFailed, command, startTicks);
+            LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
             await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
 
             processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
             return failResult;
+        }
         }
     }
 
@@ -752,6 +788,21 @@ public class AggregateActor(
         activity.SetTag(EventStoreActivitySource.TagCommandType, command.CommandType);
     }
 
+    private static bool TryGetFallbackParentContext(CommandEnvelope command, out ActivityContext parentContext)
+    {
+        parentContext = default;
+
+        if (command.Extensions is null ||
+            !command.Extensions.TryGetValue(TraceParentExtensionKey, out string? traceParent) ||
+            string.IsNullOrWhiteSpace(traceParent))
+        {
+            return false;
+        }
+
+        command.Extensions.TryGetValue(TraceStateExtensionKey, out string? traceState);
+        return ActivityContext.TryParse(traceParent, traceState, out parentContext);
+    }
+
     /// <summary>
     /// Resumes from EventsStored stage after crash recovery (AC #2, #8).
     /// Events are already persisted -- skip re-persistence, proceed directly to terminal.
@@ -829,7 +880,7 @@ public class AggregateActor(
 
             await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
-            LogStageTransition(CommandStatus.EventsPublished, command, startTicks);
+            LogStageTransition(CommandStatus.EventsPublished, command, causationId, startTicks);
             await WriteAdvisoryStatusAsync(command, CommandStatus.EventsPublished).ConfigureAwait(false);
         }
 
@@ -1034,7 +1085,7 @@ public class AggregateActor(
             await RegisterDrainReminderAsync(command.CorrelationId).ConfigureAwait(false);
         }
 
-        LogStageTransition(CommandStatus.PublishFailed, command, startTicks);
+        LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
         await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
 
         processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
@@ -1098,16 +1149,7 @@ public class AggregateActor(
         long startTicks,
         int? eventCount)
     {
-        logger.LogWarning(
-            "Infrastructure failure during command processing: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, ErrorMessage={ErrorMessage}",
-            command.CorrelationId,
-            command.TenantId,
-            command.Domain,
-            command.AggregateId,
-            command.CommandType,
-            failureStage,
-            exception.GetType().Name,
-            exception.Message);
+        Log.InfrastructureFailure(logger, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, failureStage.ToString(), exception.GetType().Name, exception.Message);
 
         DeadLetterMessage deadLetterMessage = DeadLetterMessage.FromException(
             command, failureStage, exception, eventCount);
@@ -1150,7 +1192,7 @@ public class AggregateActor(
         // Advisory status write (non-blocking per rule #12)
         await WriteAdvisoryStatusAsync(command, CommandStatus.Rejected, exception.Message).ConfigureAwait(false);
 
-        LogStageTransition(CommandStatus.Rejected, command, startTicks);
+        LogStageTransition(CommandStatus.Rejected, command, causationId, startTicks);
         processActivity?.SetStatus(ActivityStatusCode.Error, "InfrastructureFailure");
         return failResult;
     }
@@ -1195,7 +1237,7 @@ public class AggregateActor(
         }
 
         CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;
-        LogStageTransition(terminalStatus, command, startTicks);
+        LogStageTransition(terminalStatus, command, causationId, startTicks);
         await WriteAdvisoryStatusAsync(command, terminalStatus).ConfigureAwait(false);
 
         processActivity?.SetStatus(ActivityStatusCode.Ok);
@@ -1244,18 +1286,85 @@ public class AggregateActor(
     /// Rule #5: Never logs event payload data -- only envelope metadata fields.
     /// Rule #9: CorrelationId in every structured log entry.
     /// </summary>
-    private void LogStageTransition(CommandStatus stage, CommandEnvelope command, long startTicks)
+    private void LogStageTransition(CommandStatus stage, CommandEnvelope command, string causationId, long startTicks)
     {
         double durationMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-        logger.LogInformation(
-            "Actor {ActorId} stage transition: Stage={Stage}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, DurationMs={DurationMs}",
-            Host.Id,
-            stage,
-            command.CorrelationId,
-            command.TenantId,
-            command.Domain,
-            command.AggregateId,
-            command.CommandType,
-            durationMs);
+        string stageStr = stage.ToString();
+
+        if (stage == CommandStatus.Rejected)
+        {
+            // Domain rejection or infrastructure failure terminal: Warning level
+            Log.StageTransitionWarning(logger, Host.Id.GetId(), stageStr, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, durationMs);
+        }
+        else
+        {
+            // Normal flow stages: Information level
+            Log.StageTransition(logger, Host.Id.GetId(), stageStr, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, durationMs);
+        }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 2000,
+            Level = LogLevel.Debug,
+            Message = "Actor activated: ActorId={ActorId}, CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, Stage=ActorActivated")]
+        public static partial void ActorActivated(
+            ILogger logger,
+            string actorId,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType);
+
+        [LoggerMessage(
+            EventId = 2001,
+            Level = LogLevel.Information,
+            Message = "Stage transition: ActorId={ActorId}, Stage={Stage}, CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, DurationMs={DurationMs}")]
+        public static partial void StageTransition(
+            ILogger logger,
+            string actorId,
+            string stage,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            double durationMs);
+
+        [LoggerMessage(
+            EventId = 2002,
+            Level = LogLevel.Warning,
+            Message = "Stage transition (rejection): ActorId={ActorId}, Stage={Stage}, CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, DurationMs={DurationMs}")]
+        public static partial void StageTransitionWarning(
+            ILogger logger,
+            string actorId,
+            string stage,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            double durationMs);
+
+        [LoggerMessage(
+            EventId = 2003,
+            Level = LogLevel.Error,
+            Message = "Infrastructure failure: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, ErrorMessage={ErrorMessage}, Stage=InfrastructureFailure")]
+        public static partial void InfrastructureFailure(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            string failureStage,
+            string exceptionType,
+            string errorMessage);
     }
 }

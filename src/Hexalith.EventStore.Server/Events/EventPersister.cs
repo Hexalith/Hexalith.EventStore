@@ -21,7 +21,7 @@ using Microsoft.Extensions.Logging;
 /// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
 /// filtering. DAPR query API does not enforce actor state scoping. See FR28.
 /// </summary>
-public class EventPersister(
+public partial class EventPersister(
     IActorStateManager stateManager,
     ILogger<EventPersister> logger) : IEventPersister
 {
@@ -81,11 +81,7 @@ public class EventPersister(
 
             string key = $"{identity.EventStreamKeyPrefix}{sequenceNumber}";
 
-            logger.LogDebug(
-                "Persisting event: Key={Key}, Type={EventTypeName}, Seq={Seq}",
-                key,
-                eventTypeName,
-                sequenceNumber);
+            Log.PersistingEvent(logger, key, eventTypeName, sequenceNumber);
 
             await stateManager
                 .SetStateAsync(key, envelope)
@@ -98,14 +94,34 @@ public class EventPersister(
             .SetStateAsync(identity.MetadataKey, new AggregateMetadata(newSequence, timestamp, null))
             .ConfigureAwait(false);
 
-        logger.LogInformation(
-            "Events persisted: Count={EventCount}, Sequences={FirstSeq}-{LastSeq}, AggregateId={ActorId}, CorrelationId={CorrelationId}",
-            domainResult.Events.Count,
-            firstSeq,
-            newSequence,
-            identity.ActorId,
-            command.CorrelationId);
+        Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);
 
         return new EventPersistResult(newSequence, envelopes);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 3000,
+            Level = LogLevel.Debug,
+            Message = "Persisting event: Key={Key}, Type={EventTypeName}, Seq={Seq}")]
+        public static partial void PersistingEvent(
+            ILogger logger,
+            string key,
+            string eventTypeName,
+            long seq);
+
+        [LoggerMessage(
+            EventId = 3001,
+            Level = LogLevel.Information,
+            Message = "Events persisted: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, AggregateId={AggregateId}, EventCount={EventCount}, NewSequence={NewSequence}, Stage=EventsPersisted")]
+        public static partial void EventsPersisted(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string aggregateId,
+            int eventCount,
+            long newSequence);
     }
 }

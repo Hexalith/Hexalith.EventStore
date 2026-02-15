@@ -52,6 +52,13 @@ public static class Extensions
             logging.IncludeScopes = true;
         });
 
+        // Structured JSON console logging (AC #5): ensures log output is machine-parseable
+        // and structured fields from [LoggerMessage] methods appear as named JSON properties.
+        builder.Logging.AddJsonConsole(options =>
+        {
+            options.UseUtcTimestamp = true;
+        });
+
         builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
@@ -63,6 +70,7 @@ public static class Extensions
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddSource("Hexalith.EventStore.CommandApi")
+                    .AddSource("Hexalith.EventStore")
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
                         tracing.Filter = context =>

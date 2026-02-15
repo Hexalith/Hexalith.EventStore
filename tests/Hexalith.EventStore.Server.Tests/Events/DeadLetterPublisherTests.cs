@@ -178,6 +178,7 @@ public class DeadLetterPublisherTests
 
         var options = Options.Create(new EventPublisherOptions());
         var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -262,6 +263,7 @@ public class DeadLetterPublisherTests
         var daprClient = Substitute.For<DaprClient>();
         var options = Options.Create(new EventPublisherOptions());
         var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -276,7 +278,7 @@ public class DeadLetterPublisherTests
             LogLevel.Warning,
             Arg.Any<EventId>(),
             Arg.Is<object>(state => !state.ToString()!.Contains("[1, 2, 3]") && !state.ToString()!.Contains("Payload")),
-            Arg.Any<Exception>(),
+            Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
 
