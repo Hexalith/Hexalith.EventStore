@@ -42,6 +42,11 @@ public class AuthorizationBehavior<TRequest, TResponse>(
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? "unknown";
 
+        List<string> tenantClaims = user.FindAll("eventstore:tenant")
+            .Select(c => c.Value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .ToList();
+
         // Domain authorization: only enforce if user has domain claims
         List<string> domainClaims = user.FindAll("eventstore:domain")
             .Select(c => c.Value)
@@ -52,7 +57,7 @@ public class AuthorizationBehavior<TRequest, TResponse>(
 
         if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, command.Domain, StringComparison.OrdinalIgnoreCase)))
         {
-            LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, $"Not authorized for domain '{command.Domain}'.", sourceIp);
+            LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, tenantClaims, $"Not authorized for domain '{command.Domain}'.", sourceIp);
             throw new CommandAuthorizationException(
                 command.Tenant,
                 command.Domain,
@@ -72,7 +77,7 @@ public class AuthorizationBehavior<TRequest, TResponse>(
             bool hasSpecific = permissionClaims.Any(p => string.Equals(p, command.CommandType, StringComparison.OrdinalIgnoreCase));
             if (!hasWildcard && !hasSpecific)
             {
-                LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
+                LogAuthorizationFailure(correlationId, command.Tenant, command.Domain, command.CommandType, tenantClaims, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
                 throw new CommandAuthorizationException(
                     command.Tenant,
                     command.Domain,
@@ -91,15 +96,22 @@ public class AuthorizationBehavior<TRequest, TResponse>(
         return await next().ConfigureAwait(false);
     }
 
-    private void LogAuthorizationFailure(string correlationId, string tenant, string domain, string commandType, string reason, string? sourceIp)
+    private void LogAuthorizationFailure(string correlationId, string tenant, string domain, string commandType, IReadOnlyCollection<string> tenantClaims, string reason, string? sourceIp)
     {
+        string tenantClaimsCsv = tenantClaims.Count == 0
+            ? "none"
+            : string.Join(",", tenantClaims);
+
         logger.LogWarning(
-            "Authorization failed: CorrelationId={CorrelationId}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIP={SourceIP}",
+            "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, TenantClaims={TenantClaims}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}, FailureLayer={FailureLayer}",
+            "AuthorizationDenied",
             correlationId,
+            tenantClaimsCsv,
             tenant,
             domain,
             commandType,
             reason,
-            sourceIp);
+            sourceIp,
+            "MediatR.AuthorizationBehavior");
     }
 }

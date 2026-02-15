@@ -26,4 +26,17 @@ public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDic
     public IReadOnlyDictionary<string, string> Extensions { get; } = Extensions is not null
         ? new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(Extensions))
         : EmptyExtensions;
+
+    /// <summary>
+    /// Returns a string representation with Payload redacted (SEC-5, Rule #5).
+    /// Framework-level enforcement: even if a developer logs the entire EventEnvelope,
+    /// the payload is never exposed.
+    /// </summary>
+    public override string ToString()
+    {
+        string extensionKeys = Extensions.Count > 0
+            ? string.Join(", ", Extensions.Keys)
+            : "none";
+        return $"EventEnvelope {{ AggregateId = {Metadata.AggregateId}, TenantId = {Metadata.TenantId}, Domain = {Metadata.Domain}, SequenceNumber = {Metadata.SequenceNumber}, Timestamp = {Metadata.Timestamp}, CorrelationId = {Metadata.CorrelationId}, CausationId = {Metadata.CausationId}, UserId = {Metadata.UserId}, DomainServiceVersion = {Metadata.DomainServiceVersion}, EventTypeName = {Metadata.EventTypeName}, SerializationFormat = {Metadata.SerializationFormat}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
+    }
 }

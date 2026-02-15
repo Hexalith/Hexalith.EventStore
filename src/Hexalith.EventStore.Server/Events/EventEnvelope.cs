@@ -36,4 +36,17 @@ public record EventEnvelope(
 {
     /// <summary>Gets the aggregate identity derived from this event's tenant, domain, and aggregate ID.</summary>
     public AggregateIdentity Identity => new(TenantId, Domain, AggregateId);
+
+    /// <summary>
+    /// Returns a string representation with Payload redacted (SEC-5, Rule #5).
+    /// Framework-level enforcement: even if a developer logs the entire EventEnvelope,
+    /// the payload is never exposed.
+    /// </summary>
+    public override string ToString()
+    {
+        string extensionKeys = Extensions is not null
+            ? string.Join(", ", Extensions.Keys)
+            : "none";
+        return $"EventEnvelope {{ AggregateId = {AggregateId}, TenantId = {TenantId}, Domain = {Domain}, SequenceNumber = {SequenceNumber}, Timestamp = {Timestamp}, CorrelationId = {CorrelationId}, CausationId = {CausationId}, UserId = {UserId}, DomainServiceVersion = {DomainServiceVersion}, EventTypeName = {EventTypeName}, SerializationFormat = {SerializationFormat}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
+    }
 }

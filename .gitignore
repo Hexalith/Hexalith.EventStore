@@ -427,3 +427,6 @@ NUL
 # Test debug output
 test_debug_output.txt
 test_output.txt
+
+# Added by ggshield
+.cache_ggshield
