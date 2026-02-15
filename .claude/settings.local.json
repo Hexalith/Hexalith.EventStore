@@ -109,7 +109,12 @@
       "Bash(gh pr checks:*)",
       "Bash(for branch in chore/update-claude-local-settings feature/sprint-2-stories-2.6-through-2.9 feature/stories-2.4-2.5-jwt-auth-and-authorization feature/stories-4.4-5.4-resilience-security feature/story-3.10-snapshot-rehydration feature/story-3.11-actor-state-machine feature/story-3.6-multi-domain-multi-tenant-processing feature/story-4.1-event-publisher-cloudevents story/1-1-solution-structure-and-build-infrastructure)",
       "Bash(do)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "mcp__claude_ai_Microsoft_Learn__microsoft_docs_search",
+      "mcp__claude_ai_Microsoft_Learn__microsoft_code_sample_search",
+      "mcp__claude_ai_Microsoft_Learn__microsoft_docs_fetch",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

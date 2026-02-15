@@ -1,5 +1,3 @@
-namespace Hexalith.EventStore.Server.DomainServices;
-
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -11,6 +9,8 @@ using Hexalith.EventStore.Contracts.Results;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+namespace Hexalith.EventStore.Server.DomainServices;
 
 /// <summary>
 /// DAPR-based domain service invoker. Uses DaprClient.InvokeMethodAsync for service invocation (D7).
@@ -51,13 +51,7 @@ public partial class DaprDomainServiceInvoker(
             throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
         }
 
-        logger.LogDebug(
-            "Invoking domain service: AppId={AppId}, Method={MethodName}, Tenant={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
-            registration.AppId,
-            registration.MethodName,
-            command.TenantId,
-            command.Domain,
-            command.CorrelationId);
+        Log.InvokingDomainService(logger, registration.AppId, registration.MethodName, command.TenantId, command.Domain, command.CorrelationId);
 
         // Invoke via DAPR service invocation (D7)
         // DAPR resiliency policies handle retries, circuit breaker, timeout (rule #4)
@@ -77,27 +71,76 @@ public partial class DaprDomainServiceInvoker(
         // Log no-op results as warning for telemetry (silent failure detection)
         if (result.IsNoOp)
         {
-            logger.LogWarning(
-                "Domain service returned no-op (empty events): AppId={AppId}, Tenant={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
-                registration.AppId,
-                command.TenantId,
-                command.Domain,
-                command.CorrelationId);
+            Log.DomainServiceNoOp(logger, registration.AppId, command.TenantId, command.Domain, command.CorrelationId);
         }
 
         string causationId = command.CausationId ?? command.CorrelationId;
-        logger.LogInformation(
-            "Domain service completed: AppId={AppId}, ResultType={ResultType}, EventCount={EventCount}, TenantId={TenantId}, Domain={Domain}, DomainServiceVersion={DomainServiceVersion}, CorrelationId={CorrelationId}, CausationId={CausationId}, Stage=DomainServiceInvoked",
-            registration.AppId,
-            result.IsSuccess ? "Success" : result.IsRejection ? "Rejection" : "NoOp",
-            result.Events.Count,
-            command.TenantId,
-            command.Domain,
-            version,
-            command.CorrelationId,
+        string resultType = result.IsSuccess ? "Success" : result.IsRejection ? "Rejection" : "NoOp";
+        
+        Log.DomainServiceCompleted(
+            logger, 
+            registration.AppId, 
+            resultType, 
+            result.Events.Count, 
+            command.TenantId, 
+            command.Domain, 
+            version, 
+            command.CorrelationId, 
             causationId);
 
         return result;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 3000,
+            Level = LogLevel.Debug,
+            Message = "Invoking domain service: AppId={AppId}, Method={MethodName}, Tenant={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}")]
+        public static partial void InvokingDomainService(
+            ILogger logger,
+            string appId,
+            string methodName,
+            string tenantId,
+            string domain,
+            string correlationId);
+
+        [LoggerMessage(
+            EventId = 3001,
+            Level = LogLevel.Warning,
+            Message = "Domain service returned no-op (empty events): AppId={AppId}, Tenant={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}")]
+        public static partial void DomainServiceNoOp(
+            ILogger logger,
+            string appId,
+            string tenantId,
+            string domain,
+            string correlationId);
+
+        [LoggerMessage(
+            EventId = 3002,
+            Level = LogLevel.Information,
+            Message = "Domain service completed: AppId={AppId}, ResultType={ResultType}, EventCount={EventCount}, TenantId={TenantId}, Domain={Domain}, DomainServiceVersion={DomainServiceVersion}, CorrelationId={CorrelationId}, CausationId={CausationId}, Stage=DomainServiceInvoked")]
+        public static partial void DomainServiceCompleted(
+            ILogger logger,
+            string appId,
+            string resultType,
+            int eventCount,
+            string tenantId,
+            string domain,
+            string domainServiceVersion,
+            string correlationId,
+            string causationId);
+        
+        [LoggerMessage(
+            EventId = 3003,
+            Level = LogLevel.Information,
+            Message = "Domain service version not specified in command extensions, defaulting to {Version}: Tenant={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}")]
+        public static partial void DefaultVersionUsed(
+            ILogger logger,
+            string version,
+            string tenantId,
+            string domain,
+            string correlationId);
     }
 
     /// <summary>
@@ -116,12 +159,7 @@ public partial class DaprDomainServiceInvoker(
             !command.Extensions.TryGetValue(DomainServiceVersionExtensionKey, out string? versionValue) ||
             string.IsNullOrWhiteSpace(versionValue))
         {
-            log.LogInformation(
-                "Domain service version not specified in command extensions, defaulting to {Version}: Tenant={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
-                DefaultVersion,
-                command.TenantId,
-                command.Domain,
-                command.CorrelationId);
+            Log.DefaultVersionUsed(log, DefaultVersion, command.TenantId, command.Domain, command.CorrelationId);
             return DefaultVersion;
         }
 

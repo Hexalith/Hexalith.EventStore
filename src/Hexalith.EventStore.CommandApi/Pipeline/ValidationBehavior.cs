@@ -1,5 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Pipeline;
-
 using FluentValidation;
 
 using Hexalith.EventStore.CommandApi.Middleware;
@@ -10,6 +8,8 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+
+namespace Hexalith.EventStore.CommandApi.Pipeline;
 
 /// <summary>
 /// MediatR pipeline behavior that validates requests using FluentValidation.
@@ -35,9 +35,16 @@ public partial class ValidationBehavior<TRequest, TResponse>(
         string commandType = typeof(TRequest).Name;
         string causationId = correlationId;
 
+        string? tenant = null;
+        string? domain = null;
+        string? aggregateId = null;
+
         if (request is SubmitCommand submitCommand)
         {
             commandType = submitCommand.CommandType;
+            tenant = submitCommand.Tenant;
+            domain = submitCommand.Domain;
+            aggregateId = submitCommand.AggregateId;
         }
 
         var context = new ValidationContext<TRequest>(request);
@@ -53,11 +60,11 @@ public partial class ValidationBehavior<TRequest, TResponse>(
         if (failures.Count != 0)
         {
             // SEC-5: Only log error count, NEVER log validation error details (may contain payload data)
-            Log.ValidationFailed(logger, correlationId, causationId, commandType, failures.Count);
+            Log.ValidationFailed(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, failures.Count);
             throw new ValidationException(failures);
         }
 
-        Log.ValidationPassed(logger, correlationId, causationId, commandType);
+        Log.ValidationPassed(logger, correlationId, causationId, commandType, tenant, domain, aggregateId);
         return await next().ConfigureAwait(false);
     }
 
@@ -77,22 +84,28 @@ public partial class ValidationBehavior<TRequest, TResponse>(
         [LoggerMessage(
             EventId = 1010,
             Level = LogLevel.Debug,
-            Message = "Command validation passed: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Stage=ValidationPassed")]
+            Message = "Command validation passed: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, Stage=ValidationPassed")]
         public static partial void ValidationPassed(
             ILogger logger,
             string correlationId,
             string causationId,
-            string commandType);
+            string commandType,
+            string? tenant,
+            string? domain,
+            string? aggregateId);
 
         [LoggerMessage(
             EventId = 1011,
             Level = LogLevel.Warning,
-            Message = "Command validation failed: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, ValidationErrorCount={ValidationErrorCount}, Stage=ValidationFailed")]
+            Message = "Command validation failed: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, ValidationErrorCount={ValidationErrorCount}, Stage=ValidationFailed")]
         public static partial void ValidationFailed(
             ILogger logger,
             string correlationId,
             string causationId,
             string commandType,
+            string? tenant,
+            string? domain,
+            string? aggregateId,
             int validationErrorCount);
     }
 }
