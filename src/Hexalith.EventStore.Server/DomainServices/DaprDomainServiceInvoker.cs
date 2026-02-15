@@ -85,13 +85,17 @@ public partial class DaprDomainServiceInvoker(
                 command.CorrelationId);
         }
 
+        string causationId = command.CausationId ?? command.CorrelationId;
         logger.LogInformation(
-            "Domain service completed: AppId={AppId}, ResultType={ResultType}, EventCount={EventCount}, Tenant={TenantId}, CorrelationId={CorrelationId}",
+            "Domain service completed: AppId={AppId}, ResultType={ResultType}, EventCount={EventCount}, TenantId={TenantId}, Domain={Domain}, DomainServiceVersion={DomainServiceVersion}, CorrelationId={CorrelationId}, CausationId={CausationId}, Stage=DomainServiceInvoked",
             registration.AppId,
             result.IsSuccess ? "Success" : result.IsRejection ? "Rejection" : "NoOp",
             result.Events.Count,
             command.TenantId,
-            command.CorrelationId);
+            command.Domain,
+            version,
+            command.CorrelationId,
+            causationId);
 
         return result;
     }

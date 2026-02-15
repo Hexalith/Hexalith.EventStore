@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Telemetry;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Telemetry;
 
 using MediatR;
 
@@ -15,7 +16,7 @@ using Microsoft.Extensions.Logging;
 /// Outermost MediatR pipeline behavior that logs structured entry/exit with correlation ID,
 /// command metadata, and duration. Also creates OpenTelemetry activities for tracing.
 /// </summary>
-public class LoggingBehavior<TRequest, TResponse>(
+public partial class LoggingBehavior<TRequest, TResponse>(
     ILogger<LoggingBehavior<TRequest, TResponse>> logger,
     IHttpContextAccessor httpContextAccessor)
     : IPipelineBehavior<TRequest, TResponse>
@@ -31,6 +32,8 @@ public class LoggingBehavior<TRequest, TResponse>(
         string? tenant = null;
         string? domain = null;
         string? aggregateId = null;
+        string causationId = correlationId; // For original submissions, CausationId = CorrelationId
+        string? sourceIp = httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
         if (request is SubmitCommand submitCommand)
         {
@@ -40,22 +43,18 @@ public class LoggingBehavior<TRequest, TResponse>(
             commandType = submitCommand.CommandType;
         }
 
-        using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity("EventStore.CommandApi.Submit");
+        using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
+            EventStoreActivitySources.Submit,
+            ActivityKind.Server);
         if (activity is not null)
         {
-            activity.SetTag("eventstore.correlation_id", correlationId);
-            activity.SetTag("eventstore.tenant", tenant);
-            activity.SetTag("eventstore.domain", domain);
-            activity.SetTag("eventstore.command_type", commandType);
+            activity.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+            activity.SetTag(EventStoreActivitySource.TagTenantId, tenant);
+            activity.SetTag(EventStoreActivitySource.TagDomain, domain);
+            activity.SetTag(EventStoreActivitySource.TagCommandType, commandType);
         }
 
-        logger.LogInformation(
-            "MediatR pipeline entry: CorrelationId={CorrelationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}",
-            correlationId,
-            commandType,
-            tenant,
-            domain,
-            aggregateId);
+        Log.PipelineEntry(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, sourceIp);
 
         long startTimestamp = Stopwatch.GetTimestamp();
 
@@ -65,14 +64,9 @@ public class LoggingBehavior<TRequest, TResponse>(
 
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
-            logger.LogInformation(
-                "MediatR pipeline exit: CorrelationId={CorrelationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, DurationMs={DurationMs}",
-                correlationId,
-                commandType,
-                tenant,
-                domain,
-                aggregateId,
-                elapsed.TotalMilliseconds);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
+            Log.PipelineExit(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, elapsed.TotalMilliseconds);
 
             return response;
         }
@@ -80,19 +74,10 @@ public class LoggingBehavior<TRequest, TResponse>(
         {
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
+            activity?.AddException(ex);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
-            logger.LogError(
-                ex,
-                "MediatR pipeline error: CorrelationId={CorrelationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Message={ExceptionMessage}, DurationMs={DurationMs}",
-                correlationId,
-                commandType,
-                tenant,
-                domain,
-                aggregateId,
-                ex.GetType().Name,
-                ex.Message,
-                elapsed.TotalMilliseconds);
+            Log.PipelineError(logger, ex, correlationId, causationId, commandType, tenant, domain, aggregateId, ex.GetType().Name, ex.Message, elapsed.TotalMilliseconds);
 
             throw;
         }
@@ -107,5 +92,53 @@ public class LoggingBehavior<TRequest, TResponse>(
         }
 
         return Guid.NewGuid().ToString();
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 1000,
+            Level = LogLevel.Information,
+            Message = "MediatR pipeline entry: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, SourceIp={SourceIp}, Stage=PipelineEntry")]
+        public static partial void PipelineEntry(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string commandType,
+            string? tenant,
+            string? domain,
+            string? aggregateId,
+            string? sourceIp);
+
+        [LoggerMessage(
+            EventId = 1001,
+            Level = LogLevel.Information,
+            Message = "MediatR pipeline exit: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, DurationMs={DurationMs}, Stage=PipelineExit")]
+        public static partial void PipelineExit(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string commandType,
+            string? tenant,
+            string? domain,
+            string? aggregateId,
+            double durationMs);
+
+        [LoggerMessage(
+            EventId = 1002,
+            Level = LogLevel.Error,
+            Message = "MediatR pipeline error: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Message={ExceptionMessage}, DurationMs={DurationMs}, Stage=PipelineError")]
+        public static partial void PipelineError(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string causationId,
+            string commandType,
+            string? tenant,
+            string? domain,
+            string? aggregateId,
+            string exceptionType,
+            string exceptionMessage,
+            double durationMs);
     }
 }

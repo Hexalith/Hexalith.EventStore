@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-14
+generated: 2026-02-15
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -97,10 +97,10 @@ development_status:
 
   # Epic 6: Observability, Health & Operational Readiness
   epic-6: in-progress
-  6-1-end-to-end-opentelemetry-trace-instrumentation: ready-for-dev
-  6-2-structured-logging-completeness-verification: ready-for-dev
-  6-3-dead-letter-to-origin-tracing: ready-for-dev
-  6-4-health-check-endpoints: backlog
+  6-1-end-to-end-opentelemetry-trace-instrumentation: done
+  6-2-structured-logging-completeness-verification: review
+  6-3-dead-letter-to-origin-tracing: review
+  6-4-health-check-endpoints: ready-for-dev
   6-5-readiness-check-endpoints: backlog
   epic-6-retrospective: optional
 

@@ -68,6 +68,9 @@ public class EventStoreActivitySourceTests
     [InlineData(EventStoreActivitySource.StateRehydration, "EventStore.Actor.")]
     [InlineData(EventStoreActivitySource.DomainServiceInvoke, "EventStore.DomainService.")]
     [InlineData(EventStoreActivitySource.EventsPersist, "EventStore.Events.")]
+    [InlineData(EventStoreActivitySource.EventsPublish, "EventStore.Events.")]
+    [InlineData(EventStoreActivitySource.EventsDrain, "EventStore.Events.")]
+    [InlineData(EventStoreActivitySource.EventsPublishDeadLetter, "EventStore.Events.")]
     [InlineData(EventStoreActivitySource.StateMachineTransition, "EventStore.Actor.")]
     public void Activities_FollowNamingConvention(string activityName, string expectedPrefix)
     {

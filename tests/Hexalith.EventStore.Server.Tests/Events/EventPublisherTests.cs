@@ -46,6 +46,7 @@ public class EventPublisherTests
         var daprClient = Substitute.For<DaprClient>();
         var options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
         var logger = Substitute.For<ILogger<EventPublisher>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var publisher = new EventPublisher(daprClient, options, logger);
         return (publisher, daprClient, logger);
     }

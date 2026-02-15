@@ -84,7 +84,7 @@ public class ConfigureJwtBearerOptions(
                 // Log at Warning level with SecurityEvent field (AC #7, NFR11)
                 // NEVER log the JWT token itself
                 _logger.LogWarning(
-                    "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
+                    "Authentication failed: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
                     "AuthenticationFailed",
                     correlationId,
                     sourceIp,
@@ -115,7 +115,7 @@ public class ConfigureJwtBearerOptions(
                 // Log failed auth at Warning level with SecurityEvent field (AC #7, NFR11)
                 // NEVER log the JWT token itself
                 _logger.LogWarning(
-                    "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
+                    "Authentication challenge: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
                     "AuthenticationFailed",
                     correlationId,
                     sourceIp,

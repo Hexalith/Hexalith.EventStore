@@ -93,6 +93,7 @@ public class SubmitCommandHandlerStatusTests
 
         var archiveStore = new InMemoryCommandArchiveStore();
         var logger = Substitute.For<ILogger<SubmitCommandHandler>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), logger);
         SubmitCommand command = CreateTestCommand();
 

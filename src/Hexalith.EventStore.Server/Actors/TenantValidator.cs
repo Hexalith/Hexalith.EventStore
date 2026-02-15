@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 /// Validates that a command's tenant matches the actor's tenant identity.
 /// SEC-2: Defense-in-depth tenant isolation at actor level.
 /// </summary>
-public class TenantValidator(ILogger<TenantValidator> logger) : ITenantValidator
+public partial class TenantValidator(ILogger<TenantValidator> logger) : ITenantValidator
 {
     /// <inheritdoc/>
     public void Validate(string commandTenantId, string actorId)
@@ -28,17 +28,32 @@ public class TenantValidator(ILogger<TenantValidator> logger) : ITenantValidator
 
         if (!string.Equals(commandTenantId, actorTenant, StringComparison.Ordinal))
         {
-            logger.LogWarning(
-                "Tenant mismatch: CommandTenant={CommandTenant}, ActorTenant={ActorTenant}, ActorId={ActorId}",
-                commandTenantId,
-                actorTenant,
-                actorId);
+            Log.TenantMismatch(logger, commandTenantId, actorTenant, actorId);
             throw new TenantMismatchException(commandTenantId, actorTenant);
         }
 
-        logger.LogDebug(
-            "Tenant validation passed: Tenant={TenantId}, ActorId={ActorId}",
-            commandTenantId,
-            actorId);
+        Log.TenantValidationPassed(logger, commandTenantId, actorId);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 5000,
+            Level = LogLevel.Warning,
+            Message = "Tenant mismatch: CommandTenant={CommandTenant}, ActorTenant={ActorTenant}, ActorId={ActorId}, FailureLayer=ActorTenantValidation, Stage=TenantValidationFailed")]
+        public static partial void TenantMismatch(
+            ILogger logger,
+            string commandTenant,
+            string actorTenant,
+            string actorId);
+
+        [LoggerMessage(
+            EventId = 5001,
+            Level = LogLevel.Debug,
+            Message = "Tenant validation passed: TenantId={TenantId}, ActorId={ActorId}, Stage=TenantValidationPassed")]
+        public static partial void TenantValidationPassed(
+            ILogger logger,
+            string tenantId,
+            string actorId);
     }
 }

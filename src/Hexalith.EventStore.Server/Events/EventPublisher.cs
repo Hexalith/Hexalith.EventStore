@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 /// Uses DaprClient.PublishEventAsync which natively wraps data in CloudEvents format.
 /// No custom retry logic -- DAPR resiliency policies handle transient failures (rule #4).
 /// </summary>
-public class EventPublisher(
+public partial class EventPublisher(
     DaprClient daprClient,
     IOptions<EventPublisherOptions> options,
     ILogger<EventPublisher> logger,
@@ -52,8 +52,11 @@ public class EventPublisher(
             return new EventPublishResult(false, 0, $"Invalid topic name: {topic}");
         }
 
+        // Extract CausationId from first event envelope (all events in batch share same CausationId)
+        string causationId = events[0].CausationId ?? correlationId;
+
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
-            EventStoreActivitySource.EventsPublish);
+            EventStoreActivitySource.EventsPublish, ActivityKind.Producer);
         activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
         activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId);
         activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain);
@@ -91,15 +94,7 @@ public class EventPublisher(
 
             // Rule #5: Never log event payload data -- only envelope metadata fields.
             // Rule #9: correlationId in every structured log entry.
-            logger.LogInformation(
-                "Events published: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, EventCount={EventCount}, Topic={Topic}, DurationMs={DurationMs}",
-                correlationId,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                events.Count,
-                topic,
-                durationMs);
+            Log.EventsPublished(logger, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, events.Count, topic, durationMs);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
             return new EventPublishResult(true, publishedCount, null);
@@ -112,19 +107,45 @@ public class EventPublisher(
         {
             // Rule #13: No stack traces in error responses.
             // Rule #5: Never log event payload data.
-            logger.LogError(
-                ex,
-                "Event publication failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Topic={Topic}, PublishedCount={PublishedCount}, TotalCount={TotalCount}",
-                correlationId,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                topic,
-                publishedCount,
-                events.Count);
+            Log.EventPublicationFailed(logger, ex, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, topic, publishedCount, events.Count);
 
+            activity?.AddException(ex);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             return new EventPublishResult(false, publishedCount, ex.Message);
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 3100,
+            Level = LogLevel.Information,
+            Message = "Events published: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, EventCount={EventCount}, Topic={Topic}, DurationMs={DurationMs}, Stage=EventsPublished")]
+        public static partial void EventsPublished(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            int eventCount,
+            string topic,
+            double durationMs);
+
+        [LoggerMessage(
+            EventId = 3101,
+            Level = LogLevel.Error,
+            Message = "Event publication failed: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Topic={Topic}, PublishedCount={PublishedCount}, TotalCount={TotalCount}, Stage=EventPublicationFailed")]
+        public static partial void EventPublicationFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string topic,
+            int publishedCount,
+            int totalCount);
     }
 }

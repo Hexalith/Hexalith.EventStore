@@ -94,6 +94,7 @@ public class SubmitCommandHandlerArchiveTests
             .ThrowsAsync(new InvalidOperationException("Archive store unavailable"));
 
         var logger = Substitute.For<ILogger<SubmitCommandHandler>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var handler = new SubmitCommandHandler(statusStore, mockArchiveStore, CreateMockRouter(), logger);
         SubmitCommand command = CreateTestCommand();
 

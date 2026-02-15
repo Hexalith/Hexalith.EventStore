@@ -173,13 +173,12 @@ public class LoggingBehaviorTests : IDisposable
         // Act
         await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
-        // Assert
-        _capturedActivities.Count.ShouldBeGreaterThanOrEqualTo(1);
-        Activity activity = _capturedActivities.First();
-        activity.OperationName.ShouldBe("EventStore.CommandApi.Submit");
-
-        activity.GetTagItem("eventstore.correlation_id").ShouldBe("test-correlation-id");
-        activity.GetTagItem("eventstore.tenant").ShouldBe("test-tenant");
+        // Assert - filter by operation name AND correlation ID to avoid parallel test interference
+        Activity? activity = _capturedActivities.FirstOrDefault(
+            a => a.OperationName == "EventStore.CommandApi.Submit"
+                && Equals(a.GetTagItem("eventstore.correlation_id"), "test-correlation-id"));
+        activity.ShouldNotBeNull();
+        activity.GetTagItem("eventstore.tenant_id").ShouldBe("test-tenant");
         activity.GetTagItem("eventstore.domain").ShouldBe("test-domain");
         activity.GetTagItem("eventstore.command_type").ShouldBe("CreateOrder");
     }
@@ -194,9 +193,11 @@ public class LoggingBehaviorTests : IDisposable
         await Should.ThrowAsync<InvalidOperationException>(
             () => _behavior.Handle(command, CreateFailingDelegate(), CancellationToken.None));
 
-        // Assert
-        _capturedActivities.Count.ShouldBeGreaterThanOrEqualTo(1);
-        Activity activity = _capturedActivities.First();
+        // Assert - filter by operation name AND correlation ID to avoid parallel test interference
+        Activity? activity = _capturedActivities.FirstOrDefault(
+            a => a.OperationName == "EventStore.CommandApi.Submit"
+                && Equals(a.GetTagItem("eventstore.correlation_id"), "test-correlation-id"));
+        activity.ShouldNotBeNull();
         activity.Status.ShouldBe(ActivityStatusCode.Error);
     }
 

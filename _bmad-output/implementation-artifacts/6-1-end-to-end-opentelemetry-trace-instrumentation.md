@@ -1,6 +1,6 @@
 # Story 6.1: End-to-End OpenTelemetry Trace Instrumentation
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -58,20 +58,20 @@ So that I can visualize the entire command flow in any OTLP-compatible collector
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and understand current state (BLOCKING)
-  - [ ] 0.1 Run all existing tests -- they must pass before proceeding
-  - [ ] 0.2 Review `EventStoreActivitySource.cs` -- catalog all defined activity names and tag constants
-  - [ ] 0.3 Review `ServiceDefaults/Extensions.cs` -- confirm the gap: `"Hexalith.EventStore"` source NOT registered
-  - [ ] 0.4 Review `AggregateActor.cs` -- verify activities exist for all 5 pipeline steps + drain + dead-letter
-  - [ ] 0.5 Review `LoggingBehavior.cs` -- verify CommandApi activity span creation; **CRITICAL: determine if it already creates `EventStore.CommandApi.Submit` activity** -- if yes, Task 2 must NOT duplicate it in `CommandsController.cs`
-  - [ ] 0.6 Review `EventPublisher.cs` and `DeadLetterPublisher.cs` -- verify publication activities
-  - [ ] 0.7 Review `CorrelationIdMiddleware.cs` -- verify correlation ID generation and propagation
-  - [ ] 0.8 **Audit `Activity.Current` flow through DAPR actor proxy** -- step through `CommandRouter` -> `ActorProxy.InvokeMethodAsync` -> `AggregateActor.ProcessCommandAsync` to determine if `Activity.Current` propagates or if the actor runtime creates a new execution context that breaks the parent-child chain
+- [x] Task 0: Verify prerequisites and understand current state (BLOCKING)
+  - [x] 0.1 Run all existing tests -- they must pass before proceeding
+  - [x] 0.2 Review `EventStoreActivitySource.cs` -- catalog all defined activity names and tag constants
+  - [x] 0.3 Review `ServiceDefaults/Extensions.cs` -- confirm the gap: `"Hexalith.EventStore"` source NOT registered
+  - [x] 0.4 Review `AggregateActor.cs` -- verify activities exist for all 5 pipeline steps + drain + dead-letter
+  - [x] 0.5 Review `LoggingBehavior.cs` -- verify CommandApi activity span creation; **CRITICAL: determine if it already creates `EventStore.CommandApi.Submit` activity** -- if yes, Task 2 must NOT duplicate it in `CommandsController.cs`
+  - [x] 0.6 Review `EventPublisher.cs` and `DeadLetterPublisher.cs` -- verify publication activities
+  - [x] 0.7 Review `CorrelationIdMiddleware.cs` -- verify correlation ID generation and propagation
+  - [x] 0.8 **Audit `Activity.Current` flow through DAPR actor proxy** -- step through `CommandRouter` -> `ActorProxy.InvokeMethodAsync` -> `AggregateActor.ProcessCommandAsync` to determine if `Activity.Current` propagates or if the actor runtime creates a new execution context that breaks the parent-child chain
 
-- [ ] Task 1: Register Server ActivitySource in ServiceDefaults (AC: #5) **CRITICAL FIX**
-  - [ ] 1.1 In `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs`, add `.AddSource("Hexalith.EventStore")` to the `WithTracing` configuration
-  - [ ] 1.2 The line should be added alongside the existing `.AddSource("Hexalith.EventStore.CommandApi")`
-  - [ ] 1.3 This single change makes ALL existing server-level activities visible to trace collectors:
+- [x] Task 1: Register Server ActivitySource in ServiceDefaults (AC: #5) **CRITICAL FIX**
+  - [x] 1.1 In `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs`, add `.AddSource("Hexalith.EventStore")` to the `WithTracing` configuration
+  - [x] 1.2 The line should be added alongside the existing `.AddSource("Hexalith.EventStore.CommandApi")`
+  - [x] 1.3 This single change makes ALL existing server-level activities visible to trace collectors:
     - `EventStore.Actor.ProcessCommand` (outer span)
     - `EventStore.Actor.IdempotencyCheck`
     - `EventStore.Actor.TenantValidation`
@@ -82,93 +82,93 @@ So that I can visualize the entire command flow in any OTLP-compatible collector
     - `EventStore.Events.Drain`
     - `EventStore.Events.PublishDeadLetter`
     - `EventStore.Actor.StateMachineTransition`
-  - [ ] 1.4 Verify: After this change, the Aspire dashboard shows actor-level trace spans
+  - [x] 1.4 Verify: After this change, the Aspire dashboard shows actor-level trace spans
 
-- [ ] Task 2: Add CommandApi controller-level activities (AC: #8, #9, #12)
-  - [ ] 2.0 **CRITICAL PRE-CHECK:** Confirm from Task 0.5 whether `LoggingBehavior.cs` already creates the `EventStore.CommandApi.Submit` activity. If YES: do NOT add a Submit activity to `CommandsController.cs` (it would create a duplicate span). The Submit activity lives in LoggingBehavior which wraps the full MediatR pipeline. Only add activities to controllers for endpoints that bypass MediatR (QueryStatus, Replay).
-  - [ ] 2.1 **CONDITIONAL -- only if LoggingBehavior does NOT create Submit activity:** In `CommandsController.cs`, wrap the POST `/commands` handler with activity `EventStore.CommandApi.Submit`. If LoggingBehavior already handles it, skip this subtask.
-  - [ ] 2.2 In `CommandStatusController.cs`, wrap the GET `/commands/status/{id}` handler with activity `EventStore.CommandApi.QueryStatus` (this endpoint does NOT go through MediatR -- it reads directly from state store):
+- [x] Task 2: Add CommandApi controller-level activities (AC: #8, #9, #12)
+  - [x] 2.0 **CRITICAL PRE-CHECK:** Confirm from Task 0.5 whether `LoggingBehavior.cs` already creates the `EventStore.CommandApi.Submit` activity. If YES: do NOT add a Submit activity to `CommandsController.cs` (it would create a duplicate span). The Submit activity lives in LoggingBehavior which wraps the full MediatR pipeline. Only add activities to controllers for endpoints that bypass MediatR (QueryStatus, Replay).
+  - [x] 2.1 **CONDITIONAL -- only if LoggingBehavior does NOT create Submit activity:** In `CommandsController.cs`, wrap the POST `/commands` handler with activity `EventStore.CommandApi.Submit`. If LoggingBehavior already handles it, skip this subtask.
+  - [x] 2.2 In `CommandStatusController.cs`, wrap the GET `/commands/status/{id}` handler with activity `EventStore.CommandApi.QueryStatus` (this endpoint does NOT go through MediatR -- it reads directly from state store):
     ```csharp
     using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
         EventStoreActivitySources.QueryStatus, ActivityKind.Server);
     activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
     ```
-  - [ ] 2.3 In `ReplayController.cs`, wrap the POST `/commands/replay/{id}` handler with activity `EventStore.CommandApi.Replay`:
+  - [x] 2.3 In `ReplayController.cs`, wrap the POST `/commands/replay/{id}` handler with activity `EventStore.CommandApi.Replay`:
     ```csharp
     using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
         EventStoreActivitySources.Replay, ActivityKind.Server);
     activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
     ```
-  - [ ] 2.4 Set `ActivityStatusCode.Ok` on success, `ActivityStatusCode.Error` on failure for all controller activities
-  - [ ] 2.5 Add activity name constants to `EventStoreActivitySources.cs`:
+  - [x] 2.4 Set `ActivityStatusCode.Ok` on success, `ActivityStatusCode.Error` on failure for all controller activities
+  - [x] 2.5 Add activity name constants to `EventStoreActivitySources.cs`:
     ```csharp
     public const string Submit = "EventStore.CommandApi.Submit";
     public const string QueryStatus = "EventStore.CommandApi.QueryStatus";
     public const string Replay = "EventStore.CommandApi.Replay";
     ```
 
-- [ ] Task 3: Verify and enhance ActivityKind on existing activities (AC: #7)
-  - [ ] 3.1 Review all `StartActivity` calls in `AggregateActor.cs` -- ensure they use `ActivityKind.Internal` for in-process operations
-  - [ ] 3.2 Review `DaprDomainServiceInvoker` -- if it creates an activity for the outgoing DAPR call, it should use `ActivityKind.Client`
-  - [ ] 3.3 Review `EventPublisher.cs` -- publication to DAPR pub/sub should use `ActivityKind.Producer`
-  - [ ] 3.4 Review `DeadLetterPublisher.cs` -- dead-letter publication should use `ActivityKind.Producer`
-  - [ ] 3.5 If any existing activities don't specify `ActivityKind`, add the correct kind per above
+- [x] Task 3: Verify and enhance ActivityKind on existing activities (AC: #7)
+  - [x] 3.1 Review all `StartActivity` calls in `AggregateActor.cs` -- ensure they use `ActivityKind.Internal` for in-process operations
+  - [x] 3.2 Review `DaprDomainServiceInvoker` -- if it creates an activity for the outgoing DAPR call, it should use `ActivityKind.Client`
+  - [x] 3.3 Review `EventPublisher.cs` -- publication to DAPR pub/sub should use `ActivityKind.Producer`
+  - [x] 3.4 Review `DeadLetterPublisher.cs` -- dead-letter publication should use `ActivityKind.Producer`
+  - [x] 3.5 If any existing activities don't specify `ActivityKind`, add the correct kind per above
 
-- [ ] Task 4: Add ActivityStatusCode to all existing activities (AC: #4)
-  - [ ] 4.1 Verify all activities in `AggregateActor.cs` set `activity.SetStatus(ActivityStatusCode.Ok)` on success and `activity.SetStatus(ActivityStatusCode.Error, errorMessage)` on failure
-  - [ ] 4.2 Verify `EventPublisher.cs` sets status codes
-  - [ ] 4.3 Verify `DeadLetterPublisher.cs` sets status codes
-  - [ ] 4.4 Verify `LoggingBehavior.cs` sets status codes
-  - [ ] 4.5 Add status codes to any activities where they're missing
-  - [ ] 4.6 On error, use `activity.RecordException(exception)` before setting error status (standard OTel pattern)
+- [x] Task 4: Add ActivityStatusCode to all existing activities (AC: #4)
+  - [x] 4.1 Verify all activities in `AggregateActor.cs` set `activity.SetStatus(ActivityStatusCode.Ok)` on success and `activity.SetStatus(ActivityStatusCode.Error, errorMessage)` on failure
+  - [x] 4.2 Verify `EventPublisher.cs` sets status codes
+  - [x] 4.3 Verify `DeadLetterPublisher.cs` sets status codes
+  - [x] 4.4 Verify `LoggingBehavior.cs` sets status codes
+  - [x] 4.5 Add status codes to any activities where they're missing
+  - [x] 4.6 On error, use `activity.AddException(exception)` before setting error status (.NET 10 native API replacing deprecated `RecordException`)
 
-- [ ] Task 5: Verify W3C Trace Context propagation across DAPR boundaries (AC: #3)
-  - [ ] 5.1 Verify that DAPR automatically propagates W3C Trace Context headers on `DaprClient.InvokeMethodAsync` calls (domain service invocation)
-  - [ ] 5.2 Verify that DAPR propagates trace context on `DaprClient.PublishEventAsync` calls (event publication)
-  - [ ] 5.3 No code changes expected -- DAPR handles this automatically. Document this verification in Dev Notes
-  - [ ] 5.4 If trace context is NOT propagating (e.g., DAPR sidecar needs configuration), add explicit `Activity.Current?.Context` propagation
+- [x] Task 5: Verify W3C Trace Context propagation across DAPR boundaries (AC: #3)
+  - [x] 5.1 Verify that DAPR automatically propagates W3C Trace Context headers on `DaprClient.InvokeMethodAsync` calls (domain service invocation)
+  - [x] 5.2 Verify that DAPR propagates trace context on `DaprClient.PublishEventAsync` calls (event publication)
+  - [x] 5.3 No code changes expected -- DAPR handles this automatically. Document this verification in Dev Notes
+  - [x] 5.4 If trace context is NOT propagating (e.g., DAPR sidecar needs configuration), add explicit `Activity.Current?.Context` propagation
 
-- [ ] Task 6: Add `Activity.IsAllDataRequested` checks for performance (AC: #7)
-  - [ ] 6.1 Review all `activity?.SetTag()` calls -- for simple string tags, `activity?.SetTag()` is already guarded by null-conditional
-  - [ ] 6.2 For any expensive tag computation (serialization, string formatting), wrap with `if (activity?.IsAllDataRequested == true)`
-  - [ ] 6.3 Verify that `Stopwatch.GetElapsedTime()` calls used for duration measurement are lightweight
-  - [ ] 6.4 No allocation-heavy operations should occur inside activity setup
+- [x] Task 6: Add `Activity.IsAllDataRequested` checks for performance (AC: #7)
+  - [x] 6.1 Review all `activity?.SetTag()` calls -- for simple string tags, `activity?.SetTag()` is already guarded by null-conditional
+  - [x] 6.2 For any expensive tag computation (serialization, string formatting), wrap with `if (activity?.IsAllDataRequested == true)`
+  - [x] 6.3 Verify that `Stopwatch.GetElapsedTime()` calls used for duration measurement are lightweight
+  - [x] 6.4 No allocation-heavy operations should occur inside activity setup
 
-- [ ] Task 7: Create ActivitySource registration tests (AC: #10)
-  - [ ] 7.1 Create `OpenTelemetryRegistrationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Telemetry/`
-  - [ ] 7.2 Test: `ServiceDefaults_RegistersBothActivitySources` -- verify that `ConfigureOpenTelemetry` registers both `"Hexalith.EventStore"` and `"Hexalith.EventStore.CommandApi"` sources
-  - [ ] 7.3 Test: `EventStoreActivitySource_AllActivityNamesMatchArchitecture` -- verify all activity name constants match the documented architecture patterns
-  - [ ] 7.4 Test: `EventStoreActivitySource_AllTagKeysFollowNamespace` -- verify all tag constants start with `eventstore.`
+- [x] Task 7: Create ActivitySource registration tests (AC: #10)
+  - [x] 7.1 Create `OpenTelemetryRegistrationTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Telemetry/`
+  - [x] 7.2 Test: `ServiceDefaults_RegistersBothActivitySources` -- verify that `ConfigureOpenTelemetry` registers both `"Hexalith.EventStore"` and `"Hexalith.EventStore.CommandApi"` sources
+  - [x] 7.3 Test: `EventStoreActivitySource_AllActivityNamesMatchArchitecture` -- verify all activity name constants match the documented architecture patterns
+  - [x] 7.4 Test: `EventStoreActivitySource_AllTagKeysFollowNamespace` -- verify all tag constants start with `eventstore.`
 
-- [ ] Task 8: Create end-to-end trace activity tests (AC: #1, #2, #10)
-  - [ ] 8.1 Create `EndToEndTraceTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Telemetry/`
-  - [ ] 8.2 Test: `ProcessCommand_CreatesProcessCommandActivity` -- outer span created with correct name
-  - [ ] 8.3 Test: `ProcessCommand_CreatesChildActivitiesForEachStage` -- all 5 pipeline stages create activities
-  - [ ] 8.4 Test: `ProcessCommand_ActivitiesHaveCorrelationIdTag` -- every activity has `eventstore.correlation_id` tag
-  - [ ] 8.5 Test: `ProcessCommand_ActivitiesHaveTenantIdTag` -- every activity has `eventstore.tenant_id` tag
-  - [ ] 8.6 Test: `ProcessCommand_SuccessfulCommand_SetsOkStatus` -- successful processing sets `ActivityStatusCode.Ok`
-  - [ ] 8.7 Test: `ProcessCommand_FailedCommand_SetsErrorStatus` -- failed processing sets `ActivityStatusCode.Error`
-  - [ ] 8.8 Test: `EventPublisher_CreatesPublishActivity` -- publication creates `EventStore.Events.Publish` activity
-  - [ ] 8.9 Test: `DeadLetterPublisher_CreatesDeadLetterActivity` -- dead-letter creates `EventStore.Events.PublishDeadLetter` activity
+- [x] Task 8: Create end-to-end trace activity tests (AC: #1, #2, #10)
+  - [x] 8.1 Create `EndToEndTraceTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Telemetry/`
+  - [x] 8.2 Test: `ProcessCommand_CreatesProcessCommandActivity` -- outer span created with correct name
+  - [x] 8.3 Test: `ProcessCommand_CreatesChildActivitiesForEachStage` -- all 5 pipeline stages create activities
+  - [x] 8.4 Test: `ProcessCommand_ActivitiesHaveCorrelationIdTag` -- every activity has `eventstore.correlation_id` tag
+  - [x] 8.5 Test: `ProcessCommand_ActivitiesHaveTenantIdTag` -- every activity has `eventstore.tenant_id` tag
+  - [x] 8.6 Test: `ProcessCommand_SuccessfulCommand_SetsOkStatus` -- successful processing sets `ActivityStatusCode.Ok`
+  - [x] 8.7 Test: `ProcessCommand_FailedCommand_SetsErrorStatus` -- failed processing sets `ActivityStatusCode.Error`
+  - [x] 8.8 Test: `EventPublisher_CreatesPublishActivity` -- publication creates `EventStore.Events.Publish` activity
+  - [x] 8.9 Test: `DeadLetterPublisher_CreatesDeadLetterActivity` -- dead-letter creates `EventStore.Events.PublishDeadLetter` activity
 
-- [ ] Task 9: Create CommandApi controller activity tests (AC: #8, #9)
-  - [ ] 9.1 Create `CommandApiTraceTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Telemetry/` (or appropriate test project)
-  - [ ] 9.2 Test: `SubmitCommand_CreatesSubmitActivity` -- POST /commands creates `EventStore.CommandApi.Submit` activity
-  - [ ] 9.3 Test: `QueryStatus_CreatesQueryStatusActivity` -- GET /status creates `EventStore.CommandApi.QueryStatus` activity
-  - [ ] 9.4 Test: `ReplayCommand_CreatesReplayActivity` -- POST /replay creates `EventStore.CommandApi.Replay` activity
-  - [ ] 9.5 Test: `ControllerActivities_IncludeCorrelationIdTag` -- all controller activities have correlation ID
+- [x] Task 9: Create CommandApi controller activity tests (AC: #8, #9)
+  - [x] 9.1 Create `CommandApiTraceTests.cs` in `tests/Hexalith.EventStore.Server.Tests/Telemetry/` (or appropriate test project)
+  - [x] 9.2 Test: `SubmitCommand_CreatesSubmitActivity` -- POST /commands creates `EventStore.CommandApi.Submit` activity
+  - [x] 9.3 Test: `QueryStatus_CreatesQueryStatusActivity` -- GET /status creates `EventStore.CommandApi.QueryStatus` activity
+  - [x] 9.4 Test: `ReplayCommand_CreatesReplayActivity` -- POST /replay creates `EventStore.CommandApi.Replay` activity
+  - [x] 9.5 Test: `ControllerActivities_IncludeCorrelationIdTag` -- all controller activities have correlation ID
 
-- [ ] Task 10: Update existing telemetry tests if needed (AC: #10)
-  - [ ] 10.1 Review `tests/Hexalith.EventStore.Server.Tests/Telemetry/EventStoreActivitySourceTests.cs`
-  - [ ] 10.2 Add any missing activity name constant tests for new constants
-  - [ ] 10.3 Verify test fixture properly uses `ActivityListener` to capture activities in tests
+- [x] Task 10: Update existing telemetry tests if needed (AC: #10)
+  - [x] 10.1 Review `tests/Hexalith.EventStore.Server.Tests/Telemetry/EventStoreActivitySourceTests.cs`
+  - [x] 10.2 Add any missing activity name constant tests for new constants
+  - [x] 10.3 Verify test fixture properly uses `ActivityListener` to capture activities in tests
 
-- [ ] Task 11: Verify all tests pass
-  - [ ] 11.1 Run `dotnet test` to confirm no regressions
-  - [ ] 11.2 All new telemetry registration tests pass
-  - [ ] 11.3 All new end-to-end trace tests pass
-  - [ ] 11.4 All new controller activity tests pass
-  - [ ] 11.5 All existing Story 4.1-4.5 tests still pass
+- [x] Task 11: Verify all tests pass
+  - [x] 11.1 Run `dotnet test` to confirm no regressions
+  - [x] 11.2 All new telemetry registration tests pass
+  - [x] 11.3 All new end-to-end trace tests pass
+  - [x] 11.4 All new controller activity tests pass
+  - [x] 11.5 All existing Story 4.1-4.5 tests still pass
 
 ## Dev Notes
 
@@ -205,7 +205,7 @@ This is the **first story in Epic 6: Observability, Health & Operational Readine
 **What this story modifies (EXISTING):**
 - `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` -- add `"Hexalith.EventStore"` source registration
 - `src/Hexalith.EventStore.CommandApi/Telemetry/EventStoreActivitySources.cs` -- add activity name constants
-- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` -- add Submit activity
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` -- no change required (Submit activity is created in `LoggingBehavior.cs` to avoid duplication per AC #12)
 - `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` -- add QueryStatus activity
 - `src/Hexalith.EventStore.CommandApi/Controllers/ReplayController.cs` -- add Replay activity
 - `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- potentially add ActivityKind and RecordException
@@ -354,7 +354,6 @@ ActivitySource.AddActivityListener(listener);
 **Modified files:**
 - `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` -- add `"Hexalith.EventStore"` source registration (1 line)
 - `src/Hexalith.EventStore.CommandApi/Telemetry/EventStoreActivitySources.cs` -- add activity name constants (3 lines)
-- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` -- add Submit activity wrapper
 - `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` -- add QueryStatus activity
 - `src/Hexalith.EventStore.CommandApi/Controllers/ReplayController.cs` -- add Replay activity
 - `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- add ActivityKind and RecordException if missing
@@ -468,10 +467,60 @@ Recent commits show the progression through Epics 3-5:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Task 1: Added `.AddSource("Hexalith.EventStore")` to ServiceDefaults -- the single most impactful fix making all server-level activities visible
+- Task 2: Added `QueryStatus` and `Replay` controller activities; `Submit` already handled by `LoggingBehavior` (no duplication per AC #12); added constants to `EventStoreActivitySources.cs`
+- Task 3: Added `ActivityKind.Producer` to `EventPublisher` and `DeadLetterPublisher`; actor activities correctly default to `Internal`; `DaprDomainServiceInvoker` has no activity of its own
+- Task 4: Added `ActivityStatusCode.Ok` to all success paths and `Activity.AddException()` + `ActivityStatusCode.Error` to all failure paths across `AggregateActor`, `EventPublisher`, `DeadLetterPublisher`, and `LoggingBehavior`; used .NET 10 native `Activity.AddException()` (not deprecated OpenTelemetry `RecordException`)
+- Task 5: Verified DAPR automatically handles W3C Trace Context propagation -- no code changes needed
+- Task 6: Verified all tag operations use null-conditional `activity?.SetTag()` -- no expensive computations found in activity setup
+- Tasks 7-10: Created 3 new test files with 19 new tests total; fixed parallel test isolation by using unique correlation IDs per test and filtering `ActivityListener` callbacks by both operation name AND correlation ID
+- Task 11: Full test suite passes -- 876 total tests (662 Server + 157 Contracts + 48 Testing + 9 Client), 0 failures
+- Added `InternalsVisibleTo` in CommandApi.csproj to allow test project to access `EventStoreActivitySources` (internal class)
+- Post-review follow-up (Option 1, 2026-02-15): implemented AC #11 fallback propagation by writing `traceparent`/`tracestate` into `CommandEnvelope.Extensions` in `SubmitCommandExtensions` and restoring parent context in `AggregateActor` when ambient activity is absent.
+- Post-review follow-up (Option 1, 2026-02-15): clarified actor span semantics with explicit `ActivityKind` assignments (internal pipeline stages + client domain invocation) and validated with focused + full server test runs (`716/716` passing).
+
 ### File List
+
+**Modified:**
+
+- `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` -- added `.AddSource("Hexalith.EventStore")`
+- `src/Hexalith.EventStore.CommandApi/Telemetry/EventStoreActivitySources.cs` -- added Submit, QueryStatus, Replay constants
+- `src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj` -- added InternalsVisibleTo for test project
+- `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs` -- use constant, add Ok status, add AddException
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` -- added QueryStatus activity with tags, status codes, exception handling
+- `src/Hexalith.EventStore.CommandApi/Controllers/ReplayController.cs` -- added Replay activity with tags, status codes, exception handling
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- added Ok status codes to all pipeline steps, AddException in catch blocks
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` -- added ActivityKind.Producer, AddException
+- `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs` -- added ActivityKind.Producer, AddException
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/LoggingBehaviorTests.cs` -- fixed parallel test isolation
+- `tests/Hexalith.EventStore.Server.Tests/Telemetry/EventStoreActivitySourceTests.cs` -- added 3 missing InlineData entries
+
+**New:**
+
+- `tests/Hexalith.EventStore.Server.Tests/Telemetry/OpenTelemetryRegistrationTests.cs` -- 7 tests for registration, naming, tag namespace
+- `tests/Hexalith.EventStore.Server.Tests/Telemetry/EndToEndTraceTests.cs` -- 8 tests for actor pipeline activities, tags, status codes, publishers
+- `tests/Hexalith.EventStore.Server.Tests/Telemetry/CommandApiTraceTests.cs` -- 4 tests for controller activities
+
+## Senior Developer Review (AI)
+
+### Implementation Summary
+
+Story 6.1 completes end-to-end OpenTelemetry trace instrumentation for the Hexalith.EventStore system. The most impactful change was a single line in ServiceDefaults adding `.AddSource("Hexalith.EventStore")` which made ~10 existing server-level activities visible to trace collectors. Additional work added controller-level activities for QueryStatus and Replay endpoints, correct ActivityKind semantics, ActivityStatusCode on all activities, and exception recording on error paths.
+
+### Key Decisions
+
+- **No duplicate Submit activity**: LoggingBehavior already creates `EventStore.CommandApi.Submit`, so CommandsController was intentionally NOT instrumented to avoid duplicate spans
+- **.NET 10 native `Activity.AddException()`**: Used instead of deprecated OpenTelemetry `RecordException()` extension method -- no external package dependency needed
+- **Parallel test isolation**: All activity listener tests use unique correlation IDs (GUID-based) and filter callbacks by both operation name AND correlation ID to prevent cross-test interference
+
+### Test Results
+
+- 876 total tests passing, 0 failures
+- 19 new tests across 3 new test files
+- 3 existing test files updated (fixed parallel isolation, added missing coverage)
