@@ -4,6 +4,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
+builder.Services.AddHealthChecks()
+    .AddEventStoreDaprHealthChecks();
 builder.Services.AddCommandApi();
 builder.Services.AddEventStoreServer(builder.Configuration);
 
