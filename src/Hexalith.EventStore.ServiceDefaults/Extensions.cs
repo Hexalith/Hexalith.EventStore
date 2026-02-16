@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
@@ -115,23 +117,69 @@ public static class Extensions
         return builder;
     }
 
+    /// <summary>
+    /// Writes a detailed JSON health check response for development environments.
+    /// </summary>
+    internal static Task WriteHealthCheckJsonResponse(HttpContext httpContext, HealthReport healthReport)
+    {
+        httpContext.Response.ContentType = "application/json; charset=utf-8";
+
+        using var stream = new MemoryStream();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions { Indented = true }))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("status", healthReport.Status.ToString());
+            writer.WriteStartObject("results");
+
+            foreach (var entry in healthReport.Entries)
+            {
+                writer.WriteStartObject(entry.Key);
+                writer.WriteString("status", entry.Value.Status.ToString());
+                writer.WriteString("description", entry.Value.Description);
+                writer.WriteString("duration", entry.Value.Duration.ToString());
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+
+        return httpContext.Response.WriteAsync(
+            System.Text.Encoding.UTF8.GetString(stream.ToArray()));
+    }
+
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        // Adding health checks endpoints to applications in non-development environments has security implications.
-        // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
+        // Health check status code mapping: Healthy=200, Degraded=200, Unhealthy=503
+        var statusCodes = new Dictionary<HealthStatus, int>
+        {
+            [HealthStatus.Healthy] = StatusCodes.Status200OK,
+            [HealthStatus.Degraded] = StatusCodes.Status200OK,
+            [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
+        };
+
+        // All health checks must pass for app to be considered ready to accept traffic after starting
+        var healthOptions = new HealthCheckOptions
+        {
+            ResultStatusCodes = statusCodes,
+        };
+
+        // Development: detailed JSON response; Production: default minimal plaintext
         if (app.Environment.IsDevelopment())
         {
-            // All health checks must pass for app to be considered ready to accept traffic after starting
-            app.MapHealthChecks(HealthEndpointPath);
-
-            // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
+            healthOptions.ResponseWriter = WriteHealthCheckJsonResponse;
         }
+
+        app.MapHealthChecks(HealthEndpointPath, healthOptions);
+
+        // Only health checks tagged with the "live" tag must pass for app to be considered alive
+        app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("live"),
+            ResultStatusCodes = statusCodes,
+        });
 
         return app;
     }

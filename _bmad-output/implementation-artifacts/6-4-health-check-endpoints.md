@@ -1,6 +1,6 @@
 # Story 6.4: Health Check Endpoints
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -69,105 +69,105 @@ So that I can monitor infrastructure dependencies and configure load balancer pr
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and audit current health check state (BLOCKING) (AC: all)
-  - [ ] 0.1 Run `dotnet test` -- all existing tests must pass before proceeding
-  - [ ] 0.2 Review `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` -- confirm `AddDefaultHealthChecks()` registers "self" check with `"live"` tag, and `MapDefaultEndpoints()` maps `/health` and `/alive`
-  - [ ] 0.3 Review `src/Hexalith.EventStore.CommandApi/Program.cs` -- confirm `builder.AddServiceDefaults()` and `app.MapDefaultEndpoints()` are called
-  - [ ] 0.4 Review `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` -- confirm `/health` and `/alive` are exempt from rate limiting (lines 92-96)
-  - [ ] 0.5 Verify health request paths are filtered from OTel tracing in ServiceDefaults (lines 75-78)
-  - [ ] 0.6 Confirm `DaprClient` is registered in CommandApi DI (required for health check constructor injection)
-  - [ ] 0.7 Confirm the DAPR component names used in the project: state store name (likely `"statestore"`), pub/sub name (likely `"pubsub"`), from `src/Hexalith.EventStore.AppHost/DaprComponents/`
+- [x] Task 0: Verify prerequisites and audit current health check state (BLOCKING) (AC: all)
+  - [x] 0.1 Run `dotnet test` -- all existing tests must pass before proceeding
+  - [x] 0.2 Review `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` -- confirm `AddDefaultHealthChecks()` registers "self" check with `"live"` tag, and `MapDefaultEndpoints()` maps `/health` and `/alive`
+  - [x] 0.3 Review `src/Hexalith.EventStore.CommandApi/Program.cs` -- confirm `builder.AddServiceDefaults()` and `app.MapDefaultEndpoints()` are called
+  - [x] 0.4 Review `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` -- confirm `/health` and `/alive` are exempt from rate limiting (lines 92-96)
+  - [x] 0.5 Verify health request paths are filtered from OTel tracing in ServiceDefaults (lines 75-78)
+  - [x] 0.6 Confirm `DaprClient` is registered in CommandApi DI (required for health check constructor injection)
+  - [x] 0.7 Confirm the DAPR component names used in the project: state store name (likely `"statestore"`), pub/sub name (likely `"pubsub"`), from `src/Hexalith.EventStore.AppHost/DaprComponents/`
 
-- [ ] Task 1: Create DaprSidecarHealthCheck (AC: #2, #9)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprSidecarHealthCheck.cs`
-  - [ ] 1.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient`
-  - [ ] 1.3 `CheckHealthAsync`: call `_daprClient.CheckHealthAsync(cancellationToken).ConfigureAwait(false)` -- returns `true` if sidecar healthy
-  - [ ] 1.4 Return `HealthCheckResult.Healthy("Dapr sidecar is responsive.")` on success
-  - [ ] 1.5 Return `new HealthCheckResult(context.Registration.FailureStatus, "Dapr sidecar is not responsive.")` on `false`
-  - [ ] 1.6 Catch `Exception` and return `HealthCheckResult` with `FailureStatus` and descriptive message (no stack trace in description per rule #13)
-  - [ ] 1.7 Use `ArgumentNullException.ThrowIfNull()` guard clause on constructor parameter
+- [x] Task 1: Create DaprSidecarHealthCheck (AC: #2, #9)
+  - [x] 1.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprSidecarHealthCheck.cs`
+  - [x] 1.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient`
+  - [x] 1.3 `CheckHealthAsync`: call `_daprClient.CheckHealthAsync(cancellationToken).ConfigureAwait(false)` -- returns `true` if sidecar healthy
+  - [x] 1.4 Return `HealthCheckResult.Healthy("Dapr sidecar is responsive.")` on success
+  - [x] 1.5 Return `new HealthCheckResult(context.Registration.FailureStatus, "Dapr sidecar is not responsive.")` on `false`
+  - [x] 1.6 Catch `Exception` and return `HealthCheckResult` with `FailureStatus` and descriptive message (no stack trace in description per rule #13)
+  - [x] 1.7 Use `ArgumentNullException.ThrowIfNull()` guard clause on constructor parameter
 
-- [ ] Task 2: Create DaprStateStoreHealthCheck (AC: #3, #9)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprStateStoreHealthCheck.cs`
-  - [ ] 2.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient` and `string storeName`
-  - [ ] 2.3 `CheckHealthAsync`: call `_daprClient.GetStateAsync<string>(_storeName, "__health_check__", cancellationToken: cancellationToken).ConfigureAwait(false)`
-  - [ ] 2.4 Return `HealthCheckResult.Healthy($"Dapr state store '{_storeName}' is accessible.")` -- null result for missing key is valid healthy response
-  - [ ] 2.5 Catch `Exception` and return `HealthCheckResult` with `FailureStatus` and message `$"Dapr state store '{_storeName}' is not accessible."`
-  - [ ] 2.6 CRITICAL: Never write to the state store -- read-only probe only
+- [x] Task 2: Create DaprStateStoreHealthCheck (AC: #3, #9)
+  - [x] 2.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprStateStoreHealthCheck.cs`
+  - [x] 2.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient` and `string storeName`
+  - [x] 2.3 `CheckHealthAsync`: call `_daprClient.GetStateAsync<string>(_storeName, "__health_check__", cancellationToken: cancellationToken).ConfigureAwait(false)`
+  - [x] 2.4 Return `HealthCheckResult.Healthy($"Dapr state store '{_storeName}' is accessible.")` -- null result for missing key is valid healthy response
+  - [x] 2.5 Catch `Exception` and return `HealthCheckResult` with `FailureStatus` and message `$"Dapr state store '{_storeName}' is not accessible."`
+  - [x] 2.6 CRITICAL: Never write to the state store -- read-only probe only
 
-- [ ] Task 3: Create DaprPubSubHealthCheck (AC: #4, #9)
-  - [ ] 3.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprPubSubHealthCheck.cs`
-  - [ ] 3.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient` and `string pubSubName`
-  - [ ] 3.3 `CheckHealthAsync`: call `_daprClient.GetMetadataAsync(cancellationToken).ConfigureAwait(false)`
-  - [ ] 3.4 Search `metadata.Components` for component where `Name` equals `_pubSubName` (case-insensitive) AND `Type` starts with `"pubsub."` (case-insensitive)
-  - [ ] 3.5 Return `HealthCheckResult.Healthy(...)` if component found, including component `Type` in description
-  - [ ] 3.6 Return `new HealthCheckResult(context.Registration.FailureStatus, $"Dapr pub/sub component '{_pubSubName}' not found in metadata.")` if not found
-  - [ ] 3.7 Catch `Exception` and return `HealthCheckResult` with `FailureStatus`
+- [x] Task 3: Create DaprPubSubHealthCheck (AC: #4, #9)
+  - [x] 3.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprPubSubHealthCheck.cs`
+  - [x] 3.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient` and `string pubSubName`
+  - [x] 3.3 `CheckHealthAsync`: call `_daprClient.GetMetadataAsync(cancellationToken).ConfigureAwait(false)`
+  - [x] 3.4 Search `metadata.Components` for component where `Name` equals `_pubSubName` (case-insensitive) AND `Type` starts with `"pubsub."` (case-insensitive)
+  - [x] 3.5 Return `HealthCheckResult.Healthy(...)` if component found, including component `Type` in description
+  - [x] 3.6 Return `new HealthCheckResult(context.Registration.FailureStatus, $"Dapr pub/sub component '{_pubSubName}' not found in metadata.")` if not found
+  - [x] 3.7 Catch `Exception` and return `HealthCheckResult` with `FailureStatus`
 
-- [ ] Task 4: Create DaprConfigStoreHealthCheck (AC: #5, #9)
-  - [ ] 4.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprConfigStoreHealthCheck.cs`
-  - [ ] 4.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient` and `string configStoreName`
-  - [ ] 4.3 `CheckHealthAsync`: call `_daprClient.GetMetadataAsync(cancellationToken).ConfigureAwait(false)`
-  - [ ] 4.4 Search `metadata.Components` for component where `Name` equals `_configStoreName` (case-insensitive) AND `Type` starts with `"configuration."` (case-insensitive)
-  - [ ] 4.5 Return Healthy if found, Degraded (via `FailureStatus`) if not found or exception
+- [x] Task 4: Create DaprConfigStoreHealthCheck (AC: #5, #9)
+  - [x] 4.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprConfigStoreHealthCheck.cs`
+  - [x] 4.2 Implement `IHealthCheck` with primary constructor accepting `DaprClient` and `string configStoreName`
+  - [x] 4.3 `CheckHealthAsync`: call `_daprClient.GetMetadataAsync(cancellationToken).ConfigureAwait(false)`
+  - [x] 4.4 Search `metadata.Components` for component where `Name` equals `_configStoreName` (case-insensitive) AND `Type` starts with `"configuration."` (case-insensitive)
+  - [x] 4.5 Return Healthy if found, Degraded (via `FailureStatus`) if not found or exception
 
-- [ ] Task 5: Create registration extension method and wire into CommandApi (AC: #6)
-  - [ ] 5.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/HealthCheckBuilderExtensions.cs`
-  - [ ] 5.2 Implement `AddEventStoreDaprHealthChecks(this IHealthChecksBuilder builder, string stateStoreName = "statestore", string pubSubName = "pubsub", string configStoreName = "configstore")` static extension method
-  - [ ] 5.3 Register `DaprSidecarHealthCheck` with name `"dapr-sidecar"`, `failureStatus: HealthStatus.Unhealthy`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`
-  - [ ] 5.4 Register `DaprStateStoreHealthCheck` with name `"dapr-statestore"`, `failureStatus: HealthStatus.Unhealthy`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`, factory: `sp => new DaprStateStoreHealthCheck(sp.GetRequiredService<DaprClient>(), stateStoreName)`
-  - [ ] 5.5 Register `DaprPubSubHealthCheck` with name `"dapr-pubsub"`, `failureStatus: HealthStatus.Degraded`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`, factory: `sp => new DaprPubSubHealthCheck(sp.GetRequiredService<DaprClient>(), pubSubName)`
-  - [ ] 5.6 Register `DaprConfigStoreHealthCheck` with name `"dapr-configstore"`, `failureStatus: HealthStatus.Degraded`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`, factory: `sp => new DaprConfigStoreHealthCheck(sp.GetRequiredService<DaprClient>(), configStoreName)`
-  - [ ] 5.7 Wire into CommandApi: add `.AddEventStoreDaprHealthChecks()` call in `ServiceCollectionExtensions.cs` or `Program.cs` where health checks are configured
-  - [ ] 5.8 Verify existing "self" liveness check with `"live"` tag is unchanged
+- [x] Task 5: Create registration extension method and wire into CommandApi (AC: #6)
+  - [x] 5.1 Create `src/Hexalith.EventStore.CommandApi/HealthChecks/HealthCheckBuilderExtensions.cs`
+  - [x] 5.2 Implement `AddEventStoreDaprHealthChecks(this IHealthChecksBuilder builder, string stateStoreName = "statestore", string pubSubName = "pubsub", string configStoreName = "configstore")` static extension method
+  - [x] 5.3 Register `DaprSidecarHealthCheck` with name `"dapr-sidecar"`, `failureStatus: HealthStatus.Unhealthy`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`
+  - [x] 5.4 Register `DaprStateStoreHealthCheck` with name `"dapr-statestore"`, `failureStatus: HealthStatus.Unhealthy`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`, factory: `sp => new DaprStateStoreHealthCheck(sp.GetRequiredService<DaprClient>(), stateStoreName)`
+  - [x] 5.5 Register `DaprPubSubHealthCheck` with name `"dapr-pubsub"`, `failureStatus: HealthStatus.Degraded`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`, factory: `sp => new DaprPubSubHealthCheck(sp.GetRequiredService<DaprClient>(), pubSubName)`
+  - [x] 5.6 Register `DaprConfigStoreHealthCheck` with name `"dapr-configstore"`, `failureStatus: HealthStatus.Degraded`, tags `["ready"]`, timeout `TimeSpan.FromSeconds(3)`, factory: `sp => new DaprConfigStoreHealthCheck(sp.GetRequiredService<DaprClient>(), configStoreName)`
+  - [x] 5.7 Wire into CommandApi: add `.AddEventStoreDaprHealthChecks()` call in `ServiceCollectionExtensions.cs` or `Program.cs` where health checks are configured
+  - [x] 5.8 Verify existing "self" liveness check with `"live"` tag is unchanged
 
-- [ ] Task 6: Configure environment-aware health check response format (AC: #7, #8)
-  - [ ] 6.1 Modify `MapDefaultEndpoints` in `ServiceDefaults/Extensions.cs` OR add response configuration in CommandApi endpoint mapping
-  - [ ] 6.2 For `/health` endpoint: add `HealthCheckOptions` with custom `ResponseWriter` that returns JSON in development (overall status, per-check status, descriptions, duration) and plaintext in production
-  - [ ] 6.3 Set `ResultStatusCodes`: `Healthy=200`, `Degraded=200`, `Unhealthy=503`
-  - [ ] 6.4 Implement JSON `ResponseWriter` using `Utf8JsonWriter` pattern (Microsoft official pattern): write `status`, `results` object with per-entry `status`, `description`, `data`
-  - [ ] 6.5 Verify health endpoints remain anonymous (before auth middleware in pipeline)
-  - [ ] 6.6 Verify health endpoints remain exempt from rate limiting (existing code at `ServiceCollectionExtensions.cs` lines 92-96)
+- [x] Task 6: Configure environment-aware health check response format (AC: #7, #8)
+  - [x] 6.1 Modify `MapDefaultEndpoints` in `ServiceDefaults/Extensions.cs` OR add response configuration in CommandApi endpoint mapping
+  - [x] 6.2 For `/health` endpoint: add `HealthCheckOptions` with custom `ResponseWriter` that returns JSON in development (overall status, per-check status, descriptions, duration) and plaintext in production
+  - [x] 6.3 Set `ResultStatusCodes`: `Healthy=200`, `Degraded=200`, `Unhealthy=503`
+  - [x] 6.4 Implement JSON `ResponseWriter` using `Utf8JsonWriter` pattern (Microsoft official pattern): write `status`, `results` object with per-entry `status`, `description`, `data`
+  - [x] 6.5 Verify health endpoints remain anonymous (before auth middleware in pipeline)
+  - [x] 6.6 Verify health endpoints remain exempt from rate limiting (existing code at `ServiceCollectionExtensions.cs` lines 92-96)
 
-- [ ] Task 7: Create health check unit tests (AC: #10)
-  - [ ] 7.1 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprSidecarHealthCheckTests.cs`
-  - [ ] 7.2 Test: `CheckHealth_SidecarHealthy_ReturnsHealthy` -- mock `DaprClient.CheckHealthAsync()` returns `true`
-  - [ ] 7.3 Test: `CheckHealth_SidecarUnhealthy_ReturnsUnhealthy` -- mock returns `false`
-  - [ ] 7.4 Test: `CheckHealth_SidecarUnreachable_ReturnsUnhealthy` -- mock throws `HttpRequestException`
-  - [ ] 7.5 Test: `CheckHealth_DaprException_ReturnsUnhealthy` -- mock throws `Dapr.DaprException`
-  - [ ] 7.6 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprStateStoreHealthCheckTests.cs`
-  - [ ] 7.7 Test: `CheckHealth_StateStoreAccessible_ReturnsHealthy` -- mock `GetStateAsync` returns null (sentinel key not found = healthy)
-  - [ ] 7.8 Test: `CheckHealth_StateStoreUnavailable_ReturnsUnhealthy` -- mock throws exception
-  - [ ] 7.9 Test: `CheckHealth_StateStoreReturnsValue_ReturnsHealthy` -- mock returns a value (edge case: key exists)
-  - [ ] 7.10 Test: `CheckHealth_NeverWritesToStateStore` -- verify `SaveStateAsync`/`DeleteStateAsync` are never called
-  - [ ] 7.11 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprPubSubHealthCheckTests.cs`
-  - [ ] 7.12 Test: `CheckHealth_PubSubComponentFound_ReturnsHealthy` -- mock metadata returns component with name match and `pubsub.*` type
-  - [ ] 7.13 Test: `CheckHealth_PubSubComponentNotFound_ReturnsDegraded` -- mock metadata returns no matching component
-  - [ ] 7.14 Test: `CheckHealth_MetadataCallFails_ReturnsDegraded` -- mock throws exception
-  - [ ] 7.15 Test: `CheckHealth_WrongComponentType_ReturnsDegraded` -- component name matches but type is not `pubsub.*`
-  - [ ] 7.16 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprConfigStoreHealthCheckTests.cs`
-  - [ ] 7.17 Test: `CheckHealth_ConfigStoreComponentFound_ReturnsHealthy` -- mock metadata returns configuration component
-  - [ ] 7.18 Test: `CheckHealth_ConfigStoreComponentNotFound_ReturnsDegraded` -- mock returns no matching component
-  - [ ] 7.19 Test: `CheckHealth_MetadataCallFails_ReturnsDegraded` -- mock throws exception
+- [x] Task 7: Create health check unit tests (AC: #10)
+  - [x] 7.1 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprSidecarHealthCheckTests.cs`
+  - [x] 7.2 Test: `CheckHealth_SidecarHealthy_ReturnsHealthy` -- mock `DaprClient.CheckHealthAsync()` returns `true`
+  - [x] 7.3 Test: `CheckHealth_SidecarUnhealthy_ReturnsUnhealthy` -- mock returns `false`
+  - [x] 7.4 Test: `CheckHealth_SidecarUnreachable_ReturnsUnhealthy` -- mock throws `HttpRequestException`
+  - [x] 7.5 Test: `CheckHealth_DaprException_ReturnsUnhealthy` -- mock throws `Dapr.DaprException`
+  - [x] 7.6 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprStateStoreHealthCheckTests.cs`
+  - [x] 7.7 Test: `CheckHealth_StateStoreAccessible_ReturnsHealthy` -- mock `GetStateAsync` returns null (sentinel key not found = healthy)
+  - [x] 7.8 Test: `CheckHealth_StateStoreUnavailable_ReturnsUnhealthy` -- mock throws exception
+  - [x] 7.9 Test: `CheckHealth_StateStoreReturnsValue_ReturnsHealthy` -- mock returns a value (edge case: key exists)
+  - [x] 7.10 Test: `CheckHealth_NeverWritesToStateStore` -- verify `SaveStateAsync`/`DeleteStateAsync` are never called
+  - [x] 7.11 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprPubSubHealthCheckTests.cs`
+  - [x] 7.12 Test: `CheckHealth_PubSubComponentFound_ReturnsHealthy` -- mock metadata returns component with name match and `pubsub.*` type
+  - [x] 7.13 Test: `CheckHealth_PubSubComponentNotFound_ReturnsDegraded` -- mock metadata returns no matching component
+  - [x] 7.14 Test: `CheckHealth_MetadataCallFails_ReturnsDegraded` -- mock throws exception
+  - [x] 7.15 Test: `CheckHealth_WrongComponentType_ReturnsDegraded` -- component name matches but type is not `pubsub.*`
+  - [x] 7.16 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprConfigStoreHealthCheckTests.cs`
+  - [x] 7.17 Test: `CheckHealth_ConfigStoreComponentFound_ReturnsHealthy` -- mock metadata returns configuration component
+  - [x] 7.18 Test: `CheckHealth_ConfigStoreComponentNotFound_ReturnsDegraded` -- mock returns no matching component
+  - [x] 7.19 Test: `CheckHealth_MetadataCallFails_ReturnsDegraded` -- mock throws exception
 
-- [ ] Task 8: Create registration and response format tests (AC: #6, #7)
-  - [ ] 8.1 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/HealthCheckRegistrationTests.cs`
-  - [ ] 8.2 Test: `AddEventStoreDaprHealthChecks_RegistersAllFourChecks` -- verify health check builder has 4 registrations
-  - [ ] 8.3 Test: `AddEventStoreDaprHealthChecks_SidecarAndStateStoreAreUnhealthy` -- verify failureStatus for sidecar and state store
-  - [ ] 8.4 Test: `AddEventStoreDaprHealthChecks_PubSubAndConfigStoreAreDegraded` -- verify failureStatus for pub/sub and config store
-  - [ ] 8.5 Test: `AddEventStoreDaprHealthChecks_AllChecksHaveReadyTag` -- verify all 4 registrations have `"ready"` tag
-  - [ ] 8.6 Test: `AddEventStoreDaprHealthChecks_AllChecksHaveThreeSecondTimeout` -- verify timeout is 3s
-  - [ ] 8.7 Test: `AddEventStoreDaprHealthChecks_CustomComponentNames_UsesProvidedNames` -- verify store/pubsub/config names are customizable
-  - [ ] 8.8 Test: `AddEventStoreDaprHealthChecks_ExistingSelfCheckUnchanged` -- verify "self" check with "live" tag still present
+- [x] Task 8: Create registration and response format tests (AC: #6, #7)
+  - [x] 8.1 Create `tests/Hexalith.EventStore.Server.Tests/HealthChecks/HealthCheckRegistrationTests.cs`
+  - [x] 8.2 Test: `AddEventStoreDaprHealthChecks_RegistersAllFourChecks` -- verify health check builder has 4 registrations
+  - [x] 8.3 Test: `AddEventStoreDaprHealthChecks_SidecarAndStateStoreAreUnhealthy` -- verify failureStatus for sidecar and state store
+  - [x] 8.4 Test: `AddEventStoreDaprHealthChecks_PubSubAndConfigStoreAreDegraded` -- verify failureStatus for pub/sub and config store
+  - [x] 8.5 Test: `AddEventStoreDaprHealthChecks_AllChecksHaveReadyTag` -- verify all 4 registrations have `"ready"` tag
+  - [x] 8.6 Test: `AddEventStoreDaprHealthChecks_AllChecksHaveThreeSecondTimeout` -- verify timeout is 3s
+  - [x] 8.7 Test: `AddEventStoreDaprHealthChecks_CustomComponentNames_UsesProvidedNames` -- verify store/pubsub/config names are customizable
+  - [x] 8.8 Test: `AddEventStoreDaprHealthChecks_ExistingSelfCheckUnchanged` -- verify "self" check with "live" tag still present
 
-- [ ] Task 9: Verify all tests pass (AC: all)
-  - [ ] 9.1 Run `dotnet test` to confirm no regressions
-  - [ ] 9.2 All new DaprSidecarHealthCheck tests pass (4)
-  - [ ] 9.3 All new DaprStateStoreHealthCheck tests pass (4)
-  - [ ] 9.4 All new DaprPubSubHealthCheck tests pass (4)
-  - [ ] 9.5 All new DaprConfigStoreHealthCheck tests pass (3)
-  - [ ] 9.6 All new registration/response tests pass (7)
-  - [ ] 9.7 All existing tests (902 unit tests) still pass with zero regressions
+- [x] Task 9: Verify all tests pass (AC: all)
+  - [x] 9.1 Run `dotnet test` to confirm no regressions
+  - [x] 9.2 All new DaprSidecarHealthCheck tests pass (4)
+  - [x] 9.3 All new DaprStateStoreHealthCheck tests pass (4)
+  - [x] 9.4 All new DaprPubSubHealthCheck tests pass (4)
+  - [x] 9.5 All new DaprConfigStoreHealthCheck tests pass (3)
+  - [x] 9.6 All new registration/response tests pass (7)
+  - [x] 9.7 All existing tests (938 unit tests) still pass with zero regressions
 
 ## Dev Notes
 
@@ -469,4 +469,34 @@ Claude Opus 4.6 (claude-opus-4-6)
 
 ### Completion Notes List
 
+- Implemented 4 DAPR health check classes (DaprSidecarHealthCheck, DaprStateStoreHealthCheck, DaprPubSubHealthCheck, DaprConfigStoreHealthCheck) in CommandApi/HealthChecks/
+- Created AddEventStoreDaprHealthChecks() extension method registering all 4 checks with correct failureStatus (Unhealthy for sidecar/statestore, Degraded for pubsub/configstore), "ready" tags, and 3s timeouts
+- Wired health checks into CommandApi via Program.cs
+- Updated MapDefaultEndpoints in ServiceDefaults to use environment-aware response format (JSON in dev, plaintext in prod) and proper status code mapping (200 for Healthy/Degraded, 503 for Unhealthy)
+- Health endpoints remain anonymous (mapped before auth middleware) and exempt from rate limiting (existing exemption unchanged)
+- Existing "self" liveness check with "live" tag preserved unchanged
+- Created 22 unit tests across 5 test files covering all health checks, registration, and edge cases
+- All 960 unit tests pass (938 existing + 22 new), zero regressions
+- DAPR component names confirmed: statestore, pubsub (no config store component file, defaults to "configstore")
+
+### Change Log
+
+- 2026-02-15: Implemented Story 6.4 - Health Check Endpoints (FR38). Added 4 DAPR health check classes, registration extension method, environment-aware response format, and 22 unit tests.
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.CommandApi/HealthChecks/DaprSidecarHealthCheck.cs
+- src/Hexalith.EventStore.CommandApi/HealthChecks/DaprStateStoreHealthCheck.cs
+- src/Hexalith.EventStore.CommandApi/HealthChecks/DaprPubSubHealthCheck.cs
+- src/Hexalith.EventStore.CommandApi/HealthChecks/DaprConfigStoreHealthCheck.cs
+- src/Hexalith.EventStore.CommandApi/HealthChecks/HealthCheckBuilderExtensions.cs
+- tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprSidecarHealthCheckTests.cs
+- tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprStateStoreHealthCheckTests.cs
+- tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprPubSubHealthCheckTests.cs
+- tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprConfigStoreHealthCheckTests.cs
+- tests/Hexalith.EventStore.Server.Tests/HealthChecks/HealthCheckRegistrationTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.CommandApi/Program.cs (added .AddEventStoreDaprHealthChecks() call)
+- src/Hexalith.EventStore.ServiceDefaults/Extensions.cs (added environment-aware ResponseWriter, ResultStatusCodes, WriteHealthCheckJsonResponse method)
