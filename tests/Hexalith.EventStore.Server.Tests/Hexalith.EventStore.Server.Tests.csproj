@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.CommandApi\Hexalith.EventStore.CommandApi.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />

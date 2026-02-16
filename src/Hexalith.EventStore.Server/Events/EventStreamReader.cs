@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 /// after the snapshot sequence are loaded (Story 3.10).
 /// Created per-call (not DI-registered) -- same pattern as IdempotencyChecker and TenantValidator.
 /// </summary>
-public class EventStreamReader(
+public partial class EventStreamReader(
     IActorStateManager stateManager,
     ILogger<EventStreamReader> logger) : IEventStreamReader
 {
@@ -45,10 +45,7 @@ public class EventStreamReader(
             {
                 // Snapshot exists but no events -- return snapshot state directly
                 sw.Stop();
-                logger.LogDebug(
-                    "Rehydration complete (snapshot-only, no events): {ElapsedMs}ms for {ActorId}",
-                    sw.ElapsedMilliseconds,
-                    identity.ActorId);
+                Log.RehydrationCompleteSnapshotOnly(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);
 
                 return new RehydrationResult(
                     SnapshotState: snapshot.State,
@@ -57,7 +54,7 @@ public class EventStreamReader(
                     CurrentSequence: snapshot.SequenceNumber);
             }
 
-            logger.LogDebug("New aggregate detected: no events found for {ActorId}", identity.ActorId);
+            Log.NewAggregateDetected(logger, identity.TenantId, identity.Domain, identity.AggregateId);
             return null; // New aggregate, no snapshot, no events
         }
 
@@ -81,10 +78,7 @@ public class EventStreamReader(
             if (snapshot.SequenceNumber >= currentSequence)
             {
                 sw.Stop();
-                logger.LogDebug(
-                    "Rehydration complete (snapshot at current sequence, no tail events): {ElapsedMs}ms for {ActorId}",
-                    sw.ElapsedMilliseconds,
-                    identity.ActorId);
+                Log.RehydrationCompleteSnapshotAtCurrent(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);
 
                 return new RehydrationResult(
                     SnapshotState: snapshot.State,
@@ -143,17 +137,60 @@ public class EventStreamReader(
 
         // Log rehydration mode (AC #7 logging)
         string mode = snapshot is not null ? "snapshot+tail" : "full-replay";
-        logger.LogDebug(
-            "State rehydrated ({Mode}): {EventCount} events in {ElapsedMs}ms for {ActorId}",
-            mode,
-            events.Count,
-            sw.ElapsedMilliseconds,
-            identity.ActorId);
+        Log.StateRehydrated(logger, identity.TenantId, identity.Domain, identity.AggregateId, mode, events.Count, sw.ElapsedMilliseconds);
 
         return new RehydrationResult(
             SnapshotState: snapshot?.State,
             Events: events,
             LastSnapshotSequence: lastSnapshotSequence,
             CurrentSequence: currentSequence);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 6000,
+            Level = LogLevel.Debug,
+            Message = "Rehydration complete (snapshot-only, no events): TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ElapsedMs={ElapsedMs}, Stage=RehydrationSnapshotOnly")]
+        public static partial void RehydrationCompleteSnapshotOnly(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            long elapsedMs);
+
+        [LoggerMessage(
+            EventId = 6001,
+            Level = LogLevel.Debug,
+            Message = "New aggregate detected: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=NewAggregateDetected")]
+        public static partial void NewAggregateDetected(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId);
+
+        [LoggerMessage(
+            EventId = 6002,
+            Level = LogLevel.Debug,
+            Message = "Rehydration complete (snapshot at current sequence, no tail events): TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ElapsedMs={ElapsedMs}, Stage=RehydrationSnapshotAtCurrent")]
+        public static partial void RehydrationCompleteSnapshotAtCurrent(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            long elapsedMs);
+
+        [LoggerMessage(
+            EventId = 6003,
+            Level = LogLevel.Debug,
+            Message = "State rehydrated: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Mode={Mode}, EventCount={EventCount}, ElapsedMs={ElapsedMs}, Stage=StateRehydrated")]
+        public static partial void StateRehydrated(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string mode,
+            int eventCount,
+            long elapsedMs);
     }
 }

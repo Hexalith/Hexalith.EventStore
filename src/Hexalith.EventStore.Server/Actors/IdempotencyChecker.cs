@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 /// Checks and records command idempotency using DAPR actor state.
 /// Created per-actor-call (not via DI) because it requires the actor's IActorStateManager instance.
 /// </summary>
-public class IdempotencyChecker(
+public partial class IdempotencyChecker(
     IActorStateManager stateManager,
     ILogger<IdempotencyChecker> logger) : IIdempotencyChecker
 {
@@ -26,11 +26,11 @@ public class IdempotencyChecker(
 
         if (result.HasValue)
         {
-            logger.LogDebug("Idempotency cache hit: CausationId={CausationId}", causationId);
+            Log.IdempotencyCacheHit(logger, causationId);
             return result.Value.ToResult();
         }
 
-        logger.LogDebug("Idempotency cache miss: CausationId={CausationId}", causationId);
+        Log.IdempotencyCacheMiss(logger, causationId);
         return null;
     }
 
@@ -47,6 +47,27 @@ public class IdempotencyChecker(
             .SetStateAsync(key, record)
             .ConfigureAwait(false);
 
-        logger.LogDebug("Idempotency record stored: CausationId={CausationId}", causationId);
+        Log.IdempotencyRecordStored(logger, causationId);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 5000,
+            Level = LogLevel.Debug,
+            Message = "Idempotency cache hit: CausationId={CausationId}, Stage=IdempotencyCacheHit")]
+        public static partial void IdempotencyCacheHit(ILogger logger, string causationId);
+
+        [LoggerMessage(
+            EventId = 5001,
+            Level = LogLevel.Debug,
+            Message = "Idempotency cache miss: CausationId={CausationId}, Stage=IdempotencyCacheMiss")]
+        public static partial void IdempotencyCacheMiss(ILogger logger, string causationId);
+
+        [LoggerMessage(
+            EventId = 5002,
+            Level = LogLevel.Debug,
+            Message = "Idempotency record stored: CausationId={CausationId}, Stage=IdempotencyRecordStored")]
+        public static partial void IdempotencyRecordStored(ILogger logger, string causationId);
     }
 }

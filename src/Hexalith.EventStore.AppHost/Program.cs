@@ -21,10 +21,8 @@ if (!File.Exists(accessControlConfigPath))
 }
 
 // Add EventStore topology using the convenience extension
-var commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi")
-    // DAPR sidecar for commandapi is configured with AppPort=8080.
-    // Keep ASP.NET Core listening port aligned to avoid ERR_DIRECT_INVOKE.
-    .WithEnvironment("ASPNETCORE_URLS", "http://localhost:8080");
+// launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
+var commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
 var eventStoreResources = builder.AddHexalithEventStore(commandApi, accessControlConfigPath);
 
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
@@ -62,9 +60,6 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringCompa
 // Not wiring these references means the sample sidecar doesn't load
 // these component definitions at all -- stronger isolation than scoping alone.
 var sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
-    // DAPR sidecar for sample is configured with AppPort=8081.
-    // Keep ASP.NET Core listening port aligned to avoid ERR_DIRECT_INVOKE.
-    .WithEnvironment("ASPNETCORE_URLS", "http://localhost:8081")
     // NOTE: sample does NOT reference Redis, StateStore, or PubSub.
     // Domain services have zero infrastructure access (D4, AC #13).
     // Direct Redis access would bypass DAPR component scoping entirely.

@@ -3,6 +3,12 @@
 # Redis-backed state store for actor state, snapshots, and command status tracking.
 # Composite key pattern: {tenant}||{domain}||{aggregateId} (D1)
 #
+# Command Status TTL (D2):
+#   The 24-hour default TTL for command status entries is set at the APPLICATION level
+#   via DaprClient.SaveStateAsync metadata (ttlInSeconds: 86400), NOT at the component level.
+#   Redis supports per-key TTL natively. PostgreSQL state store uses a cleanup routine.
+#   This design keeps the component config backend-agnostic (NFR27, NFR29).
+#
 # Component Scoping (AC #2, AC #4, AC #13):
 #   Only commandapi can access this state store. Actors run in-process under the
 #   commandapi app-id, so no other app-id needs state store access. Domain services

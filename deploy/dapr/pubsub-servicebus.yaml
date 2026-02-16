@@ -1,6 +1,6 @@
-# DAPR Pub/Sub Component -- Production Kafka (D6, NFR13, FR29)
-# ===============================================================
-# Kafka-backed pub/sub for event distribution with per-tenant-per-domain topics.
+# DAPR Pub/Sub Component -- Production Azure Service Bus (D6, NFR13, FR29)
+# ===========================================================================
+# Azure Service Bus-backed pub/sub for event distribution with per-tenant-per-domain topics.
 # Topic pattern: {tenant}.{domain}.events (D6)
 # Dead-letter topic pattern: deadletter.{tenant}.{domain}.events (Story 4.5)
 #
@@ -64,16 +64,16 @@
 #   YAML config update and redeployment (acceptable operational step -- subscriber
 #   access is a security-critical decision requiring human approval).
 #
-# KAFKA-SPECIFIC NOTES
-# =====================
-# Kafka pub/sub component uses Kafka topics and consumer groups internally. DAPR
-# scoping metadata (publishingScopes, subscriptionScopes) is enforced at the DAPR
-# runtime level BEFORE messages reach Kafka. This means:
-#   - Scoping is identical across all pub/sub component types (Redis, RabbitMQ, Kafka)
-#   - Kafka-level ACLs (broker authorization) are a SEPARATE layer (configure independently)
-#   - Consumer group isolation is managed by Kafka -- each subscriber app-id uses
-#     its own consumer group by default
-#   - Kafka topic auto-creation supports NFR20 dynamic tenant provisioning
+# AZURE SERVICE BUS-SPECIFIC NOTES
+# ==================================
+# Azure Service Bus pub/sub component uses topics and subscriptions. DAPR scoping
+# metadata (publishingScopes, subscriptionScopes) is enforced at the DAPR runtime
+# level BEFORE messages reach Azure Service Bus. This means:
+#   - Scoping is identical across all pub/sub component types (Redis, RabbitMQ, Kafka, Service Bus)
+#   - Azure Service Bus-level RBAC/SAS policies are a SEPARATE layer (configure independently)
+#   - Dead-letter queues (DLQ) in Service Bus are native -- DAPR leverages built-in DLQ support
+#   - Topics must be PRE-CREATED in Azure Service Bus (no auto-creation like Redis/RabbitMQ)
+#   - Use Shared Access Signature (SAS) or Azure AD authentication for production
 #
 # SCOPING FIELD REFERENCE (DAPR 1.16)
 # =====================================
@@ -89,53 +89,22 @@ kind: Component
 metadata:
   name: pubsub
 spec:
-  type: pubsub.kafka
+  type: pubsub.azure.servicebus.topics
   version: v1
   metadata:
-    - name: brokers
-      # Comma-separated Kafka broker addresses. Format: broker1:9092,broker2:9092
-      # Provide via environment variable -- NEVER hardcode in this file (NFR14).
-      value: "{env:KAFKA_BROKERS}"
-    - name: authType
-      # Kafka authentication type: none, password, mtls, or oidc.
-      # Use 'password' for SASL/PLAIN or SASL/SCRAM, 'mtls' for certificate auth.
-      value: "{env:KAFKA_AUTH_TYPE}"
-    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-    # Kafka dead-letter: messages routed to a separate Kafka topic after consumer failure.
-    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-    # per-subscription in Story 4.5.
+    - name: connectionString
+      # Azure Service Bus connection string with topic management permissions.
+      # Format: Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key>
+      # Alternatively, use Azure AD authentication with namespaceName metadata.
+      value: "{env:SERVICEBUS_CONNECTION_STRING}"
     - name: enableDeadLetter
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
-    # Publishing scoping (Story 5.1):
-    # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
-    # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
-    # not a wildcard. Omitting commandapi achieves unrestricted access.
-    #
-    # When adding production domain services to component scopes, you MUST add
-    # denial entries here: ";{domain-service-app-id}=" to deny publishing.
     - name: publishingScopes
       value: "{subscriber-app-id}=;{ops-monitor-app-id}="
-    # Subscription scoping (Story 5.3, FR29):
-    # commandapi is NOT listed = unrestricted subscription to all topics.
-    # External subscribers must be explicitly added with authorized tenant topics.
-    #
-    # Example with production subscriber:
-    #   value: ";{subscriber-app-id}=acme.orders.events,acme.inventory.events"
-    # Example with ops-monitor for dead-letter topics:
-    #   value: ";{ops-monitor-app-id}=deadletter.acme.orders.events"
     - name: subscriptionScopes
       value: "{subscriber-app-id}=acme.orders.events,acme.inventory.events;{ops-monitor-app-id}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
-# Component-level scoping: commandapi and explicitly authorized subscriber app-ids
-# can access this pub/sub component. Domain services have zero pub/sub access (D4).
-#
-# When deploying external subscribers, add their production app-id here
-# AND scope their topic access via subscriptionScopes above:
-#   scopes:
-#     - commandapi
-#     - {subscriber-app-id}
-#     - {ops-monitor-app-id}
 scopes:
   - commandapi
   - "{subscriber-app-id}"

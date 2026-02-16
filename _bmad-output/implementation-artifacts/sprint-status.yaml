@@ -98,19 +98,19 @@ development_status:
   # Epic 6: Observability, Health & Operational Readiness
   epic-6: in-progress
   6-1-end-to-end-opentelemetry-trace-instrumentation: done
-  6-2-structured-logging-completeness-verification: review
+  6-2-structured-logging-completeness-verification: done
   6-3-dead-letter-to-origin-tracing: review
   6-4-health-check-endpoints: review
-  6-5-readiness-check-endpoints: backlog
+  6-5-readiness-check-endpoints: done
   epic-6-retrospective: optional
 
   # Epic 7: Sample Application, Testing, CI/CD & Deployment
-  epic-7: backlog
-  7-1-sample-counter-domain-service: backlog
-  7-2-local-dapr-component-configurations: backlog
-  7-3-production-dapr-component-configurations: backlog
-  7-4-integration-tests-with-dapr-test-containers-tier-2: backlog
-  7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: backlog
+  epic-7: in-progress
+  7-1-sample-counter-domain-service: review
+  7-2-local-dapr-component-configurations: review
+  7-3-production-dapr-component-configurations: review
+  7-4-integration-tests-with-dapr-test-containers-tier-2: review
+  7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: ready-for-dev
   7-6-cicd-pipeline-and-nuget-publishing: backlog
   7-7-aspire-publisher-deployment-manifests: backlog
   7-8-domain-service-hot-reload-validation: backlog

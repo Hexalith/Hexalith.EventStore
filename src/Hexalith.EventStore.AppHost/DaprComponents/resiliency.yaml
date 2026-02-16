@@ -61,3 +61,11 @@ spec:
         inbound:
           retry: pubsubRetryInbound
           timeout: subscriberTimeout
+      # State store resiliency: retry and circuit breaker for event persistence,
+      # snapshot read/write, and command status operations (D1, D2).
+      # Without this target, transient Redis failures would fail actor turns
+      # without retry, potentially losing in-flight commands.
+      statestore:
+        retry: defaultRetry
+        timeout: daprSidecar
+        circuitBreaker: defaultBreaker

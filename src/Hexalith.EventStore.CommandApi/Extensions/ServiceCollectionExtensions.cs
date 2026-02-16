@@ -90,7 +90,8 @@ public static class CommandApiServiceCollectionExtensions
                 // Health endpoints must never be rate limited (H2)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
-                    path.Equals("/alive", StringComparison.OrdinalIgnoreCase))
+                    path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase))
                 {
                     return RateLimitPartition.GetNoLimiter<string>("__health");
                 }

@@ -21,13 +21,17 @@ spec:
   version: v1
   metadata:
     - name: url
-      value: "TODO: Cosmos DB account URL"
+      # Cosmos DB account URL. Format: https://<account-name>.documents.azure.com:443/
+      value: "{env:COSMOSDB_URL}"
     - name: masterKey
-      value: "TODO: Cosmos DB master key"
+      # Cosmos DB primary or secondary key -- NEVER hardcode (NFR14). Use Azure Key Vault in production.
+      value: "{env:COSMOSDB_KEY}"
     - name: database
-      value: "TODO: Database name"
+      # Cosmos DB database name for actor state storage.
+      value: "{env:COSMOSDB_DATABASE}"
     - name: collection
-      value: "TODO: Collection name"
+      # Cosmos DB container/collection name for actor state storage.
+      value: "{env:COSMOSDB_COLLECTION}"
     - name: actorStateStore
       value: "true"
 # Component-level scoping: only commandapi can access this state store (AC #2, AC #4, AC #13).

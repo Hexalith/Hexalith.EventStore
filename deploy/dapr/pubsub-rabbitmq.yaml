@@ -91,7 +91,9 @@ spec:
   version: v1
   metadata:
     - name: connectionString
-      value: "TODO: RabbitMQ connection string"
+      # RabbitMQ connection string. Format: amqp://<user>:<pass>@<host>:5672/
+      # Provide via environment variable -- NEVER hardcode secrets in this file (NFR14).
+      value: "{env:RABBITMQ_CONNECTION_STRING}"
     - name: durable
       value: "true"
     - name: deletedWhenUnused

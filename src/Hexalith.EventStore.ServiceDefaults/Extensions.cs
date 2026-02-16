@@ -19,6 +19,7 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+    private const string ReadinessEndpointPath = "/ready";
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -78,6 +79,7 @@ public static class Extensions
                         tracing.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
                             && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
+                            && !context.Request.Path.StartsWithSegments(ReadinessEndpointPath)
                     )
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
@@ -180,6 +182,20 @@ public static class Extensions
             Predicate = r => r.Tags.Contains("live"),
             ResultStatusCodes = statusCodes,
         });
+
+        // Only health checks tagged with the "ready" tag must pass for readiness (K8s readiness probe)
+        var readinessOptions = new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("ready"),
+            ResultStatusCodes = statusCodes,
+        };
+
+        if (app.Environment.IsDevelopment())
+        {
+            readinessOptions.ResponseWriter = WriteHealthCheckJsonResponse;
+        }
+
+        app.MapHealthChecks(ReadinessEndpointPath, readinessOptions);
 
         return app;
     }

@@ -79,12 +79,19 @@ public class SecretsProtectionTests
                 string content = File.ReadAllText(yamlFile);
                 string relativePath = Path.GetRelativePath(RepoRoot, yamlFile);
 
+                // Strip comments before checking for hardcoded secrets (comments may contain format examples)
+                string[] lines = content.Split('\n');
+                string contentWithoutComments = string.Join('\n', lines.Select(line =>
+                {
+                    int commentIndex = line.IndexOf('#');
+                    return commentIndex >= 0 ? line[..commentIndex] : line;
+                }));
+
                 // DAPR YAML should use environment variable substitution, not hardcoded passwords
-                ConnectionStringWithPasswordPattern.IsMatch(content).ShouldBeFalse(
+                ConnectionStringWithPasswordPattern.IsMatch(contentWithoutComments).ShouldBeFalse(
                     $"DAPR YAML '{relativePath}' contains a hardcoded password in connection string");
 
                 // Check for common secret patterns (not in comments)
-                string[] lines = content.Split('\n');
                 foreach (string line in lines)
                 {
                     string trimmed = line.TrimStart();

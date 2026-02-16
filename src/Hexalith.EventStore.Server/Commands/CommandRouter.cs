@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 /// via manual string concatenation. The chain of custody from CommandEnvelope through
 /// AggregateIdentity to actor ID must be unbroken. See FR15, FR28.
 /// </summary>
-public class CommandRouter(
+public partial class CommandRouter(
     IActorProxyFactory actorProxyFactory,
     ILogger<CommandRouter> logger) : ICommandRouter
 {
@@ -30,11 +30,10 @@ public class CommandRouter(
 
         var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
         string actorId = identity.ActorId;
+        // At this layer, CausationId = CorrelationId (original submission, not replay)
+        string causationId = command.CorrelationId;
 
-        logger.LogDebug(
-            "Routing command to actor: CorrelationId={CorrelationId}, ActorId={ActorId}",
-            command.CorrelationId,
-            actorId);
+        Log.CommandRouting(logger, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
 
         CommandEnvelope envelope = command.ToCommandEnvelope();
 
@@ -48,12 +47,40 @@ public class CommandRouter(
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "Actor invocation failed: CorrelationId={CorrelationId}, ActorId={ActorId}",
-                command.CorrelationId,
-                actorId);
+            Log.ActorInvocationFailed(logger, ex, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
             throw;
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(
+            EventId = 1100,
+            Level = LogLevel.Debug,
+            Message = "Routing command to actor: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, ActorId={ActorId}, Stage=CommandRouting")]
+        public static partial void CommandRouting(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            string actorId);
+
+        [LoggerMessage(
+            EventId = 1101,
+            Level = LogLevel.Error,
+            Message = "Actor invocation failed: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, ActorId={ActorId}, Stage=ActorInvocationFailed")]
+        public static partial void ActorInvocationFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            string actorId);
     }
 }

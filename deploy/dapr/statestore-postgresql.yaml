@@ -21,7 +21,9 @@ spec:
   version: v1
   metadata:
     - name: connectionString
-      value: "TODO: PostgreSQL connection string"
+      # PostgreSQL connection string. Format: host=<host>;port=5432;username=<user>;password=<pass>;database=<db>;sslmode=require
+      # Provide via environment variable -- NEVER hardcode secrets in this file (NFR14).
+      value: "{env:POSTGRES_CONNECTION_STRING}"
     - name: actorStateStore
       value: "true"
 # Component-level scoping: only commandapi can access this state store (AC #2, AC #4, AC #13).
