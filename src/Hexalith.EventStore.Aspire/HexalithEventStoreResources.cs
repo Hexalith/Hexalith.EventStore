@@ -18,4 +18,5 @@ public record HexalithEventStoreResources(
     IResourceBuilder<RedisResource> Redis,
     IResourceBuilder<IDaprComponentResource> StateStore,
     IResourceBuilder<IDaprComponentResource> PubSub,
+    IResourceBuilder<IDaprComponentResource> ConfigStore,
     IResourceBuilder<ProjectResource> CommandApi);

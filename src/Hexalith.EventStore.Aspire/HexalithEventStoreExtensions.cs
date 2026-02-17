@@ -38,12 +38,21 @@ public static class HexalithEventStoreExtensions
         // DAPR components backed by Redis
         var stateStore = builder.AddDaprStateStore("statestore");
         var pubSub = builder.AddDaprPubSub("pubsub");
+        var configStorePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "DaprComponents", "configstore.yaml"));
+        var configStore = builder.AddDaprComponent("configstore", "configuration.redis", new DaprComponentOptions { LocalPath = configStorePath });
 
         // Wire up CommandApi with DAPR sidecar and component references
         commandApi
             .WithReference(redis)
             .WaitFor(redis)
+            .WithEnvironment("REDIS_HOST", redis.GetEndpoint("tcp"))
+            .WithEnvironment("REDIS_PASSWORD", "")
             .WithDaprSidecar(sidecar => sidecar
+                .WithAnnotation(new EnvironmentCallbackAnnotation(context =>
+                {
+                    context["REDIS_HOST"] = ReferenceExpression.Create($"{redis.GetEndpoint("tcp")}");
+                    context["REDIS_PASSWORD"] = "";
+                }))
                 .WithOptions(new DaprSidecarOptions
                 {
                     AppId = "commandapi",
@@ -51,8 +60,9 @@ public static class HexalithEventStoreExtensions
                     Config = daprConfigPath,
                 })
                 .WithReference(stateStore)
-                .WithReference(pubSub));
+                .WithReference(pubSub)
+                .WithReference(configStore));
 
-        return new HexalithEventStoreResources(redis, stateStore, pubSub, commandApi);
+        return new HexalithEventStoreResources(redis, stateStore, pubSub, configStore, commandApi);
     }
 }

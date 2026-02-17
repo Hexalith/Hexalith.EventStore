@@ -1,0 +1,20 @@
+# DAPR Configuration Store Component -- Local Development
+# =============================================================
+# Redis-backed configuration store for domain service registrations.
+#
+# Component Scoping:
+#   Access is scoped to commandapi and domain services that need configuration.
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: configstore
+spec:
+  type: configuration.redis
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "{env:REDIS_HOST|localhost:6379}"
+    - name: redisPassword
+      value: "{env:REDIS_PASSWORD}"
+scopes:
+  - commandapi

@@ -158,7 +158,7 @@ public class AspireTopologyFixture : IAsyncLifetime
         }
 
         // Capture Keycloak container logs to diagnose the 500 error.
-        string keycloakLogs = await CaptureKeycloakLogsAsync().ConfigureAwait(false);
+        string keycloakLogs = await CaptureContainerLogsAsync("keycloak").ConfigureAwait(false);
 
         throw new TimeoutException(
             $"Keycloak token acquisition did not become ready within {timeout}. "
@@ -169,14 +169,14 @@ public class AspireTopologyFixture : IAsyncLifetime
             + keycloakLogs);
     }
 
-    private static async Task<string> CaptureKeycloakLogsAsync()
+    private static async Task<string> CaptureContainerLogsAsync(string nameFilter)
     {
         try
         {
-            // Find Keycloak container by label/name and capture its logs via docker CLI.
+            // Find container by label/name and capture its logs via docker CLI.
             using var process = new System.Diagnostics.Process();
             process.StartInfo.FileName = "docker";
-            process.StartInfo.Arguments = "ps --filter \"name=keycloak\" --format \"{{.Names}}\" --no-trunc";
+            process.StartInfo.Arguments = $"ps --filter \"name={nameFilter}\" --format \"{{{{.Names}}}}\" --no-trunc";
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;
@@ -188,7 +188,7 @@ public class AspireTopologyFixture : IAsyncLifetime
 
             if (string.IsNullOrEmpty(containerName))
             {
-                return "(no Keycloak container found via 'docker ps')";
+                return $"(no container found matching '{nameFilter}' via 'docker ps')";
             }
 
             // Take first container if multiple lines
@@ -222,7 +222,7 @@ public class AspireTopologyFixture : IAsyncLifetime
         }
         catch (Exception ex)
         {
-            return $"(failed to capture Keycloak logs: {ex.Message})";
+            return $"(failed to capture logs for '{nameFilter}': {ex.Message})";
         }
     }
 
@@ -269,7 +269,15 @@ public class AspireTopologyFixture : IAsyncLifetime
             await Task.Delay(pollInterval).ConfigureAwait(false);
         }
 
+        // Capture Dapr sidecar logs if we timed out waiting for health.
+        // The sidecar name in Aspire usually contains the resource name + "-dapr".
+        string daprLogs = await CaptureContainerLogsAsync("commandapi-dapr").ConfigureAwait(false);
+
         throw new TimeoutException(
-            $"Endpoint did not become ready within {timeout}. Url: {url}. Last error: {lastException?.Message ?? "n/a"}");
+            $"Endpoint did not become ready within {timeout}. Url: {url}. Last error: {lastException?.Message ?? "n/a"}. Last body: {lastBodySnippet ?? "n/a"}"
+            + Environment.NewLine
+            + "--- Dapr sidecar logs (last 200 lines) ---"
+            + Environment.NewLine
+            + daprLogs);
     }
 }

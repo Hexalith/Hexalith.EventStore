@@ -1,0 +1,11 @@
+  Identification des projets à restaurer...
+  Tous les projets sont à jour pour la restauration.
+d:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\HexalithEventStoreExtensions.cs(51,18): error CS0311: Impossible d'utiliser le type 'CommunityToolkit.Aspire.Hosting.Dapr.IDaprSidecarResource' comme paramètre de type 'T' dans le type ou la méthode générique 'ResourceBuilderExtensions.WithEnvironment<T>(IResourceBuilder<T>, string, EndpointReference)'. Il n'y a pas de conversion de référence implicite de 'CommunityToolkit.Aspire.Hosting.Dapr.IDaprSidecarResource' en 'Aspire.Hosting.ApplicationModel.IResourceWithEnvironment'. [d:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj]
+
+ÉCHEC de la build.
+
+d:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\HexalithEventStoreExtensions.cs(51,18): error CS0311: Impossible d'utiliser le type 'CommunityToolkit.Aspire.Hosting.Dapr.IDaprSidecarResource' comme paramètre de type 'T' dans le type ou la méthode générique 'ResourceBuilderExtensions.WithEnvironment<T>(IResourceBuilder<T>, string, EndpointReference)'. Il n'y a pas de conversion de référence implicite de 'CommunityToolkit.Aspire.Hosting.Dapr.IDaprSidecarResource' en 'Aspire.Hosting.ApplicationModel.IResourceWithEnvironment'. [d:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj]
+    0 Avertissement(s)
+    1 Erreur(s)
+
+Temps écoulé 00:00:01.41
