@@ -3,6 +3,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 /// <summary>
 /// Shared helper for replacing DAPR-dependent services with test fakes in integration tests.
@@ -23,5 +24,24 @@ public static class TestServiceOverrides
         }
 
         services.AddSingleton<ICommandRouter>(router ?? new FakeCommandRouter());
+    }
+
+    /// <summary>
+    /// Removes all Dapr health check registrations that require a running sidecar.
+    /// Call this in WebApplicationFactory tests where no Dapr sidecar is available.
+    /// </summary>
+    public static void RemoveDaprHealthChecks(IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.Configure<HealthCheckServiceOptions>(options =>
+        {
+            List<HealthCheckRegistration> daprChecks = options.Registrations
+                .Where(r => r.Name.StartsWith("dapr-", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (HealthCheckRegistration check in daprChecks)
+            {
+                options.Registrations.Remove(check);
+            }
+        });
     }
 }

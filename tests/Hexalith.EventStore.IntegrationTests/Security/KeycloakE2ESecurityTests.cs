@@ -41,14 +41,20 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             token,
             tenant: "tenant-a",
             domain: "orders",
-            commandType: "PlaceOrder");
+            commandType: "IncrementCounter");
 
         // Act
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        if (response.StatusCode != HttpStatusCode.Accepted)
+        {
+            string body = await response.Content.ReadAsStringAsync();
+            throw new Shouldly.ShouldAssertException(
+                $"response.StatusCode should be Accepted but was {response.StatusCode}.\nResponse body:\n{body}");
+        }
+
         response.Headers.Location.ShouldNotBeNull();
     }
 
@@ -65,12 +71,17 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             token,
             tenant: "tenant-a",
             domain: "orders",
-            commandType: "PlaceOrder");
+            commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        if (response.StatusCode != HttpStatusCode.Accepted)
+        {
+            string body = await response.Content.ReadAsStringAsync();
+            throw new Shouldly.ShouldAssertException(
+                $"response.StatusCode should be Accepted but was {response.StatusCode}.\nResponse body:\n{body}");
+        }
     }
 
     // ------------------------------------------------------------------
@@ -91,7 +102,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             token,
             tenant: "tenant-b",
             domain: "orders",
-            commandType: "PlaceOrder");
+            commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);
@@ -112,7 +123,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             token,
             tenant: "tenant-a",
             domain: "inventory",
-            commandType: "UpdateStock");
+            commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);
@@ -138,7 +149,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             token,
             tenant: "tenant-a",
             domain: "orders",
-            commandType: "PlaceOrder");
+            commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);
@@ -159,7 +170,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             token,
             tenant: "tenant-a",
             domain: "orders",
-            commandType: "PlaceOrder");
+            commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);

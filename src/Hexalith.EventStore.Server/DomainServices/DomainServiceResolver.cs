@@ -42,6 +42,17 @@ public class DomainServiceResolver(
 
         string configKey = $"{tenantId}:{domain}:{version}";
 
+        // Check static registrations first (local dev/testing)
+        if (options.Value.Registrations.TryGetValue(configKey, out DomainServiceRegistration? staticRegistration))
+        {
+            logger.LogDebug(
+                "Resolved domain service from static registration: AppId={AppId}, Method={MethodName}, ConfigKey={ConfigKey}",
+                staticRegistration.AppId,
+                staticRegistration.MethodName,
+                configKey);
+            return staticRegistration;
+        }
+
         logger.LogDebug(
             "Resolving domain service: ConfigKey={ConfigKey}, ConfigStore={ConfigStore}, Version={Version}",
             configKey,

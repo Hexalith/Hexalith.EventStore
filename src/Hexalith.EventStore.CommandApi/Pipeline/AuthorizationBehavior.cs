@@ -77,8 +77,9 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         if (permissionClaims.Count > 0)
         {
             bool hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.WildcardPermission, StringComparison.OrdinalIgnoreCase));
+            bool hasSubmit = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.SubmitPermission, StringComparison.OrdinalIgnoreCase));
             bool hasSpecific = permissionClaims.Any(p => string.Equals(p, command.CommandType, StringComparison.OrdinalIgnoreCase));
-            if (!hasWildcard && !hasSpecific)
+            if (!hasWildcard && !hasSubmit && !hasSpecific)
             {
                 string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
                 Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv, command.Tenant, command.Domain, command.CommandType, $"Not authorized for command type '{command.CommandType}'.", sourceIp);

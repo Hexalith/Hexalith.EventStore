@@ -301,6 +301,7 @@ public class JwtAuthenticationIntegrationTests
                 services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
 
                 TestServiceOverrides.ReplaceCommandRouter(services);
+                TestServiceOverrides.RemoveDaprHealthChecks(services);
 
                 services.AddLogging(logging => logging.AddProvider(LogProvider));
             });

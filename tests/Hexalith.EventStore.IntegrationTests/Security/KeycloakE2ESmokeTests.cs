@@ -38,7 +38,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),
-            CommandType = "PlaceOrder",
+            CommandType = "IncrementCounter",
             Payload = new { orderId = "smoke-test-001", amount = 42.00 },
         };
 
@@ -71,7 +71,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),
-            CommandType = "PlaceOrder",
+            CommandType = "IncrementCounter",
             Payload = new { orderId = "unauth-test", amount = 1.00 },
         };
 

@@ -403,6 +403,7 @@ public class AuthorizationIntegrationTests
                 services.AddSingleton<Server.Commands.ICommandArchiveStore>(new Testing.Fakes.InMemoryCommandArchiveStore());
 
                 Testing.Fakes.TestServiceOverrides.ReplaceCommandRouter(services);
+                Testing.Fakes.TestServiceOverrides.RemoveDaprHealthChecks(services);
 
                 services.AddLogging(logging => logging.AddProvider(LogProvider));
             });

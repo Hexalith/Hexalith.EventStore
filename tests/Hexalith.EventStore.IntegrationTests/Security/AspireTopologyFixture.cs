@@ -2,6 +2,7 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 
 using System.Net.Http;
 using System.Net;
+using System.Text;
 
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
@@ -90,6 +91,22 @@ public class AspireTopologyFixture : IAsyncLifetime
             expectedStatusCodes: [HttpStatusCode.OK],
             timeout: TimeSpan.FromMinutes(5),
             pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+
+        // Wait for Keycloak to fully complete realm import (users, clients).
+        // The OIDC discovery endpoint can return 200 before user/client data is committed,
+        // causing token acquisition to fail with 500 unknown_error.
+        await WaitForTokenAcquisitionAsync(
+            timeout: TimeSpan.FromMinutes(2),
+            pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+
+        // Wait for CommandApi health endpoint (includes Dapr sidecar, state store, pub/sub checks).
+        // Without this, actor invocations fail because the Dapr sidecar/placement service isn't ready.
+        await WaitForEndpointAsync(
+            _commandApiClient,
+            "/health",
+            expectedStatusCodes: [HttpStatusCode.OK],
+            timeout: TimeSpan.FromMinutes(3),
+            pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
     }
 
     public async Task DisposeAsync()
@@ -120,6 +137,95 @@ public class AspireTopologyFixture : IAsyncLifetime
             .ConfigureAwait(false);
     }
 
+    private async Task WaitForTokenAcquisitionAsync(TimeSpan timeout, TimeSpan pollInterval)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
+        Exception? lastException = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                _ = await GetTokenAsync("admin-user", "admin-pass").ConfigureAwait(false);
+                return;
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+            }
+
+            await Task.Delay(pollInterval).ConfigureAwait(false);
+        }
+
+        // Capture Keycloak container logs to diagnose the 500 error.
+        string keycloakLogs = await CaptureKeycloakLogsAsync().ConfigureAwait(false);
+
+        throw new TimeoutException(
+            $"Keycloak token acquisition did not become ready within {timeout}. "
+            + $"Last error: {lastException?.Message ?? "n/a"}"
+            + Environment.NewLine
+            + "--- Keycloak container logs (last 200 lines) ---"
+            + Environment.NewLine
+            + keycloakLogs);
+    }
+
+    private static async Task<string> CaptureKeycloakLogsAsync()
+    {
+        try
+        {
+            // Find Keycloak container by label/name and capture its logs via docker CLI.
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo.FileName = "docker";
+            process.StartInfo.Arguments = "ps --filter \"name=keycloak\" --format \"{{.Names}}\" --no-trunc";
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+
+            string containerName = (await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false)).Trim();
+            await process.WaitForExitAsync().ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(containerName))
+            {
+                return "(no Keycloak container found via 'docker ps')";
+            }
+
+            // Take first container if multiple lines
+            containerName = containerName.Split('\n', StringSplitOptions.RemoveEmptyEntries)[0].Trim();
+
+            using var logsProcess = new System.Diagnostics.Process();
+            logsProcess.StartInfo.FileName = "docker";
+            logsProcess.StartInfo.Arguments = $"logs --tail 200 {containerName}";
+            logsProcess.StartInfo.RedirectStandardOutput = true;
+            logsProcess.StartInfo.RedirectStandardError = true;
+            logsProcess.StartInfo.UseShellExecute = false;
+            logsProcess.StartInfo.CreateNoWindow = true;
+            logsProcess.Start();
+
+            string stdout = await logsProcess.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            string stderr = await logsProcess.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await logsProcess.WaitForExitAsync().ConfigureAwait(false);
+
+            var combined = new StringBuilder();
+            if (!string.IsNullOrEmpty(stdout))
+            {
+                combined.AppendLine(stdout);
+            }
+
+            if (!string.IsNullOrEmpty(stderr))
+            {
+                combined.AppendLine(stderr);
+            }
+
+            return combined.Length > 0 ? combined.ToString() : "(container found but no logs)";
+        }
+        catch (Exception ex)
+        {
+            return $"(failed to capture Keycloak logs: {ex.Message})";
+        }
+    }
+
     private static async Task WaitForEndpointAsync(
         HttpClient client,
         string url,
@@ -129,6 +235,8 @@ public class AspireTopologyFixture : IAsyncLifetime
     {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
         Exception? lastException = null;
+        HttpStatusCode? lastStatusCode = null;
+        string? lastBodySnippet = null;
 
         while (DateTimeOffset.UtcNow < deadline)
         {
@@ -137,6 +245,16 @@ public class AspireTopologyFixture : IAsyncLifetime
                 using HttpResponseMessage response = await client
                     .GetAsync(url)
                     .ConfigureAwait(false);
+
+                lastStatusCode = response.StatusCode;
+                if (response.Content is not null)
+                {
+                    string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(body))
+                    {
+                        lastBodySnippet = body.Length <= 500 ? body : body[..500];
+                    }
+                }
 
                 if (expectedStatusCodes.Contains(response.StatusCode))
                 {

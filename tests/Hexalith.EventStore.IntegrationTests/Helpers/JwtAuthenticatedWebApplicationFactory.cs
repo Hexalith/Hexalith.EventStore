@@ -68,6 +68,9 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
 
             // Replace CommandRouter with fake (no DAPR actor infrastructure needed)
             TestServiceOverrides.ReplaceCommandRouter(services, Router);
+
+            // Remove Dapr health checks that require a running sidecar
+            TestServiceOverrides.RemoveDaprHealthChecks(services);
         });
     }
 }

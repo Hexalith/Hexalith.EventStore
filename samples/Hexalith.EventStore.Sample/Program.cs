@@ -13,8 +13,7 @@ var app = builder.Build();
 app.MapDefaultEndpoints();
 app.MapGet("/", () => "Hexalith EventStore Sample Domain Service");
 
-app.MapPost("/process", async (CommandEnvelope command, IDomainProcessor processor) =>
-{
+app.MapPost("/process", async (CommandEnvelope command, IDomainProcessor processor) => {
     DomainResult result = await processor.ProcessAsync(command, currentState: null).ConfigureAwait(false);
     return Results.Ok(result);
 });
