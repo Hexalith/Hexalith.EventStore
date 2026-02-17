@@ -188,7 +188,18 @@ public class AspireTopologyFixture : IAsyncLifetime
 
             if (string.IsNullOrEmpty(containerName))
             {
-                return $"(no container found matching '{nameFilter}' via 'docker ps')";
+                // Fallback: list all containers to help debug the name pattern.
+                using var psAll = new System.Diagnostics.Process();
+                psAll.StartInfo.FileName = "docker";
+                psAll.StartInfo.Arguments = "ps --format \"{{.Names}}\"";
+                psAll.StartInfo.RedirectStandardOutput = true;
+                psAll.StartInfo.UseShellExecute = false;
+                psAll.StartInfo.CreateNoWindow = true;
+                psAll.Start();
+                string allContainers = await psAll.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                await psAll.WaitForExitAsync().ConfigureAwait(false);
+
+                return $"(no container found matching '{nameFilter}' via 'docker ps'. Available containers: {Environment.NewLine}{allContainers})";
             }
 
             // Take first container if multiple lines
