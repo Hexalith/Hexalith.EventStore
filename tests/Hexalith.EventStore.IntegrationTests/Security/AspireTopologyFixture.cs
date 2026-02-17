@@ -283,12 +283,17 @@ public class AspireTopologyFixture : IAsyncLifetime
         // Capture Dapr sidecar logs if we timed out waiting for health.
         // The sidecar name in Aspire usually contains the resource name + "-dapr".
         string daprLogs = await CaptureContainerLogsAsync("commandapi-dapr").ConfigureAwait(false);
+        string redisLogs = await CaptureContainerLogsAsync("redis").ConfigureAwait(false);
 
         throw new TimeoutException(
             $"Endpoint did not become ready within {timeout}. Url: {url}. Last error: {lastException?.Message ?? "n/a"}. Last body: {lastBodySnippet ?? "n/a"}"
             + Environment.NewLine
             + "--- Dapr sidecar logs (last 200 lines) ---"
             + Environment.NewLine
-            + daprLogs);
+            + daprLogs
+            + Environment.NewLine
+            + "--- Redis logs (last 200 lines) ---"
+            + Environment.NewLine
+            + redisLogs);
     }
 }

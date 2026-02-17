@@ -32,8 +32,10 @@ public static class HexalithEventStoreExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(commandApi);
 
-        // Infrastructure
-        var redis = builder.AddRedis("redis");
+        // Explicitly set Redis password to handle local development and CI consistency
+        var redisPassword = builder.AddParameter("redis-password", secret: true);
+        var redis = builder.AddRedis("redis")
+            .WithArgs("--requirepass", redisPassword);
 
         // DAPR components backed by Redis
         var stateStore = builder.AddDaprStateStore("statestore");
@@ -46,12 +48,12 @@ public static class HexalithEventStoreExtensions
             .WithReference(redis)
             .WaitFor(redis)
             .WithEnvironment("REDIS_HOST", redis.GetEndpoint("tcp"))
-            .WithEnvironment("REDIS_PASSWORD", "")
+            .WithEnvironment("REDIS_PASSWORD", redisPassword)
             .WithDaprSidecar(sidecar => sidecar
                 .WithAnnotation(new EnvironmentCallbackAnnotation(context =>
                 {
                     context["REDIS_HOST"] = ReferenceExpression.Create($"{redis.GetEndpoint("tcp")}");
-                    context["REDIS_PASSWORD"] = "";
+                    context["REDIS_PASSWORD"] = redisPassword;
                 }))
                 .WithOptions(new DaprSidecarOptions
                 {
