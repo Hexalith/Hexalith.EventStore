@@ -292,7 +292,7 @@ public class CommandApiTraceTests
     {
         var listener = new ActivityListener
         {
-            ShouldListenTo = source => source.Name == EventStoreActivitySources.CommandApi.Name,
+            ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = onActivityStopped,
         };
