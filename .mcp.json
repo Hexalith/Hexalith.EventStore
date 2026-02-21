@@ -3,6 +3,20 @@
     "microsoft-learn": {
       "type": "url",
       "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "aspire": {
+      "command": "aspire",
+      "args": [
+        "mcp",
+        "start"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
     }
   }
 }
