@@ -5,7 +5,12 @@ using Dapr.Client;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 /// <summary>
-/// Health check that verifies DAPR sidecar responsiveness via the /v1.0/healthz endpoint.
+/// Health check that verifies DAPR sidecar responsiveness via the gRPC metadata API.
+/// Uses <see cref="DaprClient.GetMetadataAsync"/> (gRPC) instead of
+/// <see cref="DaprClient.CheckHealthAsync"/> (HTTP) because the Dapr .NET SDK routes
+/// health checks through the sidecar's HTTP endpoint, which may be unreachable in
+/// Aspire Testing where dynamic port allocation can cause HTTP port mismatches.
+/// The gRPC channel is reliably configured via DAPR_GRPC_PORT.
 /// </summary>
 public class DaprSidecarHealthCheck(DaprClient daprClient) : IHealthCheck
 {
@@ -21,10 +26,10 @@ public class DaprSidecarHealthCheck(DaprClient daprClient) : IHealthCheck
 
         try
         {
-            var isHealthy = await _daprClient.CheckHealthAsync(cancellationToken)
+            var metadata = await _daprClient.GetMetadataAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return isHealthy
+            return metadata is not null
                 ? HealthCheckResult.Healthy("Dapr sidecar is responsive.")
                 : new HealthCheckResult(
                     context.Registration.FailureStatus,
