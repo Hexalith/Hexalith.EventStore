@@ -13,15 +13,12 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
     IHttpContextAccessor httpContextAccessor,
     ILogger<AuthorizationBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull
-{
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
-    {
+    where TRequest : notnull {
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
-        if (request is not SubmitCommand command)
-        {
+        if (request is not SubmitCommand command) {
             return await next().ConfigureAwait(false);
         }
 
@@ -30,8 +27,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         System.Security.Claims.ClaimsPrincipal user = httpContext.User
             ?? throw new InvalidOperationException("HttpContext.User is not available in AuthorizationBehavior.");
 
-        if (user.Identity?.IsAuthenticated != true)
-        {
+        if (user.Identity?.IsAuthenticated != true) {
             throw new CommandAuthorizationException(
                 command.Tenant,
                 null,
@@ -56,11 +52,10 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
 
         string? sourceIp = httpContext.Connection.RemoteIpAddress?.ToString();
 
-        if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, command.Domain, StringComparison.OrdinalIgnoreCase)))
-        {
+        if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, command.Domain, StringComparison.OrdinalIgnoreCase))) {
             string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
             Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv, command.Tenant, command.Domain, command.CommandType, $"Not authorized for domain '{command.Domain}'.", sourceIp);
-            
+
             throw new CommandAuthorizationException(
                 command.Tenant,
                 command.Domain,
@@ -74,16 +69,14 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
 
-        if (permissionClaims.Count > 0)
-        {
+        if (permissionClaims.Count > 0) {
             bool hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.WildcardPermission, StringComparison.OrdinalIgnoreCase));
             bool hasSubmit = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.SubmitPermission, StringComparison.OrdinalIgnoreCase));
             bool hasSpecific = permissionClaims.Any(p => string.Equals(p, command.CommandType, StringComparison.OrdinalIgnoreCase));
-            if (!hasWildcard && !hasSubmit && !hasSpecific)
-            {
+            if (!hasWildcard && !hasSubmit && !hasSpecific) {
                 string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
                 Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv, command.Tenant, command.Domain, command.CommandType, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
-                
+
                 throw new CommandAuthorizationException(
                     command.Tenant,
                     command.Domain,
@@ -103,8 +96,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         return await next().ConfigureAwait(false);
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1020,
             Level = LogLevel.Debug,

@@ -10,17 +10,14 @@ using NSubstitute;
 
 using Shouldly;
 
-public class HealthCheckRegistrationTests
-{
-    private static IServiceProvider CreateServiceProvider()
-    {
+public class HealthCheckRegistrationTests {
+    private static IServiceProvider CreateServiceProvider() {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<DaprClient>());
         return services.BuildServiceProvider();
     }
 
-    private static HealthCheckServiceOptions GetHealthCheckOptions(Action<IHealthChecksBuilder>? configure = null)
-    {
+    private static HealthCheckServiceOptions GetHealthCheckOptions(Action<IHealthChecksBuilder>? configure = null) {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<DaprClient>());
         var builder = services.AddHealthChecks()
@@ -32,8 +29,7 @@ public class HealthCheckRegistrationTests
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_RegistersAllFourChecks()
-    {
+    public void AddEventStoreDaprHealthChecks_RegistersAllFourChecks() {
         var options = GetHealthCheckOptions();
 
         // 4 DAPR checks + 1 "self" check = 5 total
@@ -45,8 +41,7 @@ public class HealthCheckRegistrationTests
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_SidecarAndStateStoreAreUnhealthy()
-    {
+    public void AddEventStoreDaprHealthChecks_SidecarAndStateStoreAreUnhealthy() {
         var options = GetHealthCheckOptions();
 
         options.Registrations.First(r => r.Name == "dapr-sidecar").FailureStatus.ShouldBe(HealthStatus.Unhealthy);
@@ -54,8 +49,7 @@ public class HealthCheckRegistrationTests
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_PubSubAndConfigStoreAreDegraded()
-    {
+    public void AddEventStoreDaprHealthChecks_PubSubAndConfigStoreAreDegraded() {
         var options = GetHealthCheckOptions();
 
         options.Registrations.First(r => r.Name == "dapr-pubsub").FailureStatus.ShouldBe(HealthStatus.Degraded);
@@ -63,33 +57,28 @@ public class HealthCheckRegistrationTests
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_AllChecksHaveReadyTag()
-    {
+    public void AddEventStoreDaprHealthChecks_AllChecksHaveReadyTag() {
         var options = GetHealthCheckOptions();
 
         var daprChecks = options.Registrations.Where(r => r.Name.StartsWith("dapr-"));
         daprChecks.Count().ShouldBe(4);
-        foreach (var check in daprChecks)
-        {
+        foreach (var check in daprChecks) {
             check.Tags.ShouldContain("ready");
         }
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_AllChecksHaveFifteenSecondTimeout()
-    {
+    public void AddEventStoreDaprHealthChecks_AllChecksHaveFifteenSecondTimeout() {
         var options = GetHealthCheckOptions();
 
         var daprChecks = options.Registrations.Where(r => r.Name.StartsWith("dapr-"));
-        foreach (var check in daprChecks)
-        {
+        foreach (var check in daprChecks) {
             check.Timeout.ShouldBe(TimeSpan.FromSeconds(15));
         }
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_CustomComponentNames_UsesProvidedNames()
-    {
+    public void AddEventStoreDaprHealthChecks_CustomComponentNames_UsesProvidedNames() {
         var services = new ServiceCollection();
         var daprClient = Substitute.For<DaprClient>();
         services.AddSingleton(daprClient);
@@ -109,8 +98,7 @@ public class HealthCheckRegistrationTests
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_ExistingSelfCheckUnchanged()
-    {
+    public void AddEventStoreDaprHealthChecks_ExistingSelfCheckUnchanged() {
         var options = GetHealthCheckOptions();
 
         var selfCheck = options.Registrations.FirstOrDefault(r => r.Name == "self");

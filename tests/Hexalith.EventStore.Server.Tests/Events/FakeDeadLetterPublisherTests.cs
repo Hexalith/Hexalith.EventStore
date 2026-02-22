@@ -7,8 +7,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
 
-public class FakeDeadLetterPublisherTests
-{
+public class FakeDeadLetterPublisherTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string domain = "test-domain",
@@ -23,8 +22,7 @@ public class FakeDeadLetterPublisherTests
         UserId: "system",
         Extensions: null);
 
-    private static DeadLetterMessage CreateTestDeadLetterMessage(CommandEnvelope? command = null)
-    {
+    private static DeadLetterMessage CreateTestDeadLetterMessage(CommandEnvelope? command = null) {
         var cmd = command ?? CreateTestEnvelope();
         return DeadLetterMessage.FromException(
             cmd,
@@ -33,8 +31,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_CapturesMessage()
-    {
+    public async Task PublishDeadLetter_CapturesMessage() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -52,8 +49,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task GetDeadLetterMessages_ReturnsAll()
-    {
+    public async Task GetDeadLetterMessages_ReturnsAll() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity1 = new AggregateIdentity("tenant-a", "orders", "agg-001");
@@ -76,8 +72,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task GetDeadLetterMessagesForTenant_FiltersByTenant()
-    {
+    public async Task GetDeadLetterMessagesForTenant_FiltersByTenant() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity1 = new AggregateIdentity("tenant-a", "orders", "agg-001");
@@ -105,8 +100,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task GetDeadLetterMessageByCorrelationId_FindsCorrect()
-    {
+    public async Task GetDeadLetterMessageByCorrelationId_FindsCorrect() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         string targetCorrelationId = Guid.NewGuid().ToString();
@@ -146,8 +140,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task SetupFailure_AllCallsReturnFalse()
-    {
+    public async Task SetupFailure_AllCallsReturnFalse() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         publisher.SetupFailure("Test failure");
@@ -165,8 +158,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_CanceledToken_ThrowsOperationCanceledException()
-    {
+    public async Task PublishDeadLetter_CanceledToken_ThrowsOperationCanceledException() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -180,8 +172,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task AssertNoDeadLetters_ThrowsWhenMessagesExist()
-    {
+    public async Task AssertNoDeadLetters_ThrowsWhenMessagesExist() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -194,8 +185,7 @@ public class FakeDeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task Reset_ClearsAllState()
-    {
+    public async Task Reset_ClearsAllState() {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");

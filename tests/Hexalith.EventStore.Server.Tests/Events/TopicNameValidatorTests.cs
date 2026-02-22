@@ -13,10 +13,8 @@ using Shouldly;
 /// Story 4.2 Task 4: TopicNameValidator unit tests.
 /// Verifies D6 topic name validation and compatibility with DAPR pub/sub backends (AC: #5).
 /// </summary>
-public class TopicNameValidatorTests
-{
-    private static TopicNameValidator CreateValidator()
-    {
+public class TopicNameValidatorTests {
+    private static TopicNameValidator CreateValidator() {
         var logger = Substitute.For<ILogger<TopicNameValidator>>();
         return new TopicNameValidator(logger);
     }
@@ -24,8 +22,7 @@ public class TopicNameValidatorTests
     // --- Task 4.2: AC #5 ---
 
     [Fact]
-    public void IsValidTopicName_ValidD6Pattern_ReturnsTrue()
-    {
+    public void IsValidTopicName_ValidD6Pattern_ReturnsTrue() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -36,8 +33,7 @@ public class TopicNameValidatorTests
     // --- Task 4.3: AC #5 ---
 
     [Fact]
-    public void IsValidTopicName_HyphenatedSegments_ReturnsTrue()
-    {
+    public void IsValidTopicName_HyphenatedSegments_ReturnsTrue() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -48,8 +44,7 @@ public class TopicNameValidatorTests
     // --- Task 4.4 ---
 
     [Fact]
-    public void IsValidTopicName_EmptyString_ReturnsFalse()
-    {
+    public void IsValidTopicName_EmptyString_ReturnsFalse() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -60,8 +55,7 @@ public class TopicNameValidatorTests
     // --- Task 4.5 ---
 
     [Fact]
-    public void IsValidTopicName_MissingSuffix_ReturnsFalse()
-    {
+    public void IsValidTopicName_MissingSuffix_ReturnsFalse() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -72,8 +66,7 @@ public class TopicNameValidatorTests
     // --- Task 4.6 ---
 
     [Fact]
-    public void IsValidTopicName_SpecialCharacters_ReturnsFalse()
-    {
+    public void IsValidTopicName_SpecialCharacters_ReturnsFalse() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -84,8 +77,7 @@ public class TopicNameValidatorTests
     // --- Task 4.7 ---
 
     [Fact]
-    public void IsValidTopicName_UppercaseSegments_ReturnsFalse()
-    {
+    public void IsValidTopicName_UppercaseSegments_ReturnsFalse() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -96,8 +88,7 @@ public class TopicNameValidatorTests
     // --- Task 4.8 ---
 
     [Fact]
-    public void IsValidTopicName_MaxLengthTopic_ReturnsTrue()
-    {
+    public void IsValidTopicName_MaxLengthTopic_ReturnsTrue() {
         // Arrange - 64-char tenant + 64-char domain + ".events" = 136 chars (64+1+64+1+6), within all limits
         TopicNameValidator validator = CreateValidator();
         string longTenant = new('a', 64);
@@ -112,8 +103,7 @@ public class TopicNameValidatorTests
     // --- Task 4.9 ---
 
     [Fact]
-    public void DeriveTopicName_ValidIdentity_MatchesPubSubTopic()
-    {
+    public void DeriveTopicName_ValidIdentity_MatchesPubSubTopic() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
         var identity = new AggregateIdentity("acme", "orders", "order-1");
@@ -129,8 +119,7 @@ public class TopicNameValidatorTests
     // --- Task 4.10 ---
 
     [Fact]
-    public void DeriveTopicName_IdenticalIdentities_ProduceDeterministicTopics()
-    {
+    public void DeriveTopicName_IdenticalIdentities_ProduceDeterministicTopics() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
         var identity1 = new AggregateIdentity("acme", "orders", "order-1");
@@ -151,8 +140,7 @@ public class TopicNameValidatorTests
     // --- Additional validation edge cases ---
 
     [Fact]
-    public void IsValidTopicName_NullInput_ThrowsArgumentNullException()
-    {
+    public void IsValidTopicName_NullInput_ThrowsArgumentNullException() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -161,8 +149,7 @@ public class TopicNameValidatorTests
     }
 
     [Fact]
-    public void IsValidTopicName_WhitespaceOnly_ReturnsFalse()
-    {
+    public void IsValidTopicName_WhitespaceOnly_ReturnsFalse() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 
@@ -171,8 +158,7 @@ public class TopicNameValidatorTests
     }
 
     [Fact]
-    public void IsValidTopicName_ExceedsKafkaMaxLength_ReturnsFalse()
-    {
+    public void IsValidTopicName_ExceedsKafkaMaxLength_ReturnsFalse() {
         // Arrange - topic > 249 chars
         TopicNameValidator validator = CreateValidator();
         string longTenant = new('a', 200);
@@ -184,8 +170,7 @@ public class TopicNameValidatorTests
     }
 
     [Fact]
-    public void IsValidTopicName_TopicApproachingLengthLimit_ReturnsTrue_LogsWarning()
-    {
+    public void IsValidTopicName_TopicApproachingLengthLimit_ReturnsTrue_LogsWarning() {
         // Arrange - topic > 200 chars but < 249 chars
         var logger = Substitute.For<ILogger<TopicNameValidator>>();
         var validator = new TopicNameValidator(logger);
@@ -208,8 +193,7 @@ public class TopicNameValidatorTests
     }
 
     [Fact]
-    public void DeriveTopicName_NullIdentity_ThrowsArgumentNullException()
-    {
+    public void DeriveTopicName_NullIdentity_ThrowsArgumentNullException() {
         // Arrange
         TopicNameValidator validator = CreateValidator();
 

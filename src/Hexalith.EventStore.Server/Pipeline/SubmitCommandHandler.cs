@@ -18,10 +18,8 @@ public partial class SubmitCommandHandler(
     ICommandStatusStore statusStore,
     ICommandArchiveStore archiveStore,
     ICommandRouter commandRouter,
-    ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
-{
-    public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
-    {
+    ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
         string causationId = request.CorrelationId; // For original submissions, CausationId = CorrelationId
@@ -31,8 +29,7 @@ public partial class SubmitCommandHandler(
         var result = new SubmitCommandResult(request.CorrelationId);
 
         // Write "Received" status before returning (advisory per rule #12)
-        try
-        {
+        try {
             await statusStore.WriteStatusAsync(
                 request.Tenant,
                 request.CorrelationId,
@@ -46,30 +43,25 @@ public partial class SubmitCommandHandler(
                     TimeoutDuration: null),
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
         // Archive original command for replay (advisory per rule #12)
-        try
-        {
+        try {
             await archiveStore.WriteCommandAsync(
                 request.Tenant,
                 request.CorrelationId,
                 request.ToArchivedCommand(),
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
@@ -82,8 +74,7 @@ public partial class SubmitCommandHandler(
         return result;
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1100,
             Level = LogLevel.Information,

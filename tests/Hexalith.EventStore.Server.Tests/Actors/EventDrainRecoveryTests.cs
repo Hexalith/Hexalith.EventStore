@@ -6,7 +6,6 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -27,12 +26,10 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Verifies ReceiveReminderAsync, DrainUnpublishedEventsAsync, and full drain lifecycle
 /// (AC: #1, #4, #5, #6, #9, #10, #12).
 /// </summary>
-public class EventDrainRecoveryTests
-{
+public class EventDrainRecoveryTests {
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
         IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor(
-        string actorId = "test-tenant:test-domain:agg-001")
-    {
+        string actorId = "test-tenant:test-domain:agg-001") {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -51,8 +48,7 @@ public class EventDrainRecoveryTests
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
         IEventPublisher EventPublisher, ICommandStatusStore StatusStore, ActorTimerManager TimerManager) CreateActorWithTimerManager(
-        string actorId = "test-tenant:test-domain:agg-001")
-    {
+        string actorId = "test-tenant:test-domain:agg-001") {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -89,16 +85,14 @@ public class EventDrainRecoveryTests
         IActorStateManager stateManager,
         int eventCount,
         string correlationId = "corr-drain",
-        int startSequence = 1)
-    {
+        int startSequence = 1) {
         int endSequence = startSequence + eventCount - 1;
         var metadata = new AggregateMetadata(endSequence, DateTimeOffset.UtcNow, null);
         stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
-        for (int seq = startSequence; seq <= endSequence; seq++)
-        {
+        for (int seq = startSequence; seq <= endSequence; seq++) {
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
                 correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", "json",
@@ -112,8 +106,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.2: Drain succeeds, events re-published ---
 
     [Fact]
-    public async Task ReceiveReminder_DrainSucceeds_EventsRePublished()
-    {
+    public async Task ReceiveReminder_DrainSucceeds_EventsRePublished() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -145,8 +138,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.3: Drain succeeds, reminder unregistered ---
 
     [Fact]
-    public async Task ReceiveReminder_DrainSucceeds_RecordRemoved()
-    {
+    public async Task ReceiveReminder_DrainSucceeds_RecordRemoved() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -176,8 +168,7 @@ public class EventDrainRecoveryTests
     }
 
     [Fact]
-    public async Task ReceiveReminder_DrainSucceeds_ReminderUnregistered()
-    {
+    public async Task ReceiveReminder_DrainSucceeds_ReminderUnregistered() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -206,8 +197,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.4: Drain succeeds, advisory status updated ---
 
     [Fact]
-    public async Task ReceiveReminder_DrainSucceeds_AdvisoryStatusUpdatedToCompleted()
-    {
+    public async Task ReceiveReminder_DrainSucceeds_AdvisoryStatusUpdatedToCompleted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(isRejection: false);
@@ -239,8 +229,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.5: Drain fails, retry count incremented ---
 
     [Fact]
-    public async Task ReceiveReminder_DrainFails_RetryCountIncremented()
-    {
+    public async Task ReceiveReminder_DrainFails_RetryCountIncremented() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 2);
@@ -271,8 +260,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.6: Drain fails, record preserved ---
 
     [Fact]
-    public async Task ReceiveReminder_DrainFails_RecordPreserved()
-    {
+    public async Task ReceiveReminder_DrainFails_RecordPreserved() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -307,8 +295,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.7: Drain fails, reminder continues ---
 
     [Fact]
-    public async Task ReceiveReminder_DrainFails_LogsWarning()
-    {
+    public async Task ReceiveReminder_DrainFails_LogsWarning() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -339,8 +326,7 @@ public class EventDrainRecoveryTests
     }
 
     [Fact]
-    public async Task ReceiveReminder_DrainFails_ReminderContinuesFiring()
-    {
+    public async Task ReceiveReminder_DrainFails_ReminderContinuesFiring() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -369,8 +355,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.8: Orphaned reminder cleanup ---
 
     [Fact]
-    public async Task ReceiveReminder_RecordNotFound_LogsWarning()
-    {
+    public async Task ReceiveReminder_RecordNotFound_LogsWarning() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _, _) = CreateActor();
 
@@ -393,8 +378,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.9: Multiple unpublished drained independently ---
 
     [Fact]
-    public async Task ReceiveReminder_MultipleUnpublished_DrainedIndependently()
-    {
+    public async Task ReceiveReminder_MultipleUnpublished_DrainedIndependently() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
 
@@ -446,8 +430,7 @@ public class EventDrainRecoveryTests
     }
 
     [Fact]
-    public async Task ReceiveReminder_MultipleUnpublished_UsesRecordedSequenceRangePerCorrelation()
-    {
+    public async Task ReceiveReminder_MultipleUnpublished_UsesRecordedSequenceRangePerCorrelation() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
 
@@ -490,8 +473,7 @@ public class EventDrainRecoveryTests
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
+            .Returns(callInfo => {
                 string correlationId = callInfo.ArgAt<string>(2);
                 IReadOnlyList<EventEnvelope> events = callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1);
                 publishedSequences[correlationId] = events.Select(e => e.SequenceNumber).ToArray();
@@ -510,8 +492,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.10: Rejection events drained with correct status ---
 
     [Fact]
-    public async Task ReceiveReminder_RejectionEvents_DrainedAndStatusRejected()
-    {
+    public async Task ReceiveReminder_RejectionEvents_DrainedAndStatusRejected() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(isRejection: true);
@@ -543,8 +524,7 @@ public class EventDrainRecoveryTests
     // --- Task 7.11: Unknown reminder ignored ---
 
     [Fact]
-    public async Task ReceiveReminder_UnknownReminder_Ignored()
-    {
+    public async Task ReceiveReminder_UnknownReminder_Ignored() {
         // Arrange
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IEventPublisher eventPublisher, _) = CreateActor();
 
@@ -570,8 +550,7 @@ public class EventDrainRecoveryTests
     // --- Task 9.2: Full drain cycle ---
 
     [Fact]
-    public async Task FullDrainCycle_PublishFails_ThenDrainSucceeds_EventsDelivered()
-    {
+    public async Task FullDrainCycle_PublishFails_ThenDrainSucceeds_EventsDelivered() {
         // Arrange -- simulate full cycle: command → publish fails → drain succeeds
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 0);
@@ -608,8 +587,7 @@ public class EventDrainRecoveryTests
     // --- Task 9.3: Multiple drain failures then success ---
 
     [Fact]
-    public async Task FullDrainCycle_MultipleFails_ThenSuccess_RetryCountAccurate()
-    {
+    public async Task FullDrainCycle_MultipleFails_ThenSuccess_RetryCountAccurate() {
         // Arrange -- record with 3 prior failures
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 3);
@@ -638,8 +616,7 @@ public class EventDrainRecoveryTests
     // --- Task 9.4: Events identical after drain ---
 
     [Fact]
-    public async Task FullDrainCycle_EventsSameAsOriginal_NoDataLoss()
-    {
+    public async Task FullDrainCycle_EventsSameAsOriginal_NoDataLoss() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
@@ -673,8 +650,7 @@ public class EventDrainRecoveryTests
     // --- Task 9.5: Topic correct after drain ---
 
     [Fact]
-    public async Task FullDrainCycle_TopicCorrect_MatchesOriginalPublication()
-    {
+    public async Task FullDrainCycle_TopicCorrect_MatchesOriginalPublication() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();

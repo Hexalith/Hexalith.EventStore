@@ -18,8 +18,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class DeadLetterPublisherTests
-{
+public class DeadLetterPublisherTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string domain = "test-domain",
@@ -34,8 +33,7 @@ public class DeadLetterPublisherTests
         UserId: "system",
         Extensions: null);
 
-    private static DeadLetterMessage CreateTestDeadLetterMessage(CommandEnvelope? command = null)
-    {
+    private static DeadLetterMessage CreateTestDeadLetterMessage(CommandEnvelope? command = null) {
         var cmd = command ?? CreateTestEnvelope();
         return DeadLetterMessage.FromException(
             cmd,
@@ -44,12 +42,10 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_Success_ReturnsTrueAndPublishesToCorrectTopic()
-    {
+    public async Task PublishDeadLetter_Success_ReturnsTrueAndPublishesToCorrectTopic() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions
-        {
+        var options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
@@ -73,12 +69,10 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_Success_UsesCloudEventsMetadata()
-    {
+    public async Task PublishDeadLetter_Success_UsesCloudEventsMetadata() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions
-        {
+        var options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
@@ -109,12 +103,10 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_Success_TopicFollowsDeadLetterPattern()
-    {
+    public async Task PublishDeadLetter_Success_TopicFollowsDeadLetterPattern() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions
-        {
+        var options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
@@ -137,8 +129,7 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_DaprThrows_ReturnsFalseNeverThrows()
-    {
+    public async Task PublishDeadLetter_DaprThrows_ReturnsFalseNeverThrows() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         daprClient.PublishEventAsync(
@@ -164,8 +155,7 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_DaprThrows_LogsError()
-    {
+    public async Task PublishDeadLetter_DaprThrows_LogsError() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         daprClient.PublishEventAsync(
@@ -197,12 +187,10 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_Success_CreatesOpenTelemetryActivity()
-    {
+    public async Task PublishDeadLetter_Success_CreatesOpenTelemetryActivity() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions
-        {
+        var options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
@@ -217,14 +205,11 @@ public class DeadLetterPublisherTests
             new InvalidOperationException("Boom"));
 
         Activity? capturedActivity = null;
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter)
-                {
+            ActivityStopped = activity => {
+                if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter) {
                     capturedActivity = activity;
                 }
             },
@@ -257,8 +242,7 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_NeverLogsCommandPayload()
-    {
+    public async Task PublishDeadLetter_NeverLogsCommandPayload() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         var options = Options.Create(new EventPublisherOptions());
@@ -283,12 +267,10 @@ public class DeadLetterPublisherTests
     }
 
     [Fact]
-    public async Task PublishDeadLetter_MultiTenant_EachTenantGetsOwnDeadLetterTopic()
-    {
+    public async Task PublishDeadLetter_MultiTenant_EachTenantGetsOwnDeadLetterTopic() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions
-        {
+        var options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });

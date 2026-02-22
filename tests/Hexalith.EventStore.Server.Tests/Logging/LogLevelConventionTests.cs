@@ -34,30 +34,25 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Information = normal flow, Debug = internal mechanics,
 /// Warning = retries/rejections, Error = infrastructure failures (AC #4).
 /// </summary>
-public class LogLevelConventionTests : IDisposable
-{
+public class LogLevelConventionTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
     private readonly ActivityListener _activityListener;
 
-    public LogLevelConventionTests()
-    {
-        _activityListener = new ActivityListener
-        {
+    public LogLevelConventionTests() {
+        _activityListener = new ActivityListener {
             ShouldListenTo = _ => true,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
         ActivitySource.AddActivityListener(_activityListener);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _activityListener.Dispose();
         GC.SuppressFinalize(this);
     }
 
     [Fact]
-    public async Task PipelineEntry_UsesInformationLevel()
-    {
+    public async Task PipelineEntry_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -77,8 +72,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task PipelineExit_UsesInformationLevel()
-    {
+    public async Task PipelineExit_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -98,8 +92,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task PipelineError_UsesErrorLevel()
-    {
+    public async Task PipelineError_UsesErrorLevel() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -119,8 +112,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task CommandReceived_UsesInformationLevel()
-    {
+    public async Task CommandReceived_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
         var statusStore = Substitute.For<ICommandStatusStore>();
@@ -138,8 +130,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task EventsPersisted_UsesInformationLevel()
-    {
+    public async Task EventsPersisted_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
         var stateManager = Substitute.For<IActorStateManager>();
@@ -159,8 +150,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task EventsPublished_UsesInformationLevel()
-    {
+    public async Task EventsPublished_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -178,8 +168,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task EventPublicationFailed_UsesErrorLevel()
-    {
+    public async Task EventPublicationFailed_UsesErrorLevel() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -201,8 +190,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public async Task DeadLetterPublished_UsesWarningLevel()
-    {
+    public async Task DeadLetterPublished_UsesWarningLevel() {
         // Arrange
         var logger = new TestLogger<DeadLetterPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -223,8 +211,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public void TenantMismatch_UsesWarningLevel()
-    {
+    public void TenantMismatch_UsesWarningLevel() {
         // Arrange
         var logger = new TestLogger<Server.Actors.TenantValidator>(_logEntries);
         var validator = new Server.Actors.TenantValidator(logger);
@@ -238,8 +225,7 @@ public class LogLevelConventionTests : IDisposable
     }
 
     [Fact]
-    public void TenantValidationPassed_UsesDebugLevel()
-    {
+    public void TenantValidationPassed_UsesDebugLevel() {
         // Arrange
         var logger = new TestLogger<Server.Actors.TenantValidator>(_logEntries);
         var validator = new Server.Actors.TenantValidator(logger);
@@ -293,14 +279,12 @@ public class LogLevelConventionTests : IDisposable
 
     private sealed class TestEvent : IEventPayload;
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

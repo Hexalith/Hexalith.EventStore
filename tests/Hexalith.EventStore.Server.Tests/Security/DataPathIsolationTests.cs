@@ -7,7 +7,6 @@ using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
@@ -16,7 +15,6 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
-using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,20 +24,16 @@ using NSubstitute;
 
 using Shouldly;
 
-using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-
 /// <summary>
 /// End-to-end data path isolation tests validating the complete command flow
 /// from router through actor to domain service maintains tenant isolation.
 /// (AC: #1, #3, #5, #6, #9, #12, #13)
 /// </summary>
-public class DataPathIsolationTests
-{
+public class DataPathIsolationTests {
     // --- Task 1.2: AC #1, #6 ---
 
     [Fact]
-    public async Task CommandRouter_DifferentTenantsSameDomainSameAggId_RouteToSeparateActors()
-    {
+    public async Task CommandRouter_DifferentTenantsSameDomainSameAggId_RouteToSeparateActors() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
         var actorProxy = Substitute.For<IAggregateActor>();
@@ -72,8 +66,7 @@ public class DataPathIsolationTests
     [InlineData("tenant-a", "orders", "order-001")]
     [InlineData("tenant-b", "inventory", "item-999")]
     [InlineData("acme", "billing", "inv-ABC123")]
-    public async Task CommandRouter_DerivedActorId_AlwaysMatchesAggregateIdentityActorId(string tenant, string domain, string aggregateId)
-    {
+    public async Task CommandRouter_DerivedActorId_AlwaysMatchesAggregateIdentityActorId(string tenant, string domain, string aggregateId) {
         // Arrange
         ActorId? capturedActorId = null;
         var actorProxy = Substitute.For<IAggregateActor>();
@@ -99,8 +92,7 @@ public class DataPathIsolationTests
     // --- Task 1.4: AC #9 ---
 
     [Fact]
-    public async Task CommandRouter_ConcurrentDifferentTenants_ProcessedIndependently()
-    {
+    public async Task CommandRouter_ConcurrentDifferentTenants_ProcessedIndependently() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
         var actorProxy = Substitute.For<IAggregateActor>();
@@ -124,8 +116,7 @@ public class DataPathIsolationTests
         var distinctActorIds = capturedActorIds.Select(a => a.ToString()).Distinct().ToList();
         distinctActorIds.Count.ShouldBe(4);
 
-        foreach (string tenant in tenants)
-        {
+        foreach (string tenant in tenants) {
             distinctActorIds.ShouldContain(a => a!.StartsWith($"{tenant}:", StringComparison.Ordinal));
         }
     }
@@ -133,8 +124,7 @@ public class DataPathIsolationTests
     // --- Task 1.5: AC #3 ---
 
     [Fact]
-    public async Task EndToEnd_ThreeLayerIsolation_AllLayersExercised()
-    {
+    public async Task EndToEnd_ThreeLayerIsolation_AllLayersExercised() {
         // Arrange -- create actor with correct tenant
         string tenantId = "test-tenant";
         string domain = "test-domain";
@@ -188,8 +178,7 @@ public class DataPathIsolationTests
     // --- Task 1.6: AC #13, GAP-F3 ---
 
     [Fact]
-    public async Task EndToEnd_TenantIdFlowsUnchanged_RouterToActorToInvoker()
-    {
+    public async Task EndToEnd_TenantIdFlowsUnchanged_RouterToActorToInvoker() {
         // Arrange
         const string tenantId = "trace-tenant";
         const string domain = "orders";
@@ -249,8 +238,7 @@ public class DataPathIsolationTests
     // --- Task 1.7: AC #12, GAP-C2 ---
 
     [Fact]
-    public async Task AggregateActor_ProcessCommand_ExplicitlyCallsTenantValidator()
-    {
+    public async Task AggregateActor_ProcessCommand_ExplicitlyCallsTenantValidator() {
         // Arrange -- create actor with matching tenant so validation PASSES
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();

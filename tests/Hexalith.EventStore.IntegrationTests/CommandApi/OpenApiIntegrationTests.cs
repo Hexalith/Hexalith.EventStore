@@ -3,7 +3,6 @@ extern alias commandapi;
 namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
@@ -11,11 +10,9 @@ using Hexalith.EventStore.IntegrationTests.Helpers;
 using Shouldly;
 
 public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
-    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
-{
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     [Fact]
-    public async Task GetOpenApiDocument_Returns200WithJson()
-    {
+    public async Task GetOpenApiDocument_Returns200WithJson() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -28,8 +25,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetOpenApiDocument_ContainsCommandsEndpoint()
-    {
+    public async Task GetOpenApiDocument_ContainsCommandsEndpoint() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -44,8 +40,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetOpenApiDocument_ContainsStatusEndpoint()
-    {
+    public async Task GetOpenApiDocument_ContainsStatusEndpoint() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -63,8 +58,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetOpenApiDocument_ContainsReplayEndpoint()
-    {
+    public async Task GetOpenApiDocument_ContainsReplayEndpoint() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -81,8 +75,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetOpenApiDocument_ContainsSecurityScheme()
-    {
+    public async Task GetOpenApiDocument_ContainsSecurityScheme() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -100,8 +93,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetSwaggerUI_Returns200()
-    {
+    public async Task GetSwaggerUI_Returns200() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -114,8 +106,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetOpenApiDocument_IsValidOpenApi()
-    {
+    public async Task GetOpenApiDocument_IsValidOpenApi() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -132,8 +123,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task GetOpenApiDocument_Contains429Response()
-    {
+    public async Task GetOpenApiDocument_Contains429Response() {
         // Arrange
         HttpClient client = factory.CreateClient();
 
@@ -149,10 +139,8 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
         responses.TryGetProperty("429", out _).ShouldBeTrue("Expected 429 response documented on POST /api/v1/commands");
     }
 
-    private static IEnumerable<string> EnumeratePropertyNames(JsonElement element)
-    {
-        foreach (JsonProperty property in element.EnumerateObject())
-        {
+    private static IEnumerable<string> EnumeratePropertyNames(JsonElement element) {
+        foreach (JsonProperty property in element.EnumerateObject()) {
             yield return property.Name;
         }
     }

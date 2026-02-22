@@ -6,14 +6,12 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
-
-using Hexalith.EventStore.Server.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -25,8 +23,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
-public class AggregateActorTests
-{
+public class AggregateActorTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -41,8 +38,7 @@ public class AggregateActorTests
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker) CreateActorWithMockState()
-    {
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker) CreateActorWithMockState() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -83,8 +79,7 @@ public class AggregateActorTests
         return (actor, stateManager, logger, invoker);
     }
 
-    private static void ConfigureNoDuplicate(IActorStateManager stateManager)
-    {
+    private static void ConfigureNoDuplicate(IActorStateManager stateManager) {
         stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
@@ -93,16 +88,14 @@ public class AggregateActorTests
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
     }
 
-    private static void ConfigureExistingAggregate(IActorStateManager stateManager, int eventCount)
-    {
+    private static void ConfigureExistingAggregate(IActorStateManager stateManager, int eventCount) {
         var metadata = new AggregateMetadata(eventCount, DateTimeOffset.UtcNow, null);
         stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
         string keyPrefix = "test-tenant:test-domain:agg-001:events:";
-        for (int i = 1; i <= eventCount; i++)
-        {
+        for (int i = 1; i <= eventCount; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
@@ -113,8 +106,7 @@ public class AggregateActorTests
         }
     }
 
-    private static void ConfigureDuplicate(IActorStateManager stateManager, string causationId, string correlationId)
-    {
+    private static void ConfigureDuplicate(IActorStateManager stateManager, string causationId, string correlationId) {
         var record = new IdempotencyRecord(causationId, correlationId, true, null, DateTimeOffset.UtcNow);
         stateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{causationId}", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
@@ -126,8 +118,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ValidCommand_ReturnsAccepted()
-    {
+    public async Task ProcessCommandAsync_ValidCommand_ReturnsAccepted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -141,8 +132,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ValidCommand_ReturnsCorrelationId()
-    {
+    public async Task ProcessCommandAsync_ValidCommand_ReturnsCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
@@ -157,8 +147,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ValidCommand_LogsCommandReceipt()
-    {
+    public async Task ProcessCommandAsync_ValidCommand_LogsCommandReceipt() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -177,8 +166,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_NewCommand_StoresIdempotencyRecord()
-    {
+    public async Task ProcessCommandAsync_NewCommand_StoresIdempotencyRecord() {
         // Arrange
         string correlationId = "corr-new";
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
@@ -196,8 +184,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_NewCommand_CallsSaveStateAsync()
-    {
+    public async Task ProcessCommandAsync_NewCommand_CallsSaveStateAsync() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -211,8 +198,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult()
-    {
+    public async Task ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureDuplicate(stateManager, "cause-dup", "corr-dup");
@@ -227,8 +213,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DuplicateCommand_DoesNotCallSaveState()
-    {
+    public async Task ProcessCommandAsync_DuplicateCommand_DoesNotCallSaveState() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureDuplicate(stateManager, "cause-dup", "corr-dup");
@@ -242,8 +227,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DuplicateCommand_DoesNotStoreNewRecord()
-    {
+    public async Task ProcessCommandAsync_DuplicateCommand_DoesNotStoreNewRecord() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureDuplicate(stateManager, "cause-dup", "corr-dup");
@@ -260,8 +244,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DuplicateCommand_LogsDuplicateDetection()
-    {
+    public async Task ProcessCommandAsync_DuplicateCommand_LogsDuplicateDetection() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureDuplicate(stateManager, "cause-dup", "corr-dup");
@@ -280,8 +263,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_NullCausationId_UseCorrelationIdAsFallback()
-    {
+    public async Task ProcessCommandAsync_NullCausationId_UseCorrelationIdAsFallback() {
         // Arrange
         string correlationId = "corr-fallback";
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
@@ -298,8 +280,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_ReturnsRejection()
-    {
+    public async Task ProcessCommandAsync_TenantMismatch_ReturnsRejection() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -314,8 +295,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_DoesNotExecuteSteps3Through5()
-    {
+    public async Task ProcessCommandAsync_TenantMismatch_DoesNotExecuteSteps3Through5() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -334,8 +314,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_StoresRejectionInIdempotencyCache()
-    {
+    public async Task ProcessCommandAsync_TenantMismatch_StoresRejectionInIdempotencyCache() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -352,8 +331,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_CallsSaveStateAsync()
-    {
+    public async Task ProcessCommandAsync_TenantMismatch_CallsSaveStateAsync() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -367,8 +345,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_MatchingTenant_ProceedsToStep3()
-    {
+    public async Task ProcessCommandAsync_MatchingTenant_ProceedsToStep3() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -387,8 +364,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DuplicateRejectedCommand_ReturnsCachedRejection()
-    {
+    public async Task ProcessCommandAsync_DuplicateRejectedCommand_ReturnsCachedRejection() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         var record = new IdempotencyRecord("cause-rejected", "corr-rejected", false, "TenantMismatch: ...", DateTimeOffset.UtcNow);
@@ -404,8 +380,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_RejectionContainsBothTenants()
-    {
+    public async Task ProcessCommandAsync_TenantMismatch_RejectionContainsBothTenants() {
         // Arrange (F-SA6)
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -423,8 +398,7 @@ public class AggregateActorTests
     // === Story 3.4: State Rehydration Tests ===
 
     [Fact]
-    public async Task ProcessCommandAsync_NewAggregate_RehydratesNullState()
-    {
+    public async Task ProcessCommandAsync_NewAggregate_RehydratesNullState() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -444,8 +418,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ExistingAggregate_RehydratesState()
-    {
+    public async Task ProcessCommandAsync_ExistingAggregate_RehydratesState() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -466,8 +439,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_StateRehydrated_ProceedsToStep4()
-    {
+    public async Task ProcessCommandAsync_StateRehydrated_ProceedsToStep4() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -486,8 +458,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_UnknownEvent_DeadLettersAndRejectsCommand()
-    {
+    public async Task ProcessCommandAsync_UnknownEvent_DeadLettersAndRejectsCommand() {
         // Arrange -- metadata says 2 events but event 2 is missing (simulates gap)
         // Story 4.5: Infrastructure exceptions (MissingEventException) trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
@@ -517,8 +488,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_StateRehydration_LogsStateType()
-    {
+    public async Task ProcessCommandAsync_StateRehydration_LogsStateType() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -538,8 +508,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_WithSnapshot_RehydratesUsingListStateForDomainCompatibility()
-    {
+    public async Task ProcessCommandAsync_WithSnapshot_RehydratesUsingListStateForDomainCompatibility() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);
@@ -565,8 +534,7 @@ public class AggregateActorTests
     // === Story 3.5: Domain Service Invocation Tests ===
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainSuccess_PersistsEventsViaStep5()
-    {
+    public async Task ProcessCommandAsync_DomainSuccess_PersistsEventsViaStep5() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -587,8 +555,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainRejection_ReturnsRejectionResult()
-    {
+    public async Task ProcessCommandAsync_DomainRejection_ReturnsRejectionResult() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -606,8 +573,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainRejection_StoresInIdempotencyCache()
-    {
+    public async Task ProcessCommandAsync_DomainRejection_StoresInIdempotencyCache() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -626,8 +592,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainNoOp_ReturnsAccepted()
-    {
+    public async Task ProcessCommandAsync_DomainNoOp_ReturnsAccepted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -642,8 +607,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainServiceNotFound_DeadLettersAndRejectsCommand()
-    {
+    public async Task ProcessCommandAsync_DomainServiceNotFound_DeadLettersAndRejectsCommand() {
         // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -659,8 +623,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainInfrastructureFailure_DeadLettersAndRejectsCommand()
-    {
+    public async Task ProcessCommandAsync_DomainInfrastructureFailure_DeadLettersAndRejectsCommand() {
         // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -677,8 +640,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainInvocation_LogsResultType()
-    {
+    public async Task ProcessCommandAsync_DomainInvocation_LogsResultType() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -701,8 +663,7 @@ public class AggregateActorTests
     // === Story 3.7: Event Persistence (Step 5) Tests ===
 
     [Fact]
-    public async Task ProcessCommandAsync_AfterEventPersistence_SaveStateAsyncCalledThreeTimes()
-    {
+    public async Task ProcessCommandAsync_AfterEventPersistence_SaveStateAsyncCalledThreeTimes() {
         // Arrange -- Story 3.11: Processing checkpoint + EventsStored atomic commit + terminal commit
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -718,8 +679,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_NoOpResult_SaveStateAsyncStillCalled()
-    {
+    public async Task ProcessCommandAsync_NoOpResult_SaveStateAsyncStillCalled() {
         // Arrange -- no-op still saves (idempotency record + pipeline cleanup)
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -734,8 +694,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainSuccess_ResultIncludesCorrectEventCount()
-    {
+    public async Task ProcessCommandAsync_DomainSuccess_ResultIncludesCorrectEventCount() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -754,8 +713,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_NoOpResult_EventCountIsZero()
-    {
+    public async Task ProcessCommandAsync_NoOpResult_EventCountIsZero() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -770,8 +728,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_SaveStateAsyncThrows_ThrowsConcurrencyConflictException()
-    {
+    public async Task ProcessCommandAsync_SaveStateAsyncThrows_ThrowsConcurrencyConflictException() {
         // Arrange -- AC #6: concurrency exception handling
         // Story 3.11: allow Processing checkpoint SaveStateAsync to succeed,
         // then throw on the EventsStored batch commit
@@ -782,12 +739,10 @@ public class AggregateActorTests
 
         int saveCallCount = 0;
         stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
+            .Returns(_ => {
                 saveCallCount++;
                 // First call: Processing checkpoint (succeeds)
-                if (saveCallCount == 1)
-                {
+                if (saveCallCount == 1) {
                     return Task.CompletedTask;
                 }
 
@@ -807,8 +762,7 @@ public class AggregateActorTests
     // === Code Review Fix: D3 -- Rejection events persisted ===
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainRejection_PersistsRejectionEventsViaEventPersister()
-    {
+    public async Task ProcessCommandAsync_DomainRejection_PersistsRejectionEventsViaEventPersister() {
         // Arrange -- D3: rejection events are events, they must be persisted
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -827,8 +781,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainRejection_ResultIncludesEventCount()
-    {
+    public async Task ProcessCommandAsync_DomainRejection_ResultIncludesEventCount() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -846,8 +799,7 @@ public class AggregateActorTests
     // === Code Review Fix: M2 -- OperationCanceledException passthrough ===
 
     [Fact]
-    public async Task ProcessCommandAsync_SaveStateAsyncThrowsOperationCanceled_PropagatesDirectly()
-    {
+    public async Task ProcessCommandAsync_SaveStateAsyncThrowsOperationCanceled_PropagatesDirectly() {
         // Arrange -- OperationCanceledException should NOT be wrapped as ConcurrencyConflictException
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -865,8 +817,7 @@ public class AggregateActorTests
 
     // === Story 3.9: Snapshot Integration Tests ===
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager) CreateActorWithAllMocks()
-    {
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager) CreateActorWithAllMocks() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -906,8 +857,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainSuccess_CallsShouldCreateSnapshotWithCorrectSequence()
-    {
+    public async Task ProcessCommandAsync_DomainSuccess_CallsShouldCreateSnapshotWithCorrectSequence() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);
@@ -925,8 +875,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ShouldSnapshotTrue_CallsCreateSnapshotWithPreEventSequence()
-    {
+    public async Task ProcessCommandAsync_ShouldSnapshotTrue_CallsCreateSnapshotWithPreEventSequence() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);
@@ -952,8 +901,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ShouldSnapshotFalse_DoesNotCallCreateSnapshot()
-    {
+    public async Task ProcessCommandAsync_ShouldSnapshotFalse_DoesNotCallCreateSnapshot() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);
@@ -979,8 +927,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_ExistingSnapshot_UsesSnapshotSequenceForInterval()
-    {
+    public async Task ProcessCommandAsync_ExistingSnapshot_UsesSnapshotSequenceForInterval() {
         // Arrange -- H2 fix: existing snapshot at seq 100 means lastSnapshotSequence=100
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);
@@ -1005,8 +952,7 @@ public class AggregateActorTests
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_DomainRejection_AlsoChecksSnapshotInterval()
-    {
+    public async Task ProcessCommandAsync_DomainRejection_AlsoChecksSnapshotInterval() {
         // Arrange -- M2 fix: rejection events count toward snapshot interval
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);

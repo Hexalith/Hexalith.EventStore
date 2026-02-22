@@ -7,27 +7,22 @@ using Hexalith.EventStore.Contracts.Results;
 
 using Microsoft.Extensions.DependencyInjection;
 
-public class ServiceCollectionExtensionsTests
-{
-    private sealed class TestState
-    {
+public class ServiceCollectionExtensionsTests {
+    private sealed class TestState {
         public string Value { get; init; } = "default";
     }
 
     private sealed class TestEvent : IEventPayload;
 
-    private sealed class TestProcessor : DomainProcessorBase<TestState>
-    {
-        protected override Task<DomainResult> HandleAsync(CommandEnvelope command, TestState? currentState)
-        {
+    private sealed class TestProcessor : DomainProcessorBase<TestState> {
+        protected override Task<DomainResult> HandleAsync(CommandEnvelope command, TestState? currentState) {
             var events = new IEventPayload[] { new TestEvent() };
             return Task.FromResult(DomainResult.Success(events));
         }
     }
 
     [Fact]
-    public void AddEventStoreClient_RegistersIDomainProcessor()
-    {
+    public void AddEventStoreClient_RegistersIDomainProcessor() {
         var services = new ServiceCollection();
 
         services.AddEventStoreClient<TestProcessor>();
@@ -40,8 +35,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddEventStoreClient_ReturnsSameServiceCollection()
-    {
+    public void AddEventStoreClient_ReturnsSameServiceCollection() {
         var services = new ServiceCollection();
 
         IServiceCollection result = services.AddEventStoreClient<TestProcessor>();
@@ -50,8 +44,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddEventStoreClient_RegistersWithScopedLifetime()
-    {
+    public void AddEventStoreClient_RegistersWithScopedLifetime() {
         var services = new ServiceCollection();
         services.AddEventStoreClient<TestProcessor>();
 
@@ -69,8 +62,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddEventStoreClient_WithNullServices_ThrowsArgumentNullException()
-    {
+    public void AddEventStoreClient_WithNullServices_ThrowsArgumentNullException() {
         IServiceCollection services = null!;
 
         Assert.Throws<ArgumentNullException>(() => services.AddEventStoreClient<TestProcessor>());

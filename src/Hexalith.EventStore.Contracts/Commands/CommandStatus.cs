@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// <summary>
 /// Command lifecycle status with explicit integer assignments for stable serialization.
 /// </summary>
-public enum CommandStatus
-{
+public enum CommandStatus {
     /// <summary>Written at API layer before actor invocation.</summary>
     Received = 0,
 

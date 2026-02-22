@@ -7,7 +7,6 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
-using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -29,13 +28,11 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// and tenant mismatch causes zero state access.
 /// (AC: #4, #8, #10, #11, #12)
 /// </summary>
-public class TenantInjectionPreventionTests
-{
+public class TenantInjectionPreventionTests {
     // --- Task 3.2: AC #10 ---
 
     [Fact]
-    public void AggregateIdentity_ColonInTenantId_Throws()
-    {
+    public void AggregateIdentity_ColonInTenantId_Throws() {
         // Colon injection to escape key namespace
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-b:orders", "orders", "order-001"));
@@ -47,8 +44,7 @@ public class TenantInjectionPreventionTests
     [InlineData("tenant\0id")]       // null byte
     [InlineData("tenant\u0001id")]   // control char SOH
     [InlineData("tenant\u001Fid")]   // control char US
-    public void AggregateIdentity_ControlCharsInTenantId_Throws(string tenantId)
-    {
+    public void AggregateIdentity_ControlCharsInTenantId_Throws(string tenantId) {
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity(tenantId, "orders", "order-001"));
     }
@@ -59,8 +55,7 @@ public class TenantInjectionPreventionTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("   ")]
-    public void AggregateIdentity_EmptyOrWhitespaceTenantId_Throws(string tenantId)
-    {
+    public void AggregateIdentity_EmptyOrWhitespaceTenantId_Throws(string tenantId) {
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity(tenantId, "orders", "order-001"));
     }
@@ -68,8 +63,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.5: AC #4, #8 ---
 
     [Fact]
-    public async Task TenantValidator_MismatchDetected_NoStateManagerAccess()
-    {
+    public async Task TenantValidator_MismatchDetected_NoStateManagerAccess() {
         // Arrange -- actor with tenant-b, command with tenant-a
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
@@ -107,8 +101,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.6: AC #8 ---
 
     [Fact]
-    public async Task TenantValidator_MismatchDetected_RejectionRecordedViaIdempotency()
-    {
+    public async Task TenantValidator_MismatchDetected_RejectionRecordedViaIdempotency() {
         // Arrange
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
@@ -148,8 +141,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.7: AC #4 ---
 
     [Fact]
-    public async Task AggregateActor_TenantMismatch_ResultContainsTenantMismatchError()
-    {
+    public async Task AggregateActor_TenantMismatch_ResultContainsTenantMismatchError() {
         // Arrange
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
@@ -191,8 +183,7 @@ public class TenantInjectionPreventionTests
     [InlineData("tenant-\u0430")]    // Cyrillic 'а' embedded
     [InlineData("\uFF11")]           // Fullwidth digit '1'
     [InlineData("tenant-\u0435")]    // Cyrillic 'е' (looks like Latin 'e')
-    public void AggregateIdentity_UnicodeHomoglyphInTenantId_Throws(string tenantId)
-    {
+    public void AggregateIdentity_UnicodeHomoglyphInTenantId_Throws(string tenantId) {
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity(tenantId, "orders", "order-001"));
     }
@@ -200,8 +191,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.9: AC #11, GAP-R3 ---
 
     [Fact]
-    public void AggregateIdentity_MaxLengthTenantId_Accepted()
-    {
+    public void AggregateIdentity_MaxLengthTenantId_Accepted() {
         // 64-char tenant ID should be accepted
         string maxTenant = new('a', 64);
         var identity = new AggregateIdentity(maxTenant, "orders", "order-001");
@@ -209,8 +199,7 @@ public class TenantInjectionPreventionTests
     }
 
     [Fact]
-    public void AggregateIdentity_OverMaxLengthTenantId_Throws()
-    {
+    public void AggregateIdentity_OverMaxLengthTenantId_Throws() {
         // 65-char tenant ID should be rejected
         string overMaxTenant = new('a', 65);
         Should.Throw<ArgumentException>(
@@ -220,8 +209,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.10: AC #11, GAP-PM2 ---
 
     [Fact]
-    public void AggregateIdentity_DotInTenantId_Throws()
-    {
+    public void AggregateIdentity_DotInTenantId_Throws() {
         // Dots could create ambiguous pub/sub topics
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant.a", "orders", "order-001"));
@@ -230,8 +218,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.11: GAP-F1 ---
 
     [Fact]
-    public void TenantValidator_UsesOrdinalStringComparison()
-    {
+    public void TenantValidator_UsesOrdinalStringComparison() {
         // TenantValidator must use Ordinal comparison, not culture-sensitive.
         // This test verifies case-sensitivity which distinguishes Ordinal from
         // OrdinalIgnoreCase, CurrentCultureIgnoreCase, and InvariantCultureIgnoreCase.
@@ -254,8 +241,7 @@ public class TenantInjectionPreventionTests
     // --- Task 3.12: AC #12, GAP-C1 ---
 
     [Fact]
-    public void AggregateActor_TenantMismatch_DemonstratesCrossTenantViolationWithoutValidator()
-    {
+    public void AggregateActor_TenantMismatch_DemonstratesCrossTenantViolationWithoutValidator() {
         // This test documents WHY TenantValidator is critical:
         // An actor with ID tenant-b:orders:order-001 that receives a command with TenantId=tenant-a
         // would read STATE belonging to tenant-b (from its own ActorId), not tenant-a.

@@ -32,8 +32,7 @@ public record EventEnvelope(
     string EventTypeName,
     string SerializationFormat,
     byte[] Payload,
-    IDictionary<string, string>? Extensions)
-{
+    IDictionary<string, string>? Extensions) {
     /// <summary>Gets the aggregate identity derived from this event's tenant, domain, and aggregate ID.</summary>
     public AggregateIdentity Identity => new(TenantId, Domain, AggregateId);
 
@@ -42,8 +41,7 @@ public record EventEnvelope(
     /// Framework-level enforcement: even if a developer logs the entire EventEnvelope,
     /// the payload is never exposed.
     /// </summary>
-    public override string ToString()
-    {
+    public override string ToString() {
         string extensionKeys = Extensions is not null
             ? string.Join(", ", Extensions.Keys)
             : "none";

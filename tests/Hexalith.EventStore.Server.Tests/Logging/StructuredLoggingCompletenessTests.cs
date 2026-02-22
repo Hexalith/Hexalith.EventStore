@@ -1,6 +1,8 @@
 using System.Diagnostics;
+
 using Dapr.Actors.Runtime;
 using Dapr.Client;
+
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
@@ -8,17 +10,21 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
-using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+
 using Shouldly;
+
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Server.Tests.Logging;
@@ -27,30 +33,25 @@ namespace Hexalith.EventStore.Server.Tests.Logging;
 /// Verifies each defined pipeline stage emits log entries with all required fields
 /// as specified in the architecture's Structured Logging Pattern table (AC #4, #11).
 /// </summary>
-public class StructuredLoggingCompletenessTests : IDisposable
-{
+public class StructuredLoggingCompletenessTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
     private readonly ActivityListener _activityListener;
 
-    public StructuredLoggingCompletenessTests()
-    {
-        _activityListener = new ActivityListener
-        {
+    public StructuredLoggingCompletenessTests() {
+        _activityListener = new ActivityListener {
             ShouldListenTo = _ => true,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
         ActivitySource.AddActivityListener(_activityListener);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _activityListener.Dispose();
         GC.SuppressFinalize(this);
     }
 
     [Fact]
-    public async Task CommandReceived_LogContainsAllRequiredFieldsAsync()
-    {
+    public async Task CommandReceived_LogContainsAllRequiredFieldsAsync() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
         var statusStore = Substitute.For<ICommandStatusStore>();
@@ -89,19 +90,18 @@ public class StructuredLoggingCompletenessTests : IDisposable
     /// actually, we can test the ValidationBehavior since it doesn't depend on DaprClient.
     /// </summary>
     [Fact]
-    public async Task ValidationBehavior_Passed_LogContainsAllRequiredFieldsAsync()
-    {
+    public async Task ValidationBehavior_Passed_LogContainsAllRequiredFieldsAsync() {
         // Arrange
         var logger = new TestLogger<ValidationBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "corr-123";
         httpContextAccessor.HttpContext.Returns(httpContext);
-        
+
         var validator = Substitute.For<FluentValidation.IValidator<SubmitCommand>>();
         validator.ValidateAsync(Arg.Any<FluentValidation.ValidationContext<SubmitCommand>>(), Arg.Any<CancellationToken>())
             .Returns(new FluentValidation.Results.ValidationResult());
-            
+
         var behavior = new ValidationBehavior<SubmitCommand, SubmitCommandResult>([validator], logger, httpContextAccessor);
         SubmitCommand command = CreateSubmitCommand();
         RequestHandlerDelegate<SubmitCommandResult> next = (_) => Task.FromResult(new SubmitCommandResult("corr-123"));
@@ -122,8 +122,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public async Task ValidationBehavior_Failed_LogContainsAllRequiredFieldsAsync()
-    {
+    public async Task ValidationBehavior_Failed_LogContainsAllRequiredFieldsAsync() {
         // Arrange
         var logger = new TestLogger<ValidationBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -156,8 +155,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public async Task EventsPersisted_LogContainsAllRequiredFields()
-    {
+    public async Task EventsPersisted_LogContainsAllRequiredFields() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
         var stateManager = Substitute.For<IActorStateManager>();
@@ -184,8 +182,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public async Task EventsPublished_LogContainsAllRequiredFields()
-    {
+    public async Task EventsPublished_LogContainsAllRequiredFields() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -209,8 +206,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public async Task InfrastructureFailure_EventPublication_LogContainsAllRequiredFields()
-    {
+    public async Task InfrastructureFailure_EventPublication_LogContainsAllRequiredFields() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -236,8 +232,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public async Task DeadLetterPublished_LogContainsAllRequiredFields()
-    {
+    public async Task DeadLetterPublished_LogContainsAllRequiredFields() {
         // Arrange
         var logger = new TestLogger<DeadLetterPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -266,8 +261,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public async Task PipelineEntry_LogContainsAllRequiredFields()
-    {
+    public async Task PipelineEntry_LogContainsAllRequiredFields() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -293,8 +287,7 @@ public class StructuredLoggingCompletenessTests : IDisposable
     }
 
     [Fact]
-    public void TenantValidationFailed_LogContainsAllRequiredFields()
-    {
+    public void TenantValidationFailed_LogContainsAllRequiredFields() {
         // Arrange
         var logger = new TestLogger<Server.Actors.TenantValidator>(_logEntries);
         var validator = new Server.Actors.TenantValidator(logger);
@@ -352,14 +345,12 @@ public class StructuredLoggingCompletenessTests : IDisposable
 
     private sealed class TestEvent : IEventPayload;
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

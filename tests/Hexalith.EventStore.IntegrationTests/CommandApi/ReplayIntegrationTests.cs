@@ -11,17 +11,13 @@ using commandapi::Hexalith.EventStore.CommandApi.Models;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.IntegrationTests.Helpers;
-using Hexalith.EventStore.Server.Commands;
 
 using Shouldly;
 
 public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
-    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
-{
-    private static async Task<string> SubmitCommandAndGetCorrelationId(HttpClient client, string tenant = "test-tenant")
-    {
-        var request = new
-        {
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
+    private static async Task<string> SubmitCommandAndGetCorrelationId(HttpClient client, string tenant = "test-tenant") {
+        var request = new {
             tenant,
             domain = "test-domain",
             aggregateId = "agg-replay",
@@ -36,8 +32,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         return submitResult.CorrelationId;
     }
 
-    private async Task SetCommandStatus(string tenant, string correlationId, CommandStatus status)
-    {
+    private async Task SetCommandStatus(string tenant, string correlationId, CommandStatus status) {
         await factory.StatusStore.WriteStatusAsync(
             tenant,
             correlationId,
@@ -46,8 +41,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_RejectedCommand_Returns202()
-    {
+    public async Task PostReplay_RejectedCommand_Returns202() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -68,8 +62,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_PublishFailedCommand_Returns202()
-    {
+    public async Task PostReplay_PublishFailedCommand_Returns202() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -88,8 +81,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_TimedOutCommand_Returns202()
-    {
+    public async Task PostReplay_TimedOutCommand_Returns202() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -113,8 +105,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_CompletedCommand_Returns409ProblemDetails()
-    {
+    public async Task PostReplay_CompletedCommand_Returns409ProblemDetails() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -137,8 +128,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_InFlightCommand_Returns409ProblemDetails()
-    {
+    public async Task PostReplay_InFlightCommand_Returns409ProblemDetails() {
         // Arrange - submit command (status is Received = in-flight)
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -155,8 +145,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_NonExistentCorrelationId_Returns404ProblemDetails()
-    {
+    public async Task PostReplay_NonExistentCorrelationId_Returns404ProblemDetails() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = Guid.NewGuid().ToString();
@@ -174,8 +163,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_WrongTenant_Returns404ProblemDetails()
-    {
+    public async Task PostReplay_WrongTenant_Returns404ProblemDetails() {
         // Arrange - submit as tenant-a
         HttpClient tenantAClient = CreateAuthenticatedClient("tenant-a");
         string correlationId = await SubmitCommandAndGetCorrelationId(tenantAClient, "tenant-a");
@@ -191,8 +179,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_NoAuthentication_Returns401()
-    {
+    public async Task PostReplay_NoAuthentication_Returns401() {
         // Arrange
         HttpClient client = factory.CreateClient();
         string correlationId = Guid.NewGuid().ToString();
@@ -206,8 +193,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_NoTenantClaims_Returns403()
-    {
+    public async Task PostReplay_NoTenantClaims_Returns403() {
         // Arrange - JWT with NO tenant claims
         string token = TestJwtTokenGenerator.GenerateToken(subject: "no-tenant-user");
         HttpClient client = factory.CreateClient();
@@ -227,8 +213,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_ReplayedCommand_StatusResetToReceived()
-    {
+    public async Task PostReplay_ReplayedCommand_StatusResetToReceived() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -249,8 +234,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_LocationHeader_PointsToStatusEndpoint()
-    {
+    public async Task PostReplay_LocationHeader_PointsToStatusEndpoint() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -268,8 +252,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_ResponseIncludesPreviousStatus()
-    {
+    public async Task PostReplay_ResponseIncludesPreviousStatus() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -287,8 +270,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_ReplayedThenFailedAgain_CanReplayAgain()
-    {
+    public async Task PostReplay_ReplayedThenFailedAgain_CanReplayAgain() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
@@ -311,8 +293,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_ResponseIncludesCorrelationIdInProblemDetails()
-    {
+    public async Task PostReplay_ResponseIncludesCorrelationIdInProblemDetails() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = Guid.NewGuid().ToString();
@@ -329,8 +310,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_ValidationRulesChanged_Returns400()
-    {
+    public async Task PostReplay_ValidationRulesChanged_Returns400() {
         // Arrange - seed an archived command with empty Payload (simulates data that
         // would fail under tighter validation rules added after original submission)
         string correlationId = Guid.NewGuid().ToString();
@@ -356,8 +336,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
-    private HttpClient CreateAuthenticatedClient(string tenantId)
-    {
+    private HttpClient CreateAuthenticatedClient(string tenantId) {
         HttpClient client = factory.CreateClient();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: [tenantId], domains: ["test-domain"]);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

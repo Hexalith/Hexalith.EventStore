@@ -15,23 +15,20 @@ using Shouldly;
 /// Integration tests verifying multi-domain and multi-tenant command processing (Story 3.6, AC #1-#5).
 /// </summary>
 public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
-    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
-{
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     private static object CreateCommandRequest(
         string tenant = "test-tenant",
         string domain = "test-domain",
         string aggregateId = "agg-001",
-        string commandType = "CreateOrder") => new
-    {
-        tenant,
-        domain,
-        aggregateId,
-        commandType,
-        payload = new { amount = 100 },
-    };
+        string commandType = "CreateOrder") => new {
+            tenant,
+            domain,
+            aggregateId,
+            commandType,
+            payload = new { amount = 100 },
+        };
 
-    private HttpClient CreateAuthenticatedClient(string[] tenants, string[]? permissions = null)
-    {
+    private HttpClient CreateAuthenticatedClient(string[] tenants, string[]? permissions = null) {
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: tenants,
             permissions: permissions ?? ["commands:*"]);
@@ -43,8 +40,7 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
     // --- Task 4.1: Two domains within same tenant route to different domain services ---
 
     [Fact]
-    public async Task PostCommands_TwoDomainsWithinSameTenant_BothAccepted()
-    {
+    public async Task PostCommands_TwoDomainsWithinSameTenant_BothAccepted() {
         // Arrange
         var fakeActor = new FakeAggregateActor();
         factory.Router.FakeActor = fakeActor;
@@ -70,8 +66,7 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
     // --- Task 4.2: Two tenants within same domain have isolated actors ---
 
     [Fact]
-    public async Task PostCommands_TwoTenantsSameDomain_BothAcceptedWithDistinctIdentities()
-    {
+    public async Task PostCommands_TwoTenantsSameDomain_BothAcceptedWithDistinctIdentities() {
         // Arrange
         var fakeActor = new FakeAggregateActor();
         factory.Router.FakeActor = fakeActor;
@@ -112,26 +107,22 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
     // --- Task 4.4: Unregistered tenant+domain returns error ---
 
     [Fact]
-    public async Task PostCommands_ActorThrowsDomainServiceNotFoundException_Returns500()
-    {
+    public async Task PostCommands_ActorThrowsDomainServiceNotFoundException_Returns500() {
         // Arrange - simulate DomainServiceNotFoundException at actor level
-        factory.Router.FakeActor = new FakeAggregateActor
-        {
+        factory.Router.FakeActor = new FakeAggregateActor {
             ConfiguredException = new Server.DomainServices.DomainServiceNotFoundException("unknown-tenant", "unknown-domain"),
         };
         HttpClient client = CreateAuthenticatedClient(["unknown-tenant"]);
         object request = CreateCommandRequest(tenant: "unknown-tenant", domain: "unknown-domain");
 
-        try
-        {
+        try {
             // Act
             HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
             // Assert - domain service not found should result in server error
             response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
         }
-        finally
-        {
+        finally {
             factory.Router.FakeActor = new FakeAggregateActor();
         }
     }
@@ -139,11 +130,9 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
     // --- Task 4.3: Dynamic tenant/domain addition without restart ---
 
     [Fact]
-    public async Task PostCommands_DynamicTenantAddition_SucceedsAfterReconfiguration()
-    {
+    public async Task PostCommands_DynamicTenantAddition_SucceedsAfterReconfiguration() {
         // Arrange - initially, new tenant's domain service is not registered (AC #3, NFR20)
-        factory.Router.FakeActor = new FakeAggregateActor
-        {
+        factory.Router.FakeActor = new FakeAggregateActor {
             ConfiguredException = new Server.DomainServices.DomainServiceNotFoundException("dynamic-tenant", "orders"),
         };
         HttpClient client = CreateAuthenticatedClient(["dynamic-tenant"]);
@@ -166,8 +155,7 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
     // --- Task 4.5: Actor state isolation between tenants ---
 
     [Fact]
-    public async Task PostCommands_MultipleTenantsSameDomainAndAggregate_CommandEnvelopesHaveDistinctActorIds()
-    {
+    public async Task PostCommands_MultipleTenantsSameDomainAndAggregate_CommandEnvelopesHaveDistinctActorIds() {
         // Arrange
         var fakeActor = new FakeAggregateActor();
         factory.Router.FakeActor = fakeActor;

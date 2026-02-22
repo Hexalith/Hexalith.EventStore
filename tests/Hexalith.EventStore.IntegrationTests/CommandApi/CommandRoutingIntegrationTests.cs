@@ -12,23 +12,20 @@ using Hexalith.EventStore.Testing.Fakes;
 using Shouldly;
 
 public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
-    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
-{
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     private static object CreateCommandRequest(
         string tenant = "test-tenant",
         string domain = "test-domain",
         string aggregateId = "agg-001",
-        string commandType = "CreateOrder") => new
-    {
-        tenant,
-        domain,
-        aggregateId,
-        commandType,
-        payload = new { amount = 100 },
-    };
+        string commandType = "CreateOrder") => new {
+            tenant,
+            domain,
+            aggregateId,
+            commandType,
+            payload = new { amount = 100 },
+        };
 
-    private HttpClient CreateAuthenticatedClient()
-    {
+    private HttpClient CreateAuthenticatedClient() {
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["test-tenant"],
             permissions: ["commands:*"]);
@@ -38,8 +35,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
     }
 
     [Fact]
-    public async Task PostCommands_ValidCommand_RoutesToActor()
-    {
+    public async Task PostCommands_ValidCommand_RoutesToActor() {
         // Arrange
         var fakeActor = new FakeAggregateActor();
         factory.Router.FakeActor = fakeActor;
@@ -55,8 +51,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
     }
 
     [Fact]
-    public async Task PostCommands_ValidCommand_Returns202Accepted()
-    {
+    public async Task PostCommands_ValidCommand_Returns202Accepted() {
         // Arrange
         factory.Router.FakeActor = new FakeAggregateActor();
         HttpClient client = CreateAuthenticatedClient();
@@ -70,8 +65,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
     }
 
     [Fact]
-    public async Task PostCommands_ValidCommand_ActorReceivesCorrectFields()
-    {
+    public async Task PostCommands_ValidCommand_ActorReceivesCorrectFields() {
         // Arrange
         var fakeActor = new FakeAggregateActor();
         factory.Router.FakeActor = fakeActor;
@@ -95,18 +89,15 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
     }
 
     [Fact]
-    public async Task PostCommands_ActorThrows_Returns500ProblemDetails()
-    {
+    public async Task PostCommands_ActorThrows_Returns500ProblemDetails() {
         // Arrange
-        factory.Router.FakeActor = new FakeAggregateActor
-        {
+        factory.Router.FakeActor = new FakeAggregateActor {
             ConfiguredException = new InvalidOperationException("Actor processing failed"),
         };
         HttpClient client = CreateAuthenticatedClient();
         object request = CreateCommandRequest();
 
-        try
-        {
+        try {
             // Act
             HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
@@ -115,16 +106,14 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
             string content = await response.Content.ReadAsStringAsync();
             content.ShouldContain("Internal Server Error");
         }
-        finally
-        {
+        finally {
             // Reset actor to prevent polluting other tests
             factory.Router.FakeActor = new FakeAggregateActor();
         }
     }
 
     [Fact]
-    public async Task PostCommands_MultipleSubmissions_AllReturnAccepted()
-    {
+    public async Task PostCommands_MultipleSubmissions_AllReturnAccepted() {
         // Arrange -- each HTTP request generates a unique causationId in the pipeline,
         // so this verifies the API handles multiple distinct commands correctly.
         // Note: True idempotency (duplicate causationId detection) is verified in
@@ -145,8 +134,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
     }
 
     [Fact]
-    public async Task PostCommands_SameCorrelationIdDifferentCausationId_BothProcessed()
-    {
+    public async Task PostCommands_SameCorrelationIdDifferentCausationId_BothProcessed() {
         // Arrange -- each request gets a unique correlationId/causationId from pipeline
         var fakeActor = new FakeAggregateActor { SimulateIdempotency = true };
         factory.Router.FakeActor = fakeActor;
@@ -166,8 +154,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
     }
 
     [Fact]
-    public async Task PostCommands_ValidCommand_ActorReceivesCommandEnvelope()
-    {
+    public async Task PostCommands_ValidCommand_ActorReceivesCommandEnvelope() {
         // Arrange
         var fakeActor = new FakeAggregateActor();
         factory.Router.FakeActor = fakeActor;

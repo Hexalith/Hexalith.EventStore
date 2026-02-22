@@ -8,14 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 /// <summary>
 /// Handles FluentValidation exceptions and converts them to RFC 7807 ProblemDetails.
 /// </summary>
-public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logger) : IExceptionHandler
-{
-    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
-    {
+public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logger) : IExceptionHandler {
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
 
-        if (exception is not ValidationException validationException)
-        {
+        if (exception is not ValidationException validationException) {
             return false;
         }
 
@@ -29,8 +26,7 @@ public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logg
 
         string? tenantId = ExtractTenantId(httpContext);
 
-        var problemDetails = new ProblemDetails
-        {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status400BadRequest,
             Title = "Validation Failed",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -47,8 +43,7 @@ public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logg
             },
         };
 
-        if (tenantId is not null)
-        {
+        if (tenantId is not null) {
             problemDetails.Extensions["tenantId"] = tenantId;
         }
 
@@ -62,11 +57,9 @@ public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logg
         return true;
     }
 
-    private static string? ExtractTenantId(HttpContext httpContext)
-    {
+    private static string? ExtractTenantId(HttpContext httpContext) {
         // Try to extract tenant from validation error context — the property name tells us the request was parsed
-        if (httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string tenant && !string.IsNullOrEmpty(tenant))
-        {
+        if (httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string tenant && !string.IsNullOrEmpty(tenant)) {
             return tenant;
         }
 

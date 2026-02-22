@@ -1,8 +1,11 @@
 namespace Hexalith.EventStore.Server.Tests.Security;
 
-using System.Text.Json;
 using System.Reflection;
 using System.Security.Claims;
+using System.Text.Json;
+
+using Dapr.Actors;
+using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.CommandApi.Configuration;
 using Hexalith.EventStore.CommandApi.Controllers;
@@ -11,8 +14,6 @@ using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Validation;
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Identity;
-using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -20,15 +21,11 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
-using Dapr.Actors;
-using Dapr.Actors.Runtime;
-
 using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -39,13 +36,11 @@ using Shouldly;
 /// Story 5.4, Task 6: Security audit logging tests (AC #1, #6, #7, #8, #9, #10).
 /// Validates that security events use consistent SecurityEvent field and correct metadata.
 /// </summary>
-public class SecurityAuditLoggingTests
-{
+public class SecurityAuditLoggingTests {
     // --- Task 6.2: AuthorizationBehavior logs SecurityEvent=AuthorizationDenied for unauthorized tenant ---
 
     [Fact]
-    public async Task AuthorizationBehavior_UnauthorizedDomain_LogsSecurityEvent()
-    {
+    public async Task AuthorizationBehavior_UnauthorizedDomain_LogsSecurityEvent() {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
@@ -70,8 +65,7 @@ public class SecurityAuditLoggingTests
     // --- Task 6.3: AuthorizationBehavior logs SecurityEvent for unauthorized domain ---
 
     [Fact]
-    public async Task AuthorizationBehavior_UnauthorizedTenant_LogsSecurityEvent()
-    {
+    public async Task AuthorizationBehavior_UnauthorizedTenant_LogsSecurityEvent() {
         // Note: Tenant authorization happens in the controller layer (not AuthorizationBehavior).
         // AuthorizationBehavior handles domain and permission checks.
         // This test verifies domain denial produces SecurityEvent.
@@ -97,8 +91,7 @@ public class SecurityAuditLoggingTests
     // --- Task 6.4: SecurityEvent log never contains JWT token ---
 
     [Fact]
-    public async Task AuthorizationBehavior_SecurityEventLog_NeverContainsJwtToken()
-    {
+    public async Task AuthorizationBehavior_SecurityEventLog_NeverContainsJwtToken() {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
@@ -116,8 +109,7 @@ public class SecurityAuditLoggingTests
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         // Verify no log entry contains the JWT token
-        foreach (LogEntry entry in logEntries)
-        {
+        foreach (LogEntry entry in logEntries) {
             entry.Message.ShouldNotContain("eyJ", Case.Sensitive,
                 "Security audit log must never contain JWT token content (base64 encoded)");
         }
@@ -126,8 +118,7 @@ public class SecurityAuditLoggingTests
     // --- Task 6.5: AggregateActor tenant mismatch logs SecurityEvent ---
 
     [Fact]
-    public async Task AggregateActor_TenantMismatch_LogsSecurityEvent()
-    {
+    public async Task AggregateActor_TenantMismatch_LogsSecurityEvent() {
         // Create an actor with tenant-a in its actor ID
         var logEntries = new List<LogEntry>();
         var actorLogger = new TestLogger<AggregateActor>(logEntries);
@@ -174,8 +165,7 @@ public class SecurityAuditLoggingTests
     // --- Task 6.8: All security events have required fields ---
 
     [Fact]
-    public async Task SecurityAuditLogs_ConsistentFormat_AllEventsHaveRequiredFields()
-    {
+    public async Task SecurityAuditLogs_ConsistentFormat_AllEventsHaveRequiredFields() {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
@@ -200,24 +190,20 @@ public class SecurityAuditLoggingTests
     }
 
     [Fact]
-    public async Task ExtensionMetadataSanitizer_OversizedExtensions_LogsSecurityEvent()
-    {
+    public async Task ExtensionMetadataSanitizer_OversizedExtensions_LogsSecurityEvent() {
         var logEntries = new List<LogEntry>();
         var controllerLogger = new TestLogger<CommandsController>(logEntries);
         IMediator mediator = Substitute.For<IMediator>();
         var sanitizer = new ExtensionMetadataSanitizer(
-            Options.Create(new ExtensionMetadataOptions
-            {
+            Options.Create(new ExtensionMetadataOptions {
                 MaxTotalSizeBytes = 8,
                 MaxKeyLength = 128,
                 MaxValueLength = 2048,
                 MaxExtensionCount = 32,
             }));
 
-        var controller = new CommandsController(mediator, sanitizer, controllerLogger)
-        {
-            ControllerContext = new()
-            {
+        var controller = new CommandsController(mediator, sanitizer, controllerLogger) {
+            ControllerContext = new() {
                 HttpContext = CreateAuthorizedHttpContext("tenant-a", "corr-extension-oversized"),
             },
         };
@@ -229,8 +215,7 @@ public class SecurityAuditLoggingTests
             AggregateId: "agg-1",
             CommandType: "PlaceOrder",
             Payload: payloadDocument.RootElement.Clone(),
-            Extensions: new Dictionary<string, string>
-            {
+            Extensions: new Dictionary<string, string> {
                 ["k1"] = "aaaa",
                 ["k2"] = "bbbb",
             });
@@ -247,17 +232,14 @@ public class SecurityAuditLoggingTests
     }
 
     [Fact]
-    public async Task ExtensionMetadataSanitizer_RejectionLog_DoesNotContainExtensionContent()
-    {
+    public async Task ExtensionMetadataSanitizer_RejectionLog_DoesNotContainExtensionContent() {
         var logEntries = new List<LogEntry>();
         var controllerLogger = new TestLogger<CommandsController>(logEntries);
         IMediator mediator = Substitute.For<IMediator>();
         var sanitizer = new ExtensionMetadataSanitizer(Options.Create(new ExtensionMetadataOptions()));
 
-        var controller = new CommandsController(mediator, sanitizer, controllerLogger)
-        {
-            ControllerContext = new()
-            {
+        var controller = new CommandsController(mediator, sanitizer, controllerLogger) {
+            ControllerContext = new() {
                 HttpContext = CreateAuthorizedHttpContext("tenant-a", "corr-extension-content"),
             },
         };
@@ -271,8 +253,7 @@ public class SecurityAuditLoggingTests
             AggregateId: "agg-1",
             CommandType: "PlaceOrder",
             Payload: payloadDocument.RootElement.Clone(),
-            Extensions: new Dictionary<string, string>
-            {
+            Extensions: new Dictionary<string, string> {
                 ["note"] = maliciousExtension,
             });
 
@@ -281,8 +262,7 @@ public class SecurityAuditLoggingTests
         ObjectResult badRequest = actionResult.ShouldBeOfType<ObjectResult>();
         badRequest.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
 
-        foreach (LogEntry entry in logEntries)
-        {
+        foreach (LogEntry entry in logEntries) {
             entry.Message.ShouldNotContain(maliciousExtension, Case.Sensitive,
                 "Rejected extension content must not be written to logs.");
         }
@@ -309,29 +289,22 @@ public class SecurityAuditLoggingTests
     private static ClaimsPrincipal CreatePrincipal(
         string[]? tenants = null,
         string[]? domains = null,
-        string[]? permissions = null)
-    {
+        string[]? permissions = null) {
         var claims = new List<Claim>();
-        if (tenants is not null)
-        {
-            foreach (string t in tenants)
-            {
+        if (tenants is not null) {
+            foreach (string t in tenants) {
                 claims.Add(new Claim("eventstore:tenant", t));
             }
         }
 
-        if (domains is not null)
-        {
-            foreach (string d in domains)
-            {
+        if (domains is not null) {
+            foreach (string d in domains) {
                 claims.Add(new Claim("eventstore:domain", d));
             }
         }
 
-        if (permissions is not null)
-        {
-            foreach (string p in permissions)
-            {
+        if (permissions is not null) {
+            foreach (string p in permissions) {
                 claims.Add(new Claim("eventstore:permission", p));
             }
         }
@@ -340,8 +313,7 @@ public class SecurityAuditLoggingTests
         return new ClaimsPrincipal(identity);
     }
 
-    private static DefaultHttpContext CreateAuthorizedHttpContext(string tenant, string correlationId)
-    {
+    private static DefaultHttpContext CreateAuthorizedHttpContext(string tenant, string correlationId) {
         var httpContext = new DefaultHttpContext();
         httpContext.Items["CorrelationId"] = correlationId;
         httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("127.0.0.1");
@@ -359,14 +331,12 @@ public class SecurityAuditLoggingTests
         return httpContext;
     }
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

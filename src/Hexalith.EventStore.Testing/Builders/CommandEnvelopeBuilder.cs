@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Commands;
 /// <summary>
 /// Fluent builder for creating <see cref="CommandEnvelope"/> instances with sensible defaults for testing.
 /// </summary>
-public sealed class CommandEnvelopeBuilder
-{
+public sealed class CommandEnvelopeBuilder {
     private string _tenantId = "test-tenant";
     private string _domain = "test-domain";
     private string _aggregateId = "test-agg-001";

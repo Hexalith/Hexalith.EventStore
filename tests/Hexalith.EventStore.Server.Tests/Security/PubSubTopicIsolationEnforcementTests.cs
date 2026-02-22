@@ -11,8 +11,7 @@ using YamlDotNet.Serialization;
 /// local-production consistency, and domain service zero-access enforcement.
 /// Uses YamlDotNet for YAML parsing (matches AccessControlPolicyTests pattern).
 /// </summary>
-public class PubSubTopicIsolationEnforcementTests
-{
+public class PubSubTopicIsolationEnforcementTests {
     private static readonly IDeserializer YamlParser = new DeserializerBuilder().Build();
 
     private static readonly string LocalPubSubPath = Path.GetFullPath(
@@ -30,8 +29,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.2: AC #1, #2, #9 ---
 
     [Fact]
-    public void LocalPubSubYaml_HasSubscriptionScoping_RestrictsSubscribers()
-    {
+    public void LocalPubSubYaml_HasSubscriptionScoping_RestrictsSubscribers() {
         Dictionary<string, object> doc = LoadYaml(LocalPubSubPath);
 
         // subscriptionScopes metadata must exist
@@ -47,8 +45,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.3: AC #5 (regression) ---
 
     [Fact]
-    public void LocalPubSubYaml_PublishingScopes_OnlyCommandApiCanPublish()
-    {
+    public void LocalPubSubYaml_PublishingScopes_OnlyCommandApiCanPublish() {
         Dictionary<string, object> doc = LoadYaml(LocalPubSubPath);
 
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
@@ -68,8 +65,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.4: AC #6 ---
 
     [Fact]
-    public void LocalPubSubYaml_DeadLetterTopics_SeparateSubscriptionScope()
-    {
+    public void LocalPubSubYaml_DeadLetterTopics_SeparateSubscriptionScope() {
         Dictionary<string, object> doc = LoadYaml(LocalPubSubPath);
 
         // Dead-letter must be enabled
@@ -96,8 +92,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.5: AC #9 ---
 
     [Fact]
-    public void ProductionRabbitMqYaml_HasSubscriptionScoping_RestrictsSubscribers()
-    {
+    public void ProductionRabbitMqYaml_HasSubscriptionScoping_RestrictsSubscribers() {
         Dictionary<string, object> doc = LoadYaml(ProductionRabbitMqPath);
 
         // subscriptionScopes metadata must exist
@@ -123,8 +118,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.6: AC #9 ---
 
     [Fact]
-    public void ProductionKafkaYaml_HasSubscriptionScoping_RestrictsSubscribers()
-    {
+    public void ProductionKafkaYaml_HasSubscriptionScoping_RestrictsSubscribers() {
         Dictionary<string, object> doc = LoadYaml(ProductionKafkaPath);
 
         // subscriptionScopes metadata must exist
@@ -150,8 +144,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.7: AC #8, #9 ---
 
     [Fact]
-    public void AllPubSubConfigs_SubscriptionScopingTopology_Consistent()
-    {
+    public void AllPubSubConfigs_SubscriptionScopingTopology_Consistent() {
         Dictionary<string, object> localDoc = LoadYaml(LocalPubSubPath);
         Dictionary<string, object> rabbitDoc = LoadYaml(ProductionRabbitMqPath);
         Dictionary<string, object> kafkaDoc = LoadYaml(ProductionKafkaPath);
@@ -183,8 +176,7 @@ public class PubSubTopicIsolationEnforcementTests
             (localDoc, "local"),
             (rabbitDoc, "production RabbitMQ"),
             (kafkaDoc, "production Kafka"),
-        })
-        {
+        }) {
             string pubScopes = GetComponentMetadataValue(doc, "publishingScopes") ?? string.Empty;
             string subScopes = GetComponentMetadataValue(doc, "subscriptionScopes") ?? string.Empty;
 
@@ -206,8 +198,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.8: AC #10 (NFR20) ---
 
     [Fact]
-    public void AllPubSubConfigs_CommandApiPublishScope_NotRestricted()
-    {
+    public void AllPubSubConfigs_CommandApiPublishScope_NotRestricted() {
         // NFR20: commandapi must be able to publish to any topic (dynamic tenant provisioning).
         // This is achieved by NOT listing commandapi in publishingScopes (unlisted = unrestricted).
         // DAPR does NOT support wildcards -- "commandapi=*" would restrict to literal topic "*".
@@ -216,8 +207,7 @@ public class PubSubTopicIsolationEnforcementTests
             (LocalPubSubPath, "local pub/sub"),
             (ProductionRabbitMqPath, "production RabbitMQ pub/sub"),
             (ProductionKafkaPath, "production Kafka pub/sub"),
-        })
-        {
+        }) {
             Dictionary<string, object> doc = LoadYaml(path);
 
             string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
@@ -240,8 +230,7 @@ public class PubSubTopicIsolationEnforcementTests
     // --- Task 3.9: AC #5 (regression) ---
 
     [Fact]
-    public void AllPubSubConfigs_DomainServices_NoPubSubAccess()
-    {
+    public void AllPubSubConfigs_DomainServices_NoPubSubAccess() {
         // Regression test: domain services (sample) must have zero pub/sub access (Story 5.1).
         // Local config: sample denied via component scopes exclusion + explicit deny in scoping.
         // Production configs: sample not in component scopes = zero access.
@@ -270,15 +259,13 @@ public class PubSubTopicIsolationEnforcementTests
     }
 
     [Fact]
-    public void AllPubSubConfigs_DocumentUnauthorizedSubscriptionObservability()
-    {
+    public void AllPubSubConfigs_DocumentUnauthorizedSubscriptionObservability() {
         foreach ((string path, string name) in new[]
         {
             (LocalPubSubPath, "local pub/sub"),
             (ProductionRabbitMqPath, "production RabbitMQ pub/sub"),
             (ProductionKafkaPath, "production Kafka pub/sub"),
-        })
-        {
+        }) {
             string content = File.ReadAllText(path);
 
             content.Contains("unauthorized", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
@@ -292,25 +279,20 @@ public class PubSubTopicIsolationEnforcementTests
 
     // --- YAML navigation helpers (matches AccessControlPolicyTests pattern) ---
 
-    private static Dictionary<string, object> LoadYaml(string path)
-    {
+    private static Dictionary<string, object> LoadYaml(string path) {
         string content = File.ReadAllText(path);
         return YamlParser.Deserialize<Dictionary<string, object>>(content);
     }
 
-    private static object? Nav(object root, params string[] path)
-    {
+    private static object? Nav(object root, params string[] path) {
         object? current = root;
-        foreach (string key in path)
-        {
-            current = current switch
-            {
+        foreach (string key in path) {
+            current = current switch {
                 Dictionary<string, object> stringDict when stringDict.TryGetValue(key, out object? val) => val,
                 Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
                 _ => null,
             };
-            if (current is null)
-            {
+            if (current is null) {
                 return null;
             }
         }
@@ -324,11 +306,9 @@ public class PubSubTopicIsolationEnforcementTests
     private static string GetString(Dictionary<object, object> map, string key)
         => map.TryGetValue(key, out object? val) ? val?.ToString() ?? string.Empty : string.Empty;
 
-    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName)
-    {
+    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
         List<object>? metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null)
-        {
+        if (metadataList is null) {
             return null;
         }
 
@@ -338,16 +318,14 @@ public class PubSubTopicIsolationEnforcementTests
         return entry is not null ? GetString(entry, "value") : null;
     }
 
-    private static void VerifyScopesContainCommandApi(Dictionary<string, object> doc, string componentName)
-    {
+    private static void VerifyScopesContainCommandApi(Dictionary<string, object> doc, string componentName) {
         List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         scopes.ShouldNotBeNull($"{componentName} must have component-level scopes");
         scopes.Select(s => s?.ToString()).ShouldContain("commandapi",
             $"{componentName} scopes must include commandapi");
     }
 
-    private static void VerifySampleExcludedFromScopes(Dictionary<string, object> doc, string componentName)
-    {
+    private static void VerifySampleExcludedFromScopes(Dictionary<string, object> doc, string componentName) {
         List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
         scopes.Select(s => s?.ToString()).ShouldNotContain("sample",
@@ -359,8 +337,7 @@ public class PubSubTopicIsolationEnforcementTests
     /// Scoping format: "app1=topic1,topic2;app2=topic3" -- checks for "appId=" pattern.
     /// An app NOT listed in scoping metadata has UNRESTRICTED access (DAPR default-open behavior).
     /// </summary>
-    private static void ShouldNotContainAppId(string scopingValue, string appId, string message)
-    {
+    private static void ShouldNotContainAppId(string scopingValue, string appId, string message) {
         scopingValue.Contains($"{appId}=").ShouldBeFalse(message);
     }
 }

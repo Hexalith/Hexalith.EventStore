@@ -12,20 +12,17 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// Aspire Testing where dynamic port allocation can cause HTTP port mismatches.
 /// The gRPC channel is reliably configured via DAPR_GRPC_PORT.
 /// </summary>
-public class DaprSidecarHealthCheck(DaprClient daprClient) : IHealthCheck
-{
+public class DaprSidecarHealthCheck(DaprClient daprClient) : IHealthCheck {
     private readonly DaprClient _daprClient = daprClient
         ?? throw new ArgumentNullException(nameof(daprClient));
 
     /// <inheritdoc/>
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(context);
 
-        try
-        {
+        try {
             var metadata = await _daprClient.GetMetadataAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -35,8 +32,7 @@ public class DaprSidecarHealthCheck(DaprClient daprClient) : IHealthCheck
                     context.Registration.FailureStatus,
                     "Dapr sidecar is not responsive.");
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return new HealthCheckResult(
                 context.Registration.FailureStatus,
                 $"Dapr sidecar health check failed: {ex.GetType().Name}",

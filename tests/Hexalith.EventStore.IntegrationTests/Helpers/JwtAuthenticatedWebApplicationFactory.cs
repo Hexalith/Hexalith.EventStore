@@ -17,8 +17,7 @@ using CommandApiProgram = commandapi::Program;
 /// Used by all integration tests that need authenticated requests.
 /// Overrides Dapr store registrations with InMemory implementations for tests.
 /// </summary>
-public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<CommandApiProgram>
-{
+public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
     /// <summary>Gets the shared InMemoryCommandStatusStore instance used across all tests.</summary>
     public InMemoryCommandStatusStore StatusStore { get; } = new();
 
@@ -28,13 +27,10 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
     /// <summary>Gets the shared FakeCommandRouter instance used across all tests.</summary>
     public FakeCommandRouter Router { get; } = new() { FakeActor = new FakeAggregateActor() };
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
+    protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.ConfigureAppConfiguration(config =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
+        builder.ConfigureAppConfiguration(config => {
+            config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
                 ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
                 ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
@@ -44,13 +40,11 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
             });
         });
 
-        builder.ConfigureServices(services =>
-        {
+        builder.ConfigureServices(services => {
             // Remove the DaprCommandStatusStore registration and replace with InMemory
             ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                 d => d.ServiceType == typeof(ICommandStatusStore));
-            if (statusDescriptor is not null)
-            {
+            if (statusDescriptor is not null) {
                 services.Remove(statusDescriptor);
             }
 
@@ -59,8 +53,7 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
             // Remove the DaprCommandArchiveStore registration and replace with InMemory
             ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
                 d => d.ServiceType == typeof(ICommandArchiveStore));
-            if (archiveDescriptor is not null)
-            {
+            if (archiveDescriptor is not null) {
                 services.Remove(archiveDescriptor);
             }
 

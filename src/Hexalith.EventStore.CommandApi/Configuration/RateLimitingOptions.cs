@@ -6,8 +6,7 @@ using Microsoft.Extensions.Options;
 /// Configuration options for per-tenant rate limiting.
 /// Bound from the "EventStore:RateLimiting" configuration section.
 /// </summary>
-public record RateLimitingOptions
-{
+public record RateLimitingOptions {
     /// <summary>
     /// Gets the maximum number of requests permitted per window per tenant.
     /// </summary>
@@ -34,32 +33,26 @@ public record RateLimitingOptions
 /// Validates that <see cref="RateLimitingOptions"/> is properly configured at startup.
 /// Fails fast with clear error messages for invalid configuration.
 /// </summary>
-public class ValidateRateLimitingOptions : IValidateOptions<RateLimitingOptions>
-{
-    public ValidateOptionsResult Validate(string? name, RateLimitingOptions options)
-    {
+public class ValidateRateLimitingOptions : IValidateOptions<RateLimitingOptions> {
+    public ValidateOptionsResult Validate(string? name, RateLimitingOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (options.PermitLimit <= 0)
-        {
+        if (options.PermitLimit <= 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:RateLimiting:PermitLimit must be greater than 0.");
         }
 
-        if (options.WindowSeconds <= 0)
-        {
+        if (options.WindowSeconds <= 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:RateLimiting:WindowSeconds must be greater than 0.");
         }
 
-        if (options.SegmentsPerWindow < 1)
-        {
+        if (options.SegmentsPerWindow < 1) {
             return ValidateOptionsResult.Fail(
                 "EventStore:RateLimiting:SegmentsPerWindow must be at least 1.");
         }
 
-        if (options.QueueLimit < 0)
-        {
+        if (options.QueueLimit < 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:RateLimiting:QueueLimit must be 0 or greater.");
         }

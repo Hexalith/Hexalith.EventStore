@@ -6,8 +6,7 @@ using Microsoft.Extensions.Options;
 /// Configuration options for extension metadata sanitization (SEC-4).
 /// Bound from the "EventStore:ExtensionMetadata" configuration section.
 /// </summary>
-public record ExtensionMetadataOptions
-{
+public record ExtensionMetadataOptions {
     /// <summary>
     /// Gets the maximum total size of all extension keys and values in bytes.
     /// </summary>
@@ -32,32 +31,26 @@ public record ExtensionMetadataOptions
 /// <summary>
 /// Validates that <see cref="ExtensionMetadataOptions"/> is properly configured at startup.
 /// </summary>
-public class ValidateExtensionMetadataOptions : IValidateOptions<ExtensionMetadataOptions>
-{
-    public ValidateOptionsResult Validate(string? name, ExtensionMetadataOptions options)
-    {
+public class ValidateExtensionMetadataOptions : IValidateOptions<ExtensionMetadataOptions> {
+    public ValidateOptionsResult Validate(string? name, ExtensionMetadataOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (options.MaxTotalSizeBytes <= 0)
-        {
+        if (options.MaxTotalSizeBytes <= 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:ExtensionMetadata:MaxTotalSizeBytes must be greater than 0.");
         }
 
-        if (options.MaxKeyLength <= 0)
-        {
+        if (options.MaxKeyLength <= 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:ExtensionMetadata:MaxKeyLength must be greater than 0.");
         }
 
-        if (options.MaxValueLength <= 0)
-        {
+        if (options.MaxValueLength <= 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:ExtensionMetadata:MaxValueLength must be greater than 0.");
         }
 
-        if (options.MaxExtensionCount <= 0)
-        {
+        if (options.MaxExtensionCount <= 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:ExtensionMetadata:MaxExtensionCount must be greater than 0.");
         }

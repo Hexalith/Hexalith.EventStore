@@ -21,8 +21,7 @@ using Shouldly;
 /// Story 4.1 Task 6: EventPublisher unit tests.
 /// Verifies CloudEvents metadata, topic derivation, failure handling, OpenTelemetry activity, and structured logging.
 /// </summary>
-public class EventPublisherTests
-{
+public class EventPublisherTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1, string eventTypeName = "OrderCreated") =>
@@ -41,8 +40,7 @@ public class EventPublisherTests
             Payload: [1, 2, 3],
             Extensions: null);
 
-    private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(string pubSubName = "pubsub")
-    {
+    private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(string pubSubName = "pubsub") {
         var daprClient = Substitute.For<DaprClient>();
         var options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
         var logger = Substitute.For<ILogger<EventPublisher>>();
@@ -54,8 +52,7 @@ public class EventPublisherTests
     // --- Task 6.1: Single event CloudEvents metadata ---
 
     [Fact]
-    public async Task PublishEventsAsync_SingleEvent_CallsDaprPublishWithCloudEventsMetadata()
-    {
+    public async Task PublishEventsAsync_SingleEvent_CallsDaprPublishWithCloudEventsMetadata() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope envelope = CreateTestEnvelope();
@@ -81,8 +78,7 @@ public class EventPublisherTests
     // --- Task 6.2: Multiple events in sequence ---
 
     [Fact]
-    public async Task PublishEventsAsync_MultipleEvents_PublishesInSequenceOrder()
-    {
+    public async Task PublishEventsAsync_MultipleEvents_PublishesInSequenceOrder() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         var events = new List<EventEnvelope>
@@ -110,8 +106,7 @@ public class EventPublisherTests
     // --- Task 6.3: Topic derivation ---
 
     [Fact]
-    public async Task PublishEventsAsync_CorrectTopic_DerivedFromAggregateIdentity()
-    {
+    public async Task PublishEventsAsync_CorrectTopic_DerivedFromAggregateIdentity() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         var identity = new AggregateIdentity("acme", "orders", "order-42");
@@ -134,8 +129,7 @@ public class EventPublisherTests
     // --- Task 6.4: CloudEvents type ---
 
     [Fact]
-    public async Task PublishEventsAsync_CloudEventsType_MatchesEventTypeName()
-    {
+    public async Task PublishEventsAsync_CloudEventsType_MatchesEventTypeName() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope envelope = CreateTestEnvelope(eventTypeName: "CounterIncremented");
@@ -153,8 +147,7 @@ public class EventPublisherTests
     // --- Task 6.5: CloudEvents source ---
 
     [Fact]
-    public async Task PublishEventsAsync_CloudEventsSource_IncludesTenantAndDomain()
-    {
+    public async Task PublishEventsAsync_CloudEventsSource_IncludesTenantAndDomain() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope envelope = CreateTestEnvelope();
@@ -172,8 +165,7 @@ public class EventPublisherTests
     // --- Task 6.6: CloudEvents id ---
 
     [Fact]
-    public async Task PublishEventsAsync_CloudEventsId_CombinesCorrelationIdAndSequence()
-    {
+    public async Task PublishEventsAsync_CloudEventsId_CombinesCorrelationIdAndSequence() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 42);
@@ -191,8 +183,7 @@ public class EventPublisherTests
     // --- Task 6.7: Configurable pub/sub name ---
 
     [Fact]
-    public async Task PublishEventsAsync_UsesConfiguredPubSubName()
-    {
+    public async Task PublishEventsAsync_UsesConfiguredPubSubName() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(pubSubName: "custom-pubsub");
         EventEnvelope envelope = CreateTestEnvelope();
@@ -210,8 +201,7 @@ public class EventPublisherTests
     // --- Task 6.8: Pub/sub failure ---
 
     [Fact]
-    public async Task PublishEventsAsync_PubSubFailure_ReturnsFailureResult_DoesNotThrow()
-    {
+    public async Task PublishEventsAsync_PubSubFailure_ReturnsFailureResult_DoesNotThrow() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         daprClient.PublishEventAsync(
@@ -232,8 +222,7 @@ public class EventPublisherTests
     // --- Task 6.9: Partial failure ---
 
     [Fact]
-    public async Task PublishEventsAsync_PartialFailure_ReturnsPublishedCount()
-    {
+    public async Task PublishEventsAsync_PartialFailure_ReturnsPublishedCount() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         var events = new List<EventEnvelope>
@@ -246,8 +235,7 @@ public class EventPublisherTests
         daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
+            .Returns(_ => {
                 callCount++;
                 if (callCount == 3) // Fail on 3rd event
                 {
@@ -269,8 +257,7 @@ public class EventPublisherTests
     // --- Task 6.10: Empty event list ---
 
     [Fact]
-    public async Task PublishEventsAsync_EmptyEventList_ReturnsSuccessWithZeroCount()
-    {
+    public async Task PublishEventsAsync_EmptyEventList_ReturnsSuccessWithZeroCount() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
 
@@ -289,23 +276,19 @@ public class EventPublisherTests
     // --- Task 6.11: OpenTelemetry activity ---
 
     [Fact]
-    public async Task PublishEventsAsync_CreatesOpenTelemetryActivity_WithCorrectTags()
-    {
+    public async Task PublishEventsAsync_CreatesOpenTelemetryActivity_WithCorrectTags() {
         // Arrange
         (EventPublisher publisher, _, _) = CreatePublisher();
         var events = new List<EventEnvelope> { CreateTestEnvelope(), CreateTestEnvelope(2) };
         string expectedCorrelationId = $"corr-activity-{Guid.NewGuid():N}";
         Activity? capturedActivity = null;
 
-        using var listener2 = new ActivityListener
-        {
+        using var listener2 = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.EventsPublish
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), expectedCorrelationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), expectedCorrelationId)) {
                     capturedActivity = activity;
                 }
             },
@@ -328,8 +311,7 @@ public class EventPublisherTests
     // --- Task 6.12: Structured logging -- success ---
 
     [Fact]
-    public async Task PublishEventsAsync_LogsSuccess_WithoutPayloadData()
-    {
+    public async Task PublishEventsAsync_LogsSuccess_WithoutPayloadData() {
         // Arrange
         (EventPublisher publisher, _, ILogger<EventPublisher> logger) = CreatePublisher();
         EventEnvelope envelope = CreateTestEnvelope();
@@ -354,8 +336,7 @@ public class EventPublisherTests
     // --- Task 6.13: Structured logging -- failure ---
 
     [Fact]
-    public async Task PublishEventsAsync_LogsFailure_WithCorrelationIdAndTopic()
-    {
+    public async Task PublishEventsAsync_LogsFailure_WithCorrelationIdAndTopic() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, ILogger<EventPublisher> logger) = CreatePublisher();
         daprClient.PublishEventAsync(

@@ -18,13 +18,11 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public partial class CommandRouter(
     IActorProxyFactory actorProxyFactory,
-    ILogger<CommandRouter> logger) : ICommandRouter
-{
+    ILogger<CommandRouter> logger) : ICommandRouter {
     /// <inheritdoc/>
     public async Task<CommandProcessingResult> RouteCommandAsync(
         SubmitCommand command,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -37,23 +35,20 @@ public partial class CommandRouter(
 
         CommandEnvelope envelope = command.ToCommandEnvelope();
 
-        try
-        {
+        try {
             IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(actorId),
                 nameof(AggregateActor));
 
             return await proxy.ProcessCommandAsync(envelope).ConfigureAwait(false);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Log.ActorInvocationFailed(logger, ex, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
             throw;
         }
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1100,
             Level = LogLevel.Debug,

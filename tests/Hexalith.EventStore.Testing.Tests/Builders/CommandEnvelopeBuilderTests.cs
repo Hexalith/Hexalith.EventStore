@@ -3,11 +3,9 @@ namespace Hexalith.EventStore.Testing.Tests.Builders;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Testing.Builders;
 
-public class CommandEnvelopeBuilderTests
-{
+public class CommandEnvelopeBuilderTests {
     [Fact]
-    public void Build_produces_valid_command_envelope_with_defaults()
-    {
+    public void Build_produces_valid_command_envelope_with_defaults() {
         CommandEnvelope envelope = new CommandEnvelopeBuilder().Build();
 
         Assert.Equal("test-tenant", envelope.AggregateIdentity.TenantId);
@@ -20,8 +18,7 @@ public class CommandEnvelopeBuilderTests
     }
 
     [Fact]
-    public void Build_fluent_overrides_work()
-    {
+    public void Build_fluent_overrides_work() {
         CommandEnvelope envelope = new CommandEnvelopeBuilder()
             .WithTenantId("acme")
             .WithDomain("billing")

@@ -1,7 +1,7 @@
 namespace Hexalith.EventStore.IntegrationTests.Security;
 
-using System.Net.Http;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 
 using global::Aspire.Hosting;
@@ -16,8 +16,7 @@ using Hexalith.EventStore.IntegrationTests.Helpers;
 /// Tests access the running topology via <see cref="CommandApiClient"/>,
 /// <see cref="App"/>, and <see cref="GetTokenAsync"/>.
 /// </summary>
-public class AspireTopologyFixture : IAsyncLifetime
-{
+public class AspireTopologyFixture : IAsyncLifetime {
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private string? _previousEnableKeycloak;
@@ -45,8 +44,7 @@ public class AspireTopologyFixture : IAsyncLifetime
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
-    public async Task InitializeAsync()
-    {
+    public async Task InitializeAsync() {
         // Ensure E2E tests always start Keycloak regardless of developer-local settings.
         // Program.cs allows disabling Keycloak via EnableKeycloak=false for standalone runs,
         // but this test suite depends on Keycloak being available.
@@ -80,8 +78,7 @@ public class AspireTopologyFixture : IAsyncLifetime
             timeout: TimeSpan.FromMinutes(5),
             pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
 
-        using var keycloakProbeClient = new HttpClient
-        {
+        using var keycloakProbeClient = new HttpClient {
             Timeout = TimeSpan.FromSeconds(15),
         };
 
@@ -109,16 +106,13 @@ public class AspireTopologyFixture : IAsyncLifetime
             pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
     }
 
-    public async Task DisposeAsync()
-    {
+    public async Task DisposeAsync() {
         _commandApiClient?.Dispose();
-        if (_app is not null)
-        {
+        if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);
         }
 
-        if (_builder is not null)
-        {
+        if (_builder is not null) {
             await _builder.DisposeAsync().ConfigureAwait(false);
         }
 
@@ -129,28 +123,23 @@ public class AspireTopologyFixture : IAsyncLifetime
     /// <summary>
     /// Acquires a real OIDC token from Keycloak for the specified test user (D11, Rule #16).
     /// </summary>
-    public async Task<string> GetTokenAsync(string username, string password)
-    {
+    public async Task<string> GetTokenAsync(string username, string password) {
         string tokenEndpoint = $"{KeycloakBaseUrl}/realms/hexalith/protocol/openid-connect/token";
         return await KeycloakTokenHelper
             .AcquireTokenAsync(tokenEndpoint, "hexalith-eventstore", username, password)
             .ConfigureAwait(false);
     }
 
-    private async Task WaitForTokenAcquisitionAsync(TimeSpan timeout, TimeSpan pollInterval)
-    {
+    private async Task WaitForTokenAcquisitionAsync(TimeSpan timeout, TimeSpan pollInterval) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
         Exception? lastException = null;
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            try
-            {
+        while (DateTimeOffset.UtcNow < deadline) {
+            try {
                 _ = await GetTokenAsync("admin-user", "admin-pass").ConfigureAwait(false);
                 return;
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 lastException = ex;
             }
 
@@ -169,10 +158,8 @@ public class AspireTopologyFixture : IAsyncLifetime
             + keycloakLogs);
     }
 
-    private static async Task<string> CaptureContainerLogsAsync(string nameFilter)
-    {
-        try
-        {
+    private static async Task<string> CaptureContainerLogsAsync(string nameFilter) {
+        try {
             // Find container by label/name and capture its logs via docker CLI.
             using var process = new System.Diagnostics.Process();
             process.StartInfo.FileName = "docker";
@@ -186,8 +173,7 @@ public class AspireTopologyFixture : IAsyncLifetime
             string containerName = (await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false)).Trim();
             await process.WaitForExitAsync().ConfigureAwait(false);
 
-            if (string.IsNullOrEmpty(containerName))
-            {
+            if (string.IsNullOrEmpty(containerName)) {
                 // Fallback: list all containers to help debug the name pattern.
                 using var psAll = new System.Diagnostics.Process();
                 psAll.StartInfo.FileName = "docker";
@@ -219,20 +205,17 @@ public class AspireTopologyFixture : IAsyncLifetime
             await logsProcess.WaitForExitAsync().ConfigureAwait(false);
 
             var combined = new StringBuilder();
-            if (!string.IsNullOrEmpty(stdout))
-            {
+            if (!string.IsNullOrEmpty(stdout)) {
                 combined.AppendLine(stdout);
             }
 
-            if (!string.IsNullOrEmpty(stderr))
-            {
+            if (!string.IsNullOrEmpty(stderr)) {
                 combined.AppendLine(stderr);
             }
 
             return combined.Length > 0 ? combined.ToString() : "(container found but no logs)";
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return $"(failed to capture logs for '{nameFilter}': {ex.Message})";
         }
     }
@@ -242,38 +225,31 @@ public class AspireTopologyFixture : IAsyncLifetime
         string url,
         IReadOnlyCollection<HttpStatusCode> expectedStatusCodes,
         TimeSpan timeout,
-        TimeSpan pollInterval)
-    {
+        TimeSpan pollInterval) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
         Exception? lastException = null;
         HttpStatusCode? lastStatusCode = null;
         string? lastBodySnippet = null;
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            try
-            {
+        while (DateTimeOffset.UtcNow < deadline) {
+            try {
                 using HttpResponseMessage response = await client
                     .GetAsync(url)
                     .ConfigureAwait(false);
 
                 lastStatusCode = response.StatusCode;
-                if (response.Content is not null)
-                {
+                if (response.Content is not null) {
                     string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(body))
-                    {
+                    if (!string.IsNullOrEmpty(body)) {
                         lastBodySnippet = body.Length <= 500 ? body : body[..500];
                     }
                 }
 
-                if (expectedStatusCodes.Contains(response.StatusCode))
-                {
+                if (expectedStatusCodes.Contains(response.StatusCode)) {
                     return;
                 }
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 lastException = ex;
             }
 

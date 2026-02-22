@@ -4,14 +4,12 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// Exception thrown when a domain service response violates configured limits (AC #6).
 /// Examples: too many events, event payload too large.
 /// </summary>
-public class DomainServiceException : InvalidOperationException
-{
+public class DomainServiceException : InvalidOperationException {
     /// <summary>
     /// Initializes a new instance of the <see cref="DomainServiceException"/> class.
     /// </summary>
     public DomainServiceException()
-        : base("Domain service invocation error.")
-    {
+        : base("Domain service invocation error.") {
     }
 
     /// <summary>
@@ -19,8 +17,7 @@ public class DomainServiceException : InvalidOperationException
     /// </summary>
     /// <param name="message">The error message.</param>
     public DomainServiceException(string message)
-        : base(message)
-    {
+        : base(message) {
     }
 
     /// <summary>
@@ -29,8 +26,7 @@ public class DomainServiceException : InvalidOperationException
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception.</param>
     public DomainServiceException(string message, Exception innerException)
-        : base(message, innerException)
-    {
+        : base(message, innerException) {
     }
 
     /// <summary>
@@ -43,8 +39,7 @@ public class DomainServiceException : InvalidOperationException
     /// <param name="eventCount">The number of events in the response (if applicable).</param>
     /// <param name="eventSizeBytes">The size of the offending event in bytes (if applicable).</param>
     public DomainServiceException(string tenantId, string domain, string reason, int? eventCount = null, int? eventSizeBytes = null)
-        : base($"Domain service response rejected for tenant '{tenantId}', domain '{domain}': {reason}")
-    {
+        : base($"Domain service response rejected for tenant '{tenantId}', domain '{domain}': {reason}") {
         TenantId = tenantId;
         Domain = domain;
         Reason = reason;

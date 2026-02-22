@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Results;
 /// Pure function contract for domain command processing.
 /// Receives a command and optional current state, returns domain events (success, rejection, or no-op).
 /// </summary>
-public interface IDomainProcessor
-{
+public interface IDomainProcessor {
     /// <summary>
     /// Processes a command against optional current aggregate state and returns domain events.
     /// </summary>

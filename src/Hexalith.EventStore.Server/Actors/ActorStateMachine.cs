@@ -12,11 +12,9 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public class ActorStateMachine(
     IActorStateManager stateManager,
-    ILogger<ActorStateMachine> logger) : IActorStateMachine
-{
+    ILogger<ActorStateMachine> logger) : IActorStateMachine {
     /// <inheritdoc/>
-    public async Task CheckpointAsync(string pipelineKeyPrefix, PipelineState state)
-    {
+    public async Task CheckpointAsync(string pipelineKeyPrefix, PipelineState state) {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipelineKeyPrefix);
         ArgumentNullException.ThrowIfNull(state);
 
@@ -34,8 +32,7 @@ public class ActorStateMachine(
     }
 
     /// <inheritdoc/>
-    public async Task<PipelineState?> LoadPipelineStateAsync(string pipelineKeyPrefix, string correlationId)
-    {
+    public async Task<PipelineState?> LoadPipelineStateAsync(string pipelineKeyPrefix, string correlationId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipelineKeyPrefix);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
@@ -45,8 +42,7 @@ public class ActorStateMachine(
             .TryGetStateAsync<PipelineState>(key)
             .ConfigureAwait(false);
 
-        if (result.HasValue)
-        {
+        if (result.HasValue) {
             logger.LogDebug(
                 "Pipeline state found: Key={Key}, Stage={Stage}, CorrelationId={CorrelationId}",
                 key,
@@ -60,8 +56,7 @@ public class ActorStateMachine(
     }
 
     /// <inheritdoc/>
-    public async Task CleanupPipelineAsync(string pipelineKeyPrefix, string correlationId)
-    {
+    public async Task CleanupPipelineAsync(string pipelineKeyPrefix, string correlationId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipelineKeyPrefix);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 

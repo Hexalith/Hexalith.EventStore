@@ -10,23 +10,20 @@ using Microsoft.AspNetCore.Mvc;
 
 public class ConcurrencyConflictExceptionHandler(
     ICommandStatusStore statusStore,
-    ILogger<ConcurrencyConflictExceptionHandler> logger) : IExceptionHandler
-{
+    ILogger<ConcurrencyConflictExceptionHandler> logger) : IExceptionHandler {
     private const string ProblemJsonContentType = "application/problem+json";
 
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(exception);
 
         // Unwrap InnerException chain -- DAPR actor proxy may wrap exceptions
         // in ActorMethodInvocationException. Check the full chain for ConcurrencyConflictException.
         ConcurrencyConflictException? conflict = FindConcurrencyConflict(exception);
-        if (conflict is null)
-        {
+        if (conflict is null) {
             return false;
         }
 
@@ -46,12 +43,9 @@ public class ConcurrencyConflictExceptionHandler(
         // Note: If the request is cancelled before we start the status write, we want to abort.
         // But if cancellation occurs DURING the status write, we still send the 409 response
         // (advisory writes must not block the error response).
-        if (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                if (conflict.TenantId is not null)
-                {
+        if (!cancellationToken.IsCancellationRequested) {
+            try {
+                if (conflict.TenantId is not null) {
                     await statusStore.WriteStatusAsync(
                         conflict.TenantId,
                         conflict.CorrelationId,
@@ -66,15 +60,13 @@ public class ConcurrencyConflictExceptionHandler(
                         cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
                 // Cancellation during status write - log but don't block 409 response
                 logger.LogWarning(
                     "Status write cancelled during concurrency conflict handling. CorrelationId={CorrelationId}",
                     correlationId);
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 logger.LogWarning(
                     ex,
                     "Failed to write Rejected status for concurrency conflict. CorrelationId={CorrelationId}, AggregateId={AggregateId}, TenantId={TenantId}",
@@ -84,8 +76,7 @@ public class ConcurrencyConflictExceptionHandler(
             }
         }
 
-        var problemDetails = new ProblemDetails
-        {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status409Conflict,
             Title = "Conflict",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -102,8 +93,7 @@ public class ConcurrencyConflictExceptionHandler(
             ?? (httpContext.Items.TryGetValue("RequestTenantId", out var t) && t is string ts
                 ? ts : null);
 
-        if (tenantId is not null)
-        {
+        if (tenantId is not null) {
             problemDetails.Extensions["tenantId"] = tenantId;
         }
 
@@ -126,32 +116,25 @@ public class ConcurrencyConflictExceptionHandler(
     /// AggregateException.InnerExceptions collections for task-based scenarios.
     /// Limits depth to 10 to prevent infinite loops on circular exception references.
     /// </summary>
-    private static ConcurrencyConflictException? FindConcurrencyConflict(Exception? exception)
-    {
+    private static ConcurrencyConflictException? FindConcurrencyConflict(Exception? exception) {
         const int maxDepth = 10;
         return FindConcurrencyConflictRecursive(exception, maxDepth);
     }
 
-    private static ConcurrencyConflictException? FindConcurrencyConflictRecursive(Exception? exception, int remainingDepth)
-    {
-        if (exception is null || remainingDepth <= 0)
-        {
+    private static ConcurrencyConflictException? FindConcurrencyConflictRecursive(Exception? exception, int remainingDepth) {
+        if (exception is null || remainingDepth <= 0) {
             return null;
         }
 
-        if (exception is ConcurrencyConflictException conflict)
-        {
+        if (exception is ConcurrencyConflictException conflict) {
             return conflict;
         }
 
         // AggregateException has multiple InnerExceptions -- search all of them
-        if (exception is AggregateException aggregate)
-        {
-            foreach (Exception inner in aggregate.InnerExceptions)
-            {
+        if (exception is AggregateException aggregate) {
+            foreach (Exception inner in aggregate.InnerExceptions) {
                 ConcurrencyConflictException? found = FindConcurrencyConflictRecursive(inner, remainingDepth - 1);
-                if (found is not null)
-                {
+                if (found is not null) {
                     return found;
                 }
             }

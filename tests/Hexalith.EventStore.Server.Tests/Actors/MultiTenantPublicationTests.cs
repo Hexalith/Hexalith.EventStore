@@ -10,11 +10,10 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
-
-using Hexalith.EventStore.Server.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,15 +22,12 @@ using NSubstitute;
 
 using Shouldly;
 
-using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-
 /// <summary>
 /// Story 4.2 Task 5: AggregateActor multi-tenant topic isolation integration tests.
 /// Verifies that the full actor pipeline publishes events to the correct per-tenant-per-domain topic
 /// (AC: #2, #3, #4, #9).
 /// </summary>
-public class MultiTenantPublicationTests
-{
+public class MultiTenantPublicationTests {
     private static CommandEnvelope CreateCommand(string tenantId, string domain, string aggregateId, string? correlationId = null) => new(
         TenantId: tenantId,
         Domain: domain,
@@ -44,8 +40,7 @@ public class MultiTenantPublicationTests
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, FakeEventPublisher Publisher) CreateActorForTenant(
-        string tenantId, string domain, string aggregateId)
-    {
+        string tenantId, string domain, string aggregateId) {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -81,8 +76,7 @@ public class MultiTenantPublicationTests
     // --- Task 5.2: AC #2 ---
 
     [Fact]
-    public async Task ProcessCommand_TenantA_PublishesToTenantATopic()
-    {
+    public async Task ProcessCommand_TenantA_PublishesToTenantATopic() {
         // Arrange
         (AggregateActor actor, _, FakeEventPublisher publisher) = CreateActorForTenant("acme", "orders", "order-1");
         CommandEnvelope command = CreateCommand("acme", "orders", "order-1");
@@ -98,8 +92,7 @@ public class MultiTenantPublicationTests
     // --- Task 5.3: AC #2 ---
 
     [Fact]
-    public async Task ProcessCommand_TenantB_PublishesToTenantBTopic()
-    {
+    public async Task ProcessCommand_TenantB_PublishesToTenantBTopic() {
         // Arrange
         (AggregateActor actor, _, FakeEventPublisher publisher) = CreateActorForTenant("globex", "orders", "order-1");
         CommandEnvelope command = CreateCommand("globex", "orders", "order-1");
@@ -115,14 +108,12 @@ public class MultiTenantPublicationTests
     // --- Task 5.4: AC #2, #4 ---
 
     [Fact]
-    public async Task ProcessCommand_MultipleTenants_Sequential_CorrectTopicsPerTenant()
-    {
+    public async Task ProcessCommand_MultipleTenants_Sequential_CorrectTopicsPerTenant() {
         // Arrange - shared publisher to verify topic isolation across sequential calls
         var fakePublisher = new FakeEventPublisher();
         var tenants = new[] { "acme", "globex", "initech" };
 
-        foreach (string tenant in tenants)
-        {
+        foreach (string tenant in tenants) {
             var stateManager = Substitute.For<IActorStateManager>();
             var logger = Substitute.For<ILogger<AggregateActor>>();
             var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -159,14 +150,12 @@ public class MultiTenantPublicationTests
     // --- Task 5.5: AC #3 ---
 
     [Fact]
-    public async Task ProcessCommand_MultipleDomains_Sequential_CorrectTopicsPerDomain()
-    {
+    public async Task ProcessCommand_MultipleDomains_Sequential_CorrectTopicsPerDomain() {
         // Arrange - shared publisher for domain isolation
         var fakePublisher = new FakeEventPublisher();
         var domains = new[] { "orders", "inventory", "shipping" };
 
-        foreach (string domain in domains)
-        {
+        foreach (string domain in domains) {
             var stateManager = Substitute.For<IActorStateManager>();
             var logger = Substitute.For<ILogger<AggregateActor>>();
             var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -203,8 +192,7 @@ public class MultiTenantPublicationTests
     // --- Task 5.6: AC #2, #3, #4 ---
 
     [Fact]
-    public async Task ProcessCommand_TenantDomainMatrix_AllTopicsDistinct()
-    {
+    public async Task ProcessCommand_TenantDomainMatrix_AllTopicsDistinct() {
         // Arrange - 2x2 matrix: (acme, globex) x (orders, inventory)
         var fakePublisher = new FakeEventPublisher();
         var matrix = new[]
@@ -215,8 +203,7 @@ public class MultiTenantPublicationTests
             (Tenant: "globex", Domain: "inventory"),
         };
 
-        foreach ((string tenant, string domain) in matrix)
-        {
+        foreach ((string tenant, string domain) in matrix) {
             var stateManager = Substitute.For<IActorStateManager>();
             var logger = Substitute.For<ILogger<AggregateActor>>();
             var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -251,8 +238,7 @@ public class MultiTenantPublicationTests
         topics.ShouldContain("globex.inventory.events");
 
         // Each topic has exactly 1 event
-        foreach (string topic in topics)
-        {
+        foreach (string topic in topics) {
             fakePublisher.GetEventsForTopic(topic).Count.ShouldBe(1);
         }
     }

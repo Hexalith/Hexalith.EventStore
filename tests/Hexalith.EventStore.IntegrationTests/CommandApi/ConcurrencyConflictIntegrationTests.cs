@@ -24,13 +24,11 @@ using Shouldly;
 using CommandApiProgram = commandapi::Program;
 
 public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
-    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
-{
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     private const string ConflictTriggerCommandType = "SimulateConcurrencyConflict";
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_Returns409ProblemDetails()
-    {
+    public async Task PostCommands_ConcurrencyConflict_Returns409ProblemDetails() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -49,8 +47,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesCorrelationId()
-    {
+    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesCorrelationId() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -66,8 +63,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesAggregateId()
-    {
+    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesAggregateId() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -83,8 +79,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesDetailMessage()
-    {
+    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesDetailMessage() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -102,8 +97,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_StatusUpdatedToRejected()
-    {
+    public async Task PostCommands_ConcurrencyConflict_StatusUpdatedToRejected() {
         // Arrange
         var statusStore = new Testing.Fakes.InMemoryCommandStatusStore();
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory(statusStore);
@@ -126,8 +120,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_RetrySucceeds()
-    {
+    public async Task PostCommands_ConcurrencyConflict_RetrySucceeds() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -138,8 +131,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         conflictResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
         // Second request: normal command (simulates retry with non-conflict command type)
-        var retryRequest = new
-        {
+        var retryRequest = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "order-123",
@@ -155,8 +147,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_NoAuthentication_Returns401()
-    {
+    public async Task PostCommands_ConcurrencyConflict_NoAuthentication_Returns401() {
         // Arrange - no auth header
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = customFactory.CreateClient();
@@ -170,8 +161,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ResponseContentType()
-    {
+    public async Task PostCommands_ConcurrencyConflict_ResponseContentType() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -185,8 +175,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesTenantId()
-    {
+    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesTenantId() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -202,8 +191,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_Returns409NotFallback500()
-    {
+    public async Task PostCommands_ConcurrencyConflict_Returns409NotFallback500() {
         // Arrange - this test verifies handler chain ordering is correct.
         // If ConcurrencyConflictExceptionHandler were registered after GlobalExceptionHandler,
         // the response would be 500 instead of 409.
@@ -220,8 +208,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ResponseIncludesRetryAfterHeader()
-    {
+    public async Task PostCommands_ConcurrencyConflict_ResponseIncludesRetryAfterHeader() {
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -236,8 +223,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     private static object CreateConflictRequest(string aggregateId = "order-123")
-        => new
-        {
+        => new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId,
@@ -245,8 +231,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
             payload = new { amount = 100 },
         };
 
-    private static HttpClient CreateAuthenticatedClient(WebApplicationFactory<CommandApiProgram> factory)
-    {
+    private static HttpClient CreateAuthenticatedClient(WebApplicationFactory<CommandApiProgram> factory) {
         HttpClient client = factory.CreateClient();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["test-domain"]);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -254,19 +239,15 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     private WebApplicationFactory<CommandApiProgram> CreateConflictFactory(
-        Testing.Fakes.InMemoryCommandStatusStore? statusStore = null)
-    {
+        Testing.Fakes.InMemoryCommandStatusStore? statusStore = null) {
         statusStore ??= new Testing.Fakes.InMemoryCommandStatusStore();
 
-        return factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
+        return factory.WithWebHostBuilder(builder => {
+            builder.ConfigureServices(services => {
                 // Replace status store with test instance
                 ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(ICommandStatusStore));
-                if (statusDescriptor is not null)
-                {
+                if (statusDescriptor is not null) {
                     services.Remove(statusDescriptor);
                 }
 
@@ -275,8 +256,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
                 // Replace command handler with concurrency-conflict-simulating handler
                 ServiceDescriptor? handlerDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>));
-                if (handlerDescriptor is not null)
-                {
+                if (handlerDescriptor is not null) {
                     services.Remove(handlerDescriptor);
                 }
 
@@ -298,14 +278,11 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
-        ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
-    {
+        ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
         private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, commandRouter, logger);
 
-        public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
-        {
-            if (request.CommandType == ConflictTriggerCommandType)
-            {
+        public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
+            if (request.CommandType == ConflictTriggerCommandType) {
                 // Write Received status first (mimics normal flow up to conflict point)
                 await _inner.Handle(request, cancellationToken).ConfigureAwait(false);
                 throw new ConcurrencyConflictException(

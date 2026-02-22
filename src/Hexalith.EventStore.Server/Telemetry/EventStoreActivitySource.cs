@@ -7,8 +7,7 @@ using System.Diagnostics;
 /// across the EventStore actor pipeline. Following .NET OpenTelemetry conventions, all activities
 /// are created from this source and integrate with Aspire dashboard / OTLP collectors.
 /// </summary>
-public static class EventStoreActivitySource
-{
+public static class EventStoreActivitySource {
     /// <summary>The source name registered with OpenTelemetry.</summary>
     public const string SourceName = "Hexalith.EventStore";
 

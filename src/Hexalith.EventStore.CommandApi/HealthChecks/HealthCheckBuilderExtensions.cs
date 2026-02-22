@@ -9,8 +9,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// <summary>
 /// Extension methods for registering DAPR health checks.
 /// </summary>
-public static class HealthCheckBuilderExtensions
-{
+public static class HealthCheckBuilderExtensions {
     /// <summary>
     /// Registers all DAPR infrastructure health checks for the EventStore CommandApi.
     /// </summary>
@@ -18,8 +17,7 @@ public static class HealthCheckBuilderExtensions
         this IHealthChecksBuilder builder,
         string stateStoreName = "statestore",
         string pubSubName = "pubsub",
-        string configStoreName = "configstore")
-    {
+        string configStoreName = "configstore") {
         ArgumentNullException.ThrowIfNull(builder);
 
         // Use 15s timeout so E2E/CI (Aspire Testing, Docker) have time for sidecar and

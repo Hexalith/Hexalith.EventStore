@@ -9,8 +9,7 @@ using Shouldly;
 /// tenant provisioning strategy (NFR20).
 /// Uses string-based content validation for documentation comments.
 /// </summary>
-public class SubscriptionScopingDocumentationTests
-{
+public class SubscriptionScopingDocumentationTests {
     private static readonly string LocalPubSubPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.AppHost", "DaprComponents", "pubsub.yaml"));
@@ -26,8 +25,7 @@ public class SubscriptionScopingDocumentationTests
     // --- Task 4.2: AC #7 ---
 
     [Fact]
-    public void LocalPubSubYaml_ContainsSubscriberOnboardingDocumentation()
-    {
+    public void LocalPubSubYaml_ContainsSubscriberOnboardingDocumentation() {
         string content = File.ReadAllText(LocalPubSubPath);
 
         // Must document how to add a new subscriber app-id
@@ -50,8 +48,7 @@ public class SubscriptionScopingDocumentationTests
     // --- Task 4.3: AC #7 ---
 
     [Fact]
-    public void LocalPubSubYaml_ContainsTenantScopingDocumentation()
-    {
+    public void LocalPubSubYaml_ContainsTenantScopingDocumentation() {
         string content = File.ReadAllText(LocalPubSubPath);
 
         // Must document the three-layer scoping architecture
@@ -74,8 +71,7 @@ public class SubscriptionScopingDocumentationTests
     // --- Task 4.4: AC #8 ---
 
     [Fact]
-    public void ProductionPubSubYamls_ContainDeploymentSubstitutionGuidance()
-    {
+    public void ProductionPubSubYamls_ContainDeploymentSubstitutionGuidance() {
         string rabbitContent = File.ReadAllText(ProductionRabbitMqPath);
         string kafkaContent = File.ReadAllText(ProductionKafkaPath);
 
@@ -101,8 +97,7 @@ public class SubscriptionScopingDocumentationTests
     // --- Task 4.5: AC #10, #11 ---
 
     [Fact]
-    public void AllPubSubConfigs_DocumentDynamicTenantStrategy()
-    {
+    public void AllPubSubConfigs_DocumentDynamicTenantStrategy() {
         string localContent = File.ReadAllText(LocalPubSubPath);
         string rabbitContent = File.ReadAllText(ProductionRabbitMqPath);
         string kafkaContent = File.ReadAllText(ProductionKafkaPath);
@@ -113,8 +108,7 @@ public class SubscriptionScopingDocumentationTests
             (localContent, "Local pub/sub"),
             (rabbitContent, "Production RabbitMQ pub/sub"),
             (kafkaContent, "Production Kafka pub/sub"),
-        })
-        {
+        }) {
             content.Contains("NFR20").ShouldBeTrue(
                 $"{name} YAML must reference NFR20 (dynamic tenant provisioning)");
 

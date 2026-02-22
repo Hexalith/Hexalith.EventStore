@@ -7,14 +7,12 @@ using Xunit;
 /// <summary>
 /// Static assertion helpers for verifying <see cref="EventEnvelope"/> metadata completeness.
 /// </summary>
-public static class EventEnvelopeAssertions
-{
+public static class EventEnvelopeAssertions {
     /// <summary>
     /// Verifies all 11 metadata fields are populated and the payload is non-null.
     /// </summary>
     /// <param name="envelope">The event envelope to verify.</param>
-    public static void ShouldHaveValidMetadata(EventEnvelope envelope)
-    {
+    public static void ShouldHaveValidMetadata(EventEnvelope envelope) {
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Metadata);
         Assert.NotNull(envelope.Payload);

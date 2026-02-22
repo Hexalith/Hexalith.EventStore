@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Thrown when an expected event is missing from the event stream, indicating data corruption.
 /// </summary>
-public class MissingEventException : InvalidOperationException
-{
+public class MissingEventException : InvalidOperationException {
     /// <summary>
     /// Initializes a new instance of the <see cref="MissingEventException"/> class.
     /// </summary>
@@ -13,8 +12,7 @@ public class MissingEventException : InvalidOperationException
     /// <param name="domain">The domain name.</param>
     /// <param name="aggregateId">The aggregate identifier.</param>
     public MissingEventException(long sequenceNumber, string tenantId, string domain, string aggregateId)
-        : base($"Missing event at sequence {sequenceNumber} for aggregate {tenantId}:{domain}:{aggregateId}. This indicates state store data corruption.")
-    {
+        : base($"Missing event at sequence {sequenceNumber} for aggregate {tenantId}:{domain}:{aggregateId}. This indicates state store data corruption.") {
         SequenceNumber = sequenceNumber;
         TenantId = tenantId;
         Domain = domain;

@@ -15,8 +15,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class CommandRouterTests
-{
+public class CommandRouterTests {
     private static SubmitCommand CreateTestCommand(
         string tenant = "test-tenant",
         string domain = "test-domain",
@@ -32,8 +31,7 @@ public class CommandRouterTests
         UserId: "test-user");
 
     private static (CommandRouter Router, IActorProxyFactory Factory, IAggregateActor ActorProxy) CreateRouter(
-        CommandProcessingResult? result = null)
-    {
+        CommandProcessingResult? result = null) {
         var actorProxy = Substitute.For<IAggregateActor>();
         actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(result ?? new CommandProcessingResult(true, CorrelationId: "test-correlation"));
@@ -47,8 +45,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_ValidCommand_CreatesCorrectActorId()
-    {
+    public async Task RouteCommandAsync_ValidCommand_CreatesCorrectActorId() {
         // Arrange
         (CommandRouter router, IActorProxyFactory factory, _) = CreateRouter();
         SubmitCommand command = CreateTestCommand(tenant: "acme", domain: "orders", aggregateId: "order-123");
@@ -63,8 +60,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_ValidCommand_InvokesActorProxy()
-    {
+    public async Task RouteCommandAsync_ValidCommand_InvokesActorProxy() {
         // Arrange
         (CommandRouter router, _, IAggregateActor actorProxy) = CreateRouter();
         SubmitCommand command = CreateTestCommand();
@@ -77,8 +73,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_ValidCommand_PassesCommandEnvelope()
-    {
+    public async Task RouteCommandAsync_ValidCommand_PassesCommandEnvelope() {
         // Arrange
         (CommandRouter router, _, IAggregateActor actorProxy) = CreateRouter();
         SubmitCommand command = CreateTestCommand(commandType: "PlaceOrder");
@@ -96,8 +91,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_ValidCommand_ReturnsActorResult()
-    {
+    public async Task RouteCommandAsync_ValidCommand_ReturnsActorResult() {
         // Arrange
         var expectedResult = new CommandProcessingResult(true, CorrelationId: "abc-123");
         (CommandRouter router, _, _) = CreateRouter(expectedResult);
@@ -111,8 +105,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_ActorThrows_PropagatesException()
-    {
+    public async Task RouteCommandAsync_ActorThrows_PropagatesException() {
         // Arrange
         var actorProxy = Substitute.For<IAggregateActor>();
         actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
@@ -131,8 +124,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_CommandEnvelope_HasCorrectCorrelationId()
-    {
+    public async Task RouteCommandAsync_CommandEnvelope_HasCorrectCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         CommandEnvelope? capturedEnvelope = null;
@@ -157,8 +149,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_CommandEnvelope_HasCausationIdEqualToCorrelationId()
-    {
+    public async Task RouteCommandAsync_CommandEnvelope_HasCausationIdEqualToCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         CommandEnvelope? capturedEnvelope = null;
@@ -183,8 +174,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_NullCommand_ThrowsArgumentNullException()
-    {
+    public async Task RouteCommandAsync_NullCommand_ThrowsArgumentNullException() {
         // Arrange
         (CommandRouter router, _, _) = CreateRouter();
 
@@ -196,8 +186,7 @@ public class CommandRouterTests
     // --- Task 2.1: Multi-tenant actor isolation ---
 
     [Fact]
-    public async Task RouteCommandAsync_DifferentTenants_CreatesDistinctActorIds()
-    {
+    public async Task RouteCommandAsync_DifferentTenants_CreatesDistinctActorIds() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
         var actorProxy = Substitute.For<IAggregateActor>();
@@ -222,8 +211,7 @@ public class CommandRouterTests
     }
 
     [Fact]
-    public async Task RouteCommandAsync_DifferentDomains_CreatesDistinctActorIds()
-    {
+    public async Task RouteCommandAsync_DifferentDomains_CreatesDistinctActorIds() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
         var actorProxy = Substitute.For<IAggregateActor>();

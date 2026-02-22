@@ -9,14 +9,12 @@ using Hexalith.EventStore.Server.Commands;
 /// In-memory implementation of <see cref="ICommandArchiveStore"/> for testing.
 /// Simulates TTL expiry using stored expiration timestamps.
 /// </summary>
-public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore
-{
+public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore {
     private readonly ConcurrentDictionary<string, (ArchivedCommand Command, DateTimeOffset Expiry)> _store = new();
     private int _ttlSeconds = CommandStatusConstants.DefaultTtlSeconds;
 
     /// <summary>Gets or sets the TTL in seconds for new entries.</summary>
-    public int TtlSeconds
-    {
+    public int TtlSeconds {
         get => _ttlSeconds;
         set => _ttlSeconds = value;
     }
@@ -26,8 +24,7 @@ public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore
         string tenantId,
         string correlationId,
         ArchivedCommand command,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentNullException.ThrowIfNull(command);
@@ -42,17 +39,14 @@ public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore
     public Task<ArchivedCommand?> ReadCommandAsync(
         string tenantId,
         string correlationId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
         string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
 
-        if (_store.TryGetValue(key, out var entry))
-        {
-            if (entry.Expiry <= DateTimeOffset.UtcNow)
-            {
+        if (_store.TryGetValue(key, out var entry)) {
+            if (entry.Expiry <= DateTimeOffset.UtcNow) {
                 _store.TryRemove(key, out _);
                 return Task.FromResult<ArchivedCommand?>(null);
             }

@@ -14,8 +14,7 @@ using Microsoft.Extensions.Options;
 public class DaprCommandArchiveStore(
     DaprClient daprClient,
     IOptions<CommandStatusOptions> options,
-    ILogger<DaprCommandArchiveStore> logger) : ICommandArchiveStore
-{
+    ILogger<DaprCommandArchiveStore> logger) : ICommandArchiveStore {
     /// <inheritdoc/>
     /// <remarks>
     /// This method propagates exceptions to the caller. Advisory error handling
@@ -25,8 +24,7 @@ public class DaprCommandArchiveStore(
         string tenantId,
         string correlationId,
         ArchivedCommand command,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentNullException.ThrowIfNull(command);
@@ -56,27 +54,23 @@ public class DaprCommandArchiveStore(
     public async Task<ArchivedCommand?> ReadCommandAsync(
         string tenantId,
         string correlationId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
         string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
         CommandStatusOptions opts = options.Value;
 
-        try
-        {
+        try {
             return await daprClient.GetStateAsync<ArchivedCommand>(
                 opts.StateStoreName,
                 key,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             logger.LogWarning(
                 ex,
                 "Failed to read archived command for {CorrelationId}, TenantId={TenantId}. Returning null.",

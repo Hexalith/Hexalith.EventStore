@@ -3,11 +3,9 @@ namespace Hexalith.EventStore.Contracts.Tests.Commands;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 
-public class CommandEnvelopeTests
-{
+public class CommandEnvelopeTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         byte[] payload = [1, 2, 3];
         var envelope = new CommandEnvelope(
             TenantId: "acme",
@@ -32,8 +30,7 @@ public class CommandEnvelopeTests
     }
 
     [Fact]
-    public void AggregateIdentity_DerivesCorrectIdentity()
-    {
+    public void AggregateIdentity_DerivesCorrectIdentity() {
         var envelope = new CommandEnvelope(
             TenantId: "acme",
             Domain: "payments",
@@ -53,16 +50,14 @@ public class CommandEnvelopeTests
     }
 
     [Fact]
-    public void Extensions_IsNullable()
-    {
+    public void Extensions_IsNullable() {
         var envelope = new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], "c1", null, "u1", null);
 
         Assert.Null(envelope.Extensions);
     }
 
     [Fact]
-    public void Extensions_AcceptsReadOnlyDictionary()
-    {
+    public void Extensions_AcceptsReadOnlyDictionary() {
         var extensions = new Dictionary<string, string> { ["key"] = "value" }.AsReadOnly();
         var envelope = new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], "c1", null, "u1", extensions);
 
@@ -71,16 +66,14 @@ public class CommandEnvelopeTests
     }
 
     [Fact]
-    public void CausationId_IsNullable()
-    {
+    public void CausationId_IsNullable() {
         var envelope = new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], "c1", "cause-1", "u1", null);
 
         Assert.Equal("cause-1", envelope.CausationId);
     }
 
     [Fact]
-    public void Constructor_WithNullPayload_ThrowsArgumentNullException()
-    {
+    public void Constructor_WithNullPayload_ThrowsArgumentNullException() {
         Assert.Throws<ArgumentNullException>(() =>
             new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", null!, "c1", null, "u1", null));
     }
@@ -88,8 +81,7 @@ public class CommandEnvelopeTests
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidCommandType_ThrowsArgumentException(string commandType)
-    {
+    public void Constructor_WithInvalidCommandType_ThrowsArgumentException(string commandType) {
         Assert.Throws<ArgumentException>(() =>
             new CommandEnvelope("acme", "payments", "order-123", commandType, [1], "c1", null, "u1", null));
     }
@@ -97,8 +89,7 @@ public class CommandEnvelopeTests
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidCorrelationId_ThrowsArgumentException(string correlationId)
-    {
+    public void Constructor_WithInvalidCorrelationId_ThrowsArgumentException(string correlationId) {
         Assert.Throws<ArgumentException>(() =>
             new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], correlationId, null, "u1", null));
     }
@@ -106,30 +97,26 @@ public class CommandEnvelopeTests
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidUserId_ThrowsArgumentException(string userId)
-    {
+    public void Constructor_WithInvalidUserId_ThrowsArgumentException(string userId) {
         Assert.Throws<ArgumentException>(() =>
             new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], "c1", null, userId, null));
     }
 
     [Fact]
-    public void Constructor_WithInvalidTenantId_ThrowsArgumentException()
-    {
+    public void Constructor_WithInvalidTenantId_ThrowsArgumentException() {
         Assert.Throws<ArgumentException>(() =>
             new CommandEnvelope("INVALID TENANT!", "payments", "order-123", "CreateOrder", [1], "c1", null, "u1", null));
     }
 
     [Fact]
-    public void AggregateIdentity_IsEagerlyValidated()
-    {
+    public void AggregateIdentity_IsEagerlyValidated() {
         // AggregateIdentity is computed eagerly at construction, not lazily on access
         Assert.Throws<ArgumentException>(() =>
             new CommandEnvelope("", "payments", "order-123", "CreateOrder", [1], "c1", null, "u1", null));
     }
 
     [Fact]
-    public void Extensions_DefensiveCopy_PreventsMutation()
-    {
+    public void Extensions_DefensiveCopy_PreventsMutation() {
         var dict = new Dictionary<string, string> { ["key"] = "original" };
         var envelope = new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], "c1", null, "u1", dict);
 

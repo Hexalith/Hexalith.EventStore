@@ -5,8 +5,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// <summary>
 /// Fluent builder for creating <see cref="AggregateIdentity"/> instances with sensible defaults for testing.
 /// </summary>
-public sealed class AggregateIdentityBuilder
-{
+public sealed class AggregateIdentityBuilder {
     private string _tenantId = "test-tenant";
     private string _domain = "test-domain";
     private string _aggregateId = "test-agg-001";

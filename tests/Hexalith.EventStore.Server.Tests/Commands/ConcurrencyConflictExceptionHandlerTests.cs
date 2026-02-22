@@ -16,29 +16,25 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class ConcurrencyConflictExceptionHandlerTests
-{
+public class ConcurrencyConflictExceptionHandlerTests {
     private readonly InMemoryCommandStatusStore _statusStore;
     private readonly ILogger<ConcurrencyConflictExceptionHandler> _logger;
     private readonly ConcurrencyConflictExceptionHandler _handler;
 
-    public ConcurrencyConflictExceptionHandlerTests()
-    {
+    public ConcurrencyConflictExceptionHandlerTests() {
         _statusStore = new InMemoryCommandStatusStore();
         _logger = Substitute.For<ILogger<ConcurrencyConflictExceptionHandler>>();
         _handler = new ConcurrencyConflictExceptionHandler(_statusStore, _logger);
     }
 
-    private static DefaultHttpContext CreateHttpContextWithBody()
-    {
+    private static DefaultHttpContext CreateHttpContextWithBody() {
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
         return httpContext;
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_Returns409ProblemDetails()
-    {
+    public async Task TryHandleAsync_ConcurrencyConflictException_Returns409ProblemDetails() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -65,8 +61,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesCorrelationIdExtension()
-    {
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesCorrelationIdExtension() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "http-correlation-id";
@@ -88,8 +83,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesAggregateIdExtension()
-    {
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesAggregateIdExtension() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -111,8 +105,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesTenantIdExtension()
-    {
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesTenantIdExtension() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -134,8 +127,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_WritesRejectedStatus()
-    {
+    public async Task TryHandleAsync_ConcurrencyConflictException_WritesRejectedStatus() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -157,8 +149,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_StatusWriteFails_StillReturns409()
-    {
+    public async Task TryHandleAsync_StatusWriteFails_StillReturns409() {
         // Arrange - use a mock status store that throws
         ICommandStatusStore failingStore = Substitute.For<ICommandStatusStore>();
         failingStore.WriteStatusAsync(
@@ -184,8 +175,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_StatusWriteFails_LogsWarning()
-    {
+    public async Task TryHandleAsync_StatusWriteFails_LogsWarning() {
         // Arrange - use a mock status store that throws
         ICommandStatusStore failingStore = Substitute.For<ICommandStatusStore>();
         failingStore.WriteStatusAsync(
@@ -216,8 +206,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_OtherException_ReturnsFalse()
-    {
+    public async Task TryHandleAsync_OtherException_ReturnsFalse() {
         // Arrange
         var httpContext = new DefaultHttpContext();
         var exception = new InvalidOperationException("some other error");
@@ -230,8 +219,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_LogsWarning()
-    {
+    public async Task TryHandleAsync_ConcurrencyConflictException_LogsWarning() {
         // Arrange
         ILogger<ConcurrencyConflictExceptionHandler> logger = Substitute.For<ILogger<ConcurrencyConflictExceptionHandler>>();
         var handler = new ConcurrencyConflictExceptionHandler(_statusStore, logger);
@@ -257,8 +245,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_WrappedConcurrencyConflictException_Returns409()
-    {
+    public async Task TryHandleAsync_WrappedConcurrencyConflictException_Returns409() {
         // Arrange - simulate DAPR ActorMethodInvocationException wrapping
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -284,8 +271,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_DeeplyNestedConcurrencyConflictException_Returns409()
-    {
+    public async Task TryHandleAsync_DeeplyNestedConcurrencyConflictException_Returns409() {
         // Arrange - simulate AggregateException -> ActorMethodInvocationException -> ConcurrencyConflictException
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -312,8 +298,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_409Response_IncludesRetryAfterHeader()
-    {
+    public async Task TryHandleAsync_409Response_IncludesRetryAfterHeader() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -331,8 +316,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_NullTenantId_SkipsStatusWrite()
-    {
+    public async Task TryHandleAsync_NullTenantId_SkipsStatusWrite() {
         // Arrange - exception with null tenantId
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -361,8 +345,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_Depth10Nesting_Returns409()
-    {
+    public async Task TryHandleAsync_Depth10Nesting_Returns409() {
         // Arrange - nest ConcurrencyConflictException at depth 10 (max depth limit)
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -375,8 +358,7 @@ public class ConcurrencyConflictExceptionHandlerTests
 
         // Wrap it 9 times (total depth = 10)
         Exception current = innermost;
-        for (int i = 0; i < 9; i++)
-        {
+        for (int i = 0; i < 9; i++) {
             current = new InvalidOperationException($"Wrapper level {i + 1}", current);
         }
 
@@ -394,8 +376,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_AggregateExceptionWithMultipleInners_FindsConflict()
-    {
+    public async Task TryHandleAsync_AggregateExceptionWithMultipleInners_FindsConflict() {
         // Arrange - ConcurrencyConflictException is NOT the first inner exception
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -422,8 +403,7 @@ public class ConcurrencyConflictExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_Depth11Nesting_ReturnsFalse()
-    {
+    public async Task TryHandleAsync_Depth11Nesting_ReturnsFalse() {
         // Arrange - nest ConcurrencyConflictException at depth 11 (exceeds max depth limit)
         var httpContext = new DefaultHttpContext();
 
@@ -434,8 +414,7 @@ public class ConcurrencyConflictExceptionHandlerTests
 
         // Wrap it 10 times (total depth = 11, exceeds maxDepth of 10)
         Exception current = innermost;
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             current = new InvalidOperationException($"Wrapper level {i + 1}", current);
         }
 

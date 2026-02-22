@@ -1,8 +1,5 @@
 namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
-using System.Net;
-using System.Text.Json;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
@@ -15,12 +12,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class DaprDomainServiceInvokerTests
-{
+public class DaprDomainServiceInvokerTests {
     private readonly IDomainServiceResolver _resolver = Substitute.For<IDomainServiceResolver>();
     private readonly IOptions<DomainServiceOptions> _options = Options.Create(new DomainServiceOptions());
     private readonly ILogger<DaprDomainServiceInvoker> _logger = NullLogger<DaprDomainServiceInvoker>.Instance;
@@ -41,8 +36,7 @@ public class DaprDomainServiceInvokerTests
         Extensions: null);
 
     [Fact]
-    public async Task InvokeAsync_ServiceNotFound_ThrowsDomainServiceNotFoundException()
-    {
+    public async Task InvokeAsync_ServiceNotFound_ThrowsDomainServiceNotFoundException() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -57,8 +51,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_NullCommand_ThrowsArgumentNullException()
-    {
+    public async Task InvokeAsync_NullCommand_ThrowsArgumentNullException() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
@@ -68,8 +61,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_ValidCommand_CallsResolver()
-    {
+    public async Task InvokeAsync_ValidCommand_CallsResolver() {
         // Arrange -- resolver returns null to short-circuit (we only care about the resolver call)
         var daprClient = Substitute.For<DaprClient>();
         _resolver.ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -83,8 +75,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void DomainServiceNotFoundException_ContainsRecoveryInfo()
-    {
+    public void DomainServiceNotFoundException_ContainsRecoveryInfo() {
         // Act
         var ex = new DomainServiceNotFoundException("tenant-a", "payments");
 
@@ -96,8 +87,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void DomainServiceRegistration_PropertiesPreserved()
-    {
+    public void DomainServiceRegistration_PropertiesPreserved() {
         // Act
         var reg = new DomainServiceRegistration("app-1", "process", "t1", "d1", "v1");
 
@@ -110,8 +100,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void DomainServiceOptions_HasDefaults()
-    {
+    public void DomainServiceOptions_HasDefaults() {
         // Act
         var options = new DomainServiceOptions();
 
@@ -123,8 +112,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void DomainServiceRequest_ContainsCommandAndState()
-    {
+    public void DomainServiceRequest_ContainsCommandAndState() {
         // Arrange
         var envelope = CreateTestEnvelope();
         object state = new { Version = 1 };
@@ -138,8 +126,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void DomainServiceRequest_NullStateAllowed()
-    {
+    public void DomainServiceRequest_NullStateAllowed() {
         // Arrange
         var envelope = CreateTestEnvelope();
 
@@ -153,8 +140,7 @@ public class DaprDomainServiceInvokerTests
     // --- Task 7: Domain service response size validation ---
 
     [Fact]
-    public void DomainServiceException_WithTenantAndDomain_HasCorrectProperties()
-    {
+    public void DomainServiceException_WithTenantAndDomain_HasCorrectProperties() {
         // Act
         var ex = new DomainServiceException("tenant-a", "orders", "Too many events", eventCount: 1500);
 
@@ -169,8 +155,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void DomainServiceException_WithEventSize_HasCorrectProperties()
-    {
+    public void DomainServiceException_WithEventSize_HasCorrectProperties() {
         // Act
         var ex = new DomainServiceException("tenant-b", "inventory", "Event too large", eventSizeBytes: 2_000_000);
 
@@ -184,8 +169,7 @@ public class DaprDomainServiceInvokerTests
     // --- Task 7.5: Response exceeding max events throws DomainServiceException ---
 
     [Fact]
-    public void ValidateResponseLimits_ExceedsMaxEvents_ThrowsDomainServiceException()
-    {
+    public void ValidateResponseLimits_ExceedsMaxEvents_ThrowsDomainServiceException() {
         // Arrange - create a result with more events than allowed
         var opts = new DomainServiceOptions(MaxEventsPerResult: 3);
         var events = new IEventPayload[] { new TestEvent(), new TestEvent(), new TestEvent(), new TestEvent() };
@@ -203,8 +187,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ValidateResponseLimits_AtMaxEvents_DoesNotThrow()
-    {
+    public void ValidateResponseLimits_AtMaxEvents_DoesNotThrow() {
         // Arrange - exactly at the limit
         var opts = new DomainServiceOptions(MaxEventsPerResult: 3);
         var events = new IEventPayload[] { new TestEvent(), new TestEvent(), new TestEvent() };
@@ -218,8 +201,7 @@ public class DaprDomainServiceInvokerTests
     // --- Task 7.6: Single event exceeding max payload size throws DomainServiceException ---
 
     [Fact]
-    public void ValidateResponseLimits_EventExceedsMaxSize_ThrowsDomainServiceException()
-    {
+    public void ValidateResponseLimits_EventExceedsMaxSize_ThrowsDomainServiceException() {
         // Arrange - create an event with a large payload
         var opts = new DomainServiceOptions(MaxEventSizeBytes: 50); // very low threshold
         var largeEvent = new LargeTestEvent(new string('x', 100)); // will serialize to > 50 bytes
@@ -238,8 +220,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ValidateResponseLimits_SmallEvent_DoesNotThrow()
-    {
+    public void ValidateResponseLimits_SmallEvent_DoesNotThrow() {
         // Arrange
         var opts = new DomainServiceOptions(MaxEventSizeBytes: 1_048_576);
         var result = new DomainResult([new TestEvent()]);
@@ -250,8 +231,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ValidateResponseLimits_EmptyResult_DoesNotThrow()
-    {
+    public void ValidateResponseLimits_EmptyResult_DoesNotThrow() {
         // Arrange - no-op result with empty events
         var opts = new DomainServiceOptions();
         var result = DomainResult.NoOp();
@@ -272,8 +252,7 @@ public class DaprDomainServiceInvokerTests
     // --- Task 8: Version extraction and validation ---
 
     [Fact]
-    public void ExtractVersion_NoExtensions_ReturnsDefaultV1()
-    {
+    public void ExtractVersion_NoExtensions_ReturnsDefaultV1() {
         // Arrange - command with null extensions
         var envelope = CreateTestEnvelope();
 
@@ -285,8 +264,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ExtractVersion_ExtensionsWithoutVersionKey_ReturnsDefaultV1()
-    {
+    public void ExtractVersion_ExtensionsWithoutVersionKey_ReturnsDefaultV1() {
         // Arrange - extensions present but no domain-service-version key
         var envelope = new CommandEnvelope(
             TenantId: "test-tenant",
@@ -307,8 +285,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ExtractVersion_ExtensionsWithVersionKey_ReturnsSpecifiedVersion()
-    {
+    public void ExtractVersion_ExtensionsWithVersionKey_ReturnsSpecifiedVersion() {
         // Arrange - Task 8.5: versioned key lookup via extensions
         var envelope = new CommandEnvelope(
             TenantId: "test-tenant",
@@ -329,8 +306,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ExtractVersion_UppercaseVersion_NormalizedToLowercase()
-    {
+    public void ExtractVersion_UppercaseVersion_NormalizedToLowercase() {
         // Arrange - Task 8.7: "V1" normalized to "v1"
         var envelope = new CommandEnvelope(
             TenantId: "test-tenant",
@@ -351,8 +327,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ExtractVersion_MixedCaseVersion_NormalizedToLowercase()
-    {
+    public void ExtractVersion_MixedCaseVersion_NormalizedToLowercase() {
         // Arrange - "V10" -> "v10"
         var envelope = new CommandEnvelope(
             TenantId: "test-tenant",
@@ -380,8 +355,7 @@ public class DaprDomainServiceInvokerTests
     [InlineData("1")]          // no v prefix
     [InlineData("va")]         // non-numeric
     [InlineData("v1.0")]       // dots not allowed
-    public void ExtractVersion_InvalidFormat_ThrowsArgumentException(string invalidVersion)
-    {
+    public void ExtractVersion_InvalidFormat_ThrowsArgumentException(string invalidVersion) {
         // Arrange - Task 8.6: invalid version formats rejected
         var envelope = new CommandEnvelope(
             TenantId: "test-tenant",
@@ -401,8 +375,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public void ValidateVersionFormat_ValidVersions_DoNotThrow()
-    {
+    public void ValidateVersionFormat_ValidVersions_DoNotThrow() {
         // Arrange & Act & Assert
         Should.NotThrow(() => DaprDomainServiceInvoker.ValidateVersionFormat("v1"));
         Should.NotThrow(() => DaprDomainServiceInvoker.ValidateVersionFormat("v2"));
@@ -411,8 +384,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_CommandWithVersionExtension_PassesVersionToResolver()
-    {
+    public async Task InvokeAsync_CommandWithVersionExtension_PassesVersionToResolver() {
         // Arrange - Task 8.5: verify version from extensions is forwarded to resolver
         var daprClient = Substitute.For<DaprClient>();
         _resolver.ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>())
@@ -435,8 +407,7 @@ public class DaprDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_CommandWithoutVersionExtension_PassesDefaultV1ToResolver()
-    {
+    public async Task InvokeAsync_CommandWithoutVersionExtension_PassesDefaultV1ToResolver() {
         // Arrange - no extensions, should default to v1
         var daprClient = Substitute.For<DaprClient>();
         _resolver.ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>())

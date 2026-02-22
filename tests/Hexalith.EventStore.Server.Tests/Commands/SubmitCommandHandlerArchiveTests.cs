@@ -15,10 +15,8 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class SubmitCommandHandlerArchiveTests
-{
-    private static ICommandRouter CreateMockRouter()
-    {
+public class SubmitCommandHandlerArchiveTests {
+    private static ICommandRouter CreateMockRouter() {
         var router = Substitute.For<ICommandRouter>();
         router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
@@ -36,8 +34,7 @@ public class SubmitCommandHandlerArchiveTests
         Extensions: new Dictionary<string, string> { ["key1"] = "val1" });
 
     [Fact]
-    public async Task Handle_ValidCommand_WritesArchivedCommandToStore()
-    {
+    public async Task Handle_ValidCommand_WritesArchivedCommandToStore() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
@@ -57,8 +54,7 @@ public class SubmitCommandHandlerArchiveTests
     }
 
     [Fact]
-    public async Task Handle_ArchiveWriteFails_StillReturnsResult()
-    {
+    public async Task Handle_ArchiveWriteFails_StillReturnsResult() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
         var mockArchiveStore = Substitute.For<ICommandArchiveStore>();
@@ -81,8 +77,7 @@ public class SubmitCommandHandlerArchiveTests
     }
 
     [Fact]
-    public async Task Handle_ArchiveWriteFails_LogsWarning()
-    {
+    public async Task Handle_ArchiveWriteFails_LogsWarning() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
         var mockArchiveStore = Substitute.For<ICommandArchiveStore>();
@@ -111,8 +106,7 @@ public class SubmitCommandHandlerArchiveTests
     }
 
     [Fact]
-    public async Task Handle_ArchivedCommand_ContainsAllOriginalFields()
-    {
+    public async Task Handle_ArchivedCommand_ContainsAllOriginalFields() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();

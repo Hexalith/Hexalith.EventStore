@@ -1,7 +1,5 @@
 namespace Hexalith.EventStore.Sample.Counter;
 
-using System.Text.Json;
-
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -14,15 +12,12 @@ using Hexalith.EventStore.Sample.Counter.State;
 /// (Command, CurrentState?) -> DomainResult with three possible outcomes:
 /// success events, rejection events, or no-op.
 /// </summary>
-public sealed class CounterProcessor : DomainProcessorBase<CounterState>
-{
+public sealed class CounterProcessor : DomainProcessorBase<CounterState> {
     /// <inheritdoc/>
-    protected override Task<DomainResult> HandleAsync(CommandEnvelope command, CounterState? currentState)
-    {
+    protected override Task<DomainResult> HandleAsync(CommandEnvelope command, CounterState? currentState) {
         ArgumentNullException.ThrowIfNull(command);
 
-        DomainResult result = command.CommandType switch
-        {
+        DomainResult result = command.CommandType switch {
             nameof(Commands.IncrementCounter) => HandleIncrement(),
             nameof(Commands.DecrementCounter) => HandleDecrement(currentState),
             nameof(Commands.ResetCounter) => HandleReset(currentState),
@@ -35,20 +30,16 @@ public sealed class CounterProcessor : DomainProcessorBase<CounterState>
     private static DomainResult HandleIncrement()
         => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
 
-    private static DomainResult HandleDecrement(CounterState? currentState)
-    {
-        if (currentState is null || currentState.Count == 0)
-        {
+    private static DomainResult HandleDecrement(CounterState? currentState) {
+        if (currentState is null || currentState.Count == 0) {
             return DomainResult.Rejection(new IRejectionEvent[] { new CounterCannotGoNegative() });
         }
 
         return DomainResult.Success(new IEventPayload[] { new CounterDecremented() });
     }
 
-    private static DomainResult HandleReset(CounterState? currentState)
-    {
-        if (currentState is null || currentState.Count == 0)
-        {
+    private static DomainResult HandleReset(CounterState? currentState) {
+        if (currentState is null || currentState.Count == 0) {
             return DomainResult.NoOp();
         }
 

@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Server.Events;
 /// Thrown when an event type cannot be deserialized during state rehydration.
 /// Domain services must maintain backward-compatible deserialization for all event types.
 /// </summary>
-public class UnknownEventException : InvalidOperationException
-{
+public class UnknownEventException : InvalidOperationException {
     /// <summary>
     /// Initializes a new instance of the <see cref="UnknownEventException"/> class.
     /// </summary>
@@ -15,8 +14,7 @@ public class UnknownEventException : InvalidOperationException
     /// <param name="aggregateId">The aggregate identifier.</param>
     /// <param name="eventTypeName">The event type that could not be deserialized.</param>
     public UnknownEventException(long sequenceNumber, string tenantId, string domain, string aggregateId, string eventTypeName)
-        : base($"UnknownEvent during state rehydration: sequence {sequenceNumber}, type '{eventTypeName}', aggregate {tenantId}:{domain}:{aggregateId}. Domain service must maintain backward-compatible deserialization for all event types.")
-    {
+        : base($"UnknownEvent during state rehydration: sequence {sequenceNumber}, type '{eventTypeName}', aggregate {tenantId}:{domain}:{aggregateId}. Domain service must maintain backward-compatible deserialization for all event types.") {
         SequenceNumber = sequenceNumber;
         TenantId = tenantId;
         Domain = domain;

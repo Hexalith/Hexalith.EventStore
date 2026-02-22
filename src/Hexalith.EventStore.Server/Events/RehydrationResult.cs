@@ -13,8 +13,7 @@ public record RehydrationResult(
     object? SnapshotState,
     List<EventEnvelope> Events,
     long LastSnapshotSequence,
-    long CurrentSequence)
-{
+    long CurrentSequence) {
     /// <summary>Gets the number of tail events (for diagnostics/logging).</summary>
     public int TailEventCount => Events.Count;
 

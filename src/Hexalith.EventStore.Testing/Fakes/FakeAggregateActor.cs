@@ -9,8 +9,7 @@ using Hexalith.EventStore.Server.Actors;
 /// Fake aggregate actor for testing. Records all invocations for assertion.
 /// Optionally simulates idempotency by tracking processed causation IDs.
 /// </summary>
-public class FakeAggregateActor : IAggregateActor
-{
+public class FakeAggregateActor : IAggregateActor {
     private readonly ConcurrentQueue<CommandEnvelope> _receivedCommands = new();
     private readonly ConcurrentDictionary<string, CommandProcessingResult> _processedCausationIds = new();
 
@@ -30,23 +29,19 @@ public class FakeAggregateActor : IAggregateActor
     public int ProcessedCount => _processedCausationIds.Count;
 
     /// <inheritdoc/>
-    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
-    {
+    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
         ArgumentNullException.ThrowIfNull(command);
         _receivedCommands.Enqueue(command);
 
-        if (ConfiguredException is not null)
-        {
+        if (ConfiguredException is not null) {
             throw ConfiguredException;
         }
 
         CommandProcessingResult result = ConfiguredResult ?? new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId);
 
-        if (SimulateIdempotency)
-        {
+        if (SimulateIdempotency) {
             string causationId = command.CausationId ?? command.CorrelationId;
-            if (_processedCausationIds.TryGetValue(causationId, out CommandProcessingResult? cached))
-            {
+            if (_processedCausationIds.TryGetValue(causationId, out CommandProcessingResult? cached)) {
                 return Task.FromResult(cached);
             }
 

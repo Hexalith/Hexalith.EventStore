@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Results;
 /// Minimal contract for invoking a domain service to process a command.
 /// The server calls domain services via DAPR; in tests, this is faked.
 /// </summary>
-public interface IDomainServiceInvoker
-{
+public interface IDomainServiceInvoker {
     /// <summary>
     /// Invokes a domain service to process the specified command against the current aggregate state.
     /// </summary>

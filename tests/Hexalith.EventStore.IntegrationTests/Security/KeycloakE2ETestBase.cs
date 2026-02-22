@@ -10,12 +10,10 @@ using global::Aspire.Hosting;
 /// and Keycloak token acquisition. Tests derived from this base should be tagged
 /// with [Trait("Category", "E2E")] and [Collection("AspireTopology")].
 /// </summary>
-public abstract class KeycloakE2ETestBase
-{
+public abstract class KeycloakE2ETestBase {
     private readonly AspireTopologyFixture _fixture;
 
-    protected KeycloakE2ETestBase(AspireTopologyFixture fixture)
-    {
+    protected KeycloakE2ETestBase(AspireTopologyFixture fixture) {
         _fixture = fixture;
     }
 

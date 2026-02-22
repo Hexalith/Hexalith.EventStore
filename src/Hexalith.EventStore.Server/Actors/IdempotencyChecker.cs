@@ -10,13 +10,11 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public partial class IdempotencyChecker(
     IActorStateManager stateManager,
-    ILogger<IdempotencyChecker> logger) : IIdempotencyChecker
-{
+    ILogger<IdempotencyChecker> logger) : IIdempotencyChecker {
     private const string KeyPrefix = "idempotency:";
 
     /// <inheritdoc/>
-    public async Task<CommandProcessingResult?> CheckAsync(string causationId)
-    {
+    public async Task<CommandProcessingResult?> CheckAsync(string causationId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(causationId);
 
         string key = $"{KeyPrefix}{causationId}";
@@ -24,8 +22,7 @@ public partial class IdempotencyChecker(
             .TryGetStateAsync<IdempotencyRecord>(key)
             .ConfigureAwait(false);
 
-        if (result.HasValue)
-        {
+        if (result.HasValue) {
             Log.IdempotencyCacheHit(logger, causationId);
             return result.Value.ToResult();
         }
@@ -35,8 +32,7 @@ public partial class IdempotencyChecker(
     }
 
     /// <inheritdoc/>
-    public async Task RecordAsync(string causationId, CommandProcessingResult result)
-    {
+    public async Task RecordAsync(string causationId, CommandProcessingResult result) {
         ArgumentException.ThrowIfNullOrWhiteSpace(causationId);
         ArgumentNullException.ThrowIfNull(result);
 
@@ -50,8 +46,7 @@ public partial class IdempotencyChecker(
         Log.IdempotencyRecordStored(logger, causationId);
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 5000,
             Level = LogLevel.Debug,

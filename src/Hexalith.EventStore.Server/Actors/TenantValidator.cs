@@ -6,11 +6,9 @@ using Microsoft.Extensions.Logging;
 /// Validates that a command's tenant matches the actor's tenant identity.
 /// SEC-2: Defense-in-depth tenant isolation at actor level.
 /// </summary>
-public partial class TenantValidator(ILogger<TenantValidator> logger) : ITenantValidator
-{
+public partial class TenantValidator(ILogger<TenantValidator> logger) : ITenantValidator {
     /// <inheritdoc/>
-    public void Validate(string commandTenantId, string actorId)
-    {
+    public void Validate(string commandTenantId, string actorId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(commandTenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
 
@@ -18,16 +16,14 @@ public partial class TenantValidator(ILogger<TenantValidator> logger) : ITenantV
         // (regex: lowercase alphanumeric + hyphens, no colons).
         // If this assumption changes, update this parser. (F-PM1)
         string[] parts = actorId.Split(':');
-        if (parts.Length != 3)
-        {
+        if (parts.Length != 3) {
             throw new InvalidOperationException(
                 $"Malformed actor ID '{actorId}': expected 3 colon-separated segments, got {parts.Length}");
         }
 
         string actorTenant = parts[0];
 
-        if (!string.Equals(commandTenantId, actorTenant, StringComparison.Ordinal))
-        {
+        if (!string.Equals(commandTenantId, actorTenant, StringComparison.Ordinal)) {
             Log.TenantMismatch(logger, commandTenantId, actorTenant, actorId);
             throw new TenantMismatchException(commandTenantId, actorTenant);
         }
@@ -35,8 +31,7 @@ public partial class TenantValidator(ILogger<TenantValidator> logger) : ITenantV
         Log.TenantValidationPassed(logger, commandTenantId, actorId);
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 5000,
             Level = LogLevel.Warning,

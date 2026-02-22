@@ -19,8 +19,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Integration tests for event persistence using InMemoryStateManager.
 /// Tests round-trip: EventPersister writes -> EventStreamReader reads.
 /// </summary>
-public class EventPersistenceIntegrationTests
-{
+public class EventPersistenceIntegrationTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private sealed record OrderCreated(string OrderId, decimal Amount) : IEventPayload;
@@ -42,8 +41,7 @@ public class EventPersistenceIntegrationTests
         UserId: "user-1",
         Extensions: null);
 
-    private static (EventPersister Persister, EventStreamReader Reader, InMemoryStateManager StateManager) CreateComponents()
-    {
+    private static (EventPersister Persister, EventStreamReader Reader, InMemoryStateManager StateManager) CreateComponents() {
         var stateManager = new InMemoryStateManager();
         var persisterLogger = Substitute.For<ILogger<EventPersister>>();
         var readerLogger = Substitute.For<ILogger<EventStreamReader>>();
@@ -56,8 +54,7 @@ public class EventPersistenceIntegrationTests
     // === 8.1: Full pipeline persists events with correct keys and metadata ===
 
     [Fact]
-    public async Task PersistAndRead_FullPipeline_EventsHaveCorrectKeysAndMetadata()
-    {
+    public async Task PersistAndRead_FullPipeline_EventsHaveCorrectKeysAndMetadata() {
         // Arrange
         (EventPersister persister, EventStreamReader reader, InMemoryStateManager stateManager) = CreateComponents();
         CommandEnvelope command = CreateTestCommand(correlationId: "corr-abc", causationId: "cause-xyz");
@@ -89,8 +86,7 @@ public class EventPersistenceIntegrationTests
     // === 8.2: Multiple commands produce gapless sequence numbers ===
 
     [Fact]
-    public async Task PersistMultipleCommands_GaplessSequenceNumbers()
-    {
+    public async Task PersistMultipleCommands_GaplessSequenceNumbers() {
         // Arrange
         (EventPersister persister, EventStreamReader reader, InMemoryStateManager stateManager) = CreateComponents();
 
@@ -129,8 +125,7 @@ public class EventPersistenceIntegrationTests
     // === 8.3: Events readable after persistence via EventStreamReader (round-trip) ===
 
     [Fact]
-    public async Task PersistAndRead_RoundTrip_EventsReadable()
-    {
+    public async Task PersistAndRead_RoundTrip_EventsReadable() {
         // Arrange
         (EventPersister persister, EventStreamReader reader, InMemoryStateManager stateManager) = CreateComponents();
         CommandEnvelope command = CreateTestCommand();
@@ -158,8 +153,7 @@ public class EventPersistenceIntegrationTests
     // === 8.4: Atomic write -- all events visible together ===
 
     [Fact]
-    public async Task PersistEvents_BeforeSave_NotVisibleInCommittedState()
-    {
+    public async Task PersistEvents_BeforeSave_NotVisibleInCommittedState() {
         // Arrange
         (EventPersister persister, EventStreamReader reader, InMemoryStateManager stateManager) = CreateComponents();
         CommandEnvelope command = CreateTestCommand();
@@ -186,8 +180,7 @@ public class EventPersistenceIntegrationTests
     }
 
     [Fact]
-    public async Task PersistEvents_MetadataUpdatedAtomically_WithEvents()
-    {
+    public async Task PersistEvents_MetadataUpdatedAtomically_WithEvents() {
         // Arrange
         (EventPersister persister, _, InMemoryStateManager stateManager) = CreateComponents();
         CommandEnvelope command = CreateTestCommand();

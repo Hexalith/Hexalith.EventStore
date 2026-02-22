@@ -15,10 +15,8 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class SubmitCommandHandlerStatusTests
-{
-    private static ICommandRouter CreateMockRouter()
-    {
+public class SubmitCommandHandlerStatusTests {
+    private static ICommandRouter CreateMockRouter() {
         var router = Substitute.For<ICommandRouter>();
         router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
@@ -35,8 +33,7 @@ public class SubmitCommandHandlerStatusTests
         UserId: "test-user");
 
     [Fact]
-    public async Task Handle_ValidCommand_WritesReceivedStatusToStore()
-    {
+    public async Task Handle_ValidCommand_WritesReceivedStatusToStore() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
@@ -56,8 +53,7 @@ public class SubmitCommandHandlerStatusTests
     }
 
     [Fact]
-    public async Task Handle_StatusWriteFails_StillReturnsResult()
-    {
+    public async Task Handle_StatusWriteFails_StillReturnsResult() {
         // Arrange
         var mockStore = Substitute.For<ICommandStatusStore>();
         mockStore.WriteStatusAsync(
@@ -80,8 +76,7 @@ public class SubmitCommandHandlerStatusTests
     }
 
     [Fact]
-    public async Task Handle_StatusWriteFails_LogsWarning()
-    {
+    public async Task Handle_StatusWriteFails_LogsWarning() {
         // Arrange
         var mockStore = Substitute.For<ICommandStatusStore>();
         mockStore.WriteStatusAsync(

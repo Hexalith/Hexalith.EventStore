@@ -12,10 +12,8 @@ using NSubstitute;
 
 using Shouldly;
 
-public class SubmitCommandHandlerTests
-{
-    private static ICommandRouter CreateMockRouter()
-    {
+public class SubmitCommandHandlerTests {
+    private static ICommandRouter CreateMockRouter() {
         var router = Substitute.For<ICommandRouter>();
         router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
@@ -23,8 +21,7 @@ public class SubmitCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ReturnsCorrelationId()
-    {
+    public async Task Handle_ValidCommand_ReturnsCorrelationId() {
         // Arrange
         string expectedCorrelationId = Guid.NewGuid().ToString();
         var statusStore = new InMemoryCommandStatusStore();

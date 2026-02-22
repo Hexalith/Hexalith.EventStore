@@ -23,8 +23,7 @@ public record UnpublishedEventsRecord(
     bool IsRejection,
     DateTimeOffset FailedAt,
     int RetryCount,
-    string? LastFailureReason)
-{
+    string? LastFailureReason) {
     /// <summary>State key prefix for unpublished event records.</summary>
     public const string StateKeyPrefix = "drain:";
 
@@ -41,8 +40,7 @@ public record UnpublishedEventsRecord(
     /// <summary>Returns a new record with incremented retry count and updated failure reason.</summary>
     /// <param name="failureReason">The reason for the latest failure.</param>
     /// <returns>A new record with RetryCount + 1 and updated LastFailureReason.</returns>
-    public UnpublishedEventsRecord IncrementRetry(string? failureReason) => this with
-    {
+    public UnpublishedEventsRecord IncrementRetry(string? failureReason) => this with {
         RetryCount = RetryCount + 1,
         LastFailureReason = failureReason,
     };

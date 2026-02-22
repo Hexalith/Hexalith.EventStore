@@ -13,11 +13,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
-public class ServiceCollectionExtensionsTests
-{
+public class ServiceCollectionExtensionsTests {
     [Fact]
-    public void AddCommandApi_RegistersExceptionHandlers_InCorrectOrder()
-    {
+    public void AddCommandApi_RegistersExceptionHandlers_InCorrectOrder() {
         // Arrange
         var services = new ServiceCollection();
 

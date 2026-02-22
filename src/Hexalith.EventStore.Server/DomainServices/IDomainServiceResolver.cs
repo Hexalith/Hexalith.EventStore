@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// <summary>
 /// Resolves domain service registrations from the DAPR config store for a given tenant and domain.
 /// </summary>
-public interface IDomainServiceResolver
-{
+public interface IDomainServiceResolver {
     /// <summary>
     /// Resolves the domain service registration for the specified tenant, domain, and version.
     /// </summary>

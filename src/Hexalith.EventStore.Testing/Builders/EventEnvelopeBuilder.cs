@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Events;
 /// <summary>
 /// Fluent builder for creating <see cref="EventEnvelope"/> instances with sensible defaults for testing.
 /// </summary>
-public sealed class EventEnvelopeBuilder
-{
+public sealed class EventEnvelopeBuilder {
     private string _tenantId = "test-tenant";
     private string _domain = "test-domain";
     private string _aggregateIdPart = "test-agg-001";
@@ -90,8 +89,7 @@ public sealed class EventEnvelopeBuilder
 
     /// <summary>Builds the <see cref="EventEnvelope"/> instance.</summary>
     /// <returns>A new <see cref="EventEnvelope"/> with the configured values.</returns>
-    public EventEnvelope Build()
-    {
+    public EventEnvelope Build() {
         var metadata = new EventMetadata(
             $"{_tenantId}:{_domain}:{_aggregateIdPart}",
             _tenantId,

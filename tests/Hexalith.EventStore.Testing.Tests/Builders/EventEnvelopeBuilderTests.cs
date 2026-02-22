@@ -3,11 +3,9 @@ namespace Hexalith.EventStore.Testing.Tests.Builders;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Testing.Builders;
 
-public class EventEnvelopeBuilderTests
-{
+public class EventEnvelopeBuilderTests {
     [Fact]
-    public void Build_produces_valid_event_envelope_with_defaults()
-    {
+    public void Build_produces_valid_event_envelope_with_defaults() {
         EventEnvelope envelope = new EventEnvelopeBuilder().Build();
 
         Assert.NotNull(envelope.Metadata);
@@ -26,8 +24,7 @@ public class EventEnvelopeBuilderTests
     }
 
     [Fact]
-    public void Build_fluent_overrides_work()
-    {
+    public void Build_fluent_overrides_work() {
         EventEnvelope envelope = new EventEnvelopeBuilder()
             .WithSequenceNumber(5)
             .WithEventTypeName("OrderCreated")
@@ -40,8 +37,7 @@ public class EventEnvelopeBuilderTests
     }
 
     [Fact]
-    public void Build_composite_aggregate_id_reflects_tenant_and_domain_overrides()
-    {
+    public void Build_composite_aggregate_id_reflects_tenant_and_domain_overrides() {
         EventEnvelope envelope = new EventEnvelopeBuilder()
             .WithTenantId("acme")
             .WithDomain("billing")
@@ -54,8 +50,7 @@ public class EventEnvelopeBuilderTests
     }
 
     [Fact]
-    public void Build_composite_aggregate_id_consistent_with_defaults()
-    {
+    public void Build_composite_aggregate_id_consistent_with_defaults() {
         EventEnvelope envelope = new EventEnvelopeBuilder().Build();
 
         Assert.Equal($"{envelope.Metadata.TenantId}:{envelope.Metadata.Domain}:test-agg-001", envelope.Metadata.AggregateId);

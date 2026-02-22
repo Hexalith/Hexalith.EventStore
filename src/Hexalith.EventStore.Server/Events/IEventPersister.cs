@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Results;
 /// <summary>
 /// Persists domain events to the actor state store using write-once keys with gapless sequence numbers.
 /// </summary>
-public interface IEventPersister
-{
+public interface IEventPersister {
     /// <summary>
     /// Persists events from a domain result to the actor state store.
     /// Assigns gapless sequence numbers and populates all 11 envelope metadata fields (SEC-1).

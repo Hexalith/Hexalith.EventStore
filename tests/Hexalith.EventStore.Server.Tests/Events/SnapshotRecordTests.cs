@@ -4,13 +4,11 @@ using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
 
-public class SnapshotRecordTests
-{
+public class SnapshotRecordTests {
     // === 9.1: SnapshotRecord created with correct properties ===
 
     [Fact]
-    public void SnapshotRecord_CreatedWithCorrectProperties()
-    {
+    public void SnapshotRecord_CreatedWithCorrectProperties() {
         var state = new { Counter = 42 };
         var createdAt = DateTimeOffset.UtcNow;
 
@@ -33,8 +31,7 @@ public class SnapshotRecordTests
     // === 9.2: SnapshotRecord is immutable (record type guarantees) ===
 
     [Fact]
-    public void SnapshotRecord_IsImmutable_RecordTypeGuarantees()
-    {
+    public void SnapshotRecord_IsImmutable_RecordTypeGuarantees() {
         var record = new SnapshotRecord(100, "state", DateTimeOffset.UtcNow, "domain", "agg-1", "tenant-1");
 
         // Record types use value equality
@@ -46,8 +43,7 @@ public class SnapshotRecordTests
     }
 
     [Fact]
-    public void SnapshotRecord_ValueEquality()
-    {
+    public void SnapshotRecord_ValueEquality() {
         var createdAt = DateTimeOffset.UtcNow;
         var state = "same-state";
 

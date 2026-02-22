@@ -1,7 +1,5 @@
 namespace Hexalith.EventStore.Server.Tests.Security;
 
-using System.Collections.ObjectModel;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 
@@ -14,15 +12,13 @@ using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Story 5.4, Task 7: Payload protection tests (AC #2, #5, #11).
 /// Validates that ToString() overrides redact payload and that no log statements reference payload.
 /// </summary>
-public class PayloadProtectionTests
-{
+public class PayloadProtectionTests {
     private static readonly byte[] SamplePayload = [0x01, 0x02, 0x03, 0xFF];
 
     // --- Task 7.2: EventEnvelope (Contracts) ToString excludes payload ---
 
     [Fact]
-    public void EventEnvelope_ToString_DoesNotContainPayload()
-    {
+    public void EventEnvelope_ToString_DoesNotContainPayload() {
         var metadata = new EventMetadata(
             "aggregate-1", "tenant-a", "billing", 1, DateTimeOffset.UtcNow,
             "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", "json");
@@ -40,8 +36,7 @@ public class PayloadProtectionTests
     // --- Task 7.3: CommandEnvelope ToString excludes payload ---
 
     [Fact]
-    public void CommandEnvelope_ToString_DoesNotContainPayload()
-    {
+    public void CommandEnvelope_ToString_DoesNotContainPayload() {
         var envelope = new CommandEnvelope(
             "tenant-a", "billing", "aggregate-1", "PlaceOrder",
             SamplePayload, "corr-1", null, "user-1", null);
@@ -55,8 +50,7 @@ public class PayloadProtectionTests
     // --- Task 7.4: EventEnvelope ToString contains all metadata fields ---
 
     [Fact]
-    public void EventEnvelope_ToString_ContainsAllMetadataFields()
-    {
+    public void EventEnvelope_ToString_ContainsAllMetadataFields() {
         var metadata = new EventMetadata(
             "aggregate-1", "tenant-a", "billing", 42, DateTimeOffset.UtcNow,
             "corr-123", "cause-456", "user-bob", "2.1.0", "OrderPlaced", "json");
@@ -79,8 +73,7 @@ public class PayloadProtectionTests
     }
 
     [Fact]
-    public void CommandEnvelope_ToString_ContainsAllMetadataFields()
-    {
+    public void CommandEnvelope_ToString_ContainsAllMetadataFields() {
         var envelope = new CommandEnvelope(
             "tenant-a", "billing", "aggregate-1", "PlaceOrder",
             SamplePayload, "corr-123", "cause-456", "user-bob", null);
@@ -100,8 +93,7 @@ public class PayloadProtectionTests
     // (Static analysis: verify LoggingBehavior.cs source doesn't reference Payload)
 
     [Fact]
-    public void LoggingBehavior_AllLogStatements_NeverReferencePayload()
-    {
+    public void LoggingBehavior_AllLogStatements_NeverReferencePayload() {
         string sourcePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.CommandApi", "Pipeline", "LoggingBehavior.cs"));
@@ -112,19 +104,16 @@ public class PayloadProtectionTests
         // Verify no log statements reference Payload
         // Allow references in comments but not in actual logger.Log calls
         string[] lines = content.Split('\n');
-        foreach (string line in lines)
-        {
+        foreach (string line in lines) {
             string trimmed = line.Trim();
-            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal)) {
                 continue;
             }
 
             if (trimmed.Contains("logger.Log", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Contains("LogInformation", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Contains("LogWarning", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogError", StringComparison.OrdinalIgnoreCase))
-            {
+                trimmed.Contains("LogError", StringComparison.OrdinalIgnoreCase)) {
                 trimmed.ShouldNotContain("Payload", Case.Insensitive,
                     $"LoggingBehavior log statement references Payload: {trimmed}");
             }
@@ -134,8 +123,7 @@ public class PayloadProtectionTests
     // --- Task 7.6: AggregateActor source scan ---
 
     [Fact]
-    public void AggregateActor_AllLogStatements_NeverReferencePayload()
-    {
+    public void AggregateActor_AllLogStatements_NeverReferencePayload() {
         string sourcePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.Server", "Actors", "AggregateActor.cs"));
@@ -148,8 +136,7 @@ public class PayloadProtectionTests
     // --- Task 7.7: EventPublisher source scan ---
 
     [Fact]
-    public void EventPublisher_AllLogStatements_NeverReferencePayload()
-    {
+    public void EventPublisher_AllLogStatements_NeverReferencePayload() {
         string sourcePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.Server", "Events", "EventPublisher.cs"));
@@ -162,8 +149,7 @@ public class PayloadProtectionTests
     // --- Task 7.8: DeadLetterPublisher source scan ---
 
     [Fact]
-    public void DeadLetterPublisher_AllLogStatements_NeverReferencePayload()
-    {
+    public void DeadLetterPublisher_AllLogStatements_NeverReferencePayload() {
         string sourcePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.Server", "Events", "DeadLetterPublisher.cs"));
@@ -176,8 +162,7 @@ public class PayloadProtectionTests
     // --- Server EventEnvelope ToString also redacts payload ---
 
     [Fact]
-    public void ServerEventEnvelope_ToString_DoesNotContainPayload()
-    {
+    public void ServerEventEnvelope_ToString_DoesNotContainPayload() {
         var envelope = new ServerEventEnvelope(
             "aggregate-1", "tenant-a", "billing", 1, DateTimeOffset.UtcNow,
             "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", "json",
@@ -192,8 +177,7 @@ public class PayloadProtectionTests
     // --- Framework-level enforcement: even explicit logging is safe ---
 
     [Fact]
-    public void EventEnvelope_DeveloperLogsFullObject_PayloadIsRedacted()
-    {
+    public void EventEnvelope_DeveloperLogsFullObject_PayloadIsRedacted() {
         var metadata = new EventMetadata(
             "agg-1", "t-a", "billing", 1, DateTimeOffset.UtcNow,
             "corr-1", "cause-1", "user-1", "1.0", "OrderPlaced", "json");
@@ -209,8 +193,7 @@ public class PayloadProtectionTests
     }
 
     [Fact]
-    public void CommandEnvelope_DeveloperLogsFullObject_PayloadIsRedacted()
-    {
+    public void CommandEnvelope_DeveloperLogsFullObject_PayloadIsRedacted() {
         var envelope = new CommandEnvelope(
             "t-a", "billing", "agg-1", "PlaceOrder",
             SamplePayload, "corr-1", null, "user-1", null);
@@ -221,16 +204,13 @@ public class PayloadProtectionTests
         logOutput.ShouldNotContain("System.Byte[]");
     }
 
-    private static void VerifyNoPayloadInLogStatements(string sourcePath, string className)
-    {
+    private static void VerifyNoPayloadInLogStatements(string sourcePath, string className) {
         string content = File.ReadAllText(sourcePath);
         string[] lines = content.Split('\n');
 
-        foreach (string line in lines)
-        {
+        foreach (string line in lines) {
             string trimmed = line.Trim();
-            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal)) {
                 continue;
             }
 
@@ -238,8 +218,7 @@ public class PayloadProtectionTests
                 trimmed.Contains("LogInformation", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Contains("LogWarning", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Contains("LogError", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogDebug", StringComparison.OrdinalIgnoreCase))
-            {
+                trimmed.Contains("LogDebug", StringComparison.OrdinalIgnoreCase)) {
                 trimmed.ShouldNotContain("Payload", Case.Insensitive,
                     $"{className} log statement references Payload: {trimmed}");
             }

@@ -2,35 +2,30 @@ namespace Hexalith.EventStore.Contracts.Tests.Events;
 
 using Hexalith.EventStore.Contracts.Events;
 
-public class EventPayloadTests
-{
+public class EventPayloadTests {
     private sealed class TestEventPayload : IEventPayload;
 
     private sealed class TestRejectionEvent : IRejectionEvent;
 
     [Fact]
-    public void IEventPayload_IsMarkerInterface_WithNoMembers()
-    {
+    public void IEventPayload_IsMarkerInterface_WithNoMembers() {
         var members = typeof(IEventPayload).GetMembers();
         Assert.Empty(members);
     }
 
     [Fact]
-    public void IRejectionEvent_ExtendsIEventPayload()
-    {
+    public void IRejectionEvent_ExtendsIEventPayload() {
         Assert.True(typeof(IEventPayload).IsAssignableFrom(typeof(IRejectionEvent)));
     }
 
     [Fact]
-    public void IRejectionEvent_HasNoAdditionalMembers()
-    {
+    public void IRejectionEvent_HasNoAdditionalMembers() {
         var members = typeof(IRejectionEvent).GetMembers();
         Assert.Empty(members);
     }
 
     [Fact]
-    public void RejectionEvent_ImplementsBothInterfaces()
-    {
+    public void RejectionEvent_ImplementsBothInterfaces() {
         var rejection = new TestRejectionEvent();
 
         Assert.IsAssignableFrom<IRejectionEvent>(rejection);
@@ -38,8 +33,7 @@ public class EventPayloadTests
     }
 
     [Fact]
-    public void EventPayload_ImplementsInterface()
-    {
+    public void EventPayload_ImplementsInterface() {
         var payload = new TestEventPayload();
 
         Assert.IsAssignableFrom<IEventPayload>(payload);

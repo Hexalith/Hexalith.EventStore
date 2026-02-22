@@ -5,7 +5,6 @@ using System.Security.Claims;
 using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Http;
@@ -14,20 +13,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
-public class CommandStatusControllerTests
-{
+public class CommandStatusControllerTests {
     private readonly InMemoryCommandStatusStore _statusStore = new();
     private readonly CommandStatusController _controller;
 
-    public CommandStatusControllerTests()
-    {
+    public CommandStatusControllerTests() {
         _controller = new CommandStatusController(_statusStore, NullLogger<CommandStatusController>.Instance);
         SetupHttpContext("default-tenant");
     }
 
     [Fact]
-    public async Task GetStatus_ExistingStatus_Returns200WithRecord()
-    {
+    public async Task GetStatus_ExistingStatus_Returns200WithRecord() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         SetupHttpContext("tenant-a");
@@ -47,8 +43,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetails()
-    {
+    public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         SetupHttpContext("tenant-a");
@@ -64,8 +59,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_TenantMismatch_Returns404ProblemDetails()
-    {
+    public async Task GetStatus_TenantMismatch_Returns404ProblemDetails() {
         // Arrange - status belongs to tenant-a
         string correlationId = Guid.NewGuid().ToString();
         await _statusStore.WriteStatusAsync(
@@ -85,8 +79,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_NoTenantClaims_Returns403ProblemDetails()
-    {
+    public async Task GetStatus_NoTenantClaims_Returns403ProblemDetails() {
         // Arrange - user with no tenant claims
         string correlationId = Guid.NewGuid().ToString();
         SetupHttpContextWithClaims([]); // no tenant claims
@@ -102,8 +95,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_MultipleTenantClaims_TriesAllTenants()
-    {
+    public async Task GetStatus_MultipleTenantClaims_TriesAllTenants() {
         // Arrange - status belongs to tenant-b, user has [tenant-a, tenant-b]
         string correlationId = Guid.NewGuid().ToString();
         await _statusStore.WriteStatusAsync(
@@ -123,8 +115,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_CompletedStatus_IncludesEventCount()
-    {
+    public async Task GetStatus_CompletedStatus_IncludesEventCount() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         SetupHttpContext("tenant-a");
@@ -144,8 +135,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_RejectedStatus_IncludesRejectionEventType()
-    {
+    public async Task GetStatus_RejectedStatus_IncludesRejectionEventType() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         SetupHttpContext("tenant-a");
@@ -165,8 +155,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_InvalidCorrelationIdFormat_Returns400()
-    {
+    public async Task GetStatus_InvalidCorrelationIdFormat_Returns400() {
         // Arrange
         SetupHttpContext("tenant-a");
 
@@ -181,8 +170,7 @@ public class CommandStatusControllerTests
     }
 
     [Fact]
-    public async Task GetStatus_TimedOutStatus_IncludesIso8601Duration()
-    {
+    public async Task GetStatus_TimedOutStatus_IncludesIso8601Duration() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         SetupHttpContext("tenant-a");
@@ -201,34 +189,29 @@ public class CommandStatusControllerTests
         response.TimeoutDuration.ShouldBe("PT30S");
     }
 
-    private void SetupHttpContext(string tenantId)
-    {
+    private void SetupHttpContext(string tenantId) {
         SetupHttpContextWithClaims([tenantId]);
     }
 
-    private void SetupHttpContextWithClaims(string[] tenants)
-    {
+    private void SetupHttpContextWithClaims(string[] tenants) {
         var claims = new List<Claim>
         {
             new("sub", "test-user"),
         };
 
-        foreach (string tenant in tenants)
-        {
+        foreach (string tenant in tenants) {
             claims.Add(new Claim("eventstore:tenant", tenant));
         }
 
         var identity = new ClaimsIdentity(claims, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
-        var httpContext = new DefaultHttpContext
-        {
+        var httpContext = new DefaultHttpContext {
             User = principal,
         };
         httpContext.Items["CorrelationId"] = Guid.NewGuid().ToString();
 
-        _controller.ControllerContext = new ControllerContext
-        {
+        _controller.ControllerContext = new ControllerContext {
             HttpContext = httpContext,
         };
     }

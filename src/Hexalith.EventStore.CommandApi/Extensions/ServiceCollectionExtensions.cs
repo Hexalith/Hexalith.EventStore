@@ -12,25 +12,20 @@ using Hexalith.EventStore.CommandApi.Filters;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Validation;
-
-using ExtensionMetadataSanitizer = Hexalith.EventStore.CommandApi.Validation.ExtensionMetadataSanitizer;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OpenApi;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
-public static class CommandApiServiceCollectionExtensions
-{
-    public static IServiceCollection AddCommandApi(this IServiceCollection services)
-    {
+using ExtensionMetadataSanitizer = Hexalith.EventStore.CommandApi.Validation.ExtensionMetadataSanitizer;
+
+public static class CommandApiServiceCollectionExtensions {
+    public static IServiceCollection AddCommandApi(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddProblemDetails();
@@ -81,18 +76,15 @@ public static class CommandApiServiceCollectionExtensions
 
         services.AddSingleton<IValidateOptions<RateLimitingOptions>, ValidateRateLimitingOptions>();
 
-        services.AddRateLimiter(rateLimiterOptions =>
-        {
+        services.AddRateLimiter(rateLimiterOptions => {
             rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            {
+            rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
                 // Health endpoints must never be rate limited (H2)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
                     path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
-                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase))
-                {
+                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
                     return RateLimitPartition.GetNoLimiter<string>("__health");
                 }
 
@@ -103,8 +95,7 @@ public static class CommandApiServiceCollectionExtensions
                 RateLimitingOptions rateLimitOptions = options.Value;
 
                 return RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ =>
-                    new SlidingWindowRateLimiterOptions
-                    {
+                    new SlidingWindowRateLimiterOptions {
                         PermitLimit = rateLimitOptions.PermitLimit,
                         Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
                         SegmentsPerWindow = rateLimitOptions.SegmentsPerWindow,
@@ -113,11 +104,9 @@ public static class CommandApiServiceCollectionExtensions
                     });
             });
 
-            rateLimiterOptions.OnRejected = async (context, cancellationToken) =>
-            {
+            rateLimiterOptions.OnRejected = async (context, cancellationToken) => {
                 // H10: Wrap entire OnRejected body in try/catch for resilience
-                try
-                {
+                try {
                     IOptions<RateLimitingOptions> options = context.HttpContext.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>();
                     ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
 
@@ -129,8 +118,7 @@ public static class CommandApiServiceCollectionExtensions
 
                     // H11: Use RetryAfter metadata if available, fall back to WindowSeconds
                     int retryAfterSeconds = options.Value.WindowSeconds;
-                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
-                    {
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter)) {
                         retryAfterSeconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
                     }
 
@@ -144,8 +132,7 @@ public static class CommandApiServiceCollectionExtensions
                     context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
                     context.HttpContext.Response.ContentType = "application/problem+json";
 
-                    var problemDetails = new
-                    {
+                    var problemDetails = new {
                         type = "https://tools.ietf.org/html/rfc6585#section-4",
                         title = "Too Many Requests",
                         status = 429,
@@ -159,8 +146,7 @@ public static class CommandApiServiceCollectionExtensions
                         JsonSerializer.Serialize(problemDetails),
                         cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) {
                     // Fallback: if OnRejected throws, ASP.NET Core returns bare 500. Write minimal 429 instead.
                     // Use GetService (not GetRequiredService) to avoid a secondary throw if DI is unavailable.
                     ILogger? logger = context.HttpContext.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.RateLimiting");
@@ -177,12 +163,9 @@ public static class CommandApiServiceCollectionExtensions
         });
 
         // OpenAPI document generation (Story 2.9)
-        services.AddOpenApi(options =>
-        {
-            options.AddDocumentTransformer((document, context, ct) =>
-            {
-                document.Info = new OpenApiInfo
-                {
+        services.AddOpenApi(options => {
+            options.AddDocumentTransformer((document, context, ct) => {
+                document.Info = new OpenApiInfo {
                     Title = "Hexalith EventStore Command API",
                     Version = "v1",
                     Description = "Event Sourcing infrastructure server for multi-tenant command processing with per-tenant rate limiting, JWT authentication, and comprehensive status tracking.",
@@ -191,8 +174,7 @@ public static class CommandApiServiceCollectionExtensions
                 // Add JWT Bearer security scheme
                 OpenApiComponents components = document.Components ??= new OpenApiComponents();
                 components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-                {
+                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme {
                     Type = SecuritySchemeType.Http,
                     Scheme = "bearer",
                     BearerFormat = "JWT",
@@ -210,11 +192,9 @@ public static class CommandApiServiceCollectionExtensions
             });
 
             // Add 429 response documentation to all operations (H14)
-            options.AddOperationTransformer((operation, context, ct) =>
-            {
+            options.AddOperationTransformer((operation, context, ct) => {
                 operation.Responses ??= new OpenApiResponses();
-                operation.Responses.TryAdd("429", new OpenApiResponse
-                {
+                operation.Responses.TryAdd("429", new OpenApiResponse {
                     Description = "Too Many Requests - Rate limit exceeded. See Retry-After header for when to retry.",
                 });
 
@@ -222,8 +202,7 @@ public static class CommandApiServiceCollectionExtensions
             });
         });
 
-        services.AddMediatR(cfg =>
-        {
+        services.AddMediatR(cfg => {
             cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
@@ -232,8 +211,7 @@ public static class CommandApiServiceCollectionExtensions
 
         services.AddValidatorsFromAssemblyContaining<SubmitCommandRequestValidator>();
 
-        services.AddControllers(options =>
-        {
+        services.AddControllers(options => {
             options.Filters.Add<ValidateModelFilter>();
         });
 

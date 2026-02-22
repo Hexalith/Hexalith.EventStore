@@ -9,8 +9,7 @@ using YamlDotNet.Serialization;
 /// Validates YAML structure and configuration correctness for all local DAPR component files.
 /// Uses YamlDotNet for robust YAML parsing (following AccessControlPolicyTests pattern from Story 5.1).
 /// </summary>
-public class DaprComponentValidationTests
-{
+public class DaprComponentValidationTests {
     private static readonly IDeserializer YamlParser = new DeserializerBuilder().Build();
 
     private static readonly string DaprComponentsDir = Path.GetFullPath(
@@ -26,8 +25,7 @@ public class DaprComponentValidationTests
     // --- Task 5.2: StateStoreComponent_HasActorStateStoreEnabled ---
 
     [Fact]
-    public void StateStoreComponent_HasActorStateStoreEnabled()
-    {
+    public void StateStoreComponent_HasActorStateStoreEnabled() {
         var doc = LoadYaml(StateStorePath);
         GetComponentMetadataValue(doc, "actorStateStore")
             .ShouldBe("true", "State store must have actorStateStore enabled for DAPR actor state management");
@@ -36,8 +34,7 @@ public class DaprComponentValidationTests
     // --- Task 5.3: StateStoreComponent_ScopedToCommandApiOnly ---
 
     [Fact]
-    public void StateStoreComponent_ScopedToCommandApiOnly()
-    {
+    public void StateStoreComponent_ScopedToCommandApiOnly() {
         var doc = LoadYaml(StateStorePath);
         var scopes = GetScopes(doc);
         scopes.ShouldNotBeNull("State store must have scopes defined");
@@ -48,8 +45,7 @@ public class DaprComponentValidationTests
     // --- Task 5.4: PubSubComponent_HasDeadLetterEnabled ---
 
     [Fact]
-    public void PubSubComponent_HasDeadLetterEnabled()
-    {
+    public void PubSubComponent_HasDeadLetterEnabled() {
         var doc = LoadYaml(PubSubPath);
         GetComponentMetadataValue(doc, "enableDeadLetter")
             .ShouldBe("true", "Pub/sub must have dead-letter enabled for undeliverable message routing");
@@ -58,8 +54,7 @@ public class DaprComponentValidationTests
     // --- Task 5.5: PubSubComponent_DenySamplePublishing ---
 
     [Fact]
-    public void PubSubComponent_DenySamplePublishing()
-    {
+    public void PubSubComponent_DenySamplePublishing() {
         var doc = LoadYaml(PubSubPath);
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
         publishingScopes.ShouldNotBeNull("Pub/sub must have publishingScopes defined");
@@ -70,8 +65,7 @@ public class DaprComponentValidationTests
     // --- Task 5.6: PubSubComponent_DenySampleSubscription ---
 
     [Fact]
-    public void PubSubComponent_DenySampleSubscription()
-    {
+    public void PubSubComponent_DenySampleSubscription() {
         var doc = LoadYaml(PubSubPath);
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
         subscriptionScopes.ShouldNotBeNull("Pub/sub must have subscriptionScopes defined");
@@ -82,8 +76,7 @@ public class DaprComponentValidationTests
     // --- Task 5.7: AccessControl_DefaultActionIsDeny ---
 
     [Fact]
-    public void AccessControl_DefaultActionIsDeny()
-    {
+    public void AccessControl_DefaultActionIsDeny() {
         var doc = LoadYaml(AccessControlPath);
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
             .ShouldBe("deny", "Access control must have defaultAction: deny for secure-by-default posture (D4)");
@@ -92,8 +85,7 @@ public class DaprComponentValidationTests
     // --- Task 5.8: AccessControl_CommandApiCanInvokePostOnly ---
 
     [Fact]
-    public void AccessControl_CommandApiCanInvokePostOnly()
-    {
+    public void AccessControl_CommandApiCanInvokePostOnly() {
         var doc = LoadYaml(AccessControlPath);
         var policies = NavList(doc, "spec", "accessControl", "policies");
         policies.ShouldNotBeNull();
@@ -122,8 +114,7 @@ public class DaprComponentValidationTests
     // --- Task 5.9: AccessControl_SampleHasZeroAllowedOperations ---
 
     [Fact]
-    public void AccessControl_SampleHasZeroAllowedOperations()
-    {
+    public void AccessControl_SampleHasZeroAllowedOperations() {
         var doc = LoadYaml(AccessControlPath);
         var policies = NavList(doc, "spec", "accessControl", "policies");
         policies.ShouldNotBeNull();
@@ -142,8 +133,7 @@ public class DaprComponentValidationTests
     // --- Task 5.10: Resiliency_SidecarTimeoutIsFiveSeconds ---
 
     [Fact]
-    public void Resiliency_SidecarTimeoutIsFiveSeconds()
-    {
+    public void Resiliency_SidecarTimeoutIsFiveSeconds() {
         var doc = LoadYaml(ResiliencyPath);
         Nav(doc, "spec", "policies", "timeouts", "daprSidecar", "general")?.ToString()
             .ShouldBe("5s", "DAPR sidecar general timeout must be 5 seconds (Rule #14)");
@@ -152,8 +142,7 @@ public class DaprComponentValidationTests
     // --- Task 5.11: Resiliency_PubSubHasCircuitBreaker ---
 
     [Fact]
-    public void Resiliency_PubSubHasCircuitBreaker()
-    {
+    public void Resiliency_PubSubHasCircuitBreaker() {
         var doc = LoadYaml(ResiliencyPath);
 
         // Verify pubsubBreaker policy exists
@@ -168,8 +157,7 @@ public class DaprComponentValidationTests
     // --- Task 5.12: AllComponentFiles_ExistInDaprComponentsDirectory ---
 
     [Fact]
-    public void AllComponentFiles_ExistInDaprComponentsDirectory()
-    {
+    public void AllComponentFiles_ExistInDaprComponentsDirectory() {
         File.Exists(StateStorePath).ShouldBeTrue($"statestore.yaml must exist at {StateStorePath}");
         File.Exists(PubSubPath).ShouldBeTrue($"pubsub.yaml must exist at {PubSubPath}");
         File.Exists(ResiliencyPath).ShouldBeTrue($"resiliency.yaml must exist at {ResiliencyPath}");
@@ -180,8 +168,7 @@ public class DaprComponentValidationTests
     // --- Additional: Resiliency has statestore component target (Task 2.1 validation) ---
 
     [Fact]
-    public void Resiliency_HasStateStoreComponentTarget()
-    {
+    public void Resiliency_HasStateStoreComponentTarget() {
         var doc = LoadYaml(ResiliencyPath);
         Nav(doc, "spec", "targets", "components", "statestore").ShouldNotBeNull(
             "Resiliency must have a statestore component target for event persistence retry/circuit breaker (D1, D2)");
@@ -193,19 +180,15 @@ public class DaprComponentValidationTests
 
     // --- YAML navigation helpers (same pattern as AccessControlPolicyTests) ---
 
-    private static Dictionary<string, object> LoadYaml(string path)
-    {
+    private static Dictionary<string, object> LoadYaml(string path) {
         string content = File.ReadAllText(path);
         return YamlParser.Deserialize<Dictionary<string, object>>(content);
     }
 
-    private static object? Nav(object root, params string[] path)
-    {
+    private static object? Nav(object root, params string[] path) {
         object? current = root;
-        foreach (string key in path)
-        {
-            current = current switch
-            {
+        foreach (string key in path) {
+            current = current switch {
                 Dictionary<string, object> stringDict when stringDict.TryGetValue(key, out object? val) => val,
                 Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
                 _ => null,
@@ -225,8 +208,7 @@ public class DaprComponentValidationTests
     private static List<object>? GetScopes(Dictionary<string, object> doc)
         => doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
 
-    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName)
-    {
+    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
         var metadataList = NavList(doc, "spec", "metadata");
         if (metadataList is null)
             return null;

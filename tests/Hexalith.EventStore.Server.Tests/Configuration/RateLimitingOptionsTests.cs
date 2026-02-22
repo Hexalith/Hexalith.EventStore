@@ -6,11 +6,9 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-public class RateLimitingOptionsTests
-{
+public class RateLimitingOptionsTests {
     [Fact]
-    public void DefaultValues_AreCorrect()
-    {
+    public void DefaultValues_AreCorrect() {
         // Arrange & Act
         var options = new RateLimitingOptions();
 
@@ -22,8 +20,7 @@ public class RateLimitingOptionsTests
     }
 
     [Fact]
-    public void Validation_PermitLimitZero_Fails()
-    {
+    public void Validation_PermitLimitZero_Fails() {
         // Arrange
         var options = new RateLimitingOptions { PermitLimit = 0 };
         var validator = new ValidateRateLimitingOptions();
@@ -37,8 +34,7 @@ public class RateLimitingOptionsTests
     }
 
     [Fact]
-    public void Validation_WindowSecondsZero_Fails()
-    {
+    public void Validation_WindowSecondsZero_Fails() {
         // Arrange
         var options = new RateLimitingOptions { WindowSeconds = 0 };
         var validator = new ValidateRateLimitingOptions();
@@ -52,8 +48,7 @@ public class RateLimitingOptionsTests
     }
 
     [Fact]
-    public void Validation_QueueLimitNegative_Fails()
-    {
+    public void Validation_QueueLimitNegative_Fails() {
         // Arrange
         var options = new RateLimitingOptions { QueueLimit = -1 };
         var validator = new ValidateRateLimitingOptions();
@@ -67,11 +62,9 @@ public class RateLimitingOptionsTests
     }
 
     [Fact]
-    public void Validation_ValidConfiguration_Succeeds()
-    {
+    public void Validation_ValidConfiguration_Succeeds() {
         // Arrange
-        var options = new RateLimitingOptions
-        {
+        var options = new RateLimitingOptions {
             PermitLimit = 50,
             WindowSeconds = 30,
             SegmentsPerWindow = 3,

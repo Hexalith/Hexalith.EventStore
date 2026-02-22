@@ -1,10 +1,11 @@
 namespace Hexalith.EventStore.Server.Tests.Security;
 
-using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+
+using Shouldly;
 
 using YamlDotNet.Serialization;
 
@@ -14,8 +15,7 @@ using YamlDotNet.Serialization;
 /// state store scoping, mTLS trust domain, dead-letter scoping, and local-production consistency.
 /// Uses YamlDotNet for robust YAML parsing instead of brittle string-based assertions.
 /// </summary>
-public class AccessControlPolicyTests
-{
+public class AccessControlPolicyTests {
     private static readonly IDeserializer YamlParser = new DeserializerBuilder().Build();
 
     // --- File path construction (matches ResiliencyConfigurationTests pattern) ---
@@ -55,8 +55,7 @@ public class AccessControlPolicyTests
     // --- Task 5.2: Local access control YAML validation ---
 
     [Fact]
-    public void LocalAccessControlYaml_IsValidYaml_ParsesCorrectly()
-    {
+    public void LocalAccessControlYaml_IsValidYaml_ParsesCorrectly() {
         var doc = LoadYaml(LocalAccessControlPath);
 
         Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
@@ -74,8 +73,7 @@ public class AccessControlPolicyTests
     // --- Task 5.3: Local deny-by-default ---
 
     [Fact]
-    public void LocalAccessControlYaml_HasDenyDefault_SecureByDefault()
-    {
+    public void LocalAccessControlYaml_HasDenyDefault_SecureByDefault() {
         var doc = LoadYaml(LocalAccessControlPath);
 
         // Verify the GLOBAL default is deny (at spec.accessControl level)
@@ -86,8 +84,7 @@ public class AccessControlPolicyTests
     // --- Task 5.4: CommandApi policy completeness ---
 
     [Fact]
-    public void LocalAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations()
-    {
+    public void LocalAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations() {
         var doc = LoadYaml(LocalAccessControlPath);
 
         var commandApiPolicy = FindPolicy(doc, "commandapi");
@@ -114,8 +111,7 @@ public class AccessControlPolicyTests
     // --- Task 5.5: Sample domain service denied ---
 
     [Fact]
-    public void LocalAccessControlYaml_SamplePolicy_DeniesDirectInvocation()
-    {
+    public void LocalAccessControlYaml_SamplePolicy_DeniesDirectInvocation() {
         var doc = LoadYaml(LocalAccessControlPath);
 
         var samplePolicy = FindPolicy(doc, "sample");
@@ -133,8 +129,7 @@ public class AccessControlPolicyTests
     // --- Task 5.6: Production access control YAML validation ---
 
     [Fact]
-    public void ProductionAccessControlYaml_IsValidYaml_ParsesCorrectly()
-    {
+    public void ProductionAccessControlYaml_IsValidYaml_ParsesCorrectly() {
         var doc = LoadYaml(ProductionAccessControlPath);
 
         Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
@@ -152,8 +147,7 @@ public class AccessControlPolicyTests
     // --- Task 5.7: Production deny-by-default ---
 
     [Fact]
-    public void ProductionAccessControlYaml_HasDenyDefault_SecureByDefault()
-    {
+    public void ProductionAccessControlYaml_HasDenyDefault_SecureByDefault() {
         var doc = LoadYaml(ProductionAccessControlPath);
 
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("deny",
@@ -163,8 +157,7 @@ public class AccessControlPolicyTests
     // --- Task 5.8: Pub/sub scoping validation ---
 
     [Fact]
-    public void PubSubYaml_HasScopes_RestrictsAppAccess()
-    {
+    public void PubSubYaml_HasScopes_RestrictsAppAccess() {
         // Verify local pub/sub has component-level scopes
         var localDoc = LoadYaml(LocalPubSubPath);
         VerifyComponentScopedToCommandApi(localDoc, "local pub/sub");
@@ -180,8 +173,7 @@ public class AccessControlPolicyTests
     // --- Task 5.9: State store scoping validation ---
 
     [Fact]
-    public void StateStoreYaml_HasScopes_RestrictsAppAccess()
-    {
+    public void StateStoreYaml_HasScopes_RestrictsAppAccess() {
         // Verify local state store has scopes
         var localDoc = LoadYaml(LocalStateStorePath);
         VerifyComponentScopedToCommandApi(localDoc, "local state store");
@@ -197,8 +189,7 @@ public class AccessControlPolicyTests
     // --- Task 5.10: Local-production topology consistency ---
 
     [Fact]
-    public void AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent()
-    {
+    public void AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent() {
         var localAc = LoadYaml(LocalAccessControlPath);
         var prodAc = LoadYaml(ProductionAccessControlPath);
 
@@ -242,8 +233,7 @@ public class AccessControlPolicyTests
     // --- Task 5.11: mTLS trust domain configuration ---
 
     [Fact]
-    public void LocalAccessControlYaml_HasTrustDomain_MtlsConfigured()
-    {
+    public void LocalAccessControlYaml_HasTrustDomain_MtlsConfigured() {
         var doc = LoadYaml(LocalAccessControlPath);
 
         Nav(doc, "spec", "accessControl", "trustDomain")?.ToString()
@@ -254,8 +244,7 @@ public class AccessControlPolicyTests
     // --- Task 5.12: Dead-letter topic scoping ---
 
     [Fact]
-    public void PubSubYaml_DeadLetterTopics_ScopedToCommandApiOnly()
-    {
+    public void PubSubYaml_DeadLetterTopics_ScopedToCommandApiOnly() {
         var localDoc = LoadYaml(LocalPubSubPath);
 
         // Verify dead-letter is enabled
@@ -278,8 +267,7 @@ public class AccessControlPolicyTests
     // --- Production dead-letter scoping (AC #12 consistency) ---
 
     [Fact]
-    public void ProductionPubSubYaml_DeadLetterTopics_ScopedToCommandApiOnly()
-    {
+    public void ProductionPubSubYaml_DeadLetterTopics_ScopedToCommandApiOnly() {
         // AC #12: dead-letter scoping must be consistent across local and production.
         var rabbitDoc = LoadYaml(ProductionPubSubRabbitMqPath);
         GetComponentMetadataValue(rabbitDoc, "enableDeadLetter").ShouldBe("true",
@@ -303,8 +291,7 @@ public class AccessControlPolicyTests
     // --- Namespace configuration validation ---
 
     [Fact]
-    public void AccessControlYaml_HasNamespace_IdentityConfigured()
-    {
+    public void AccessControlYaml_HasNamespace_IdentityConfigured() {
         var localDoc = LoadYaml(LocalAccessControlPath);
         var localCommandApi = FindPolicy(localDoc, "commandapi");
         localCommandApi.ShouldNotBeNull();
@@ -321,8 +308,7 @@ public class AccessControlPolicyTests
     // --- Task 5.13: Domain service zero-infrastructure-access ---
 
     [Fact]
-    public void DomainServicePolicy_ZeroInfrastructureAccess_AllDenied()
-    {
+    public void DomainServicePolicy_ZeroInfrastructureAccess_AllDenied() {
         // 1. Access control: sample has defaultAction: deny with no allowed operations
         var acDoc = LoadYaml(LocalAccessControlPath);
         var samplePolicy = FindPolicy(acDoc, "sample");
@@ -375,8 +361,7 @@ public class AccessControlPolicyTests
     /// <summary>
     /// Loads and parses a YAML file into a dictionary structure.
     /// </summary>
-    private static Dictionary<string, object> LoadYaml(string path)
-    {
+    private static Dictionary<string, object> LoadYaml(string path) {
         string content = File.ReadAllText(path);
         return YamlParser.Deserialize<Dictionary<string, object>>(content);
     }
@@ -385,19 +370,15 @@ public class AccessControlPolicyTests
     /// Navigates a nested YAML dictionary by key path.
     /// Returns null if any segment is missing.
     /// </summary>
-    private static object? Nav(object root, params string[] path)
-    {
+    private static object? Nav(object root, params string[] path) {
         object? current = root;
-        foreach (string key in path)
-        {
-            current = current switch
-            {
+        foreach (string key in path) {
+            current = current switch {
                 Dictionary<string, object> stringDict when stringDict.TryGetValue(key, out object? val) => val,
                 Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
                 _ => null,
             };
-            if (current is null)
-            {
+            if (current is null) {
                 return null;
             }
         }
@@ -426,8 +407,7 @@ public class AccessControlPolicyTests
     /// <summary>
     /// Finds a policy by appId in the access control policies list.
     /// </summary>
-    private static Dictionary<object, object>? FindPolicy(Dictionary<string, object> doc, string appId)
-    {
+    private static Dictionary<object, object>? FindPolicy(Dictionary<string, object> doc, string appId) {
         var policies = NavList(doc, "spec", "accessControl", "policies");
         return policies?
             .Cast<Dictionary<object, object>>()
@@ -437,8 +417,7 @@ public class AccessControlPolicyTests
     /// <summary>
     /// Gets the operations list from an access control policy.
     /// </summary>
-    private static List<Dictionary<object, object>> GetPolicyOperations(Dictionary<object, object> policy)
-    {
+    private static List<Dictionary<object, object>> GetPolicyOperations(Dictionary<object, object> policy) {
         var ops = GetList(policy, "operations");
         return ops?.Cast<Dictionary<object, object>>().ToList()
             ?? [];
@@ -448,11 +427,9 @@ public class AccessControlPolicyTests
     /// Gets a metadata value from a DAPR Component spec's metadata list.
     /// Component metadata is a list of {name, value} pairs under spec.metadata.
     /// </summary>
-    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName)
-    {
+    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
         var metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null)
-        {
+        if (metadataList is null) {
             return null;
         }
 
@@ -465,8 +442,7 @@ public class AccessControlPolicyTests
     /// <summary>
     /// Verifies that a DAPR component's scopes list contains commandapi.
     /// </summary>
-    private static void VerifyComponentScopedToCommandApi(Dictionary<string, object> doc, string componentName)
-    {
+    private static void VerifyComponentScopedToCommandApi(Dictionary<string, object> doc, string componentName) {
         var scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         scopes.ShouldNotBeNull($"{componentName} must have component-level scopes");
         scopes.Select(s => s?.ToString()).ShouldContain("commandapi",
@@ -476,14 +452,12 @@ public class AccessControlPolicyTests
     /// <summary>
     /// Verifies that a DAPR component's scopes list contains ONLY commandapi.
     /// </summary>
-    private static void VerifyScopesContainOnlyCommandApi(Dictionary<string, object> doc, string componentName)
-    {
+    private static void VerifyScopesContainOnlyCommandApi(Dictionary<string, object> doc, string componentName) {
         var scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
         scopes.ShouldNotBeEmpty($"{componentName} scopes section must have at least one entry");
 
-        foreach (object? scope in scopes)
-        {
+        foreach (object? scope in scopes) {
             scope?.ToString().ShouldBe("commandapi",
                 $"{componentName} scopes must contain ONLY commandapi, found '{scope}'");
         }
@@ -492,8 +466,7 @@ public class AccessControlPolicyTests
     /// <summary>
     /// Verifies that sample is NOT in a DAPR component's scopes list.
     /// </summary>
-    private static void VerifySampleExcludedFromScopes(Dictionary<string, object> doc, string componentName)
-    {
+    private static void VerifySampleExcludedFromScopes(Dictionary<string, object> doc, string componentName) {
         var scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
         scopes.Select(s => s?.ToString()).ShouldContain("commandapi",
@@ -508,8 +481,7 @@ public class AccessControlPolicyTests
     /// </summary>
     private static void VerifyPubSubScopesAllowAuthorizedSubscribersOnly(
         Dictionary<string, object> doc,
-        string componentName)
-    {
+        string componentName) {
         var scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
 

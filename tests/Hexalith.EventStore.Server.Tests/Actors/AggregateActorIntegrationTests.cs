@@ -1,7 +1,5 @@
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
-using System.Text;
-
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -18,12 +16,10 @@ using Shouldly;
 /// Validates the full pipeline with real Dapr sidecar and Redis state store.
 /// </summary>
 [Collection("DaprTestContainer")]
-public class AggregateActorIntegrationTests
-{
+public class AggregateActorIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 
-    public AggregateActorIntegrationTests(DaprTestContainerFixture fixture)
-    {
+    public AggregateActorIntegrationTests(DaprTestContainerFixture fixture) {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -33,11 +29,9 @@ public class AggregateActorIntegrationTests
     /// Verifies that a command routed through Dapr activates the AggregateActor.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_NewAggregate_ActivatesActorAndReturnsAccepted()
-    {
+    public async Task ProcessCommandAsync_NewAggregate_ActivatesActorAndReturnsAccepted() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -68,11 +62,9 @@ public class AggregateActorIntegrationTests
     /// Different aggregate IDs should activate different actor instances.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_DifferentAggregateIds_RouteToDifferentActors()
-    {
+    public async Task ProcessCommandAsync_DifferentAggregateIds_RouteToDifferentActors() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -113,11 +105,9 @@ public class AggregateActorIntegrationTests
     /// Multiple commands to the same aggregate should produce sequential events.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_MultipleCommands_PersistsEventsSequentially()
-    {
+    public async Task ProcessCommandAsync_MultipleCommands_PersistsEventsSequentially() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -127,8 +117,7 @@ public class AggregateActorIntegrationTests
             nameof(AggregateActor));
 
         // Act - send 3 increment commands
-        for (int i = 0; i < 3; i++)
-        {
+        for (int i = 0; i < 3; i++) {
             var command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -147,8 +136,7 @@ public class AggregateActorIntegrationTests
     /// A single command producing multiple events should persist atomically.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_DomainReturnsMultipleEvents_PersistsAtomically()
-    {
+    public async Task ProcessCommandAsync_DomainReturnsMultipleEvents_PersistsAtomically() {
         // Arrange - configure domain invoker to return 3 events for a single command
         _fixture.DomainServiceInvoker.SetupResponse(
             "BatchCommand",
@@ -159,8 +147,7 @@ public class AggregateActorIntegrationTests
                 new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented(),
             }));
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -189,11 +176,9 @@ public class AggregateActorIntegrationTests
     /// A successful command should transition: Processing → EventsStored → EventsPublished → Completed.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_SuccessfulCommand_TransitionsThroughAllStages()
-    {
+    public async Task ProcessCommandAsync_SuccessfulCommand_TransitionsThroughAllStages() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -222,11 +207,9 @@ public class AggregateActorIntegrationTests
     /// Idempotency: submitting the same command twice returns cached result.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult()
-    {
+    public async Task ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -259,8 +242,7 @@ public class AggregateActorIntegrationTests
     /// Task 2.3 (rejection path): Test domain rejection events are persisted like normal events (D3).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_DomainRejection_PersistsRejectionEvents()
-    {
+    public async Task ProcessCommandAsync_DomainRejection_PersistsRejectionEvents() {
         // Arrange - configure decrement on zero counter to produce rejection
         _fixture.DomainServiceInvoker.SetupResponse(
             "DecrementCounter",
@@ -269,8 +251,7 @@ public class AggregateActorIntegrationTests
                 new Hexalith.EventStore.Sample.Counter.Events.CounterCannotGoNegative(),
             }));
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 

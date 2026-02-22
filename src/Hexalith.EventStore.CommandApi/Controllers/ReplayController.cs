@@ -28,8 +28,7 @@ public class ReplayController(
     ICommandArchiveStore archiveStore,
     ICommandStatusStore statusStore,
     IMediator mediator,
-    ILogger<ReplayController> logger) : ControllerBase
-{
+    ILogger<ReplayController> logger) : ControllerBase {
     private static readonly HashSet<CommandStatus> _replayableStatuses =
     [
         CommandStatus.Rejected,
@@ -47,8 +46,7 @@ public class ReplayController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
-    public async Task<IActionResult> Replay(string correlationId, CancellationToken cancellationToken)
-    {
+    public async Task<IActionResult> Replay(string correlationId, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(correlationId);
 
         using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
@@ -58,8 +56,7 @@ public class ReplayController(
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? correlationId;
 
-        try
-        {
+        try {
             // Store correlationId in HttpContext.Items for error handler access
             HttpContext.Items["ReplayCorrelationId"] = correlationId;
 
@@ -70,8 +67,7 @@ public class ReplayController(
                 .ToList();
 
             // AC #6: 403 for missing tenant claims
-            if (tenantClaims.Count == 0)
-            {
+            if (tenantClaims.Count == 0) {
                 logger.LogWarning(
                     "Replay denied: no tenant claims. CorrelationId={CorrelationId}",
                     requestCorrelationId);
@@ -88,24 +84,21 @@ public class ReplayController(
             ArchivedCommand? archivedCommand = null;
             string? foundTenant = null;
 
-            foreach (string tenant in tenantClaims)
-            {
+            foreach (string tenant in tenantClaims) {
                 activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant);
 
                 archivedCommand = await archiveStore
                     .ReadCommandAsync(tenant, correlationId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (archivedCommand is not null)
-                {
+                if (archivedCommand is not null) {
                     foundTenant = tenant;
                     break;
                 }
             }
 
             // AC #4: 404 for non-existent or expired correlation ID
-            if (archivedCommand is null || foundTenant is null)
-            {
+            if (archivedCommand is null || foundTenant is null) {
                 logger.LogDebug(
                     "Archived command not found: CorrelationId={CorrelationId}, TenantsSearched={Tenants}",
                     correlationId,
@@ -128,8 +121,7 @@ public class ReplayController(
                 .ConfigureAwait(false);
 
             // H5: Null status (expired or never written) -- cannot determine replayability
-            if (statusRecord is null)
-            {
+            if (statusRecord is null) {
                 activity?.SetStatus(ActivityStatusCode.Error, "Conflict");
                 return CreateConflictProblemDetails(
                     "Unknown",
@@ -138,8 +130,7 @@ public class ReplayController(
             }
 
             // Check if status is replayable
-            if (!_replayableStatuses.Contains(statusRecord.Status))
-            {
+            if (!_replayableStatuses.Contains(statusRecord.Status)) {
                 string detail = statusRecord.Status == CommandStatus.Completed
                     ? $"Command '{correlationId}' has already completed successfully. Replay is not permitted for completed commands. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut)."
                     : $"Command '{correlationId}' is currently in-flight (status: {statusRecord.Status}). Wait for processing to complete or time out before replaying. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut).";
@@ -172,18 +163,15 @@ public class ReplayController(
             activity?.SetStatus(ActivityStatusCode.Ok);
             return Accepted(absoluteLocationUri, new ReplayCommandResponse(correlationId, IsReplay: true, PreviousStatus: previousStatus));
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             activity?.AddException(ex);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
     }
 
-    private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId)
-    {
-        var problemDetails = new ProblemDetails
-        {
+    private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId) {
+        var problemDetails = new ProblemDetails {
             Status = statusCode,
             Title = title,
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -195,18 +183,15 @@ public class ReplayController(
             },
         };
 
-        if (HttpContext is not null)
-        {
+        if (HttpContext is not null) {
             Response.ContentType = "application/problem+json";
         }
 
         return new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
 
-    private ObjectResult CreateConflictProblemDetails(string currentStatus, string detail, string requestCorrelationId)
-    {
-        var problemDetails = new ProblemDetails
-        {
+    private ObjectResult CreateConflictProblemDetails(string currentStatus, string detail, string requestCorrelationId) {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status409Conflict,
             Title = "Conflict",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -219,8 +204,7 @@ public class ReplayController(
             },
         };
 
-        if (HttpContext is not null)
-        {
+        if (HttpContext is not null) {
             Response.ContentType = "application/problem+json";
         }
 

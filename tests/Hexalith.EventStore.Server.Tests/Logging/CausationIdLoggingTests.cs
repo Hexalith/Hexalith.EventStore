@@ -32,30 +32,25 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Verifies that CausationId is present in all log messages that carry CorrelationId (AC #4).
 /// CausationId = CorrelationId for original submissions; different for replays.
 /// </summary>
-public class CausationIdLoggingTests : IDisposable
-{
+public class CausationIdLoggingTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
     private readonly ActivityListener _activityListener;
 
-    public CausationIdLoggingTests()
-    {
-        _activityListener = new ActivityListener
-        {
+    public CausationIdLoggingTests() {
+        _activityListener = new ActivityListener {
             ShouldListenTo = _ => true,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
         ActivitySource.AddActivityListener(_activityListener);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _activityListener.Dispose();
         GC.SuppressFinalize(this);
     }
 
     [Fact]
-    public async Task SubmitCommandHandler_IncludesCausationId()
-    {
+    public async Task SubmitCommandHandler_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
         var statusStore = Substitute.For<ICommandStatusStore>();
@@ -73,8 +68,7 @@ public class CausationIdLoggingTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_IncludesCausationId()
-    {
+    public async Task LoggingBehavior_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -97,8 +91,7 @@ public class CausationIdLoggingTests : IDisposable
     }
 
     [Fact]
-    public async Task EventPersister_IncludesCausationId()
-    {
+    public async Task EventPersister_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
         var stateManager = Substitute.For<IActorStateManager>();
@@ -129,8 +122,7 @@ public class CausationIdLoggingTests : IDisposable
     }
 
     [Fact]
-    public async Task EventPublisher_IncludesCausationId()
-    {
+    public async Task EventPublisher_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -164,8 +156,7 @@ public class CausationIdLoggingTests : IDisposable
     }
 
     [Fact]
-    public async Task DeadLetterPublisher_IncludesCausationId()
-    {
+    public async Task DeadLetterPublisher_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<DeadLetterPublisher>(_logEntries);
         var daprClient = Substitute.For<DaprClient>();
@@ -208,14 +199,12 @@ public class CausationIdLoggingTests : IDisposable
 
     private sealed class TestEvent : IEventPayload;
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

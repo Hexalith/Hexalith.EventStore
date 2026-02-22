@@ -11,20 +11,16 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class DaprSidecarHealthCheckTests
-{
-    private static HealthCheckContext CreateContext(HealthStatus failureStatus = HealthStatus.Unhealthy)
-    {
+public class DaprSidecarHealthCheckTests {
+    private static HealthCheckContext CreateContext(HealthStatus failureStatus = HealthStatus.Unhealthy) {
         var healthCheck = Substitute.For<IHealthCheck>();
-        return new HealthCheckContext
-        {
+        return new HealthCheckContext {
             Registration = new HealthCheckRegistration(
                 "dapr-sidecar", healthCheck, failureStatus, ["ready"]),
         };
     }
 
-    private static DaprMetadata CreateMetadata()
-    {
+    private static DaprMetadata CreateMetadata() {
         return new DaprMetadata(
             id: "commandapi",
             actors: [],
@@ -33,8 +29,7 @@ public class DaprSidecarHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_SidecarHealthy_ReturnsHealthy()
-    {
+    public async Task CheckHealth_SidecarHealthy_ReturnsHealthy() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
@@ -50,8 +45,7 @@ public class DaprSidecarHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_SidecarUnreachable_ReturnsUnhealthy()
-    {
+    public async Task CheckHealth_SidecarUnreachable_ReturnsUnhealthy() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
@@ -67,8 +61,7 @@ public class DaprSidecarHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_DaprException_ReturnsUnhealthy()
-    {
+    public async Task CheckHealth_DaprException_ReturnsUnhealthy() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())

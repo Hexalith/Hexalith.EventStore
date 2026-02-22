@@ -26,8 +26,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
-public class DeadLetterRoutingTests
-{
+public class DeadLetterRoutingTests {
     private sealed record TestEvent : IEventPayload;
 
     private sealed record TestRejectionEvent : IRejectionEvent;
@@ -46,8 +45,7 @@ public class DeadLetterRoutingTests
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, IDeadLetterPublisher DeadLetterPublisher) CreateActorWithMockState()
-    {
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, IDeadLetterPublisher DeadLetterPublisher) CreateActorWithMockState() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -87,8 +85,7 @@ public class DeadLetterRoutingTests
         return (actor, stateManager, logger, invoker, deadLetterPublisher);
     }
 
-    private static void ConfigureNoDuplicate(IActorStateManager stateManager)
-    {
+    private static void ConfigureNoDuplicate(IActorStateManager stateManager) {
         stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
@@ -98,8 +95,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DomainServiceInvocationFails_DeadLetterPublished()
-    {
+    public async Task ProcessCommand_DomainServiceInvocationFails_DeadLetterPublished() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -119,8 +115,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DomainServiceInvocationFails_FullCommandInDeadLetter()
-    {
+    public async Task ProcessCommand_DomainServiceInvocationFails_FullCommandInDeadLetter() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -145,8 +140,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DomainServiceInvocationFails_CorrectFailureStage()
-    {
+    public async Task ProcessCommand_DomainServiceInvocationFails_CorrectFailureStage() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -171,8 +165,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DomainServiceInvocationFails_StatusRejected()
-    {
+    public async Task ProcessCommand_DomainServiceInvocationFails_StatusRejected() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, _) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -189,8 +182,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_StateRehydrationFails_DeadLetterPublished()
-    {
+    public async Task ProcessCommand_StateRehydrationFails_DeadLetterPublished() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -216,8 +208,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_EventPersistenceFails_DeadLetterPublished()
-    {
+    public async Task ProcessCommand_EventPersistenceFails_DeadLetterPublished() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -229,16 +220,13 @@ public class DeadLetterRoutingTests
         // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored commit), succeed third time (Rejected state)
         int saveCallCount = 0;
         stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
+            .Returns(_ => {
                 saveCallCount++;
-                if (saveCallCount == 1)
-                {
+                if (saveCallCount == 1) {
                     return Task.CompletedTask; // Processing checkpoint succeeds
                 }
 
-                if (saveCallCount == 2)
-                {
+                if (saveCallCount == 2) {
                     throw new IOException("State store write failed"); // EventsStored commit fails
                 }
 
@@ -256,8 +244,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_EventPersistenceFails_CorrectEventCount()
-    {
+    public async Task ProcessCommand_EventPersistenceFails_CorrectEventCount() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -276,16 +263,13 @@ public class DeadLetterRoutingTests
         // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored commit), succeed third time (Rejected state)
         int saveCallCount = 0;
         stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
+            .Returns(_ => {
                 saveCallCount++;
-                if (saveCallCount == 1)
-                {
+                if (saveCallCount == 1) {
                     return Task.CompletedTask; // Processing checkpoint succeeds
                 }
 
-                if (saveCallCount == 2)
-                {
+                if (saveCallCount == 2) {
                     throw new IOException("State store write failed"); // EventsStored commit fails
                 }
 
@@ -301,8 +285,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DomainRejection_NoDeadLetter()
-    {
+    public async Task ProcessCommand_DomainRejection_NoDeadLetter() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -322,8 +305,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DomainReturnsEmpty_NoDeadLetter()
-    {
+    public async Task ProcessCommand_DomainReturnsEmpty_NoDeadLetter() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -342,8 +324,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DeadLetterPublishFails_CommandStillRejectsNormally()
-    {
+    public async Task ProcessCommand_DeadLetterPublishFails_CommandStillRejectsNormally() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -366,8 +347,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DeadLetterPublishFails_ErrorLogged()
-    {
+    public async Task ProcessCommand_DeadLetterPublishFails_ErrorLogged() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -395,8 +375,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DeadLetterPublished_CorrelationContextComplete()
-    {
+    public async Task ProcessCommand_DeadLetterPublished_CorrelationContextComplete() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
@@ -428,8 +407,7 @@ public class DeadLetterRoutingTests
     }
 
     [Fact]
-    public async Task ProcessCommand_DeadLetterPublished_ReplayInfoSufficient()
-    {
+    public async Task ProcessCommand_DeadLetterPublished_ReplayInfoSufficient() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);

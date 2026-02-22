@@ -9,8 +9,7 @@ using System.Text.RegularExpressions;
 /// <param name="TenantId">Tenant identifier (lowercase alphanumeric + hyphens, max 64 chars).</param>
 /// <param name="Domain">Domain name (lowercase alphanumeric + hyphens, max 64 chars).</param>
 /// <param name="AggregateId">Aggregate identifier (alphanumeric + dots/hyphens/underscores, max 256 chars, case-sensitive).</param>
-public record AggregateIdentity
-{
+public record AggregateIdentity {
     private static readonly Regex _tenantDomainRegex = new(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled);
     private static readonly Regex _aggregateIdRegex = new(@"^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$", RegexOptions.Compiled);
 
@@ -24,8 +23,7 @@ public record AggregateIdentity
     /// <param name="aggregateId">Aggregate identifier.</param>
     /// <exception cref="ArgumentNullException">Thrown when any component is null.</exception>
     /// <exception cref="ArgumentException">Thrown when any component is empty, whitespace, exceeds length, or fails regex validation.</exception>
-    public AggregateIdentity(string tenantId, string domain, string aggregateId)
-    {
+    public AggregateIdentity(string tenantId, string domain, string aggregateId) {
         ArgumentNullException.ThrowIfNull(tenantId);
         ArgumentNullException.ThrowIfNull(domain);
         ArgumentNullException.ThrowIfNull(aggregateId);
@@ -100,60 +98,47 @@ public record AggregateIdentity
     /// <returns>A string in the format "tenantId:domain:aggregateId".</returns>
     public override string ToString() => ActorId;
 
-    private static void ValidateTenantOrDomain(string value, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
+    private static void ValidateTenantOrDomain(string value, string parameterName) {
+        if (string.IsNullOrWhiteSpace(value)) {
             throw new ArgumentException($"{parameterName} cannot be empty or whitespace.", parameterName);
         }
 
-        if (value.Length > 64)
-        {
+        if (value.Length > 64) {
             throw new ArgumentException($"{parameterName} cannot exceed 64 characters. Got {value.Length}.", parameterName);
         }
 
-        if (ContainsInvalidCharacters(value))
-        {
+        if (ContainsInvalidCharacters(value)) {
             throw new ArgumentException($"{parameterName} contains control characters (< 0x20) or non-ASCII characters (> 0x7F).", parameterName);
         }
 
-        if (!_tenantDomainRegex.IsMatch(value))
-        {
+        if (!_tenantDomainRegex.IsMatch(value)) {
             throw new ArgumentException($"{parameterName} must match pattern ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ (lowercase alphanumeric + hyphens, no leading/trailing hyphen). Got '{value}'.", parameterName);
         }
     }
 
-    private static void ValidateAggregateId(string value)
-    {
+    private static void ValidateAggregateId(string value) {
         const string parameterName = "aggregateId";
 
-        if (string.IsNullOrWhiteSpace(value))
-        {
+        if (string.IsNullOrWhiteSpace(value)) {
             throw new ArgumentException("aggregateId cannot be empty or whitespace.", parameterName);
         }
 
-        if (value.Length > 256)
-        {
+        if (value.Length > 256) {
             throw new ArgumentException($"aggregateId cannot exceed 256 characters. Got {value.Length}.", parameterName);
         }
 
-        if (ContainsInvalidCharacters(value))
-        {
+        if (ContainsInvalidCharacters(value)) {
             throw new ArgumentException("aggregateId contains control characters (< 0x20) or non-ASCII characters (> 0x7F).", parameterName);
         }
 
-        if (!_aggregateIdRegex.IsMatch(value))
-        {
+        if (!_aggregateIdRegex.IsMatch(value)) {
             throw new ArgumentException($"aggregateId must match pattern ^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$ (alphanumeric + dots/hyphens/underscores). Got '{value}'.", parameterName);
         }
     }
 
-    private static bool ContainsInvalidCharacters(string value)
-    {
-        foreach (char c in value)
-        {
-            if (c < 0x20 || c >= 0x7F)
-            {
+    private static bool ContainsInvalidCharacters(string value) {
+        foreach (char c in value) {
+            if (c < 0x20 || c >= 0x7F) {
                 return true;
             }
         }

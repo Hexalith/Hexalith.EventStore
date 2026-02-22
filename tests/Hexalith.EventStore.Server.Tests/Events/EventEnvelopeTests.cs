@@ -6,8 +6,7 @@ using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
 
-public class EventEnvelopeTests
-{
+public class EventEnvelopeTests {
     private static EventEnvelope CreateTestEnvelope(
         IDictionary<string, string>? extensions = null) => new(
         AggregateId: "agg-001",
@@ -25,8 +24,7 @@ public class EventEnvelopeTests
         Extensions: extensions);
 
     [Fact]
-    public void EventEnvelope_JsonRoundtrip_PreservesAllFields()
-    {
+    public void EventEnvelope_JsonRoundtrip_PreservesAllFields() {
         // Arrange
         var extensions = new Dictionary<string, string> { ["key1"] = "val1", ["key2"] = "val2" };
         EventEnvelope original = CreateTestEnvelope(extensions);
@@ -55,8 +53,7 @@ public class EventEnvelopeTests
     }
 
     [Fact]
-    public void EventEnvelope_ByteArrayPayload_SerializesAsBase64()
-    {
+    public void EventEnvelope_ByteArrayPayload_SerializesAsBase64() {
         // Arrange
         EventEnvelope envelope = CreateTestEnvelope();
 
@@ -68,8 +65,7 @@ public class EventEnvelopeTests
     }
 
     [Fact]
-    public void EventEnvelope_NullExtensions_RoundtripsCorrectly()
-    {
+    public void EventEnvelope_NullExtensions_RoundtripsCorrectly() {
         // Arrange
         EventEnvelope original = CreateTestEnvelope(extensions: null);
 
@@ -83,8 +79,7 @@ public class EventEnvelopeTests
     }
 
     [Fact]
-    public void EventEnvelope_Identity_ReturnsDerivedAggregateIdentity()
-    {
+    public void EventEnvelope_Identity_ReturnsDerivedAggregateIdentity() {
         // Arrange
         EventEnvelope envelope = CreateTestEnvelope();
 

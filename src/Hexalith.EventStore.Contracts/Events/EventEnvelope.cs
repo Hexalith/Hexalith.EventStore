@@ -11,8 +11,7 @@ using System.Collections.ObjectModel;
 /// <param name="Metadata">The 11-field event metadata.</param>
 /// <param name="Payload">The serialized event payload as raw bytes.</param>
 /// <param name="Extensions">Optional extension metadata. Null is stored as an empty read-only dictionary.</param>
-public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDictionary<string, string>? Extensions)
-{
+public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDictionary<string, string>? Extensions) {
     private static readonly IReadOnlyDictionary<string, string> EmptyExtensions =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
 
@@ -32,8 +31,7 @@ public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDic
     /// Framework-level enforcement: even if a developer logs the entire EventEnvelope,
     /// the payload is never exposed.
     /// </summary>
-    public override string ToString()
-    {
+    public override string ToString() {
         string extensionKeys = Extensions.Count > 0
             ? string.Join(", ", Extensions.Keys)
             : "none";

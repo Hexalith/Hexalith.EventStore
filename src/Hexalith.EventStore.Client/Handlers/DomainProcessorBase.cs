@@ -10,14 +10,11 @@ using Hexalith.EventStore.Contracts.Results;
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type.</typeparam>
 public abstract class DomainProcessorBase<TState> : IDomainProcessor
-    where TState : class
-{
+    where TState : class {
     /// <inheritdoc/>
-    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
-    {
+    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
         ArgumentNullException.ThrowIfNull(command);
-        TState? typedState = currentState switch
-        {
+        TState? typedState = currentState switch {
             null => null,
             TState s => s,
             _ => throw new InvalidOperationException(

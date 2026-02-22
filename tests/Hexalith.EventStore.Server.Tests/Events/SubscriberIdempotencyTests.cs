@@ -18,8 +18,7 @@ using Shouldly;
 /// Verifies that CloudEvents id = "{correlationId}:{sequenceNumber}" is globally unique
 /// and deterministic, enabling subscriber deduplication for at-least-once delivery.
 /// </summary>
-public class SubscriberIdempotencyTests
-{
+public class SubscriberIdempotencyTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1, string correlationId = "corr-001") =>
@@ -38,8 +37,7 @@ public class SubscriberIdempotencyTests
             Payload: [1, 2, 3],
             Extensions: null);
 
-    private static (EventPublisher Publisher, DaprClient DaprClient) CreatePublisher()
-    {
+    private static (EventPublisher Publisher, DaprClient DaprClient) CreatePublisher() {
         var daprClient = Substitute.For<DaprClient>();
         var options = Options.Create(new EventPublisherOptions());
         var logger = Substitute.For<ILogger<EventPublisher>>();
@@ -50,8 +48,7 @@ public class SubscriberIdempotencyTests
     // --- Task 8.2: CloudEvents id unique per event ---
 
     [Fact]
-    public async Task CloudEventsId_UniquePerEvent_CorrelationIdPlusSequence()
-    {
+    public async Task CloudEventsId_UniquePerEvent_CorrelationIdPlusSequence() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedMetadata = new List<Dictionary<string, string>>();
@@ -85,8 +82,7 @@ public class SubscriberIdempotencyTests
     // --- Task 8.3: Same event published twice produces same id ---
 
     [Fact]
-    public async Task CloudEventsId_SameEventPublishedTwice_IdenticalId()
-    {
+    public async Task CloudEventsId_SameEventPublishedTwice_IdenticalId() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();
@@ -112,8 +108,7 @@ public class SubscriberIdempotencyTests
     // --- Task 8.4: Different events same correlation = different ids ---
 
     [Fact]
-    public async Task CloudEventsId_DifferentEvents_SameCorrelation_DifferentIds()
-    {
+    public async Task CloudEventsId_DifferentEvents_SameCorrelation_DifferentIds() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();
@@ -143,8 +138,7 @@ public class SubscriberIdempotencyTests
     // --- Task 8.5: Different correlations same sequence = different ids ---
 
     [Fact]
-    public async Task CloudEventsId_DifferentCorrelations_SameSequence_DifferentIds()
-    {
+    public async Task CloudEventsId_DifferentCorrelations_SameSequence_DifferentIds() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();

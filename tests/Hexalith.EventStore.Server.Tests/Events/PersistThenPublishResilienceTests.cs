@@ -28,8 +28,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Story 4.4 Task 8: Persist-then-publish resilience tests.
 /// Verifies UnpublishedEventsRecord storage on PublishFailed paths (AC: #2, #3, #7, #8).
 /// </summary>
-public class PersistThenPublishResilienceTests
-{
+public class PersistThenPublishResilienceTests {
     private static CommandEnvelope CreateTestEnvelope(
         string? correlationId = null,
         string? causationId = null) => new(
@@ -44,16 +43,14 @@ public class PersistThenPublishResilienceTests
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher)
-        CreateActor()
-    {
+        CreateActor() {
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, _) =
             CreateActorWithTimerManager();
         return (actor, stateManager, eventPublisher);
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher, ActorTimerManager TimerManager)
-        CreateActorWithTimerManager()
-    {
+        CreateActorWithTimerManager() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -90,8 +87,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.2: PublishFailed stores UnpublishedEventsRecord ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_UnpublishedRecordStored()
-    {
+    public async Task ProcessCommand_PublishFailed_UnpublishedRecordStored() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -121,8 +117,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.3: Record contains correct sequence range ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_RecordContainsCorrectSequenceRange()
-    {
+    public async Task ProcessCommand_PublishFailed_RecordContainsCorrectSequenceRange() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -149,8 +144,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.4: Drain reminder registered after PublishFailed ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_DrainReminderRegistered()
-    {
+    public async Task ProcessCommand_PublishFailed_DrainReminderRegistered() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
             CreateActorWithTimerManager();
@@ -176,8 +170,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.5: Events still in state store after PublishFailed ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_EventsStillInStateStore()
-    {
+    public async Task ProcessCommand_PublishFailed_EventsStillInStateStore() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -202,8 +195,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.6: Success path has no drain record ---
 
     [Fact]
-    public async Task ProcessCommand_PublishSuccess_NoUnpublishedRecord()
-    {
+    public async Task ProcessCommand_PublishSuccess_NoUnpublishedRecord() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -229,8 +221,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.7: Resume path also stores drain record ---
 
     [Fact]
-    public async Task ResumeFromEventsStored_PublishFails_UnpublishedRecordStored()
-    {
+    public async Task ResumeFromEventsStored_PublishFails_UnpublishedRecordStored() {
         // Arrange -- simulate crash recovery with EventsStored pipeline state
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 
@@ -249,8 +240,7 @@ public class PersistThenPublishResilienceTests
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
-        for (int i = 1; i <= 2; i++)
-        {
+        for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
@@ -287,8 +277,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.8: Resume path drain reminder registered ---
 
     [Fact]
-    public async Task ResumeFromEventsStored_PublishFails_DrainReminderRegistered()
-    {
+    public async Task ResumeFromEventsStored_PublishFails_DrainReminderRegistered() {
         // Arrange -- simulate crash recovery with EventsStored pipeline state
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
             CreateActorWithTimerManager();
@@ -308,8 +297,7 @@ public class PersistThenPublishResilienceTests
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
-        for (int i = 1; i <= 2; i++)
-        {
+        for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
@@ -339,8 +327,7 @@ public class PersistThenPublishResilienceTests
     }
 
     [Fact]
-    public async Task ResumeFromEventsStored_PublishFails_MetadataMissingAfterLoad_StillStoresRecordFromLoadedEvents()
-    {
+    public async Task ResumeFromEventsStored_PublishFails_MetadataMissingAfterLoad_StillStoresRecordFromLoadedEvents() {
         // Arrange -- metadata is available for initial load, but unavailable afterward.
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 
@@ -360,8 +347,7 @@ public class PersistThenPublishResilienceTests
                 new ConditionalValue<AggregateMetadata>(true, metadata),
                 new ConditionalValue<AggregateMetadata>(false, default!));
 
-        for (int i = 1; i <= 2; i++)
-        {
+        for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
@@ -396,8 +382,7 @@ public class PersistThenPublishResilienceTests
     }
 
     [Fact]
-    public async Task ResumeFromEventsStored_PrepareFails_MetadataUnavailable_ThrowsInsteadOfSilentPublishFailed()
-    {
+    public async Task ResumeFromEventsStored_PrepareFails_MetadataUnavailable_ThrowsInsteadOfSilentPublishFailed() {
         // Arrange -- resume starts at EventsStored, but metadata is unavailable so range cannot be computed for drain.
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 

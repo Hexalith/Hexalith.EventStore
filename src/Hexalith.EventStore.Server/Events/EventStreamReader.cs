@@ -16,33 +16,27 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public partial class EventStreamReader(
     IActorStateManager stateManager,
-    ILogger<EventStreamReader> logger) : IEventStreamReader
-{
+    ILogger<EventStreamReader> logger) : IEventStreamReader {
     /// <inheritdoc/>
-    public async Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null)
-    {
+    public async Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null) {
         ArgumentNullException.ThrowIfNull(identity);
 
         var sw = Stopwatch.StartNew();
 
         // Load metadata to get current sequence number
         ConditionalValue<AggregateMetadata> metadataResult;
-        try
-        {
+        try {
             metadataResult = await stateManager
                 .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
                 .ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             throw new EventDeserializationException(-1, identity.ActorId, ex);
         }
 
-        if (!metadataResult.HasValue)
-        {
+        if (!metadataResult.HasValue) {
             // AC #3 / AC #8: new aggregate with no events
-            if (snapshot is not null)
-            {
+            if (snapshot is not null) {
                 // Snapshot exists but no events -- return snapshot state directly
                 sw.Stop();
                 Log.RehydrationCompleteSnapshotOnly(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);
@@ -59,8 +53,7 @@ public partial class EventStreamReader(
         }
 
         AggregateMetadata metadata = metadataResult.Value;
-        if (metadata.CurrentSequence <= 0)
-        {
+        if (metadata.CurrentSequence <= 0) {
             throw new InvalidOperationException(
                 $"Invalid aggregate metadata: CurrentSequence={metadata.CurrentSequence} for {identity.ActorId}");
         }
@@ -72,11 +65,9 @@ public partial class EventStreamReader(
         int startSequence;
         int eventCount;
 
-        if (snapshot is not null)
-        {
+        if (snapshot is not null) {
             // AC #8: snapshot at current sequence -- no tail events needed
-            if (snapshot.SequenceNumber >= currentSequence)
-            {
+            if (snapshot.SequenceNumber >= currentSequence) {
                 sw.Stop();
                 Log.RehydrationCompleteSnapshotAtCurrent(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);
 
@@ -91,8 +82,7 @@ public partial class EventStreamReader(
             startSequence = checked((int)(snapshot.SequenceNumber + 1));
             eventCount = checked((int)(currentSequence - snapshot.SequenceNumber));
         }
-        else
-        {
+        else {
             // AC #3: no snapshot, full replay from sequence 1
             startSequence = 1;
             eventCount = checked((int)currentSequence);
@@ -102,22 +92,18 @@ public partial class EventStreamReader(
         string keyPrefix = identity.EventStreamKeyPrefix;
 
         var loadTasks = Enumerable.Range(startSequence, eventCount)
-            .Select(async seq =>
-            {
+            .Select(async seq => {
                 ConditionalValue<EventEnvelope> eventResult;
-                try
-                {
+                try {
                     eventResult = await stateManager
                         .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
                         .ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
+                catch (Exception ex) when (ex is not OperationCanceledException) {
                     throw new EventDeserializationException(seq, identity.ActorId, ex);
                 }
 
-                if (!eventResult.HasValue)
-                {
+                if (!eventResult.HasValue) {
                     throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
                 }
 
@@ -146,8 +132,7 @@ public partial class EventStreamReader(
             CurrentSequence: currentSequence);
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 6000,
             Level = LogLevel.Debug,

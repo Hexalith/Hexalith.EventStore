@@ -13,8 +13,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class DaprCommandArchiveStoreTests
-{
+public class DaprCommandArchiveStoreTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
     private readonly IOptions<CommandStatusOptions> _options = Options.Create(new CommandStatusOptions());
 
@@ -30,8 +29,7 @@ public class DaprCommandArchiveStoreTests
         OriginalTimestamp: DateTimeOffset.UtcNow);
 
     [Fact]
-    public async Task WriteCommandAsync_ValidCommand_CallsSaveStateWithCorrectKey()
-    {
+    public async Task WriteCommandAsync_ValidCommand_CallsSaveStateWithCorrectKey() {
         // Arrange
         var store = CreateStore();
         ArchivedCommand command = CreateTestCommand();
@@ -50,8 +48,7 @@ public class DaprCommandArchiveStoreTests
     }
 
     [Fact]
-    public async Task WriteCommandAsync_IncludesTtlMetadata_Default86400Seconds()
-    {
+    public async Task WriteCommandAsync_IncludesTtlMetadata_Default86400Seconds() {
         // Arrange
         var store = CreateStore();
         ArchivedCommand command = CreateTestCommand();
@@ -70,8 +67,7 @@ public class DaprCommandArchiveStoreTests
     }
 
     [Fact]
-    public async Task WriteCommandAsync_DaprClientThrows_PropagatesException()
-    {
+    public async Task WriteCommandAsync_DaprClientThrows_PropagatesException() {
         // Arrange
         var store = CreateStore();
         ArchivedCommand command = CreateTestCommand();
@@ -91,8 +87,7 @@ public class DaprCommandArchiveStoreTests
     }
 
     [Fact]
-    public async Task ReadCommandAsync_ExistingKey_ReturnsArchivedCommand()
-    {
+    public async Task ReadCommandAsync_ExistingKey_ReturnsArchivedCommand() {
         // Arrange
         var store = CreateStore();
         ArchivedCommand expected = CreateTestCommand();
@@ -114,8 +109,7 @@ public class DaprCommandArchiveStoreTests
     }
 
     [Fact]
-    public async Task ReadCommandAsync_NonExistentKey_ReturnsNull()
-    {
+    public async Task ReadCommandAsync_NonExistentKey_ReturnsNull() {
         // Arrange
         var store = CreateStore();
 
@@ -135,8 +129,7 @@ public class DaprCommandArchiveStoreTests
     }
 
     [Fact]
-    public async Task ReadCommandAsync_DaprClientThrows_LogsWarningAndReturnsNull()
-    {
+    public async Task ReadCommandAsync_DaprClientThrows_LogsWarningAndReturnsNull() {
         // Arrange
         var store = CreateStore();
 

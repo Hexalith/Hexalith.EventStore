@@ -10,14 +10,11 @@ using Shouldly;
 /// Story 3.11 Task 9: OpenTelemetry activity source tests.
 /// Verifies activity creation, naming conventions, and tag constants.
 /// </summary>
-public class EventStoreActivitySourceTests
-{
+public class EventStoreActivitySourceTests {
     [Fact]
-    public void Instance_CreatesActivitySpans_WhenListenerIsActive()
-    {
+    public void Instance_CreatesActivitySpans_WhenListenerIsActive() {
         // Arrange -- register a listener to enable activity creation
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
@@ -33,11 +30,9 @@ public class EventStoreActivitySourceTests
     }
 
     [Fact]
-    public void Activities_IncludeCorrectTags_WhenSet()
-    {
+    public void Activities_IncludeCorrectTags_WhenSet() {
         // Arrange
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
@@ -72,8 +67,7 @@ public class EventStoreActivitySourceTests
     [InlineData(EventStoreActivitySource.EventsDrain, "EventStore.Events.")]
     [InlineData(EventStoreActivitySource.EventsPublishDeadLetter, "EventStore.Events.")]
     [InlineData(EventStoreActivitySource.StateMachineTransition, "EventStore.Actor.")]
-    public void Activities_FollowNamingConvention(string activityName, string expectedPrefix)
-    {
+    public void Activities_FollowNamingConvention(string activityName, string expectedPrefix) {
         // Assert -- activity names follow EventStore.{Component}.{Action} pattern
         activityName.ShouldStartWith(expectedPrefix);
     }

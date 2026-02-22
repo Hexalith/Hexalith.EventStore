@@ -5,8 +5,7 @@ using Shouldly;
 /// <summary>
 /// Validates declarative subscription dead-letter configuration for Story 4.3 AC #3.
 /// </summary>
-public class SubscriptionConfigurationTests
-{
+public class SubscriptionConfigurationTests {
     private static readonly string LocalSubscriptionPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.AppHost", "DaprComponents", "subscription-sample-counter.yaml"));
@@ -16,8 +15,7 @@ public class SubscriptionConfigurationTests
             "deploy", "dapr", "subscription-sample-counter.yaml"));
 
     [Fact]
-    public void LocalSubscription_ContainsDeadLetterTopicConfiguration()
-    {
+    public void LocalSubscription_ContainsDeadLetterTopicConfiguration() {
         string content = File.ReadAllText(LocalSubscriptionPath);
 
         content.ShouldContain("kind: Subscription");
@@ -28,8 +26,7 @@ public class SubscriptionConfigurationTests
     }
 
     [Fact]
-    public void ProductionSubscription_ContainsDeadLetterTopicConfiguration()
-    {
+    public void ProductionSubscription_ContainsDeadLetterTopicConfiguration() {
         string content = File.ReadAllText(ProductionSubscriptionPath);
 
         content.ShouldContain("kind: Subscription");

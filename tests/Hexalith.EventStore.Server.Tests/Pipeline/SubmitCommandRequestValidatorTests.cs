@@ -2,20 +2,16 @@ namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 using System.Text.Json;
 
-using FluentValidation;
-
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Validation;
 
 using Shouldly;
 
-public class SubmitCommandRequestValidatorTests
-{
+public class SubmitCommandRequestValidatorTests {
     private readonly SubmitCommandRequestValidator _validator = new();
 
     [Fact]
-    public void SubmitCommandRequestValidator_MissingTenant_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_MissingTenant_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
             Tenant: "",
@@ -33,8 +29,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_InjectionCharacters_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_InjectionCharacters_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
             Tenant: "test-tenant",
@@ -53,12 +48,10 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_ExtensionSizeLimits_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_ExtensionSizeLimits_ReturnsValidationError() {
         // Arrange - 50 entries * (6+1000) chars * 2 bytes > 64KB
         var extensions = new Dictionary<string, string>();
-        for (int i = 0; i < 50; i++)
-        {
+        for (int i = 0; i < 50; i++) {
             extensions[$"key{i:D3}"] = new string('x', 1000);
         }
 
@@ -79,8 +72,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_FieldLengthLimits_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_FieldLengthLimits_ReturnsValidationError() {
         // Arrange - tenant exceeds 128 chars
         var request = new SubmitCommandRequest(
             Tenant: new string('a', 129),
@@ -98,8 +90,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_InvalidTenantCharacters_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_InvalidTenantCharacters_ReturnsValidationError() {
         // Arrange - uppercase not allowed (AggregateIdentity pattern)
         var request = new SubmitCommandRequest(
             Tenant: "INVALID",
@@ -117,8 +108,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_ValidRequest_Passes()
-    {
+    public void SubmitCommandRequestValidator_ValidRequest_Passes() {
         // Arrange
         var request = new SubmitCommandRequest(
             Tenant: "test-tenant",
@@ -135,8 +125,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_JavascriptInjection_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_JavascriptInjection_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
             Tenant: "test-tenant",
@@ -155,8 +144,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_AmpersandInExtensions_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_AmpersandInExtensions_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
             Tenant: "test-tenant",
@@ -174,8 +162,7 @@ public class SubmitCommandRequestValidatorTests
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_DangerousCommandType_ReturnsValidationError()
-    {
+    public void SubmitCommandRequestValidator_DangerousCommandType_ReturnsValidationError() {
         // Arrange - CommandType with injection characters (SEC-4)
         var request = new SubmitCommandRequest(
             Tenant: "test-tenant",

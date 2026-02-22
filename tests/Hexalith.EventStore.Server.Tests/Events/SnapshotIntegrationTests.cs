@@ -14,12 +14,10 @@ using Shouldly;
 /// Validates snapshot creation and rehydration with real Redis state store.
 /// </summary>
 [Collection("DaprTestContainer")]
-public class SnapshotIntegrationTests
-{
+public class SnapshotIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 
-    public SnapshotIntegrationTests(DaprTestContainerFixture fixture)
-    {
+    public SnapshotIntegrationTests(DaprTestContainerFixture fixture) {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -29,11 +27,9 @@ public class SnapshotIntegrationTests
     /// After persisting events, the actor should rehydrate state correctly on the next command.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_AfterMultipleEvents_RehydratesStateCorrectly()
-    {
+    public async Task ProcessCommandAsync_AfterMultipleEvents_RehydratesStateCorrectly() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -43,8 +39,7 @@ public class SnapshotIntegrationTests
             nameof(AggregateActor));
 
         // Act - send 5 increments (event replay should work for subsequent commands)
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             var command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")

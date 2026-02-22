@@ -9,10 +9,9 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
-
-using Hexalith.EventStore.Server.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -29,8 +28,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Verifies checkpointed stage transitions, crash recovery, advisory status writes,
 /// and pipeline state cleanup during command processing.
 /// </summary>
-public class StateMachineIntegrationTests
-{
+public class StateMachineIntegrationTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -45,8 +43,7 @@ public class StateMachineIntegrationTests
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor()
-    {
+    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<AggregateActor>>();
         var invoker = Substitute.For<IDomainServiceInvoker>();
@@ -90,8 +87,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.1: Happy path transitions ---
 
     [Fact]
-    public async Task ProcessCommand_Success_CheckpointsProcessingThenEventsStoredThenCleanup()
-    {
+    public async Task ProcessCommand_Success_CheckpointsProcessingThenEventsStoredThenCleanup() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -129,8 +125,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.2: Rejection path ---
 
     [Fact]
-    public async Task ProcessCommand_Rejection_TransitionsProcessingEventsStoredCompleted()
-    {
+    public async Task ProcessCommand_Rejection_TransitionsProcessingEventsStoredCompleted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
@@ -160,8 +155,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.3: No-op path ---
 
     [Fact]
-    public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted()
-    {
+    public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
@@ -198,8 +192,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.4: Crash recovery from EventsStored (NFR25) ---
 
     [Fact]
-    public async Task ProcessCommand_CrashAtEventsStored_Resume_DoesNotRePersistEvents()
-    {
+    public async Task ProcessCommand_CrashAtEventsStored_Resume_DoesNotRePersistEvents() {
         // Arrange -- simulate existing EventsStored pipeline state (crash scenario)
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
 
@@ -292,8 +285,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.5: Crash recovery from Processing ---
 
     [Fact]
-    public async Task ProcessCommand_CrashAtProcessing_Resume_ReprocessesFromScratch()
-    {
+    public async Task ProcessCommand_CrashAtProcessing_Resume_ReprocessesFromScratch() {
         // Arrange -- simulate existing Processing pipeline state (crash before event persistence)
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
 
@@ -328,8 +320,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.6: Advisory status write failure ---
 
     [Fact]
-    public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline()
-    {
+    public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline() {
         // Arrange -- status store throws on every call
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, _) = CreateActor();
         statusStore.WriteStatusAsync(
@@ -355,8 +346,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.7: Pipeline state cleaned up on completion ---
 
     [Fact]
-    public async Task ProcessCommand_PipelineStateCleanedUp_OnCompletion()
-    {
+    public async Task ProcessCommand_PipelineStateCleanedUp_OnCompletion() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -375,8 +365,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.8: Pipeline state cleaned up on rejection ---
 
     [Fact]
-    public async Task ProcessCommand_PipelineStateCleanedUp_OnRejection()
-    {
+    public async Task ProcessCommand_PipelineStateCleanedUp_OnRejection() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });

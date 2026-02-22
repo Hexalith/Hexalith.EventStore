@@ -6,8 +6,7 @@ using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Counter.State;
 
-public class CounterProcessorTests
-{
+public class CounterProcessorTests {
     private readonly CounterProcessor _processor = new();
 
     private static CommandEnvelope CreateCommand(string commandType)
@@ -23,8 +22,7 @@ public class CounterProcessorTests
             Extensions: null);
 
     [Fact]
-    public async Task IncrementCounter_NullState_ProducesCounterIncrementedEvent()
-    {
+    public async Task IncrementCounter_NullState_ProducesCounterIncrementedEvent() {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("IncrementCounter"), currentState: null);
 
         Assert.True(result.IsSuccess);
@@ -33,8 +31,7 @@ public class CounterProcessorTests
     }
 
     [Fact]
-    public async Task IncrementCounter_ExistingState_ProducesCounterIncrementedEvent()
-    {
+    public async Task IncrementCounter_ExistingState_ProducesCounterIncrementedEvent() {
         var state = new CounterState();
         state.Apply(new CounterIncremented());
         state.Apply(new CounterIncremented());
@@ -50,8 +47,7 @@ public class CounterProcessorTests
     }
 
     [Fact]
-    public async Task DecrementCounter_CountIsZero_ProducesCounterCannotGoNegativeRejection()
-    {
+    public async Task DecrementCounter_CountIsZero_ProducesCounterCannotGoNegativeRejection() {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("DecrementCounter"), currentState: null);
 
         Assert.True(result.IsRejection);
@@ -60,8 +56,7 @@ public class CounterProcessorTests
     }
 
     [Fact]
-    public async Task DecrementCounter_CountGreaterThanZero_ProducesCounterDecrementedEvent()
-    {
+    public async Task DecrementCounter_CountGreaterThanZero_ProducesCounterDecrementedEvent() {
         var state = new CounterState();
         state.Apply(new CounterIncremented());
 
@@ -73,8 +68,7 @@ public class CounterProcessorTests
     }
 
     [Fact]
-    public async Task ResetCounter_CountIsZero_ProducesNoOp()
-    {
+    public async Task ResetCounter_CountIsZero_ProducesNoOp() {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("ResetCounter"), currentState: null);
 
         Assert.True(result.IsNoOp);
@@ -82,8 +76,7 @@ public class CounterProcessorTests
     }
 
     [Fact]
-    public async Task ResetCounter_CountGreaterThanZero_ProducesCounterResetEvent()
-    {
+    public async Task ResetCounter_CountGreaterThanZero_ProducesCounterResetEvent() {
         var state = new CounterState();
         state.Apply(new CounterIncremented());
 
@@ -95,8 +88,7 @@ public class CounterProcessorTests
     }
 
     [Fact]
-    public async Task UnknownCommandType_ThrowsInvalidOperationException()
-    {
+    public async Task UnknownCommandType_ThrowsInvalidOperationException() {
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => _processor.ProcessAsync(CreateCommand("UnknownCommand"), currentState: null));
     }

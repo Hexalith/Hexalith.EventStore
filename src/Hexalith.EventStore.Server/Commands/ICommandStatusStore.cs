@@ -5,8 +5,7 @@ using Hexalith.EventStore.Contracts.Commands;
 /// <summary>
 /// Abstraction for command status read/write operations against a state store.
 /// </summary>
-public interface ICommandStatusStore
-{
+public interface ICommandStatusStore {
     /// <summary>
     /// Writes a command status record to the state store.
     /// </summary>

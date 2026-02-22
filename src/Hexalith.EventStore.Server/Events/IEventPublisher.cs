@@ -5,8 +5,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// <summary>
 /// Publishes persisted events to a DAPR pub/sub component with CloudEvents 1.0 envelope format (FR17).
 /// </summary>
-public interface IEventPublisher
-{
+public interface IEventPublisher {
     /// <summary>
     /// Publishes persisted events to the pub/sub topic derived from the aggregate identity.
     /// Each event is wrapped in a CloudEvents 1.0 envelope via DAPR's native wrapping.

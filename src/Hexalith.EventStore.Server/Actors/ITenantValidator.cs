@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Validates that a command's tenant matches the actor's tenant identity.
 /// SEC-2: Defense-in-depth tenant isolation at actor level.
 /// </summary>
-public interface ITenantValidator
-{
+public interface ITenantValidator {
     /// <summary>
     /// Validates that the command tenant matches the actor's tenant (extracted from actor ID).
     /// </summary>

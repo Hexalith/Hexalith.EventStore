@@ -12,11 +12,9 @@ using Shouldly;
 /// Story 6.1 Task 7: OpenTelemetry registration tests.
 /// Verifies ActivitySource registration, naming conventions, and tag namespace compliance.
 /// </summary>
-public class OpenTelemetryRegistrationTests
-{
+public class OpenTelemetryRegistrationTests {
     [Fact]
-    public void ServiceDefaults_RegistersBothActivitySources()
-    {
+    public void ServiceDefaults_RegistersBothActivitySources() {
         string repositoryRoot = FindRepositoryRoot();
         string extensionsPath = Path.Combine(
             repositoryRoot,
@@ -32,8 +30,7 @@ public class OpenTelemetryRegistrationTests
     }
 
     [Fact]
-    public void EventStoreActivitySource_AllActivityNamesMatchArchitecture()
-    {
+    public void EventStoreActivitySource_AllActivityNamesMatchArchitecture() {
         // Assert -- all activity names follow EventStore.{Component}.{Action} pattern
         EventStoreActivitySource.ProcessCommand.ShouldStartWith("EventStore.Actor.");
         EventStoreActivitySource.IdempotencyCheck.ShouldStartWith("EventStore.Actor.");
@@ -48,8 +45,7 @@ public class OpenTelemetryRegistrationTests
     }
 
     [Fact]
-    public void EventStoreActivitySource_AllTagKeysFollowNamespace()
-    {
+    public void EventStoreActivitySource_AllTagKeysFollowNamespace() {
         // Arrange -- get all public const string fields starting with "Tag"
         FieldInfo[] tagFields = typeof(EventStoreActivitySource)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -59,8 +55,7 @@ public class OpenTelemetryRegistrationTests
         tagFields.Length.ShouldBeGreaterThan(0, "Expected at least one tag constant");
 
         // Assert -- all tag constants use the eventstore.* namespace
-        foreach (FieldInfo field in tagFields)
-        {
+        foreach (FieldInfo field in tagFields) {
             string? value = field.GetValue(null) as string;
             value.ShouldNotBeNull($"Tag field {field.Name} should have a string value");
             value.ShouldStartWith("eventstore.");
@@ -68,43 +63,35 @@ public class OpenTelemetryRegistrationTests
     }
 
     [Fact]
-    public void EventStoreActivitySource_SourceNameIsCorrect()
-    {
+    public void EventStoreActivitySource_SourceNameIsCorrect() {
         EventStoreActivitySource.SourceName.ShouldBe("Hexalith.EventStore");
         EventStoreActivitySource.Instance.Name.ShouldBe("Hexalith.EventStore");
     }
 
     [Fact]
-    public void EventStoreActivitySources_CommandApiSourceNameIsCorrect()
-    {
+    public void EventStoreActivitySources_CommandApiSourceNameIsCorrect() {
         EventStoreActivitySources.CommandApi.Name.ShouldBe("Hexalith.EventStore.CommandApi");
     }
 
     [Fact]
-    public void EventStoreActivitySources_SubmitConstantMatchesArchitecture()
-    {
+    public void EventStoreActivitySources_SubmitConstantMatchesArchitecture() {
         EventStoreActivitySources.Submit.ShouldBe("EventStore.CommandApi.Submit");
     }
 
     [Fact]
-    public void EventStoreActivitySources_QueryStatusConstantMatchesArchitecture()
-    {
+    public void EventStoreActivitySources_QueryStatusConstantMatchesArchitecture() {
         EventStoreActivitySources.QueryStatus.ShouldBe("EventStore.CommandApi.QueryStatus");
     }
 
     [Fact]
-    public void EventStoreActivitySources_ReplayConstantMatchesArchitecture()
-    {
+    public void EventStoreActivitySources_ReplayConstantMatchesArchitecture() {
         EventStoreActivitySources.Replay.ShouldBe("EventStore.CommandApi.Replay");
     }
 
-    private static string FindRepositoryRoot()
-    {
+    private static string FindRepositoryRoot() {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
-        while (current is not null)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "Hexalith.EventStore.slnx")))
-            {
+        while (current is not null) {
+            if (File.Exists(Path.Combine(current.FullName, "Hexalith.EventStore.slnx"))) {
                 return current.FullName;
             }
 

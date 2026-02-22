@@ -11,8 +11,7 @@ using Shouldly;
 /// Verifies that events for different tenants/domains are published to structurally distinct topics
 /// with no overlap (AC: #1, #2, #3, #4, #6, #9).
 /// </summary>
-public class TopicIsolationTests
-{
+public class TopicIsolationTests {
     private static EventEnvelope CreateEnvelope(string tenantId, string domain, string aggregateId, long seq = 1) =>
         new(
             AggregateId: aggregateId,
@@ -32,8 +31,7 @@ public class TopicIsolationTests
     // --- Task 3.2: AC #1, #2 ---
 
     [Fact]
-    public async Task PublishEvents_DifferentTenants_SameDomain_UseDifferentTopics()
-    {
+    public async Task PublishEvents_DifferentTenants_SameDomain_UseDifferentTopics() {
         // Arrange
         var identityA = new AggregateIdentity("acme", "orders", "order-1");
         var identityB = new AggregateIdentity("globex", "orders", "order-1");
@@ -54,8 +52,7 @@ public class TopicIsolationTests
     // --- Task 3.3: AC #3 ---
 
     [Fact]
-    public async Task PublishEvents_SameTenant_DifferentDomains_UseDifferentTopics()
-    {
+    public async Task PublishEvents_SameTenant_DifferentDomains_UseDifferentTopics() {
         // Arrange
         var identityOrders = new AggregateIdentity("acme", "orders", "order-1");
         var identityInventory = new AggregateIdentity("acme", "inventory", "inv-1");
@@ -76,8 +73,7 @@ public class TopicIsolationTests
     // --- Task 3.4: AC #2, #3, #4 ---
 
     [Fact]
-    public async Task PublishEvents_DifferentTenants_DifferentDomains_AllDistinctTopics()
-    {
+    public async Task PublishEvents_DifferentTenants_DifferentDomains_AllDistinctTopics() {
         // Arrange
         var fakePublisher = new FakeEventPublisher();
         var matrix = new[]
@@ -89,8 +85,7 @@ public class TopicIsolationTests
         };
 
         // Act
-        foreach ((string tenant, string domain) in matrix)
-        {
+        foreach ((string tenant, string domain) in matrix) {
             var identity = new AggregateIdentity(tenant, domain, "agg-1");
             IReadOnlyList<EventEnvelope> events = [CreateEnvelope(tenant, domain, "agg-1")];
             await fakePublisher.PublishEventsAsync(identity, events, $"corr-{tenant}-{domain}");
@@ -105,8 +100,7 @@ public class TopicIsolationTests
         topics.ShouldContain("globex.inventory.events");
 
         // Cross-tenant isolation: each topic has exactly 1 event
-        foreach (string topic in topics)
-        {
+        foreach (string topic in topics) {
             fakePublisher.GetEventsForTopic(topic).Count.ShouldBe(1);
         }
     }
@@ -114,15 +108,13 @@ public class TopicIsolationTests
     // --- Task 3.5: AC #6 ---
 
     [Fact]
-    public async Task PublishEvents_SameTenantDomain_MultipleCalls_SameTopic()
-    {
+    public async Task PublishEvents_SameTenantDomain_MultipleCalls_SameTopic() {
         // Arrange
         var identity = new AggregateIdentity("acme", "orders", "order-1");
         var fakePublisher = new FakeEventPublisher();
 
         // Act
-        for (int i = 1; i <= 5; i++)
-        {
+        for (int i = 1; i <= 5; i++) {
             IReadOnlyList<EventEnvelope> events = [CreateEnvelope("acme", "orders", "order-1", i)];
             await fakePublisher.PublishEventsAsync(identity, events, $"corr-{i}");
         }
@@ -135,8 +127,7 @@ public class TopicIsolationTests
     // --- Task 3.6: AC #6 ---
 
     [Fact]
-    public async Task PublishEvents_CaseNormalization_ProducesSameTopic()
-    {
+    public async Task PublishEvents_CaseNormalization_ProducesSameTopic() {
         // Arrange - AggregateIdentity forces lowercase
         var identityLower = new AggregateIdentity("acme", "orders", "order-1");
         var identityMixed = new AggregateIdentity("Acme", "Orders", "order-1");
@@ -157,15 +148,13 @@ public class TopicIsolationTests
     // --- Task 3.7: AC #9 ---
 
     [Fact]
-    public async Task PublishEvents_ConcurrentTenants_NoTopicCrossContamination()
-    {
+    public async Task PublishEvents_ConcurrentTenants_NoTopicCrossContamination() {
         // Arrange
         var fakePublisher = new FakeEventPublisher();
         var tenants = new[] { "tenant-a", "tenant-b", "tenant-c", "tenant-d", "tenant-e" };
 
         // Act - publish concurrently
-        Task[] tasks = tenants.Select(tenant =>
-        {
+        Task[] tasks = tenants.Select(tenant => {
             var identity = new AggregateIdentity(tenant, "orders", "order-1");
             IReadOnlyList<EventEnvelope> events = [
                 CreateEnvelope(tenant, "orders", "order-1", 1),
@@ -179,8 +168,7 @@ public class TopicIsolationTests
         IReadOnlyList<string> topics = fakePublisher.GetPublishedTopics();
         topics.Count.ShouldBe(5);
 
-        foreach (string tenant in tenants)
-        {
+        foreach (string tenant in tenants) {
             string expectedTopic = $"{tenant}.orders.events";
             topics.ShouldContain(expectedTopic);
 
@@ -188,8 +176,7 @@ public class TopicIsolationTests
             topicEvents.Count.ShouldBe(2);
 
             // Verify all events on this topic belong to the correct tenant
-            foreach (EventEnvelope envelope in topicEvents)
-            {
+            foreach (EventEnvelope envelope in topicEvents) {
                 envelope.TenantId.ShouldBe(tenant);
             }
         }
@@ -198,8 +185,7 @@ public class TopicIsolationTests
     // --- Task 3.8 ---
 
     [Fact]
-    public async Task PublishEvents_TenantWithHyphens_ValidTopic()
-    {
+    public async Task PublishEvents_TenantWithHyphens_ValidTopic() {
         // Arrange
         var identity = new AggregateIdentity("acme-corp", "order-service", "order-1");
         var fakePublisher = new FakeEventPublisher();
@@ -215,8 +201,7 @@ public class TopicIsolationTests
     // --- Task 3.9 ---
 
     [Fact]
-    public async Task PublishEvents_SingleCharTenantDomain_ValidTopic()
-    {
+    public async Task PublishEvents_SingleCharTenantDomain_ValidTopic() {
         // Arrange
         var identity = new AggregateIdentity("a", "b", "order-1");
         var fakePublisher = new FakeEventPublisher();
@@ -232,8 +217,7 @@ public class TopicIsolationTests
     // --- Task 3.10 ---
 
     [Fact]
-    public async Task PublishEvents_MaxLengthTenantDomain_ValidTopic()
-    {
+    public async Task PublishEvents_MaxLengthTenantDomain_ValidTopic() {
         // Arrange - 64-char tenant + 64-char domain
         string longTenant = new('a', 64);
         string longDomain = new('b', 64);

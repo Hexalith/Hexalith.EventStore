@@ -4,14 +4,12 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// Exception thrown when no domain service is registered for a given tenant and domain.
 /// Includes the expected config store key pattern for operator guidance.
 /// </summary>
-public class DomainServiceNotFoundException : InvalidOperationException
-{
+public class DomainServiceNotFoundException : InvalidOperationException {
     /// <summary>
     /// Initializes a new instance of the <see cref="DomainServiceNotFoundException"/> class.
     /// </summary>
     public DomainServiceNotFoundException()
-        : base("No domain service registered.")
-    {
+        : base("No domain service registered.") {
         TenantId = string.Empty;
         Domain = string.Empty;
     }
@@ -21,8 +19,7 @@ public class DomainServiceNotFoundException : InvalidOperationException
     /// </summary>
     /// <param name="message">The error message.</param>
     public DomainServiceNotFoundException(string message)
-        : base(message)
-    {
+        : base(message) {
         TenantId = string.Empty;
         Domain = string.Empty;
     }
@@ -33,8 +30,7 @@ public class DomainServiceNotFoundException : InvalidOperationException
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception.</param>
     public DomainServiceNotFoundException(string message, Exception innerException)
-        : base(message, innerException)
-    {
+        : base(message, innerException) {
         TenantId = string.Empty;
         Domain = string.Empty;
     }
@@ -46,8 +42,7 @@ public class DomainServiceNotFoundException : InvalidOperationException
     /// <param name="domain">The domain name.</param>
     /// <param name="version">The service version (defaults to "v1").</param>
     public DomainServiceNotFoundException(string tenantId, string domain, string version = "v1")
-        : base($"No domain service registered for tenant '{tenantId}', domain '{domain}', version '{version}'. Register via DAPR config store with key '{tenantId}:{domain}:{version}'.")
-    {
+        : base($"No domain service registered for tenant '{tenantId}', domain '{domain}', version '{version}'. Register via DAPR config store with key '{tenantId}:{domain}:{version}'.") {
         TenantId = tenantId;
         Domain = domain;
         Version = version;

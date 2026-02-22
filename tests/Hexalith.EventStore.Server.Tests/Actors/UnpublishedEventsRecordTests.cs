@@ -8,11 +8,9 @@ using Shouldly;
 /// Story 4.4 Task 10: UnpublishedEventsRecord unit tests.
 /// Verifies key format, reminder name, IncrementRetry, and construction (AC: #2).
 /// </summary>
-public class UnpublishedEventsRecordTests
-{
+public class UnpublishedEventsRecordTests {
     [Fact]
-    public void GetStateKey_ReturnsCorrectFormat()
-    {
+    public void GetStateKey_ReturnsCorrectFormat() {
         // Act
         string key = UnpublishedEventsRecord.GetStateKey("cmd-123");
 
@@ -21,8 +19,7 @@ public class UnpublishedEventsRecordTests
     }
 
     [Fact]
-    public void GetReminderName_ReturnsCorrectFormat()
-    {
+    public void GetReminderName_ReturnsCorrectFormat() {
         // Act
         string name = UnpublishedEventsRecord.GetReminderName("cmd-456");
 
@@ -31,8 +28,7 @@ public class UnpublishedEventsRecordTests
     }
 
     [Fact]
-    public void IncrementRetry_IncrementsCount_UpdatesReason()
-    {
+    public void IncrementRetry_IncrementsCount_UpdatesReason() {
         // Arrange
         var record = new UnpublishedEventsRecord(
             "corr-1", 1, 3, 3, "CreateOrder", false,
@@ -50,8 +46,7 @@ public class UnpublishedEventsRecordTests
     }
 
     [Fact]
-    public void IncrementRetry_WithNullReason_UpdatesReasonToNull()
-    {
+    public void IncrementRetry_WithNullReason_UpdatesReasonToNull() {
         // Arrange
         var record = new UnpublishedEventsRecord(
             "corr-1", 1, 3, 3, "CreateOrder", false,
@@ -66,8 +61,7 @@ public class UnpublishedEventsRecordTests
     }
 
     [Fact]
-    public void Construction_AllFieldsPreserved()
-    {
+    public void Construction_AllFieldsPreserved() {
         // Arrange
         DateTimeOffset failedAt = DateTimeOffset.UtcNow;
 
@@ -96,8 +90,7 @@ public class UnpublishedEventsRecordTests
     }
 
     [Fact]
-    public void StateKeyPrefix_IsCorrectValue()
-    {
+    public void StateKeyPrefix_IsCorrectValue() {
         UnpublishedEventsRecord.StateKeyPrefix.ShouldBe("drain:");
     }
 }

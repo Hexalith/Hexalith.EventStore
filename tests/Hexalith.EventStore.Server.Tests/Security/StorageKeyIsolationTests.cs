@@ -5,7 +5,6 @@ using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -22,13 +21,11 @@ using Shouldly;
 /// <summary>
 /// Comprehensive unit tests verifying storage key isolation between tenants (AC: #1, #2, #3, #4, #6, #9, #10).
 /// </summary>
-public class StorageKeyIsolationTests
-{
+public class StorageKeyIsolationTests {
     // --- 2.2: Two different tenants produce structurally disjoint event stream key prefixes ---
 
     [Fact]
-    public void DifferentTenants_ProduceDisjointEventStreamKeyPrefixes()
-    {
+    public void DifferentTenants_ProduceDisjointEventStreamKeyPrefixes() {
         // Arrange
         var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
         var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
@@ -48,8 +45,7 @@ public class StorageKeyIsolationTests
     // --- 2.3: Two different tenants produce structurally disjoint metadata keys ---
 
     [Fact]
-    public void DifferentTenants_ProduceDisjointMetadataKeys()
-    {
+    public void DifferentTenants_ProduceDisjointMetadataKeys() {
         // Arrange
         var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
         var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
@@ -68,8 +64,7 @@ public class StorageKeyIsolationTests
     // --- 2.4: Two different tenants produce structurally disjoint snapshot keys ---
 
     [Fact]
-    public void DifferentTenants_ProduceDisjointSnapshotKeys()
-    {
+    public void DifferentTenants_ProduceDisjointSnapshotKeys() {
         // Arrange
         var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
         var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
@@ -88,8 +83,7 @@ public class StorageKeyIsolationTests
     // --- 2.5: Same aggregate ID in different tenants produces different keys (no collision) ---
 
     [Fact]
-    public void SameAggregateId_DifferentTenants_ProduceDifferentKeys()
-    {
+    public void SameAggregateId_DifferentTenants_ProduceDifferentKeys() {
         // Arrange
         var identityA = new AggregateIdentity("tenant-a", "orders", "shared-agg-001");
         var identityB = new AggregateIdentity("tenant-b", "orders", "shared-agg-001");
@@ -104,8 +98,7 @@ public class StorageKeyIsolationTests
     // --- 2.6: Same aggregate ID in same tenant but different domains produces different keys ---
 
     [Fact]
-    public void SameAggregateId_SameTenant_DifferentDomains_ProduceDifferentKeys()
-    {
+    public void SameAggregateId_SameTenant_DifferentDomains_ProduceDifferentKeys() {
         // Arrange
         var identityOrders = new AggregateIdentity("tenant-a", "orders", "item-001");
         var identityInventory = new AggregateIdentity("tenant-a", "inventory", "item-001");
@@ -120,8 +113,7 @@ public class StorageKeyIsolationTests
     // --- 2.7: AggregateIdentity rejects tenant IDs containing colons (key injection prevention) ---
 
     [Fact]
-    public void AggregateIdentity_RejectsTenantIdWithColons()
-    {
+    public void AggregateIdentity_RejectsTenantIdWithColons() {
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant:injected", "orders", "order-001"));
@@ -130,8 +122,7 @@ public class StorageKeyIsolationTests
     // --- 2.8: AggregateIdentity rejects domain names containing colons ---
 
     [Fact]
-    public void AggregateIdentity_RejectsDomainWithColons()
-    {
+    public void AggregateIdentity_RejectsDomainWithColons() {
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders:fake", "order-001"));
@@ -140,8 +131,7 @@ public class StorageKeyIsolationTests
     // --- 2.9: AggregateIdentity rejects aggregate IDs containing colons ---
 
     [Fact]
-    public void AggregateIdentity_RejectsAggregateIdWithColons()
-    {
+    public void AggregateIdentity_RejectsAggregateIdWithColons() {
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", "order:injected"));
@@ -153,8 +143,7 @@ public class StorageKeyIsolationTests
     [InlineData("tenant-a", "tenant-b")]
     [InlineData("acme", "globex")]
     [InlineData("a", "ab")]
-    public void TenantPrefixNeverAppearsInOtherTenantsKeys(string tenantA, string tenantB)
-    {
+    public void TenantPrefixNeverAppearsInOtherTenantsKeys(string tenantA, string tenantB) {
         // Arrange
         var identityA = new AggregateIdentity(tenantA, "orders", "order-001");
         var identityB = new AggregateIdentity(tenantB, "orders", "order-001");
@@ -177,8 +166,7 @@ public class StorageKeyIsolationTests
     // --- 2.11: StorageKeyIsolationAssertions correctly validates keys belong to expected tenant ---
 
     [Fact]
-    public void StorageKeyIsolationAssertions_ValidatesCorrectTenant()
-    {
+    public void StorageKeyIsolationAssertions_ValidatesCorrectTenant() {
         // Arrange
         var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
 
@@ -195,8 +183,7 @@ public class StorageKeyIsolationTests
     // --- 2.12: StorageKeyIsolationAssertions rejects keys that don't match expected tenant ---
 
     [Fact]
-    public void StorageKeyIsolationAssertions_RejectsWrongTenant()
-    {
+    public void StorageKeyIsolationAssertions_RejectsWrongTenant() {
         // Arrange
         var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
 
@@ -206,8 +193,7 @@ public class StorageKeyIsolationTests
     }
 
     [Fact]
-    public void StorageKeyIsolationAssertions_AssertKeysDisjoint_PassesForDifferentTenants()
-    {
+    public void StorageKeyIsolationAssertions_AssertKeysDisjoint_PassesForDifferentTenants() {
         // Arrange
         var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
         var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
@@ -217,8 +203,7 @@ public class StorageKeyIsolationTests
     }
 
     [Fact]
-    public void StorageKeyIsolationAssertions_AssertKeysDisjoint_FailsForSameTenant()
-    {
+    public void StorageKeyIsolationAssertions_AssertKeysDisjoint_FailsForSameTenant() {
         // Arrange
         var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
         var identityB = new AggregateIdentity("tenant-a", "inventory", "item-001");
@@ -234,8 +219,7 @@ public class StorageKeyIsolationTests
     [InlineData("tenant-a", "orders", "order-001")]
     [InlineData("tenant-b", "inventory", "item-999")]
     [InlineData("acme", "billing", "inv-ABC123")]
-    public async Task CommandRouter_AlwaysUsesAggregateIdentityActorId(string tenant, string domain, string aggregateId)
-    {
+    public async Task CommandRouter_AlwaysUsesAggregateIdentityActorId(string tenant, string domain, string aggregateId) {
         // Arrange
         ActorId? capturedActorId = null;
         var actorProxy = Substitute.For<IAggregateActor>();
@@ -268,8 +252,7 @@ public class StorageKeyIsolationTests
     // --- 2.14: Tenant value chain-of-custody ---
 
     [Fact]
-    public void TenantChainOfCustody_ConsistentThroughAllDerivedKeys()
-    {
+    public void TenantChainOfCustody_ConsistentThroughAllDerivedKeys() {
         // Arrange
         const string tenantId = "tenant-alpha";
         var identity = new AggregateIdentity(tenantId, "orders", "order-001");
@@ -298,8 +281,7 @@ public class StorageKeyIsolationTests
     [Theory]
     [InlineData("tenant%3ainjected")]
     [InlineData("tenant%3Ainjected")]
-    public void AggregateIdentity_RejectsUrlEncodedColonsInTenant(string maliciousTenant)
-    {
+    public void AggregateIdentity_RejectsUrlEncodedColonsInTenant(string maliciousTenant) {
         // Act & Assert - % is not in allowed character set
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity(maliciousTenant, "orders", "order-001"));
@@ -308,8 +290,7 @@ public class StorageKeyIsolationTests
     [Theory]
     [InlineData("orders%3afake")]
     [InlineData("orders%3Afake")]
-    public void AggregateIdentity_RejectsUrlEncodedColonsInDomain(string maliciousDomain)
-    {
+    public void AggregateIdentity_RejectsUrlEncodedColonsInDomain(string maliciousDomain) {
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", maliciousDomain, "order-001"));
@@ -318,8 +299,7 @@ public class StorageKeyIsolationTests
     [Theory]
     [InlineData("order%3Ainjected")]
     [InlineData("order%3ainjected")]
-    public void AggregateIdentity_RejectsUrlEncodedColonsInAggregateId(string maliciousAggId)
-    {
+    public void AggregateIdentity_RejectsUrlEncodedColonsInAggregateId(string maliciousAggId) {
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", maliciousAggId));
@@ -328,8 +308,7 @@ public class StorageKeyIsolationTests
     // --- 2.16: NEGATIVE -- reading key for tenantB returns null from tenantA's actor state manager ---
 
     [Fact]
-    public async Task CrossTenantRead_ReturnsNull_WhenQueried_FromDifferentActorStateManager()
-    {
+    public async Task CrossTenantRead_ReturnsNull_WhenQueried_FromDifferentActorStateManager() {
         // Arrange - two separate state managers representing two different actor instances
         var stateManagerA = new InMemoryStateManager();
         var stateManagerB = new InMemoryStateManager();
@@ -357,8 +336,7 @@ public class StorageKeyIsolationTests
     // --- Review fix H1: Shared state manager test validates Layer 2 (composite key prefixing) independently ---
 
     [Fact]
-    public async Task SharedStateManager_TenantPrefixedKeys_PreventCrossTenantRead()
-    {
+    public async Task SharedStateManager_TenantPrefixedKeys_PreventCrossTenantRead() {
         // Arrange - SINGLE shared state manager simulating bypassed actor scoping (Layer 3).
         // This tests Layer 2 isolation (composite key prefixing) independently.
         var sharedStateManager = new InMemoryStateManager();
@@ -403,23 +381,20 @@ public class StorageKeyIsolationTests
     // --- Review fix H2: DEL character (0x7F) rejection test ---
 
     [Fact]
-    public void AggregateIdentity_RejectsDelCharacterInTenant()
-    {
+    public void AggregateIdentity_RejectsDelCharacterInTenant() {
         // DEL (0x7F) is a control character and must be rejected
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant\u007F", "orders", "order-001"));
     }
 
     [Fact]
-    public void AggregateIdentity_RejectsDelCharacterInDomain()
-    {
+    public void AggregateIdentity_RejectsDelCharacterInDomain() {
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders\u007F", "order-001"));
     }
 
     [Fact]
-    public void AggregateIdentity_RejectsDelCharacterInAggregateId()
-    {
+    public void AggregateIdentity_RejectsDelCharacterInAggregateId() {
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", "order\u007F001"));
     }

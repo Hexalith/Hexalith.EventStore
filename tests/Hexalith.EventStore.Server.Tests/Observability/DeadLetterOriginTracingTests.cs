@@ -35,8 +35,7 @@ using Shouldly;
 /// Verifies that a dead-letter message's correlation ID traces back through all pipeline stages
 /// via structured logs, and validates multi-tenant isolation, causation chains, and replay correlation.
 /// </summary>
-public class DeadLetterOriginTracingTests
-{
+public class DeadLetterOriginTracingTests {
     #region Shared Helpers
 
     private static CommandEnvelope CreateTestEnvelope(
@@ -56,8 +55,7 @@ public class DeadLetterOriginTracingTests
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, FakeDeadLetterPublisher DeadLetterPublisher, ICommandStatusStore StatusStore)
-        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001")
-    {
+        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -112,28 +110,22 @@ public class DeadLetterOriginTracingTests
     /// <summary>
     /// Extracts all log messages from an NSubstitute ILogger mock by inspecting received calls.
     /// </summary>
-    private static IReadOnlyList<(LogLevel Level, string Message)> GetLogEntries(ILogger logger)
-    {
+    private static IReadOnlyList<(LogLevel Level, string Message)> GetLogEntries(ILogger logger) {
         var entries = new List<(LogLevel Level, string Message)>();
-        foreach (ICall call in logger.ReceivedCalls())
-        {
-            if (call.GetMethodInfo().Name == "Log" && call.GetArguments().Length >= 5)
-            {
+        foreach (ICall call in logger.ReceivedCalls()) {
+            if (call.GetMethodInfo().Name == "Log" && call.GetArguments().Length >= 5) {
                 object?[] args = call.GetArguments();
                 var level = (LogLevel)args[0]!;
                 object? state = args[2];
                 var exception = args[3] as Exception;
                 object? formatter = args[4];
                 string? message = null;
-                if (formatter is not null && state is not null)
-                {
-                    try
-                    {
+                if (formatter is not null && state is not null) {
+                    try {
                         MethodInfo? invokeMethod = formatter.GetType().GetMethod("Invoke");
                         message = invokeMethod?.Invoke(formatter, [state, exception])?.ToString();
                     }
-                    catch
-                    {
+                    catch {
                         message = state.ToString();
                     }
                 }
@@ -151,8 +143,7 @@ public class DeadLetterOriginTracingTests
     #region Task 3: Log-based dead-letter-to-origin tracing tests (AC #1, #2, #5, #10)
 
     [Fact]
-    public async Task DomainServiceFailure_CorrelationIdTracesBackThroughAllStages()
-    {
+    public async Task DomainServiceFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
@@ -182,8 +173,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task DomainServiceFailure_OriginatingRequestIdentifiable()
-    {
+    public async Task DomainServiceFailure_OriginatingRequestIdentifiable() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
@@ -217,8 +207,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task StateRehydrationFailure_CorrelationIdTracesBackThroughAllStages()
-    {
+    public async Task StateRehydrationFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _, FakeDeadLetterPublisher fakeDeadLetter, _) =
@@ -250,8 +239,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task EventPersistenceFailure_CorrelationIdTracesBackThroughAllStages()
-    {
+    public async Task EventPersistenceFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
@@ -265,11 +253,9 @@ public class DeadLetterOriginTracingTests
         // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored)
         int saveCallCount = 0;
         stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
+            .Returns(_ => {
                 saveCallCount++;
-                if (saveCallCount == 2)
-                {
+                if (saveCallCount == 2) {
                     throw new IOException("State store write failed");
                 }
 
@@ -291,8 +277,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task DeadLetterLog_ContainsCorrelationIdMatchingOrigin()
-    {
+    public async Task DeadLetterLog_ContainsCorrelationIdMatchingOrigin() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
@@ -319,8 +304,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task AllLogsBetweenOriginAndDeadLetter_ContainConsistentCorrelationId()
-    {
+    public async Task AllLogsBetweenOriginAndDeadLetter_ContainConsistentCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
@@ -345,16 +329,14 @@ public class DeadLetterOriginTracingTests
         logsWithCorrelation.ShouldNotBeEmpty();
 
         // Every log with CorrelationId= should have the correct value
-        foreach ((LogLevel _, string message) in logsWithCorrelation)
-        {
+        foreach ((LogLevel _, string message) in logsWithCorrelation) {
             message.Contains(correlationId, StringComparison.Ordinal).ShouldBeTrue(
                 $"Log message contains CorrelationId field but with wrong value: {message}");
         }
     }
 
     [Fact]
-    public async Task InformationLevelOnly_TracingChainStillComplete()
-    {
+    public async Task InformationLevelOnly_TracingChainStillComplete() {
         // Arrange: Simulate production scenario where Debug logs are filtered
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
@@ -385,8 +367,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task CommandReceived_LogIncludesSourceIP()
-    {
+    public async Task CommandReceived_LogIncludesSourceIP() {
         // Arrange: Test that LoggingBehavior's PipelineEntry log includes SourceIP
         var logEntries = new List<ObservabilityLogEntry>();
         var testLogger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
@@ -426,8 +407,7 @@ public class DeadLetterOriginTracingTests
     #region Task 6: Multi-tenant isolation tracing tests (AC #7, #10)
 
     [Fact]
-    public async Task MultiTenant_EachDeadLetterTracesBackToCorrectTenantOrigin()
-    {
+    public async Task MultiTenant_EachDeadLetterTracesBackToCorrectTenantOrigin() {
         // Arrange: Two different tenants with different commands
         string correlationA = Guid.NewGuid().ToString();
         string correlationB = Guid.NewGuid().ToString();
@@ -481,8 +461,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task MultiTenant_NoCorrelationIdCrossTalk()
-    {
+    public async Task MultiTenant_NoCorrelationIdCrossTalk() {
         // Arrange
         string correlationA = Guid.NewGuid().ToString();
         string correlationB = Guid.NewGuid().ToString();
@@ -528,8 +507,7 @@ public class DeadLetterOriginTracingTests
     #region Task 7: Causation chain verification tests (AC #9, #10)
 
     [Fact]
-    public async Task OriginalSubmission_CausationIdIsNull()
-    {
+    public async Task OriginalSubmission_CausationIdIsNull() {
         // Arrange: Original submission has CausationId = null
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
@@ -550,8 +528,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task ReplayedCommand_CausationIdDiffersFromCorrelationId()
-    {
+    public async Task ReplayedCommand_CausationIdDiffersFromCorrelationId() {
         // Arrange: Replayed command has a different CausationId
         string correlationId = Guid.NewGuid().ToString();
         string causationId = Guid.NewGuid().ToString();
@@ -574,8 +551,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task ReplayedCommand_CorrelationIdMatchesOriginalSubmission()
-    {
+    public async Task ReplayedCommand_CorrelationIdMatchesOriginalSubmission() {
         // Arrange
         string sharedCorrelationId = Guid.NewGuid().ToString();
         string replayCausationId = Guid.NewGuid().ToString();
@@ -619,8 +595,7 @@ public class DeadLetterOriginTracingTests
     #region Task 8: Replay-via-dead-letter correlation tests (AC #8, #10)
 
     [Fact]
-    public async Task DeadLetterCorrelationId_CanLocateOriginalCommandStatus()
-    {
+    public async Task DeadLetterCorrelationId_CanLocateOriginalCommandStatus() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore) =
@@ -643,8 +618,7 @@ public class DeadLetterOriginTracingTests
     }
 
     [Fact]
-    public async Task DeadLetterCorrelationId_StatusReflectsTerminalState()
-    {
+    public async Task DeadLetterCorrelationId_StatusReflectsTerminalState() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         CommandStatusRecord? capturedStatus = null;
@@ -677,14 +651,12 @@ public class DeadLetterOriginTracingTests
 
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
 
-    private sealed class TestLogger<T>(List<ObservabilityLogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<ObservabilityLogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new ObservabilityLogEntry(logLevel, formatter(state, exception)));
         }
     }

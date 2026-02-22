@@ -14,10 +14,8 @@ using NSubstitute;
 
 using Shouldly;
 
-public class ValidationBehaviorTests
-{
-    private static ValidationBehavior<TestCommand, TestResult> CreateBehavior(IEnumerable<IValidator<TestCommand>> validators)
-    {
+public class ValidationBehaviorTests {
+    private static ValidationBehavior<TestCommand, TestResult> CreateBehavior(IEnumerable<IValidator<TestCommand>> validators) {
         var logger = Substitute.For<ILogger<ValidationBehavior<TestCommand, TestResult>>>();
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
@@ -27,8 +25,7 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_NoValidators_CallsNext()
-    {
+    public async Task Handle_NoValidators_CallsNext() {
         // Arrange
         var validators = Enumerable.Empty<IValidator<TestCommand>>();
         var behavior = CreateBehavior(validators);
@@ -44,8 +41,7 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_ValidRequest_CallsNext()
-    {
+    public async Task Handle_ValidRequest_CallsNext() {
         // Arrange
         var validator = new AlwaysValidValidator();
         var behavior = CreateBehavior([validator]);
@@ -61,8 +57,7 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_InvalidRequest_ThrowsValidationException()
-    {
+    public async Task Handle_InvalidRequest_ThrowsValidationException() {
         // Arrange
         var validator = new FailingValidator("Value", "Value is required");
         var behavior = CreateBehavior([validator]);
@@ -77,8 +72,7 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_MultipleValidators_AggregatesFailures()
-    {
+    public async Task Handle_MultipleValidators_AggregatesFailures() {
         // Arrange
         var validator1 = new FailingValidator("Field1", "Error 1");
         var validator2 = new FailingValidator("Field2", "Error 2");
@@ -95,15 +89,13 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_InvalidRequest_DoesNotCallNext()
-    {
+    public async Task Handle_InvalidRequest_DoesNotCallNext() {
         // Arrange
         var validator = new FailingValidator("Value", "Required");
         var behavior = CreateBehavior([validator]);
         var request = new TestCommand("");
         bool nextCalled = false;
-        RequestHandlerDelegate<TestResult> next = (_) =>
-        {
+        RequestHandlerDelegate<TestResult> next = (_) => {
             nextCalled = true;
             return Task.FromResult(new TestResult("should not reach"));
         };
@@ -121,13 +113,11 @@ public class ValidationBehaviorTests
 
     public record TestResult(string Result);
 
-    private sealed class AlwaysValidValidator : AbstractValidator<TestCommand>
-    {
+    private sealed class AlwaysValidValidator : AbstractValidator<TestCommand> {
         // No rules = always valid
     }
 
-    private sealed class FailingValidator : IValidator<TestCommand>
-    {
+    private sealed class FailingValidator : IValidator<TestCommand> {
         private readonly ValidationFailure _failure;
 
         public FailingValidator(string propertyName, string errorMessage) =>

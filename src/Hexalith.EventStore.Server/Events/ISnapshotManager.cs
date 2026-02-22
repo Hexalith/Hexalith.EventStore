@@ -8,8 +8,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// Manages aggregate state snapshots for optimizing state rehydration.
 /// Snapshots are an advisory optimization -- failures never block command processing (rule #12).
 /// </summary>
-public interface ISnapshotManager
-{
+public interface ISnapshotManager {
     /// <summary>
     /// Determines whether a snapshot should be created based on the configured interval.
     /// </summary>

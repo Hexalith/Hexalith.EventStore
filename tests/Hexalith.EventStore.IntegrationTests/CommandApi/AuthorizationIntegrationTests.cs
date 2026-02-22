@@ -21,24 +21,20 @@ using Shouldly;
 using CommandApiProgram = commandapi::Program;
 
 public class AuthorizationIntegrationTests
-    : IClassFixture<AuthorizationIntegrationTests.AuthorizationLogCapturingFactory>
-{
+    : IClassFixture<AuthorizationIntegrationTests.AuthorizationLogCapturingFactory> {
     private readonly AuthorizationLogCapturingFactory _factory;
 
-    public AuthorizationIntegrationTests(AuthorizationLogCapturingFactory factory)
-    {
+    public AuthorizationIntegrationTests(AuthorizationLogCapturingFactory factory) {
         ArgumentNullException.ThrowIfNull(factory);
         _factory = factory;
     }
 
     [Fact]
-    public async Task PostCommands_TenantNotInClaims_Returns403ProblemDetails()
-    {
+    public async Task PostCommands_TenantNotInClaims_Returns403ProblemDetails() {
         // Arrange - token has tenant-a, but request uses tenant-b
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["tenant-a"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "tenant-b",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -63,13 +59,11 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_NoTenantClaims_Returns403ProblemDetails()
-    {
+    public async Task PostCommands_NoTenantClaims_Returns403ProblemDetails() {
         // Arrange - token with no tenant claims at all
         string token = TestJwtTokenGenerator.GenerateToken();
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -90,15 +84,13 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_DomainNotInClaims_Returns403ProblemDetails()
-    {
+    public async Task PostCommands_DomainNotInClaims_Returns403ProblemDetails() {
         // Arrange - token has domain "orders" but request uses "inventory"
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["test-tenant"],
             domains: ["orders"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "inventory",
             aggregateId = "agg-001",
@@ -119,15 +111,13 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_CommandTypeNotInClaims_Returns403ProblemDetails()
-    {
+    public async Task PostCommands_CommandTypeNotInClaims_Returns403ProblemDetails() {
         // Arrange - token has permission for "PlaceOrder" only
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["test-tenant"],
             permissions: ["PlaceOrder"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -148,13 +138,11 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_NoDomainClaims_Returns202Accepted()
-    {
+    public async Task PostCommands_NoDomainClaims_Returns202Accepted() {
         // Arrange - no domain claims means all domains allowed (AC #5)
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "any-domain",
             aggregateId = "agg-001",
@@ -170,13 +158,11 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_NoPermissionClaims_Returns202Accepted()
-    {
+    public async Task PostCommands_NoPermissionClaims_Returns202Accepted() {
         // Arrange - no permission claims means all command types allowed (AC #5)
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -192,15 +178,13 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_WildcardPermission_Returns202Accepted()
-    {
+    public async Task PostCommands_WildcardPermission_Returns202Accepted() {
         // Arrange - commands:* grants access to any command type
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["test-tenant"],
             permissions: ["commands:*"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -216,16 +200,14 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_MatchingTenantDomainPermission_Returns202Accepted()
-    {
+    public async Task PostCommands_MatchingTenantDomainPermission_Returns202Accepted() {
         // Arrange - fully authorized request
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["test-tenant"],
             domains: ["test-domain"],
             permissions: ["CreateOrder"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -241,14 +223,12 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_TenantAuthFailure_RejectedBeforeMediatRPipeline()
-    {
+    public async Task PostCommands_TenantAuthFailure_RejectedBeforeMediatRPipeline() {
         // Arrange - tenant rejection should happen before MediatR pipeline
         _factory.LogProvider.Clear();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -271,14 +251,12 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_AuthFailure_LogsWarningWithCorrelationId()
-    {
+    public async Task PostCommands_AuthFailure_LogsWarningWithCorrelationId() {
         // Arrange
         _factory.LogProvider.Clear();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -305,15 +283,13 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_InvalidAndUnauthorized_Returns400NotForbidden()
-    {
+    public async Task PostCommands_InvalidAndUnauthorized_Returns400NotForbidden() {
         // Arrange - request that fails BOTH validation (empty fields) and authorization (wrong tenant)
         // ValidateModelFilter runs before controller action, so validation rejects before tenant pre-check.
         // This verifies correct security behavior: don't leak authorization state for malformed requests.
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "",
             domain = "",
             aggregateId = "",
@@ -329,15 +305,13 @@ public class AuthorizationIntegrationTests
     }
 
     [Fact]
-    public async Task PostCommands_AuthorizationException_Returns403Not500()
-    {
+    public async Task PostCommands_AuthorizationException_Returns403Not500() {
         // Arrange - token with matching tenant but wrong domain (triggers AuthorizationBehavior)
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["test-tenant"],
             domains: ["orders"]);
         HttpClient client = CreateClientWithToken(token);
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "inventory",
             aggregateId = "agg-001",
@@ -357,37 +331,30 @@ public class AuthorizationIntegrationTests
         body.GetProperty("title").GetString().ShouldBe("Forbidden");
     }
 
-    private HttpClient CreateClientWithToken(string token)
-    {
+    private HttpClient CreateClientWithToken(string token) {
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 
-    public class AuthorizationLogCapturingFactory : WebApplicationFactory<CommandApiProgram>
-    {
+    public class AuthorizationLogCapturingFactory : WebApplicationFactory<CommandApiProgram> {
         public AuthzLogProvider LogProvider { get; } = new();
 
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
-        {
+        protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.ConfigureAppConfiguration(config =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
+            builder.ConfigureAppConfiguration(config => {
+                config.AddInMemoryCollection(new Dictionary<string, string?> {
                     ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
                     ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
                     ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
                     ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
                 });
             });
-            builder.ConfigureServices(services =>
-            {
+            builder.ConfigureServices(services => {
                 // Replace DAPR-dependent services with test fakes
                 ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(Server.Commands.ICommandStatusStore));
-                if (statusDescriptor is not null)
-                {
+                if (statusDescriptor is not null) {
                     services.Remove(statusDescriptor);
                 }
 
@@ -395,8 +362,7 @@ public class AuthorizationIntegrationTests
 
                 ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(Server.Commands.ICommandArchiveStore));
-                if (archiveDescriptor is not null)
-                {
+                if (archiveDescriptor is not null) {
                     services.Remove(archiveDescriptor);
                 }
 
@@ -411,35 +377,29 @@ public class AuthorizationIntegrationTests
     }
 }
 
-public sealed class AuthzLogProvider : ILoggerProvider
-{
+public sealed class AuthzLogProvider : ILoggerProvider {
     private readonly ConcurrentQueue<AuthzLogEntry> _entries = [];
 
     public ILogger CreateLogger(string categoryName) => new AuthzLogger(_entries);
 
-    public void Dispose()
-    {
+    public void Dispose() {
         // Nothing to dispose
     }
 
     public List<AuthzLogEntry> GetEntries() => [.. _entries];
 
-    public void Clear()
-    {
-        while (_entries.TryDequeue(out _))
-        {
+    public void Clear() {
+        while (_entries.TryDequeue(out _)) {
             // Drain
         }
     }
 
-    private sealed class AuthzLogger(ConcurrentQueue<AuthzLogEntry> entries) : ILogger
-    {
+    private sealed class AuthzLogger(ConcurrentQueue<AuthzLogEntry> entries) : ILogger {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Enqueue(new AuthzLogEntry(logLevel, formatter(state, exception)));
         }
     }

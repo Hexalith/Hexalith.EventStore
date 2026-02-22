@@ -16,11 +16,9 @@ using Shouldly;
 /// </summary>
 [Trait("Category", "E2E")]
 [Collection("AspireTopology")]
-public class DaprAccessControlE2ETests : KeycloakE2ETestBase
-{
+public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
     public DaprAccessControlE2ETests(AspireTopologyFixture fixture)
-        : base(fixture)
-    {
+        : base(fixture) {
     }
 
     // ------------------------------------------------------------------
@@ -39,13 +37,11 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase
     /// misconfiguration. The denial is functionally correct (HTTP 403 + deny context).
     /// </summary>
     [Fact]
-    public async Task SampleSidecar_InvokeCommandApi_DeniedByAccessControl()
-    {
+    public async Task SampleSidecar_InvokeCommandApi_DeniedByAccessControl() {
         // Arrange: get the sample service's DAPR sidecar HTTP endpoint.
         // The sidecar resource is named "{service-name}-dapr" with an "http" endpoint.
         Uri? sampleDaprEndpoint = TryGetSampleDaprEndpoint();
-        if (sampleDaprEndpoint is null)
-        {
+        if (sampleDaprEndpoint is null) {
             return;
         }
 
@@ -53,8 +49,7 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase
         client.BaseAddress = new Uri(sampleDaprEndpoint.ToString());
         client.Timeout = TimeSpan.FromSeconds(30);
 
-        var body = new
-        {
+        var body = new {
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),
@@ -97,11 +92,9 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase
     /// HTTP verb, deny reason) is available via the Aspire dashboard telemetry.
     /// </summary>
     [Fact]
-    public async Task SampleSidecar_DeniedInvocation_ResponseContainsErrorContext()
-    {
+    public async Task SampleSidecar_DeniedInvocation_ResponseContainsErrorContext() {
         Uri? sampleDaprEndpoint = TryGetSampleDaprEndpoint();
-        if (sampleDaprEndpoint is null)
-        {
+        if (sampleDaprEndpoint is null) {
             return;
         }
 
@@ -138,14 +131,11 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase
             customMessage: "DAPR denial response should include HTTP verb context (AC #6)");
     }
 
-    private Uri? TryGetSampleDaprEndpoint()
-    {
-        try
-        {
+    private Uri? TryGetSampleDaprEndpoint() {
+        try {
             return App.GetEndpoint("sample-dapr", "http");
         }
-        catch (ArgumentException ex) when (ex.Message.Contains("has no allocated endpoints", StringComparison.OrdinalIgnoreCase))
-        {
+        catch (ArgumentException ex) when (ex.Message.Contains("has no allocated endpoints", StringComparison.OrdinalIgnoreCase)) {
             return null;
         }
     }

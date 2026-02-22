@@ -7,13 +7,11 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 /// Extension methods for converting between <see cref="ArchivedCommand"/> and <see cref="SubmitCommand"/>.
 /// Centralizes field mapping to avoid duplication across handler and controller.
 /// </summary>
-public static class ArchivedCommandExtensions
-{
+public static class ArchivedCommandExtensions {
     /// <summary>
     /// Creates an <see cref="ArchivedCommand"/> from a <see cref="SubmitCommand"/>.
     /// </summary>
-    public static ArchivedCommand ToArchivedCommand(this SubmitCommand command)
-    {
+    public static ArchivedCommand ToArchivedCommand(this SubmitCommand command) {
         ArgumentNullException.ThrowIfNull(command);
         return new ArchivedCommand(
             command.Tenant,
@@ -28,8 +26,7 @@ public static class ArchivedCommandExtensions
     /// <summary>
     /// Reconstructs a <see cref="SubmitCommand"/> from an <see cref="ArchivedCommand"/> for replay.
     /// </summary>
-    public static SubmitCommand ToSubmitCommand(this ArchivedCommand archived, string correlationId)
-    {
+    public static SubmitCommand ToSubmitCommand(this ArchivedCommand archived, string correlationId) {
         ArgumentNullException.ThrowIfNull(archived);
         ArgumentNullException.ThrowIfNull(correlationId);
         return new SubmitCommand(

@@ -15,11 +15,9 @@ using Shouldly;
 /// </summary>
 [Trait("Category", "E2E")]
 [Collection("AspireTopology")]
-public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
-{
+public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     public KeycloakE2ESecurityTests(AspireTopologyFixture fixture)
-        : base(fixture)
-    {
+        : base(fixture) {
     }
 
     // ------------------------------------------------------------------
@@ -32,8 +30,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
     /// claims transformation, and tenant/domain/permission authorization.
     /// </summary>
     [Fact]
-    public async Task AdminUser_SubmitCommand_ReturnsAccepted()
-    {
+    public async Task AdminUser_SubmitCommand_ReturnsAccepted() {
         // Arrange
         string token = await GetTokenAsync("admin-user", "admin-pass");
 
@@ -48,8 +45,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             .SendAsync(request);
 
         // Assert
-        if (response.StatusCode != HttpStatusCode.Accepted)
-        {
+        if (response.StatusCode != HttpStatusCode.Accepted) {
             string body = await response.Content.ReadAsStringAsync();
             throw new Shouldly.ShouldAssertException(
                 $"response.StatusCode should be Accepted but was {response.StatusCode}.\nResponse body:\n{body}");
@@ -63,8 +59,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
     /// Verifies scoped user (single tenant, single domain) can operate within scope.
     /// </summary>
     [Fact]
-    public async Task TenantAUser_SubmitCommandForOwnTenant_ReturnsAccepted()
-    {
+    public async Task TenantAUser_SubmitCommandForOwnTenant_ReturnsAccepted() {
         string token = await GetTokenAsync("tenant-a-user", "tenant-a-pass");
 
         using var request = CreateCommandRequest(
@@ -76,8 +71,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
         using HttpResponseMessage response = await CommandApiClient
             .SendAsync(request);
 
-        if (response.StatusCode != HttpStatusCode.Accepted)
-        {
+        if (response.StatusCode != HttpStatusCode.Accepted) {
             string body = await response.Content.ReadAsStringAsync();
             throw new Shouldly.ShouldAssertException(
                 $"response.StatusCode should be Accepted but was {response.StatusCode}.\nResponse body:\n{body}");
@@ -94,8 +88,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
     /// Controller checks tenant claims before MediatR pipeline.
     /// </summary>
     [Fact]
-    public async Task TenantAUser_SubmitCommandForTenantB_Returns403()
-    {
+    public async Task TenantAUser_SubmitCommandForTenantB_Returns403() {
         string token = await GetTokenAsync("tenant-a-user", "tenant-a-pass");
 
         using var request = CreateCommandRequest(
@@ -115,8 +108,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
     /// Symmetric test ensuring isolation works in both directions.
     /// </summary>
     [Fact]
-    public async Task TenantBUser_SubmitCommandForTenantA_Returns403()
-    {
+    public async Task TenantBUser_SubmitCommandForTenantA_Returns403() {
         string token = await GetTokenAsync("tenant-b-user", "tenant-b-pass");
 
         using var request = CreateCommandRequest(
@@ -141,8 +133,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
     /// AuthorizationBehavior rejects with 403 because the user lacks this permission.
     /// </summary>
     [Fact]
-    public async Task ReadonlyUser_SubmitCommand_Returns403()
-    {
+    public async Task ReadonlyUser_SubmitCommand_Returns403() {
         string token = await GetTokenAsync("readonly-user", "readonly-pass");
 
         using var request = CreateCommandRequest(
@@ -162,8 +153,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
     /// Controller's pre-pipeline check rejects with 403 (no tenant claims found).
     /// </summary>
     [Fact]
-    public async Task NoTenantUser_SubmitCommand_Returns403()
-    {
+    public async Task NoTenantUser_SubmitCommand_Returns403() {
         string token = await GetTokenAsync("no-tenant-user", "no-tenant-pass");
 
         using var request = CreateCommandRequest(
@@ -186,10 +176,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
         string token,
         string tenant,
         string domain,
-        string commandType)
-    {
-        var body = new
-        {
+        string commandType) {
+        var body = new {
             Tenant = tenant,
             Domain = domain,
             AggregateId = Guid.NewGuid().ToString(),
@@ -197,8 +185,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase
             Payload = new { id = Guid.NewGuid().ToString() },
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
-        {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(
                 JsonSerializer.Serialize(body),
                 Encoding.UTF8,

@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Server.Commands;
 /// aggregate metadata key, indicating another command was processed for the same aggregate
 /// between state read and event write.
 /// </summary>
-public class ConcurrencyConflictException : Exception
-{
+public class ConcurrencyConflictException : Exception {
     private const string DefaultDetailTemplate =
         "An optimistic concurrency conflict occurred on aggregate '{0}'. " +
         "Another command was processed for this aggregate between read and write. " +
@@ -15,24 +14,21 @@ public class ConcurrencyConflictException : Exception
 
     /// <summary>Standard parameterless constructor (serialization support).</summary>
     public ConcurrencyConflictException()
-        : base("An optimistic concurrency conflict occurred.")
-    {
+        : base("An optimistic concurrency conflict occurred.") {
         CorrelationId = string.Empty;
         AggregateId = string.Empty;
     }
 
     /// <summary>Standard message-only constructor (serialization support).</summary>
     public ConcurrencyConflictException(string message)
-        : base(message)
-    {
+        : base(message) {
         CorrelationId = string.Empty;
         AggregateId = string.Empty;
     }
 
     /// <summary>Standard message+inner constructor (serialization support).</summary>
     public ConcurrencyConflictException(string message, Exception innerException)
-        : base(message, innerException)
-    {
+        : base(message, innerException) {
         CorrelationId = string.Empty;
         AggregateId = string.Empty;
     }
@@ -45,8 +41,7 @@ public class ConcurrencyConflictException : Exception
         string? detail = null,
         string? conflictSource = null,
         Exception? innerException = null)
-        : base(detail ?? string.Format(DefaultDetailTemplate, aggregateId), innerException)
-    {
+        : base(detail ?? string.Format(DefaultDetailTemplate, aggregateId), innerException) {
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
 

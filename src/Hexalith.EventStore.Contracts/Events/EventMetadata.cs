@@ -26,8 +26,7 @@ public record EventMetadata(
     string UserId,
     string DomainServiceVersion,
     string EventTypeName,
-    string SerializationFormat)
-{
+    string SerializationFormat) {
     /// <summary>Gets the event sequence number (must be >= 1 per FR12).</summary>
     public long SequenceNumber { get; } = SequenceNumber >= 1
         ? SequenceNumber

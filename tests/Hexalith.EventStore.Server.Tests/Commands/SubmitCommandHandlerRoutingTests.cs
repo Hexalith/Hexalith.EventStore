@@ -13,8 +13,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class SubmitCommandHandlerRoutingTests
-{
+public class SubmitCommandHandlerRoutingTests {
     private static SubmitCommand CreateTestCommand(string? correlationId = null) => new(
         Tenant: "test-tenant",
         Domain: "test-domain",
@@ -25,8 +24,7 @@ public class SubmitCommandHandlerRoutingTests
         UserId: "test-user");
 
     [Fact]
-    public async Task Handle_ValidCommand_RoutesToActor()
-    {
+    public async Task Handle_ValidCommand_RoutesToActor() {
         // Arrange
         var router = Substitute.For<ICommandRouter>();
         router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
@@ -50,8 +48,7 @@ public class SubmitCommandHandlerRoutingTests
     }
 
     [Fact]
-    public async Task Handle_RouterThrows_PropagatesException()
-    {
+    public async Task Handle_RouterThrows_PropagatesException() {
         // Arrange
         var router = Substitute.For<ICommandRouter>();
         router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())

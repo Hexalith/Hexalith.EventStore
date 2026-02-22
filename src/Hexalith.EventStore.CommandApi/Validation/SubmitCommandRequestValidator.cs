@@ -6,8 +6,7 @@ using FluentValidation;
 
 using Hexalith.EventStore.CommandApi.Models;
 
-public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCommandRequest>
-{
+public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCommandRequest> {
     private const int MaxExtensionEntries = 50;
     private const int MaxExtensionKeyLength = 100;
     private const int MaxExtensionValueLength = 1000;
@@ -22,8 +21,7 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
     // Dangerous patterns for injection prevention (SEC-4)
     private static readonly Regex _injectionPattern = InjectionPattern();
 
-    public SubmitCommandRequestValidator()
-    {
+    public SubmitCommandRequestValidator() {
         RuleFor(x => x.Tenant)
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")

@@ -14,12 +14,10 @@ using Shouldly;
 /// Validates command routing to correct aggregate actors via Dapr.
 /// </summary>
 [Collection("DaprTestContainer")]
-public class CommandRoutingIntegrationTests
-{
+public class CommandRoutingIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 
-    public CommandRoutingIntegrationTests(DaprTestContainerFixture fixture)
-    {
+    public CommandRoutingIntegrationTests(DaprTestContainerFixture fixture) {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -28,11 +26,9 @@ public class CommandRoutingIntegrationTests
     /// Task 2.2: Different domains route to different actor instances.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_DifferentDomains_RouteToDifferentActors()
-    {
+    public async Task ProcessCommandAsync_DifferentDomains_RouteToDifferentActors() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -73,13 +69,11 @@ public class CommandRoutingIntegrationTests
     /// Task 2.2: NoOp domain result returns accepted with zero events.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_NoOpResult_ReturnsAcceptedWithZeroEvents()
-    {
+    public async Task ProcessCommandAsync_NoOpResult_ReturnsAcceptedWithZeroEvents() {
         // Arrange
         _fixture.DomainServiceInvoker.SetupResponse("NoOpCommand", Hexalith.EventStore.Contracts.Results.DomainResult.NoOp());
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 

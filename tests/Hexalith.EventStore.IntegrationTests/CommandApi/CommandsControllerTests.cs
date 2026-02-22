@@ -14,16 +14,13 @@ using Hexalith.EventStore.IntegrationTests.Helpers;
 using Shouldly;
 
 public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory factory)
-    : IClassFixture<JwtAuthenticatedWebApplicationFactory>
-{
+    : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     private readonly HttpClient _client = CreateAuthenticatedClient(factory);
 
     [Fact]
-    public async Task PostCommands_ValidRequest_Returns202WithCorrelationIdAndHeaders()
-    {
+    public async Task PostCommands_ValidRequest_Returns202WithCorrelationIdAndHeaders() {
         // Arrange
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -49,8 +46,7 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task PostCommands_MissingRequiredFields_Returns400ProblemDetails()
-    {
+    public async Task PostCommands_MissingRequiredFields_Returns400ProblemDetails() {
         // Arrange - missing all required fields
         var request = new { };
 
@@ -74,8 +70,7 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task PostCommands_MalformedJson_Returns400ProblemDetails()
-    {
+    public async Task PostCommands_MalformedJson_Returns400ProblemDetails() {
         // Arrange
         using var content = new StringContent("{ not valid json }", Encoding.UTF8, "application/json");
 
@@ -87,18 +82,15 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task PostCommands_WithValidExtensions_Returns202()
-    {
+    public async Task PostCommands_WithValidExtensions_Returns202() {
         // Arrange
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-002",
             commandType = "UpdateOrder",
             payload = new { status = "confirmed" },
-            extensions = new Dictionary<string, string>
-            {
+            extensions = new Dictionary<string, string> {
                 ["requestId"] = "req-123",
                 ["source"] = "mobile-app",
             },
@@ -115,12 +107,10 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task PostCommands_WithTooManyExtensions_Returns400()
-    {
+    public async Task PostCommands_WithTooManyExtensions_Returns400() {
         // Arrange - create 51 extension entries (exceeds 50 limit)
         var extensions = Enumerable.Range(1, 51).ToDictionary(i => $"key{i}", i => $"value{i}");
-        var request = new
-        {
+        var request = new {
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-003",
@@ -138,11 +128,9 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
     }
 
     [Fact]
-    public async Task PostCommands_WithEmptyTenant_Returns400WithValidationErrors()
-    {
+    public async Task PostCommands_WithEmptyTenant_Returns400WithValidationErrors() {
         // Arrange - valid JSON structure but empty tenant (triggers FluentValidation)
-        var request = new
-        {
+        var request = new {
             tenant = "",
             domain = "test-domain",
             aggregateId = "agg-004",
@@ -164,8 +152,7 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         problemDetails.GetProperty("validationErrors").GetArrayLength().ShouldBeGreaterThan(0);
     }
 
-    private static HttpClient CreateAuthenticatedClient(JwtAuthenticatedWebApplicationFactory factory)
-    {
+    private static HttpClient CreateAuthenticatedClient(JwtAuthenticatedWebApplicationFactory factory) {
         HttpClient client = factory.CreateClient();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["test-domain"]);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

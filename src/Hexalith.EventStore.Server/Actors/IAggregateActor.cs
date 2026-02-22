@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Commands;
 /// <summary>
 /// DAPR actor interface for aggregate command processing.
 /// </summary>
-public interface IAggregateActor : IActor
-{
+public interface IAggregateActor : IActor {
     /// <summary>
     /// Processes a command envelope within the aggregate actor context.
     /// </summary>

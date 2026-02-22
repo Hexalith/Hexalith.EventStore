@@ -6,8 +6,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// Validates and derives pub/sub topic names per D6 convention ({tenant}.{domain}.events).
 /// Defense-in-depth layer -- primary enforcement is via AggregateIdentity input validation.
 /// </summary>
-public interface ITopicNameValidator
-{
+public interface ITopicNameValidator {
     /// <summary>
     /// Validates that a topic name conforms to the D6 pattern and is compatible
     /// with DAPR-supported pub/sub backends (Kafka, RabbitMQ, Azure Service Bus).

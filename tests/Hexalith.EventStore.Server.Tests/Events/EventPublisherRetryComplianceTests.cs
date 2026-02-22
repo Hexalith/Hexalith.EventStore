@@ -18,8 +18,7 @@ using Shouldly;
 /// Story 4.3 Task 7: EventPublisher no-retry compliance tests.
 /// Verifies that EventPublisher has ZERO custom retry logic -- all retries are DAPR resiliency policies (rule #4).
 /// </summary>
-public class EventPublisherRetryComplianceTests
-{
+public class EventPublisherRetryComplianceTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1) =>
@@ -38,8 +37,7 @@ public class EventPublisherRetryComplianceTests
             Payload: [1, 2, 3],
             Extensions: null);
 
-    private static (EventPublisher Publisher, DaprClient DaprClient) CreatePublisher()
-    {
+    private static (EventPublisher Publisher, DaprClient DaprClient) CreatePublisher() {
         var daprClient = Substitute.For<DaprClient>();
         var options = Options.Create(new EventPublisherOptions());
         var logger = Substitute.For<ILogger<EventPublisher>>();
@@ -50,8 +48,7 @@ public class EventPublisherRetryComplianceTests
     // --- Task 7.2: Single call per event on failure ---
 
     [Fact]
-    public async Task PublishEventsAsync_TransientFailure_NoRetry_ReturnsFailed()
-    {
+    public async Task PublishEventsAsync_TransientFailure_NoRetry_ReturnsFailed() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         daprClient.PublishEventAsync(
@@ -73,8 +70,7 @@ public class EventPublisherRetryComplianceTests
     // --- Task 7.3: Each event gets exactly 1 call ---
 
     [Fact]
-    public async Task PublishEventsAsync_SingleCallPerEvent_Verified()
-    {
+    public async Task PublishEventsAsync_SingleCallPerEvent_Verified() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var events = new List<EventEnvelope>
@@ -99,8 +95,7 @@ public class EventPublisherRetryComplianceTests
     // --- Task 7.4: No retry library imports ---
 
     [Fact]
-    public void EventPublisher_NoRetryPolicyImported_NoPollyReference()
-    {
+    public void EventPublisher_NoRetryPolicyImported_NoPollyReference() {
         // Arrange -- read the EventPublisher source file
         string sourcePath = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
@@ -123,16 +118,14 @@ public class EventPublisherRetryComplianceTests
     // --- Task 7.5: Exception caught and returned, not retried ---
 
     [Fact]
-    public async Task PublishEventsAsync_DaprClientException_CaughtNotRetried()
-    {
+    public async Task PublishEventsAsync_DaprClientException_CaughtNotRetried() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         int callCount = 0;
         daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
+            .Returns(_ => {
                 callCount++;
                 throw new InvalidOperationException("DaprClient internal error");
             });

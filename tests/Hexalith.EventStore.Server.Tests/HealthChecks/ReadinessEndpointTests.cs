@@ -2,22 +2,17 @@ namespace Hexalith.EventStore.Server.Tests.HealthChecks;
 
 using Dapr.Client;
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
 using Shouldly;
 
-public class ReadinessEndpointTests
-{
-    private static HealthCheckServiceOptions GetHealthCheckOptions()
-    {
+public class ReadinessEndpointTests {
+    private static HealthCheckServiceOptions GetHealthCheckOptions() {
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<DaprClient>());
         var builder = services.AddHealthChecks()
@@ -28,8 +23,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void ReadyTagPredicate_MatchesDaprChecks()
-    {
+    public void ReadyTagPredicate_MatchesDaprChecks() {
         // Verify that a "ready" tag predicate matches exactly the 4 DAPR checks
         var options = GetHealthCheckOptions();
         Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("ready");
@@ -44,8 +38,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void ReadyTagPredicate_MatchesNonEmptySet()
-    {
+    public void ReadyTagPredicate_MatchesNonEmptySet() {
         // FMA-1 prevention: verify "ready" tag predicate matches at least 1 check
         // A tag typo would silently return Healthy for zero matches
         var options = GetHealthCheckOptions();
@@ -55,8 +48,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void ReadyTagPredicate_ExcludesSelfLivenessCheck()
-    {
+    public void ReadyTagPredicate_ExcludesSelfLivenessCheck() {
         // The "self" check tagged "live" must NOT appear in readiness evaluation
         var options = GetHealthCheckOptions();
         Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("ready");
@@ -67,8 +59,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void LiveTagPredicate_StillMatchesSelfCheckOnly()
-    {
+    public void LiveTagPredicate_StillMatchesSelfCheckOnly() {
         // Backward compatibility: /alive must still use "live" tag predicate
         var options = GetHealthCheckOptions();
         Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("live");
@@ -80,8 +71,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void SidecarDown_ResultsInUnhealthyStatus()
-    {
+    public void SidecarDown_ResultsInUnhealthyStatus() {
         // Sidecar has failureStatus: Unhealthy -> /ready returns 503
         var options = GetHealthCheckOptions();
         var sidecar = options.Registrations.First(r => r.Name == "dapr-sidecar");
@@ -90,8 +80,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void StateStoreDown_ResultsInUnhealthyStatus()
-    {
+    public void StateStoreDown_ResultsInUnhealthyStatus() {
         // State store has failureStatus: Unhealthy -> /ready returns 503
         var options = GetHealthCheckOptions();
         var stateStore = options.Registrations.First(r => r.Name == "dapr-statestore");
@@ -100,8 +89,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void PubSubDown_ResultsInDegradedStatus()
-    {
+    public void PubSubDown_ResultsInDegradedStatus() {
         // Pub/sub has failureStatus: Degraded -> /ready returns 200 Degraded
         var options = GetHealthCheckOptions();
         var pubsub = options.Registrations.First(r => r.Name == "dapr-pubsub");
@@ -110,8 +98,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void ConfigStoreDown_ResultsInDegradedStatus()
-    {
+    public void ConfigStoreDown_ResultsInDegradedStatus() {
         // Config store has failureStatus: Degraded -> /ready returns 200 Degraded
         var options = GetHealthCheckOptions();
         var configStore = options.Registrations.First(r => r.Name == "dapr-configstore");
@@ -120,11 +107,9 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void HealthyStatusCode_Maps200()
-    {
+    public void HealthyStatusCode_Maps200() {
         // Verify status code mapping: Healthy -> 200
-        var statusCodes = new Dictionary<HealthStatus, int>
-        {
+        var statusCodes = new Dictionary<HealthStatus, int> {
             [HealthStatus.Healthy] = StatusCodes.Status200OK,
             [HealthStatus.Degraded] = StatusCodes.Status200OK,
             [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
@@ -134,11 +119,9 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void DegradedStatusCode_Maps200()
-    {
+    public void DegradedStatusCode_Maps200() {
         // Verify status code mapping: Degraded -> 200
-        var statusCodes = new Dictionary<HealthStatus, int>
-        {
+        var statusCodes = new Dictionary<HealthStatus, int> {
             [HealthStatus.Healthy] = StatusCodes.Status200OK,
             [HealthStatus.Degraded] = StatusCodes.Status200OK,
             [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
@@ -148,11 +131,9 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void UnhealthyStatusCode_Maps503()
-    {
+    public void UnhealthyStatusCode_Maps503() {
         // Verify status code mapping: Unhealthy -> 503
-        var statusCodes = new Dictionary<HealthStatus, int>
-        {
+        var statusCodes = new Dictionary<HealthStatus, int> {
             [HealthStatus.Healthy] = StatusCodes.Status200OK,
             [HealthStatus.Degraded] = StatusCodes.Status200OK,
             [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
@@ -162,8 +143,7 @@ public class ReadinessEndpointTests
     }
 
     [Fact]
-    public void ThreeEndpointStrategy_AllTagsAccountedFor()
-    {
+    public void ThreeEndpointStrategy_AllTagsAccountedFor() {
         // Verify the three-endpoint strategy: /health (all), /alive (live), /ready (ready)
         var options = GetHealthCheckOptions();
 

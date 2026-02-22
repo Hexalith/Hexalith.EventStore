@@ -21,8 +21,7 @@ public partial class DaprDomainServiceInvoker(
     DaprClient daprClient,
     IDomainServiceResolver resolver,
     IOptions<DomainServiceOptions> options,
-    ILogger<DaprDomainServiceInvoker> logger) : IDomainServiceInvoker
-{
+    ILogger<DaprDomainServiceInvoker> logger) : IDomainServiceInvoker {
     /// <summary>
     /// The command extension key used to specify the domain service version.
     /// </summary>
@@ -34,8 +33,7 @@ public partial class DaprDomainServiceInvoker(
     private static partial Regex VersionFormatRegex();
 
     /// <inheritdoc/>
-    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default)
-    {
+    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
 
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
@@ -46,8 +44,7 @@ public partial class DaprDomainServiceInvoker(
             .ResolveAsync(command.TenantId, command.Domain, version, cancellationToken)
             .ConfigureAwait(false);
 
-        if (registration is null)
-        {
+        if (registration is null) {
             throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
         }
 
@@ -69,30 +66,28 @@ public partial class DaprDomainServiceInvoker(
         ValidateResponseLimits(result, command.TenantId, command.Domain, options.Value);
 
         // Log no-op results as warning for telemetry (silent failure detection)
-        if (result.IsNoOp)
-        {
+        if (result.IsNoOp) {
             Log.DomainServiceNoOp(logger, registration.AppId, command.TenantId, command.Domain, command.CorrelationId);
         }
 
         string causationId = command.CausationId ?? command.CorrelationId;
         string resultType = result.IsSuccess ? "Success" : result.IsRejection ? "Rejection" : "NoOp";
-        
+
         Log.DomainServiceCompleted(
-            logger, 
-            registration.AppId, 
-            resultType, 
-            result.Events.Count, 
-            command.TenantId, 
-            command.Domain, 
-            version, 
-            command.CorrelationId, 
+            logger,
+            registration.AppId,
+            resultType,
+            result.Events.Count,
+            command.TenantId,
+            command.Domain,
+            version,
+            command.CorrelationId,
             causationId);
 
         return result;
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 3000,
             Level = LogLevel.Debug,
@@ -130,7 +125,7 @@ public partial class DaprDomainServiceInvoker(
             string domainServiceVersion,
             string correlationId,
             string causationId);
-        
+
         [LoggerMessage(
             EventId = 3003,
             Level = LogLevel.Information,
@@ -151,14 +146,12 @@ public partial class DaprDomainServiceInvoker(
     /// <param name="log">The logger for audit trail.</param>
     /// <returns>The validated, lowercase-normalized version string.</returns>
     /// <exception cref="ArgumentException">Thrown when the version format is invalid.</exception>
-    public static string ExtractVersion(CommandEnvelope command, ILogger log)
-    {
+    public static string ExtractVersion(CommandEnvelope command, ILogger log) {
         ArgumentNullException.ThrowIfNull(command);
 
         if (command.Extensions is null ||
             !command.Extensions.TryGetValue(DomainServiceVersionExtensionKey, out string? versionValue) ||
-            string.IsNullOrWhiteSpace(versionValue))
-        {
+            string.IsNullOrWhiteSpace(versionValue)) {
             Log.DefaultVersionUsed(log, DefaultVersion, command.TenantId, command.Domain, command.CorrelationId);
             return DefaultVersion;
         }
@@ -173,10 +166,8 @@ public partial class DaprDomainServiceInvoker(
     /// </summary>
     /// <param name="version">The version string to validate.</param>
     /// <exception cref="ArgumentException">Thrown when the version format is invalid.</exception>
-    public static void ValidateVersionFormat(string version)
-    {
-        if (!VersionFormatRegex().IsMatch(version))
-        {
+    public static void ValidateVersionFormat(string version) {
+        if (!VersionFormatRegex().IsMatch(version)) {
             throw new ArgumentException(
                 $"Invalid domain service version format '{version}'. Version must match pattern 'v{{number}}' (e.g., v1, v2, v10).",
                 nameof(version));
@@ -191,14 +182,12 @@ public partial class DaprDomainServiceInvoker(
     /// <param name="domain">The domain name for error reporting.</param>
     /// <param name="opts">The domain service options with configured limits.</param>
     /// <exception cref="DomainServiceException">Thrown when the response exceeds configured limits.</exception>
-    public static void ValidateResponseLimits(DomainResult result, string tenantId, string domain, DomainServiceOptions opts)
-    {
+    public static void ValidateResponseLimits(DomainResult result, string tenantId, string domain, DomainServiceOptions opts) {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(opts);
 
         // Check event count limit
-        if (result.Events.Count > opts.MaxEventsPerResult)
-        {
+        if (result.Events.Count > opts.MaxEventsPerResult) {
             throw new DomainServiceException(
                 tenantId,
                 domain,
@@ -208,12 +197,10 @@ public partial class DaprDomainServiceInvoker(
 
         // Check individual event payload size (reuse stream to avoid per-event byte[] allocations)
         using var sizeStream = new MemoryStream();
-        foreach (IEventPayload eventPayload in result.Events)
-        {
+        foreach (IEventPayload eventPayload in result.Events) {
             sizeStream.SetLength(0);
             JsonSerializer.Serialize(sizeStream, eventPayload, eventPayload.GetType());
-            if (sizeStream.Length > opts.MaxEventSizeBytes)
-            {
+            if (sizeStream.Length > opts.MaxEventSizeBytes) {
                 throw new DomainServiceException(
                     tenantId,
                     domain,

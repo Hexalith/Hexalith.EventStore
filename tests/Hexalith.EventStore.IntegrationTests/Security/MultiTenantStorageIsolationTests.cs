@@ -24,8 +24,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// IdempotencyChecker, AggregateIdentity) without requiring DAPR runtime. Classified as integration
 /// tests because they validate cross-component behavior, not individual class logic.
 /// </summary>
-public class MultiTenantStorageIsolationTests
-{
+public class MultiTenantStorageIsolationTests {
     private sealed record OrderCreated(string OrderId, decimal Amount) : IEventPayload;
 
     private sealed record OrderItemAdded(string ItemId) : IEventPayload;
@@ -46,8 +45,7 @@ public class MultiTenantStorageIsolationTests
         UserId: "test-user",
         Extensions: null);
 
-    private static (EventPersister Persister, EventStreamReader Reader, InMemoryStateManager StateManager) CreatePipelineForTenant()
-    {
+    private static (EventPersister Persister, EventStreamReader Reader, InMemoryStateManager StateManager) CreatePipelineForTenant() {
         var stateManager = new InMemoryStateManager();
         var persisterLogger = Substitute.For<ILogger<EventPersister>>();
         var readerLogger = Substitute.For<ILogger<EventStreamReader>>();
@@ -60,8 +58,7 @@ public class MultiTenantStorageIsolationTests
     // --- 3.2: Commands for tenant-a and tenant-b produce events with non-overlapping state store keys ---
 
     [Fact]
-    public async Task TwoTenants_ProduceNonOverlappingStateStoreKeys()
-    {
+    public async Task TwoTenants_ProduceNonOverlappingStateStoreKeys() {
         // Arrange - each tenant gets its own state manager (simulating separate actor instances)
         (EventPersister persisterA, _, InMemoryStateManager stateManagerA) = CreatePipelineForTenant();
         (EventPersister persisterB, _, InMemoryStateManager stateManagerB) = CreatePipelineForTenant();
@@ -88,14 +85,12 @@ public class MultiTenantStorageIsolationTests
         IEnumerable<string> keysA = stateManagerA.CommittedState.Keys;
         IEnumerable<string> keysB = stateManagerB.CommittedState.Keys;
 
-        foreach (string key in keysA)
-        {
+        foreach (string key in keysA) {
             StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(key, "tenant-a");
             key.ShouldNotStartWith("tenant-b:");
         }
 
-        foreach (string key in keysB)
-        {
+        foreach (string key in keysB) {
             StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(key, "tenant-b");
             key.ShouldNotStartWith("tenant-a:");
         }
@@ -108,8 +103,7 @@ public class MultiTenantStorageIsolationTests
     // --- 3.3: Actor for tenant-a cannot access state store keys belonging to tenant-b ---
 
     [Fact]
-    public async Task TenantA_CannotAccess_TenantB_StateStoreKeys()
-    {
+    public async Task TenantA_CannotAccess_TenantB_StateStoreKeys() {
         // Arrange - separate state managers simulate DAPR actor scope isolation
         (EventPersister persisterA, EventStreamReader readerA, InMemoryStateManager stateManagerA) = CreatePipelineForTenant();
         (EventPersister persisterB, _, InMemoryStateManager stateManagerB) = CreatePipelineForTenant();
@@ -137,8 +131,7 @@ public class MultiTenantStorageIsolationTests
     // --- 3.4: Idempotency records for tenant-a are invisible to tenant-b's actor instance ---
 
     [Fact]
-    public async Task IdempotencyRecords_ForTenantA_InvisibleTo_TenantB()
-    {
+    public async Task IdempotencyRecords_ForTenantA_InvisibleTo_TenantB() {
         // Arrange - separate state managers per actor instance
         var stateManagerA = new InMemoryStateManager();
         var stateManagerB = new InMemoryStateManager();
@@ -167,8 +160,7 @@ public class MultiTenantStorageIsolationTests
     // --- 3.5: Full pipeline test -- submit commands for two tenants, verify complete key isolation ---
 
     [Fact]
-    public async Task FullPipeline_TwoTenants_CompleteKeyIsolation()
-    {
+    public async Task FullPipeline_TwoTenants_CompleteKeyIsolation() {
         // Arrange
         (EventPersister persisterA, EventStreamReader readerA, InMemoryStateManager stateManagerA) = CreatePipelineForTenant();
         (EventPersister persisterB, EventStreamReader readerB, InMemoryStateManager stateManagerB) = CreatePipelineForTenant();
@@ -219,8 +211,7 @@ public class MultiTenantStorageIsolationTests
     // --- 3.6: NEGATIVE -- explicitly attempt to read tenant-b's event from tenant-a's actor ---
 
     [Fact]
-    public async Task Negative_ReadTenantBEvent_FromTenantAContext_ReturnsNull()
-    {
+    public async Task Negative_ReadTenantBEvent_FromTenantAContext_ReturnsNull() {
         // Arrange
         (EventPersister persisterB, _, InMemoryStateManager stateManagerB) = CreatePipelineForTenant();
         var stateManagerA = new InMemoryStateManager();
@@ -246,8 +237,7 @@ public class MultiTenantStorageIsolationTests
     // --- 3.7: NEGATIVE -- submit command for tenant-a, verify tenant-b cannot retrieve events ---
 
     [Fact]
-    public async Task Negative_SubmitForTenantA_TenantB_CannotRetrieveEvents()
-    {
+    public async Task Negative_SubmitForTenantA_TenantB_CannotRetrieveEvents() {
         // Arrange
         (EventPersister persisterA, _, InMemoryStateManager stateManagerA) = CreatePipelineForTenant();
         var stateManagerB = new InMemoryStateManager();

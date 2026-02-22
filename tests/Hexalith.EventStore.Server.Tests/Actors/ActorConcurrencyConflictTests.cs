@@ -14,12 +14,10 @@ using Shouldly;
 /// Validates ETag-based concurrency conflict detection on aggregate metadata key.
 /// </summary>
 [Collection("DaprTestContainer")]
-public class ActorConcurrencyConflictTests
-{
+public class ActorConcurrencyConflictTests {
     private readonly DaprTestContainerFixture _fixture;
 
-    public ActorConcurrencyConflictTests(DaprTestContainerFixture fixture)
-    {
+    public ActorConcurrencyConflictTests(DaprTestContainerFixture fixture) {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -29,11 +27,9 @@ public class ActorConcurrencyConflictTests
     /// Sequential commands to the same aggregate should succeed (no conflict).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_SequentialCommands_NoConflict()
-    {
+    public async Task ProcessCommandAsync_SequentialCommands_NoConflict() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -43,8 +39,7 @@ public class ActorConcurrencyConflictTests
             nameof(AggregateActor));
 
         // Act - send multiple commands sequentially
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             var command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -66,11 +61,9 @@ public class ActorConcurrencyConflictTests
     /// (Dapr's turn-based concurrency model prevents conflicts at the actor level).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_RapidSequentialCommands_AllSucceed()
-    {
+    public async Task ProcessCommandAsync_RapidSequentialCommands_AllSucceed() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -81,8 +74,7 @@ public class ActorConcurrencyConflictTests
 
         // Act - fire multiple commands as quickly as possible
         var tasks = new List<Task<CommandProcessingResult>>();
-        for (int i = 0; i < 3; i++)
-        {
+        for (int i = 0; i < 3; i++) {
             var command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -96,8 +88,7 @@ public class ActorConcurrencyConflictTests
         CommandProcessingResult[] results = await Task.WhenAll(tasks);
 
         // Assert - all should succeed (Dapr serializes calls to the same actor)
-        foreach (CommandProcessingResult result in results)
-        {
+        foreach (CommandProcessingResult result in results) {
             result.Accepted.ShouldBeTrue("All commands to same actor should succeed (turn-based concurrency)");
         }
     }

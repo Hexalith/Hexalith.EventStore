@@ -23,8 +23,7 @@ using Microsoft.Extensions.Logging;
 [Route("api/v1/commands/status")]
 public class CommandStatusController(
     ICommandStatusStore statusStore,
-    ILogger<CommandStatusController> logger) : ControllerBase
-{
+    ILogger<CommandStatusController> logger) : ControllerBase {
     /// <summary>
     /// Gets the current processing status of a command by correlation ID.
     /// Tenant-scoped: only returns status for the authenticated user's authorized tenants (SEC-3).
@@ -36,8 +35,7 @@ public class CommandStatusController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
-    public async Task<IActionResult> GetStatus(string correlationId, CancellationToken cancellationToken)
-    {
+    public async Task<IActionResult> GetStatus(string correlationId, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(correlationId);
 
         using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
@@ -47,11 +45,9 @@ public class CommandStatusController(
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? correlationId;
 
-        try
-        {
+        try {
             // Validate GUID format
-            if (!Guid.TryParse(correlationId, out _))
-            {
+            if (!Guid.TryParse(correlationId, out _)) {
                 activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId");
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
@@ -69,8 +65,7 @@ public class CommandStatusController(
                 .Where(v => !string.IsNullOrWhiteSpace(v))
                 .ToList();
 
-            if (tenantClaims.Count == 0)
-            {
+            if (tenantClaims.Count == 0) {
                 logger.LogWarning(
                     "Status query denied: no tenant claims. CorrelationId={CorrelationId}",
                     requestCorrelationId);
@@ -84,16 +79,14 @@ public class CommandStatusController(
             }
 
             // Try each authorized tenant (SEC-3: command could be under any authorized tenant)
-            foreach (string tenant in tenantClaims)
-            {
+            foreach (string tenant in tenantClaims) {
                 activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant);
 
                 CommandStatusRecord? record = await statusStore
                     .ReadStatusAsync(tenant, correlationId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (record is not null)
-                {
+                if (record is not null) {
                     logger.LogDebug(
                         "Status found: CorrelationId={CorrelationId}, Tenant={Tenant}, Status={Status}",
                         correlationId,
@@ -118,18 +111,15 @@ public class CommandStatusController(
                 $"No command status found for correlation ID '{correlationId}'.",
                 requestCorrelationId);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             activity?.AddException(ex);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
     }
 
-    private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId)
-    {
-        var problemDetails = new ProblemDetails
-        {
+    private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId) {
+        var problemDetails = new ProblemDetails {
             Status = statusCode,
             Title = title,
             Type = "https://tools.ietf.org/html/rfc9457#section-3",

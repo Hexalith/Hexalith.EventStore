@@ -11,22 +11,18 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class DaprPubSubHealthCheckTests
-{
+public class DaprPubSubHealthCheckTests {
     private const string PubSubName = "pubsub";
 
-    private static HealthCheckContext CreateContext(HealthStatus failureStatus = HealthStatus.Degraded)
-    {
+    private static HealthCheckContext CreateContext(HealthStatus failureStatus = HealthStatus.Degraded) {
         var healthCheck = Substitute.For<IHealthCheck>();
-        return new HealthCheckContext
-        {
+        return new HealthCheckContext {
             Registration = new HealthCheckRegistration(
                 "dapr-pubsub", healthCheck, failureStatus, ["ready"]),
         };
     }
 
-    private static DaprMetadata CreateMetadata(params DaprComponentsMetadata[] components)
-    {
+    private static DaprMetadata CreateMetadata(params DaprComponentsMetadata[] components) {
         return new DaprMetadata(
             id: "test-app",
             actors: [],
@@ -35,8 +31,7 @@ public class DaprPubSubHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_PubSubComponentFound_ReturnsHealthy()
-    {
+    public async Task CheckHealth_PubSubComponentFound_ReturnsHealthy() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         var metadata = CreateMetadata(new DaprComponentsMetadata(PubSubName, "pubsub.redis", "v1", []));
@@ -54,8 +49,7 @@ public class DaprPubSubHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_PubSubComponentNotFound_ReturnsDegraded()
-    {
+    public async Task CheckHealth_PubSubComponentNotFound_ReturnsDegraded() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         var metadata = CreateMetadata(new DaprComponentsMetadata("other", "state.redis", "v1", []));
@@ -72,8 +66,7 @@ public class DaprPubSubHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_MetadataCallFails_ReturnsDegraded()
-    {
+    public async Task CheckHealth_MetadataCallFails_ReturnsDegraded() {
         // Arrange
         var daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
@@ -89,8 +82,7 @@ public class DaprPubSubHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealth_WrongComponentType_ReturnsDegraded()
-    {
+    public async Task CheckHealth_WrongComponentType_ReturnsDegraded() {
         // Arrange -- component name matches but type is not pubsub.*
         var daprClient = Substitute.For<DaprClient>();
         var metadata = CreateMetadata(new DaprComponentsMetadata(PubSubName, "state.redis", "v1", []));

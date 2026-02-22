@@ -7,8 +7,7 @@ using Hexalith.EventStore.Server.Actors;
 /// Tracks all checkpoint, load, and cleanup calls for test assertions.
 /// Supports configurable existing pipeline state for resume testing.
 /// </summary>
-public sealed class FakeActorStateMachine : IActorStateMachine
-{
+public sealed class FakeActorStateMachine : IActorStateMachine {
     private readonly Dictionary<string, PipelineState> _states = [];
     private readonly List<(string Key, PipelineState State)> _checkpointCalls = [];
     private readonly List<(string Prefix, string CorrelationId)> _loadCalls = [];
@@ -29,16 +28,14 @@ public sealed class FakeActorStateMachine : IActorStateMachine
     /// <summary>
     /// Seeds an existing pipeline state for resume testing.
     /// </summary>
-    public void SeedPipelineState(string pipelineKeyPrefix, PipelineState state)
-    {
+    public void SeedPipelineState(string pipelineKeyPrefix, PipelineState state) {
         ArgumentNullException.ThrowIfNull(state);
         string key = $"{pipelineKeyPrefix}{state.CorrelationId}";
         _states[key] = state;
     }
 
     /// <inheritdoc/>
-    public Task CheckpointAsync(string pipelineKeyPrefix, PipelineState state)
-    {
+    public Task CheckpointAsync(string pipelineKeyPrefix, PipelineState state) {
         ArgumentNullException.ThrowIfNull(state);
         string key = $"{pipelineKeyPrefix}{state.CorrelationId}";
         _checkpointCalls.Add((key, state));
@@ -47,16 +44,14 @@ public sealed class FakeActorStateMachine : IActorStateMachine
     }
 
     /// <inheritdoc/>
-    public Task<PipelineState?> LoadPipelineStateAsync(string pipelineKeyPrefix, string correlationId)
-    {
+    public Task<PipelineState?> LoadPipelineStateAsync(string pipelineKeyPrefix, string correlationId) {
         _loadCalls.Add((pipelineKeyPrefix, correlationId));
         string key = $"{pipelineKeyPrefix}{correlationId}";
         return Task.FromResult(_states.TryGetValue(key, out PipelineState? state) ? state : null);
     }
 
     /// <inheritdoc/>
-    public Task CleanupPipelineAsync(string pipelineKeyPrefix, string correlationId)
-    {
+    public Task CleanupPipelineAsync(string pipelineKeyPrefix, string correlationId) {
         _cleanupCalls.Add((pipelineKeyPrefix, correlationId));
         string key = $"{pipelineKeyPrefix}{correlationId}";
         _states.Remove(key);

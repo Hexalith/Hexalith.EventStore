@@ -1,10 +1,8 @@
 namespace Hexalith.EventStore.Server.Tests;
 
-public class BuildVerificationTests
-{
+public class BuildVerificationTests {
     [Fact]
-    public void Project_IsConfigured()
-    {
+    public void Project_IsConfigured() {
         Assert.True(true);
     }
 }

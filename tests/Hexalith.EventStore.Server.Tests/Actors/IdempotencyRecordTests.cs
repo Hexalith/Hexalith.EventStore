@@ -6,11 +6,9 @@ using Hexalith.EventStore.Server.Actors;
 
 using Shouldly;
 
-public class IdempotencyRecordTests
-{
+public class IdempotencyRecordTests {
     [Fact]
-    public void FromResult_MapsAllFields()
-    {
+    public void FromResult_MapsAllFields() {
         // Arrange
         var result = new CommandProcessingResult(Accepted: true, ErrorMessage: null, CorrelationId: "corr-123");
 
@@ -26,8 +24,7 @@ public class IdempotencyRecordTests
     }
 
     [Fact]
-    public void ToResult_ReconstructsCommandProcessingResult()
-    {
+    public void ToResult_ReconstructsCommandProcessingResult() {
         // Arrange
         var record = new IdempotencyRecord("cause-1", "corr-1", true, null, DateTimeOffset.UtcNow);
 
@@ -41,8 +38,7 @@ public class IdempotencyRecordTests
     }
 
     [Fact]
-    public void ToResult_WithError_ReconstructsCorrectly()
-    {
+    public void ToResult_WithError_ReconstructsCorrectly() {
         // Arrange
         var record = new IdempotencyRecord("cause-1", "corr-1", false, "Something failed", DateTimeOffset.UtcNow);
 
@@ -56,8 +52,7 @@ public class IdempotencyRecordTests
     }
 
     [Fact]
-    public void JsonRoundtrip_PreservesAllFields()
-    {
+    public void JsonRoundtrip_PreservesAllFields() {
         // Arrange
         var original = new IdempotencyRecord(
             "cause-abc",

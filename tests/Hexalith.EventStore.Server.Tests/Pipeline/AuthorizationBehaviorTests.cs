@@ -15,13 +15,11 @@ using NSubstitute;
 
 using Shouldly;
 
-public class AuthorizationBehaviorTests
-{
+public class AuthorizationBehaviorTests {
     private readonly List<LogEntry> _logEntries = [];
     private readonly TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>> _logger;
 
-    public AuthorizationBehaviorTests()
-    {
+    public AuthorizationBehaviorTests() {
         _logger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
     }
 
@@ -41,8 +39,7 @@ public class AuthorizationBehaviorTests
     private static RequestHandlerDelegate<SubmitCommandResult> CreateSuccessDelegate() =>
         new((_) => Task.FromResult(new SubmitCommandResult("test-correlation-id")));
 
-    private AuthorizationBehavior<SubmitCommand, SubmitCommandResult> CreateBehavior(ClaimsPrincipal principal)
-    {
+    private AuthorizationBehavior<SubmitCommand, SubmitCommandResult> CreateBehavior(ClaimsPrincipal principal) {
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "test-correlation-id";
         var accessor = Substitute.For<IHttpContextAccessor>();
@@ -53,29 +50,22 @@ public class AuthorizationBehaviorTests
     private static ClaimsPrincipal CreatePrincipal(
         string[]? tenants = null,
         string[]? domains = null,
-        string[]? permissions = null)
-    {
+        string[]? permissions = null) {
         var claims = new List<Claim>();
-        if (tenants is not null)
-        {
-            foreach (string t in tenants)
-            {
+        if (tenants is not null) {
+            foreach (string t in tenants) {
                 claims.Add(new Claim("eventstore:tenant", t));
             }
         }
 
-        if (domains is not null)
-        {
-            foreach (string d in domains)
-            {
+        if (domains is not null) {
+            foreach (string d in domains) {
                 claims.Add(new Claim("eventstore:domain", d));
             }
         }
 
-        if (permissions is not null)
-        {
-            foreach (string p in permissions)
-            {
+        if (permissions is not null) {
+            foreach (string p in permissions) {
                 claims.Add(new Claim("eventstore:permission", p));
             }
         }
@@ -84,8 +74,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithMatchingDomain_Succeeds()
-    {
+    public async Task AuthorizationBehavior_UserWithMatchingDomain_Succeeds() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["test-domain"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -100,8 +89,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithNoDomainClaims_Succeeds()
-    {
+    public async Task AuthorizationBehavior_UserWithNoDomainClaims_Succeeds() {
         // Arrange - no domain claims means all domains authorized (AC #5)
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -115,8 +103,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithWrongDomain_ThrowsAuthorizationException()
-    {
+    public async Task AuthorizationBehavior_UserWithWrongDomain_ThrowsAuthorizationException() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["other-domain"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -131,8 +118,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithMatchingPermission_Succeeds()
-    {
+    public async Task AuthorizationBehavior_UserWithMatchingPermission_Succeeds() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], permissions: ["CreateOrder"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -146,8 +132,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithNoPermissionClaims_Succeeds()
-    {
+    public async Task AuthorizationBehavior_UserWithNoPermissionClaims_Succeeds() {
         // Arrange - no permission claims means all command types authorized (AC #5)
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -161,8 +146,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithWrongPermission_ThrowsAuthorizationException()
-    {
+    public async Task AuthorizationBehavior_UserWithWrongPermission_ThrowsAuthorizationException() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], permissions: ["OtherCommand"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -177,8 +161,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_UserWithWildcardPermission_Succeeds()
-    {
+    public async Task AuthorizationBehavior_UserWithWildcardPermission_Succeeds() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], permissions: ["commands:*"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -192,8 +175,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_NonSubmitCommandRequest_PassesThrough()
-    {
+    public async Task AuthorizationBehavior_NonSubmitCommandRequest_PassesThrough() {
         // Arrange - use a non-SubmitCommand MediatR request
         var httpContext = new DefaultHttpContext();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -211,8 +193,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_CaseInsensitiveDomainMatch_Succeeds()
-    {
+    public async Task AuthorizationBehavior_CaseInsensitiveDomainMatch_Succeeds() {
         // Arrange - domain claim in different case
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["TEST-DOMAIN"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -226,8 +207,7 @@ public class AuthorizationBehaviorTests
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_FailedAuth_LogsWarningWithoutJwtToken()
-    {
+    public async Task AuthorizationBehavior_FailedAuth_LogsWarningWithoutJwtToken() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["other-domain"]);
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
@@ -244,8 +224,7 @@ public class AuthorizationBehaviorTests
         warningLog.Message.ShouldContain("test-domain");
 
         // JWT token content must never appear in logs (NFR11)
-        foreach (LogEntry entry in _logEntries)
-        {
+        foreach (LogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("Bearer");
             entry.Message.ShouldNotContain("eyJ"); // JWT prefix
         }
@@ -256,14 +235,12 @@ public class AuthorizationBehaviorTests
 
     public record PingResponse;
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

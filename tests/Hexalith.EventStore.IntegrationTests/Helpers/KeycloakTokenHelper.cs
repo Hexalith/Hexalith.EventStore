@@ -7,8 +7,7 @@ using System.Text.Json;
 /// Acquires real OIDC tokens from Keycloak via Resource Owner Password Grant (D11).
 /// Used by E2E security tests to obtain JWT access tokens from a running Keycloak instance.
 /// </summary>
-public static class KeycloakTokenHelper
-{
+public static class KeycloakTokenHelper {
     // Shared HttpClient for token acquisition. Static to avoid socket exhaustion
     // when multiple E2E tests acquire tokens (the well-known .NET HttpClient anti-pattern).
     // Safe for concurrent use since HttpClient is thread-safe for SendAsync/PostAsync.
@@ -26,8 +25,7 @@ public static class KeycloakTokenHelper
         string tokenEndpoint,
         string clientId,
         string username,
-        string password)
-    {
+        string password) {
         using var content = new FormUrlEncodedContent(
         [
             new KeyValuePair<string, string>("grant_type", "password"),
@@ -43,8 +41,7 @@ public static class KeycloakTokenHelper
             .ReadAsStringAsync()
             .ConfigureAwait(false);
 
-        if (!response.IsSuccessStatusCode)
-        {
+        if (!response.IsSuccessStatusCode) {
             throw new HttpRequestException(
                 $"Keycloak token acquisition failed ({(int)response.StatusCode} {response.StatusCode}). "
                 + $"Endpoint: {tokenEndpoint}. Response: {json}");

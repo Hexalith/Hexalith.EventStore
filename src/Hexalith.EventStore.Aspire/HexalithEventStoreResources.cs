@@ -1,6 +1,4 @@
-using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
-using Aspire.Hosting.Redis;
 
 using CommunityToolkit.Aspire.Hosting.Dapr;
 
@@ -18,5 +16,4 @@ public record HexalithEventStoreResources(
     IResourceBuilder<RedisResource> Redis,
     IResourceBuilder<IDaprComponentResource> StateStore,
     IResourceBuilder<IDaprComponentResource> PubSub,
-    IResourceBuilder<IDaprComponentResource> ConfigStore,
     IResourceBuilder<ProjectResource> CommandApi);

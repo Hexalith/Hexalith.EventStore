@@ -6,8 +6,7 @@ using Microsoft.Extensions.Options;
 /// Configuration options for JWT authentication.
 /// Bound from the "Authentication:JwtBearer" configuration section.
 /// </summary>
-public record EventStoreAuthenticationOptions
-{
+public record EventStoreAuthenticationOptions {
     /// <summary>
     /// Gets the OIDC authority URL for production (e.g., "https://login.example.com").
     /// When set, uses OIDC discovery to fetch signing keys.
@@ -42,32 +41,26 @@ public record EventStoreAuthenticationOptions
 /// Ensures either Authority (production) or SigningKey (development) is provided,
 /// and that Issuer and Audience are always set.
 /// </summary>
-public class ValidateEventStoreAuthenticationOptions : IValidateOptions<EventStoreAuthenticationOptions>
-{
-    public ValidateOptionsResult Validate(string? name, EventStoreAuthenticationOptions options)
-    {
+public class ValidateEventStoreAuthenticationOptions : IValidateOptions<EventStoreAuthenticationOptions> {
+    public ValidateOptionsResult Validate(string? name, EventStoreAuthenticationOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (string.IsNullOrEmpty(options.Authority) && string.IsNullOrEmpty(options.SigningKey))
-        {
+        if (string.IsNullOrEmpty(options.Authority) && string.IsNullOrEmpty(options.SigningKey)) {
             return ValidateOptionsResult.Fail(
                 "Authentication:JwtBearer requires either 'Authority' (production OIDC) or 'SigningKey' (development symmetric key) to be configured.");
         }
 
-        if (string.IsNullOrEmpty(options.Issuer))
-        {
+        if (string.IsNullOrEmpty(options.Issuer)) {
             return ValidateOptionsResult.Fail(
                 "Authentication:JwtBearer:Issuer must be configured.");
         }
 
-        if (string.IsNullOrEmpty(options.Audience))
-        {
+        if (string.IsNullOrEmpty(options.Audience)) {
             return ValidateOptionsResult.Fail(
                 "Authentication:JwtBearer:Audience must be configured.");
         }
 
-        if (!string.IsNullOrEmpty(options.SigningKey) && options.SigningKey.Length < 32)
-        {
+        if (!string.IsNullOrEmpty(options.SigningKey) && options.SigningKey.Length < 32) {
             return ValidateOptionsResult.Fail(
                 "Authentication:JwtBearer:SigningKey must be at least 32 characters (256 bits) for HS256.");
         }

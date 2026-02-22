@@ -20,29 +20,25 @@ public partial class EventPublisher(
     DaprClient daprClient,
     IOptions<EventPublisherOptions> options,
     ILogger<EventPublisher> logger,
-    ITopicNameValidator? topicNameValidator = null) : IEventPublisher
-{
+    ITopicNameValidator? topicNameValidator = null) : IEventPublisher {
     /// <inheritdoc/>
     public async Task<EventPublishResult> PublishEventsAsync(
         AggregateIdentity identity,
         IReadOnlyList<EventEnvelope> events,
         string correlationId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
-        if (events.Count == 0)
-        {
+        if (events.Count == 0) {
             return new EventPublishResult(true, 0, null);
         }
 
         string pubSubName = options.Value.PubSubName;
         string topic = identity.PubSubTopic;
 
-        if (topicNameValidator is not null && !topicNameValidator.IsValidTopicName(topic))
-        {
+        if (topicNameValidator is not null && !topicNameValidator.IsValidTopicName(topic)) {
             logger.LogError(
                 "Invalid topic name: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, Topic={Topic}",
                 correlationId,
@@ -67,14 +63,11 @@ public partial class EventPublisher(
         long startTicks = Stopwatch.GetTimestamp();
         int publishedCount = 0;
 
-        try
-        {
-            for (int i = 0; i < events.Count; i++)
-            {
+        try {
+            for (int i = 0; i < events.Count; i++) {
                 EventEnvelope eventEnvelope = events[i];
 
-                var metadata = new Dictionary<string, string>
-                {
+                var metadata = new Dictionary<string, string> {
                     ["cloudevent.type"] = eventEnvelope.EventTypeName,
                     ["cloudevent.source"] = $"hexalith-eventstore/{identity.TenantId}/{identity.Domain}",
                     ["cloudevent.id"] = $"{correlationId}:{eventEnvelope.SequenceNumber}",
@@ -99,12 +92,10 @@ public partial class EventPublisher(
             activity?.SetStatus(ActivityStatusCode.Ok);
             return new EventPublishResult(true, publishedCount, null);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             // Rule #13: No stack traces in error responses.
             // Rule #5: Never log event payload data.
             Log.EventPublicationFailed(logger, ex, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, topic, publishedCount, events.Count);
@@ -115,8 +106,7 @@ public partial class EventPublisher(
         }
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 3100,
             Level = LogLevel.Information,

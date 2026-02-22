@@ -11,8 +11,7 @@ using NSubstitute;
 
 using Shouldly;
 
-public class EventStreamReaderTests
-{
+public class EventStreamReaderTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateTestEvent(int seq) => new(
@@ -38,31 +37,26 @@ public class EventStreamReaderTests
         AggregateId: "agg-001",
         TenantId: "test-tenant");
 
-    private static (EventStreamReader Reader, IActorStateManager StateManager) CreateReader()
-    {
+    private static (EventStreamReader Reader, IActorStateManager StateManager) CreateReader() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<EventStreamReader>>();
         return (new EventStreamReader(stateManager, logger), stateManager);
     }
 
-    private static void ConfigureNoMetadata(IActorStateManager stateManager, AggregateIdentity identity)
-    {
+    private static void ConfigureNoMetadata(IActorStateManager stateManager, AggregateIdentity identity) {
         stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
     }
 
-    private static void ConfigureMetadata(IActorStateManager stateManager, AggregateIdentity identity, long currentSequence)
-    {
+    private static void ConfigureMetadata(IActorStateManager stateManager, AggregateIdentity identity, long currentSequence) {
         var metadata = new AggregateMetadata(currentSequence, DateTimeOffset.UtcNow, null);
         stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
     }
 
-    private static void ConfigureEvents(IActorStateManager stateManager, AggregateIdentity identity, int fromSeq, int toSeq)
-    {
+    private static void ConfigureEvents(IActorStateManager stateManager, AggregateIdentity identity, int fromSeq, int toSeq) {
         string keyPrefix = identity.EventStreamKeyPrefix;
-        for (int i = fromSeq; i <= toSeq; i++)
-        {
+        for (int i = fromSeq; i <= toSeq; i++) {
             int seq = i;
             stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq)));
@@ -75,8 +69,7 @@ public class EventStreamReaderTests
     // === Existing tests updated for RehydrationResult return type ===
 
     [Fact]
-    public async Task RehydrateAsync_NewAggregate_ReturnsNull()
-    {
+    public async Task RehydrateAsync_NewAggregate_ReturnsNull() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureNoMetadata(stateManager, TestIdentity);
@@ -89,8 +82,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_ExistingAggregate_ReadsEventsFromSequence1()
-    {
+    public async Task RehydrateAsync_ExistingAggregate_ReadsEventsFromSequence1() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 3);
@@ -111,8 +103,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_ExistingAggregate_UsesCorrectKeyPattern()
-    {
+    public async Task RehydrateAsync_ExistingAggregate_UsesCorrectKeyPattern() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 2);
@@ -129,8 +120,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_ThousandEvents_CompletesWithin100ms()
-    {
+    public async Task RehydrateAsync_ThousandEvents_CompletesWithin100ms() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 1000);
@@ -138,11 +128,9 @@ public class EventStreamReaderTests
         // Configure all 1000 events to return immediately (mock -- no real I/O)
         string keyPrefix = TestIdentity.EventStreamKeyPrefix;
         stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
+            .Returns(callInfo => {
                 string key = callInfo.Arg<string>();
-                if (key.StartsWith(keyPrefix, StringComparison.Ordinal))
-                {
+                if (key.StartsWith(keyPrefix, StringComparison.Ordinal)) {
                     int seq = int.Parse(key[keyPrefix.Length..]);
                     return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq));
                 }
@@ -162,8 +150,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_MissingEvent_ThrowsMissingEventException()
-    {
+    public async Task RehydrateAsync_MissingEvent_ThrowsMissingEventException() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 3);
@@ -186,8 +173,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_InvalidMetadata_NegativeSequence_ThrowsException()
-    {
+    public async Task RehydrateAsync_InvalidMetadata_NegativeSequence_ThrowsException() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         var metadata = new AggregateMetadata(-1, DateTimeOffset.UtcNow, null);
@@ -200,8 +186,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_InvalidMetadata_ZeroSequence_ThrowsException()
-    {
+    public async Task RehydrateAsync_InvalidMetadata_ZeroSequence_ThrowsException() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         var metadata = new AggregateMetadata(0, DateTimeOffset.UtcNow, null);
@@ -214,8 +199,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_NullIdentity_ThrowsArgumentNullException()
-    {
+    public async Task RehydrateAsync_NullIdentity_ThrowsArgumentNullException() {
         // Arrange
         (EventStreamReader reader, _) = CreateReader();
 
@@ -224,8 +208,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_EventsLoadedInOrder_VerifySequence()
-    {
+    public async Task RehydrateAsync_EventsLoadedInOrder_VerifySequence() {
         // Arrange
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 5);
@@ -236,8 +219,7 @@ public class EventStreamReaderTests
 
         // Assert
         result.ShouldNotBeNull();
-        for (int i = 0; i < result.Events.Count; i++)
-        {
+        for (int i = 0; i < result.Events.Count; i++) {
             result.Events[i].SequenceNumber.ShouldBe(i + 1);
         }
     }
@@ -245,8 +227,7 @@ public class EventStreamReaderTests
     // === Story 3.10: Snapshot-aware rehydration tests (Task 6) ===
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_ReadsOnlyTailEvents()
-    {
+    public async Task RehydrateAsync_WithSnapshot_ReadsOnlyTailEvents() {
         // Arrange -- AC #1: snapshot at 500, events 501-520
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 520);
@@ -275,8 +256,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_NoTailEvents_ReturnsSnapshotState()
-    {
+    public async Task RehydrateAsync_WithSnapshot_NoTailEvents_ReturnsSnapshotState() {
         // Arrange -- AC #8: snapshot at current sequence
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 500);
@@ -301,8 +281,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithoutSnapshot_FullReplay()
-    {
+    public async Task RehydrateAsync_WithoutSnapshot_FullReplay() {
         // Arrange -- AC #3: no snapshot, full replay
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 5);
@@ -321,8 +300,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_TailEventsInOrder()
-    {
+    public async Task RehydrateAsync_WithSnapshot_TailEventsInOrder() {
         // Arrange -- AC #9: strict sequence ordering
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 10);
@@ -335,15 +313,13 @@ public class EventStreamReaderTests
         // Assert
         result.ShouldNotBeNull();
         result.Events.Count.ShouldBe(5);
-        for (int i = 0; i < result.Events.Count; i++)
-        {
+        for (int i = 0; i < result.Events.Count; i++) {
             result.Events[i].SequenceNumber.ShouldBe(6 + i);
         }
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_ParallelReads()
-    {
+    public async Task RehydrateAsync_WithSnapshot_ParallelReads() {
         // Arrange -- AC #5: parallel reads maintained for tail events
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 105);
@@ -359,8 +335,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_CorrectKeyPattern()
-    {
+    public async Task RehydrateAsync_WithSnapshot_CorrectKeyPattern() {
         // Arrange -- AC #4: reads {tenant}:{domain}:{aggId}:events:{seq} for tail events
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 502);
@@ -378,8 +353,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_ReturnsCorrectRehydrationResult()
-    {
+    public async Task RehydrateAsync_WithSnapshot_ReturnsCorrectRehydrationResult() {
         // Arrange -- all fields populated correctly
         var snapshotState = new { ProjectedState = "test" };
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
@@ -401,8 +375,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_NewAggregate_NoSnapshotNoEvents_ReturnsNull()
-    {
+    public async Task RehydrateAsync_NewAggregate_NoSnapshotNoEvents_ReturnsNull() {
         // Arrange -- unchanged behavior for new aggregates
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureNoMetadata(stateManager, TestIdentity);
@@ -415,8 +388,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_WithSnapshot_MissingTailEvent_ThrowsMissingEventException()
-    {
+    public async Task RehydrateAsync_WithSnapshot_MissingTailEvent_ThrowsMissingEventException() {
         // Arrange -- gap detection in tail events
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 503);
@@ -438,19 +410,16 @@ public class EventStreamReaderTests
     // === Story 3.10: Performance tests (Task 7) ===
 
     [Fact]
-    public async Task RehydrateAsync_SnapshotPlusTailEvents_CompletesWithin50ms()
-    {
+    public async Task RehydrateAsync_SnapshotPlusTailEvents_CompletesWithin50ms() {
         // Arrange -- NFR4: p99 <50ms
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 10020);
 
         string keyPrefix = TestIdentity.EventStreamKeyPrefix;
         stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
+            .Returns(callInfo => {
                 string key = callInfo.Arg<string>();
-                if (key.StartsWith(keyPrefix, StringComparison.Ordinal))
-                {
+                if (key.StartsWith(keyPrefix, StringComparison.Ordinal)) {
                     int seq = int.Parse(key[keyPrefix.Length..]);
                     return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq));
                 }
@@ -472,8 +441,7 @@ public class EventStreamReaderTests
     }
 
     [Fact]
-    public async Task RehydrateAsync_SnapshotWithManyTailEvents_FasterThanFullReplay()
-    {
+    public async Task RehydrateAsync_SnapshotWithManyTailEvents_FasterThanFullReplay() {
         // Arrange -- comparative performance
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<EventStreamReader>>();
@@ -481,11 +449,9 @@ public class EventStreamReaderTests
 
         ConfigureMetadata(stateManager, TestIdentity, 10020);
         stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
+            .Returns(callInfo => {
                 string key = callInfo.Arg<string>();
-                if (key.StartsWith(keyPrefix, StringComparison.Ordinal))
-                {
+                if (key.StartsWith(keyPrefix, StringComparison.Ordinal)) {
                     int seq = int.Parse(key[keyPrefix.Length..]);
                     return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq));
                 }
@@ -515,8 +481,7 @@ public class EventStreamReaderTests
     // === Full replay backward compatibility (Task 9) ===
 
     [Fact]
-    public async Task RehydrateAsync_FullReplay_ReturnsRehydrationResultWithAllEvents()
-    {
+    public async Task RehydrateAsync_FullReplay_ReturnsRehydrationResultWithAllEvents() {
         // Arrange -- backward compatible: no snapshot yields full event list
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 3);

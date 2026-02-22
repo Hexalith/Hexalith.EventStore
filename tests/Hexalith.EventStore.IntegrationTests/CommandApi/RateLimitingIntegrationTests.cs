@@ -12,11 +12,9 @@ using Hexalith.EventStore.IntegrationTests.Helpers;
 using Shouldly;
 
 public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory factory)
-    : IClassFixture<RateLimitingWebApplicationFactory>
-{
+    : IClassFixture<RateLimitingWebApplicationFactory> {
     [Fact]
-    public async Task PostCommands_WithinRateLimit_Returns202()
-    {
+    public async Task PostCommands_WithinRateLimit_Returns202() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("rate-tenant-a");
 
@@ -28,8 +26,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_ExceedsRateLimit_Returns429ProblemDetails()
-    {
+    public async Task PostCommands_ExceedsRateLimit_Returns429ProblemDetails() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("rate-tenant-b");
 
@@ -48,8 +45,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_ExceedsRateLimit_IncludesRetryAfterHeader()
-    {
+    public async Task PostCommands_ExceedsRateLimit_IncludesRetryAfterHeader() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("rate-tenant-c");
 
@@ -64,8 +60,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_ExceedsRateLimit_IncludesCorrelationId()
-    {
+    public async Task PostCommands_ExceedsRateLimit_IncludesCorrelationId() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("rate-tenant-d");
 
@@ -81,8 +76,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_ExceedsRateLimit_IncludesTenantId()
-    {
+    public async Task PostCommands_ExceedsRateLimit_IncludesTenantId() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("rate-tenant-e");
 
@@ -99,8 +93,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_ExceedsRateLimit_ContentTypeIsProblemJson()
-    {
+    public async Task PostCommands_ExceedsRateLimit_ContentTypeIsProblemJson() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("rate-tenant-f");
 
@@ -115,8 +108,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_DifferentTenants_IndependentRateLimits()
-    {
+    public async Task PostCommands_DifferentTenants_IndependentRateLimits() {
         // Arrange
         HttpClient clientA = CreateAuthenticatedClient("tenant-iso-a");
         HttpClient clientB = CreateAuthenticatedClient("tenant-iso-b");
@@ -135,8 +127,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_NoAuthentication_Returns401BeforeRateLimit()
-    {
+    public async Task PostCommands_NoAuthentication_Returns401BeforeRateLimit() {
         // Arrange - no auth header
         HttpClient client = factory.CreateClient();
 
@@ -148,8 +139,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_RateLimitReset_AllowsRequestsAfterWindow()
-    {
+    public async Task PostCommands_RateLimitReset_AllowsRequestsAfterWindow() {
         // Arrange - exhaust rate limit, then verify 429, confirming rate limiting is enforced.
         // Note: A true window-reset test would require waiting for the full sliding window to expire
         // (60s with SegmentsPerWindow=1), which is too slow for CI. Instead, we verify the rate limiter
@@ -169,8 +159,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task PostCommands_TenantPartitioning_NotAllAnonymous()
-    {
+    public async Task PostCommands_TenantPartitioning_NotAllAnonymous() {
         // Arrange - Two different tenants, each with PermitLimit=2
         // If partitioning is broken (all going to "anonymous"), the 3rd request total would fail
         // With correct partitioning, each tenant gets their own counter
@@ -192,8 +181,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task HealthEndpoint_ExceedsRateLimit_StillReturns200()
-    {
+    public async Task HealthEndpoint_ExceedsRateLimit_StillReturns200() {
         // Arrange - exhaust rate limit for this tenant
         HttpClient client = CreateAuthenticatedClient("health-tenant");
         await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("health-tenant"));
@@ -210,8 +198,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     }
 
     [Fact]
-    public async Task AliveEndpoint_ExceedsRateLimit_StillReturns200()
-    {
+    public async Task AliveEndpoint_ExceedsRateLimit_StillReturns200() {
         // Arrange - exhaust rate limit for this tenant
         HttpClient client = CreateAuthenticatedClient("alive-tenant");
         await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("alive-tenant"));
@@ -227,8 +214,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         aliveResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    private static object CreateValidRequest(string tenant) => new
-    {
+    private static object CreateValidRequest(string tenant) => new {
         tenant,
         domain = "test-domain",
         aggregateId = $"agg-{Guid.NewGuid():N}",
@@ -236,8 +222,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         payload = new { value = 1 },
     };
 
-    private HttpClient CreateAuthenticatedClient(string tenant)
-    {
+    private HttpClient CreateAuthenticatedClient(string tenant) {
         HttpClient client = factory.CreateClient();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: [tenant], domains: ["test-domain"]);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

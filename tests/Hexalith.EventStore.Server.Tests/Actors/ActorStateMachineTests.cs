@@ -10,8 +10,7 @@ using NSubstitute;
 
 using Shouldly;
 
-public class ActorStateMachineTests
-{
+public class ActorStateMachineTests {
     private const string PipelineKeyPrefix = "test-tenant:test-domain:agg-001:pipeline:";
     private const string CorrelationId = "corr-123";
 
@@ -25,15 +24,13 @@ public class ActorStateMachineTests
         EventCount: null,
         RejectionEventType: null);
 
-    private static ActorStateMachine CreateStateMachine(InMemoryStateManager stateManager)
-    {
+    private static ActorStateMachine CreateStateMachine(InMemoryStateManager stateManager) {
         var logger = Substitute.For<ILogger<ActorStateMachine>>();
         return new ActorStateMachine(stateManager, logger);
     }
 
     [Fact]
-    public async Task Checkpoint_StoresCorrectPipelineState()
-    {
+    public async Task Checkpoint_StoresCorrectPipelineState() {
         // Arrange
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
@@ -53,8 +50,7 @@ public class ActorStateMachineTests
     }
 
     [Fact]
-    public async Task LoadPipelineState_ExistingPipeline_ReturnsState()
-    {
+    public async Task LoadPipelineState_ExistingPipeline_ReturnsState() {
         // Arrange
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
@@ -71,8 +67,7 @@ public class ActorStateMachineTests
     }
 
     [Fact]
-    public async Task LoadPipelineState_NoPipeline_ReturnsNull()
-    {
+    public async Task LoadPipelineState_NoPipeline_ReturnsNull() {
         // Arrange
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
@@ -85,8 +80,7 @@ public class ActorStateMachineTests
     }
 
     [Fact]
-    public async Task Cleanup_RemovesPipelineStateKey()
-    {
+    public async Task Cleanup_RemovesPipelineStateKey() {
         // Arrange
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
@@ -104,8 +98,7 @@ public class ActorStateMachineTests
     }
 
     [Fact]
-    public async Task PipelineKeyPattern_MatchesConvention()
-    {
+    public async Task PipelineKeyPattern_MatchesConvention() {
         // Arrange
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
@@ -121,8 +114,7 @@ public class ActorStateMachineTests
     }
 
     [Fact]
-    public async Task Checkpoint_OverwritesExistingState()
-    {
+    public async Task Checkpoint_OverwritesExistingState() {
         // Arrange -- simulate stage transition: Processing -> EventsStored
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
@@ -146,8 +138,7 @@ public class ActorStateMachineTests
     }
 
     [Fact]
-    public async Task Cleanup_NonexistentKey_DoesNotThrow()
-    {
+    public async Task Cleanup_NonexistentKey_DoesNotThrow() {
         // Arrange
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);

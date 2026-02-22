@@ -16,8 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 [Authorize]
 [Route("api/v1/commands")]
 [Consumes("application/json")]
-public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase
-{
+public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase {
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]
@@ -25,27 +24,23 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
-    public async Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken)
-    {
+    public async Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? Guid.NewGuid().ToString();
 
         // Store tenant in HttpContext for error handlers to include in ProblemDetails extensions
-        if (!string.IsNullOrEmpty(request.Tenant))
-        {
+        if (!string.IsNullOrEmpty(request.Tenant)) {
             HttpContext.Items["RequestTenantId"] = request.Tenant;
         }
 
         // Layer 3: Pre-pipeline tenant authorization (before MediatR pipeline)
-        if (HttpContext?.User is null)
-        {
+        if (HttpContext?.User is null) {
             return CreateForbiddenProblemDetails("Authentication context unavailable.", correlationId, request.Tenant);
         }
 
-        if (User.Identity?.IsAuthenticated != true)
-        {
+        if (User.Identity?.IsAuthenticated != true) {
             return CreateForbiddenProblemDetails("User is not authenticated.", correlationId, request.Tenant);
         }
 
@@ -54,14 +49,12 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
 
-        if (tenantClaims.Count == 0)
-        {
+        if (tenantClaims.Count == 0) {
             LogTenantAuthorizationFailure(correlationId, request.Tenant, request.CommandType, request.Domain, "No tenant claims");
             return CreateForbiddenProblemDetails("No tenant authorization claims found. Access denied.", correlationId, request.Tenant);
         }
 
-        if (!tenantClaims.Any(t => string.Equals(t, request.Tenant, StringComparison.Ordinal)))
-        {
+        if (!tenantClaims.Any(t => string.Equals(t, request.Tenant, StringComparison.Ordinal))) {
             LogTenantAuthorizationFailure(correlationId, request.Tenant, request.CommandType, request.Domain, "Tenant not authorized");
             return CreateForbiddenProblemDetails($"Not authorized to submit commands for tenant '{request.Tenant}'.", correlationId, request.Tenant);
         }
@@ -71,8 +64,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
 
         // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
         string userId = User.FindFirst("sub")?.Value ?? "unknown";
-        if (userId == "unknown")
-        {
+        if (userId == "unknown") {
             logger.LogWarning(
                 "JWT 'sub' claim missing for command submission. Using 'unknown' as UserId. CorrelationId={CorrelationId}. Check identity provider configuration.",
                 correlationId);
@@ -80,8 +72,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
 
         // SEC-4: Extension metadata sanitization at API gateway
         SanitizeResult sanitizeResult = extensionSanitizer.Sanitize(request.Extensions);
-        if (!sanitizeResult.IsSuccess)
-        {
+        if (!sanitizeResult.IsSuccess) {
             logger.LogWarning(
                 "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, Reason={Reason}",
                 "ExtensionMetadataRejected",
@@ -90,8 +81,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
                 request.Domain,
                 sanitizeResult.RejectionReason);
 
-            return new ObjectResult(new ProblemDetails
-            {
+            return new ObjectResult(new ProblemDetails {
                 Status = StatusCodes.Status400BadRequest,
                 Title = "Bad Request",
                 Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -102,8 +92,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
                     ["correlationId"] = correlationId,
                     ["tenantId"] = request.Tenant,
                 },
-            })
-            { StatusCode = StatusCodes.Status400BadRequest };
+            }) { StatusCode = StatusCodes.Status400BadRequest };
         }
 
         var command = new SubmitCommand(
@@ -126,10 +115,8 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         return Accepted(new SubmitCommandResponse(result.CorrelationId));
     }
 
-    private ObjectResult CreateForbiddenProblemDetails(string detail, string correlationId, string tenantId)
-    {
-        var problemDetails = new ProblemDetails
-        {
+    private ObjectResult CreateForbiddenProblemDetails(string detail, string correlationId, string tenantId) {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status403Forbidden,
             Title = "Forbidden",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -146,8 +133,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         return new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status403Forbidden };
     }
 
-    private void LogTenantAuthorizationFailure(string correlationId, string tenantId, string commandType, string domain, string reason)
-    {
+    private void LogTenantAuthorizationFailure(string correlationId, string tenantId, string commandType, string domain, string reason) {
         string? sourceIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
         string causationId = correlationId; // For original submissions, CausationId = CorrelationId
         logger.LogWarning(

@@ -14,16 +14,14 @@ public record IdempotencyRecord(
     string? CorrelationId,
     bool Accepted,
     string? ErrorMessage,
-    DateTimeOffset ProcessedAt)
-{
+    DateTimeOffset ProcessedAt) {
     /// <summary>
     /// Creates an <see cref="IdempotencyRecord"/> from a <see cref="CommandProcessingResult"/>.
     /// </summary>
     /// <param name="causationId">The causation identifier.</param>
     /// <param name="result">The command processing result.</param>
     /// <returns>A new idempotency record.</returns>
-    public static IdempotencyRecord FromResult(string causationId, CommandProcessingResult result)
-    {
+    public static IdempotencyRecord FromResult(string causationId, CommandProcessingResult result) {
         ArgumentException.ThrowIfNullOrWhiteSpace(causationId);
         ArgumentNullException.ThrowIfNull(result);
 

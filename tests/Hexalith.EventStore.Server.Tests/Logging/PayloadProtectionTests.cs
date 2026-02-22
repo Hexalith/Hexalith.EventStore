@@ -3,7 +3,6 @@ namespace Hexalith.EventStore.Server.Tests.Logging;
 using System.Diagnostics;
 
 using Dapr.Actors.Runtime;
-using Dapr.Client;
 
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
@@ -20,7 +19,6 @@ using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
@@ -32,33 +30,28 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 /// Verifies that payload data is never written to log output (SEC-5, NFR12).
 /// Tests both direct log messages and ToString() redaction.
 /// </summary>
-public class PayloadProtectionTests : IDisposable
-{
+public class PayloadProtectionTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
     private readonly ActivityListener _activityListener;
 
     // Payload containing distinctive marker bytes that should never appear in logs.
     private static readonly byte[] SensitivePayload = [0xDE, 0xAD, 0xBE, 0xEF];
 
-    public PayloadProtectionTests()
-    {
-        _activityListener = new ActivityListener
-        {
+    public PayloadProtectionTests() {
+        _activityListener = new ActivityListener {
             ShouldListenTo = _ => true,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
         ActivitySource.AddActivityListener(_activityListener);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _activityListener.Dispose();
         GC.SuppressFinalize(this);
     }
 
     [Fact]
-    public async Task SubmitCommandHandler_NeverLogsPayloadData()
-    {
+    public async Task SubmitCommandHandler_NeverLogsPayloadData() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
         var statusStore = Substitute.For<ICommandStatusStore>();
@@ -79,8 +72,7 @@ public class PayloadProtectionTests : IDisposable
         await handler.Handle(command, CancellationToken.None);
 
         // Assert - no log entry should contain raw payload bytes
-        foreach (LogEntry entry in _logEntries)
-        {
+        foreach (LogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("DEAD");
             entry.Message.ShouldNotContain("BEEF");
             entry.Message.ShouldNotContain("3735928559"); // 0xDEADBEEF as decimal
@@ -88,8 +80,7 @@ public class PayloadProtectionTests : IDisposable
     }
 
     [Fact]
-    public async Task EventPersister_NeverLogsPayloadData()
-    {
+    public async Task EventPersister_NeverLogsPayloadData() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
         var stateManager = Substitute.For<IActorStateManager>();
@@ -113,16 +104,14 @@ public class PayloadProtectionTests : IDisposable
         await persister.PersistEventsAsync(identity, command, domainResult, "v1");
 
         // Assert
-        foreach (LogEntry entry in _logEntries)
-        {
+        foreach (LogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("DEAD");
             entry.Message.ShouldNotContain("BEEF");
         }
     }
 
     [Fact]
-    public async Task LoggingBehavior_NeverLogsPayloadData()
-    {
+    public async Task LoggingBehavior_NeverLogsPayloadData() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
@@ -145,16 +134,14 @@ public class PayloadProtectionTests : IDisposable
         await behavior.Handle(command, next, CancellationToken.None);
 
         // Assert
-        foreach (LogEntry entry in _logEntries)
-        {
+        foreach (LogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("DEAD");
             entry.Message.ShouldNotContain("BEEF");
         }
     }
 
     [Fact]
-    public void CommandEnvelope_ToString_RedactsPayload()
-    {
+    public void CommandEnvelope_ToString_RedactsPayload() {
         var envelope = new CommandEnvelope(
             TenantId: "test-tenant",
             Domain: "test-domain",
@@ -174,8 +161,7 @@ public class PayloadProtectionTests : IDisposable
     }
 
     [Fact]
-    public void EventEnvelope_ToString_RedactsPayload()
-    {
+    public void EventEnvelope_ToString_RedactsPayload() {
         var envelope = new EventEnvelope(
             AggregateId: "agg-001",
             TenantId: "test-tenant",
@@ -200,14 +186,12 @@ public class PayloadProtectionTests : IDisposable
 
     private sealed class TestEvent : IEventPayload;
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

@@ -18,13 +18,11 @@ using Shouldly;
 /// Integration tests for snapshot creation within the event persistence pipeline.
 /// Uses InMemoryStateManager for real actor state behavior (pending/committed semantics).
 /// </summary>
-public class SnapshotCreationIntegrationTests
-{
+public class SnapshotCreationIntegrationTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static (SnapshotManager SnapshotManager, InMemoryStateManager StateManager) CreateComponents(
-        int defaultInterval = 100)
-    {
+        int defaultInterval = 100) {
         var options = Options.Create(new SnapshotOptions { DefaultInterval = defaultInterval });
         var logger = Substitute.For<ILogger<SnapshotManager>>();
         var stateManager = new InMemoryStateManager();
@@ -39,12 +37,10 @@ public class SnapshotCreationIntegrationTests
         InMemoryStateManager stateManager,
         AggregateIdentity identity,
         int eventCount,
-        long startingSequence = 0)
-    {
+        long startingSequence = 0) {
         long currentSequence = startingSequence;
 
-        for (int i = 0; i < eventCount; i++)
-        {
+        for (int i = 0; i < eventCount; i++) {
             currentSequence++;
             string key = $"{identity.EventStreamKeyPrefix}{currentSequence}";
             var envelope = new EventEnvelope(
@@ -75,8 +71,7 @@ public class SnapshotCreationIntegrationTests
     // === 10.2: Process 100 events, verify snapshot created at sequence 100 ===
 
     [Fact]
-    public async Task Process100Events_SnapshotCreatedAtSequence100()
-    {
+    public async Task Process100Events_SnapshotCreatedAtSequence100() {
         // Arrange
         (SnapshotManager snapshotManager, InMemoryStateManager stateManager) = CreateComponents(defaultInterval: 100);
 
@@ -100,8 +95,7 @@ public class SnapshotCreationIntegrationTests
     // === 10.3: Process 250 events, snapshot at 200 (overwritten, only latest exists) ===
 
     [Fact]
-    public async Task Process250Events_SnapshotOverwrittenAtSubsequentInterval()
-    {
+    public async Task Process250Events_SnapshotOverwrittenAtSubsequentInterval() {
         // Arrange
         (SnapshotManager snapshotManager, InMemoryStateManager stateManager) = CreateComponents(defaultInterval: 100);
 
@@ -139,8 +133,7 @@ public class SnapshotCreationIntegrationTests
     // === 10.4: Process 50 events, no snapshot created ===
 
     [Fact]
-    public async Task Process50Events_NoSnapshotCreated()
-    {
+    public async Task Process50Events_NoSnapshotCreated() {
         // Arrange
         (SnapshotManager snapshotManager, InMemoryStateManager stateManager) = CreateComponents(defaultInterval: 100);
 
@@ -160,8 +153,7 @@ public class SnapshotCreationIntegrationTests
     // === 10.5: Snapshot key matches AggregateIdentity.SnapshotKey pattern ===
 
     [Fact]
-    public async Task SnapshotKey_MatchesAggregateIdentityPattern()
-    {
+    public async Task SnapshotKey_MatchesAggregateIdentityPattern() {
         // Arrange
         (SnapshotManager snapshotManager, InMemoryStateManager stateManager) = CreateComponents(defaultInterval: 10);
         var identity = new AggregateIdentity("acme", "orders", "order-42");
@@ -183,8 +175,7 @@ public class SnapshotCreationIntegrationTests
     // === 10.6: Snapshot creation is atomic with event persistence ===
 
     [Fact]
-    public async Task SnapshotCreation_AtomicWithEventPersistence()
-    {
+    public async Task SnapshotCreation_AtomicWithEventPersistence() {
         // Arrange
         (SnapshotManager snapshotManager, InMemoryStateManager stateManager) = CreateComponents(defaultInterval: 10);
 
@@ -207,8 +198,7 @@ public class SnapshotCreationIntegrationTests
     // === Additional: LoadSnapshot round-trip with InMemoryStateManager ===
 
     [Fact]
-    public async Task LoadSnapshot_RoundTripsCorrectly()
-    {
+    public async Task LoadSnapshot_RoundTripsCorrectly() {
         // Arrange
         (SnapshotManager snapshotManager, InMemoryStateManager stateManager) = CreateComponents(defaultInterval: 10);
         var state = new { Counter = 42, Name = "test" };

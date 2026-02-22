@@ -14,11 +14,9 @@ using Shouldly;
 /// </summary>
 [Trait("Category", "E2E")]
 [Collection("AspireTopology")]
-public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
-{
+public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
     public KeycloakE2ESmokeTests(AspireTopologyFixture fixture)
-        : base(fixture)
-    {
+        : base(fixture) {
     }
 
     /// <summary>
@@ -27,14 +25,12 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
     /// This is the primary smoke test for the Keycloak integration (Task 8.6).
     /// </summary>
     [Fact]
-    public async Task AuthenticatedCommandSubmission_WithKeycloakToken_ReturnsAccepted()
-    {
+    public async Task AuthenticatedCommandSubmission_WithKeycloakToken_ReturnsAccepted() {
         // Arrange: acquire a real OIDC token from Keycloak
         string token = await GetTokenAsync("admin-user", "admin-pass");
         token.ShouldNotBeNullOrEmpty("Keycloak token acquisition failed");
 
-        var request = new
-        {
+        var request = new {
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),
@@ -42,8 +38,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
             Payload = new { orderId = "smoke-test-001", amount = 42.00 },
         };
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
-        {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(
                 JsonSerializer.Serialize(request),
                 Encoding.UTF8,
@@ -64,10 +59,8 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
     /// Verifies that a request without a token is rejected with 401 Unauthorized.
     /// </summary>
     [Fact]
-    public async Task UnauthenticatedRequest_Returns401()
-    {
-        var request = new
-        {
+    public async Task UnauthenticatedRequest_Returns401() {
+        var request = new {
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),
@@ -75,8 +68,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase
             Payload = new { orderId = "unauth-test", amount = 1.00 },
         };
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
-        {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(
                 JsonSerializer.Serialize(request),
                 Encoding.UTF8,

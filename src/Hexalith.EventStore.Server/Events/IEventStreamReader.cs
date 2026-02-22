@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// Supports snapshot-aware rehydration: when a snapshot is provided, only tail events
 /// after the snapshot sequence are loaded (Story 3.10).
 /// </summary>
-public interface IEventStreamReader
-{
+public interface IEventStreamReader {
     /// <summary>
     /// Rehydrates aggregate state by loading events from the event stream.
     /// When a snapshot is provided, loads only tail events after the snapshot sequence.

@@ -5,16 +5,13 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-public class AuthorizationExceptionHandler(ILogger<AuthorizationExceptionHandler> logger) : IExceptionHandler
-{
+public class AuthorizationExceptionHandler(ILogger<AuthorizationExceptionHandler> logger) : IExceptionHandler {
     private const string ProblemJsonContentType = "application/problem+json";
 
-    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
-    {
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
 
-        if (exception is not CommandAuthorizationException authException)
-        {
+        if (exception is not CommandAuthorizationException authException) {
             return false;
         }
 
@@ -29,8 +26,7 @@ public class AuthorizationExceptionHandler(ILogger<AuthorizationExceptionHandler
             authException.CommandType,
             authException.Reason);
 
-        var problemDetails = new ProblemDetails
-        {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status403Forbidden,
             Title = "Forbidden",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",

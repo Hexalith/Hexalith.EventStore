@@ -3,10 +3,8 @@ namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
-{
-    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
-    {
+public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler {
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
 
         string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
@@ -15,8 +13,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         string? tenantId = httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string t && !string.IsNullOrEmpty(t) ? t : null;
 
-        var problemDetails = new ProblemDetails
-        {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status500InternalServerError,
             Title = "Internal Server Error",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -25,8 +22,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             Extensions = { ["correlationId"] = correlationId },
         };
 
-        if (tenantId is not null)
-        {
+        if (tenantId is not null) {
             problemDetails.Extensions["tenantId"] = tenantId;
         }
 

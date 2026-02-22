@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Checkpoints pipeline stages in actor state for crash-recovery resume (NFR25).
 /// All writes use SetStateAsync (staging). The caller commits atomically via SaveStateAsync.
 /// </summary>
-public interface IActorStateMachine
-{
+public interface IActorStateMachine {
     /// <summary>
     /// Stages a pipeline state checkpoint. Does NOT call SaveStateAsync.
     /// </summary>

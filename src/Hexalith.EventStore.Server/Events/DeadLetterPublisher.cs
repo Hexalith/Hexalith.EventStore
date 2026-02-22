@@ -20,14 +20,12 @@ using Microsoft.Extensions.Options;
 public partial class DeadLetterPublisher(
     DaprClient daprClient,
     IOptions<EventPublisherOptions> options,
-    ILogger<DeadLetterPublisher> logger) : IDeadLetterPublisher
-{
+    ILogger<DeadLetterPublisher> logger) : IDeadLetterPublisher {
     /// <inheritdoc/>
     public async Task<bool> PublishDeadLetterAsync(
         AggregateIdentity identity,
         DeadLetterMessage message,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(message);
 
@@ -45,10 +43,8 @@ public partial class DeadLetterPublisher(
         activity?.SetTag(EventStoreActivitySource.TagExceptionType, message.ExceptionType);
         activity?.SetTag(EventStoreActivitySource.TagDeadLetterTopic, deadLetterTopic);
 
-        try
-        {
-            var metadata = new Dictionary<string, string>
-            {
+        try {
+            var metadata = new Dictionary<string, string> {
                 ["cloudevent.type"] = "deadletter.command.failed",
                 ["cloudevent.source"] = $"eventstore/{identity.TenantId}/{identity.Domain}",
                 ["cloudevent.id"] = message.CorrelationId,
@@ -69,12 +65,10 @@ public partial class DeadLetterPublisher(
             activity?.SetStatus(ActivityStatusCode.Ok);
             return true;
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             // Dead-letter publication failure is non-blocking (AC #7).
             // Rule #5: Never log command payload data.
             Log.DeadLetterPublicationFailed(logger, ex, message.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, message.CommandType, message.FailureStage, message.ExceptionType, message.ErrorMessage, deadLetterTopic);
@@ -85,8 +79,7 @@ public partial class DeadLetterPublisher(
         }
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 3200,
             Level = LogLevel.Warning,

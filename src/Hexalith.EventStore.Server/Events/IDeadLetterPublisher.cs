@@ -7,8 +7,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// Returns bool -- true on success, false on failure.
 /// OperationCanceledException is propagated when cancellation is requested.
 /// </summary>
-public interface IDeadLetterPublisher
-{
+public interface IDeadLetterPublisher {
     /// <summary>
     /// Publishes a dead-letter message for a failed command.
     /// </summary>

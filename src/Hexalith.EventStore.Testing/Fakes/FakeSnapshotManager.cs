@@ -9,8 +9,7 @@ using Hexalith.EventStore.Server.Events;
 /// In-memory implementation of <see cref="ISnapshotManager"/> for unit testing.
 /// Records all snapshot operations for test assertions.
 /// </summary>
-public sealed class FakeSnapshotManager : ISnapshotManager
-{
+public sealed class FakeSnapshotManager : ISnapshotManager {
     private readonly Dictionary<string, SnapshotRecord> _snapshots = [];
     private readonly List<(string Domain, long CurrentSequence, long LastSnapshotSequence)> _shouldCreateCalls = [];
     private readonly List<(AggregateIdentity Identity, long SequenceNumber, object State)> _createCalls = [];
@@ -40,8 +39,7 @@ public sealed class FakeSnapshotManager : ISnapshotManager
     public Dictionary<string, int> DomainIntervals { get; set; } = [];
 
     /// <inheritdoc/>
-    public Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence)
-    {
+    public Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence) {
         _shouldCreateCalls.Add((domain, currentSequence, lastSnapshotSequence));
 
         int interval = DomainIntervals.TryGetValue(domain, out int domainInterval)
@@ -53,8 +51,7 @@ public sealed class FakeSnapshotManager : ISnapshotManager
     }
 
     /// <inheritdoc/>
-    public Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null)
-    {
+    public Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
@@ -74,8 +71,7 @@ public sealed class FakeSnapshotManager : ISnapshotManager
     }
 
     /// <inheritdoc/>
-    public Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null)
-    {
+    public Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
 

@@ -15,13 +15,11 @@ public record CommandStatusResponse(
     int? EventCount,
     string? RejectionEventType,
     string? FailureReason,
-    string? TimeoutDuration)
-{
+    string? TimeoutDuration) {
     /// <summary>
     /// Creates a <see cref="CommandStatusResponse"/> from a <see cref="CommandStatusRecord"/>.
     /// </summary>
-    public static CommandStatusResponse FromRecord(CommandStatusRecord record)
-    {
+    public static CommandStatusResponse FromRecord(CommandStatusRecord record) {
         ArgumentNullException.ThrowIfNull(record);
         return new CommandStatusResponse(
             Status: record.Status.ToString(),

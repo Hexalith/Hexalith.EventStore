@@ -7,6 +7,5 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// reducing E2E test execution time from ~3x startup to ~1x.
 /// </summary>
 [CollectionDefinition("AspireTopology")]
-public class AspireTopologyCollection : ICollectionFixture<AspireTopologyFixture>
-{
+public class AspireTopologyCollection : ICollectionFixture<AspireTopologyFixture> {
 }

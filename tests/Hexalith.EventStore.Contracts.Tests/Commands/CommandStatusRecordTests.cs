@@ -2,11 +2,9 @@ namespace Hexalith.EventStore.Contracts.Tests.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
 
-public class CommandStatusRecordTests
-{
+public class CommandStatusRecordTests {
     [Fact]
-    public void Constructor_WithCompletedStatus_SetsEventCount()
-    {
+    public void Constructor_WithCompletedStatus_SetsEventCount() {
         var timestamp = DateTimeOffset.UtcNow;
         var record = new CommandStatusRecord(
             Status: CommandStatus.Completed,
@@ -27,8 +25,7 @@ public class CommandStatusRecordTests
     }
 
     [Fact]
-    public void Constructor_WithRejectedStatus_SetsRejectionEventType()
-    {
+    public void Constructor_WithRejectedStatus_SetsRejectionEventType() {
         var record = new CommandStatusRecord(
             Status: CommandStatus.Rejected,
             Timestamp: DateTimeOffset.UtcNow,
@@ -43,8 +40,7 @@ public class CommandStatusRecordTests
     }
 
     [Fact]
-    public void Constructor_WithPublishFailedStatus_SetsFailureReason()
-    {
+    public void Constructor_WithPublishFailedStatus_SetsFailureReason() {
         var record = new CommandStatusRecord(
             Status: CommandStatus.PublishFailed,
             Timestamp: DateTimeOffset.UtcNow,
@@ -59,8 +55,7 @@ public class CommandStatusRecordTests
     }
 
     [Fact]
-    public void Constructor_WithTimedOutStatus_SetsTimeoutDuration()
-    {
+    public void Constructor_WithTimedOutStatus_SetsTimeoutDuration() {
         var timeout = TimeSpan.FromSeconds(30);
         var record = new CommandStatusRecord(
             Status: CommandStatus.TimedOut,
@@ -76,8 +71,7 @@ public class CommandStatusRecordTests
     }
 
     [Fact]
-    public void Constructor_WithNonTerminalStatus_AllOptionalFieldsNull()
-    {
+    public void Constructor_WithNonTerminalStatus_AllOptionalFieldsNull() {
         var record = new CommandStatusRecord(
             Status: CommandStatus.Processing,
             Timestamp: DateTimeOffset.UtcNow,

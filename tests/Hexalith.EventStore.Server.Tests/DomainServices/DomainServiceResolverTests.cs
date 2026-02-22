@@ -14,19 +14,16 @@ using NSubstitute;
 
 using Shouldly;
 
-public class DomainServiceResolverTests
-{
+public class DomainServiceResolverTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
     private readonly IOptions<DomainServiceOptions> _options = Options.Create(new DomainServiceOptions());
     private readonly ILogger<DomainServiceResolver> _logger = NullLogger<DomainServiceResolver>.Instance;
 
     private DomainServiceResolver CreateResolver() => new(_daprClient, _options, _logger);
 
-    private void ConfigureConfigStore(string key, string? value)
-    {
+    private void ConfigureConfigStore(string key, string? value) {
         var items = new Dictionary<string, ConfigurationItem>();
-        if (value is not null)
-        {
+        if (value is not null) {
             items[key] = new ConfigurationItem(value, "1", new Dictionary<string, string>());
         }
 
@@ -39,11 +36,9 @@ public class DomainServiceResolverTests
             .Returns(response);
     }
 
-    private void ConfigureConfigStoreMultiple(Dictionary<string, string> registrations)
-    {
+    private void ConfigureConfigStoreMultiple(Dictionary<string, string> registrations) {
         var items = new Dictionary<string, ConfigurationItem>();
-        foreach (var kvp in registrations)
-        {
+        foreach (var kvp in registrations) {
             items[kvp.Key] = new ConfigurationItem(kvp.Value, "1", new Dictionary<string, string>());
         }
 
@@ -57,8 +52,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_RegisteredService_ReturnsRegistration()
-    {
+    public async Task ResolveAsync_RegisteredService_ReturnsRegistration() {
         // Arrange
         var registration = new DomainServiceRegistration("orders-svc", "process-command", "tenant-a", "orders", "v1");
         string json = JsonSerializer.Serialize(registration);
@@ -75,8 +69,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_UnregisteredService_ReturnsNull()
-    {
+    public async Task ResolveAsync_UnregisteredService_ReturnsNull() {
         // Arrange
         ConfigureConfigStore("tenant-a:orders:v1", null);
         var resolver = CreateResolver();
@@ -89,8 +82,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_UsesCorrectConfigKeyWithVersion()
-    {
+    public async Task ResolveAsync_UsesCorrectConfigKeyWithVersion() {
         // Arrange
         ConfigureConfigStore("my-tenant:my-domain:v1", null);
         var resolver = CreateResolver();
@@ -107,8 +99,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ExplicitVersion_UsesVersionInKey()
-    {
+    public async Task ResolveAsync_ExplicitVersion_UsesVersionInKey() {
         // Arrange
         var registration = new DomainServiceRegistration("orders-svc-v2", "process-command", "tenant-a", "orders", "v2");
         string json = JsonSerializer.Serialize(registration);
@@ -129,8 +120,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_NullTenantId_ThrowsArgumentException()
-    {
+    public async Task ResolveAsync_NullTenantId_ThrowsArgumentException() {
         // Arrange
         var resolver = CreateResolver();
 
@@ -139,8 +129,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_NullDomain_ThrowsArgumentException()
-    {
+    public async Task ResolveAsync_NullDomain_ThrowsArgumentException() {
         // Arrange
         var resolver = CreateResolver();
 
@@ -149,8 +138,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_NullVersion_ThrowsArgumentException()
-    {
+    public async Task ResolveAsync_NullVersion_ThrowsArgumentException() {
         // Arrange
         var resolver = CreateResolver();
 
@@ -159,11 +147,9 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_EmptyConfigValue_ReturnsNull()
-    {
+    public async Task ResolveAsync_EmptyConfigValue_ReturnsNull() {
         // Arrange
-        var items = new Dictionary<string, ConfigurationItem>
-        {
+        var items = new Dictionary<string, ConfigurationItem> {
             ["tenant-a:orders:v1"] = new ConfigurationItem("  ", "1", new Dictionary<string, string>()),
         };
         var response = new GetConfigurationResponse(items);
@@ -183,8 +169,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_MalformedJson_ThrowsDomainServiceException()
-    {
+    public async Task ResolveAsync_MalformedJson_ThrowsDomainServiceException() {
         // Arrange - corrupted config store entry should throw, not silently return null
         ConfigureConfigStore("tenant-a:orders:v1", "NOT-VALID-JSON{{{");
         var resolver = CreateResolver();
@@ -197,8 +182,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_JsonNull_ReturnsNull()
-    {
+    public async Task ResolveAsync_JsonNull_ReturnsNull() {
         // Arrange
         ConfigureConfigStore("tenant-a:orders:v1", "null");
         var resolver = CreateResolver();
@@ -213,8 +197,7 @@ public class DomainServiceResolverTests
     // --- Task 1.1: Multi-tenant multi-domain routing ---
 
     [Fact]
-    public async Task ResolveAsync_MultipleTenantsSameDomain_RoutesToCorrectService()
-    {
+    public async Task ResolveAsync_MultipleTenantsSameDomain_RoutesToCorrectService() {
         // Arrange - two tenants, same domain, different service endpoints
         var regTenantA = new DomainServiceRegistration("orders-tenant-a", "process-command", "tenant-a", "orders", "v1");
         var regTenantB = new DomainServiceRegistration("orders-tenant-b", "process-command", "tenant-b", "orders", "v1");
@@ -225,8 +208,7 @@ public class DomainServiceResolverTests
             Arg.Is<IReadOnlyList<string>>(keys => keys.Contains("tenant-a:orders:v1")),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
-            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>
-            {
+            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem> {
                 ["tenant-a:orders:v1"] = new(JsonSerializer.Serialize(regTenantA), "1", new Dictionary<string, string>()),
             }));
 
@@ -235,8 +217,7 @@ public class DomainServiceResolverTests
             Arg.Is<IReadOnlyList<string>>(keys => keys.Contains("tenant-b:orders:v1")),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
-            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>
-            {
+            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem> {
                 ["tenant-b:orders:v1"] = new(JsonSerializer.Serialize(regTenantB), "1", new Dictionary<string, string>()),
             }));
 
@@ -254,8 +235,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_SameTenantMultipleDomains_RoutesToCorrectService()
-    {
+    public async Task ResolveAsync_SameTenantMultipleDomains_RoutesToCorrectService() {
         // Arrange - same tenant, two domains, different service endpoints
         var regOrders = new DomainServiceRegistration("orders-svc", "process-command", "tenant-a", "orders", "v1");
         var regInventory = new DomainServiceRegistration("inventory-svc", "process-command", "tenant-a", "inventory", "v1");
@@ -265,8 +245,7 @@ public class DomainServiceResolverTests
             Arg.Is<IReadOnlyList<string>>(keys => keys.Contains("tenant-a:orders:v1")),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
-            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>
-            {
+            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem> {
                 ["tenant-a:orders:v1"] = new(JsonSerializer.Serialize(regOrders), "1", new Dictionary<string, string>()),
             }));
 
@@ -275,8 +254,7 @@ public class DomainServiceResolverTests
             Arg.Is<IReadOnlyList<string>>(keys => keys.Contains("tenant-a:inventory:v1")),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
-            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>
-            {
+            .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem> {
                 ["tenant-a:inventory:v1"] = new(JsonSerializer.Serialize(regInventory), "1", new Dictionary<string, string>()),
             }));
 
@@ -296,8 +274,7 @@ public class DomainServiceResolverTests
     // --- Task 1.2 / Task 6: No caching verification (ADR-1) ---
 
     [Fact]
-    public async Task ResolveAsync_NoCaching_GetConfigurationCalledEveryInvocation()
-    {
+    public async Task ResolveAsync_NoCaching_GetConfigurationCalledEveryInvocation() {
         // Arrange - Task 6.1: verify GetConfiguration called TWICE (not cached)
         var registration = new DomainServiceRegistration("orders-svc", "process-command", "tenant-a", "orders", "v1");
         string json = JsonSerializer.Serialize(registration);
@@ -324,8 +301,7 @@ public class DomainServiceResolverTests
     [InlineData("v1:evil")]
     [InlineData("v")]
     [InlineData("1")]
-    public async Task ResolveAsync_InvalidVersionFormat_ThrowsArgumentException(string invalidVersion)
-    {
+    public async Task ResolveAsync_InvalidVersionFormat_ThrowsArgumentException(string invalidVersion) {
         // Arrange - Task 8.6: invalid version formats rejected at resolver
         var resolver = CreateResolver();
 
@@ -334,8 +310,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_UppercaseVersion_NormalizesToLowercase()
-    {
+    public async Task ResolveAsync_UppercaseVersion_NormalizesToLowercase() {
         // Arrange - Task 8.7: "V2" normalized to "v2" at resolver level
         var registration = new DomainServiceRegistration("svc-v2", "process-command", "tenant-a", "orders", "v2");
         string json = JsonSerializer.Serialize(registration);
@@ -357,8 +332,7 @@ public class DomainServiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_NoCache_EachCallQueriesConfigStore()
-    {
+    public async Task ResolveAsync_NoCache_EachCallQueriesConfigStore() {
         // Arrange - first call returns null, second returns registration (simulating dynamic addition)
         var resolver = CreateResolver();
 
@@ -369,8 +343,7 @@ public class DomainServiceResolverTests
             Arg.Any<CancellationToken>())
             .Returns(
                 new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>()),
-                new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>
-                {
+                new GetConfigurationResponse(new Dictionary<string, ConfigurationItem> {
                     ["new-tenant:orders:v1"] = new(
                         JsonSerializer.Serialize(new DomainServiceRegistration("new-svc", "process", "new-tenant", "orders", "v1")),
                         "1",

@@ -5,10 +5,6 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using MediatR;
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-
 namespace Hexalith.EventStore.CommandApi.Pipeline;
 
 /// <summary>
@@ -19,15 +15,12 @@ public partial class ValidationBehavior<TRequest, TResponse>(
     ILogger<ValidationBehavior<TRequest, TResponse>> logger,
     IHttpContextAccessor httpContextAccessor)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull
-{
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
-    {
+    where TRequest : notnull {
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
-        if (!validators.Any())
-        {
+        if (!validators.Any()) {
             return await next().ConfigureAwait(false);
         }
 
@@ -39,8 +32,7 @@ public partial class ValidationBehavior<TRequest, TResponse>(
         string? domain = null;
         string? aggregateId = null;
 
-        if (request is SubmitCommand submitCommand)
-        {
+        if (request is SubmitCommand submitCommand) {
             commandType = submitCommand.CommandType;
             tenant = submitCommand.Tenant;
             domain = submitCommand.Domain;
@@ -57,8 +49,7 @@ public partial class ValidationBehavior<TRequest, TResponse>(
             .Where(f => f != null)
             .ToList();
 
-        if (failures.Count != 0)
-        {
+        if (failures.Count != 0) {
             // SEC-5: Only log error count, NEVER log validation error details (may contain payload data)
             Log.ValidationFailed(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, failures.Count);
             throw new ValidationException(failures);
@@ -68,19 +59,16 @@ public partial class ValidationBehavior<TRequest, TResponse>(
         return await next().ConfigureAwait(false);
     }
 
-    private string GetCorrelationId()
-    {
+    private string GetCorrelationId() {
         HttpContext? httpContext = httpContextAccessor.HttpContext;
-        if (httpContext?.Items[CorrelationIdMiddleware.HttpContextKey] is string correlationId)
-        {
+        if (httpContext?.Items[CorrelationIdMiddleware.HttpContextKey] is string correlationId) {
             return correlationId;
         }
 
         return Guid.NewGuid().ToString();
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1010,
             Level = LogLevel.Debug,

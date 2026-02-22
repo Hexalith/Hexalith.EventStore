@@ -6,8 +6,7 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 /// <summary>
 /// Routes commands to the correct aggregate actor based on canonical identity.
 /// </summary>
-public interface ICommandRouter
-{
+public interface ICommandRouter {
     /// <summary>
     /// Routes a submit command to the appropriate aggregate actor.
     /// </summary>

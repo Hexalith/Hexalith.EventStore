@@ -7,8 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// <summary>
 /// Health check that verifies DAPR pub/sub component availability via the metadata API.
 /// </summary>
-public class DaprPubSubHealthCheck(DaprClient daprClient, string pubSubName) : IHealthCheck
-{
+public class DaprPubSubHealthCheck(DaprClient daprClient, string pubSubName) : IHealthCheck {
     private readonly DaprClient _daprClient = daprClient
         ?? throw new ArgumentNullException(nameof(daprClient));
     private readonly string _pubSubName = pubSubName
@@ -17,12 +16,10 @@ public class DaprPubSubHealthCheck(DaprClient daprClient, string pubSubName) : I
     /// <inheritdoc/>
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(context);
 
-        try
-        {
+        try {
             var metadata = await _daprClient.GetMetadataAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -36,8 +33,7 @@ public class DaprPubSubHealthCheck(DaprClient daprClient, string pubSubName) : I
                     context.Registration.FailureStatus,
                     $"Dapr pub/sub component '{_pubSubName}' not found in metadata.");
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return new HealthCheckResult(
                 context.Registration.FailureStatus,
                 $"Dapr pub/sub health check failed: {ex.GetType().Name}",

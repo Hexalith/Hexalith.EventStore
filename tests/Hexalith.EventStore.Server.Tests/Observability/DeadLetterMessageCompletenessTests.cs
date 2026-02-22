@@ -28,8 +28,7 @@ using Shouldly;
 /// Verifies that dead-letter messages contain all required correlation fields,
 /// the full command envelope for replay, and proper failure context.
 /// </summary>
-public class DeadLetterMessageCompletenessTests
-{
+public class DeadLetterMessageCompletenessTests {
     #region Shared Helpers
 
     private static CommandEnvelope CreateTestEnvelope(
@@ -50,8 +49,7 @@ public class DeadLetterMessageCompletenessTests
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, FakeDeadLetterPublisher DeadLetterPublisher)
-        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001")
-    {
+        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -108,8 +106,7 @@ public class DeadLetterMessageCompletenessTests
     #region Task 5.2: DeadLetterMessage_ContainsAllRequiredCorrelationFields
 
     [Fact]
-    public async Task DeadLetterMessage_ContainsAllRequiredCorrelationFields()
-    {
+    public async Task DeadLetterMessage_ContainsAllRequiredCorrelationFields() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         string causationId = Guid.NewGuid().ToString();
@@ -148,8 +145,7 @@ public class DeadLetterMessageCompletenessTests
     #region Task 5.3: DeadLetterMessage_ContainsFullCommandEnvelope
 
     [Fact]
-    public async Task DeadLetterMessage_ContainsFullCommandEnvelope()
-    {
+    public async Task DeadLetterMessage_ContainsFullCommandEnvelope() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter) =
@@ -180,8 +176,7 @@ public class DeadLetterMessageCompletenessTests
     #region Task 5.4: DeadLetterMessage_ContainsFailureContext
 
     [Fact]
-    public async Task DeadLetterMessage_ContainsFailureContext()
-    {
+    public async Task DeadLetterMessage_ContainsFailureContext() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter) =
@@ -210,8 +205,7 @@ public class DeadLetterMessageCompletenessTests
     #region Task 5.5: DeadLetterMessage_CorrelationIdMatchesOriginalCommand
 
     [Fact]
-    public async Task DeadLetterMessage_CorrelationIdMatchesOriginalCommand()
-    {
+    public async Task DeadLetterMessage_CorrelationIdMatchesOriginalCommand() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter) =
@@ -236,8 +230,7 @@ public class DeadLetterMessageCompletenessTests
     #region Task 5.6: DeadLetterMessage_NeverContainsStackTrace
 
     [Fact]
-    public async Task DeadLetterMessage_NeverContainsStackTrace()
-    {
+    public async Task DeadLetterMessage_NeverContainsStackTrace() {
         // Arrange: Use a real exception that has a stack trace
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter) =
@@ -247,12 +240,10 @@ public class DeadLetterMessageCompletenessTests
 
         // Create exception with stack trace by throwing and catching
         Exception realException;
-        try
-        {
+        try {
             throw new InvalidOperationException("Test failure with stack trace");
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             realException = ex;
         }
 
@@ -281,8 +272,7 @@ public class DeadLetterMessageCompletenessTests
     #region Task 5.7: DeadLetterMessage_NullCausationId_HandledGracefully
 
     [Fact]
-    public async Task DeadLetterMessage_NullCausationId_HandledGracefully()
-    {
+    public async Task DeadLetterMessage_NullCausationId_HandledGracefully() {
         // Arrange: CausationId is null (original submission, not a replay)
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter) =

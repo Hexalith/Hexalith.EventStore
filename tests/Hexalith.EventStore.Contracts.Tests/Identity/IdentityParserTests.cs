@@ -2,11 +2,9 @@ namespace Hexalith.EventStore.Contracts.Tests.Identity;
 
 using Hexalith.EventStore.Contracts.Identity;
 
-public class IdentityParserTests
-{
+public class IdentityParserTests {
     [Fact]
-    public void Parse_ValidCanonicalString_ReturnsIdentity()
-    {
+    public void Parse_ValidCanonicalString_ReturnsIdentity() {
         AggregateIdentity identity = IdentityParser.Parse("acme:payments:order-123");
 
         Assert.Equal("acme", identity.TenantId);
@@ -18,8 +16,7 @@ public class IdentityParserTests
     [InlineData("acme:payments:order-123")]
     [InlineData("a:b:c")]
     [InlineData("tenant-1:domain-2:Order_123.v2")]
-    public void Parse_RoundTrip_PreservesIdentity(string canonical)
-    {
+    public void Parse_RoundTrip_PreservesIdentity(string canonical) {
         AggregateIdentity identity = IdentityParser.Parse(canonical);
         AggregateIdentity roundTripped = IdentityParser.Parse(identity.ToString());
 
@@ -33,14 +30,12 @@ public class IdentityParserTests
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order:extra")]
-    public void Parse_InvalidInput_ThrowsFormatException(string? input)
-    {
+    public void Parse_InvalidInput_ThrowsFormatException(string? input) {
         Assert.Throws<FormatException>(() => IdentityParser.Parse(input!));
     }
 
     [Fact]
-    public void TryParse_ValidCanonicalString_ReturnsTrueAndIdentity()
-    {
+    public void TryParse_ValidCanonicalString_ReturnsTrueAndIdentity() {
         bool result = IdentityParser.TryParse("acme:payments:order-123", out AggregateIdentity? identity);
 
         Assert.True(result);
@@ -57,8 +52,7 @@ public class IdentityParserTests
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order:extra")]
-    public void TryParse_InvalidInput_ReturnsFalseAndNull(string? input)
-    {
+    public void TryParse_InvalidInput_ReturnsFalseAndNull(string? input) {
         bool result = IdentityParser.TryParse(input!, out AggregateIdentity? identity);
 
         Assert.False(result);
@@ -66,8 +60,7 @@ public class IdentityParserTests
     }
 
     [Fact]
-    public void ParseStateStoreKey_ValidKey_ReturnsIdentityAndSuffix()
-    {
+    public void ParseStateStoreKey_ValidKey_ReturnsIdentityAndSuffix() {
         (AggregateIdentity identity, string suffix) = IdentityParser.ParseStateStoreKey("acme:payments:order-123:events:5");
 
         Assert.Equal("acme", identity.TenantId);
@@ -77,8 +70,7 @@ public class IdentityParserTests
     }
 
     [Fact]
-    public void ParseStateStoreKey_MetadataKey_ReturnsIdentityAndSuffix()
-    {
+    public void ParseStateStoreKey_MetadataKey_ReturnsIdentityAndSuffix() {
         (AggregateIdentity identity, string suffix) = IdentityParser.ParseStateStoreKey("acme:payments:order-123:metadata");
 
         Assert.Equal("acme", identity.TenantId);
@@ -88,8 +80,7 @@ public class IdentityParserTests
     }
 
     [Fact]
-    public void ParseStateStoreKey_SnapshotKey_ReturnsIdentityAndSuffix()
-    {
+    public void ParseStateStoreKey_SnapshotKey_ReturnsIdentityAndSuffix() {
         (AggregateIdentity identity, string suffix) = IdentityParser.ParseStateStoreKey("acme:payments:order-123:snapshot");
 
         Assert.Equal("acme", identity.TenantId);
@@ -104,8 +95,7 @@ public class IdentityParserTests
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order-123")]
-    public void ParseStateStoreKey_InvalidKey_ThrowsFormatException(string? input)
-    {
+    public void ParseStateStoreKey_InvalidKey_ThrowsFormatException(string? input) {
         Assert.Throws<FormatException>(() => IdentityParser.ParseStateStoreKey(input!));
     }
 }

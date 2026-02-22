@@ -14,13 +14,11 @@ using Shouldly;
 /// Uses in-memory fakes to exercise CommandStatusStore and CommandStatusConstants together.
 /// Classified as integration tests because they validate cross-component behavior.
 /// </summary>
-public class CommandStatusIsolationTests
-{
+public class CommandStatusIsolationTests {
     // --- 4.2: Command status for tenant-a is not retrievable with tenant-b's credentials ---
 
     [Fact]
-    public async Task CommandStatus_ForTenantA_NotRetrievableBy_TenantB()
-    {
+    public async Task CommandStatus_ForTenantA_NotRetrievableBy_TenantB() {
         // Arrange - single InMemoryCommandStatusStore (simulates shared state store)
         var store = new InMemoryCommandStatusStore();
         string sharedCorrelationId = "shared-corr-001";
@@ -51,8 +49,7 @@ public class CommandStatusIsolationTests
     // --- 4.3: Status keys for different tenants are structurally disjoint ---
 
     [Fact]
-    public void StatusKey_DifferentTenants_SameCorrelationId_StructurallyDisjoint()
-    {
+    public void StatusKey_DifferentTenants_SameCorrelationId_StructurallyDisjoint() {
         // Arrange
         const string correlationId = "corr-12345";
 
@@ -72,8 +69,7 @@ public class CommandStatusIsolationTests
     }
 
     [Fact]
-    public async Task CommandStatus_MultipleTenantsWithSameCorrelationId_IndependentStorage()
-    {
+    public async Task CommandStatus_MultipleTenantsWithSameCorrelationId_IndependentStorage() {
         // Arrange
         var store = new InMemoryCommandStatusStore();
         string correlationId = "corr-shared";

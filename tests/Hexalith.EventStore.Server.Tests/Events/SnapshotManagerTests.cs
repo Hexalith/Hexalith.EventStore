@@ -14,13 +14,11 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class SnapshotManagerTests
-{
+public class SnapshotManagerTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static (SnapshotManager Manager, IActorStateManager StateManager) CreateManager(
-        SnapshotOptions? options = null)
-    {
+        SnapshotOptions? options = null) {
         options ??= new SnapshotOptions();
         var optionsWrapper = Options.Create(options);
         var logger = Substitute.For<ILogger<SnapshotManager>>();
@@ -31,8 +29,7 @@ public class SnapshotManagerTests
     // === 8.2: ShouldCreateSnapshot at default interval ===
 
     [Fact]
-    public async Task ShouldCreateSnapshot_AtDefaultInterval_ReturnsTrue()
-    {
+    public async Task ShouldCreateSnapshot_AtDefaultInterval_ReturnsTrue() {
         (SnapshotManager manager, _) = CreateManager();
 
         bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 100, 0);
@@ -43,8 +40,7 @@ public class SnapshotManagerTests
     // === 8.3: ShouldCreateSnapshot below interval ===
 
     [Fact]
-    public async Task ShouldCreateSnapshot_BelowInterval_ReturnsFalse()
-    {
+    public async Task ShouldCreateSnapshot_BelowInterval_ReturnsFalse() {
         (SnapshotManager manager, _) = CreateManager();
 
         bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 50, 0);
@@ -58,8 +54,7 @@ public class SnapshotManagerTests
     [InlineData(200, 100)]
     [InlineData(300, 200)]
     [InlineData(500, 400)]
-    public async Task ShouldCreateSnapshot_AtMultipleOfInterval_ReturnsTrue(long currentSequence, long lastSnapshotSequence)
-    {
+    public async Task ShouldCreateSnapshot_AtMultipleOfInterval_ReturnsTrue(long currentSequence, long lastSnapshotSequence) {
         (SnapshotManager manager, _) = CreateManager();
 
         bool result = await manager.ShouldCreateSnapshotAsync("test-domain", currentSequence, lastSnapshotSequence);
@@ -70,10 +65,8 @@ public class SnapshotManagerTests
     // === 8.5: ShouldCreateSnapshot with custom domain interval ===
 
     [Fact]
-    public async Task ShouldCreateSnapshot_WithCustomDomainInterval_UsesOverride()
-    {
-        var options = new SnapshotOptions
-        {
+    public async Task ShouldCreateSnapshot_WithCustomDomainInterval_UsesOverride() {
+        var options = new SnapshotOptions {
             DefaultInterval = 100,
             DomainIntervals = new Dictionary<string, int> { ["fast-domain"] = 50 }
         };
@@ -86,10 +79,8 @@ public class SnapshotManagerTests
     }
 
     [Fact]
-    public async Task ShouldCreateSnapshot_UnknownDomain_UsesDefaultInterval()
-    {
-        var options = new SnapshotOptions
-        {
+    public async Task ShouldCreateSnapshot_UnknownDomain_UsesDefaultInterval() {
+        var options = new SnapshotOptions {
             DefaultInterval = 100,
             DomainIntervals = new Dictionary<string, int> { ["fast-domain"] = 50 }
         };
@@ -104,8 +95,7 @@ public class SnapshotManagerTests
     // === 8.6: CreateSnapshot stores via actor state manager ===
 
     [Fact]
-    public async Task CreateSnapshot_StoresViaActorStateManager()
-    {
+    public async Task CreateSnapshot_StoresViaActorStateManager() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var state = new { Name = "test-state" };
 
@@ -120,8 +110,7 @@ public class SnapshotManagerTests
     // === 8.7: CreateSnapshot includes sequence number ===
 
     [Fact]
-    public async Task CreateSnapshot_IncludesSequenceNumber()
-    {
+    public async Task CreateSnapshot_IncludesSequenceNumber() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var state = new { Value = 42 };
 
@@ -141,8 +130,7 @@ public class SnapshotManagerTests
     // === 8.8: CreateSnapshot overwrites previous ===
 
     [Fact]
-    public async Task CreateSnapshot_OverwritesPrevious()
-    {
+    public async Task CreateSnapshot_OverwritesPrevious() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var state1 = new { Version = 1 };
         var state2 = new { Version = 2 };
@@ -160,8 +148,7 @@ public class SnapshotManagerTests
     // === 8.9: LoadSnapshot returns null when no snapshot ===
 
     [Fact]
-    public async Task LoadSnapshot_ReturnsNullWhenNoSnapshot()
-    {
+    public async Task LoadSnapshot_ReturnsNullWhenNoSnapshot() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<SnapshotRecord>(false, default!));
@@ -174,8 +161,7 @@ public class SnapshotManagerTests
     // === 8.10: LoadSnapshot returns stored snapshot ===
 
     [Fact]
-    public async Task LoadSnapshot_ReturnsStoredSnapshot()
-    {
+    public async Task LoadSnapshot_ReturnsStoredSnapshot() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var snapshot = new SnapshotRecord(100, new { Value = "stored" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
         stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
@@ -190,8 +176,7 @@ public class SnapshotManagerTests
     // === 8.11: SnapshotOptions default interval is 100 ===
 
     [Fact]
-    public void SnapshotOptions_DefaultIntervalIs100()
-    {
+    public void SnapshotOptions_DefaultIntervalIs100() {
         var options = new SnapshotOptions();
 
         options.DefaultInterval.ShouldBe(100);
@@ -200,8 +185,7 @@ public class SnapshotManagerTests
     // === 8.12: SnapshotOptions interval must be at least 10 ===
 
     [Fact]
-    public void SnapshotOptions_IntervalBelowMinimum_ValidationFails()
-    {
+    public void SnapshotOptions_IntervalBelowMinimum_ValidationFails() {
         var options = new SnapshotOptions { DefaultInterval = 5 };
 
         Should.Throw<InvalidOperationException>(() => options.Validate())
@@ -209,10 +193,8 @@ public class SnapshotManagerTests
     }
 
     [Fact]
-    public void SnapshotOptions_DomainIntervalBelowMinimum_ValidationFails()
-    {
-        var options = new SnapshotOptions
-        {
+    public void SnapshotOptions_DomainIntervalBelowMinimum_ValidationFails() {
+        var options = new SnapshotOptions {
             DefaultInterval = 100,
             DomainIntervals = new Dictionary<string, int> { ["bad-domain"] = 3 }
         };
@@ -222,10 +204,8 @@ public class SnapshotManagerTests
     }
 
     [Fact]
-    public void SnapshotOptions_ValidIntervals_ValidationPasses()
-    {
-        var options = new SnapshotOptions
-        {
+    public void SnapshotOptions_ValidIntervals_ValidationPasses() {
+        var options = new SnapshotOptions {
             DefaultInterval = 50,
             DomainIntervals = new Dictionary<string, int> { ["fast"] = 10, ["slow"] = 500 }
         };
@@ -236,8 +216,7 @@ public class SnapshotManagerTests
     // === 8.13: CreateSnapshot serialization failure logs warning and skips ===
 
     [Fact]
-    public async Task CreateSnapshot_SerializationFailure_LogsWarningAndSkips()
-    {
+    public async Task CreateSnapshot_SerializationFailure_LogsWarningAndSkips() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var state = new { Value = "test" };
 
@@ -255,8 +234,7 @@ public class SnapshotManagerTests
     // === 8.14: LoadSnapshot deserialization failure returns null and deletes corrupt ===
 
     [Fact]
-    public async Task LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt()
-    {
+    public async Task LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
 
         stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
@@ -273,8 +251,7 @@ public class SnapshotManagerTests
     // === Additional edge cases ===
 
     [Fact]
-    public async Task ShouldCreateSnapshot_ExactlyAtInterval_ReturnsTrue()
-    {
+    public async Task ShouldCreateSnapshot_ExactlyAtInterval_ReturnsTrue() {
         (SnapshotManager manager, _) = CreateManager();
 
         // Exactly 100 events since last snapshot at 0
@@ -284,8 +261,7 @@ public class SnapshotManagerTests
     }
 
     [Fact]
-    public async Task ShouldCreateSnapshot_OneBeforeInterval_ReturnsFalse()
-    {
+    public async Task ShouldCreateSnapshot_OneBeforeInterval_ReturnsFalse() {
         (SnapshotManager manager, _) = CreateManager();
 
         bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 99, 0);
@@ -294,8 +270,7 @@ public class SnapshotManagerTests
     }
 
     [Fact]
-    public async Task ShouldCreateSnapshot_OneAfterInterval_ReturnsTrue()
-    {
+    public async Task ShouldCreateSnapshot_OneAfterInterval_ReturnsTrue() {
         (SnapshotManager manager, _) = CreateManager();
 
         bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 101, 0);
@@ -304,40 +279,35 @@ public class SnapshotManagerTests
     }
 
     [Fact]
-    public async Task CreateSnapshot_NullIdentity_ThrowsArgumentNullException()
-    {
+    public async Task CreateSnapshot_NullIdentity_ThrowsArgumentNullException() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.CreateSnapshotAsync(null!, 100, new object(), stateManager));
     }
 
     [Fact]
-    public async Task CreateSnapshot_NullState_ThrowsArgumentNullException()
-    {
+    public async Task CreateSnapshot_NullState_ThrowsArgumentNullException() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.CreateSnapshotAsync(TestIdentity, 100, null!, stateManager));
     }
 
     [Fact]
-    public async Task CreateSnapshot_NullStateManager_ThrowsArgumentNullException()
-    {
+    public async Task CreateSnapshot_NullStateManager_ThrowsArgumentNullException() {
         (SnapshotManager manager, _) = CreateManager();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.CreateSnapshotAsync(TestIdentity, 100, new object(), null!));
     }
 
     [Fact]
-    public async Task LoadSnapshot_NullIdentity_ThrowsArgumentNullException()
-    {
+    public async Task LoadSnapshot_NullIdentity_ThrowsArgumentNullException() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.LoadSnapshotAsync(null!, stateManager));
     }
 
     [Fact]
-    public async Task ShouldCreateSnapshot_NullDomain_ThrowsArgumentException()
-    {
+    public async Task ShouldCreateSnapshot_NullDomain_ThrowsArgumentException() {
         (SnapshotManager manager, _) = CreateManager();
         await Should.ThrowAsync<ArgumentException>(() =>
             manager.ShouldCreateSnapshotAsync(null!, 100, 0));

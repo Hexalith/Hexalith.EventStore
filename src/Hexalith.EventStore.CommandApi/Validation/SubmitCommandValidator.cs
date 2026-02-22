@@ -8,10 +8,8 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 /// MediatR-level validator for <see cref="SubmitCommand"/>.
 /// Provides defense-in-depth validation after the HTTP request DTO has been mapped.
 /// </summary>
-public class SubmitCommandValidator : AbstractValidator<SubmitCommand>
-{
-    public SubmitCommandValidator()
-    {
+public class SubmitCommandValidator : AbstractValidator<SubmitCommand> {
+    public SubmitCommandValidator() {
         RuleFor(x => x.Tenant).NotEmpty().WithMessage("Tenant is required");
         RuleFor(x => x.Domain).NotEmpty().WithMessage("Domain is required");
         RuleFor(x => x.AggregateId).NotEmpty().WithMessage("AggregateId is required");

@@ -4,11 +4,9 @@ using Hexalith.EventStore.Server.Commands;
 
 using Shouldly;
 
-public class ConcurrencyConflictExceptionTests
-{
+public class ConcurrencyConflictExceptionTests {
     [Fact]
-    public void Constructor_WithAllParameters_SetsProperties()
-    {
+    public void Constructor_WithAllParameters_SetsProperties() {
         // Arrange & Act
         var inner = new InvalidOperationException("ETag mismatch");
         var ex = new ConcurrencyConflictException(
@@ -29,8 +27,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_WithNullDetail_UsesDefaultMessage()
-    {
+    public void Constructor_WithNullDetail_UsesDefaultMessage() {
         // Arrange & Act
         var ex = new ConcurrencyConflictException(
             correlationId: "corr-123",
@@ -43,8 +40,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_WithCustomDetail_UsesCustomMessage()
-    {
+    public void Constructor_WithCustomDetail_UsesCustomMessage() {
         // Arrange & Act
         var ex = new ConcurrencyConflictException(
             correlationId: "corr-123",
@@ -56,8 +52,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_WithInnerException_PreservesInnerException()
-    {
+    public void Constructor_WithInnerException_PreservesInnerException() {
         // Arrange
         var inner = new InvalidOperationException("ETag mismatch");
 
@@ -73,8 +68,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_Parameterless_SetsDefaults()
-    {
+    public void Constructor_Parameterless_SetsDefaults() {
         // Arrange & Act
         var ex = new ConcurrencyConflictException();
 
@@ -87,8 +81,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_MessageOnly_SetsMessage()
-    {
+    public void Constructor_MessageOnly_SetsMessage() {
         // Arrange & Act
         var ex = new ConcurrencyConflictException("Custom message");
 
@@ -99,8 +92,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_MessageAndInner_PreservesInnerException()
-    {
+    public void Constructor_MessageAndInner_PreservesInnerException() {
         // Arrange
         var inner = new InvalidOperationException("root cause");
 
@@ -115,8 +107,7 @@ public class ConcurrencyConflictExceptionTests
     }
 
     [Fact]
-    public void Constructor_WithConflictSource_SetsProperty()
-    {
+    public void Constructor_WithConflictSource_SetsProperty() {
         // Arrange & Act
         var ex = new ConcurrencyConflictException(
             correlationId: "corr-123",

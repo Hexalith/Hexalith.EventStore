@@ -11,23 +11,20 @@ using NSubstitute;
 
 using Shouldly;
 
-public class EventStoreClaimsTransformationTests
-{
+public class EventStoreClaimsTransformationTests {
     private const string TenantClaimType = "eventstore:tenant";
     private const string DomainClaimType = "eventstore:domain";
     private const string PermissionClaimType = "eventstore:permission";
 
     private readonly EventStoreClaimsTransformation _sut;
 
-    public EventStoreClaimsTransformationTests()
-    {
+    public EventStoreClaimsTransformationTests() {
         ILogger<EventStoreClaimsTransformation> logger = Substitute.For<ILogger<EventStoreClaimsTransformation>>();
         _sut = new EventStoreClaimsTransformation(logger);
     }
 
     [Fact]
-    public async Task TransformAsync_JwtWithTenantsArray_AddsEventStoreTenantClaims()
-    {
+    public async Task TransformAsync_JwtWithTenantsArray_AddsEventStoreTenantClaims() {
         // Arrange
         string tenantsJson = JsonSerializer.Serialize(new[] { "tenant-a", "tenant-b" });
         var identity = new ClaimsIdentity([
@@ -45,8 +42,7 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_JwtWithSingleTenantId_AddsEventStoreTenantClaim()
-    {
+    public async Task TransformAsync_JwtWithSingleTenantId_AddsEventStoreTenantClaim() {
         // Arrange
         var identity = new ClaimsIdentity([
             new Claim("sub", "user-1"),
@@ -63,8 +59,7 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_JwtWithDomainsAndPermissions_AddsNormalizedClaims()
-    {
+    public async Task TransformAsync_JwtWithDomainsAndPermissions_AddsNormalizedClaims() {
         // Arrange
         string domainsJson = JsonSerializer.Serialize(new[] { "orders", "inventory" });
         string permissionsJson = JsonSerializer.Serialize(new[] { "commands:*" });
@@ -86,8 +81,7 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_NoCustomClaims_AddsNoEventStoreClaims()
-    {
+    public async Task TransformAsync_NoCustomClaims_AddsNoEventStoreClaims() {
         // Arrange
         var identity = new ClaimsIdentity([
             new Claim("sub", "user-1"),
@@ -104,8 +98,7 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_AlreadyTransformed_DoesNotDuplicate()
-    {
+    public async Task TransformAsync_AlreadyTransformed_DoesNotDuplicate() {
         // Arrange - pre-add eventstore:tenant claims to simulate already-transformed principal
         var identity = new ClaimsIdentity([
             new Claim("sub", "user-1"),
@@ -125,8 +118,7 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_AlreadyTransformedDomainsOnly_DoesNotDuplicate()
-    {
+    public async Task TransformAsync_AlreadyTransformedDomainsOnly_DoesNotDuplicate() {
         // Arrange - JWT with domains but NO tenants, pre-add eventstore:domain to simulate prior transformation
         string domainsJson = JsonSerializer.Serialize(new[] { "orders" });
         var identity = new ClaimsIdentity([
@@ -147,8 +139,7 @@ public class EventStoreClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_NullPrincipal_ThrowsArgumentNullException()
-    {
+    public async Task TransformAsync_NullPrincipal_ThrowsArgumentNullException() {
         // Act & Assert
         await Should.ThrowAsync<ArgumentNullException>(
             () => _sut.TransformAsync(null!));

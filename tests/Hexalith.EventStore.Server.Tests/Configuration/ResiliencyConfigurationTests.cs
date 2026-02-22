@@ -6,8 +6,7 @@ using Shouldly;
 /// Story 4.3 Task 6: DAPR resiliency configuration validation tests.
 /// Parses resiliency.yaml files to verify pub/sub retry, circuit breaker, and timeout policies exist.
 /// </summary>
-public class ResiliencyConfigurationTests
-{
+public class ResiliencyConfigurationTests {
     private static readonly string LocalResiliencyPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.AppHost", "DaprComponents", "resiliency.yaml"));
@@ -19,8 +18,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.2: Local pubsubRetryOutbound ---
 
     [Fact]
-    public void LocalResiliency_ContainsPubSubOutboundRetryPolicy()
-    {
+    public void LocalResiliency_ContainsPubSubOutboundRetryPolicy() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         content.ShouldContain("pubsubRetryOutbound:");
@@ -32,8 +30,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.3: Local pubsubRetryInbound ---
 
     [Fact]
-    public void LocalResiliency_ContainsPubSubInboundRetryPolicy()
-    {
+    public void LocalResiliency_ContainsPubSubInboundRetryPolicy() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         content.ShouldContain("pubsubRetryInbound:");
@@ -44,8 +41,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.4: Local pubsubBreaker ---
 
     [Fact]
-    public void LocalResiliency_ContainsPubSubCircuitBreaker()
-    {
+    public void LocalResiliency_ContainsPubSubCircuitBreaker() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         content.ShouldContain("pubsubBreaker:");
@@ -57,8 +53,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.5: Local targets.components.pubsub ---
 
     [Fact]
-    public void LocalResiliency_TargetsPubSubComponent()
-    {
+    public void LocalResiliency_TargetsPubSubComponent() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         content.ShouldContain("components:");
@@ -72,8 +67,7 @@ public class ResiliencyConfigurationTests
     }
 
     [Fact]
-    public void ProductionResiliency_TargetsPubSubCircuitBreaker()
-    {
+    public void ProductionResiliency_TargetsPubSubCircuitBreaker() {
         string content = File.ReadAllText(ProductionResiliencyPath);
 
         content.ShouldContain("components:");
@@ -86,8 +80,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.6: Production pub/sub retry policies ---
 
     [Fact]
-    public void ProductionResiliency_ContainsPubSubRetryPolicies()
-    {
+    public void ProductionResiliency_ContainsPubSubRetryPolicies() {
         string content = File.ReadAllText(ProductionResiliencyPath);
 
         content.ShouldContain("pubsubRetryOutbound:");
@@ -99,8 +92,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.7: Production higher retry limits ---
 
     [Fact]
-    public void ProductionResiliency_HigherRetryLimits()
-    {
+    public void ProductionResiliency_HigherRetryLimits() {
         string localContent = File.ReadAllText(LocalResiliencyPath);
         string prodContent = File.ReadAllText(ProductionResiliencyPath);
 
@@ -121,8 +113,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.8: Local timeout policies ---
 
     [Fact]
-    public void LocalResiliency_ContainsPubSubTimeoutPolicy()
-    {
+    public void LocalResiliency_ContainsPubSubTimeoutPolicy() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         content.ShouldContain("pubsubTimeout: 10s", customMessage:
@@ -134,8 +125,7 @@ public class ResiliencyConfigurationTests
     // --- Task 6.9: Production timeout policies ---
 
     [Fact]
-    public void ProductionResiliency_ContainsPubSubTimeoutPolicy()
-    {
+    public void ProductionResiliency_ContainsPubSubTimeoutPolicy() {
         string content = File.ReadAllText(ProductionResiliencyPath);
 
         content.ShouldContain("pubsubTimeout:");
@@ -145,15 +135,13 @@ public class ResiliencyConfigurationTests
     // --- Task 6.10: Cross-reference validation ---
 
     [Fact]
-    public void Resiliency_AllTargetPolicyNamesExistInPolicies()
-    {
+    public void Resiliency_AllTargetPolicyNamesExistInPolicies() {
         ValidatePolicyReferences(LocalResiliencyPath, "local");
         ValidatePolicyReferences(ProductionResiliencyPath, "production");
     }
 
     [Fact]
-    public void LocalResiliency_PreservesExistingAppTargets()
-    {
+    public void LocalResiliency_PreservesExistingAppTargets() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         // Verify existing commandapi config is preserved
@@ -165,16 +153,14 @@ public class ResiliencyConfigurationTests
     }
 
     [Fact]
-    public void LocalResiliency_DocumentsAugmentationBehavior()
-    {
+    public void LocalResiliency_DocumentsAugmentationBehavior() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
         content.ShouldContain("AUGMENT", customMessage:
             "Resiliency YAML should document that policies AUGMENT built-in component retries");
     }
 
-    private static void ValidatePolicyReferences(string yamlPath, string environment)
-    {
+    private static void ValidatePolicyReferences(string yamlPath, string environment) {
         string content = File.ReadAllText(yamlPath);
         string[] lines = content.Split('\n');
 
@@ -187,63 +173,52 @@ public class ResiliencyConfigurationTests
         bool inTimeouts = false;
         bool inBreakers = false;
 
-        foreach (string rawLine in lines)
-        {
+        foreach (string rawLine in lines) {
             string line = rawLine.TrimEnd('\r');
             string trimmed = line.TrimStart();
 
             // Track which section we're in (retries, timeouts, circuitBreakers under policies)
-            if (trimmed.StartsWith("retries:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("retries:", StringComparison.Ordinal)) {
                 inRetries = true; inTimeouts = false; inBreakers = false;
                 continue;
             }
 
-            if (trimmed.StartsWith("timeouts:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("timeouts:", StringComparison.Ordinal)) {
                 inRetries = false; inTimeouts = true; inBreakers = false;
                 continue;
             }
 
-            if (trimmed.StartsWith("circuitBreakers:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("circuitBreakers:", StringComparison.Ordinal)) {
                 inRetries = false; inTimeouts = false; inBreakers = true;
                 continue;
             }
 
-            if (trimmed.StartsWith("targets:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("targets:", StringComparison.Ordinal)) {
                 break; // Done collecting policy names
             }
 
             // Collect policy names: both block-style "name:" and inline "name: value"
-            if (!trimmed.StartsWith('#') && !trimmed.StartsWith('-') && trimmed.Contains(':'))
-            {
+            if (!trimmed.StartsWith('#') && !trimmed.StartsWith('-') && trimmed.Contains(':')) {
                 int colonIndex = trimmed.IndexOf(':');
                 string name = trimmed[..colonIndex].Trim();
-                if (string.IsNullOrEmpty(name) || name.Contains(' '))
-                {
+                if (string.IsNullOrEmpty(name) || name.Contains(' ')) {
                     continue;
                 }
 
                 // Skip known sub-properties that aren't policy names
                 string[] subProperties = ["policy", "duration", "maxInterval", "maxRetries",
                     "general", "maxRequests", "interval", "timeout", "trip"];
-                if (Array.Exists(subProperties, p => p.Equals(name, StringComparison.OrdinalIgnoreCase)))
-                {
+                if (Array.Exists(subProperties, p => p.Equals(name, StringComparison.OrdinalIgnoreCase))) {
                     continue;
                 }
 
-                if (inRetries)
-                {
+                if (inRetries) {
                     definedRetries.Add(name);
                 }
-                else if (inTimeouts)
-                {
+                else if (inTimeouts) {
                     definedTimeouts.Add(name);
                 }
-                else if (inBreakers)
-                {
+                else if (inBreakers) {
                     definedBreakers.Add(name);
                 }
             }
@@ -251,41 +226,35 @@ public class ResiliencyConfigurationTests
 
         // Now check all target references
         bool inTargets = false;
-        foreach (string rawLine in lines)
-        {
+        foreach (string rawLine in lines) {
             string line = rawLine.TrimEnd('\r');
             string trimmed = line.TrimStart();
 
-            if (trimmed.StartsWith("targets:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("targets:", StringComparison.Ordinal)) {
                 inTargets = true;
                 continue;
             }
 
-            if (!inTargets || trimmed.StartsWith('#'))
-            {
+            if (!inTargets || trimmed.StartsWith('#')) {
                 continue;
             }
 
             // Check retry references
-            if (trimmed.StartsWith("retry:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("retry:", StringComparison.Ordinal)) {
                 string policyName = trimmed["retry:".Length..].Trim();
                 definedRetries.ShouldContain(policyName,
                     $"[{environment}] Target references retry policy '{policyName}' which is not defined in policies.retries section");
             }
 
             // Check timeout references
-            if (trimmed.StartsWith("timeout:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("timeout:", StringComparison.Ordinal)) {
                 string policyName = trimmed["timeout:".Length..].Trim();
                 definedTimeouts.ShouldContain(policyName,
                     $"[{environment}] Target references timeout policy '{policyName}' which is not defined in policies.timeouts section");
             }
 
             // Check circuit breaker references
-            if (trimmed.StartsWith("circuitBreaker:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith("circuitBreaker:", StringComparison.Ordinal)) {
                 string policyName = trimmed["circuitBreaker:".Length..].Trim();
                 definedBreakers.ShouldContain(policyName,
                     $"[{environment}] Target references circuit breaker '{policyName}' which is not defined in policies.circuitBreakers section");
@@ -293,31 +262,26 @@ public class ResiliencyConfigurationTests
         }
     }
 
-    private static int ExtractMaxRetries(string yamlContent, string policyName)
-    {
+    private static int ExtractMaxRetries(string yamlContent, string policyName) {
         string[] lines = yamlContent.Split('\n');
         bool inPolicy = false;
 
-        foreach (string rawLine in lines)
-        {
+        foreach (string rawLine in lines) {
             string line = rawLine.TrimEnd('\r');
             string trimmed = line.TrimStart();
 
-            if (trimmed.StartsWith($"{policyName}:", StringComparison.Ordinal))
-            {
+            if (trimmed.StartsWith($"{policyName}:", StringComparison.Ordinal)) {
                 inPolicy = true;
                 continue;
             }
 
-            if (inPolicy && trimmed.StartsWith("maxRetries:", StringComparison.Ordinal))
-            {
+            if (inPolicy && trimmed.StartsWith("maxRetries:", StringComparison.Ordinal)) {
                 string value = trimmed["maxRetries:".Length..].Trim();
                 return int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
             }
 
             // If we hit another policy definition, stop looking
-            if (inPolicy && !trimmed.StartsWith('#') && trimmed.EndsWith(':') && !trimmed.StartsWith("maxR") && !trimmed.StartsWith("max") && !trimmed.StartsWith("policy") && !trimmed.StartsWith("duration"))
-            {
+            if (inPolicy && !trimmed.StartsWith('#') && trimmed.EndsWith(':') && !trimmed.StartsWith("maxR") && !trimmed.StartsWith("max") && !trimmed.StartsWith("policy") && !trimmed.StartsWith("duration")) {
                 break;
             }
         }

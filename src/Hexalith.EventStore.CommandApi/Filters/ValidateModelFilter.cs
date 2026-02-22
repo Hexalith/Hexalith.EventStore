@@ -9,17 +9,13 @@ using Microsoft.AspNetCore.Mvc.Filters;
 /// Action filter that validates request models using FluentValidation.
 /// Returns RFC 7807 ProblemDetails with application/problem+json content type.
 /// </summary>
-public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActionFilter
-{
-    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-    {
+public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActionFilter {
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next) {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        foreach (var argument in context.ActionArguments.Values)
-        {
-            if (argument == null)
-            {
+        foreach (var argument in context.ActionArguments.Values) {
+            if (argument == null) {
                 continue;
             }
 
@@ -27,21 +23,18 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
             var validatorType = typeof(IValidator<>).MakeGenericType(argumentType);
             var validator = serviceProvider.GetService(validatorType) as IValidator;
 
-            if (validator == null)
-            {
+            if (validator == null) {
                 continue;
             }
 
             var validationContext = new ValidationContext<object>(argument);
             var validationResult = await validator.ValidateAsync(validationContext, context.HttpContext.RequestAborted).ConfigureAwait(false);
 
-            if (!validationResult.IsValid)
-            {
+            if (!validationResult.IsValid) {
                 string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
                 string? tenantId = ExtractTenantId(argument);
 
-                var problemDetails = new ProblemDetails
-                {
+                var problemDetails = new ProblemDetails {
                     Status = StatusCodes.Status400BadRequest,
                     Title = "Validation Failed",
                     Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -58,8 +51,7 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
                     },
                 };
 
-                if (tenantId is not null)
-                {
+                if (tenantId is not null) {
                     problemDetails.Extensions["tenantId"] = tenantId;
                 }
 
@@ -73,12 +65,10 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
         await next().ConfigureAwait(false);
     }
 
-    private static string? ExtractTenantId(object argument)
-    {
+    private static string? ExtractTenantId(object argument) {
         // Use reflection to extract Tenant property if present
         var tenantProp = argument.GetType().GetProperty("Tenant");
-        if (tenantProp?.GetValue(argument) is string tenant && !string.IsNullOrEmpty(tenant))
-        {
+        if (tenantProp?.GetValue(argument) is string tenant && !string.IsNullOrEmpty(tenant)) {
             return tenant;
         }
 

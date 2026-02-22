@@ -20,11 +20,9 @@ app.UseRateLimiter();
 app.UseAuthorization();
 
 // OpenAPI/Swagger UI (gated by configuration, H13)
-if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true))
-{
+if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
     app.MapOpenApi();
-    app.UseSwaggerUI(options =>
-    {
+    app.UseSwaggerUI(options => {
         options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore API v1");
         options.RoutePrefix = "swagger";
     });
@@ -34,11 +32,9 @@ app.MapControllers();
 app.MapActorsHandlers();
 
 // Configure global request body size limit (1MB)
-app.Lifetime.ApplicationStarted.Register(() =>
-{
+app.Lifetime.ApplicationStarted.Register(() => {
     var kestrelOptions = app.Services.GetService<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>();
-    if (kestrelOptions != null)
-    {
+    if (kestrelOptions != null) {
         kestrelOptions.Limits.MaxRequestBodySize = 1_048_576;
     }
 });

@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Checks for and records command idempotency using actor state.
 /// </summary>
-public interface IIdempotencyChecker
-{
+public interface IIdempotencyChecker {
     /// <summary>
     /// Checks whether a command with the specified causation ID has already been processed.
     /// </summary>

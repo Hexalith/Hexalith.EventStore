@@ -8,16 +8,15 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Events;
 
-using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 
 using Shouldly;
 
-public class EventPersisterTests
-{
+using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+
+public class EventPersisterTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private sealed record TestEvent(string Name = "test") : IEventPayload;
@@ -38,21 +37,18 @@ public class EventPersisterTests
         UserId: userId,
         Extensions: null);
 
-    private static (EventPersister Persister, IActorStateManager StateManager) CreatePersister()
-    {
+    private static (EventPersister Persister, IActorStateManager StateManager) CreatePersister() {
         var stateManager = Substitute.For<IActorStateManager>();
         var logger = Substitute.For<ILogger<EventPersister>>();
         return (new EventPersister(stateManager, logger), stateManager);
     }
 
-    private static void ConfigureNoMetadata(IActorStateManager stateManager)
-    {
+    private static void ConfigureNoMetadata(IActorStateManager stateManager) {
         stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
     }
 
-    private static void ConfigureExistingMetadata(IActorStateManager stateManager, long currentSequence)
-    {
+    private static void ConfigureExistingMetadata(IActorStateManager stateManager, long currentSequence) {
         var metadata = new AggregateMetadata(currentSequence, DateTimeOffset.UtcNow, null);
         stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
@@ -61,8 +57,7 @@ public class EventPersisterTests
     // === 6.1: New aggregate -- first event gets sequence 1, metadata created with CurrentSequence=1 ===
 
     [Fact]
-    public async Task PersistEventsAsync_NewAggregate_FirstEventGetsSequence1()
-    {
+    public async Task PersistEventsAsync_NewAggregate_FirstEventGetsSequence1() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -80,8 +75,7 @@ public class EventPersisterTests
     }
 
     [Fact]
-    public async Task PersistEventsAsync_NewAggregate_MetadataCreatedWithSequence1()
-    {
+    public async Task PersistEventsAsync_NewAggregate_MetadataCreatedWithSequence1() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -101,8 +95,7 @@ public class EventPersisterTests
     // === 6.2: Existing aggregate with CurrentSequence=5 -- next event gets sequence 6 ===
 
     [Fact]
-    public async Task PersistEventsAsync_ExistingAggregate_NextEventGetsCorrectSequence()
-    {
+    public async Task PersistEventsAsync_ExistingAggregate_NextEventGetsCorrectSequence() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureExistingMetadata(stateManager, 5);
@@ -122,8 +115,7 @@ public class EventPersisterTests
     // === 6.3: Multiple events from single command -- sequences are gapless ===
 
     [Fact]
-    public async Task PersistEventsAsync_MultipleEvents_GaplessSequences()
-    {
+    public async Task PersistEventsAsync_MultipleEvents_GaplessSequences() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureExistingMetadata(stateManager, 5);
@@ -156,8 +148,7 @@ public class EventPersisterTests
     // === 6.4: All 11 metadata fields populated correctly (SEC-1) ===
 
     [Fact]
-    public async Task PersistEventsAsync_Populates11MetadataFields()
-    {
+    public async Task PersistEventsAsync_Populates11MetadataFields() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -186,8 +177,7 @@ public class EventPersisterTests
     }
 
     [Fact]
-    public async Task PersistEventsAsync_NullCausationId_UseCorrelationIdAsFallback()
-    {
+    public async Task PersistEventsAsync_NullCausationId_UseCorrelationIdAsFallback() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -207,8 +197,7 @@ public class EventPersisterTests
     // === 6.5: Event payload serialized to JSON bytes ===
 
     [Fact]
-    public async Task PersistEventsAsync_PayloadSerializedToJsonBytes()
-    {
+    public async Task PersistEventsAsync_PayloadSerializedToJsonBytes() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -228,8 +217,7 @@ public class EventPersisterTests
     // === 6.6: Event keys follow write-once pattern ===
 
     [Fact]
-    public async Task PersistEventsAsync_EventKeysFollowPattern()
-    {
+    public async Task PersistEventsAsync_EventKeysFollowPattern() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureExistingMetadata(stateManager, 3);
@@ -253,8 +241,7 @@ public class EventPersisterTests
     // === 6.7: AggregateMetadata updated with new CurrentSequence and LastModified ===
 
     [Fact]
-    public async Task PersistEventsAsync_MetadataUpdatedWithCorrectSequence()
-    {
+    public async Task PersistEventsAsync_MetadataUpdatedWithCorrectSequence() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureExistingMetadata(stateManager, 5);
@@ -274,8 +261,7 @@ public class EventPersisterTests
     // === 6.8: No-op result -- no events persisted ===
 
     [Fact]
-    public async Task PersistEventsAsync_NoOpResult_NoEventsPersisted()
-    {
+    public async Task PersistEventsAsync_NoOpResult_NoEventsPersisted() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -299,8 +285,7 @@ public class EventPersisterTests
     // === 6.9: SaveStateAsync NOT called by EventPersister ===
 
     [Fact]
-    public async Task PersistEventsAsync_DoesNotCallSaveStateAsync()
-    {
+    public async Task PersistEventsAsync_DoesNotCallSaveStateAsync() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -317,8 +302,7 @@ public class EventPersisterTests
     // === 6.10: EventPersister never calls RemoveStateAsync (immutability, FR9) ===
 
     [Fact]
-    public async Task PersistEventsAsync_NeverCallsRemoveStateAsync()
-    {
+    public async Task PersistEventsAsync_NeverCallsRemoveStateAsync() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureExistingMetadata(stateManager, 3);
@@ -335,8 +319,7 @@ public class EventPersisterTests
     // === 6.11: Rejection events persisted same as regular events (D3) ===
 
     [Fact]
-    public async Task PersistEventsAsync_RejectionEvents_PersistedLikeRegularEvents()
-    {
+    public async Task PersistEventsAsync_RejectionEvents_PersistedLikeRegularEvents() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -360,32 +343,28 @@ public class EventPersisterTests
     // === Guard clause tests ===
 
     [Fact]
-    public async Task PersistEventsAsync_NullIdentity_ThrowsArgumentNullException()
-    {
+    public async Task PersistEventsAsync_NullIdentity_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(null!, CreateTestCommand(), DomainResult.NoOp(), "v1"));
     }
 
     [Fact]
-    public async Task PersistEventsAsync_NullCommand_ThrowsArgumentNullException()
-    {
+    public async Task PersistEventsAsync_NullCommand_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(TestIdentity, null!, DomainResult.NoOp(), "v1"));
     }
 
     [Fact]
-    public async Task PersistEventsAsync_NullDomainResult_ThrowsArgumentNullException()
-    {
+    public async Task PersistEventsAsync_NullDomainResult_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), null!, "v1"));
     }
 
     [Fact]
-    public async Task PersistEventsAsync_NullVersion_ThrowsArgumentNullException()
-    {
+    public async Task PersistEventsAsync_NullVersion_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
         await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), null!));
@@ -394,16 +373,14 @@ public class EventPersisterTests
     // === M3: Empty/whitespace domainServiceVersion validation ===
 
     [Fact]
-    public async Task PersistEventsAsync_EmptyVersion_ThrowsArgumentException()
-    {
+    public async Task PersistEventsAsync_EmptyVersion_ThrowsArgumentException() {
         (EventPersister persister, _) = CreatePersister();
         await Should.ThrowAsync<ArgumentException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), ""));
     }
 
     [Fact]
-    public async Task PersistEventsAsync_WhitespaceVersion_ThrowsArgumentException()
-    {
+    public async Task PersistEventsAsync_WhitespaceVersion_ThrowsArgumentException() {
         (EventPersister persister, _) = CreatePersister();
         await Should.ThrowAsync<ArgumentException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), "  "));

@@ -26,11 +26,9 @@ using Shouldly;
 /// Story 6.1 Task 8: End-to-end trace activity tests.
 /// Verifies that the AggregateActor pipeline creates correct activities with proper tags and status codes.
 /// </summary>
-public class EndToEndTraceTests
-{
+public class EndToEndTraceTests {
     private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, IEventPublisher Publisher, IDeadLetterPublisher DeadLetterPublisher)
-        CreateActorWithMockState(string actorId = "test-tenant:test-domain:agg-001")
-    {
+        CreateActorWithMockState(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -94,21 +92,17 @@ public class EndToEndTraceTests
         Extensions: null);
 
     [Fact]
-    public async Task ProcessCommand_CreatesProcessCommandActivity()
-    {
+    public async Task ProcessCommand_CreatesProcessCommandActivity() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.ProcessCommand
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivity = activity;
                 }
             },
@@ -127,8 +121,7 @@ public class EndToEndTraceTests
     }
 
     [Fact]
-    public async Task ProcessCommand_NoAmbientActivity_UsesTraceparentFallbackFromExtensions()
-    {
+    public async Task ProcessCommand_NoAmbientActivity_UsesTraceparentFallbackFromExtensions() {
         // Arrange
         string correlationId = $"trace-fallback-{Guid.NewGuid()}";
         ActivityTraceId traceId = ActivityTraceId.CreateRandom();
@@ -136,15 +129,12 @@ public class EndToEndTraceTests
         string traceParent = $"00-{traceId.ToHexString()}-{parentSpanId.ToHexString()}-01";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.ProcessCommand
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivity = activity;
                 }
             },
@@ -173,20 +163,16 @@ public class EndToEndTraceTests
     }
 
     [Fact]
-    public async Task ProcessCommand_CreatesChildActivitiesForEachStage()
-    {
+    public async Task ProcessCommand_CreatesChildActivitiesForEachStage() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         List<Activity> capturedActivities = [];
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivities.Add(activity);
                 }
             },
@@ -208,8 +194,7 @@ public class EndToEndTraceTests
             EventStoreActivitySource.DomainServiceInvoke,
         ];
 
-        foreach (string expected in expectedActivities)
-        {
+        foreach (string expected in expectedActivities) {
             capturedActivities.ShouldContain(
                 a => a.OperationName == expected,
                 $"Activity '{expected}' should be created");
@@ -217,20 +202,16 @@ public class EndToEndTraceTests
     }
 
     [Fact]
-    public async Task ProcessCommand_ActivitiesHaveCorrelationIdTag()
-    {
+    public async Task ProcessCommand_ActivitiesHaveCorrelationIdTag() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         List<Activity> capturedActivities = [];
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivities.Add(activity);
                 }
             },
@@ -245,27 +226,22 @@ public class EndToEndTraceTests
 
         // Assert -- every captured activity has the correlation ID tag
         capturedActivities.Count.ShouldBeGreaterThan(0);
-        foreach (Activity activity in capturedActivities)
-        {
+        foreach (Activity activity in capturedActivities) {
             activity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe(correlationId);
         }
     }
 
     [Fact]
-    public async Task ProcessCommand_ActivitiesHaveTenantIdTag()
-    {
+    public async Task ProcessCommand_ActivitiesHaveTenantIdTag() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         List<Activity> capturedActivities = [];
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivities.Add(activity);
                 }
             },
@@ -280,28 +256,23 @@ public class EndToEndTraceTests
 
         // Assert -- every captured activity has the tenant ID tag
         capturedActivities.Count.ShouldBeGreaterThan(0);
-        foreach (Activity activity in capturedActivities)
-        {
+        foreach (Activity activity in capturedActivities) {
             activity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
         }
     }
 
     [Fact]
-    public async Task ProcessCommand_SuccessfulCommand_SetsOkStatus()
-    {
+    public async Task ProcessCommand_SuccessfulCommand_SetsOkStatus() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         Activity? processActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.ProcessCommand
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     processActivity = activity;
                 }
             },
@@ -320,21 +291,17 @@ public class EndToEndTraceTests
     }
 
     [Fact]
-    public async Task ProcessCommand_TenantMismatch_SetsErrorStatus()
-    {
+    public async Task ProcessCommand_TenantMismatch_SetsErrorStatus() {
         // Arrange -- actor ID tenant != command tenant
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         Activity? processActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.ProcessCommand
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     processActivity = activity;
                 }
             },
@@ -363,21 +330,17 @@ public class EndToEndTraceTests
     }
 
     [Fact]
-    public async Task EventPublisher_CreatesPublishActivity()
-    {
+    public async Task EventPublisher_CreatesPublishActivity() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.EventsPublish
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivity = activity;
                 }
             },
@@ -421,21 +384,17 @@ public class EndToEndTraceTests
     }
 
     [Fact]
-    public async Task DeadLetterPublisher_CreatesDeadLetterActivity()
-    {
+    public async Task DeadLetterPublisher_CreatesDeadLetterActivity() {
         // Arrange
         string correlationId = $"trace-test-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivity = activity;
                 }
             },

@@ -3,11 +3,9 @@ namespace Hexalith.EventStore.Testing.Tests.Builders;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Testing.Builders;
 
-public class AggregateIdentityBuilderTests
-{
+public class AggregateIdentityBuilderTests {
     [Fact]
-    public void Build_produces_valid_aggregate_identity_with_defaults()
-    {
+    public void Build_produces_valid_aggregate_identity_with_defaults() {
         AggregateIdentity identity = new AggregateIdentityBuilder().Build();
 
         Assert.Equal("test-tenant", identity.TenantId);
@@ -16,8 +14,7 @@ public class AggregateIdentityBuilderTests
     }
 
     [Fact]
-    public void Build_fluent_overrides_work()
-    {
+    public void Build_fluent_overrides_work() {
         AggregateIdentity identity = new AggregateIdentityBuilder()
             .WithTenantId("acme")
             .WithDomain("billing")

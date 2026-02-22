@@ -14,8 +14,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-public class DaprCommandStatusStoreTests
-{
+public class DaprCommandStatusStoreTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
     private readonly IOptions<CommandStatusOptions> _options = Options.Create(new CommandStatusOptions());
     private readonly ILogger<DaprCommandStatusStore> _logger = NullLogger<DaprCommandStatusStore>.Instance;
@@ -23,8 +22,7 @@ public class DaprCommandStatusStoreTests
     private DaprCommandStatusStore CreateStore() => new(_daprClient, _options, _logger);
 
     [Fact]
-    public async Task WriteStatusAsync_ValidStatus_CallsSaveStateWithCorrectKey()
-    {
+    public async Task WriteStatusAsync_ValidStatus_CallsSaveStateWithCorrectKey() {
         // Arrange
         var store = CreateStore();
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
@@ -43,8 +41,7 @@ public class DaprCommandStatusStoreTests
     }
 
     [Fact]
-    public async Task WriteStatusAsync_IncludesTtlMetadata_Default86400Seconds()
-    {
+    public async Task WriteStatusAsync_IncludesTtlMetadata_Default86400Seconds() {
         // Arrange
         var store = CreateStore();
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
@@ -63,8 +60,7 @@ public class DaprCommandStatusStoreTests
     }
 
     [Fact]
-    public async Task WriteStatusAsync_DaprClientThrows_PropagatesException()
-    {
+    public async Task WriteStatusAsync_DaprClientThrows_PropagatesException() {
         // Arrange
         var store = CreateStore();
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
@@ -84,8 +80,7 @@ public class DaprCommandStatusStoreTests
     }
 
     [Fact]
-    public async Task ReadStatusAsync_ExistingKey_ReturnsRecord()
-    {
+    public async Task ReadStatusAsync_ExistingKey_ReturnsRecord() {
         // Arrange
         var store = CreateStore();
         var expected = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
@@ -107,8 +102,7 @@ public class DaprCommandStatusStoreTests
     }
 
     [Fact]
-    public async Task ReadStatusAsync_NonExistentKey_ReturnsNull()
-    {
+    public async Task ReadStatusAsync_NonExistentKey_ReturnsNull() {
         // Arrange
         var store = CreateStore();
 
@@ -128,8 +122,7 @@ public class DaprCommandStatusStoreTests
     }
 
     [Fact]
-    public async Task ReadStatusAsync_DaprClientThrows_LogsWarningAndReturnsNull()
-    {
+    public async Task ReadStatusAsync_DaprClientThrows_LogsWarningAndReturnsNull() {
         // Arrange
         var store = CreateStore();
 

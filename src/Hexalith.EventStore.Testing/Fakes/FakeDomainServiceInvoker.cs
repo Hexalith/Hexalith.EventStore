@@ -9,8 +9,7 @@ using Hexalith.EventStore.Server.DomainServices;
 /// Allows configuring canned responses for specific command types or tenant+domain combinations.
 /// Tracks all invocations for test assertions.
 /// </summary>
-public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker
-{
+public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     private readonly List<CommandEnvelope> _invocations = [];
     private readonly Dictionary<string, DomainResult> _commandTypeResponses = [];
     private readonly Dictionary<string, DomainResult> _tenantDomainResponses = [];
@@ -24,8 +23,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker
     /// </summary>
     /// <param name="commandType">The command type to match.</param>
     /// <param name="result">The result to return.</param>
-    public void SetupResponse(string commandType, DomainResult result)
-    {
+    public void SetupResponse(string commandType, DomainResult result) {
         ArgumentNullException.ThrowIfNull(commandType);
         ArgumentNullException.ThrowIfNull(result);
         _commandTypeResponses[commandType] = result;
@@ -37,8 +35,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker
     /// <param name="tenantId">The tenant identifier to match.</param>
     /// <param name="domain">The domain name to match.</param>
     /// <param name="result">The result to return.</param>
-    public void SetupResponse(string tenantId, string domain, DomainResult result)
-    {
+    public void SetupResponse(string tenantId, string domain, DomainResult result) {
         ArgumentNullException.ThrowIfNull(tenantId);
         ArgumentNullException.ThrowIfNull(domain);
         ArgumentNullException.ThrowIfNull(result);
@@ -49,31 +46,26 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker
     /// Configures a default response for any command that does not match a specific setup.
     /// </summary>
     /// <param name="result">The default result to return.</param>
-    public void SetupDefaultResponse(DomainResult result)
-    {
+    public void SetupDefaultResponse(DomainResult result) {
         ArgumentNullException.ThrowIfNull(result);
         _defaultResponse = result;
     }
 
     /// <inheritdoc/>
-    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default)
-    {
+    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
         _invocations.Add(command);
 
-        if (_commandTypeResponses.TryGetValue(command.CommandType, out DomainResult? commandTypeResult))
-        {
+        if (_commandTypeResponses.TryGetValue(command.CommandType, out DomainResult? commandTypeResult)) {
             return Task.FromResult(commandTypeResult);
         }
 
         string tenantDomainKey = $"{command.TenantId}:{command.Domain}";
-        if (_tenantDomainResponses.TryGetValue(tenantDomainKey, out DomainResult? tenantDomainResult))
-        {
+        if (_tenantDomainResponses.TryGetValue(tenantDomainKey, out DomainResult? tenantDomainResult)) {
             return Task.FromResult(tenantDomainResult);
         }
 
-        if (_defaultResponse is not null)
-        {
+        if (_defaultResponse is not null) {
             return Task.FromResult(_defaultResponse);
         }
 

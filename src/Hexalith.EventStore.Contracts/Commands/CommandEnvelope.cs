@@ -26,8 +26,7 @@ public record CommandEnvelope(
     string CorrelationId,
     string? CausationId,
     string UserId,
-    IReadOnlyDictionary<string, string>? Extensions)
-{
+    IReadOnlyDictionary<string, string>? Extensions) {
     /// <summary>Gets the computed aggregate identity derived from TenantId, Domain, and AggregateId. Eagerly validated at construction.</summary>
     public AggregateIdentity AggregateIdentity { get; } = new(TenantId, Domain, AggregateId);
 
@@ -59,8 +58,7 @@ public record CommandEnvelope(
     /// Framework-level enforcement: even if a developer logs the entire CommandEnvelope,
     /// the payload is never exposed.
     /// </summary>
-    public override string ToString()
-    {
+    public override string ToString() {
         string extensionKeys = Extensions is not null
             ? string.Join(", ", Extensions.Keys)
             : "none";

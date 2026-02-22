@@ -12,27 +12,23 @@ using NSubstitute;
 
 using Shouldly;
 
-public class AuthorizationExceptionHandlerTests
-{
+public class AuthorizationExceptionHandlerTests {
     private readonly ILogger<AuthorizationExceptionHandler> _logger;
     private readonly AuthorizationExceptionHandler _handler;
 
-    public AuthorizationExceptionHandlerTests()
-    {
+    public AuthorizationExceptionHandlerTests() {
         _logger = Substitute.For<ILogger<AuthorizationExceptionHandler>>();
         _handler = new AuthorizationExceptionHandler(_logger);
     }
 
-    private static DefaultHttpContext CreateHttpContextWithBody()
-    {
+    private static DefaultHttpContext CreateHttpContextWithBody() {
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
         return httpContext;
     }
 
     [Fact]
-    public async Task AuthorizationExceptionHandler_HandlesCommandAuthorizationException_Returns403ProblemDetails()
-    {
+    public async Task AuthorizationExceptionHandler_HandlesCommandAuthorizationException_Returns403ProblemDetails() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -59,8 +55,7 @@ public class AuthorizationExceptionHandlerTests
     }
 
     [Fact]
-    public async Task AuthorizationExceptionHandler_IgnoresOtherExceptions_ReturnsFalse()
-    {
+    public async Task AuthorizationExceptionHandler_IgnoresOtherExceptions_ReturnsFalse() {
         // Arrange
         var httpContext = new DefaultHttpContext();
         var exception = new InvalidOperationException("some error");
@@ -73,8 +68,7 @@ public class AuthorizationExceptionHandlerTests
     }
 
     [Fact]
-    public async Task AuthorizationExceptionHandler_SetsContentType_ApplicationProblemJson()
-    {
+    public async Task AuthorizationExceptionHandler_SetsContentType_ApplicationProblemJson() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -90,8 +84,7 @@ public class AuthorizationExceptionHandlerTests
     }
 
     [Fact]
-    public void CommandAuthorizationException_Properties_SetCorrectly()
-    {
+    public void CommandAuthorizationException_Properties_SetCorrectly() {
         // Arrange & Act
         var ex = new CommandAuthorizationException("acme-corp", "orders", "PlaceOrder", "Not authorized for domain 'orders'.");
 
@@ -103,8 +96,7 @@ public class AuthorizationExceptionHandlerTests
     }
 
     [Fact]
-    public void CommandAuthorizationException_ToString_DoesNotLeakSensitiveData()
-    {
+    public void CommandAuthorizationException_ToString_DoesNotLeakSensitiveData() {
         // Arrange
         var ex = new CommandAuthorizationException("acme-corp", "orders", "PlaceOrder", "Not authorized.");
 

@@ -11,11 +11,9 @@ using Shouldly;
 /// <summary>
 /// Story 4.4 Task 11: EventDrainOptions unit tests (AC: #11).
 /// </summary>
-public class EventDrainOptionsTests
-{
+public class EventDrainOptionsTests {
     [Fact]
-    public void DefaultValues_CorrectDefaults()
-    {
+    public void DefaultValues_CorrectDefaults() {
         // Act
         var options = new EventDrainOptions();
 
@@ -26,11 +24,9 @@ public class EventDrainOptionsTests
     }
 
     [Fact]
-    public void ConfigurationBinding_OverridesDefaults()
-    {
+    public void ConfigurationBinding_OverridesDefaults() {
         // Arrange
-        var configValues = new Dictionary<string, string?>
-        {
+        var configValues = new Dictionary<string, string?> {
             ["EventStore:Drain:InitialDrainDelay"] = "00:00:10",
             ["EventStore:Drain:DrainPeriod"] = "00:02:00",
             ["EventStore:Drain:MaxDrainPeriod"] = "01:00:00",

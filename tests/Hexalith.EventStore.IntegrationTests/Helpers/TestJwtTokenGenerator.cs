@@ -11,8 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 /// Generates JWT tokens for integration testing.
 /// Uses a known symmetric key that must match the test host configuration.
 /// </summary>
-public static class TestJwtTokenGenerator
-{
+public static class TestJwtTokenGenerator {
     public const string SigningKey = "TestSigningKey-MustBeAtLeast32Characters!";
     public const string Issuer = "hexalith-test";
     public const string Audience = "hexalith-eventstore";
@@ -27,37 +26,31 @@ public static class TestJwtTokenGenerator
         string[]? permissions = null,
         DateTime? expires = null,
         string? issuer = null,
-        string? audience = null)
-    {
+        string? audience = null) {
         var claims = new List<Claim>
         {
             new("sub", subject),
         };
 
-        if (tenants is not null)
-        {
+        if (tenants is not null) {
             claims.Add(new Claim("tenants", JsonSerializer.Serialize(tenants)));
         }
 
-        if (tenantId is not null)
-        {
+        if (tenantId is not null) {
             claims.Add(new Claim("tenant_id", tenantId));
         }
 
-        if (domains is not null)
-        {
+        if (domains is not null) {
             claims.Add(new Claim("domains", JsonSerializer.Serialize(domains)));
         }
 
-        if (permissions is not null)
-        {
+        if (permissions is not null) {
             claims.Add(new Claim("permissions", JsonSerializer.Serialize(permissions)));
         }
 
         DateTime expiresAt = expires ?? DateTime.UtcNow.AddHours(1);
 
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
+        var tokenDescriptor = new SecurityTokenDescriptor {
             Subject = new ClaimsIdentity(claims),
             NotBefore = expiresAt < DateTime.UtcNow ? expiresAt.AddHours(-1) : DateTime.UtcNow,
             Expires = expiresAt,

@@ -12,8 +12,7 @@ namespace Hexalith.EventStore.Server.Configuration;
 /// for dynamic updates (NFR20). Write access to the config store must be restricted to admin
 /// service accounts only (Red Team H2).</para>
 /// </remarks>
-public record SnapshotOptions
-{
+public record SnapshotOptions {
     /// <summary>
     /// Minimum allowed snapshot interval. Values below this threshold are rejected
     /// to prevent performance degradation from overly frequent snapshots.
@@ -38,18 +37,14 @@ public record SnapshotOptions
     /// Validates that all configured intervals meet the minimum threshold.
     /// </summary>
     /// <exception cref="InvalidOperationException">Thrown when any interval is below <see cref="MinimumInterval"/>.</exception>
-    public void Validate()
-    {
-        if (DefaultInterval < MinimumInterval)
-        {
+    public void Validate() {
+        if (DefaultInterval < MinimumInterval) {
             throw new InvalidOperationException(
                 $"Snapshot DefaultInterval must be >= {MinimumInterval}. Got {DefaultInterval}.");
         }
 
-        foreach (KeyValuePair<string, int> entry in DomainIntervals)
-        {
-            if (entry.Value < MinimumInterval)
-            {
+        foreach (KeyValuePair<string, int> entry in DomainIntervals) {
+            if (entry.Value < MinimumInterval) {
                 throw new InvalidOperationException(
                     $"Snapshot interval for domain '{entry.Key}' must be >= {MinimumInterval}. Got {entry.Value}.");
             }

@@ -1,4 +1,5 @@
 using CommunityToolkit.Aspire.Hosting.Dapr;
+
 using Hexalith.EventStore.Aspire;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -6,14 +7,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Resolve DAPR access control configuration path (Story 5.1, D4, FR34).
 // Both commandapi and sample sidecars load this Configuration CRD.
 var accessControlConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", "accesscontrol.yaml");
-if (!File.Exists(accessControlConfigPath))
-{
+if (!File.Exists(accessControlConfigPath)) {
     accessControlConfigPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "DaprComponents", "accesscontrol.yaml"));
 }
 
-if (!File.Exists(accessControlConfigPath))
-{
+if (!File.Exists(accessControlConfigPath)) {
     throw new FileNotFoundException(
         "DAPR access control configuration not found. "
         + "Ensure accesscontrol.yaml exists in the DaprComponents directory (D4, FR34).",
@@ -29,8 +28,7 @@ var eventStoreResources = builder.AddHexalithEventStore(commandApi, accessContro
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
-if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase))
-{
+if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase)) {
     // Realm-as-code: hexalith-realm.json auto-imported on container start.
     // Port 8180 avoids conflict with commandapi on 8080.
     var keycloak = builder.AddKeycloak("keycloak", 8180)
@@ -64,8 +62,7 @@ var sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
     // Domain services have zero infrastructure access (D4, AC #13).
     // Direct Redis access would bypass DAPR component scoping entirely.
     .WithDaprSidecar(sidecar => sidecar
-        .WithOptions(new DaprSidecarOptions
-        {
+        .WithOptions(new DaprSidecarOptions {
             AppId = "sample",
             AppPort = 8081,
             Config = accessControlConfigPath,

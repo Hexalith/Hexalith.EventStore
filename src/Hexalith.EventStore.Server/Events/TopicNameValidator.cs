@@ -13,8 +13,7 @@ using Microsoft.Extensions.Logging;
 /// AggregateIdentity input validation (NFR28).
 /// </summary>
 public class TopicNameValidator(
-    ILogger<TopicNameValidator> logger) : ITopicNameValidator
-{
+    ILogger<TopicNameValidator> logger) : ITopicNameValidator {
     /// <summary>
     /// Maximum topic length compatible with the most restrictive DAPR pub/sub backend (Kafka: 249 chars).
     /// </summary>
@@ -30,22 +29,18 @@ public class TopicNameValidator(
         RegexOptions.Compiled);
 
     /// <inheritdoc/>
-    public bool IsValidTopicName(string topicName)
-    {
+    public bool IsValidTopicName(string topicName) {
         ArgumentNullException.ThrowIfNull(topicName);
 
-        if (string.IsNullOrWhiteSpace(topicName))
-        {
+        if (string.IsNullOrWhiteSpace(topicName)) {
             return false;
         }
 
-        if (!_topicPattern.IsMatch(topicName))
-        {
+        if (!_topicPattern.IsMatch(topicName)) {
             return false;
         }
 
-        if (topicName.Length > MaxTopicLength)
-        {
+        if (topicName.Length > MaxTopicLength) {
             logger.LogWarning(
                 "Topic name exceeds maximum backend length: Length={Length}, MaxLength={MaxLength}, Topic={Topic}",
                 topicName.Length,
@@ -54,8 +49,7 @@ public class TopicNameValidator(
             return false;
         }
 
-        if (topicName.Length > WarningLengthThreshold)
-        {
+        if (topicName.Length > WarningLengthThreshold) {
             logger.LogWarning(
                 "Topic name approaching backend length limits: Length={Length}, WarningThreshold={WarningThreshold}, Topic={Topic}",
                 topicName.Length,
@@ -67,14 +61,12 @@ public class TopicNameValidator(
     }
 
     /// <inheritdoc/>
-    public string DeriveTopicName(AggregateIdentity identity)
-    {
+    public string DeriveTopicName(AggregateIdentity identity) {
         ArgumentNullException.ThrowIfNull(identity);
 
         string topicName = identity.PubSubTopic;
 
-        if (!IsValidTopicName(topicName))
-        {
+        if (!IsValidTopicName(topicName)) {
             throw new ArgumentException(
                 $"Derived topic name '{topicName}' is invalid. Expected D6 pattern: {{tenant}}.{{domain}}.events with lowercase alphanumeric + hyphens, max {MaxTopicLength} chars.",
                 nameof(identity));

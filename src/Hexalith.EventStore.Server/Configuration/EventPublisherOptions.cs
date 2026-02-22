@@ -6,8 +6,7 @@ using Hexalith.EventStore.Contracts.Identity;
 /// Configuration options for event publication via DAPR pub/sub.
 /// Bound to configuration section "EventStore:Publisher".
 /// </summary>
-public record EventPublisherOptions
-{
+public record EventPublisherOptions {
     /// <summary>Gets the DAPR pub/sub component name.</summary>
     public string PubSubName { get; init; } = "pubsub";
 
@@ -20,8 +19,7 @@ public record EventPublisherOptions
     /// </summary>
     /// <param name="identity">The aggregate identity to derive the dead-letter topic from.</param>
     /// <returns>The fully-qualified dead-letter topic name.</returns>
-    public string GetDeadLetterTopic(AggregateIdentity identity)
-    {
+    public string GetDeadLetterTopic(AggregateIdentity identity) {
         ArgumentNullException.ThrowIfNull(identity);
         return $"{DeadLetterTopicPrefix}.{identity.TenantId}.{identity.Domain}.events";
     }

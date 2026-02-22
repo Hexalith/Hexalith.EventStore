@@ -9,8 +9,7 @@ using Hexalith.EventStore.Server.Events;
 /// Fake implementation of <see cref="IEventPersister"/> for unit testing.
 /// Stores persisted events in memory for test assertions and supports configurable failure.
 /// </summary>
-public sealed class FakeEventPersister : IEventPersister
-{
+public sealed class FakeEventPersister : IEventPersister {
     private readonly List<EventEnvelope> _persistedEvents = [];
     private readonly Dictionary<string, long> _sequenceByAggregate = [];
     private Exception? _exceptionToThrow;
@@ -22,8 +21,7 @@ public sealed class FakeEventPersister : IEventPersister
     /// Configures the fake to throw the specified exception on the next call to PersistEventsAsync.
     /// </summary>
     /// <param name="exception">The exception to throw.</param>
-    public void SetupFailure(Exception exception)
-    {
+    public void SetupFailure(Exception exception) {
         ArgumentNullException.ThrowIfNull(exception);
         _exceptionToThrow = exception;
     }
@@ -33,15 +31,13 @@ public sealed class FakeEventPersister : IEventPersister
         AggregateIdentity identity,
         CommandEnvelope command,
         DomainResult domainResult,
-        string domainServiceVersion)
-    {
+        string domainServiceVersion) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(domainResult);
         ArgumentNullException.ThrowIfNull(domainServiceVersion);
 
-        if (_exceptionToThrow is not null)
-        {
+        if (_exceptionToThrow is not null) {
             Exception ex = _exceptionToThrow;
             _exceptionToThrow = null;
             throw ex;
@@ -53,8 +49,7 @@ public sealed class FakeEventPersister : IEventPersister
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var envelopes = new List<EventEnvelope>();
 
-        foreach (Hexalith.EventStore.Contracts.Events.IEventPayload eventPayload in domainResult.Events)
-        {
+        foreach (Hexalith.EventStore.Contracts.Events.IEventPayload eventPayload in domainResult.Events) {
             currentSequence++;
             string eventTypeName = eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
             byte[] payloadBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());

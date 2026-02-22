@@ -3,8 +3,6 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-using Hexalith.EventStore.Contracts.Events;
-using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
@@ -16,12 +14,10 @@ using Shouldly;
 /// Validates event persistence atomicity and Redis state store behavior.
 /// </summary>
 [Collection("DaprTestContainer")]
-public class EventPersistenceIntegrationTests
-{
+public class EventPersistenceIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 
-    public EventPersistenceIntegrationTests(DaprTestContainerFixture fixture)
-    {
+    public EventPersistenceIntegrationTests(DaprTestContainerFixture fixture) {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -31,11 +27,9 @@ public class EventPersistenceIntegrationTests
     /// Multiple sequential commands to the same aggregate should all persist successfully.
     /// </summary>
     [Fact]
-    public async Task RedisStateStore_SequentialCommands_PersistsAllEvents()
-    {
+    public async Task RedisStateStore_SequentialCommands_PersistsAllEvents() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -45,8 +39,7 @@ public class EventPersistenceIntegrationTests
             nameof(AggregateActor));
 
         // Act - persist 10 events
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             var command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -64,11 +57,9 @@ public class EventPersistenceIntegrationTests
     /// Idempotency records (actor state) should survive across multiple calls.
     /// </summary>
     [Fact]
-    public async Task RedisActorStateStore_IdempotencyRecords_PersistAcrossCalls()
-    {
+    public async Task RedisActorStateStore_IdempotencyRecords_PersistAcrossCalls() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -103,11 +94,9 @@ public class EventPersistenceIntegrationTests
     /// Note: This test is long-running as it sends many commands.
     /// </summary>
     [Fact(Skip = "Long-running: sends 105 commands to trigger snapshot at interval 100")]
-    public async Task ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot()
-    {
+    public async Task ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot() {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -117,8 +106,7 @@ public class EventPersistenceIntegrationTests
             nameof(AggregateActor));
 
         // Act - send 105 commands (exceeds snapshot interval of 100)
-        for (int i = 0; i < 105; i++)
-        {
+        for (int i = 0; i < 105; i++) {
             var command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")

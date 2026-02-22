@@ -20,10 +20,8 @@ public partial class LoggingBehavior<TRequest, TResponse>(
     ILogger<LoggingBehavior<TRequest, TResponse>> logger,
     IHttpContextAccessor httpContextAccessor)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull
-{
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
-    {
+    where TRequest : notnull {
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
@@ -35,8 +33,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         string causationId = correlationId; // For original submissions, CausationId = CorrelationId
         string? sourceIp = httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
-        if (request is SubmitCommand submitCommand)
-        {
+        if (request is SubmitCommand submitCommand) {
             tenant = submitCommand.Tenant;
             domain = submitCommand.Domain;
             aggregateId = submitCommand.AggregateId;
@@ -46,8 +43,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
             EventStoreActivitySources.Submit,
             ActivityKind.Server);
-        if (activity is not null)
-        {
+        if (activity is not null) {
             activity.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
             activity.SetTag(EventStoreActivitySource.TagTenantId, tenant);
             activity.SetTag(EventStoreActivitySource.TagDomain, domain);
@@ -58,8 +54,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
 
         long startTimestamp = Stopwatch.GetTimestamp();
 
-        try
-        {
+        try {
             TResponse response = await next().ConfigureAwait(false);
 
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
@@ -70,8 +65,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
 
             return response;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
             activity?.AddException(ex);
@@ -83,19 +77,16 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         }
     }
 
-    private string GetCorrelationId()
-    {
+    private string GetCorrelationId() {
         HttpContext? httpContext = httpContextAccessor.HttpContext;
-        if (httpContext?.Items[CorrelationIdMiddleware.HttpContextKey] is string correlationId)
-        {
+        if (httpContext?.Items[CorrelationIdMiddleware.HttpContextKey] is string correlationId) {
             return correlationId;
         }
 
         return Guid.NewGuid().ToString();
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1000,
             Level = LogLevel.Information,

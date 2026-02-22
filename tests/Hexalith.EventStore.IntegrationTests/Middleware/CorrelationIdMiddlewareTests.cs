@@ -8,15 +8,12 @@ using Microsoft.AspNetCore.Http;
 
 using Shouldly;
 
-public class CorrelationIdMiddlewareTests
-{
+public class CorrelationIdMiddlewareTests {
     [Fact]
-    public async Task InvokeAsync_NoHeader_GeneratesCorrelationId()
-    {
+    public async Task InvokeAsync_NoHeader_GeneratesCorrelationId() {
         // Arrange
         string? capturedCorrelationId = null;
-        var middleware = new CorrelationIdMiddleware(next: context =>
-        {
+        var middleware = new CorrelationIdMiddleware(next: context => {
             capturedCorrelationId = context.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString();
             return Task.CompletedTask;
         });
@@ -32,13 +29,11 @@ public class CorrelationIdMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithValidGuidHeader_PropagatesExistingId()
-    {
+    public async Task InvokeAsync_WithValidGuidHeader_PropagatesExistingId() {
         // Arrange
         string existingId = Guid.NewGuid().ToString();
         string? capturedCorrelationId = null;
-        var middleware = new CorrelationIdMiddleware(next: context =>
-        {
+        var middleware = new CorrelationIdMiddleware(next: context => {
             capturedCorrelationId = context.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString();
             return Task.CompletedTask;
         });
@@ -54,12 +49,10 @@ public class CorrelationIdMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithInvalidHeader_GeneratesNewId()
-    {
+    public async Task InvokeAsync_WithInvalidHeader_GeneratesNewId() {
         // Arrange
         string? capturedCorrelationId = null;
-        var middleware = new CorrelationIdMiddleware(next: context =>
-        {
+        var middleware = new CorrelationIdMiddleware(next: context => {
             capturedCorrelationId = context.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString();
             return Task.CompletedTask;
         });

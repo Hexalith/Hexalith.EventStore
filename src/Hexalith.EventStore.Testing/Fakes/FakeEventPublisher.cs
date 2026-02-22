@@ -10,8 +10,7 @@ using Hexalith.EventStore.Server.Events;
 /// Tracks all publish calls for test assertions and supports configurable failure modes.
 /// Thread-safe for concurrent multi-tenant verification (Story 4.2).
 /// </summary>
-public sealed class FakeEventPublisher : IEventPublisher
-{
+public sealed class FakeEventPublisher : IEventPublisher {
     private readonly ConcurrentBag<PublishCall> _publishCalls = [];
     private readonly ConcurrentDictionary<string, ConcurrentBag<EventEnvelope>> _eventsByTopic = new();
     private int? _failOnEventIndex;
@@ -36,8 +35,7 @@ public sealed class FakeEventPublisher : IEventPublisher
     /// </summary>
     /// <param name="topic">The topic name to query.</param>
     /// <returns>The events published to the specified topic, or an empty list if none.</returns>
-    public IReadOnlyList<EventEnvelope> GetEventsForTopic(string topic)
-    {
+    public IReadOnlyList<EventEnvelope> GetEventsForTopic(string topic) {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         return _eventsByTopic.TryGetValue(topic, out ConcurrentBag<EventEnvelope>? events)
             ? [.. events]
@@ -49,11 +47,9 @@ public sealed class FakeEventPublisher : IEventPublisher
     /// </summary>
     /// <param name="topic">The topic that should have zero events.</param>
     /// <exception cref="InvalidOperationException">Thrown when events were found on the specified topic.</exception>
-    public void AssertNoEventsForTopic(string topic)
-    {
+    public void AssertNoEventsForTopic(string topic) {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-        if (_eventsByTopic.TryGetValue(topic, out ConcurrentBag<EventEnvelope>? events) && !events.IsEmpty)
-        {
+        if (_eventsByTopic.TryGetValue(topic, out ConcurrentBag<EventEnvelope>? events) && !events.IsEmpty) {
             throw new InvalidOperationException(
                 $"Expected no events for topic '{topic}', but found {events.Count} event(s).");
         }
@@ -63,8 +59,7 @@ public sealed class FakeEventPublisher : IEventPublisher
     /// Configures the fake to always return failure with the specified message.
     /// </summary>
     /// <param name="failureMessage">The failure reason message.</param>
-    public void SetupFailure(string failureMessage = "Pub/sub unavailable")
-    {
+    public void SetupFailure(string failureMessage = "Pub/sub unavailable") {
         _failureMessage = failureMessage;
         _failOnEventIndex = null;
     }
@@ -75,8 +70,7 @@ public sealed class FakeEventPublisher : IEventPublisher
     /// </summary>
     /// <param name="eventIndex">The 0-based index of the event that should fail.</param>
     /// <param name="failureMessage">The failure reason message.</param>
-    public void SetupPartialFailure(int eventIndex, string failureMessage = "Partial publication failure")
-    {
+    public void SetupPartialFailure(int eventIndex, string failureMessage = "Partial publication failure") {
         _failOnEventIndex = eventIndex;
         _failureMessage = failureMessage;
     }
@@ -86,8 +80,7 @@ public sealed class FakeEventPublisher : IEventPublisher
         AggregateIdentity identity,
         IReadOnlyList<EventEnvelope> events,
         string correlationId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
@@ -99,25 +92,21 @@ public sealed class FakeEventPublisher : IEventPublisher
         bool success = true;
         string? failureReason = null;
 
-        if (_failOnEventIndex.HasValue && _failOnEventIndex.Value < events.Count)
-        {
+        if (_failOnEventIndex.HasValue && _failOnEventIndex.Value < events.Count) {
             publishedCount = _failOnEventIndex.Value;
             success = false;
             failureReason = _failureMessage;
         }
-        else if (_failureMessage is not null && _failOnEventIndex is null)
-        {
+        else if (_failureMessage is not null && _failOnEventIndex is null) {
             publishedCount = 0;
             success = false;
             failureReason = _failureMessage;
         }
 
         // Track only events that were actually published.
-        if (publishedCount > 0)
-        {
+        if (publishedCount > 0) {
             ConcurrentBag<EventEnvelope> topicEvents = _eventsByTopic.GetOrAdd(topic, _ => []);
-            for (int i = 0; i < publishedCount; i++)
-            {
+            for (int i = 0; i < publishedCount; i++) {
                 topicEvents.Add(events[i]);
             }
         }

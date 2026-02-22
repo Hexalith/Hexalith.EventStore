@@ -10,16 +10,14 @@ using NSubstitute;
 
 using Shouldly;
 
-public class IdempotencyCheckerTests
-{
+public class IdempotencyCheckerTests {
     private readonly IActorStateManager _stateManager = Substitute.For<IActorStateManager>();
     private readonly ILogger<IdempotencyChecker> _logger = Substitute.For<ILogger<IdempotencyChecker>>();
 
     private IdempotencyChecker CreateChecker() => new(_stateManager, _logger);
 
     [Fact]
-    public async Task CheckAsync_NoExistingRecord_ReturnsNull()
-    {
+    public async Task CheckAsync_NoExistingRecord_ReturnsNull() {
         // Arrange
         _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
@@ -33,8 +31,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task CheckAsync_ExistingRecord_ReturnsCachedResult()
-    {
+    public async Task CheckAsync_ExistingRecord_ReturnsCachedResult() {
         // Arrange
         var record = new IdempotencyRecord("cause-123", "corr-456", true, null, DateTimeOffset.UtcNow);
         _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
@@ -51,8 +48,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task RecordAsync_StoresIdempotencyRecord()
-    {
+    public async Task RecordAsync_StoresIdempotencyRecord() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
         var processingResult = new CommandProcessingResult(Accepted: true, CorrelationId: "corr-789");
@@ -71,8 +67,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task RecordAsync_DoesNotCallSaveState()
-    {
+    public async Task RecordAsync_DoesNotCallSaveState() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
         var processingResult = new CommandProcessingResult(Accepted: true, CorrelationId: "corr-1");
@@ -85,8 +80,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task CheckAsync_NullCausationId_ThrowsArgumentException()
-    {
+    public async Task CheckAsync_NullCausationId_ThrowsArgumentException() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
 
@@ -95,8 +89,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task CheckAsync_WhitespaceCausationId_ThrowsArgumentException()
-    {
+    public async Task CheckAsync_WhitespaceCausationId_ThrowsArgumentException() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
 
@@ -105,8 +98,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task RecordAsync_NullCausationId_ThrowsArgumentException()
-    {
+    public async Task RecordAsync_NullCausationId_ThrowsArgumentException() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
         var result = new CommandProcessingResult(Accepted: true);
@@ -116,8 +108,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task RecordAsync_NullResult_ThrowsArgumentNullException()
-    {
+    public async Task RecordAsync_NullResult_ThrowsArgumentNullException() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
 
@@ -126,8 +117,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task CheckAsync_CorrectKeyFormat_UsesIdempotencyPrefix()
-    {
+    public async Task CheckAsync_CorrectKeyFormat_UsesIdempotencyPrefix() {
         // Arrange
         _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));

@@ -5,7 +5,6 @@ using System.Security.Claims;
 using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -19,22 +18,19 @@ using NSubstitute;
 
 using Shouldly;
 
-public class ReplayControllerTests
-{
+public class ReplayControllerTests {
     private readonly InMemoryCommandArchiveStore _archiveStore = new();
     private readonly InMemoryCommandStatusStore _statusStore = new();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
 
-    private ReplayController CreateController(ClaimsPrincipal? user = null)
-    {
+    private ReplayController CreateController(ClaimsPrincipal? user = null) {
         var controller = new ReplayController(
             _archiveStore,
             _statusStore,
             _mediator,
             NullLogger<ReplayController>.Instance);
 
-        var httpContext = new DefaultHttpContext
-        {
+        var httpContext = new DefaultHttpContext {
             User = user ?? CreateUserWithTenants("tenant-a"),
         };
         httpContext.Items["CorrelationId"] = "request-corr-id";
@@ -43,8 +39,7 @@ public class ReplayControllerTests
         return controller;
     }
 
-    private static ClaimsPrincipal CreateUserWithTenants(params string[] tenants)
-    {
+    private static ClaimsPrincipal CreateUserWithTenants(params string[] tenants) {
         var claims = new List<Claim>
         {
             new("sub", "test-user"),
@@ -55,8 +50,7 @@ public class ReplayControllerTests
         return new ClaimsPrincipal(identity);
     }
 
-    private async Task SeedArchivedCommand(string tenant, string correlationId, CommandStatus status)
-    {
+    private async Task SeedArchivedCommand(string tenant, string correlationId, CommandStatus status) {
         var archived = new ArchivedCommand(
             Tenant: tenant,
             Domain: "orders",
@@ -75,8 +69,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_RejectedStatus_Returns202WithReplayResponse()
-    {
+    public async Task Replay_RejectedStatus_Returns202WithReplayResponse() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
@@ -98,8 +91,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_PublishFailedStatus_Returns202()
-    {
+    public async Task Replay_PublishFailedStatus_Returns202() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.PublishFailed);
@@ -120,8 +112,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_TimedOutStatus_Returns202()
-    {
+    public async Task Replay_TimedOutStatus_Returns202() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.TimedOut);
@@ -142,8 +133,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_CompletedStatus_Returns409ProblemDetails()
-    {
+    public async Task Replay_CompletedStatus_Returns409ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Completed);
@@ -161,8 +151,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_ProcessingStatus_Returns409ProblemDetails()
-    {
+    public async Task Replay_ProcessingStatus_Returns409ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Processing);
@@ -179,8 +168,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_ReceivedStatus_Returns409ProblemDetails()
-    {
+    public async Task Replay_ReceivedStatus_Returns409ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Received);
@@ -195,8 +183,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_EventsStoredStatus_Returns409ProblemDetails()
-    {
+    public async Task Replay_EventsStoredStatus_Returns409ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.EventsStored);
@@ -213,8 +200,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_EventsPublishedStatus_Returns409ProblemDetails()
-    {
+    public async Task Replay_EventsPublishedStatus_Returns409ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.EventsPublished);
@@ -231,8 +217,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_NonExistentCorrelationId_Returns404ProblemDetails()
-    {
+    public async Task Replay_NonExistentCorrelationId_Returns404ProblemDetails() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         ReplayController controller = CreateController();
@@ -248,8 +233,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_TenantMismatch_Returns404ProblemDetails()
-    {
+    public async Task Replay_TenantMismatch_Returns404ProblemDetails() {
         // Arrange - archived as tenant-a, requesting as tenant-b
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
@@ -265,8 +249,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_NoTenantClaims_Returns403ProblemDetails()
-    {
+    public async Task Replay_NoTenantClaims_Returns403ProblemDetails() {
         // Arrange - user with no tenant claims
         string correlationId = Guid.NewGuid().ToString();
         var userWithNoClaims = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user")], "TestAuth"));
@@ -284,8 +267,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_StatusResetByHandler()
-    {
+    public async Task Replay_StatusResetByHandler() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
@@ -303,8 +285,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_ResubmitsThroughMediatRPipeline()
-    {
+    public async Task Replay_ResubmitsThroughMediatRPipeline() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
@@ -324,16 +305,14 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_PreservesOriginalCorrelationId()
-    {
+    public async Task Replay_PreservesOriginalCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
 
         SubmitCommand? capturedCommand = null;
         _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
+            .Returns(callInfo => {
                 capturedCommand = callInfo.Arg<SubmitCommand>();
                 return new SubmitCommandResult(correlationId);
             });
@@ -349,8 +328,7 @@ public class ReplayControllerTests
     }
 
     [Fact]
-    public async Task Replay_NullStatus_ArchiveExists_Returns409ProblemDetails()
-    {
+    public async Task Replay_NullStatus_ArchiveExists_Returns409ProblemDetails() {
         // Arrange - archive exists but status is null (expired)
         string correlationId = Guid.NewGuid().ToString();
         var archived = new ArchivedCommand(

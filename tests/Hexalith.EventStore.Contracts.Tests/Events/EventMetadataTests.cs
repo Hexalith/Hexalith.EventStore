@@ -2,11 +2,9 @@ namespace Hexalith.EventStore.Contracts.Tests.Events;
 
 using Hexalith.EventStore.Contracts.Events;
 
-public class EventMetadataTests
-{
+public class EventMetadataTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var timestamp = DateTimeOffset.UtcNow;
         var metadata = new EventMetadata(
             AggregateId: "order-123",
@@ -35,8 +33,7 @@ public class EventMetadataTests
     }
 
     [Fact]
-    public void EventMetadata_HasExactly11Fields()
-    {
+    public void EventMetadata_HasExactly11Fields() {
         var properties = typeof(EventMetadata).GetProperties();
         Assert.Equal(11, properties.Length);
     }
@@ -45,8 +42,7 @@ public class EventMetadataTests
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(long.MinValue)]
-    public void Constructor_WithSequenceNumberLessThan1_ThrowsArgumentOutOfRangeException(long sequenceNumber)
-    {
+    public void Constructor_WithSequenceNumberLessThan1_ThrowsArgumentOutOfRangeException(long sequenceNumber) {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new EventMetadata("agg1", "t1", "d1", sequenceNumber, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", "json"));
     }
@@ -54,16 +50,14 @@ public class EventMetadataTests
     [Theory]
     [InlineData(1)]
     [InlineData(long.MaxValue)]
-    public void Constructor_WithValidSequenceNumber_Succeeds(long sequenceNumber)
-    {
+    public void Constructor_WithValidSequenceNumber_Succeeds(long sequenceNumber) {
         var metadata = new EventMetadata("agg1", "t1", "d1", sequenceNumber, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", "json");
 
         Assert.Equal(sequenceNumber, metadata.SequenceNumber);
     }
 
     [Fact]
-    public void RecordEquality_SameValues_AreEqual()
-    {
+    public void RecordEquality_SameValues_AreEqual() {
         var timestamp = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var m1 = new EventMetadata("agg1", "t1", "d1", 1, timestamp, "c1", "ca1", "u1", "v1", "e1", "json");
         var m2 = new EventMetadata("agg1", "t1", "d1", 1, timestamp, "c1", "ca1", "u1", "v1", "e1", "json");

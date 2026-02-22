@@ -20,8 +20,7 @@ public record DomainServiceOptions(
     string ConfigStoreName = "configstore",
     int InvocationTimeoutSeconds = 5,
     int MaxEventsPerResult = 1000,
-    int MaxEventSizeBytes = 1_048_576)
-{
+    int MaxEventSizeBytes = 1_048_576) {
     /// <summary>
     /// Static domain service registrations keyed by "{tenant}:{domain}:{version}".
     /// Checked before the DAPR config store. Useful for local development and testing.

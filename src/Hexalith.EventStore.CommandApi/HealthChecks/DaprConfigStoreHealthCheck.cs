@@ -7,8 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// <summary>
 /// Health check that verifies DAPR configuration store accessibility via the metadata API.
 /// </summary>
-public class DaprConfigStoreHealthCheck(DaprClient daprClient, string configStoreName) : IHealthCheck
-{
+public class DaprConfigStoreHealthCheck(DaprClient daprClient, string configStoreName) : IHealthCheck {
     private readonly DaprClient _daprClient = daprClient
         ?? throw new ArgumentNullException(nameof(daprClient));
     private readonly string _configStoreName = configStoreName
@@ -17,12 +16,10 @@ public class DaprConfigStoreHealthCheck(DaprClient daprClient, string configStor
     /// <inheritdoc/>
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(context);
 
-        try
-        {
+        try {
             var metadata = await _daprClient.GetMetadataAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -36,8 +33,7 @@ public class DaprConfigStoreHealthCheck(DaprClient daprClient, string configStor
                     context.Registration.FailureStatus,
                     $"Dapr config store component '{_configStoreName}' not found in metadata.");
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return new HealthCheckResult(
                 context.Registration.FailureStatus,
                 $"Dapr config store health check failed: {ex.GetType().Name}",

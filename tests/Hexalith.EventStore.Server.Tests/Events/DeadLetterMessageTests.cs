@@ -5,8 +5,7 @@ using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
 
-public class DeadLetterMessageTests
-{
+public class DeadLetterMessageTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -22,8 +21,7 @@ public class DeadLetterMessageTests
         Extensions: null);
 
     [Fact]
-    public void Construction_AllFieldsPreserved()
-    {
+    public void Construction_AllFieldsPreserved() {
         // Arrange
         var command = CreateTestEnvelope();
         var failedAt = DateTimeOffset.UtcNow;
@@ -59,8 +57,7 @@ public class DeadLetterMessageTests
     }
 
     [Fact]
-    public void FromException_ExtractsExceptionType()
-    {
+    public void FromException_ExtractsExceptionType() {
         // Arrange
         var command = CreateTestEnvelope();
         var exception = new InvalidOperationException("State store unavailable");
@@ -76,8 +73,7 @@ public class DeadLetterMessageTests
     }
 
     [Fact]
-    public void FromException_ExtractsErrorMessage()
-    {
+    public void FromException_ExtractsErrorMessage() {
         // Arrange
         var command = CreateTestEnvelope();
         var exception = new InvalidOperationException("State store unavailable");
@@ -95,8 +91,7 @@ public class DeadLetterMessageTests
     }
 
     [Fact]
-    public void FromException_PreservesFullCommandEnvelope()
-    {
+    public void FromException_PreservesFullCommandEnvelope() {
         // Arrange
         var command = CreateTestEnvelope();
         var exception = new InvalidOperationException("State store unavailable");
@@ -118,8 +113,7 @@ public class DeadLetterMessageTests
     }
 
     [Fact]
-    public void FromException_SetsCorrectFailureStage()
-    {
+    public void FromException_SetsCorrectFailureStage() {
         // Arrange
         var command = CreateTestEnvelope();
         var exception = new InvalidOperationException("State store unavailable");
@@ -135,8 +129,7 @@ public class DeadLetterMessageTests
     }
 
     [Fact]
-    public void FromException_SetsFailedAtTimestamp()
-    {
+    public void FromException_SetsFailedAtTimestamp() {
         // Arrange
         var command = CreateTestEnvelope();
         var exception = new InvalidOperationException("State store unavailable");
@@ -155,8 +148,7 @@ public class DeadLetterMessageTests
     }
 
     [Fact]
-    public void FromException_NestedExceptionUsesOuterType()
-    {
+    public void FromException_NestedExceptionUsesOuterType() {
         // Arrange
         var command = CreateTestEnvelope();
         var innerException = new TimeoutException("Inner timeout");

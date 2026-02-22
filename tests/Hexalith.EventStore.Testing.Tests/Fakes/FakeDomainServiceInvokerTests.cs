@@ -5,11 +5,9 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Testing.Builders;
 using Hexalith.EventStore.Testing.Fakes;
 
-public class FakeDomainServiceInvokerTests
-{
+public class FakeDomainServiceInvokerTests {
     [Fact]
-    public async Task InvokeAsync_returns_command_type_response()
-    {
+    public async Task InvokeAsync_returns_command_type_response() {
         var sut = new FakeDomainServiceInvoker();
         var expected = DomainResult.NoOp();
         sut.SetupResponse("TestCommand", expected);
@@ -21,8 +19,7 @@ public class FakeDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_returns_tenant_domain_response()
-    {
+    public async Task InvokeAsync_returns_tenant_domain_response() {
         var sut = new FakeDomainServiceInvoker();
         var expected = DomainResult.NoOp();
         sut.SetupResponse("test-tenant", "test-domain", expected);
@@ -34,8 +31,7 @@ public class FakeDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_returns_default_response_when_no_specific_match()
-    {
+    public async Task InvokeAsync_returns_default_response_when_no_specific_match() {
         var sut = new FakeDomainServiceInvoker();
         var expected = DomainResult.NoOp();
         sut.SetupDefaultResponse(expected);
@@ -47,8 +43,7 @@ public class FakeDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_throws_when_no_response_configured()
-    {
+    public async Task InvokeAsync_throws_when_no_response_configured() {
         var sut = new FakeDomainServiceInvoker();
         var command = new CommandEnvelopeBuilder().WithCommandType("Unconfigured").Build();
 
@@ -56,8 +51,7 @@ public class FakeDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_tracks_invocations()
-    {
+    public async Task InvokeAsync_tracks_invocations() {
         var sut = new FakeDomainServiceInvoker();
         sut.SetupDefaultResponse(DomainResult.NoOp());
 
@@ -73,8 +67,7 @@ public class FakeDomainServiceInvokerTests
     }
 
     [Fact]
-    public async Task InvokeAsync_prefers_command_type_over_tenant_domain()
-    {
+    public async Task InvokeAsync_prefers_command_type_over_tenant_domain() {
         var sut = new FakeDomainServiceInvoker();
         var cmdTypeResult = DomainResult.NoOp();
         var tenantResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });

@@ -18,17 +18,14 @@ using Microsoft.IdentityModel.Tokens;
 /// </summary>
 public class ConfigureJwtBearerOptions(
     IOptions<EventStoreAuthenticationOptions> authOptions,
-    ILoggerFactory loggerFactory) : IConfigureNamedOptions<JwtBearerOptions>
-{
+    ILoggerFactory loggerFactory) : IConfigureNamedOptions<JwtBearerOptions> {
     private const string RequestAuditMetadataKey = "AuthFailureRequestAuditMetadata";
     private readonly ILogger _logger = loggerFactory.CreateLogger<ConfigureJwtBearerOptions>();
 
-    public void Configure(string? name, JwtBearerOptions options)
-    {
+    public void Configure(string? name, JwtBearerOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (name != JwtBearerDefaults.AuthenticationScheme)
-        {
+        if (name != JwtBearerDefaults.AuthenticationScheme) {
             return;
         }
 
@@ -37,8 +34,7 @@ public class ConfigureJwtBearerOptions(
         // Preserve original JWT claim names (avoid Microsoft namespace mapping)
         options.MapInboundClaims = false;
 
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
+        options.TokenValidationParameters = new TokenValidationParameters {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateIssuerSigningKey = true,
@@ -48,32 +44,27 @@ public class ConfigureJwtBearerOptions(
             ValidAudience = authConfig.Audience,
         };
 
-        if (!string.IsNullOrEmpty(authConfig.Authority))
-        {
+        if (!string.IsNullOrEmpty(authConfig.Authority)) {
             // Production mode: OIDC discovery
             options.Authority = authConfig.Authority;
             options.RequireHttpsMetadata = authConfig.RequireHttpsMetadata;
         }
-        else if (!string.IsNullOrEmpty(authConfig.SigningKey))
-        {
+        else if (!string.IsNullOrEmpty(authConfig.SigningKey)) {
             // Development/testing mode: symmetric key
             options.TokenValidationParameters.IssuerSigningKey =
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authConfig.SigningKey));
         }
 
         // Configure events for failure logging and ProblemDetails responses
-        options.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = async context =>
-            {
+        options.Events = new JwtBearerEvents {
+            OnAuthenticationFailed = async context => {
                 string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
                 string sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 string requestPath = context.Request.Path;
                 RequestAuditMetadata metadata = await TryExtractRequestAuditMetadataAsync(context.HttpContext).ConfigureAwait(false);
 
                 // Determine failure reason from exception type
-                string failureReason = context.Exception switch
-                {
+                string failureReason = context.Exception switch {
                     SecurityTokenExpiredException => "TokenExpired",
                     SecurityTokenInvalidSignatureException => "InvalidSignature",
                     SecurityTokenInvalidIssuerException => "InvalidIssuer",
@@ -97,8 +88,7 @@ public class ConfigureJwtBearerOptions(
                 await Task.CompletedTask.ConfigureAwait(false);
             },
 
-            OnChallenge = async context =>
-            {
+            OnChallenge = async context => {
                 // Suppress default challenge behavior - we'll write our own ProblemDetails response
                 context.HandleResponse();
 
@@ -128,8 +118,7 @@ public class ConfigureJwtBearerOptions(
                 // Determine human-readable detail message based on error type
                 string detail = GetDetailMessage(context.Error, context.ErrorDescription, context.AuthenticateFailure);
 
-                var problemDetails = new ProblemDetails
-                {
+                var problemDetails = new ProblemDetails {
                     Status = StatusCodes.Status401Unauthorized,
                     Title = "Unauthorized",
                     Type = "https://tools.ietf.org/html/rfc9457#section-3",
@@ -153,108 +142,87 @@ public class ConfigureJwtBearerOptions(
 
     public void Configure(JwtBearerOptions options) => Configure(JwtBearerDefaults.AuthenticationScheme, options);
 
-    private static string GetDetailMessage(string? error, string? errorDescription, Exception? failure)
-    {
-        if (failure is SecurityTokenExpiredException)
-        {
+    private static string GetDetailMessage(string? error, string? errorDescription, Exception? failure) {
+        if (failure is SecurityTokenExpiredException) {
             return "The provided authentication token has expired.";
         }
 
-        if (failure is SecurityTokenInvalidIssuerException)
-        {
+        if (failure is SecurityTokenInvalidIssuerException) {
             return "The provided authentication token has an invalid issuer.";
         }
 
-        if (failure is SecurityTokenInvalidSignatureException or SecurityTokenInvalidAudienceException)
-        {
+        if (failure is SecurityTokenInvalidSignatureException or SecurityTokenInvalidAudienceException) {
             return "The provided authentication token is invalid.";
         }
 
-        if (failure is not null)
-        {
+        if (failure is not null) {
             return "The provided authentication token is invalid.";
         }
 
-        if (!string.IsNullOrEmpty(error))
-        {
+        if (!string.IsNullOrEmpty(error)) {
             return $"Authentication failed: {error}.";
         }
 
         return "Authentication is required to access this resource.";
     }
 
-    private static async Task TryAddTenantExtensionAsync(HttpContext httpContext, ProblemDetails problemDetails)
-    {
+    private static async Task TryAddTenantExtensionAsync(HttpContext httpContext, ProblemDetails problemDetails) {
         // Try HttpContext.Items first (set by controller for valid requests)
         if (httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
             && tenantObj is string tenantId
-            && !string.IsNullOrEmpty(tenantId))
-        {
+            && !string.IsNullOrEmpty(tenantId)) {
             problemDetails.Extensions["tenantId"] = tenantId;
             return;
         }
 
         // During auth failure the controller hasn't run, so try extracting tenant from the request body.
         // Best-effort: do not fail if the body is unreadable or missing the tenant field.
-        try
-        {
-            if (httpContext.Request.Body.CanSeek)
-            {
+        try {
+            if (httpContext.Request.Body.CanSeek) {
                 httpContext.Request.Body.Position = 0;
             }
-            else if (httpContext.Request.Body.CanRead)
-            {
+            else if (httpContext.Request.Body.CanRead) {
                 httpContext.Request.EnableBuffering();
                 httpContext.Request.Body.Position = 0;
             }
-            else
-            {
+            else {
                 return;
             }
 
             using JsonDocument doc = await JsonDocument.ParseAsync(httpContext.Request.Body).ConfigureAwait(false);
             if (doc.RootElement.TryGetProperty("tenant", out JsonElement tenantElement)
-                && tenantElement.ValueKind == JsonValueKind.String)
-            {
+                && tenantElement.ValueKind == JsonValueKind.String) {
                 string? tenant = tenantElement.GetString();
-                if (!string.IsNullOrEmpty(tenant))
-                {
+                if (!string.IsNullOrEmpty(tenant)) {
                     problemDetails.Extensions["tenantId"] = tenant;
                 }
             }
 
             // Reset position for any downstream consumers
-            if (httpContext.Request.Body.CanSeek)
-            {
+            if (httpContext.Request.Body.CanSeek) {
                 httpContext.Request.Body.Position = 0;
             }
         }
-        catch (Exception)
-        {
+        catch (Exception) {
             // Best-effort: silently ignore failures
         }
     }
 
-    private static async Task<RequestAuditMetadata> TryExtractRequestAuditMetadataAsync(HttpContext httpContext)
-    {
+    private static async Task<RequestAuditMetadata> TryExtractRequestAuditMetadataAsync(HttpContext httpContext) {
         if (httpContext.Items.TryGetValue(RequestAuditMetadataKey, out object? cached)
-            && cached is RequestAuditMetadata cachedMetadata)
-        {
+            && cached is RequestAuditMetadata cachedMetadata) {
             return cachedMetadata;
         }
 
         var metadata = new RequestAuditMetadata("unknown", "unknown");
 
-        if (!httpContext.Request.Body.CanRead)
-        {
+        if (!httpContext.Request.Body.CanRead) {
             httpContext.Items[RequestAuditMetadataKey] = metadata;
             return metadata;
         }
 
-        try
-        {
-            if (!httpContext.Request.Body.CanSeek)
-            {
+        try {
+            if (!httpContext.Request.Body.CanSeek) {
                 httpContext.Request.EnableBuffering();
             }
 
@@ -263,27 +231,23 @@ public class ConfigureJwtBearerOptions(
 
             string tenant = "unknown";
             if (doc.RootElement.TryGetProperty("tenant", out JsonElement tenantElement)
-                && tenantElement.ValueKind == JsonValueKind.String)
-            {
+                && tenantElement.ValueKind == JsonValueKind.String) {
                 tenant = tenantElement.GetString() ?? "unknown";
             }
 
             string commandType = "unknown";
             if (doc.RootElement.TryGetProperty("commandType", out JsonElement commandTypeElement)
-                && commandTypeElement.ValueKind == JsonValueKind.String)
-            {
+                && commandTypeElement.ValueKind == JsonValueKind.String) {
                 commandType = commandTypeElement.GetString() ?? "unknown";
             }
 
             metadata = new RequestAuditMetadata(tenant, commandType);
 
-            if (httpContext.Request.Body.CanSeek)
-            {
+            if (httpContext.Request.Body.CanSeek) {
                 httpContext.Request.Body.Position = 0;
             }
         }
-        catch (Exception)
-        {
+        catch (Exception) {
             // Best-effort: do not fail auth flow on metadata extraction errors.
             metadata = new RequestAuditMetadata("unknown", "unknown");
         }

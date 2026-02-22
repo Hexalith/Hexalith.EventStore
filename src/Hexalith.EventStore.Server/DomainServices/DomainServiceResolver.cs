@@ -26,12 +26,10 @@ using Microsoft.Extensions.Options;
 public class DomainServiceResolver(
     DaprClient daprClient,
     IOptions<DomainServiceOptions> options,
-    ILogger<DomainServiceResolver> logger) : IDomainServiceResolver
-{
+    ILogger<DomainServiceResolver> logger) : IDomainServiceResolver {
     /// <inheritdoc/>
     public async Task<DomainServiceRegistration?> ResolveAsync(
-        string tenantId, string domain, string version = "v1", CancellationToken cancellationToken = default)
-    {
+        string tenantId, string domain, string version = "v1", CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(version);
@@ -43,8 +41,7 @@ public class DomainServiceResolver(
         string configKey = $"{tenantId}:{domain}:{version}";
 
         // Check static registrations first (local dev/testing)
-        if (options.Value.Registrations.TryGetValue(configKey, out DomainServiceRegistration? staticRegistration))
-        {
+        if (options.Value.Registrations.TryGetValue(configKey, out DomainServiceRegistration? staticRegistration)) {
             logger.LogDebug(
                 "Resolved domain service from static registration: AppId={AppId}, Method={MethodName}, ConfigKey={ConfigKey}",
                 staticRegistration.AppId,
@@ -67,8 +64,7 @@ public class DomainServiceResolver(
             .ConfigureAwait(false);
 
         if (!configResponse.Items.TryGetValue(configKey, out ConfigurationItem? configItem) ||
-            string.IsNullOrWhiteSpace(configItem.Value))
-        {
+            string.IsNullOrWhiteSpace(configItem.Value)) {
             logger.LogWarning(
                 "No domain service registered: Tenant={TenantId}, Domain={Domain}, Version={Version}, ConfigKey={ConfigKey}",
                 tenantId,
@@ -79,12 +75,10 @@ public class DomainServiceResolver(
         }
 
         DomainServiceRegistration? registration;
-        try
-        {
+        try {
             registration = JsonSerializer.Deserialize<DomainServiceRegistration>(configItem.Value);
         }
-        catch (JsonException ex)
-        {
+        catch (JsonException ex) {
             logger.LogError(
                 ex,
                 "Failed to deserialize domain service registration: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}, RawValue={RawValue}",
@@ -97,8 +91,7 @@ public class DomainServiceResolver(
                 ex);
         }
 
-        if (registration is null)
-        {
+        if (registration is null) {
             logger.LogWarning(
                 "Domain service registration deserialized to null: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}",
                 tenantId,

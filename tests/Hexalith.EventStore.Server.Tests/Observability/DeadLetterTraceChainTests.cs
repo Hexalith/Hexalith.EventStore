@@ -7,7 +7,6 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
@@ -18,8 +17,6 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Testing.Fakes;
 
-using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -28,13 +25,14 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+
 /// <summary>
 /// Story 6.3 Task 4: Trace-based dead-letter-to-origin tracing tests.
 /// Verifies that OpenTelemetry activities form an unbroken trace chain from command receipt
 /// through failure to dead-letter publication, with correlation ID tags on every activity.
 /// </summary>
-public class DeadLetterTraceChainTests
-{
+public class DeadLetterTraceChainTests {
     #region Shared Helpers
 
     private static CommandEnvelope CreateTestEnvelope(
@@ -54,8 +52,7 @@ public class DeadLetterTraceChainTests
         Extensions: extensions);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, FakeDeadLetterPublisher DeadLetterPublisher)
-        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001")
-    {
+        CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -108,8 +105,7 @@ public class DeadLetterTraceChainTests
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, IDeadLetterPublisher MockDeadLetterPublisher)
-        CreateActorWithMockDeadLetter(string actorId = "test-tenant:test-domain:agg-001")
-    {
+        CreateActorWithMockDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -166,28 +162,22 @@ public class DeadLetterTraceChainTests
     /// <summary>
     /// Extracts all log messages from an NSubstitute ILogger mock by inspecting received calls.
     /// </summary>
-    private static IReadOnlyList<(LogLevel Level, string Message)> GetLogEntries(ILogger logger)
-    {
+    private static IReadOnlyList<(LogLevel Level, string Message)> GetLogEntries(ILogger logger) {
         var entries = new List<(LogLevel Level, string Message)>();
-        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls())
-        {
-            if (call.GetMethodInfo().Name == "Log" && call.GetArguments().Length >= 5)
-            {
+        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls()) {
+            if (call.GetMethodInfo().Name == "Log" && call.GetArguments().Length >= 5) {
                 object?[] args = call.GetArguments();
                 var level = (LogLevel)args[0]!;
                 object? state = args[2];
                 var exception = args[3] as Exception;
                 object? formatter = args[4];
                 string? message = null;
-                if (formatter is not null && state is not null)
-                {
-                    try
-                    {
+                if (formatter is not null && state is not null) {
+                    try {
                         MethodInfo? invokeMethod = formatter.GetType().GetMethod("Invoke");
                         message = invokeMethod?.Invoke(formatter, [state, exception])?.ToString();
                     }
-                    catch
-                    {
+                    catch {
                         message = state.ToString();
                     }
                 }
@@ -205,20 +195,16 @@ public class DeadLetterTraceChainTests
     #region Task 4.2: DomainServiceFailure_TraceSpansEntireLifecycle
 
     [Fact]
-    public async Task DomainServiceFailure_TraceSpansEntireLifecycle()
-    {
+    public async Task DomainServiceFailure_TraceSpansEntireLifecycle() {
         // Arrange
         string correlationId = $"trace-chain-{Guid.NewGuid()}";
         List<Activity> capturedActivities = [];
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivities.Add(activity);
                 }
             },
@@ -244,8 +230,7 @@ public class DeadLetterTraceChainTests
             EventStoreActivitySource.DomainServiceInvoke,
         ];
 
-        foreach (string expected in expectedActivities)
-        {
+        foreach (string expected in expectedActivities) {
             capturedActivities.ShouldContain(
                 a => a.OperationName == expected,
                 $"Activity '{expected}' should be created in the failure lifecycle");
@@ -253,8 +238,7 @@ public class DeadLetterTraceChainTests
 
         // All activities should share the same trace ID
         ActivityTraceId traceId = capturedActivities[0].TraceId;
-        foreach (Activity activity in capturedActivities)
-        {
+        foreach (Activity activity in capturedActivities) {
             activity.TraceId.ShouldBe(traceId, $"Activity '{activity.OperationName}' should share the same trace ID");
         }
     }
@@ -264,20 +248,16 @@ public class DeadLetterTraceChainTests
     #region Task 4.3: DomainServiceFailure_AllActivitiesHaveCorrelationIdTag
 
     [Fact]
-    public async Task DomainServiceFailure_AllActivitiesHaveCorrelationIdTag()
-    {
+    public async Task DomainServiceFailure_AllActivitiesHaveCorrelationIdTag() {
         // Arrange
         string correlationId = $"trace-corr-{Guid.NewGuid()}";
         List<Activity> capturedActivities = [];
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivities.Add(activity);
                 }
             },
@@ -295,8 +275,7 @@ public class DeadLetterTraceChainTests
 
         // Assert: Every captured activity has the correct correlation ID tag
         capturedActivities.Count.ShouldBeGreaterThan(0);
-        foreach (Activity activity in capturedActivities)
-        {
+        foreach (Activity activity in capturedActivities) {
             activity.GetTagItem(EventStoreActivitySource.TagCorrelationId)
                 .ShouldBe(correlationId, $"Activity '{activity.OperationName}' should have correlation ID tag");
         }
@@ -307,27 +286,21 @@ public class DeadLetterTraceChainTests
     #region Task 4.4: DomainServiceFailure_FailingActivityHasErrorStatus
 
     [Fact]
-    public async Task DomainServiceFailure_FailingActivityHasErrorStatus()
-    {
+    public async Task DomainServiceFailure_FailingActivityHasErrorStatus() {
         // Arrange
         string correlationId = $"trace-err-{Guid.NewGuid()}";
         Activity? domainInvokeActivity = null;
         Activity? processActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
-                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
-                    if (activity.OperationName == EventStoreActivitySource.DomainServiceInvoke)
-                    {
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
+                    if (activity.OperationName == EventStoreActivitySource.DomainServiceInvoke) {
                         domainInvokeActivity = activity;
                     }
-                    else if (activity.OperationName == EventStoreActivitySource.ProcessCommand)
-                    {
+                    else if (activity.OperationName == EventStoreActivitySource.ProcessCommand) {
                         processActivity = activity;
                     }
                 }
@@ -358,22 +331,18 @@ public class DeadLetterTraceChainTests
     #region Task 4.5: DomainServiceFailure_DeadLetterActivityRecordsSuccess
 
     [Fact]
-    public async Task DomainServiceFailure_DeadLetterActivityRecordsSuccess()
-    {
+    public async Task DomainServiceFailure_DeadLetterActivityRecordsSuccess() {
         // Arrange: Test DeadLetterPublisher directly (not via actor, since FakeDeadLetterPublisher
         // doesn't create OTel activities)
         string correlationId = $"trace-dl-ok-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivity = activity;
                 }
             },
@@ -407,21 +376,17 @@ public class DeadLetterTraceChainTests
     #region Task 4.6: DeadLetterPublishFails_DeadLetterActivityRecordsError
 
     [Fact]
-    public async Task DeadLetterPublishFails_DeadLetterActivityRecordsError()
-    {
+    public async Task DeadLetterPublishFails_DeadLetterActivityRecordsError() {
         // Arrange: Test DeadLetterPublisher when DAPR publish throws
         string correlationId = $"trace-dl-err-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     capturedActivity = activity;
                 }
             },
@@ -459,8 +424,7 @@ public class DeadLetterTraceChainTests
     #region Task 4.7: TraceContext_PropagatesThroughActorProxy_SingleTraceId
 
     [Fact]
-    public async Task TraceContext_PropagatesThroughActorProxy_SingleTraceId()
-    {
+    public async Task TraceContext_PropagatesThroughActorProxy_SingleTraceId() {
         // Arrange: Verify traceparent fallback via CommandEnvelope.Extensions
         // When Activity.Current is null (as in actor proxy crossing), the actor uses
         // traceparent from Extensions to establish parent context.
@@ -471,15 +435,12 @@ public class DeadLetterTraceChainTests
 
         Activity? processActivity = null;
 
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity =>
-            {
+            ActivityStopped = activity => {
                 if (activity.OperationName == EventStoreActivitySource.ProcessCommand
-                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId))
-                {
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                     processActivity = activity;
                 }
             },
@@ -510,8 +471,7 @@ public class DeadLetterTraceChainTests
     #region Task 4.8: SidecarUnavailable_DeadLetterFailure_ErrorLogHasFullCorrelationContext
 
     [Fact]
-    public async Task SidecarUnavailable_DeadLetterFailure_ErrorLogHasFullCorrelationContext()
-    {
+    public async Task SidecarUnavailable_DeadLetterFailure_ErrorLogHasFullCorrelationContext() {
         // Arrange: Dead-letter publication returns false (sidecar unavailable)
         string correlationId = $"trace-sidecar-{Guid.NewGuid()}";
 

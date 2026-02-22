@@ -14,8 +14,7 @@ using NSubstitute;
 
 using Shouldly;
 
-public class LoggingBehaviorTests : IDisposable
-{
+public class LoggingBehaviorTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
     private readonly TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>> _logger;
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -23,8 +22,7 @@ public class LoggingBehaviorTests : IDisposable
     private readonly ActivityListener _activityListener;
     private readonly List<Activity> _capturedActivities = [];
 
-    public LoggingBehaviorTests()
-    {
+    public LoggingBehaviorTests() {
         _logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
         _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
 
@@ -34,8 +32,7 @@ public class LoggingBehaviorTests : IDisposable
 
         _behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(_logger, _httpContextAccessor);
 
-        _activityListener = new ActivityListener
-        {
+        _activityListener = new ActivityListener {
             ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStarted = activity => _capturedActivities.Add(activity),
@@ -43,8 +40,7 @@ public class LoggingBehaviorTests : IDisposable
         ActivitySource.AddActivityListener(_activityListener);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _activityListener.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -72,8 +68,7 @@ public class LoggingBehaviorTests : IDisposable
         new((_) => throw new InvalidOperationException("Handler failed"));
 
     [Fact]
-    public async Task LoggingBehavior_ValidRequest_LogsEntryAndExit()
-    {
+    public async Task LoggingBehavior_ValidRequest_LogsEntryAndExit() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -97,8 +92,7 @@ public class LoggingBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_ValidRequest_IncludesDurationMs()
-    {
+    public async Task LoggingBehavior_ValidRequest_IncludesDurationMs() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -111,8 +105,7 @@ public class LoggingBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_HandlerThrows_LogsErrorAndRethrows()
-    {
+    public async Task LoggingBehavior_HandlerThrows_LogsErrorAndRethrows() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -130,8 +123,7 @@ public class LoggingBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_NeverLogsPayload()
-    {
+    public async Task LoggingBehavior_NeverLogsPayload() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -139,16 +131,14 @@ public class LoggingBehaviorTests : IDisposable
         await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert - Payload bytes should never appear in any log entry
-        foreach (LogEntry entry in _logEntries)
-        {
+        foreach (LogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("Payload");
             entry.Message.ShouldNotContain("System.Byte[]");
         }
     }
 
     [Fact]
-    public async Task LoggingBehavior_NeverLogsExtensions()
-    {
+    public async Task LoggingBehavior_NeverLogsExtensions() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -156,8 +146,7 @@ public class LoggingBehaviorTests : IDisposable
         await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert - Extensions values should never appear in any log entry
-        foreach (LogEntry entry in _logEntries)
-        {
+        foreach (LogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("Extensions");
             entry.Message.ShouldNotContain("sensitive-data");
             entry.Message.ShouldNotContain("value1");
@@ -165,8 +154,7 @@ public class LoggingBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_CreatesOpenTelemetryActivity()
-    {
+    public async Task LoggingBehavior_CreatesOpenTelemetryActivity() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -184,8 +172,7 @@ public class LoggingBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_ExceptionSetsActivityStatusError()
-    {
+    public async Task LoggingBehavior_ExceptionSetsActivityStatusError() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -202,8 +189,7 @@ public class LoggingBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task LoggingBehavior_NoHttpContext_GeneratesFallbackCorrelationId()
-    {
+    public async Task LoggingBehavior_NoHttpContext_GeneratesFallbackCorrelationId() {
         // Arrange
         _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
         SubmitCommand command = CreateTestCommand();
@@ -220,14 +206,12 @@ public class LoggingBehaviorTests : IDisposable
     /// <summary>
     /// Simple test logger that captures log entries for assertion.
     /// </summary>
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T>
-    {
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             entries.Add(new LogEntry(logLevel, formatter(state, exception)));
         }
     }

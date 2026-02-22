@@ -9,14 +9,12 @@ using Hexalith.EventStore.Server.Commands;
 /// In-memory implementation of <see cref="ICommandStatusStore"/> for testing.
 /// Simulates TTL expiry using stored expiration timestamps.
 /// </summary>
-public sealed class InMemoryCommandStatusStore : ICommandStatusStore
-{
+public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     private readonly ConcurrentDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)> _store = new();
     private int _ttlSeconds = CommandStatusConstants.DefaultTtlSeconds;
 
     /// <summary>Gets or sets the TTL in seconds for new entries.</summary>
-    public int TtlSeconds
-    {
+    public int TtlSeconds {
         get => _ttlSeconds;
         set => _ttlSeconds = value;
     }
@@ -26,8 +24,7 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore
         string tenantId,
         string correlationId,
         CommandStatusRecord status,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentNullException.ThrowIfNull(status);
@@ -42,17 +39,14 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore
     public Task<CommandStatusRecord?> ReadStatusAsync(
         string tenantId,
         string correlationId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
         string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
 
-        if (_store.TryGetValue(key, out var entry))
-        {
-            if (entry.Expiry <= DateTimeOffset.UtcNow)
-            {
+        if (_store.TryGetValue(key, out var entry)) {
+            if (entry.Expiry <= DateTimeOffset.UtcNow) {
                 _store.TryRemove(key, out _);
                 return Task.FromResult<CommandStatusRecord?>(null);
             }

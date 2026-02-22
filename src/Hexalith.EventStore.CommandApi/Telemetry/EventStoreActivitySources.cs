@@ -2,8 +2,7 @@ namespace Hexalith.EventStore.CommandApi.Telemetry;
 
 using System.Diagnostics;
 
-internal static class EventStoreActivitySources
-{
+internal static class EventStoreActivitySources {
     public const string Submit = "EventStore.CommandApi.Submit";
     public const string QueryStatus = "EventStore.CommandApi.QueryStatus";
     public const string Replay = "EventStore.CommandApi.Replay";

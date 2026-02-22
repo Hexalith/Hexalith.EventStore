@@ -31,8 +31,7 @@ public record DeadLetterMessage(
     string AggregateId,
     string CommandType,
     DateTimeOffset FailedAt,
-    int? EventCountAtFailure)
-{
+    int? EventCountAtFailure) {
     /// <summary>
     /// Creates a DeadLetterMessage from an exception and command context.
     /// Uses outer exception type (not inner) per convention.
@@ -46,8 +45,7 @@ public record DeadLetterMessage(
         CommandEnvelope command,
         CommandStatus failureStage,
         Exception exception,
-        int? eventCount = null)
-    {
+        int? eventCount = null) {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(exception);
 

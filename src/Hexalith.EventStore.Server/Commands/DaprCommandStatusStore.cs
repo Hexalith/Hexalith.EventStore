@@ -14,8 +14,7 @@ using Microsoft.Extensions.Options;
 public class DaprCommandStatusStore(
     DaprClient daprClient,
     IOptions<CommandStatusOptions> options,
-    ILogger<DaprCommandStatusStore> logger) : ICommandStatusStore
-{
+    ILogger<DaprCommandStatusStore> logger) : ICommandStatusStore {
     /// <inheritdoc/>
     /// <remarks>
     /// This method propagates exceptions to the caller. Advisory error handling
@@ -25,8 +24,7 @@ public class DaprCommandStatusStore(
         string tenantId,
         string correlationId,
         CommandStatusRecord status,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentNullException.ThrowIfNull(status);
@@ -57,27 +55,23 @@ public class DaprCommandStatusStore(
     public async Task<CommandStatusRecord?> ReadStatusAsync(
         string tenantId,
         string correlationId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
         string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
         CommandStatusOptions opts = options.Value;
 
-        try
-        {
+        try {
             return await daprClient.GetStateAsync<CommandStatusRecord>(
                 opts.StateStoreName,
                 key,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             logger.LogWarning(
                 ex,
                 "Failed to read command status for {CorrelationId}. Returning null.",
