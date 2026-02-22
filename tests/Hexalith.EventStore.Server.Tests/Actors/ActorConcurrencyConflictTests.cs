@@ -28,7 +28,7 @@ public class ActorConcurrencyConflictTests {
     /// Sequential commands to the same aggregate should succeed (no conflict).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_SequentialCommands_NoConflict() {
+    public async Task ProcessCommandAsync_SequentialCommands_NoConflictAsync() {
         // Arrange
         var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
@@ -62,7 +62,7 @@ public class ActorConcurrencyConflictTests {
     /// (Dapr's turn-based concurrency model prevents conflicts at the actor level).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_RapidSequentialCommands_AllSucceed() {
+    public async Task ProcessCommandAsync_RapidSequentialCommands_AllSucceedAsync() {
         // Arrange
         var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,

@@ -1,0 +1,7 @@
+D:\Hexalith.EventStore\tests\Hexalith.EventStore.IntegrationTests\CommandApi\ServiceCollectionExtensionsTests.cs(27,22): error CS1061: 'ServiceCollection' ne contient pas de définition pour 'AddCommandApi' et aucune méthode d'extension accessible 'AddCommandApi' acceptant un premier argument de type 'ServiceCollection' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\tests\Hexalith.EventStore.IntegrationTests\Hexalith.EventStore.IntegrationTests.csproj]
+
+ÉCHEC de la build.
+    0 Avertissement(s)
+    1 Erreur(s)
+
+Temps écoulé 00:00:07.69

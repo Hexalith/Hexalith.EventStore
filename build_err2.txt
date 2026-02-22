@@ -1,0 +1,16 @@
+  Identification des projets à restaurer...
+  Tous les projets sont à jour pour la restauration.
+  Hexalith.EventStore.Contracts -> D:\Hexalith.EventStore\src\Hexalith.EventStore.Contracts\bin\Debug\net10.0\Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.ServiceDefaults -> D:\Hexalith.EventStore\src\Hexalith.EventStore.ServiceDefaults\bin\Debug\net10.0\Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.Aspire -> D:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\bin\Debug\net10.0\Hexalith.EventStore.Aspire.dll
+  Hexalith.EventStore.Client -> D:\Hexalith.EventStore\src\Hexalith.EventStore.Client\bin\Debug\net10.0\Hexalith.EventStore.Client.dll
+D:\Hexalith.EventStore\src\Hexalith.EventStore.Server\Commands\SubmitCommandExtensions.cs(24,16): error CS0103: Le nom 'with' n'existe pas dans le contexte actuel [D:\Hexalith.EventStore\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj]
+  Hexalith.EventStore.Sample -> D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\bin\Debug\net10.0\Hexalith.EventStore.Sample.dll
+
+ÉCHEC de la build.
+
+D:\Hexalith.EventStore\src\Hexalith.EventStore.Server\Commands\SubmitCommandExtensions.cs(24,16): error CS0103: Le nom 'with' n'existe pas dans le contexte actuel [D:\Hexalith.EventStore\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj]
+    0 Avertissement(s)
+    1 Erreur(s)
+
+Temps écoulé 00:00:05.38

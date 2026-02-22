@@ -1,0 +1,18 @@
+  Identification des projets à restaurer...
+  Tous les projets sont à jour pour la restauration.
+  Hexalith.EventStore.Contracts -> D:\Hexalith.EventStore\src\Hexalith.EventStore.Contracts\bin\Debug\net10.0\Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.ServiceDefaults -> D:\Hexalith.EventStore\src\Hexalith.EventStore.ServiceDefaults\bin\Debug\net10.0\Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.Client -> D:\Hexalith.EventStore\src\Hexalith.EventStore.Client\bin\Debug\net10.0\Hexalith.EventStore.Client.dll
+D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Program.cs(8,9): error CS1061: 'WebApplicationBuilder' ne contient pas de définition pour 'AddServiceDefaults' et aucune méthode d'extension accessible 'AddServiceDefaults' acceptant un premier argument de type 'WebApplicationBuilder' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj]
+D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Program.cs(9,18): error CS1061: 'IServiceCollection' ne contient pas de définition pour 'AddEventStoreClient' et aucune méthode d'extension accessible 'AddEventStoreClient' acceptant un premier argument de type 'IServiceCollection' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj]
+D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Program.cs(13,5): error CS1061: 'WebApplication' ne contient pas de définition pour 'MapDefaultEndpoints' et aucune méthode d'extension accessible 'MapDefaultEndpoints' acceptant un premier argument de type 'WebApplication' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj]
+
+ÉCHEC de la build.
+
+D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Program.cs(8,9): error CS1061: 'WebApplicationBuilder' ne contient pas de définition pour 'AddServiceDefaults' et aucune méthode d'extension accessible 'AddServiceDefaults' acceptant un premier argument de type 'WebApplicationBuilder' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj]
+D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Program.cs(9,18): error CS1061: 'IServiceCollection' ne contient pas de définition pour 'AddEventStoreClient' et aucune méthode d'extension accessible 'AddEventStoreClient' acceptant un premier argument de type 'IServiceCollection' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj]
+D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Program.cs(13,5): error CS1061: 'WebApplication' ne contient pas de définition pour 'MapDefaultEndpoints' et aucune méthode d'extension accessible 'MapDefaultEndpoints' acceptant un premier argument de type 'WebApplication' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?) [D:\Hexalith.EventStore\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj]
+    0 Avertissement(s)
+    3 Erreur(s)
+
+Temps écoulé 00:00:04.00

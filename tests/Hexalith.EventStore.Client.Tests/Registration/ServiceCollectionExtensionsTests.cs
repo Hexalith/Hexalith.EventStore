@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;

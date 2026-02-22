@@ -29,7 +29,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// claims transformation, and tenant/domain/permission authorization.
     /// </summary>
     [Fact]
-    public async Task AdminUser_SubmitCommand_ReturnsAccepted() {
+    public async Task AdminUser_SubmitCommand_ReturnsAcceptedAsync() {
         // Arrange
         string token = await GetTokenAsync("admin-user", "admin-pass");
 
@@ -58,7 +58,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// Verifies scoped user (single tenant, single domain) can operate within scope.
     /// </summary>
     [Fact]
-    public async Task TenantAUser_SubmitCommandForOwnTenant_ReturnsAccepted() {
+    public async Task TenantAUser_SubmitCommandForOwnTenant_ReturnsAcceptedAsync() {
         string token = await GetTokenAsync("tenant-a-user", "tenant-a-pass");
 
         using HttpRequestMessage request = CreateCommandRequest(
@@ -87,7 +87,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// Controller checks tenant claims before MediatR pipeline.
     /// </summary>
     [Fact]
-    public async Task TenantAUser_SubmitCommandForTenantB_Returns403() {
+    public async Task TenantAUser_SubmitCommandForTenantB_Returns403Async() {
         string token = await GetTokenAsync("tenant-a-user", "tenant-a-pass");
 
         using HttpRequestMessage request = CreateCommandRequest(
@@ -107,7 +107,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// Symmetric test ensuring isolation works in both directions.
     /// </summary>
     [Fact]
-    public async Task TenantBUser_SubmitCommandForTenantA_Returns403() {
+    public async Task TenantBUser_SubmitCommandForTenantA_Returns403Async() {
         string token = await GetTokenAsync("tenant-b-user", "tenant-b-pass");
 
         using HttpRequestMessage request = CreateCommandRequest(
@@ -132,7 +132,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// AuthorizationBehavior rejects with 403 because the user lacks this permission.
     /// </summary>
     [Fact]
-    public async Task ReadonlyUser_SubmitCommand_Returns403() {
+    public async Task ReadonlyUser_SubmitCommand_Returns403Async() {
         string token = await GetTokenAsync("readonly-user", "readonly-pass");
 
         using HttpRequestMessage request = CreateCommandRequest(
@@ -152,7 +152,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// Controller's pre-pipeline check rejects with 403 (no tenant claims found).
     /// </summary>
     [Fact]
-    public async Task NoTenantUser_SubmitCommand_Returns403() {
+    public async Task NoTenantUser_SubmitCommand_Returns403Async() {
         string token = await GetTokenAsync("no-tenant-user", "no-tenant-pass");
 
         using HttpRequestMessage request = CreateCommandRequest(

@@ -1,6 +1,12 @@
+using Hexalith.EventStore.CommandApi.Extensions;
+using Hexalith.EventStore.CommandApi.HealthChecks;
 using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.ServiceDefaults;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

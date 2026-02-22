@@ -1,6 +1,7 @@
 extern alias commandapi;
 
 using commandapi::Hexalith.EventStore.CommandApi.ErrorHandling;
+using commandapi::Hexalith.EventStore.CommandApi.Extensions;
 
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;

@@ -16,7 +16,7 @@ public sealed class CommandEnvelopeBuilder {
     private string _correlationId = Guid.NewGuid().ToString();
     private string? _causationId;
     private string _userId = "test-user";
-    private IReadOnlyDictionary<string, string>? _extensions;
+    private Dictionary<string, string>? _extensions;
 
     /// <summary>Sets the tenant identifier.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
@@ -61,7 +61,7 @@ public sealed class CommandEnvelopeBuilder {
     /// <summary>Sets the extension metadata.</summary>
     /// <param name="extensions">The extension metadata.</param>
     /// <returns>This builder instance.</returns>
-    public CommandEnvelopeBuilder WithExtensions(IReadOnlyDictionary<string, string>? extensions) { _extensions = extensions; return this; }
+    public CommandEnvelopeBuilder WithExtensions(Dictionary<string, string>? extensions) { _extensions = extensions; return this; }
 
     /// <summary>Builds the <see cref="CommandEnvelope"/> instance.</summary>
     /// <returns>A new <see cref="CommandEnvelope"/> with the configured values.</returns>

@@ -21,7 +21,7 @@ public static class SubmitCommandExtensions {
         ArgumentNullException.ThrowIfNull(command);
 
         Dictionary<string, string> extensions = command.Extensions is null
-            ? [with(StringComparer.OrdinalIgnoreCase)]
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(command.Extensions, StringComparer.OrdinalIgnoreCase);
 
         if (Activity.Current is Activity current) {
