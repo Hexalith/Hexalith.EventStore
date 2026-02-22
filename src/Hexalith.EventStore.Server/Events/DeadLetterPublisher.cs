@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using System.Diagnostics;
 
@@ -11,6 +10,7 @@ using Hexalith.EventStore.Server.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Publishes dead-letter messages to per-tenant dead-letter topics via DAPR pub/sub.
 /// Returns false for publication failures and propagates OperationCanceledException for cancellation.
@@ -34,14 +34,14 @@ public partial class DeadLetterPublisher(
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPublishDeadLetter, ActivityKind.Producer);
-        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, message.CorrelationId);
-        activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId);
-        activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain);
-        activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId);
-        activity?.SetTag(EventStoreActivitySource.TagCommandType, message.CommandType);
-        activity?.SetTag(EventStoreActivitySource.TagFailureStage, message.FailureStage);
-        activity?.SetTag(EventStoreActivitySource.TagExceptionType, message.ExceptionType);
-        activity?.SetTag(EventStoreActivitySource.TagDeadLetterTopic, deadLetterTopic);
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, message.CorrelationId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCommandType, message.CommandType));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagFailureStage, message.FailureStage));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagExceptionType, message.ExceptionType));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagDeadLetterTopic, deadLetterTopic));
 
         try {
             var metadata = new Dictionary<string, string> {
@@ -62,7 +62,7 @@ public partial class DeadLetterPublisher(
             // Rule #9: correlationId in every structured log entry.
             Log.DeadLetterPublished(logger, message.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, message.CommandType, message.FailureStage, message.ExceptionType, message.ErrorMessage, deadLetterTopic);
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             return true;
         }
         catch (OperationCanceledException) {
@@ -73,8 +73,8 @@ public partial class DeadLetterPublisher(
             // Rule #5: Never log command payload data.
             Log.DeadLetterPublicationFailed(logger, ex, message.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, message.CommandType, message.FailureStage, message.ExceptionType, message.ErrorMessage, deadLetterTopic);
 
-            activity?.AddException(ex);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _ = (activity?.AddException(ex));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
             return false;
         }
     }

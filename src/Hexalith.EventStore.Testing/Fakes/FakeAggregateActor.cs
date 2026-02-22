@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Fake aggregate actor for testing. Records all invocations for assertion.
 /// Optionally simulates idempotency by tracking processed causation IDs.

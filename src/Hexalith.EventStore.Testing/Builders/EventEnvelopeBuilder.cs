@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Testing.Builders;
 
 using System.Text;
 
 using Hexalith.EventStore.Contracts.Events;
 
+namespace Hexalith.EventStore.Testing.Builders;
 /// <summary>
 /// Fluent builder for creating <see cref="EventEnvelope"/> instances with sensible defaults for testing.
 /// </summary>

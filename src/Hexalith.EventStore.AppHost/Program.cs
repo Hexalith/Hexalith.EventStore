@@ -2,11 +2,11 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 
 using Hexalith.EventStore.Aspire;
 
-var builder = DistributedApplication.CreateBuilder(args);
+IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 // Resolve DAPR access control configuration path (Story 5.1, D4, FR34).
 // Both commandapi and sample sidecars load this Configuration CRD.
-var accessControlConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", "accesscontrol.yaml");
+string accessControlConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", "accesscontrol.yaml");
 if (!File.Exists(accessControlConfigPath)) {
     accessControlConfigPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "DaprComponents", "accesscontrol.yaml"));
@@ -21,8 +21,8 @@ if (!File.Exists(accessControlConfigPath)) {
 
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
-var commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
-var eventStoreResources = builder.AddHexalithEventStore(commandApi, accessControlConfigPath);
+IResourceBuilder<ProjectResource> commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
+HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(commandApi, accessControlConfigPath);
 
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
 // Enabled by default for local development with real OIDC token testing.
@@ -31,15 +31,15 @@ var eventStoreResources = builder.AddHexalithEventStore(commandApi, accessContro
 if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase)) {
     // Realm-as-code: hexalith-realm.json auto-imported on container start.
     // Port 8180 avoids conflict with commandapi on 8080.
-    var keycloak = builder.AddKeycloak("keycloak", 8180)
+    IResourceBuilder<KeycloakResource> keycloak = builder.AddKeycloak("keycloak", 8180)
         .WithRealmImport("./KeycloakRealms");
 
     // Wire Keycloak OIDC auth (D11, Story 5.1 Task 8).
     // The existing ConfigureJwtBearerOptions.cs OIDC discovery path handles everything
     // when Authentication:JwtBearer:Authority is set to the Keycloak realm URL.
-    var keycloakEndpoint = keycloak.GetEndpoint("http");
+    EndpointReference keycloakEndpoint = keycloak.GetEndpoint("http");
     var realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
-    commandApi
+    _ = commandApi
         .WithReference(keycloak)
         .WaitFor(keycloak)
         .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
@@ -57,7 +57,7 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringCompa
 // Domain services have zero infrastructure access (D4, AC #13).
 // Not wiring these references means the sample sidecar doesn't load
 // these component definitions at all -- stronger isolation than scoping alone.
-var sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
+IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
     // NOTE: sample does NOT reference Redis, StateStore, or PubSub.
     // Domain services have zero infrastructure access (D4, AC #13).
     // Direct Redis access would bypass DAPR component scoping entirely.

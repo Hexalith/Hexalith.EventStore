@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Actors;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Validates that a command's tenant matches the actor's tenant identity.
 /// SEC-2: Defense-in-depth tenant isolation at actor level.

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using System.Reflection;
 
@@ -23,6 +22,8 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
+
 public class AggregateActorTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
@@ -39,17 +40,17 @@ public class AggregateActorTests {
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker) CreateActorWithMockState() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
-        deadLetterPublisher.PublishDeadLetterAsync(
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
@@ -61,15 +62,15 @@ public class AggregateActorTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: domain service returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         // Default: no pipeline state (fresh command, not a resume)
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -80,17 +81,17 @@ public class AggregateActorTests {
     }
 
     private static void ConfigureNoDuplicate(IActorStateManager stateManager) {
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // Default: new aggregate (no metadata) -- Step 3 returns null state
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
     }
 
     private static void ConfigureExistingAggregate(IActorStateManager stateManager, int eventCount) {
         var metadata = new AggregateMetadata(eventCount, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
@@ -101,18 +102,18 @@ public class AggregateActorTests {
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
                 $"corr-{seq}", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", "json",
                 [1, 2, 3], null);
-            stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
         }
     }
 
     private static void ConfigureDuplicate(IActorStateManager stateManager, string causationId, string correlationId) {
         var record = new IdempotencyRecord(causationId, correlationId, true, null, DateTimeOffset.UtcNow);
-        stateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{causationId}", Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{causationId}", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
 
         // Default for other keys
-        stateManager.TryGetStateAsync<IdempotencyRecord>(
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(
             Arg.Is<string>(s => s != $"idempotency:{causationId}"), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
     }
@@ -154,7 +155,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         logger.Received().Log(
@@ -174,7 +175,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: "cause-new");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -191,7 +192,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- Story 3.11: 2 SaveStateAsync calls for no-op (Processing checkpoint + terminal)
         await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
@@ -220,7 +221,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
@@ -234,7 +235,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await stateManager.DidNotReceive().SetStateAsync(
@@ -251,7 +252,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         logger.Received().Log(
@@ -271,10 +272,10 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: null);
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- should use correlationId as the key since causationId is null
-        await stateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
+        _ = await stateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
             $"idempotency:{correlationId}",
             Arg.Any<CancellationToken>());
     }
@@ -302,7 +303,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(tenantId: "wrong-tenant");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- Step 3 logs "State rehydrated" at Information level; should NOT appear after tenant mismatch
         logger.DidNotReceive().Log(
@@ -321,7 +322,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(tenantId: "wrong-tenant", causationId: "cause-mismatch");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -338,7 +339,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(tenantId: "wrong-tenant");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
@@ -352,7 +353,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(); // test-tenant matches actor ID test-tenant:test-domain:agg-001
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- Step 3 should have logged state rehydration at Information level
         logger.Received().Log(
@@ -368,7 +369,7 @@ public class AggregateActorTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
         var record = new IdempotencyRecord("cause-rejected", "corr-rejected", false, "TenantMismatch: ...", DateTimeOffset.UtcNow);
-        stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-rejected", Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-rejected", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         CommandEnvelope envelope = CreateTestEnvelope(tenantId: "wrong-tenant", correlationId: "corr-rejected", causationId: "cause-rejected");
 
@@ -390,7 +391,7 @@ public class AggregateActorTests {
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        result.ErrorMessage.ShouldNotBeNull();
+        _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("tenant-b");
         result.ErrorMessage.ShouldContain("test-tenant");
     }
@@ -446,7 +447,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- Step 4 domain service invocation logs result at Information level
         logger.Received().Log(
@@ -462,20 +463,20 @@ public class AggregateActorTests {
         // Arrange -- metadata says 2 events but event 2 is missing (simulates gap)
         // Story 4.5: Infrastructure exceptions (MissingEventException) trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, _) = CreateActorWithMockState();
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
         string keyPrefix = "test-tenant:test-domain:agg-001:events:";
         var evt1 = new EventEnvelope("agg-001", "test-tenant", "test-domain", 1, DateTimeOffset.UtcNow,
             "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", "json", [1], null);
-        stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}1", Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(true, evt1));
-        stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}2", Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}2", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(false, default!));
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -496,7 +497,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         logger.Received().Log(
@@ -514,7 +515,7 @@ public class AggregateActorTests {
         ConfigureNoDuplicate(stateManager);
         ConfigureExistingAggregate(stateManager, 2);
 
-        snapshotManager.LoadSnapshotAsync(
+        _ = snapshotManager.LoadSnapshotAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IActorStateManager>(),
             Arg.Any<string?>())
@@ -523,10 +524,10 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- domain invocation gets a List<EventEnvelope> (backward-compatible contract), not RehydrationResult
-        await invoker.Received(1).InvokeAsync(
+        _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<CommandEnvelope>(),
             Arg.Is<object?>(o => o is List<EventEnvelope> && ((List<EventEnvelope>)o).Count == 2));
     }
@@ -539,7 +540,7 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -560,7 +561,7 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -568,7 +569,7 @@ public class AggregateActorTests {
 
         // Assert
         result.Accepted.ShouldBeFalse();
-        result.ErrorMessage.ShouldNotBeNull();
+        _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("Domain rejection");
     }
 
@@ -578,11 +579,11 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope(causationId: "cause-reject");
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -596,7 +597,7 @@ public class AggregateActorTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -611,7 +612,7 @@ public class AggregateActorTests {
         // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new DomainServiceNotFoundException("test-tenant", "test-domain"));
         CommandEnvelope envelope = CreateTestEnvelope();
 
@@ -627,7 +628,7 @@ public class AggregateActorTests {
         // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Service unavailable"));
         CommandEnvelope envelope = CreateTestEnvelope();
 
@@ -645,11 +646,11 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         logger.Received().Log(
@@ -668,11 +669,11 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- 3 SaveStateAsync calls: Processing checkpoint, EventsStored+events, terminal
         await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
@@ -683,11 +684,11 @@ public class AggregateActorTests {
         // Arrange -- no-op still saves (idempotency record + pipeline cleanup)
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- Story 3.11: 2 SaveStateAsync calls for no-op (Processing checkpoint + terminal)
         await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
@@ -702,7 +703,7 @@ public class AggregateActorTests {
         {
             new TestEvent(), new TestEvent(), new TestEvent(),
         });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -717,7 +718,7 @@ public class AggregateActorTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -735,10 +736,10 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
 
         int saveCallCount = 0;
-        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(_ => {
                 saveCallCount++;
                 // First call: Processing checkpoint (succeeds)
@@ -753,7 +754,7 @@ public class AggregateActorTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict");
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<Server.Commands.ConcurrencyConflictException>(
+        ConcurrencyConflictException ex = await Should.ThrowAsync<Server.Commands.ConcurrencyConflictException>(
             () => actor.ProcessCommandAsync(envelope));
         ex.CorrelationId.ShouldBe("corr-conflict");
         ex.AggregateId.ShouldBe("agg-001");
@@ -767,11 +768,11 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- EventPersister should have written rejection event to state store
         await stateManager.Received().SetStateAsync(
@@ -786,7 +787,7 @@ public class AggregateActorTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -803,32 +804,32 @@ public class AggregateActorTests {
         // Arrange -- OperationCanceledException should NOT be wrapped as ConcurrencyConflictException
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker) = CreateActorWithMockState();
         ConfigureNoDuplicate(stateManager);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
 
-        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new OperationCanceledException("Shutdown")));
 
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert -- should propagate directly, not wrapped
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => actor.ProcessCommandAsync(envelope));
     }
 
     // === Story 3.9: Snapshot Integration Tests ===
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager) CreateActorWithAllMocks() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
-        deadLetterPublisher.PublishDeadLetterAsync(
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
@@ -838,15 +839,15 @@ public class AggregateActorTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         // Default: no pipeline state (fresh command, not a resume)
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -864,14 +865,14 @@ public class AggregateActorTests {
         ConfigureExistingAggregate(stateManager, 3);
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called with newSequence=4 (3 existing + 1 new), lastSnapshotSequence=0
-        await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 0);
+        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 0);
     }
 
     [Fact]
@@ -882,14 +883,14 @@ public class AggregateActorTests {
         ConfigureExistingAggregate(stateManager, 3);
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-        snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
             .Returns(true);
 
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- H3 fix: snapshot created at preEventSequence (4-1=3), not newSequence (4)
         await snapshotManager.Received(1).CreateSnapshotAsync(
@@ -908,14 +909,14 @@ public class AggregateActorTests {
         ConfigureExistingAggregate(stateManager, 3);
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-        snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
             .Returns(false);
 
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         await snapshotManager.DidNotReceive().CreateSnapshotAsync(
@@ -934,21 +935,21 @@ public class AggregateActorTests {
         ConfigureExistingAggregate(stateManager, 3);
 
         var existingSnapshot = new SnapshotRecord(100, new object(), DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
-        snapshotManager.LoadSnapshotAsync(
+        _ = snapshotManager.LoadSnapshotAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IActorStateManager>(),
             Arg.Any<string?>())
             .Returns(existingSnapshot);
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called with lastSnapshotSequence=100 from loaded snapshot
-        await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 100);
+        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 100);
     }
 
     [Fact]
@@ -959,16 +960,15 @@ public class AggregateActorTests {
         ConfigureExistingAggregate(stateManager, 3);
 
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called on rejection path
-        await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", Arg.Any<long>(), Arg.Is<long>(0));
+        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", Arg.Any<long>(), Arg.Is<long>(0));
     }
-
 
     // Test event types for domain invocation tests
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;

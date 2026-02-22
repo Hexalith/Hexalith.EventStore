@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Contracts.Commands;
 
 using System.Collections.ObjectModel;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Contracts.Commands;
 /// <summary>
 /// Command payload envelope containing all command fields and a computed aggregate identity.
 /// Validates required fields eagerly at construction time.

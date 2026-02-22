@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Dapr.Client;
 
@@ -12,6 +11,8 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class DaprCommandArchiveStoreTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
@@ -31,7 +32,7 @@ public class DaprCommandArchiveStoreTests {
     [Fact]
     public async Task WriteCommandAsync_ValidCommand_CallsSaveStateWithCorrectKey() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandArchiveStore store = CreateStore();
         ArchivedCommand command = CreateTestCommand();
 
         // Act
@@ -50,7 +51,7 @@ public class DaprCommandArchiveStoreTests {
     [Fact]
     public async Task WriteCommandAsync_IncludesTtlMetadata_Default86400Seconds() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandArchiveStore store = CreateStore();
         ArchivedCommand command = CreateTestCommand();
 
         // Act
@@ -69,10 +70,10 @@ public class DaprCommandArchiveStoreTests {
     [Fact]
     public async Task WriteCommandAsync_DaprClientThrows_PropagatesException() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandArchiveStore store = CreateStore();
         ArchivedCommand command = CreateTestCommand();
 
-        _daprClient.SaveStateAsync(
+        _ = _daprClient.SaveStateAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<ArchivedCommand>(),
@@ -82,17 +83,17 @@ public class DaprCommandArchiveStoreTests {
             .ThrowsAsync(new InvalidOperationException("Dapr sidecar unavailable"));
 
         // Act & Assert - exception propagates to caller (advisory handling is caller's responsibility)
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => store.WriteCommandAsync("tenant-a", "corr-123", command, CancellationToken.None));
     }
 
     [Fact]
     public async Task ReadCommandAsync_ExistingKey_ReturnsArchivedCommand() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandArchiveStore store = CreateStore();
         ArchivedCommand expected = CreateTestCommand();
 
-        _daprClient.GetStateAsync<ArchivedCommand>(
+        _ = _daprClient.GetStateAsync<ArchivedCommand>(
             "statestore",
             "tenant-a:corr-123:command",
             consistencyMode: Arg.Any<ConsistencyMode?>(),
@@ -104,16 +105,16 @@ public class DaprCommandArchiveStoreTests {
         ArchivedCommand? result = await store.ReadCommandAsync("tenant-a", "corr-123", CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.ShouldBe(expected);
     }
 
     [Fact]
     public async Task ReadCommandAsync_NonExistentKey_ReturnsNull() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandArchiveStore store = CreateStore();
 
-        _daprClient.GetStateAsync<ArchivedCommand>(
+        _ = _daprClient.GetStateAsync<ArchivedCommand>(
             Arg.Any<string>(),
             Arg.Any<string>(),
             consistencyMode: Arg.Any<ConsistencyMode?>(),
@@ -131,9 +132,9 @@ public class DaprCommandArchiveStoreTests {
     [Fact]
     public async Task ReadCommandAsync_DaprClientThrows_LogsWarningAndReturnsNull() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandArchiveStore store = CreateStore();
 
-        _daprClient.GetStateAsync<ArchivedCommand>(
+        _ = _daprClient.GetStateAsync<ArchivedCommand>(
             Arg.Any<string>(),
             Arg.Any<string>(),
             consistencyMode: Arg.Any<ConsistencyMode?>(),

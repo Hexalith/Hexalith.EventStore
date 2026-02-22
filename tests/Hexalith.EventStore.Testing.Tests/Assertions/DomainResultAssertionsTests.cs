@@ -1,8 +1,9 @@
-namespace Hexalith.EventStore.Testing.Tests.Assertions;
 
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Testing.Assertions;
+
+namespace Hexalith.EventStore.Testing.Tests.Assertions;
 
 public class DomainResultAssertionsTests {
     [Fact]
@@ -16,7 +17,7 @@ public class DomainResultAssertionsTests {
     public void ShouldBeSuccess_fails_for_noop_result() {
         var result = DomainResult.NoOp();
 
-        Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldBeSuccess(result, 0));
+        _ = Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldBeSuccess(result, 0));
     }
 
     [Fact]
@@ -30,7 +31,7 @@ public class DomainResultAssertionsTests {
     public void ShouldBeRejection_fails_for_success_result() {
         var result = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
-        Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldBeRejection(result));
+        _ = Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldBeRejection(result));
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public class DomainResultAssertionsTests {
     public void ShouldBeNoOp_fails_for_success_result() {
         var result = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
-        Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldBeNoOp(result));
+        _ = Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldBeNoOp(result));
     }
 
     [Fact]
@@ -58,7 +59,7 @@ public class DomainResultAssertionsTests {
     public void ShouldContainEvent_fails_when_event_absent() {
         var result = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
-        Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldContainEvent<AnotherEvent>(result));
+        _ = Assert.ThrowsAny<Exception>(() => DomainResultAssertions.ShouldContainEvent<AnotherEvent>(result));
     }
 
     private sealed record TestEvent : IEventPayload;

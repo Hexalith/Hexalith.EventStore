@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.1: EventPublishResult record tests.
 /// </summary>

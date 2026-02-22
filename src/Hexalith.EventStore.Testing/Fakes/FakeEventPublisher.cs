@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Fake implementation of <see cref="IEventPublisher"/> for unit testing.
 /// Tracks all publish calls for test assertions and supports configurable failure modes.

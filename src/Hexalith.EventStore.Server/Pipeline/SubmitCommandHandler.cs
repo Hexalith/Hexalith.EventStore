@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Pipeline;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
@@ -8,6 +7,7 @@ using MediatR;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Pipeline;
 /// <summary>
 /// Handles command submission: writes status, archives, and routes to the aggregate actor.
 /// Story 2.6: Writes "Received" status to state store (advisory, rule #12).
@@ -66,7 +66,7 @@ public partial class SubmitCommandHandler(
         }
 
         // Route to aggregate actor (NOT advisory -- failure must propagate)
-        await commandRouter.RouteCommandAsync(request, cancellationToken)
+        _ = await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);
 
         Log.CommandRouted(logger, request.CorrelationId);

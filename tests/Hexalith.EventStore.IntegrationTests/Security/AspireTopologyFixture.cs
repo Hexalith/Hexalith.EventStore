@@ -1,7 +1,5 @@
-namespace Hexalith.EventStore.IntegrationTests.Security;
 
 using System.Net;
-using System.Net.Http;
 using System.Text;
 
 using global::Aspire.Hosting;
@@ -9,6 +7,7 @@ using global::Aspire.Hosting.Testing;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
+namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
 /// Shared fixture that starts the full Aspire topology with Keycloak ONCE
 /// for all E2E security tests. Implements <see cref="IAsyncLifetime"/> so xUnit
@@ -67,7 +66,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
         _commandApiClient.Timeout = TimeSpan.FromSeconds(30);
 
         // Get the Keycloak base URL for token acquisition
-        var keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
+        Uri keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
         _keycloakBaseUrl = keycloakEndpoint.ToString().TrimEnd('/');
 
         // Wait for infrastructure readiness to avoid startup race conditions in E2E tests.
@@ -168,7 +167,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.CreateNoWindow = true;
-            process.Start();
+            _ = process.Start();
 
             string containerName = (await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false)).Trim();
             await process.WaitForExitAsync().ConfigureAwait(false);
@@ -181,7 +180,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
                 psAll.StartInfo.RedirectStandardOutput = true;
                 psAll.StartInfo.UseShellExecute = false;
                 psAll.StartInfo.CreateNoWindow = true;
-                psAll.Start();
+                _ = psAll.Start();
                 string allContainers = await psAll.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
                 await psAll.WaitForExitAsync().ConfigureAwait(false);
 
@@ -198,7 +197,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
             logsProcess.StartInfo.RedirectStandardError = true;
             logsProcess.StartInfo.UseShellExecute = false;
             logsProcess.StartInfo.CreateNoWindow = true;
-            logsProcess.Start();
+            _ = logsProcess.Start();
 
             string stdout = await logsProcess.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
             string stderr = await logsProcess.StandardError.ReadToEndAsync().ConfigureAwait(false);
@@ -206,11 +205,11 @@ public class AspireTopologyFixture : IAsyncLifetime {
 
             var combined = new StringBuilder();
             if (!string.IsNullOrEmpty(stdout)) {
-                combined.AppendLine(stdout);
+                _ = combined.AppendLine(stdout);
             }
 
             if (!string.IsNullOrEmpty(stderr)) {
-                combined.AppendLine(stderr);
+                _ = combined.AppendLine(stderr);
             }
 
             return combined.Length > 0 ? combined.ToString() : "(container found but no logs)";
@@ -228,7 +227,6 @@ public class AspireTopologyFixture : IAsyncLifetime {
         TimeSpan pollInterval) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
         Exception? lastException = null;
-        HttpStatusCode? lastStatusCode = null;
         string? lastBodySnippet = null;
 
         while (DateTimeOffset.UtcNow < deadline) {
@@ -237,7 +235,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
                     .GetAsync(url)
                     .ConfigureAwait(false);
 
-                lastStatusCode = response.StatusCode;
+                HttpStatusCode? lastStatusCode = response.StatusCode;
                 if (response.Content is not null) {
                     string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     if (!string.IsNullOrEmpty(body)) {

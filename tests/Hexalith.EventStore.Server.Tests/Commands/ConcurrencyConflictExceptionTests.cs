@@ -1,8 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Hexalith.EventStore.Server.Commands;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class ConcurrencyConflictExceptionTests {
     [Fact]
@@ -64,7 +65,7 @@ public class ConcurrencyConflictExceptionTests {
 
         // Assert
         ex.InnerException.ShouldBe(inner);
-        ex.InnerException.ShouldBeOfType<InvalidOperationException>();
+        _ = ex.InnerException.ShouldBeOfType<InvalidOperationException>();
     }
 
     [Fact]

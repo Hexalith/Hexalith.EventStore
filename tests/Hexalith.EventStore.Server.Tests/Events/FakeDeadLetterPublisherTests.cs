@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
@@ -6,6 +5,8 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Events;
 
 public class FakeDeadLetterPublisherTests {
     private static CommandEnvelope CreateTestEnvelope(
@@ -23,7 +24,7 @@ public class FakeDeadLetterPublisherTests {
         Extensions: null);
 
     private static DeadLetterMessage CreateTestDeadLetterMessage(CommandEnvelope? command = null) {
-        var cmd = command ?? CreateTestEnvelope();
+        CommandEnvelope cmd = command ?? CreateTestEnvelope();
         return DeadLetterMessage.FromException(
             cmd,
             CommandStatus.Processing,
@@ -35,14 +36,14 @@ public class FakeDeadLetterPublisherTests {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
         // Act
         bool result = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         result.ShouldBeTrue();
-        var messages = publisher.GetDeadLetterMessages();
+        IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> messages = publisher.GetDeadLetterMessages();
         messages.Count.ShouldBe(1);
         messages[0].Identity.ShouldBe(identity);
         messages[0].Message.ShouldBe(message);
@@ -53,21 +54,21 @@ public class FakeDeadLetterPublisherTests {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity1 = new AggregateIdentity("tenant-a", "orders", "agg-001");
-        var message1 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-001"));
+        DeadLetterMessage message1 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-001"));
 
         var identity2 = new AggregateIdentity("tenant-b", "inventory", "agg-002");
-        var message2 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-b", "inventory", "agg-002"));
+        DeadLetterMessage message2 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-b", "inventory", "agg-002"));
 
         var identity3 = new AggregateIdentity("tenant-a", "orders", "agg-003");
-        var message3 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-003"));
+        DeadLetterMessage message3 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-003"));
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity1, message1);
-        await publisher.PublishDeadLetterAsync(identity2, message2);
-        await publisher.PublishDeadLetterAsync(identity3, message3);
+        _ = await publisher.PublishDeadLetterAsync(identity1, message1);
+        _ = await publisher.PublishDeadLetterAsync(identity2, message2);
+        _ = await publisher.PublishDeadLetterAsync(identity3, message3);
 
         // Assert
-        var messages = publisher.GetDeadLetterMessages();
+        IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> messages = publisher.GetDeadLetterMessages();
         messages.Count.ShouldBe(3);
     }
 
@@ -76,21 +77,21 @@ public class FakeDeadLetterPublisherTests {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity1 = new AggregateIdentity("tenant-a", "orders", "agg-001");
-        var message1 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-001"));
+        DeadLetterMessage message1 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-001"));
 
         var identity2 = new AggregateIdentity("tenant-b", "inventory", "agg-002");
-        var message2 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-b", "inventory", "agg-002"));
+        DeadLetterMessage message2 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-b", "inventory", "agg-002"));
 
         var identity3 = new AggregateIdentity("tenant-a", "orders", "agg-003");
-        var message3 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-003"));
+        DeadLetterMessage message3 = CreateTestDeadLetterMessage(CreateTestEnvelope("tenant-a", "orders", "agg-003"));
 
-        await publisher.PublishDeadLetterAsync(identity1, message1);
-        await publisher.PublishDeadLetterAsync(identity2, message2);
-        await publisher.PublishDeadLetterAsync(identity3, message3);
+        _ = await publisher.PublishDeadLetterAsync(identity1, message1);
+        _ = await publisher.PublishDeadLetterAsync(identity2, message2);
+        _ = await publisher.PublishDeadLetterAsync(identity3, message3);
 
         // Act
-        var tenantAMessages = publisher.GetDeadLetterMessagesForTenant("tenant-a");
-        var tenantBMessages = publisher.GetDeadLetterMessagesForTenant("tenant-b");
+        IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> tenantAMessages = publisher.GetDeadLetterMessagesForTenant("tenant-a");
+        IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> tenantBMessages = publisher.GetDeadLetterMessagesForTenant("tenant-b");
 
         // Assert
         tenantAMessages.Count.ShouldBe(2);
@@ -105,9 +106,9 @@ public class FakeDeadLetterPublisherTests {
         var publisher = new FakeDeadLetterPublisher();
         string targetCorrelationId = Guid.NewGuid().ToString();
 
-        var envelope1 = CreateTestEnvelope();
+        CommandEnvelope envelope1 = CreateTestEnvelope();
         var identity1 = new AggregateIdentity(envelope1.TenantId, envelope1.Domain, envelope1.AggregateId);
-        var message1 = CreateTestDeadLetterMessage(envelope1);
+        DeadLetterMessage message1 = CreateTestDeadLetterMessage(envelope1);
 
         var envelope2 = new CommandEnvelope(
             TenantId: "test-tenant",
@@ -120,21 +121,21 @@ public class FakeDeadLetterPublisherTests {
             UserId: "system",
             Extensions: null);
         var identity2 = new AggregateIdentity(envelope2.TenantId, envelope2.Domain, envelope2.AggregateId);
-        var message2 = CreateTestDeadLetterMessage(envelope2);
+        DeadLetterMessage message2 = CreateTestDeadLetterMessage(envelope2);
 
-        var envelope3 = CreateTestEnvelope();
+        CommandEnvelope envelope3 = CreateTestEnvelope();
         var identity3 = new AggregateIdentity(envelope3.TenantId, envelope3.Domain, envelope3.AggregateId);
-        var message3 = CreateTestDeadLetterMessage(envelope3);
+        DeadLetterMessage message3 = CreateTestDeadLetterMessage(envelope3);
 
-        await publisher.PublishDeadLetterAsync(identity1, message1);
-        await publisher.PublishDeadLetterAsync(identity2, message2);
-        await publisher.PublishDeadLetterAsync(identity3, message3);
+        _ = await publisher.PublishDeadLetterAsync(identity1, message1);
+        _ = await publisher.PublishDeadLetterAsync(identity2, message2);
+        _ = await publisher.PublishDeadLetterAsync(identity3, message3);
 
         // Act
-        var found = publisher.GetDeadLetterMessageByCorrelationId(targetCorrelationId);
+        (AggregateIdentity Identity, DeadLetterMessage Message)? found = publisher.GetDeadLetterMessageByCorrelationId(targetCorrelationId);
 
         // Assert
-        found.ShouldNotBeNull();
+        _ = found.ShouldNotBeNull();
         found.Value.Message.CorrelationId.ShouldBe(targetCorrelationId);
         found.Value.Identity.ShouldBe(identity2);
     }
@@ -145,7 +146,7 @@ public class FakeDeadLetterPublisherTests {
         var publisher = new FakeDeadLetterPublisher();
         publisher.SetupFailure("Test failure");
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
         // Act
         bool result1 = await publisher.PublishDeadLetterAsync(identity, message);
@@ -162,12 +163,12 @@ public class FakeDeadLetterPublisherTests {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         // Act / Assert
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => publisher.PublishDeadLetterAsync(identity, message, cts.Token));
     }
 
@@ -176,11 +177,11 @@ public class FakeDeadLetterPublisherTests {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
-        await publisher.PublishDeadLetterAsync(identity, message);
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Act & Assert
-        Should.Throw<InvalidOperationException>(() => publisher.AssertNoDeadLetters())
+        Should.Throw<InvalidOperationException>(publisher.AssertNoDeadLetters)
             .Message.ShouldContain("Expected no dead-letter messages");
     }
 
@@ -189,9 +190,9 @@ public class FakeDeadLetterPublisherTests {
         // Arrange
         var publisher = new FakeDeadLetterPublisher();
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
         publisher.SetupFailure("Test failure");
 
         // Act

@@ -1,9 +1,10 @@
-namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+
+namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 public class AuthorizationExceptionHandler(ILogger<AuthorizationExceptionHandler> logger) : IExceptionHandler {
     private const string ProblemJsonContentType = "application/problem+json";

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Sample.Counter;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
@@ -7,6 +6,7 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Counter.State;
 
+namespace Hexalith.EventStore.Sample.Counter;
 /// <summary>
 /// Domain processor for the Counter aggregate. Implements the pure function contract:
 /// (Command, CurrentState?) -> DomainResult with three possible outcomes:

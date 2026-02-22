@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Client.Handlers;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 
+namespace Hexalith.EventStore.Client.Handlers;
 /// <summary>
 /// Pure function contract for domain command processing.
 /// Receives a command and optional current state, returns domain events (success, rejection, or no-op).

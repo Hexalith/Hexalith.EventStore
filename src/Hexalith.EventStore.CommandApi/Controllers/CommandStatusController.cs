@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Controllers;
 
 using System.Diagnostics;
 
@@ -10,10 +9,9 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.CommandApi.Controllers;
 /// <summary>
 /// Controller for querying command processing status.
 /// Route matches the Location header set by <see cref="CommandsController"/> (H5).
@@ -40,7 +38,7 @@ public class CommandStatusController(
 
         using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
             EventStoreActivitySources.QueryStatus, ActivityKind.Server);
-        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId));
 
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? correlationId;
@@ -48,7 +46,7 @@ public class CommandStatusController(
         try {
             // Validate GUID format
             if (!Guid.TryParse(correlationId, out _)) {
-                activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId");
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
                     "Bad Request",
@@ -60,7 +58,7 @@ public class CommandStatusController(
             HttpContext.Items["StatusCorrelationId"] = correlationId;
 
             // Extract tenant claims
-            List<string> tenantClaims = User.FindAll("eventstore:tenant")
+            var tenantClaims = User.FindAll("eventstore:tenant")
                 .Select(c => c.Value)
                 .Where(v => !string.IsNullOrWhiteSpace(v))
                 .ToList();
@@ -70,7 +68,7 @@ public class CommandStatusController(
                     "Status query denied: no tenant claims. CorrelationId={CorrelationId}",
                     requestCorrelationId);
 
-                activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims");
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
                 return CreateProblemDetails(
                     StatusCodes.Status403Forbidden,
                     "Forbidden",
@@ -80,7 +78,7 @@ public class CommandStatusController(
 
             // Try each authorized tenant (SEC-3: command could be under any authorized tenant)
             foreach (string tenant in tenantClaims) {
-                activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant);
+                _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant));
 
                 CommandStatusRecord? record = await statusStore
                     .ReadStatusAsync(tenant, correlationId, cancellationToken)
@@ -93,7 +91,7 @@ public class CommandStatusController(
                         tenant,
                         record.Status);
 
-                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     return Ok(CommandStatusResponse.FromRecord(record));
                 }
             }
@@ -104,7 +102,7 @@ public class CommandStatusController(
                 correlationId,
                 string.Join(",", tenantClaims));
 
-            activity?.SetStatus(ActivityStatusCode.Error, "NotFound");
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, "NotFound"));
             return CreateProblemDetails(
                 StatusCodes.Status404NotFound,
                 "Not Found",
@@ -112,8 +110,8 @@ public class CommandStatusController(
                 requestCorrelationId);
         }
         catch (Exception ex) {
-            activity?.AddException(ex);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _ = (activity?.AddException(ex));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
             throw;
         }
     }

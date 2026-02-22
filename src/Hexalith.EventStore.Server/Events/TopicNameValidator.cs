@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using System.Text.RegularExpressions;
 
@@ -6,6 +5,7 @@ using Hexalith.EventStore.Contracts.Identity;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Validates pub/sub topic names per D6 convention ({tenant}.{domain}.events) and ensures
 /// compatibility with DAPR-supported backends: Kafka (249 chars), RabbitMQ (255 chars),

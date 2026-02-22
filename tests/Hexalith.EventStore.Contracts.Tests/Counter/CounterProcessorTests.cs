@@ -1,10 +1,11 @@
-namespace Hexalith.EventStore.Contracts.Tests.Counter;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Counter.State;
+
+namespace Hexalith.EventStore.Contracts.Tests.Counter;
 
 public class CounterProcessorTests {
     private readonly CounterProcessor _processor = new();
@@ -26,8 +27,8 @@ public class CounterProcessorTests {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("IncrementCounter"), currentState: null);
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Events);
-        Assert.IsType<CounterIncremented>(result.Events[0]);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
     }
 
     [Fact]
@@ -42,8 +43,8 @@ public class CounterProcessorTests {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("IncrementCounter"), state);
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Events);
-        Assert.IsType<CounterIncremented>(result.Events[0]);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
     }
 
     [Fact]
@@ -51,8 +52,8 @@ public class CounterProcessorTests {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("DecrementCounter"), currentState: null);
 
         Assert.True(result.IsRejection);
-        Assert.Single(result.Events);
-        Assert.IsType<CounterCannotGoNegative>(result.Events[0]);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<CounterCannotGoNegative>(result.Events[0]);
     }
 
     [Fact]
@@ -63,8 +64,8 @@ public class CounterProcessorTests {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("DecrementCounter"), state);
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Events);
-        Assert.IsType<CounterDecremented>(result.Events[0]);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<CounterDecremented>(result.Events[0]);
     }
 
     [Fact]
@@ -83,13 +84,11 @@ public class CounterProcessorTests {
         DomainResult result = await _processor.ProcessAsync(CreateCommand("ResetCounter"), state);
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Events);
-        Assert.IsType<CounterReset>(result.Events[0]);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<CounterReset>(result.Events[0]);
     }
 
     [Fact]
-    public async Task UnknownCommandType_ThrowsInvalidOperationException() {
-        await Assert.ThrowsAsync<InvalidOperationException>(
+    public async Task UnknownCommandType_ThrowsInvalidOperationException() => await Assert.ThrowsAsync<InvalidOperationException>(
             () => _processor.ProcessAsync(CreateCommand("UnknownCommand"), currentState: null));
-    }
 }

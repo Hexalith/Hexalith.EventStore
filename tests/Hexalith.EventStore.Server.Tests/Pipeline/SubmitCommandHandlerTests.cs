@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -12,10 +11,12 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Pipeline;
+
 public class SubmitCommandHandlerTests {
     private static ICommandRouter CreateMockRouter() {
-        var router = Substitute.For<ICommandRouter>();
-        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
         return router;
     }

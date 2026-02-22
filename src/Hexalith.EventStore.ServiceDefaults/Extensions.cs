@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
-namespace Microsoft.Extensions.Hosting;
+namespace Hexalith.EventStore.ServiceDefaults;
 
 // Adds common Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
 // This project should be referenced by each service project in your solution.
@@ -20,18 +21,18 @@ public static class Extensions {
     private const string ReadinessEndpointPath = "/ready";
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
-        builder.ConfigureOpenTelemetry();
+        _ = builder.ConfigureOpenTelemetry();
 
-        builder.AddDefaultHealthChecks();
+        _ = builder.AddDefaultHealthChecks();
 
-        builder.Services.AddServiceDiscovery();
+        _ = builder.Services.AddServiceDiscovery();
 
-        builder.Services.ConfigureHttpClientDefaults(http => {
+        _ = builder.Services.ConfigureHttpClientDefaults(http => {
             // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            _ = http.AddStandardResilienceHandler();
 
             // Turn on service discovery by default
-            http.AddServiceDiscovery();
+            _ = http.AddServiceDiscovery();
         });
 
         // Uncomment the following to restrict the allowed schemes for service discovery.
@@ -44,25 +45,20 @@ public static class Extensions {
     }
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
-        builder.Logging.AddOpenTelemetry(logging => {
+        _ = builder.Logging.AddOpenTelemetry(logging => {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
         });
 
         // Structured JSON console logging (AC #5): ensures log output is machine-parseable
         // and structured fields from [LoggerMessage] methods appear as named JSON properties.
-        builder.Logging.AddJsonConsole(options => {
-            options.UseUtcTimestamp = true;
-        });
+        _ = builder.Logging.AddJsonConsole(options => options.UseUtcTimestamp = true);
 
-        builder.Services.AddOpenTelemetry()
-            .WithMetrics(metrics => {
-                metrics.AddAspNetCoreInstrumentation()
+        _ = builder.Services.AddOpenTelemetry()
+            .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
-            })
-            .WithTracing(tracing => {
-                tracing.AddSource(builder.Environment.ApplicationName)
+                    .AddRuntimeInstrumentation())
+            .WithTracing(tracing => tracing.AddSource(builder.Environment.ApplicationName)
                     .AddSource("Hexalith.EventStore.CommandApi")
                     .AddSource("Hexalith.EventStore")
                     .AddAspNetCoreInstrumentation(tracing =>
@@ -74,19 +70,18 @@ public static class Extensions {
                     )
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
-            });
+                    .AddHttpClientInstrumentation());
 
-        builder.AddOpenTelemetryExporters();
+        _ = builder.AddOpenTelemetryExporters();
 
         return builder;
     }
 
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        bool useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
 
         if (useOtlpExporter) {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+            _ = builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
         // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
@@ -100,7 +95,7 @@ public static class Extensions {
     }
 
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
-        builder.Services.AddHealthChecks()
+        _ = builder.Services.AddHealthChecks()
             // Add a default liveness check to ensure app is responsive
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
 
@@ -119,7 +114,7 @@ public static class Extensions {
             writer.WriteString("status", healthReport.Status.ToString());
             writer.WriteStartObject("results");
 
-            foreach (var entry in healthReport.Entries) {
+            foreach (KeyValuePair<string, HealthReportEntry> entry in healthReport.Entries) {
                 writer.WriteStartObject(entry.Key);
                 writer.WriteString("status", entry.Value.Status.ToString());
                 writer.WriteString("description", entry.Value.Description);
@@ -155,10 +150,10 @@ public static class Extensions {
             healthOptions.ResponseWriter = WriteHealthCheckJsonResponse;
         }
 
-        app.MapHealthChecks(HealthEndpointPath, healthOptions);
+        _ = app.MapHealthChecks(HealthEndpointPath, healthOptions);
 
         // Only health checks tagged with the "live" tag must pass for app to be considered alive
-        app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions {
+        _ = app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions {
             Predicate = r => r.Tags.Contains("live"),
             ResultStatusCodes = statusCodes,
         });
@@ -173,7 +168,7 @@ public static class Extensions {
             readinessOptions.ResponseWriter = WriteHealthCheckJsonResponse;
         }
 
-        app.MapHealthChecks(ReadinessEndpointPath, readinessOptions);
+        _ = app.MapHealthChecks(ReadinessEndpointPath, readinessOptions);
 
         return app;
     }

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using System.Reflection;
 
@@ -24,6 +23,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// End-to-end data path isolation tests validating the complete command flow
 /// from router through actor to domain service maintains tenant isolation.
@@ -36,12 +36,12 @@ public class DataPathIsolationTests {
     public async Task CommandRouter_DifferentTenantsSameDomainSameAggId_RouteToSeparateActors() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorIds.Add(id)), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(capturedActorIds.Add), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
@@ -50,8 +50,8 @@ public class DataPathIsolationTests {
         var commandB = new SubmitCommand("tenant-b", "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user");
 
         // Act
-        await router.RouteCommandAsync(commandA);
-        await router.RouteCommandAsync(commandB);
+        _ = await router.RouteCommandAsync(commandA);
+        _ = await router.RouteCommandAsync(commandB);
 
         // Assert
         capturedActorIds.Count.ShouldBe(2);
@@ -69,12 +69,12 @@ public class DataPathIsolationTests {
     public async Task CommandRouter_DerivedActorId_AlwaysMatchesAggregateIdentityActorId(string tenant, string domain, string aggregateId) {
         // Arrange
         ActorId? capturedActorId = null;
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorId = id), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorId = id), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
@@ -82,10 +82,10 @@ public class DataPathIsolationTests {
         var command = new SubmitCommand(tenant, domain, aggregateId, "TestCommand", [1, 2, 3], Guid.NewGuid().ToString(), "test-user");
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert
-        capturedActorId.ShouldNotBeNull();
+        _ = capturedActorId.ShouldNotBeNull();
         capturedActorId.ToString().ShouldBe(expectedIdentity.ActorId);
     }
 
@@ -95,21 +95,21 @@ public class DataPathIsolationTests {
     public async Task CommandRouter_ConcurrentDifferentTenants_ProcessedIndependently() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => { lock (capturedActorIds) { capturedActorIds.Add(id); } }), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => { lock (capturedActorIds) { capturedActorIds.Add(id); } }), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
 
-        var tenants = new[] { "tenant-a", "tenant-b", "tenant-c", "tenant-d" };
-        var commands = tenants.Select(t => new SubmitCommand(t, "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user")).ToArray();
+        string[] tenants = new[] { "tenant-a", "tenant-b", "tenant-c", "tenant-d" };
+        SubmitCommand[] commands = tenants.Select(t => new SubmitCommand(t, "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user")).ToArray();
 
         // Act -- concurrent submission
-        await Task.WhenAll(commands.Select(c => router.RouteCommandAsync(c)));
+        _ = await Task.WhenAll(commands.Select(c => router.RouteCommandAsync(c)));
 
         // Assert
         capturedActorIds.Count.ShouldBe(4);
@@ -130,13 +130,13 @@ public class DataPathIsolationTests {
         string domain = "test-domain";
         string aggId = "agg-001";
 
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggId}") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
@@ -144,15 +144,15 @@ public class DataPathIsolationTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         CommandEnvelope? capturedInvokerCommand = null;
-        invoker.InvokeAsync(Arg.Do<CommandEnvelope>(c => capturedInvokerCommand = c), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Do<CommandEnvelope>(c => capturedInvokerCommand = c), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         var command = new CommandEnvelope(tenantId, domain, aggId, "CreateOrder", [1, 2, 3],
@@ -168,10 +168,10 @@ public class DataPathIsolationTests {
         host.Id.GetId().ShouldStartWith($"{tenantId}:");
 
         // Layer 3: TenantValidator was exercised (no mismatch, so processing continued)
-        await invoker.Received(1).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await invoker.Received(1).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
 
         // Layer 1+3: Domain service received correct tenant context
-        capturedInvokerCommand.ShouldNotBeNull();
+        _ = capturedInvokerCommand.ShouldNotBeNull();
         capturedInvokerCommand.TenantId.ShouldBe(tenantId);
     }
 
@@ -184,17 +184,17 @@ public class DataPathIsolationTests {
         const string domain = "orders";
         const string aggId = "order-trace-001";
 
-        var stateManager = Substitute.For<IActorStateManager>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         CommandEnvelope? invokerCapturedCommand = null;
-        invoker.InvokeAsync(Arg.Do<CommandEnvelope>(c => invokerCapturedCommand = c), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Do<CommandEnvelope>(c => invokerCapturedCommand = c), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
-        var actorLogger = Substitute.For<ILogger<AggregateActor>>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        ILogger<AggregateActor> actorLogger = Substitute.For<ILogger<AggregateActor>>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
 
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggId}") });
@@ -203,11 +203,11 @@ public class DataPathIsolationTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Verify CommandRouter derives the expected ActorId
@@ -221,7 +221,7 @@ public class DataPathIsolationTests {
         var command = new CommandEnvelope(tenantId, domain, aggId, "TestCmd", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert -- TenantId identical at each stage
         // Stage 1: CommandRouter would derive this ActorId
@@ -231,7 +231,7 @@ public class DataPathIsolationTests {
         actorIdTenant.ShouldBe(tenantId);
 
         // Stage 3: DomainServiceInvoker received the exact same TenantId
-        invokerCapturedCommand.ShouldNotBeNull();
+        _ = invokerCapturedCommand.ShouldNotBeNull();
         invokerCapturedCommand.TenantId.ShouldBe(tenantId);
     }
 
@@ -240,13 +240,13 @@ public class DataPathIsolationTests {
     [Fact]
     public async Task AggregateActor_ProcessCommand_ExplicitlyCallsTenantValidator() {
         // Arrange -- create actor with matching tenant so validation PASSES
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
@@ -254,13 +254,13 @@ public class DataPathIsolationTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         // Send mismatched tenant -- proves TenantValidator IS called
@@ -275,6 +275,6 @@ public class DataPathIsolationTests {
         result.ErrorMessage!.ShouldContain("TenantMismatch");
 
         // Domain service should NOT have been invoked (rejected at Step 2)
-        await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
     }
 }

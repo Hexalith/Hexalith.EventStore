@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Publishes persisted events to a DAPR pub/sub component with CloudEvents 1.0 envelope format (FR17).
 /// </summary>

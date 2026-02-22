@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using System.Reflection;
 using System.Security.Claims;
@@ -32,6 +31,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Story 5.4, Task 6: Security audit logging tests (AC #1, #6, #7, #8, #9, #10).
 /// Validates that security events use consistent SecurityEvent field and correct metadata.
@@ -44,16 +44,16 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        var principal = CreatePrincipal(domains: ["other-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["other-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "test-corr-id";
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
 
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
-        var command = CreateTestCommand(domain: "billing");
+        SubmitCommand command = CreateTestCommand(domain: "billing");
 
-        await Should.ThrowAsync<CommandAuthorizationException>(
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         LogEntry warningLog = logEntries.First(e => e.Level == LogLevel.Warning);
@@ -72,16 +72,16 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        var principal = CreatePrincipal(domains: ["only-this-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["only-this-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "corr-456";
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
 
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
-        var command = CreateTestCommand(domain: "unauthorized-domain");
+        SubmitCommand command = CreateTestCommand(domain: "unauthorized-domain");
 
-        await Should.ThrowAsync<CommandAuthorizationException>(
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         LogEntry warningLog = logEntries.First(e => e.Level == LogLevel.Warning);
@@ -95,17 +95,17 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        var principal = CreatePrincipal(domains: ["other-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["other-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "corr-jwt-test";
         // Simulate request context only; test verifies logs never contain JWT-like token markers.
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
 
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
-        var command = CreateTestCommand(domain: "forbidden-domain");
+        SubmitCommand command = CreateTestCommand(domain: "forbidden-domain");
 
-        await Should.ThrowAsync<CommandAuthorizationException>(
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         // Verify no log entry contains the JWT token
@@ -123,12 +123,12 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var actorLogger = new TestLogger<AggregateActor>(logEntries);
 
-        var stateManager = Substitute.For<IActorStateManager>();
-        var domainInvoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IDomainServiceInvoker domainInvoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
 
         var actorHost = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant-a:billing:agg-1") });
@@ -142,9 +142,9 @@ public class SecurityAuditLoggingTests {
         prop?.SetValue(actor, stateManager);
 
         // Set up the state manager to return no existing state
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // Submit command with different tenant (tenant-b) -- tenant mismatch
@@ -169,16 +169,16 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        var principal = CreatePrincipal(domains: ["wrong-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["wrong-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "consistent-format-test";
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
 
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
-        var command = CreateTestCommand(domain: "target-domain");
+        SubmitCommand command = CreateTestCommand(domain: "target-domain");
 
-        await Should.ThrowAsync<CommandAuthorizationException>(
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         LogEntry securityLog = logEntries.First(e =>
@@ -208,7 +208,7 @@ public class SecurityAuditLoggingTests {
             },
         };
 
-        using JsonDocument payloadDocument = JsonDocument.Parse("{\"amount\":42}");
+        using var payloadDocument = JsonDocument.Parse("{\"amount\":42}");
         var request = new SubmitCommandRequest(
             Tenant: "tenant-a",
             Domain: "billing",
@@ -246,7 +246,7 @@ public class SecurityAuditLoggingTests {
 
         const string maliciousExtension = "<script>alert('xss')</script>";
 
-        using JsonDocument payloadDocument = JsonDocument.Parse("{\"amount\":42}");
+        using var payloadDocument = JsonDocument.Parse("{\"amount\":42}");
         var request = new SubmitCommandRequest(
             Tenant: "tenant-a",
             Domain: "billing",
@@ -336,9 +336,7 @@ public class SecurityAuditLoggingTests {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 
     private record LogEntry(LogLevel Level, string Message);

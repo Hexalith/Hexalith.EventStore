@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using System.Reflection;
 
@@ -24,6 +23,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.4 Task 8: Persist-then-publish resilience tests.
 /// Verifies UnpublishedEventsRecord storage on PublishFailed paths (AC: #2, #3, #7, #8).
@@ -51,13 +51,13 @@ public class PersistThenPublishResilienceTests {
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher, ActorTimerManager TimerManager)
         CreateActorWithTimerManager() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var timerManager = Substitute.For<ActorTimerManager>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001"), TimerManager = timerManager });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
@@ -66,19 +66,19 @@ public class PersistThenPublishResilienceTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: no idempotency record
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // Default: no metadata (new aggregate)
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: no pipeline state
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // Default: domain returns success with event
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.Success([new TestEvent()]));
 
         return (actor, stateManager, eventPublisher, timerManager);
@@ -92,7 +92,7 @@ public class PersistThenPublishResilienceTests {
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -122,7 +122,7 @@ public class PersistThenPublishResilienceTests {
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -130,7 +130,7 @@ public class PersistThenPublishResilienceTests {
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- new aggregate: first event at seq 1
         await stateManager.Received().SetStateAsync(
@@ -150,7 +150,7 @@ public class PersistThenPublishResilienceTests {
             CreateActorWithTimerManager();
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -175,7 +175,7 @@ public class PersistThenPublishResilienceTests {
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -183,7 +183,7 @@ public class PersistThenPublishResilienceTests {
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- events were persisted (SetStateAsync for event key was called before publish)
         await stateManager.Received().SetStateAsync(
@@ -200,7 +200,7 @@ public class PersistThenPublishResilienceTests {
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -229,14 +229,14 @@ public class PersistThenPublishResilienceTests {
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
 
-        stateManager.TryGetStateAsync<PipelineState>(
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
         // Set up metadata and events for resume
         var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
@@ -245,12 +245,12 @@ public class PersistThenPublishResilienceTests {
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
                 "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", "json", [1], null);
-            stateManager.TryGetStateAsync<EventEnvelope>(
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
         }
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -286,14 +286,14 @@ public class PersistThenPublishResilienceTests {
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
 
-        stateManager.TryGetStateAsync<PipelineState>(
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
         // Set up metadata and events for resume
         var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
@@ -302,12 +302,12 @@ public class PersistThenPublishResilienceTests {
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
                 "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", "json", [1], null);
-            stateManager.TryGetStateAsync<EventEnvelope>(
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
         }
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -335,13 +335,13 @@ public class PersistThenPublishResilienceTests {
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
 
-        stateManager.TryGetStateAsync<PipelineState>(
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
         var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(
                 new ConditionalValue<AggregateMetadata>(true, metadata),
@@ -352,12 +352,12 @@ public class PersistThenPublishResilienceTests {
             var evt = new EventEnvelope(
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
                 "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", "json", [1], null);
-            stateManager.TryGetStateAsync<EventEnvelope>(
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
         }
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -390,21 +390,21 @@ public class PersistThenPublishResilienceTests {
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
 
-        stateManager.TryGetStateAsync<PipelineState>(
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act + Assert
-        await Should.ThrowAsync<InvalidOperationException>(() => actor.ProcessCommandAsync(envelope));
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.ProcessCommandAsync(envelope));
 
-        await eventPublisher.DidNotReceive().PublishEventsAsync(
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),

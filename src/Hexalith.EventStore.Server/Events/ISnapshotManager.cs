@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Manages aggregate state snapshots for optimizing state rehydration.
 /// Snapshots are an advisory optimization -- failures never block command processing (rule #12).

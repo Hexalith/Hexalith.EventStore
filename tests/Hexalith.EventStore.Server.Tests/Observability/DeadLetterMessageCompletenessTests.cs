@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Observability;
 
 using System.Reflection;
 
@@ -23,6 +22,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>
 /// Story 6.3 Task 5: Dead-letter message completeness verification tests.
 /// Verifies that dead-letter messages contain all required correlation fields,
@@ -52,14 +52,14 @@ public class DeadLetterMessageCompletenessTests {
         CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var fakeDeadLetter = new FakeDeadLetterPublisher();
 
-        ActorHost host = ActorHost.CreateForTest<AggregateActor>(
+        var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
@@ -71,27 +71,27 @@ public class DeadLetterMessageCompletenessTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: no duplicates, no pipeline state, no metadata
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: domain service returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
         // Default: snapshot not found
-        snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
+        _ = snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
             .Returns((SnapshotRecord?)null);
 
         // Default: event rehydration returns empty
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -121,11 +121,11 @@ public class DeadLetterMessageCompletenessTests {
             correlationId: correlationId,
             causationId: causationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Domain failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlMessages = fakeDeadLetter.GetDeadLetterMessages();
@@ -153,15 +153,15 @@ public class DeadLetterMessageCompletenessTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Command envelope in dead-letter is the original, unmodified envelope
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
-        dl.Command.ShouldNotBeNull("Dead-letter should contain full command envelope for replay");
+        _ = dl.Command.ShouldNotBeNull("Dead-letter should contain full command envelope for replay");
         ReferenceEquals(dl.Command, envelope).ShouldBeTrue("Command envelope should be the original reference (unmodified)");
         dl.Command.TenantId.ShouldBe(envelope.TenantId);
         dl.Command.Domain.ShouldBe(envelope.Domain);
@@ -184,11 +184,11 @@ public class DeadLetterMessageCompletenessTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Specific domain failure reason"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
@@ -213,11 +213,11 @@ public class DeadLetterMessageCompletenessTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter correlationId equals the submitted command's correlationId
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
@@ -247,11 +247,11 @@ public class DeadLetterMessageCompletenessTests {
             realException = ex;
         }
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(realException);
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Rule #13 -- no stack traces in dead-letter messages
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
@@ -280,11 +280,11 @@ public class DeadLetterMessageCompletenessTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: null);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter message is complete and valid even with null CausationId
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlMessages = fakeDeadLetter.GetDeadLetterMessages();
@@ -293,7 +293,7 @@ public class DeadLetterMessageCompletenessTests {
 
         dl.CorrelationId.ShouldBe(correlationId);
         dl.CausationId.ShouldBeNull("Original submission should have null CausationId");
-        dl.Command.ShouldNotBeNull("Command envelope should still be present");
+        _ = dl.Command.ShouldNotBeNull("Command envelope should still be present");
         dl.FailureStage.ShouldNotBeNullOrEmpty();
         dl.ExceptionType.ShouldNotBeNullOrEmpty();
         dl.ErrorMessage.ShouldNotBeNullOrEmpty();

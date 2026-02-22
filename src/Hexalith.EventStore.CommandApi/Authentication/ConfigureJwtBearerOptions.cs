@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Authentication;
 
 using System.Text;
 using System.Text.Json;
@@ -6,12 +5,11 @@ using System.Text.Json;
 using Hexalith.EventStore.CommandApi.Middleware;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
+namespace Hexalith.EventStore.CommandApi.Authentication;
 /// <summary>
 /// Configures JwtBearerOptions using EventStoreAuthenticationOptions from configuration.
 /// Supports two modes: OIDC discovery (production) and symmetric key (development/testing).
@@ -134,7 +132,7 @@ public class ConfigureJwtBearerOptions(
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsJsonAsync(
                     problemDetails,
-                    options: (System.Text.Json.JsonSerializerOptions?)null,
+                    options: null,
                     contentType: "application/problem+json").ConfigureAwait(false);
             },
         };

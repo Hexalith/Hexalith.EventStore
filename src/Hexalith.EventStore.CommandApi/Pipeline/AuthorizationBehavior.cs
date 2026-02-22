@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Pipeline;
 
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Middleware;
@@ -6,8 +5,7 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using MediatR;
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
+namespace Hexalith.EventStore.CommandApi.Pipeline;
 
 public partial class AuthorizationBehavior<TRequest, TResponse>(
     IHttpContextAccessor httpContextAccessor,
@@ -39,13 +37,13 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             ?? "unknown";
         string causationId = correlationId; // For original submissions, CausationId = CorrelationId
 
-        List<string> tenantClaims = user.FindAll("eventstore:tenant")
+        var tenantClaims = user.FindAll("eventstore:tenant")
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
 
         // Domain authorization: only enforce if user has domain claims
-        List<string> domainClaims = user.FindAll("eventstore:domain")
+        var domainClaims = user.FindAll("eventstore:domain")
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
@@ -64,7 +62,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         }
 
         // Permission authorization: only enforce if user has permission claims
-        List<string> permissionClaims = user.FindAll("eventstore:permission")
+        var permissionClaims = user.FindAll("eventstore:permission")
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();

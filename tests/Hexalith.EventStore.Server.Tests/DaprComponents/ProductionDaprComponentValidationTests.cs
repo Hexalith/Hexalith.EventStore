@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 
 using Shouldly;
 
 using YamlDotNet.Serialization;
 
+namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 /// <summary>
 /// Story 7.3: Production DAPR component validation tests.
 /// Validates structural correctness of production configs in deploy/dapr/ and
@@ -48,7 +48,7 @@ public class ProductionDaprComponentValidationTests {
     [InlineData("statestore-postgresql.yaml")]
     [InlineData("statestore-cosmosdb.yaml")]
     public void ProductionStateStores_HaveActorStateStoreEnabled(string fileName) {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
         GetComponentMetadataValue(doc, "actorStateStore")
             .ShouldBe("true", $"{fileName} must have actorStateStore enabled for DAPR actor state management");
     }
@@ -59,9 +59,9 @@ public class ProductionDaprComponentValidationTests {
     [InlineData("statestore-postgresql.yaml")]
     [InlineData("statestore-cosmosdb.yaml")]
     public void ProductionStateStores_ScopedToCommandApiOnly(string fileName) {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
-        var scopes = GetScopes(doc);
-        scopes.ShouldNotBeNull($"{fileName} must have scopes defined");
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
+        List<object>? scopes = GetScopes(doc);
+        _ = scopes.ShouldNotBeNull($"{fileName} must have scopes defined");
         scopes.Count.ShouldBe(1, $"{fileName} scopes must contain exactly one entry (commandapi only)");
         scopes[0]?.ToString().ShouldBe("commandapi", $"{fileName} must be scoped to commandapi only (D4)");
     }
@@ -73,7 +73,7 @@ public class ProductionDaprComponentValidationTests {
     [InlineData("pubsub-kafka.yaml")]
     [InlineData("pubsub-servicebus.yaml")]
     public void ProductionPubSubs_HaveDeadLetterEnabled(string fileName) {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
         GetComponentMetadataValue(doc, "enableDeadLetter")
             .ShouldBe("true", $"{fileName} must have dead-letter enabled for undeliverable message routing");
     }
@@ -82,7 +82,7 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void ProductionAccessControl_DefaultActionIsDeny() {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
             .ShouldBe("deny", "Production access control must have defaultAction: deny (D4)");
     }
@@ -91,26 +91,26 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void ProductionAccessControl_CommandApiCanPostOnly() {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
-        var policies = NavList(doc, "spec", "accessControl", "policies");
-        policies.ShouldNotBeNull();
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
 
-        var commandApiPolicy = policies
+        Dictionary<object, object>? commandApiPolicy = policies
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(p => GetString(p, "appId") == "commandapi");
-        commandApiPolicy.ShouldNotBeNull("Production access control must have a commandapi policy");
+        _ = commandApiPolicy.ShouldNotBeNull("Production access control must have a commandapi policy");
 
-        var operations = commandApiPolicy.TryGetValue("operations", out object? ops)
+        List<object>? operations = commandApiPolicy.TryGetValue("operations", out object? ops)
             ? ops as List<object> : null;
-        operations.ShouldNotBeNull("commandapi policy must have operations");
+        _ = operations.ShouldNotBeNull("commandapi policy must have operations");
 
-        var wildcardOp = operations!
+        Dictionary<object, object>? wildcardOp = operations!
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(op => GetString(op, "name") == "/**");
-        wildcardOp.ShouldNotBeNull("commandapi must allow wildcard path /** for domain service invocation (D7)");
+        _ = wildcardOp.ShouldNotBeNull("commandapi must allow wildcard path /** for domain service invocation (D7)");
 
-        var httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
-        httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
+        List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
+        _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
         httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST", "commandapi wildcard must allow POST");
         GetString(wildcardOp, "action").ShouldBe("allow");
     }
@@ -119,11 +119,11 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void ProductionAccessControl_NoSampleDomainService() {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
-        var policies = NavList(doc, "spec", "accessControl", "policies");
-        policies.ShouldNotBeNull();
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
 
-        var samplePolicy = policies
+        Dictionary<object, object>? samplePolicy = policies
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(p => GetString(p, "appId") == "sample");
         samplePolicy.ShouldBeNull("Production access control must NOT include sample domain service (production-only config)");
@@ -133,8 +133,8 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void ProductionResiliency_HasStatestoreTarget() {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, "resiliency.yaml"));
-        Nav(doc, "spec", "targets", "components", "statestore").ShouldNotBeNull(
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "resiliency.yaml"));
+        _ = Nav(doc, "spec", "targets", "components", "statestore").ShouldNotBeNull(
             "Production resiliency must have a statestore component target");
         Nav(doc, "spec", "targets", "components", "statestore", "retry")?.ToString()
             .ShouldNotBeNullOrEmpty("Statestore target must have a retry policy");
@@ -146,7 +146,7 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void ProductionResiliency_SidecarTimeoutIsFiveSeconds() {
-        var doc = LoadYaml(Path.Combine(DeployDaprDir, "resiliency.yaml"));
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "resiliency.yaml"));
         Nav(doc, "spec", "policies", "timeouts", "daprSidecar", "general")?.ToString()
             .ShouldBe("5s", "Production DAPR sidecar general timeout must be 5 seconds (Rule #14)");
     }
@@ -155,9 +155,9 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void LocalAndProduction_StateStoreComponentNames_Match() {
-        var localDoc = LoadYaml(Path.Combine(LocalDaprDir, "statestore.yaml"));
-        var prodPgDoc = LoadYaml(Path.Combine(DeployDaprDir, "statestore-postgresql.yaml"));
-        var prodCosmosDoc = LoadYaml(Path.Combine(DeployDaprDir, "statestore-cosmosdb.yaml"));
+        Dictionary<string, object> localDoc = LoadYaml(Path.Combine(LocalDaprDir, "statestore.yaml"));
+        Dictionary<string, object> prodPgDoc = LoadYaml(Path.Combine(DeployDaprDir, "statestore-postgresql.yaml"));
+        Dictionary<string, object> prodCosmosDoc = LoadYaml(Path.Combine(DeployDaprDir, "statestore-cosmosdb.yaml"));
 
         string? localName = Nav(localDoc, "metadata", "name")?.ToString();
         string? prodPgName = Nav(prodPgDoc, "metadata", "name")?.ToString();
@@ -172,10 +172,10 @@ public class ProductionDaprComponentValidationTests {
 
     [Fact]
     public void LocalAndProduction_PubSubComponentNames_Match() {
-        var localDoc = LoadYaml(Path.Combine(LocalDaprDir, "pubsub.yaml"));
-        var prodRmqDoc = LoadYaml(Path.Combine(DeployDaprDir, "pubsub-rabbitmq.yaml"));
-        var prodKafkaDoc = LoadYaml(Path.Combine(DeployDaprDir, "pubsub-kafka.yaml"));
-        var prodSbDoc = LoadYaml(Path.Combine(DeployDaprDir, "pubsub-servicebus.yaml"));
+        Dictionary<string, object> localDoc = LoadYaml(Path.Combine(LocalDaprDir, "pubsub.yaml"));
+        Dictionary<string, object> prodRmqDoc = LoadYaml(Path.Combine(DeployDaprDir, "pubsub-rabbitmq.yaml"));
+        Dictionary<string, object> prodKafkaDoc = LoadYaml(Path.Combine(DeployDaprDir, "pubsub-kafka.yaml"));
+        Dictionary<string, object> prodSbDoc = LoadYaml(Path.Combine(DeployDaprDir, "pubsub-servicebus.yaml"));
 
         string? localName = Nav(localDoc, "metadata", "name")?.ToString();
         string? prodRmqName = Nav(prodRmqDoc, "metadata", "name")?.ToString();
@@ -215,8 +215,9 @@ public class ProductionDaprComponentValidationTests {
                 Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
                 _ => null,
             };
-            if (current is null)
+            if (current is null) {
                 return null;
+            }
         }
         return current;
     }
@@ -231,11 +232,12 @@ public class ProductionDaprComponentValidationTests {
         => doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
 
     private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
-        var metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null)
+        List<object>? metadataList = NavList(doc, "spec", "metadata");
+        if (metadataList is null) {
             return null;
+        }
 
-        var entry = metadataList
+        Dictionary<object, object>? entry = metadataList
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(m => GetString(m, "name") == metadataName);
         return entry is not null ? GetString(entry, "value") : null;

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.HealthChecks;
 
 using Dapr.Client;
 
@@ -11,11 +10,13 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.HealthChecks;
+
 public class DaprStateStoreHealthCheckTests {
     private const string StoreName = "statestore";
 
     private static HealthCheckContext CreateContext(HealthStatus failureStatus = HealthStatus.Unhealthy) {
-        var healthCheck = Substitute.For<IHealthCheck>();
+        IHealthCheck healthCheck = Substitute.For<IHealthCheck>();
         return new HealthCheckContext {
             Registration = new HealthCheckRegistration(
                 "dapr-statestore", healthCheck, failureStatus, ["ready"]),
@@ -25,13 +26,13 @@ public class DaprStateStoreHealthCheckTests {
     [Fact]
     public async Task CheckHealth_StateStoreAccessible_ReturnsHealthy() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
             .Returns((string)null!);
         var healthCheck = new DaprStateStoreHealthCheck(daprClient, StoreName);
 
         // Act
-        var result = await healthCheck.CheckHealthAsync(CreateContext());
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(CreateContext());
 
         // Assert
         result.Status.ShouldBe(HealthStatus.Healthy);
@@ -41,13 +42,13 @@ public class DaprStateStoreHealthCheckTests {
     [Fact]
     public async Task CheckHealth_StateStoreUnavailable_ReturnsUnhealthy() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new Dapr.DaprException("State store unavailable"));
         var healthCheck = new DaprStateStoreHealthCheck(daprClient, StoreName);
 
         // Act
-        var result = await healthCheck.CheckHealthAsync(CreateContext());
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(CreateContext());
 
         // Assert
         result.Status.ShouldBe(HealthStatus.Unhealthy);
@@ -57,13 +58,13 @@ public class DaprStateStoreHealthCheckTests {
     [Fact]
     public async Task CheckHealth_StateStoreReturnsValue_ReturnsHealthy() {
         // Arrange -- edge case: sentinel key exists and has a value
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
             .Returns("some-value");
         var healthCheck = new DaprStateStoreHealthCheck(daprClient, StoreName);
 
         // Act
-        var result = await healthCheck.CheckHealthAsync(CreateContext());
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(CreateContext());
 
         // Assert
         result.Status.ShouldBe(HealthStatus.Healthy);
@@ -72,8 +73,8 @@ public class DaprStateStoreHealthCheckTests {
     [Fact]
     public async Task CheckHealth_NeverWritesToStateStore() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
             .Returns((string)null!);
         var healthCheck = new DaprStateStoreHealthCheck(daprClient, StoreName);
 

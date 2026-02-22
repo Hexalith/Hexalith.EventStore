@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Contracts.Events;
 
 using System.Collections.ObjectModel;
 
+namespace Hexalith.EventStore.Contracts.Events;
 /// <summary>
 /// The complete serializable event unit combining metadata, payload, and extensions.
 /// Record equality uses reference equality for <see cref="Payload"/> (byte[]).

@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Shared helper for replacing DAPR-dependent services with test fakes in integration tests.
 /// </summary>
@@ -17,10 +17,10 @@ public static class TestServiceOverrides {
         ServiceDescriptor? routerDescriptor = services.FirstOrDefault(
             d => d.ServiceType == typeof(ICommandRouter));
         if (routerDescriptor is not null) {
-            services.Remove(routerDescriptor);
+            _ = services.Remove(routerDescriptor);
         }
 
-        services.AddSingleton<ICommandRouter>(router ?? new FakeCommandRouter());
+        _ = services.AddSingleton<ICommandRouter>(router ?? new FakeCommandRouter());
     }
 
     /// <summary>
@@ -29,12 +29,12 @@ public static class TestServiceOverrides {
     /// </summary>
     public static void RemoveDaprHealthChecks(IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
-        services.Configure<HealthCheckServiceOptions>(options => {
-            List<HealthCheckRegistration> daprChecks = options.Registrations
+        _ = services.Configure<HealthCheckServiceOptions>(options => {
+            var daprChecks = options.Registrations
                 .Where(r => r.Name.StartsWith("dapr-", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             foreach (HealthCheckRegistration check in daprChecks) {
-                options.Registrations.Remove(check);
+                _ = options.Registrations.Remove(check);
             }
         });
     }

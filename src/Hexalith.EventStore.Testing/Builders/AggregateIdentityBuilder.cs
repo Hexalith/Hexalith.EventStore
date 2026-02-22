@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Testing.Builders;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Testing.Builders;
 /// <summary>
 /// Fluent builder for creating <see cref="AggregateIdentity"/> instances with sensible defaults for testing.
 /// </summary>

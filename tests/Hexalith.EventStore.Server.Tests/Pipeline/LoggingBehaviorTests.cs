@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 using System.Diagnostics;
 
@@ -14,6 +13,8 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Pipeline;
+
 public class LoggingBehaviorTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
     private readonly TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>> _logger;
@@ -28,7 +29,7 @@ public class LoggingBehaviorTests : IDisposable {
 
         var httpContext = new DefaultHttpContext();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
-        _httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = _httpContextAccessor.HttpContext.Returns(httpContext);
 
         _behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(_logger, _httpContextAccessor);
 
@@ -73,7 +74,7 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+        _ = await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
         _logEntries.Count.ShouldBeGreaterThanOrEqualTo(2);
@@ -97,7 +98,7 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+        _ = await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
         LogEntry exitLog = _logEntries.First(e => e.Message.Contains("pipeline exit"));
@@ -110,7 +111,7 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => _behavior.Handle(command, CreateFailingDelegate(), CancellationToken.None));
 
         LogEntry errorLog = _logEntries.First(e => e.Level == LogLevel.Error);
@@ -128,7 +129,7 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+        _ = await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert - Payload bytes should never appear in any log entry
         foreach (LogEntry entry in _logEntries) {
@@ -143,7 +144,7 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+        _ = await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert - Extensions values should never appear in any log entry
         foreach (LogEntry entry in _logEntries) {
@@ -159,13 +160,13 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+        _ = await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert - filter by operation name AND correlation ID to avoid parallel test interference
         Activity? activity = _capturedActivities.FirstOrDefault(
             a => a.OperationName == "EventStore.CommandApi.Submit"
                 && Equals(a.GetTagItem("eventstore.correlation_id"), "test-correlation-id"));
-        activity.ShouldNotBeNull();
+        _ = activity.ShouldNotBeNull();
         activity.GetTagItem("eventstore.tenant_id").ShouldBe("test-tenant");
         activity.GetTagItem("eventstore.domain").ShouldBe("test-domain");
         activity.GetTagItem("eventstore.command_type").ShouldBe("CreateOrder");
@@ -177,25 +178,25 @@ public class LoggingBehaviorTests : IDisposable {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => _behavior.Handle(command, CreateFailingDelegate(), CancellationToken.None));
 
         // Assert - filter by operation name AND correlation ID to avoid parallel test interference
         Activity? activity = _capturedActivities.FirstOrDefault(
             a => a.OperationName == "EventStore.CommandApi.Submit"
                 && Equals(a.GetTagItem("eventstore.correlation_id"), "test-correlation-id"));
-        activity.ShouldNotBeNull();
+        _ = activity.ShouldNotBeNull();
         activity.Status.ShouldBe(ActivityStatusCode.Error);
     }
 
     [Fact]
     public async Task LoggingBehavior_NoHttpContext_GeneratesFallbackCorrelationId() {
         // Arrange
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _ = _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+        _ = await _behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert - should still log entry/exit without crashing
         _logEntries.Count.ShouldBeGreaterThanOrEqualTo(2);
@@ -211,9 +212,7 @@ public class LoggingBehaviorTests : IDisposable {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 }
 

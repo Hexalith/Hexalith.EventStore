@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Publishes dead-letter messages to per-tenant dead-letter topics.
 /// Returns bool -- true on success, false on failure.

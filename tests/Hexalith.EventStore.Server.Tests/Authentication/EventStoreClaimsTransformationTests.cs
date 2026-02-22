@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Authentication;
 
 using System.Security.Claims;
 using System.Text.Json;
@@ -10,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Authentication;
 
 public class EventStoreClaimsTransformationTests {
     private const string TenantClaimType = "eventstore:tenant";
@@ -139,9 +140,8 @@ public class EventStoreClaimsTransformationTests {
     }
 
     [Fact]
-    public async Task TransformAsync_NullPrincipal_ThrowsArgumentNullException() {
+    public async Task TransformAsync_NullPrincipal_ThrowsArgumentNullException() =>
         // Act & Assert
         await Should.ThrowAsync<ArgumentNullException>(
             () => _sut.TransformAsync(null!));
-    }
 }

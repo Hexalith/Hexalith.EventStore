@@ -42,12 +42,7 @@ public partial class DaprDomainServiceInvoker(
         // Resolve domain service registration with extracted version
         DomainServiceRegistration? registration = await resolver
             .ResolveAsync(command.TenantId, command.Domain, version, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (registration is null) {
-            throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
-        }
-
+            .ConfigureAwait(false) ?? throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
         Log.InvokingDomainService(logger, registration.AppId, registration.MethodName, command.TenantId, command.Domain, command.CorrelationId);
 
         // Invoke via DAPR service invocation (D7)

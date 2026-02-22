@@ -1,10 +1,11 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using System.Text.Json;
 
 using Hexalith.EventStore.Server.Actors;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class IdempotencyRecordTests {
     [Fact]
@@ -13,7 +14,7 @@ public class IdempotencyRecordTests {
         var result = new CommandProcessingResult(Accepted: true, ErrorMessage: null, CorrelationId: "corr-123");
 
         // Act
-        IdempotencyRecord record = IdempotencyRecord.FromResult("cause-456", result);
+        var record = IdempotencyRecord.FromResult("cause-456", result);
 
         // Assert
         record.CausationId.ShouldBe("cause-456");
@@ -66,7 +67,7 @@ public class IdempotencyRecordTests {
         IdempotencyRecord? deserialized = JsonSerializer.Deserialize<IdempotencyRecord>(json);
 
         // Assert
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.CausationId.ShouldBe(original.CausationId);
         deserialized.CorrelationId.ShouldBe(original.CorrelationId);
         deserialized.Accepted.ShouldBe(original.Accepted);

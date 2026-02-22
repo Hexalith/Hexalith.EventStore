@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
@@ -12,6 +11,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Integration tests for AggregateActor snapshot-based rehydration (AC: #6, #10).
 /// Tests the integration between SnapshotManager snapshot loading and EventStreamReader
@@ -54,9 +54,9 @@ public class SnapshotRehydrationTests {
         RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
 
         // Assert - should have snapshot state + only tail events (8, 9, 10)
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.UsedSnapshot.ShouldBeTrue();
-        result.SnapshotState.ShouldNotBeNull();
+        _ = result.SnapshotState.ShouldNotBeNull();
         result.Events.Count.ShouldBe(3);
         result.Events[0].SequenceNumber.ShouldBe(8);
         result.Events[1].SequenceNumber.ShouldBe(9);
@@ -79,7 +79,7 @@ public class SnapshotRehydrationTests {
 
         // Assert - lastSnapshotSequence=50 is the value AggregateActor Step 5b passes to
         // ShouldCreateSnapshotAsync(domain, newSequence, lastSnapshotSequence=50)
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.LastSnapshotSequence.ShouldBe(50);
         result.CurrentSequence.ShouldBe(55);
         result.TailEventCount.ShouldBe(5);
@@ -105,13 +105,13 @@ public class SnapshotRehydrationTests {
         RehydrationResult? snapshotPlusTail = await reader.RehydrateAsync(TestIdentity, snapshot);
 
         // Assert - full replay has all 10 events, no snapshot state
-        fullReplay.ShouldNotBeNull();
+        _ = fullReplay.ShouldNotBeNull();
         fullReplay.Events.Count.ShouldBe(10);
         fullReplay.UsedSnapshot.ShouldBeFalse();
         fullReplay.LastSnapshotSequence.ShouldBe(0);
 
         // Assert - snapshot+tail has snapshot state + tail events 6-10
-        snapshotPlusTail.ShouldNotBeNull();
+        _ = snapshotPlusTail.ShouldNotBeNull();
         snapshotPlusTail.Events.Count.ShouldBe(5);
         snapshotPlusTail.UsedSnapshot.ShouldBeTrue();
         snapshotPlusTail.LastSnapshotSequence.ShouldBe(5);

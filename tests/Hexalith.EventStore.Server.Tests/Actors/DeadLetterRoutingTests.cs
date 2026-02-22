@@ -1,6 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
-
-using System.IO;
 using System.Reflection;
 
 using Dapr.Actors;
@@ -26,6 +23,8 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
+
 public class DeadLetterRoutingTests {
     private sealed record TestEvent : IEventPayload;
 
@@ -46,16 +45,16 @@ public class DeadLetterRoutingTests {
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, IDeadLetterPublisher DeadLetterPublisher) CreateActorWithMockState() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
-        deadLetterPublisher.PublishDeadLetterAsync(
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
@@ -67,15 +66,15 @@ public class DeadLetterRoutingTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: domain service returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         // Default: no pipeline state (fresh command, not a resume)
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -86,11 +85,11 @@ public class DeadLetterRoutingTests {
     }
 
     private static void ConfigureNoDuplicate(IActorStateManager stateManager) {
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // Default: new aggregate (no metadata) -- Step 3 returns null state
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
     }
 
@@ -101,14 +100,14 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
-        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
+        _ = await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>());
@@ -122,20 +121,20 @@ public class DeadLetterRoutingTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         DeadLetterMessage? capturedMessage = null;
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Do<DeadLetterMessage>(m => capturedMessage = m),
             Arg.Any<CancellationToken>())
             .Returns(true);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        capturedMessage.ShouldNotBeNull();
+        _ = capturedMessage.ShouldNotBeNull();
         ReferenceEquals(capturedMessage.Command, envelope).ShouldBeTrue();
     }
 
@@ -147,20 +146,20 @@ public class DeadLetterRoutingTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         DeadLetterMessage? capturedMessage = null;
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Do<DeadLetterMessage>(m => capturedMessage = m),
             Arg.Any<CancellationToken>())
             .Returns(true);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        capturedMessage.ShouldNotBeNull();
+        _ = capturedMessage.ShouldNotBeNull();
         capturedMessage.FailureStage.ShouldBe("Processing");
     }
 
@@ -171,7 +170,7 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
@@ -190,18 +189,18 @@ public class DeadLetterRoutingTests {
 
         // Configure existing aggregate with metadata, but state read throws
         var metadata = new AggregateMetadata(1, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
         // Event stream read throws
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("State store unavailable"));
 
         // Act
-        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
+        _ = await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>());
@@ -214,12 +213,12 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.Success([new TestEvent()]));
 
         // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored commit), succeed third time (Rejected state)
         int saveCallCount = 0;
-        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(_ => {
                 saveCallCount++;
                 if (saveCallCount == 1) {
@@ -237,7 +236,7 @@ public class DeadLetterRoutingTests {
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
+        _ = await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>());
@@ -250,11 +249,11 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.Success([new TestEvent(), new TestEvent(), new TestEvent()]));
 
         DeadLetterMessage? capturedMessage = null;
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Do<DeadLetterMessage>(m => capturedMessage = m),
             Arg.Any<CancellationToken>())
@@ -262,7 +261,7 @@ public class DeadLetterRoutingTests {
 
         // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored commit), succeed third time (Rejected state)
         int saveCallCount = 0;
-        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(_ => {
                 saveCallCount++;
                 if (saveCallCount == 1) {
@@ -277,10 +276,10 @@ public class DeadLetterRoutingTests {
             });
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        capturedMessage.ShouldNotBeNull();
+        _ = capturedMessage.ShouldNotBeNull();
         capturedMessage.EventCountAtFailure.ShouldBe(3);
     }
 
@@ -292,13 +291,13 @@ public class DeadLetterRoutingTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         var rejectionResult = DomainResult.Rejection([new TestRejectionEvent()]);
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        await deadLetterPublisher.DidNotReceive().PublishDeadLetterAsync(
+        _ = await deadLetterPublisher.DidNotReceive().PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>());
@@ -311,13 +310,13 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        await deadLetterPublisher.DidNotReceive().PublishDeadLetterAsync(
+        _ = await deadLetterPublisher.DidNotReceive().PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>());
@@ -330,13 +329,13 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(false);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
@@ -353,17 +352,17 @@ public class DeadLetterRoutingTests {
         ConfigureNoDuplicate(stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(false);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         logger.Received(1).Log(
@@ -384,20 +383,20 @@ public class DeadLetterRoutingTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: causationId);
 
         DeadLetterMessage? capturedMessage = null;
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Do<DeadLetterMessage>(m => capturedMessage = m),
             Arg.Any<CancellationToken>())
             .Returns(true);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        capturedMessage.ShouldNotBeNull();
+        _ = capturedMessage.ShouldNotBeNull();
         capturedMessage.CorrelationId.ShouldBe(correlationId);
         capturedMessage.CausationId.ShouldBe(causationId);
         capturedMessage.TenantId.ShouldBe("test-tenant");
@@ -415,20 +414,20 @@ public class DeadLetterRoutingTests {
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
         DeadLetterMessage? capturedMessage = null;
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Do<DeadLetterMessage>(m => capturedMessage = m),
             Arg.Any<CancellationToken>())
             .Returns(true);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
-        capturedMessage.ShouldNotBeNull();
+        _ = capturedMessage.ShouldNotBeNull();
         capturedMessage.CorrelationId.ShouldBe(correlationId);
         capturedMessage.Command.CorrelationId.ShouldBe(correlationId);
     }

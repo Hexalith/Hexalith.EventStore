@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.Server.Actors;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// In-memory test double for <see cref="IActorStateMachine"/>.
 /// Tracks all checkpoint, load, and cleanup calls for test assertions.
@@ -54,7 +54,7 @@ public sealed class FakeActorStateMachine : IActorStateMachine {
     public Task CleanupPipelineAsync(string pipelineKeyPrefix, string correlationId) {
         _cleanupCalls.Add((pipelineKeyPrefix, correlationId));
         string key = $"{pipelineKeyPrefix}{correlationId}";
-        _states.Remove(key);
+        _ = _states.Remove(key);
         return Task.CompletedTask;
     }
 }

@@ -1,8 +1,9 @@
-namespace Hexalith.EventStore.Testing.Tests.Assertions;
 
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Testing.Assertions;
 using Hexalith.EventStore.Testing.Builders;
+
+namespace Hexalith.EventStore.Testing.Tests.Assertions;
 
 public class EventEnvelopeAssertionsTests {
     [Fact]
@@ -18,6 +19,6 @@ public class EventEnvelopeAssertionsTests {
             .WithEventTypeName(" ")
             .Build();
 
-        Assert.ThrowsAny<Exception>(() => EventEnvelopeAssertions.ShouldHaveValidMetadata(envelope));
+        _ = Assert.ThrowsAny<Exception>(() => EventEnvelopeAssertions.ShouldHaveValidMetadata(envelope));
     }
 }

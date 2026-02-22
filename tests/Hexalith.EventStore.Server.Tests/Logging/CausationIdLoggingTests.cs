@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Logging;
 
 using System.Diagnostics;
 
@@ -12,11 +11,10 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
-
-using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -28,6 +26,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Logging;
 /// <summary>
 /// Verifies that CausationId is present in all log messages that carry CorrelationId (AC #4).
 /// CausationId = CorrelationId for original submissions; different for replays.
@@ -53,14 +52,14 @@ public class CausationIdLoggingTests : IDisposable {
     public async Task SubmitCommandHandler_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var archiveStore = Substitute.For<ICommandArchiveStore>();
-        var router = Substitute.For<ICommandRouter>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         SubmitCommand command = CreateSubmitCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert - the "Command received" log must include CausationId
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Command received"));
@@ -71,16 +70,16 @@ public class CausationIdLoggingTests : IDisposable {
     public async Task LoggingBehavior_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "corr-123";
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, httpContextAccessor);
         SubmitCommand command = CreateSubmitCommand();
-        RequestHandlerDelegate<SubmitCommandResult> next = (_) => Task.FromResult(new SubmitCommandResult("corr-123"));
+        static Task<SubmitCommandResult> next(CancellationToken _ = default) => Task.FromResult(new SubmitCommandResult("corr-123"));
 
         // Act
-        await behavior.Handle(command, next, CancellationToken.None);
+        _ = await behavior.Handle(command, next, CancellationToken.None);
 
         // Assert - both entry and exit logs must include CausationId
         LogEntry entryLog = _logEntries.First(e => e.Message.Contains("pipeline entry"));
@@ -94,8 +93,8 @@ public class CausationIdLoggingTests : IDisposable {
     public async Task EventPersister_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
-        var stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
         var persister = new EventPersister(stateManager, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -113,7 +112,7 @@ public class CausationIdLoggingTests : IDisposable {
         var domainResult = new DomainResult([new TestEvent()]);
 
         // Act
-        await persister.PersistEventsAsync(identity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(identity, command, domainResult, "v1");
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Events persisted"));
@@ -125,8 +124,8 @@ public class CausationIdLoggingTests : IDisposable {
     public async Task EventPublisher_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new Server.Configuration.EventPublisherOptions());
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
         var publisher = new EventPublisher(daprClient, options, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope>
@@ -148,7 +147,7 @@ public class CausationIdLoggingTests : IDisposable {
         };
 
         // Act
-        await publisher.PublishEventsAsync(identity, events, "corr-123");
+        _ = await publisher.PublishEventsAsync(identity, events, "corr-123");
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Events published"));
@@ -159,8 +158,8 @@ public class CausationIdLoggingTests : IDisposable {
     public async Task DeadLetterPublisher_IncludesCausationId() {
         // Arrange
         var logger = new TestLogger<DeadLetterPublisher>(_logEntries);
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new Server.Configuration.EventPublisherOptions());
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var command = new CommandEnvelope(
@@ -179,7 +178,7 @@ public class CausationIdLoggingTests : IDisposable {
             DateTimeOffset.UtcNow, null);
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Dead-letter published"));
@@ -204,9 +203,7 @@ public class CausationIdLoggingTests : IDisposable {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 
     private record LogEntry(LogLevel Level, string Message);

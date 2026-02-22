@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>
 /// Story 4.3 Task 6: DAPR resiliency configuration validation tests.
 /// Parses resiliency.yaml files to verify pub/sub retry, circuit breaker, and timeout policies exist.
@@ -213,13 +213,13 @@ public class ResiliencyConfigurationTests {
                 }
 
                 if (inRetries) {
-                    definedRetries.Add(name);
+                    _ = definedRetries.Add(name);
                 }
                 else if (inTimeouts) {
-                    definedTimeouts.Add(name);
+                    _ = definedTimeouts.Add(name);
                 }
                 else if (inBreakers) {
-                    definedBreakers.Add(name);
+                    _ = definedBreakers.Add(name);
                 }
             }
         }

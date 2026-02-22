@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Server.Tests.Telemetry;
 
 using System.Diagnostics;
 using System.Reflection;
 
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
+using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
@@ -22,6 +22,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Telemetry;
 /// <summary>
 /// Story 6.1 Task 8: End-to-end trace activity tests.
 /// Verifies that the AggregateActor pipeline creates correct activities with proper tags and status codes.
@@ -37,7 +38,7 @@ public class EndToEndTraceTests {
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
 
-        ActorHost host = ActorHost.CreateForTest<AggregateActor>(
+        var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
@@ -50,27 +51,27 @@ public class EndToEndTraceTests {
         prop?.SetValue(actor, stateManager);
 
         // Configure default: no duplicates, no pipeline state, no metadata
-        stateManager.TryGetStateAsync<CommandProcessingResult>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<CommandProcessingResult>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<CommandProcessingResult>(false, default!));
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: domain service returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
         // Default: snapshot not found
-        snapshotManager.LoadSnapshotAsync(Arg.Any<Contracts.Identity.AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
+        _ = snapshotManager.LoadSnapshotAsync(Arg.Any<Contracts.Identity.AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
             .Returns((SnapshotRecord?)null);
 
         // Default: event rehydration returns empty
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -113,10 +114,10 @@ public class EndToEndTraceTests {
         CommandEnvelope command = CreateTestEnvelope(correlationId);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert
-        capturedActivity.ShouldNotBeNull("ProcessCommand activity should be created");
+        _ = capturedActivity.ShouldNotBeNull("ProcessCommand activity should be created");
         capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.ProcessCommand);
     }
 
@@ -124,8 +125,8 @@ public class EndToEndTraceTests {
     public async Task ProcessCommand_NoAmbientActivity_UsesTraceparentFallbackFromExtensions() {
         // Arrange
         string correlationId = $"trace-fallback-{Guid.NewGuid()}";
-        ActivityTraceId traceId = ActivityTraceId.CreateRandom();
-        ActivitySpanId parentSpanId = ActivitySpanId.CreateRandom();
+        var traceId = ActivityTraceId.CreateRandom();
+        var parentSpanId = ActivitySpanId.CreateRandom();
         string traceParent = $"00-{traceId.ToHexString()}-{parentSpanId.ToHexString()}-01";
         Activity? capturedActivity = null;
 
@@ -154,10 +155,10 @@ public class EndToEndTraceTests {
             Extensions: new Dictionary<string, string> { ["traceparent"] = traceParent });
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert
-        capturedActivity.ShouldNotBeNull();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.TraceId.ShouldBe(traceId);
         capturedActivity.ParentSpanId.ShouldBe(parentSpanId);
     }
@@ -183,7 +184,7 @@ public class EndToEndTraceTests {
         CommandEnvelope command = CreateTestEnvelope(correlationId);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert -- all 5 pipeline stages should create activities (NoOp path: idempotency, tenant, rehydration, domain invoke, then terminal)
         string[] expectedActivities = [
@@ -222,7 +223,7 @@ public class EndToEndTraceTests {
         CommandEnvelope command = CreateTestEnvelope(correlationId);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert -- every captured activity has the correlation ID tag
         capturedActivities.Count.ShouldBeGreaterThan(0);
@@ -252,7 +253,7 @@ public class EndToEndTraceTests {
         CommandEnvelope command = CreateTestEnvelope(correlationId);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert -- every captured activity has the tenant ID tag
         capturedActivities.Count.ShouldBeGreaterThan(0);
@@ -283,10 +284,10 @@ public class EndToEndTraceTests {
         CommandEnvelope command = CreateTestEnvelope(correlationId);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert
-        processActivity.ShouldNotBeNull();
+        _ = processActivity.ShouldNotBeNull();
         processActivity.Status.ShouldBe(ActivityStatusCode.Ok);
     }
 
@@ -322,10 +323,10 @@ public class EndToEndTraceTests {
             Extensions: null);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert
-        processActivity.ShouldNotBeNull();
+        _ = processActivity.ShouldNotBeNull();
         processActivity.Status.ShouldBe(ActivityStatusCode.Error);
     }
 
@@ -347,9 +348,9 @@ public class EndToEndTraceTests {
         };
         ActivitySource.AddActivityListener(listener);
 
-        var daprClient = Substitute.For<Dapr.Client.DaprClient>();
-        var options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
-        var logger = Substitute.For<ILogger<EventPublisher>>();
+        DaprClient daprClient = Substitute.For<Dapr.Client.DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
+        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         var publisher = new EventPublisher(daprClient, options, logger);
 
         var identity = new Contracts.Identity.AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -377,7 +378,7 @@ public class EndToEndTraceTests {
 
         // Assert
         result.Success.ShouldBeTrue();
-        capturedActivity.ShouldNotBeNull("Publish activity should be created");
+        _ = capturedActivity.ShouldNotBeNull("Publish activity should be created");
         capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.EventsPublish);
         capturedActivity.Kind.ShouldBe(ActivityKind.Producer);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
@@ -401,9 +402,9 @@ public class EndToEndTraceTests {
         };
         ActivitySource.AddActivityListener(listener);
 
-        var daprClient = Substitute.For<Dapr.Client.DaprClient>();
-        var options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        DaprClient daprClient = Substitute.For<Dapr.Client.DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new Contracts.Identity.AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -432,10 +433,10 @@ public class EndToEndTraceTests {
             EventCountAtFailure: null);
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
-        capturedActivity.ShouldNotBeNull("DeadLetter activity should be created");
+        _ = capturedActivity.ShouldNotBeNull("DeadLetter activity should be created");
         capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.EventsPublishDeadLetter);
         capturedActivity.Kind.ShouldBe(ActivityKind.Producer);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -8,6 +7,7 @@ using Shouldly;
 using ContractsEventEnvelope = Hexalith.EventStore.Contracts.Events.EventEnvelope;
 using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Story 5.4, Task 7: Payload protection tests (AC #2, #5, #11).
 /// Validates that ToString() overrides redact payload and that no log statements reference payload.

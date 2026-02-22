@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 using FluentValidation;
 using FluentValidation.Results;
@@ -14,24 +13,26 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Pipeline;
+
 public class ValidationBehaviorTests {
     private static ValidationBehavior<TestCommand, TestResult> CreateBehavior(IEnumerable<IValidator<TestCommand>> validators) {
-        var logger = Substitute.For<ILogger<ValidationBehavior<TestCommand, TestResult>>>();
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        ILogger<ValidationBehavior<TestCommand, TestResult>> logger = Substitute.For<ILogger<ValidationBehavior<TestCommand, TestResult>>>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
         return new ValidationBehavior<TestCommand, TestResult>(validators, logger, httpContextAccessor);
     }
 
     [Fact]
     public async Task Handle_NoValidators_CallsNext() {
         // Arrange
-        var validators = Enumerable.Empty<IValidator<TestCommand>>();
-        var behavior = CreateBehavior(validators);
+        IEnumerable<IValidator<TestCommand>> validators = Enumerable.Empty<IValidator<TestCommand>>();
+        ValidationBehavior<TestCommand, TestResult> behavior = CreateBehavior(validators);
         var request = new TestCommand("test");
         var expected = new TestResult("ok");
-        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(expected);
+        Task<TestResult> next(CancellationToken _ = default) => Task.FromResult(expected);
 
         // Act
         TestResult result = await behavior.Handle(request, next, CancellationToken.None);
@@ -44,10 +45,10 @@ public class ValidationBehaviorTests {
     public async Task Handle_ValidRequest_CallsNext() {
         // Arrange
         var validator = new AlwaysValidValidator();
-        var behavior = CreateBehavior([validator]);
+        ValidationBehavior<TestCommand, TestResult> behavior = CreateBehavior([validator]);
         var request = new TestCommand("test");
         var expected = new TestResult("ok");
-        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(expected);
+        Task<TestResult> next(CancellationToken _ = default) => Task.FromResult(expected);
 
         // Act
         TestResult result = await behavior.Handle(request, next, CancellationToken.None);
@@ -60,9 +61,9 @@ public class ValidationBehaviorTests {
     public async Task Handle_InvalidRequest_ThrowsValidationException() {
         // Arrange
         var validator = new FailingValidator("Value", "Value is required");
-        var behavior = CreateBehavior([validator]);
+        ValidationBehavior<TestCommand, TestResult> behavior = CreateBehavior([validator]);
         var request = new TestCommand("");
-        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(new TestResult("should not reach"));
+        static Task<TestResult> next(CancellationToken _ = default) => Task.FromResult(new TestResult("should not reach"));
 
         // Act & Assert
         ValidationException ex = await Should.ThrowAsync<ValidationException>(
@@ -76,9 +77,9 @@ public class ValidationBehaviorTests {
         // Arrange
         var validator1 = new FailingValidator("Field1", "Error 1");
         var validator2 = new FailingValidator("Field2", "Error 2");
-        var behavior = CreateBehavior([validator1, validator2]);
+        ValidationBehavior<TestCommand, TestResult> behavior = CreateBehavior([validator1, validator2]);
         var request = new TestCommand("");
-        RequestHandlerDelegate<TestResult> next = (_) => Task.FromResult(new TestResult("should not reach"));
+        static Task<TestResult> next(CancellationToken _ = default) => Task.FromResult(new TestResult("should not reach"));
 
         // Act & Assert
         ValidationException ex = await Should.ThrowAsync<ValidationException>(
@@ -92,16 +93,16 @@ public class ValidationBehaviorTests {
     public async Task Handle_InvalidRequest_DoesNotCallNext() {
         // Arrange
         var validator = new FailingValidator("Value", "Required");
-        var behavior = CreateBehavior([validator]);
+        ValidationBehavior<TestCommand, TestResult> behavior = CreateBehavior([validator]);
         var request = new TestCommand("");
         bool nextCalled = false;
-        RequestHandlerDelegate<TestResult> next = (_) => {
+        Task<TestResult> next(CancellationToken _ = default) {
             nextCalled = true;
             return Task.FromResult(new TestResult("should not reach"));
-        };
+        }
 
         // Act
-        await Should.ThrowAsync<ValidationException>(
+        _ = await Should.ThrowAsync<ValidationException>(
             behavior.Handle(request, next, CancellationToken.None));
 
         // Assert

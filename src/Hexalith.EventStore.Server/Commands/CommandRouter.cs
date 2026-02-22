@@ -1,15 +1,14 @@
-namespace Hexalith.EventStore.Server.Commands;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// Routes commands to the correct aggregate actor based on canonical identity derivation.
 /// SECURITY: Always derive actor ID from AggregateIdentity.ActorId. Never construct actor IDs
@@ -33,7 +32,7 @@ public partial class CommandRouter(
 
         Log.CommandRouting(logger, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
 
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         try {
             IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(

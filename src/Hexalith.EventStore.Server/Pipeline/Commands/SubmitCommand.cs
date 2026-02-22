@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Pipeline.Commands;
 
 using MediatR;
 
+namespace Hexalith.EventStore.Server.Pipeline.Commands;
 /// <summary>
 /// MediatR command for submitting a domain command through the pipeline.
 /// </summary>

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 using System.Security.Claims;
 
@@ -15,13 +14,13 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Pipeline;
+
 public class AuthorizationBehaviorTests {
     private readonly List<LogEntry> _logEntries = [];
     private readonly TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>> _logger;
 
-    public AuthorizationBehaviorTests() {
-        _logger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
-    }
+    public AuthorizationBehaviorTests() => _logger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
 
     private static SubmitCommand CreateTestCommand(
         string tenant = "test-tenant",
@@ -42,8 +41,8 @@ public class AuthorizationBehaviorTests {
     private AuthorizationBehavior<SubmitCommand, SubmitCommandResult> CreateBehavior(ClaimsPrincipal principal) {
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "test-correlation-id";
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
         return new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, _logger);
     }
 
@@ -84,7 +83,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.CorrelationId.ShouldBe("test-correlation-id");
     }
 
@@ -99,7 +98,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
     [Fact]
@@ -128,7 +127,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
     [Fact]
@@ -142,7 +141,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
     [Fact]
@@ -171,7 +170,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
     [Fact]
@@ -179,8 +178,8 @@ public class AuthorizationBehaviorTests {
         // Arrange - use a non-SubmitCommand MediatR request
         var httpContext = new DefaultHttpContext();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
         var otherLogger = new TestLogger<AuthorizationBehavior<PingRequest, PingResponse>>([]);
         var behavior = new AuthorizationBehavior<PingRequest, PingResponse>(accessor, otherLogger);
         var next = new RequestHandlerDelegate<PingResponse>((_) => Task.FromResult(new PingResponse()));
@@ -189,7 +188,7 @@ public class AuthorizationBehaviorTests {
         PingResponse result = await behavior.Handle(new PingRequest(), next, CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
     [Fact]
@@ -203,7 +202,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
     [Fact]
@@ -214,7 +213,7 @@ public class AuthorizationBehaviorTests {
         SubmitCommand command = CreateTestCommand(domain: "test-domain");
 
         // Act
-        await Should.ThrowAsync<CommandAuthorizationException>(
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         // Assert
@@ -240,8 +239,6 @@ public class AuthorizationBehaviorTests {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 }

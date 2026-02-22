@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -20,6 +18,8 @@ using Microsoft.Extensions.Logging;
 using Shouldly;
 
 using CommandApiProgram = commandapi::Program;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class JwtAuthenticationIntegrationTests
     : IClassFixture<JwtAuthenticationIntegrationTests.JwtLogCapturingFactory> {
@@ -221,10 +221,10 @@ public class JwtAuthenticationIntegrationTests
         };
 
         // Act
-        await client.PostAsJsonAsync("/api/v1/commands", request);
+        _ = await client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert - verify log entries exist for auth failure
-        List<TestLogEntry> authLogs = _factory.LogProvider.GetEntries()
+        var authLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Level == LogLevel.Warning &&
                        (e.Message.Contains("Authentication failed") || e.Message.Contains("Authentication challenge")))
             .ToList();
@@ -235,7 +235,7 @@ public class JwtAuthenticationIntegrationTests
         authLogs.ShouldContain(e => e.Message.Contains("CorrelationId="));
 
         // CRITICAL: Verify JWT token is NOT present in any log
-        List<TestLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
+        var allLogs = _factory.LogProvider.GetEntries().ToList();
         allLogs.ShouldNotContain(
             e => e.Message.Contains(invalidToken),
             "JWT token MUST NOT appear in log output (NFR11)");
@@ -249,36 +249,34 @@ public class JwtAuthenticationIntegrationTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.ConfigureAppConfiguration(config => {
-                config.AddInMemoryCollection(new Dictionary<string, string?> {
-                    ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
-                    ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
-                    ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
-                    ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
-                });
-            });
-            builder.ConfigureServices(services => {
+            _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
+                ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
+                ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
+                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
+            }));
+            _ = builder.ConfigureServices(services => {
                 // Replace Dapr stores with InMemory for tests
                 ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(ICommandStatusStore));
                 if (statusDescriptor is not null) {
-                    services.Remove(statusDescriptor);
+                    _ = services.Remove(statusDescriptor);
                 }
 
-                services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
+                _ = services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
 
                 ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(ICommandArchiveStore));
                 if (archiveDescriptor is not null) {
-                    services.Remove(archiveDescriptor);
+                    _ = services.Remove(archiveDescriptor);
                 }
 
-                services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
+                _ = services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
 
                 TestServiceOverrides.ReplaceCommandRouter(services);
                 TestServiceOverrides.RemoveDaprHealthChecks(services);
 
-                services.AddLogging(logging => logging.AddProvider(LogProvider));
+                _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }
     }

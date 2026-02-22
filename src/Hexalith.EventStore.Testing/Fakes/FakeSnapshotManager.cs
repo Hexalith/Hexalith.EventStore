@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// In-memory implementation of <see cref="ISnapshotManager"/> for unit testing.
 /// Records all snapshot operations for test assertions.

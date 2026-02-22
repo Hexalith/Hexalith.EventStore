@@ -1,7 +1,9 @@
-namespace Microsoft.Extensions.DependencyInjection;
 
 using Hexalith.EventStore.Client.Handlers;
 
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Hexalith.EventStore.Client.Registration;
 /// <summary>
 /// Extension methods for registering Event Store client services in the dependency injection container.
 /// </summary>

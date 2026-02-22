@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.CommandApi.Configuration;
 
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.CommandApi.Configuration;
 /// <summary>
 /// Configuration options for extension metadata sanitization (SEC-4).
 /// Bound from the "EventStore:ExtensionMetadata" configuration section.

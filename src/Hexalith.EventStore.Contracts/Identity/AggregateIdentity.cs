@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Contracts.Identity;
 
 using System.Text.RegularExpressions;
 
+namespace Hexalith.EventStore.Contracts.Identity;
 /// <summary>
 /// Canonical identity tuple for an aggregate, providing all key derivation properties
 /// used by DAPR actors, state store, pub/sub, and queue sessions.
@@ -138,7 +138,7 @@ public record AggregateIdentity {
 
     private static bool ContainsInvalidCharacters(string value) {
         foreach (char c in value) {
-            if (c < 0x20 || c >= 0x7F) {
+            if (c is < (char)0x20 or >= (char)0x7F) {
                 return true;
             }
         }

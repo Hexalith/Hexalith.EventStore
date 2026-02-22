@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.CommandApi.Models;
 
 using System.Text.Json;
 
+namespace Hexalith.EventStore.CommandApi.Models;
 /// <summary>
 /// API-facing request DTO for submitting commands.
 /// Separate from <see cref="Contracts.Commands.CommandEnvelope"/> which is the internal domain type.

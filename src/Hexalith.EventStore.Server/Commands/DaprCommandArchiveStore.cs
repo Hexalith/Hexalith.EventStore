@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Commands;
 
 using Dapr.Client;
 
@@ -7,6 +6,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// DAPR state store implementation of <see cref="ICommandArchiveStore"/>.
 /// Archive writes are advisory per enforcement rule #12 -- failures are logged but never thrown.

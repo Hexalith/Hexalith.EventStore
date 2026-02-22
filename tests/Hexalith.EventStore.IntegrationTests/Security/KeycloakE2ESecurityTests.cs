@@ -1,13 +1,12 @@
-namespace Hexalith.EventStore.IntegrationTests.Security;
 
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
 /// E2E security tests exercising the full Aspire topology with real Keycloak OIDC tokens.
 /// Verifies multi-tenant isolation, permission enforcement, and authorization pipeline
@@ -34,7 +33,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         // Arrange
         string token = await GetTokenAsync("admin-user", "admin-pass");
 
-        using var request = CreateCommandRequest(
+        using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
             domain: "orders",
@@ -51,7 +50,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
                 $"response.StatusCode should be Accepted but was {response.StatusCode}.\nResponse body:\n{body}");
         }
 
-        response.Headers.Location.ShouldNotBeNull();
+        _ = response.Headers.Location.ShouldNotBeNull();
     }
 
     /// <summary>
@@ -62,7 +61,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     public async Task TenantAUser_SubmitCommandForOwnTenant_ReturnsAccepted() {
         string token = await GetTokenAsync("tenant-a-user", "tenant-a-pass");
 
-        using var request = CreateCommandRequest(
+        using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
             domain: "orders",
@@ -91,7 +90,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     public async Task TenantAUser_SubmitCommandForTenantB_Returns403() {
         string token = await GetTokenAsync("tenant-a-user", "tenant-a-pass");
 
-        using var request = CreateCommandRequest(
+        using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-b",
             domain: "orders",
@@ -111,7 +110,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     public async Task TenantBUser_SubmitCommandForTenantA_Returns403() {
         string token = await GetTokenAsync("tenant-b-user", "tenant-b-pass");
 
-        using var request = CreateCommandRequest(
+        using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
             domain: "inventory",
@@ -136,7 +135,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     public async Task ReadonlyUser_SubmitCommand_Returns403() {
         string token = await GetTokenAsync("readonly-user", "readonly-pass");
 
-        using var request = CreateCommandRequest(
+        using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
             domain: "orders",
@@ -156,7 +155,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     public async Task NoTenantUser_SubmitCommand_Returns403() {
         string token = await GetTokenAsync("no-tenant-user", "no-tenant-pass");
 
-        using var request = CreateCommandRequest(
+        using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
             domain: "orders",

@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Contracts.Results;
 
 using Hexalith.EventStore.Contracts.Events;
 
+namespace Hexalith.EventStore.Contracts.Results;
 /// <summary>
 /// Wraps the result of a domain service command processing. Contains an immutable list of
 /// <see cref="IEventPayload"/> instances representing success events, rejection events, or no-op.

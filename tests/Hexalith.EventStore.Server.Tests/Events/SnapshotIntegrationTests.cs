@@ -1,14 +1,15 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 7.4 / AC #2: Snapshot integration tests.
 /// Validates snapshot creation and rehydration with real Redis state store.
@@ -40,7 +41,7 @@ public class SnapshotIntegrationTests {
 
         // Act - send 5 increments (event replay should work for subsequent commands)
         for (int i = 0; i < 5; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)
@@ -52,7 +53,7 @@ public class SnapshotIntegrationTests {
         }
 
         // Send a final command - the actor should have rehydrated state from previous events
-        var finalCommand = new CommandEnvelopeBuilder()
+        CommandEnvelope finalCommand = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)

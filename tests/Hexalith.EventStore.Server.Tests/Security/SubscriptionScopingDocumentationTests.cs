@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Story 5.3: Subscription scoping documentation tests (AC #7, #8, #10, #11).
 /// Validates that all pub/sub YAML configurations contain required documentation

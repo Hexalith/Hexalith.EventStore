@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Server.Tests.Observability;
 
 using System.Diagnostics;
 using System.Reflection;
 
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
+using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
@@ -27,6 +27,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>
 /// Story 6.3 Task 4: Trace-based dead-letter-to-origin tracing tests.
 /// Verifies that OpenTelemetry activities form an unbroken trace chain from command receipt
@@ -55,14 +56,14 @@ public class DeadLetterTraceChainTests {
         CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var fakeDeadLetter = new FakeDeadLetterPublisher();
 
-        ActorHost host = ActorHost.CreateForTest<AggregateActor>(
+        var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
@@ -74,27 +75,27 @@ public class DeadLetterTraceChainTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: no duplicates, no pipeline state, no metadata
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: domain service returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
         // Default: snapshot not found
-        snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
+        _ = snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
             .Returns((SnapshotRecord?)null);
 
         // Default: event rehydration returns empty
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -108,7 +109,7 @@ public class DeadLetterTraceChainTests {
         CreateActorWithMockDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
@@ -116,13 +117,13 @@ public class DeadLetterTraceChainTests {
         IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
 
         // Default: dead-letter publication succeeds
-        deadLetterPublisher.PublishDeadLetterAsync(
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
 
-        ActorHost host = ActorHost.CreateForTest<AggregateActor>(
+        var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
@@ -133,23 +134,23 @@ public class DeadLetterTraceChainTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
-        snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
+        _ = snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
             .Returns((SnapshotRecord?)null);
 
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(false, default!));
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -214,11 +215,11 @@ public class DeadLetterTraceChainTests {
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, _) = CreateActorWithFakeDeadLetter();
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Simulated domain service failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Verify activities span the lifecycle up to the failing stage
         string[] expectedActivities =
@@ -267,11 +268,11 @@ public class DeadLetterTraceChainTests {
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, _) = CreateActorWithFakeDeadLetter();
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Every captured activity has the correct correlation ID tag
         capturedActivities.Count.ShouldBeGreaterThan(0);
@@ -311,18 +312,18 @@ public class DeadLetterTraceChainTests {
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, _) = CreateActorWithFakeDeadLetter();
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Domain service infra failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: The DomainServiceInvoke activity has Error status
-        domainInvokeActivity.ShouldNotBeNull("DomainServiceInvoke activity should be captured");
+        _ = domainInvokeActivity.ShouldNotBeNull("DomainServiceInvoke activity should be captured");
         domainInvokeActivity.Status.ShouldBe(ActivityStatusCode.Error);
 
         // Assert: The ProcessCommand activity also has Error status
-        processActivity.ShouldNotBeNull("ProcessCommand activity should be captured");
+        _ = processActivity.ShouldNotBeNull("ProcessCommand activity should be captured");
         processActivity.Status.ShouldBe(ActivityStatusCode.Error);
     }
 
@@ -349,9 +350,9 @@ public class DeadLetterTraceChainTests {
         };
         ActivitySource.AddActivityListener(listener);
 
-        var daprClient = Substitute.For<Dapr.Client.DaprClient>();
-        var options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
-        var dlLogger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        DaprClient daprClient = Substitute.For<Dapr.Client.DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
+        ILogger<DeadLetterPublisher> dlLogger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, dlLogger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -365,7 +366,7 @@ public class DeadLetterTraceChainTests {
 
         // Assert
         result.ShouldBeTrue();
-        capturedActivity.ShouldNotBeNull("DeadLetter activity should be created");
+        _ = capturedActivity.ShouldNotBeNull("DeadLetter activity should be created");
         capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.EventsPublishDeadLetter);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
         capturedActivity.Kind.ShouldBe(ActivityKind.Producer);
@@ -393,14 +394,14 @@ public class DeadLetterTraceChainTests {
         };
         ActivitySource.AddActivityListener(listener);
 
-        var daprClient = Substitute.For<Dapr.Client.DaprClient>();
-        daprClient.PublishEventAsync(
+        DaprClient daprClient = Substitute.For<Dapr.Client.DaprClient>();
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DeadLetterMessage>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DAPR sidecar unavailable"));
 
-        var options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
-        var dlLogger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
+        ILogger<DeadLetterPublisher> dlLogger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, dlLogger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -414,7 +415,7 @@ public class DeadLetterTraceChainTests {
 
         // Assert
         result.ShouldBeFalse();
-        capturedActivity.ShouldNotBeNull("DeadLetter activity should still be created on failure");
+        _ = capturedActivity.ShouldNotBeNull("DeadLetter activity should still be created on failure");
         capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.EventsPublishDeadLetter);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Error);
     }
@@ -429,8 +430,8 @@ public class DeadLetterTraceChainTests {
         // When Activity.Current is null (as in actor proxy crossing), the actor uses
         // traceparent from Extensions to establish parent context.
         string correlationId = $"trace-proxy-{Guid.NewGuid()}";
-        ActivityTraceId traceId = ActivityTraceId.CreateRandom();
-        ActivitySpanId parentSpanId = ActivitySpanId.CreateRandom();
+        var traceId = ActivityTraceId.CreateRandom();
+        var parentSpanId = ActivitySpanId.CreateRandom();
         string traceParent = $"00-{traceId.ToHexString()}-{parentSpanId.ToHexString()}-01";
 
         Activity? processActivity = null;
@@ -454,14 +455,14 @@ public class DeadLetterTraceChainTests {
             correlationId: correlationId,
             extensions: new Dictionary<string, string> { ["traceparent"] = traceParent });
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure after proxy crossing"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: ProcessCommand activity uses the traceparent from Extensions
-        processActivity.ShouldNotBeNull("ProcessCommand activity should be created");
+        _ = processActivity.ShouldNotBeNull("ProcessCommand activity should be created");
         processActivity.TraceId.ShouldBe(traceId, "Trace ID should match the fallback traceparent");
         processActivity.ParentSpanId.ShouldBe(parentSpanId, "Parent span ID should match the fallback traceparent");
     }
@@ -479,7 +480,7 @@ public class DeadLetterTraceChainTests {
             CreateActorWithMockDeadLetter();
 
         // Simulate dead-letter publication failure
-        mockDeadLetter.PublishDeadLetterAsync(
+        _ = mockDeadLetter.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
@@ -487,11 +488,11 @@ public class DeadLetterTraceChainTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Domain service failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Error log for DL publication failure contains correlation context
         IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);

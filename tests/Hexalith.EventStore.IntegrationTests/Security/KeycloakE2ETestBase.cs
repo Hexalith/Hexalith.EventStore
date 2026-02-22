@@ -1,9 +1,6 @@
-namespace Hexalith.EventStore.IntegrationTests.Security;
-
-using System.Net.Http;
-
 using global::Aspire.Hosting;
 
+namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
 /// Base class for E2E security tests that use the shared <see cref="AspireTopologyFixture"/>.
 /// Provides convenient accessors for the running Aspire topology, CommandApi client,
@@ -13,9 +10,7 @@ using global::Aspire.Hosting;
 public abstract class KeycloakE2ETestBase {
     private readonly AspireTopologyFixture _fixture;
 
-    protected KeycloakE2ETestBase(AspireTopologyFixture fixture) {
-        _fixture = fixture;
-    }
+    protected KeycloakE2ETestBase(AspireTopologyFixture fixture) => _fixture = fixture;
 
     protected HttpClient CommandApiClient => _fixture.CommandApiClient;
 

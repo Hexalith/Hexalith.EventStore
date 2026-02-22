@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using System.Reflection;
 
@@ -21,6 +20,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 4.4 Tasks 7 &amp; 9: Drain recovery and end-to-end drain cycle tests.
 /// Verifies ReceiveReminderAsync, DrainUnpublishedEventsAsync, and full drain lifecycle
@@ -30,12 +30,12 @@ public class EventDrainRecoveryTests {
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
         IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor(
         string actorId = "test-tenant:test-domain:agg-001") {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId) });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
@@ -49,13 +49,13 @@ public class EventDrainRecoveryTests {
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
         IEventPublisher EventPublisher, ICommandStatusStore StatusStore, ActorTimerManager TimerManager) CreateActorWithTimerManager(
         string actorId = "test-tenant:test-domain:agg-001") {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var timerManager = Substitute.For<ActorTimerManager>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId), TimerManager = timerManager });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
@@ -88,7 +88,7 @@ public class EventDrainRecoveryTests {
         int startSequence = 1) {
         int endSequence = startSequence + eventCount - 1;
         var metadata = new AggregateMetadata(endSequence, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
@@ -97,7 +97,7 @@ public class EventDrainRecoveryTests {
                 "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
                 correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", "json",
                 [1, 2, 3], null);
-            stateManager.TryGetStateAsync<EventEnvelope>(
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
         }
@@ -111,13 +111,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -128,7 +128,7 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert
-        await eventPublisher.Received(1).PublishEventsAsync(
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(e => e.Count == 2),
             "corr-drain",
@@ -143,13 +143,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -173,13 +173,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -202,13 +202,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(isRejection: false);
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -234,13 +234,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 2);
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -265,13 +265,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -300,13 +300,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -331,13 +331,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -359,7 +359,7 @@ public class EventDrainRecoveryTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _, _) = CreateActor();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-orphan", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(false, default!));
 
@@ -385,17 +385,17 @@ public class EventDrainRecoveryTests {
         UnpublishedEventsRecord record1 = CreateDrainRecord(correlationId: "corr-1");
         UnpublishedEventsRecord record2 = CreateDrainRecord(correlationId: "corr-2");
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record1));
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-2", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record2));
 
         ConfigureEventsInState(stateManager, 2, "corr-1");
 
         // First drain succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-1",
@@ -403,7 +403,7 @@ public class EventDrainRecoveryTests {
             .Returns(new EventPublishResult(true, 2, null));
 
         // Second drain fails
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-2",
@@ -456,11 +456,11 @@ public class EventDrainRecoveryTests {
             RetryCount: 0,
             LastFailureReason: "unavailable");
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record1));
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-2", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record2));
 
@@ -468,7 +468,7 @@ public class EventDrainRecoveryTests {
         ConfigureEventsInState(stateManager, eventCount: 2, correlationId: "corr-2", startSequence: 3);
 
         var publishedSequences = new Dictionary<string, IReadOnlyList<long>>();
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -497,13 +497,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(isRejection: true);
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -532,7 +532,7 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("some-other-reminder", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert -- event publisher NOT called
-        await eventPublisher.DidNotReceive().PublishEventsAsync(
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -555,14 +555,14 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 0);
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
         // Now pub/sub is back
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -573,7 +573,7 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert -- events delivered
-        await eventPublisher.Received(1).PublishEventsAsync(
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(e => e.Count == 2),
             "corr-drain",
@@ -592,13 +592,13 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 3);
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -621,14 +621,14 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
         IReadOnlyList<EventEnvelope>? publishedEvents = null;
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Do<IReadOnlyList<EventEnvelope>>(e => publishedEvents = e),
             Arg.Any<string>(),
@@ -639,7 +639,7 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert -- events have correct sequence numbers
-        publishedEvents.ShouldNotBeNull();
+        _ = publishedEvents.ShouldNotBeNull();
         publishedEvents.Count.ShouldBe(2);
         publishedEvents[0].SequenceNumber.ShouldBe(1);
         publishedEvents[1].SequenceNumber.ShouldBe(2);
@@ -655,14 +655,14 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord();
 
-        stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
 
         ConfigureEventsInState(stateManager, 2);
 
         Hexalith.EventStore.Contracts.Identity.AggregateIdentity? publishedIdentity = null;
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Do<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(id => publishedIdentity = id),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -673,7 +673,7 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert -- identity reconstructed correctly from actor ID
-        publishedIdentity.ShouldNotBeNull();
+        _ = publishedIdentity.ShouldNotBeNull();
         publishedIdentity.TenantId.ShouldBe("test-tenant");
         publishedIdentity.Domain.ShouldBe("test-domain");
         publishedIdentity.AggregateId.ShouldBe("agg-001");

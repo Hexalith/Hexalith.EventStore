@@ -1,11 +1,12 @@
-namespace Hexalith.EventStore.Contracts.Tests.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
+
+namespace Hexalith.EventStore.Contracts.Tests.Commands;
 
 public class CommandStatusTests {
     [Fact]
     public void CommandStatus_HasExactly8Values() {
-        var values = Enum.GetValues<CommandStatus>();
+        CommandStatus[] values = Enum.GetValues<CommandStatus>();
         Assert.Equal(8, values.Length);
     }
 
@@ -18,13 +19,11 @@ public class CommandStatusTests {
     [InlineData(CommandStatus.Rejected, 5)]
     [InlineData(CommandStatus.PublishFailed, 6)]
     [InlineData(CommandStatus.TimedOut, 7)]
-    public void CommandStatus_HasCorrectExplicitIntegerValues(CommandStatus status, int expectedValue) {
-        Assert.Equal(expectedValue, (int)status);
-    }
+    public void CommandStatus_HasCorrectExplicitIntegerValues(CommandStatus status, int expectedValue) => Assert.Equal(expectedValue, (int)status);
 
     [Fact]
     public void CommandStatus_ValuesAreInLifecycleOrder() {
-        var values = Enum.GetValues<CommandStatus>();
+        CommandStatus[] values = Enum.GetValues<CommandStatus>();
 
         Assert.Equal(CommandStatus.Received, values[0]);
         Assert.Equal(CommandStatus.Processing, values[1]);

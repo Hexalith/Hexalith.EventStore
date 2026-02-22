@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Logging;
 
 using System.Diagnostics;
 
@@ -12,11 +11,10 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
-
-using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -29,6 +27,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Logging;
 /// <summary>
 /// Verifies that log levels follow architecture convention:
 /// Information = normal flow, Debug = internal mechanics,
@@ -55,16 +54,16 @@ public class LogLevelConventionTests : IDisposable {
     public async Task PipelineEntry_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "corr-123";
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, httpContextAccessor);
         SubmitCommand command = CreateSubmitCommand();
-        RequestHandlerDelegate<SubmitCommandResult> next = (_) => Task.FromResult(new SubmitCommandResult("corr-123"));
+        static Task<SubmitCommandResult> next(CancellationToken _ = default) => Task.FromResult(new SubmitCommandResult("corr-123"));
 
         // Act
-        await behavior.Handle(command, next, CancellationToken.None);
+        _ = await behavior.Handle(command, next, CancellationToken.None);
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("pipeline entry"));
@@ -75,16 +74,16 @@ public class LogLevelConventionTests : IDisposable {
     public async Task PipelineExit_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "corr-123";
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, httpContextAccessor);
         SubmitCommand command = CreateSubmitCommand();
-        RequestHandlerDelegate<SubmitCommandResult> next = (_) => Task.FromResult(new SubmitCommandResult("corr-123"));
+        static Task<SubmitCommandResult> next(CancellationToken _ = default) => Task.FromResult(new SubmitCommandResult("corr-123"));
 
         // Act
-        await behavior.Handle(command, next, CancellationToken.None);
+        _ = await behavior.Handle(command, next, CancellationToken.None);
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("pipeline exit"));
@@ -95,16 +94,16 @@ public class LogLevelConventionTests : IDisposable {
     public async Task PipelineError_UsesErrorLevel() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "corr-123";
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, httpContextAccessor);
         SubmitCommand command = CreateSubmitCommand();
-        RequestHandlerDelegate<SubmitCommandResult> next = (_) => throw new InvalidOperationException("test error");
+        static Task<SubmitCommandResult> next(CancellationToken _ = default) => throw new InvalidOperationException("test error");
 
         // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             behavior.Handle(command, next, CancellationToken.None));
 
         LogEntry entry = _logEntries.First(e => e.Message.Contains("pipeline error"));
@@ -115,14 +114,14 @@ public class LogLevelConventionTests : IDisposable {
     public async Task CommandReceived_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var archiveStore = Substitute.For<ICommandArchiveStore>();
-        var router = Substitute.For<ICommandRouter>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         SubmitCommand command = CreateSubmitCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Command received"));
@@ -133,8 +132,8 @@ public class LogLevelConventionTests : IDisposable {
     public async Task EventsPersisted_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
-        var stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
         var persister = new EventPersister(stateManager, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -142,7 +141,7 @@ public class LogLevelConventionTests : IDisposable {
         var domainResult = new DomainResult([new TestEvent()]);
 
         // Act
-        await persister.PersistEventsAsync(identity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(identity, command, domainResult, "v1");
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Events persisted"));
@@ -153,14 +152,14 @@ public class LogLevelConventionTests : IDisposable {
     public async Task EventsPublished_UsesInformationLevel() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new Server.Configuration.EventPublisherOptions());
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
         var publisher = new EventPublisher(daprClient, options, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 
         // Act
-        await publisher.PublishEventsAsync(identity, events, "corr-123");
+        _ = await publisher.PublishEventsAsync(identity, events, "corr-123");
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Events published"));
@@ -171,18 +170,18 @@ public class LogLevelConventionTests : IDisposable {
     public async Task EventPublicationFailed_UsesErrorLevel() {
         // Arrange
         var logger = new TestLogger<EventPublisher>(_logEntries);
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.PublishEventAsync(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("pub/sub failure"));
-        var options = Options.Create(new Server.Configuration.EventPublisherOptions());
+        IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
         var publisher = new EventPublisher(daprClient, options, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 
         // Act
-        await publisher.PublishEventsAsync(identity, events, "corr-123");
+        _ = await publisher.PublishEventsAsync(identity, events, "corr-123");
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("publication failed"));
@@ -193,8 +192,8 @@ public class LogLevelConventionTests : IDisposable {
     public async Task DeadLetterPublished_UsesWarningLevel() {
         // Arrange
         var logger = new TestLogger<DeadLetterPublisher>(_logEntries);
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new Server.Configuration.EventPublisherOptions());
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var message = new DeadLetterMessage(
@@ -203,7 +202,7 @@ public class LogLevelConventionTests : IDisposable {
             DateTimeOffset.UtcNow, null);
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Dead-letter published"));
@@ -217,7 +216,7 @@ public class LogLevelConventionTests : IDisposable {
         var validator = new Server.Actors.TenantValidator(logger);
 
         // Act & Assert
-        Should.Throw<Server.Actors.TenantMismatchException>(
+        _ = Should.Throw<Server.Actors.TenantMismatchException>(
             () => validator.Validate("wrong-tenant", "test-tenant:test-domain:agg-001"));
 
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Tenant mismatch"));
@@ -284,9 +283,7 @@ public class LogLevelConventionTests : IDisposable {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 
     private record LogEntry(LogLevel Level, string Message);

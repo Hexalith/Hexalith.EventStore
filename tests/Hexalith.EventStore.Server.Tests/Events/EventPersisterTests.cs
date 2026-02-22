@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Actors.Runtime;
 
@@ -15,6 +14,8 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+
+namespace Hexalith.EventStore.Server.Tests.Events;
 
 public class EventPersisterTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
@@ -38,19 +39,17 @@ public class EventPersisterTests {
         Extensions: null);
 
     private static (EventPersister Persister, IActorStateManager StateManager) CreatePersister() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<EventPersister>>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<EventPersister> logger = Substitute.For<ILogger<EventPersister>>();
         return (new EventPersister(stateManager, logger), stateManager);
     }
 
-    private static void ConfigureNoMetadata(IActorStateManager stateManager) {
-        stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+    private static void ConfigureNoMetadata(IActorStateManager stateManager) => stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-    }
 
     private static void ConfigureExistingMetadata(IActorStateManager stateManager, long currentSequence) {
         var metadata = new AggregateMetadata(currentSequence, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
     }
 
@@ -65,7 +64,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -83,7 +82,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -103,7 +102,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -128,7 +127,7 @@ public class EventPersisterTests {
         });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- sequences 6, 7, 8
         await stateManager.Received(1).SetStateAsync(
@@ -156,7 +155,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -185,7 +184,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -205,7 +204,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent("hello") });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert
         await stateManager.Received(1).SetStateAsync(
@@ -225,7 +224,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent(), new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- keys match {tenant}:{domain}:{aggId}:events:{seq}
         await stateManager.Received(1).SetStateAsync(
@@ -249,7 +248,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent(), new TestEvent(), new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- 5 + 3 = 8
         await stateManager.Received(1).SetStateAsync(
@@ -266,10 +265,10 @@ public class EventPersisterTests {
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
         CommandEnvelope command = CreateTestCommand();
-        DomainResult domainResult = DomainResult.NoOp();
+        var domainResult = DomainResult.NoOp();
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- no SetStateAsync calls at all
         await stateManager.DidNotReceive().SetStateAsync(
@@ -293,7 +292,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert
         await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
@@ -310,7 +309,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent(), new TestEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- immutability: never remove event keys
         await stateManager.DidNotReceive().RemoveStateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -327,7 +326,7 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Rejection(new IRejectionEvent[] { new TestRejectionEvent() });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- rejection events also get sequence numbers and are persisted
         await stateManager.Received(1).SetStateAsync(
@@ -345,28 +344,28 @@ public class EventPersisterTests {
     [Fact]
     public async Task PersistEventsAsync_NullIdentity_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(null!, CreateTestCommand(), DomainResult.NoOp(), "v1"));
     }
 
     [Fact]
     public async Task PersistEventsAsync_NullCommand_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(TestIdentity, null!, DomainResult.NoOp(), "v1"));
     }
 
     [Fact]
     public async Task PersistEventsAsync_NullDomainResult_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), null!, "v1"));
     }
 
     [Fact]
     public async Task PersistEventsAsync_NullVersion_ThrowsArgumentNullException() {
         (EventPersister persister, _) = CreatePersister();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), null!));
     }
 
@@ -375,14 +374,14 @@ public class EventPersisterTests {
     [Fact]
     public async Task PersistEventsAsync_EmptyVersion_ThrowsArgumentException() {
         (EventPersister persister, _) = CreatePersister();
-        await Should.ThrowAsync<ArgumentException>(() =>
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), ""));
     }
 
     [Fact]
     public async Task PersistEventsAsync_WhitespaceVersion_ThrowsArgumentException() {
         (EventPersister persister, _) = CreatePersister();
-        await Should.ThrowAsync<ArgumentException>(() =>
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), "  "));
     }
 }

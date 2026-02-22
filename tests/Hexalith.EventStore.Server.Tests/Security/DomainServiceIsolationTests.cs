@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using System.Text.Json;
 
@@ -16,6 +15,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Domain service tenant isolation tests verifying tenant-scoped config lookup
 /// and correct tenant context in invocations.
@@ -39,8 +39,8 @@ public class DomainServiceIsolationTests {
         string expectedConfigKey = $"{tenantId}:{domain}:{version}";
         string? capturedConfigKey = null;
 
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetConfiguration(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
             Arg.Do<IReadOnlyList<string>>(keys => capturedConfigKey = keys.FirstOrDefault()),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
@@ -69,18 +69,18 @@ public class DomainServiceIsolationTests {
             ["tenant-b:orders:v1"] = new(JsonSerializer.Serialize(regB), "1", new Dictionary<string, string>()),
         };
 
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetConfiguration(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<string>>(),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
             .Returns(callInfo => {
-                var keys = callInfo.ArgAt<IReadOnlyList<string>>(1);
+                IReadOnlyList<string> keys = callInfo.ArgAt<IReadOnlyList<string>>(1);
                 string key = keys[0];
-                var items = configItems.ContainsKey(key)
+                Dictionary<string, ConfigurationItem> items = configItems.ContainsKey(key)
                     ? new Dictionary<string, ConfigurationItem> { [key] = configItems[key] }
-                    : new Dictionary<string, ConfigurationItem>();
+                    : [];
                 return new GetConfigurationResponse(items);
             });
 
@@ -91,8 +91,8 @@ public class DomainServiceIsolationTests {
         DomainServiceRegistration? resultB = await resolver.ResolveAsync("tenant-b", "orders", "v1");
 
         // Assert
-        resultA.ShouldNotBeNull();
-        resultB.ShouldNotBeNull();
+        _ = resultA.ShouldNotBeNull();
+        _ = resultB.ShouldNotBeNull();
         resultA.AppId.ShouldBe("service-a");
         resultB.AppId.ShouldBe("service-b");
         resultA.AppId.ShouldNotBe(resultB.AppId);
@@ -103,21 +103,21 @@ public class DomainServiceIsolationTests {
     [Fact]
     public async Task DaprDomainServiceInvoker_PassesTenantContextToResolver() {
         // Arrange -- verify the invoker passes the correct tenant to the resolver
-        var resolver = Substitute.For<IDomainServiceResolver>();
-        resolver.ResolveAsync("tenant-a", "orders", Arg.Any<string>(), Arg.Any<CancellationToken>())
+        IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        _ = resolver.ResolveAsync("tenant-a", "orders", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
 
-        var daprClient = Substitute.For<DaprClient>();
+        DaprClient daprClient = Substitute.For<DaprClient>();
         var invoker = new DaprDomainServiceInvoker(daprClient, resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
         var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act & Assert -- resolver returns null so exception expected
-        await Should.ThrowAsync<DomainServiceNotFoundException>(
+        _ = await Should.ThrowAsync<DomainServiceNotFoundException>(
             () => invoker.InvokeAsync(command, null));
 
         // Verify resolver was called with the command's tenant
-        await resolver.Received(1).ResolveAsync("tenant-a", "orders", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await resolver.Received(1).ResolveAsync("tenant-a", "orders", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     // --- Task 2.5: AC #2 ---
@@ -154,8 +154,8 @@ public class DomainServiceIsolationTests {
     [Fact]
     public async Task DomainServiceResolver_ConfigStoreUnavailable_ReturnsNull() {
         // Arrange -- config store returns empty items for a valid tenant+domain
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetConfiguration(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<string>>(),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
@@ -174,18 +174,18 @@ public class DomainServiceIsolationTests {
     [Fact]
     public async Task DaprDomainServiceInvoker_ResolverReturnsNull_ThrowsDomainServiceNotFoundException() {
         // Arrange
-        var resolver = Substitute.For<IDomainServiceResolver>();
-        resolver.ResolveAsync("tenant-a", "orders", "v1", Arg.Any<CancellationToken>())
+        IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        _ = resolver.ResolveAsync("tenant-a", "orders", "v1", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
 
-        var daprClient = Substitute.For<DaprClient>();
+        DaprClient daprClient = Substitute.For<DaprClient>();
         var invoker = new DaprDomainServiceInvoker(daprClient, resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
 
         var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act & Assert
-        await Should.ThrowAsync<DomainServiceNotFoundException>(
+        _ = await Should.ThrowAsync<DomainServiceNotFoundException>(
             () => invoker.InvokeAsync(command, null));
     }
 
@@ -195,8 +195,8 @@ public class DomainServiceIsolationTests {
     public async Task DomainServiceResolver_SameDomainDifferentTenants_QueriesDifferentConfigKeys() {
         // Arrange
         var capturedKeys = new List<string>();
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.GetConfiguration(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
             Arg.Do<IReadOnlyList<string>>(keys => { lock (capturedKeys) { capturedKeys.AddRange(keys); } }),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
@@ -206,8 +206,8 @@ public class DomainServiceIsolationTests {
         var resolver = new DomainServiceResolver(daprClient, Options.Create(DefaultOptions), NullLogger<DomainServiceResolver>.Instance);
 
         // Act
-        await resolver.ResolveAsync("tenant-a", "orders", "v1");
-        await resolver.ResolveAsync("tenant-b", "orders", "v1");
+        _ = await resolver.ResolveAsync("tenant-a", "orders", "v1");
+        _ = await resolver.ResolveAsync("tenant-b", "orders", "v1");
 
         // Assert
         capturedKeys.Count.ShouldBe(2);

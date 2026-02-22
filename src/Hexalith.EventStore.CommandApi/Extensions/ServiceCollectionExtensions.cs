@@ -1,4 +1,3 @@
-namespace Microsoft.Extensions.DependencyInjection;
 
 using System.Text.Json;
 using System.Threading.RateLimiting;
@@ -17,66 +16,66 @@ using Hexalith.EventStore.Server.Pipeline;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 using ExtensionMetadataSanitizer = Hexalith.EventStore.CommandApi.Validation.ExtensionMetadataSanitizer;
 
+namespace Hexalith.EventStore.CommandApi.Extensions;
+
 public static class CommandApiServiceCollectionExtensions {
     public static IServiceCollection AddCommandApi(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddProblemDetails();
-        services.AddExceptionHandler<ValidationExceptionHandler>();
-        services.AddExceptionHandler<AuthorizationExceptionHandler>();
-        services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
-        services.AddExceptionHandler<GlobalExceptionHandler>();
+        _ = services.AddProblemDetails();
+        _ = services.AddExceptionHandler<ValidationExceptionHandler>();
+        _ = services.AddExceptionHandler<AuthorizationExceptionHandler>();
+        _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
+        _ = services.AddExceptionHandler<GlobalExceptionHandler>();
 
-        services.AddHttpContextAccessor();
+        _ = services.AddHttpContextAccessor();
 
         // JWT Bearer Authentication (replaces auth stubs from Story 2.1)
-        services.AddOptions<EventStoreAuthenticationOptions>()
+        _ = services.AddOptions<EventStoreAuthenticationOptions>()
             .BindConfiguration("Authentication:JwtBearer")
             .ValidateOnStart();
 
-        services.AddSingleton<IValidateOptions<EventStoreAuthenticationOptions>, ValidateEventStoreAuthenticationOptions>();
-        services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
+        _ = services.AddSingleton<IValidateOptions<EventStoreAuthenticationOptions>, ValidateEventStoreAuthenticationOptions>();
+        _ = services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
 
-        services
+        _ = services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
 
-        services.AddAuthorization();
+        _ = services.AddAuthorization();
 
         // Claims transformation
-        services.AddTransient<IClaimsTransformation, EventStoreClaimsTransformation>();
+        _ = services.AddTransient<IClaimsTransformation, EventStoreClaimsTransformation>();
 
         // Command status tracking (Story 2.6)
-        services.AddOptions<CommandStatusOptions>()
+        _ = services.AddOptions<CommandStatusOptions>()
             .BindConfiguration("EventStore:CommandStatus");
-        services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
+        _ = services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
 
         // Command archive for replay (Story 2.7)
-        services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();
+        _ = services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();
 
         // Extension metadata sanitization (Story 5.4, SEC-4)
-        services.AddOptions<ExtensionMetadataOptions>()
+        _ = services.AddOptions<ExtensionMetadataOptions>()
             .BindConfiguration("EventStore:ExtensionMetadata")
             .ValidateOnStart();
 
-        services.AddSingleton<IValidateOptions<ExtensionMetadataOptions>, ValidateExtensionMetadataOptions>();
-        services.AddSingleton<ExtensionMetadataSanitizer>();
+        _ = services.AddSingleton<IValidateOptions<ExtensionMetadataOptions>, ValidateExtensionMetadataOptions>();
+        _ = services.AddSingleton<ExtensionMetadataSanitizer>();
 
         // Rate limiting (Story 2.9)
-        services.AddOptions<RateLimitingOptions>()
+        _ = services.AddOptions<RateLimitingOptions>()
             .BindConfiguration("EventStore:RateLimiting")
             .ValidateOnStart();
 
-        services.AddSingleton<IValidateOptions<RateLimitingOptions>, ValidateRateLimitingOptions>();
+        _ = services.AddSingleton<IValidateOptions<RateLimitingOptions>, ValidateRateLimitingOptions>();
 
-        services.AddRateLimiter(rateLimiterOptions => {
+        _ = services.AddRateLimiter(rateLimiterOptions => {
             rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
             rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
@@ -163,8 +162,8 @@ public static class CommandApiServiceCollectionExtensions {
         });
 
         // OpenAPI document generation (Story 2.9)
-        services.AddOpenApi(options => {
-            options.AddDocumentTransformer((document, context, ct) => {
+        _ = services.AddOpenApi(options => {
+            _ = options.AddDocumentTransformer((document, context, ct) => {
                 document.Info = new OpenApiInfo {
                     Title = "Hexalith EventStore Command API",
                     Version = "v1",
@@ -192,9 +191,9 @@ public static class CommandApiServiceCollectionExtensions {
             });
 
             // Add 429 response documentation to all operations (H14)
-            options.AddOperationTransformer((operation, context, ct) => {
-                operation.Responses ??= new OpenApiResponses();
-                operation.Responses.TryAdd("429", new OpenApiResponse {
+            _ = options.AddOperationTransformer((operation, context, ct) => {
+                operation.Responses ??= [];
+                _ = operation.Responses.TryAdd("429", new OpenApiResponse {
                     Description = "Too Many Requests - Rate limit exceeded. See Retry-After header for when to retry.",
                 });
 
@@ -202,18 +201,16 @@ public static class CommandApiServiceCollectionExtensions {
             });
         });
 
-        services.AddMediatR(cfg => {
-            cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
-            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
-            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-            cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
+        _ = services.AddMediatR(cfg => {
+            _ = cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
+            _ = cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            _ = cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+            _ = cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
         });
 
-        services.AddValidatorsFromAssemblyContaining<SubmitCommandRequestValidator>();
+        _ = services.AddValidatorsFromAssemblyContaining<SubmitCommandRequestValidator>();
 
-        services.AddControllers(options => {
-            options.Filters.Add<ValidateModelFilter>();
-        });
+        _ = services.AddControllers(options => options.Filters.Add<ValidateModelFilter>());
 
         return services;
     }

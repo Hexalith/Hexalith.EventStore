@@ -1,23 +1,19 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// In-memory implementation of <see cref="ICommandStatusStore"/> for testing.
 /// Simulates TTL expiry using stored expiration timestamps.
 /// </summary>
 public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     private readonly ConcurrentDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)> _store = new();
-    private int _ttlSeconds = CommandStatusConstants.DefaultTtlSeconds;
 
     /// <summary>Gets or sets the TTL in seconds for new entries.</summary>
-    public int TtlSeconds {
-        get => _ttlSeconds;
-        set => _ttlSeconds = value;
-    }
+    public int TtlSeconds { get; set; } = CommandStatusConstants.DefaultTtlSeconds;
 
     /// <inheritdoc/>
     public Task WriteStatusAsync(
@@ -30,7 +26,7 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
         ArgumentNullException.ThrowIfNull(status);
 
         string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
-        DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(_ttlSeconds);
+        DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(TtlSeconds);
         _store[key] = (status, expiry);
         return Task.CompletedTask;
     }
@@ -45,9 +41,9 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
 
         string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
 
-        if (_store.TryGetValue(key, out var entry)) {
+        if (_store.TryGetValue(key, out (CommandStatusRecord Record, DateTimeOffset Expiry) entry)) {
             if (entry.Expiry <= DateTimeOffset.UtcNow) {
-                _store.TryRemove(key, out _);
+                _ = _store.TryRemove(key, out _);
                 return Task.FromResult<CommandStatusRecord?>(null);
             }
 

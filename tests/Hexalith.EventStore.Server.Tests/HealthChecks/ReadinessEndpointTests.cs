@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.HealthChecks;
 
 using Dapr.Client;
 
@@ -11,22 +10,24 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.HealthChecks;
+
 public class ReadinessEndpointTests {
     private static HealthCheckServiceOptions GetHealthCheckOptions() {
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<DaprClient>());
-        var builder = services.AddHealthChecks()
+        _ = services.AddSingleton(Substitute.For<DaprClient>());
+        IHealthChecksBuilder builder = services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
-        builder.AddEventStoreDaprHealthChecks();
-        var sp = services.BuildServiceProvider();
+        _ = builder.AddEventStoreDaprHealthChecks();
+        ServiceProvider sp = services.BuildServiceProvider();
         return sp.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value;
     }
 
     [Fact]
     public void ReadyTagPredicate_MatchesDaprChecks() {
         // Verify that a "ready" tag predicate matches exactly the 4 DAPR checks
-        var options = GetHealthCheckOptions();
-        Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("ready");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        static bool predicate(HealthCheckRegistration r) => r.Tags.Contains("ready");
 
         var readyChecks = options.Registrations.Where(predicate).ToList();
 
@@ -41,8 +42,8 @@ public class ReadinessEndpointTests {
     public void ReadyTagPredicate_MatchesNonEmptySet() {
         // FMA-1 prevention: verify "ready" tag predicate matches at least 1 check
         // A tag typo would silently return Healthy for zero matches
-        var options = GetHealthCheckOptions();
-        Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("ready");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        static bool predicate(HealthCheckRegistration r) => r.Tags.Contains("ready");
 
         options.Registrations.Where(predicate).ShouldNotBeEmpty();
     }
@@ -50,8 +51,8 @@ public class ReadinessEndpointTests {
     [Fact]
     public void ReadyTagPredicate_ExcludesSelfLivenessCheck() {
         // The "self" check tagged "live" must NOT appear in readiness evaluation
-        var options = GetHealthCheckOptions();
-        Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("ready");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        static bool predicate(HealthCheckRegistration r) => r.Tags.Contains("ready");
 
         var readyChecks = options.Registrations.Where(predicate).ToList();
 
@@ -61,8 +62,8 @@ public class ReadinessEndpointTests {
     [Fact]
     public void LiveTagPredicate_StillMatchesSelfCheckOnly() {
         // Backward compatibility: /alive must still use "live" tag predicate
-        var options = GetHealthCheckOptions();
-        Func<HealthCheckRegistration, bool> predicate = r => r.Tags.Contains("live");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        static bool predicate(HealthCheckRegistration r) => r.Tags.Contains("live");
 
         var liveChecks = options.Registrations.Where(predicate).ToList();
 
@@ -73,8 +74,8 @@ public class ReadinessEndpointTests {
     [Fact]
     public void SidecarDown_ResultsInUnhealthyStatus() {
         // Sidecar has failureStatus: Unhealthy -> /ready returns 503
-        var options = GetHealthCheckOptions();
-        var sidecar = options.Registrations.First(r => r.Name == "dapr-sidecar");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        HealthCheckRegistration sidecar = options.Registrations.First(r => r.Name == "dapr-sidecar");
 
         sidecar.FailureStatus.ShouldBe(HealthStatus.Unhealthy);
     }
@@ -82,8 +83,8 @@ public class ReadinessEndpointTests {
     [Fact]
     public void StateStoreDown_ResultsInUnhealthyStatus() {
         // State store has failureStatus: Unhealthy -> /ready returns 503
-        var options = GetHealthCheckOptions();
-        var stateStore = options.Registrations.First(r => r.Name == "dapr-statestore");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        HealthCheckRegistration stateStore = options.Registrations.First(r => r.Name == "dapr-statestore");
 
         stateStore.FailureStatus.ShouldBe(HealthStatus.Unhealthy);
     }
@@ -91,8 +92,8 @@ public class ReadinessEndpointTests {
     [Fact]
     public void PubSubDown_ResultsInDegradedStatus() {
         // Pub/sub has failureStatus: Degraded -> /ready returns 200 Degraded
-        var options = GetHealthCheckOptions();
-        var pubsub = options.Registrations.First(r => r.Name == "dapr-pubsub");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        HealthCheckRegistration pubsub = options.Registrations.First(r => r.Name == "dapr-pubsub");
 
         pubsub.FailureStatus.ShouldBe(HealthStatus.Degraded);
     }
@@ -100,8 +101,8 @@ public class ReadinessEndpointTests {
     [Fact]
     public void ConfigStoreDown_ResultsInDegradedStatus() {
         // Config store has failureStatus: Degraded -> /ready returns 200 Degraded
-        var options = GetHealthCheckOptions();
-        var configStore = options.Registrations.First(r => r.Name == "dapr-configstore");
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
+        HealthCheckRegistration configStore = options.Registrations.First(r => r.Name == "dapr-configstore");
 
         configStore.FailureStatus.ShouldBe(HealthStatus.Degraded);
     }
@@ -145,7 +146,7 @@ public class ReadinessEndpointTests {
     [Fact]
     public void ThreeEndpointStrategy_AllTagsAccountedFor() {
         // Verify the three-endpoint strategy: /health (all), /alive (live), /ready (ready)
-        var options = GetHealthCheckOptions();
+        HealthCheckServiceOptions options = GetHealthCheckOptions();
 
         // All checks (for /health - no filter)
         options.Registrations.Count.ShouldBe(5);

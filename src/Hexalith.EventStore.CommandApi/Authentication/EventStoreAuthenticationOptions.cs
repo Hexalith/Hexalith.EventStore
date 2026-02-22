@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.CommandApi.Authentication;
 
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.CommandApi.Authentication;
 /// <summary>
 /// Configuration options for JWT authentication.
 /// Bound from the "Authentication:JwtBearer" configuration section.

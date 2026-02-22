@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using System.Reflection;
 
@@ -23,6 +22,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 3.11 Task 8: AggregateActor state machine integration tests.
 /// Verifies checkpointed stage transitions, crash recovery, advisory status writes,
@@ -44,12 +44,12 @@ public class StateMachineIntegrationTests {
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
@@ -58,23 +58,23 @@ public class StateMachineIntegrationTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: no idempotency record
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // Default: no metadata (new aggregate)
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: no pipeline state
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // Default: domain returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -91,7 +91,7 @@ public class StateMachineIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -114,7 +114,7 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>());
 
         // Pipeline key removed at terminal (cleanup)
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s.Contains(":pipeline:") && s.Contains(envelope.CorrelationId)),
             Arg.Any<CancellationToken>());
 
@@ -129,7 +129,7 @@ public class StateMachineIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -137,7 +137,7 @@ public class StateMachineIntegrationTests {
 
         // Assert
         result.Accepted.ShouldBeFalse();
-        result.ErrorMessage.ShouldNotBeNull();
+        _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("Domain rejection");
 
         // EventsStored checkpoint includes rejection event type
@@ -147,7 +147,7 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>());
 
         // Pipeline cleaned up at terminal
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
     }
@@ -158,7 +158,7 @@ public class StateMachineIntegrationTests {
     public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -181,7 +181,7 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>());
 
         // Pipeline cleaned up
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
 
@@ -200,18 +200,18 @@ public class StateMachineIntegrationTests {
             "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
 
-        stateManager.TryGetStateAsync<PipelineState>(
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
         var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata",
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
-        stateManager.TryGetStateAsync<EventEnvelope>(
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
             "test-tenant:test-domain:agg-001:events:1",
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(
@@ -231,7 +231,7 @@ public class StateMachineIntegrationTests {
                     [1],
                     null)));
 
-        stateManager.TryGetStateAsync<EventEnvelope>(
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
             "test-tenant:test-domain:agg-001:events:2",
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(
@@ -261,10 +261,10 @@ public class StateMachineIntegrationTests {
         result.EventCount.ShouldBe(2);
 
         // Domain service was NOT invoked (events already stored)
-        await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
 
         // Event publication is resumed from persisted events
-        await eventPublisher.Received(1).PublishEventsAsync(
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2),
             "corr-sm-test",
@@ -277,7 +277,7 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>());
 
         // Pipeline cleaned up
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
     }
@@ -293,13 +293,13 @@ public class StateMachineIntegrationTests {
             "corr-sm-test", CommandStatus.Processing, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: null, RejectionEventType: null);
 
-        stateManager.TryGetStateAsync<PipelineState>(
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -308,7 +308,7 @@ public class StateMachineIntegrationTests {
         // Assert -- reprocessed from scratch (domain service WAS invoked)
         result.Accepted.ShouldBeTrue();
         result.EventCount.ShouldBe(1);
-        await invoker.Received(1).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await invoker.Received(1).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
 
         // Events were persisted (full reprocess)
         await stateManager.Received().SetStateAsync(
@@ -322,13 +322,13 @@ public class StateMachineIntegrationTests {
     [Fact]
     public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline() {
         // Arrange -- status store throws on every call
-        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, _) = CreateActor();
-        statusStore.WriteStatusAsync(
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, _) = CreateActor();
+        _ = statusStore.WriteStatusAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Status store unavailable"));
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act -- should NOT throw despite status store failures (rule #12)
@@ -350,14 +350,14 @@ public class StateMachineIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- TryRemoveStateAsync called for pipeline key
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s == "test-tenant:test-domain:agg-001:pipeline:corr-sm-test"),
             Arg.Any<CancellationToken>());
     }
@@ -369,14 +369,14 @@ public class StateMachineIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- TryRemoveStateAsync called for pipeline key
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s == "test-tenant:test-domain:agg-001:pipeline:corr-sm-test"),
             Arg.Any<CancellationToken>());
     }

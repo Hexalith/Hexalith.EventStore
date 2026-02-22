@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Server.Commands;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
+namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// Routes commands to the correct aggregate actor based on canonical identity.
 /// </summary>

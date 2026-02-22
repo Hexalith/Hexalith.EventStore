@@ -1,10 +1,11 @@
-namespace Hexalith.EventStore.IntegrationTests.Serialization;
 
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Commands;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.Serialization;
 
 public class CommandEnvelopeSerializationTests {
     [Fact]
@@ -26,7 +27,7 @@ public class CommandEnvelopeSerializationTests {
         CommandEnvelope? deserialized = JsonSerializer.Deserialize<CommandEnvelope>(json);
 
         // Assert
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.TenantId.ShouldBe(original.TenantId);
         deserialized.Domain.ShouldBe(original.Domain);
         deserialized.AggregateId.ShouldBe(original.AggregateId);
@@ -56,7 +57,7 @@ public class CommandEnvelopeSerializationTests {
         CommandEnvelope? deserialized = JsonSerializer.Deserialize<CommandEnvelope>(json);
 
         // Assert
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Payload.ShouldBe(payload);
     }
 
@@ -79,7 +80,7 @@ public class CommandEnvelopeSerializationTests {
         CommandEnvelope? deserialized = JsonSerializer.Deserialize<CommandEnvelope>(json);
 
         // Assert
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Extensions.ShouldBeNull();
     }
 }

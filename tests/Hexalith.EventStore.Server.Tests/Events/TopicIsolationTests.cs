@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
@@ -6,6 +5,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.2 Task 3: Comprehensive multi-tenant topic isolation tests.
 /// Verifies that events for different tenants/domains are published to structurally distinct topics
@@ -40,8 +40,8 @@ public class TopicIsolationTests {
         IReadOnlyList<EventEnvelope> eventsB = [CreateEnvelope("globex", "orders", "order-1")];
 
         // Act
-        await fakePublisher.PublishEventsAsync(identityA, eventsA, "corr-a");
-        await fakePublisher.PublishEventsAsync(identityB, eventsB, "corr-b");
+        _ = await fakePublisher.PublishEventsAsync(identityA, eventsA, "corr-a");
+        _ = await fakePublisher.PublishEventsAsync(identityB, eventsB, "corr-b");
 
         // Assert
         fakePublisher.GetPublishedTopics().ShouldBe(["acme.orders.events", "globex.orders.events"]);
@@ -61,8 +61,8 @@ public class TopicIsolationTests {
         IReadOnlyList<EventEnvelope> eventsInventory = [CreateEnvelope("acme", "inventory", "inv-1")];
 
         // Act
-        await fakePublisher.PublishEventsAsync(identityOrders, eventsOrders, "corr-orders");
-        await fakePublisher.PublishEventsAsync(identityInventory, eventsInventory, "corr-inv");
+        _ = await fakePublisher.PublishEventsAsync(identityOrders, eventsOrders, "corr-orders");
+        _ = await fakePublisher.PublishEventsAsync(identityInventory, eventsInventory, "corr-inv");
 
         // Assert
         fakePublisher.GetPublishedTopics().ShouldBe(["acme.inventory.events", "acme.orders.events"]);
@@ -76,7 +76,7 @@ public class TopicIsolationTests {
     public async Task PublishEvents_DifferentTenants_DifferentDomains_AllDistinctTopics() {
         // Arrange
         var fakePublisher = new FakeEventPublisher();
-        var matrix = new[]
+        (string Tenant, string Domain)[] matrix = new[]
         {
             (Tenant: "acme", Domain: "orders"),
             (Tenant: "acme", Domain: "inventory"),
@@ -88,7 +88,7 @@ public class TopicIsolationTests {
         foreach ((string tenant, string domain) in matrix) {
             var identity = new AggregateIdentity(tenant, domain, "agg-1");
             IReadOnlyList<EventEnvelope> events = [CreateEnvelope(tenant, domain, "agg-1")];
-            await fakePublisher.PublishEventsAsync(identity, events, $"corr-{tenant}-{domain}");
+            _ = await fakePublisher.PublishEventsAsync(identity, events, $"corr-{tenant}-{domain}");
         }
 
         // Assert
@@ -116,7 +116,7 @@ public class TopicIsolationTests {
         // Act
         for (int i = 1; i <= 5; i++) {
             IReadOnlyList<EventEnvelope> events = [CreateEnvelope("acme", "orders", "order-1", i)];
-            await fakePublisher.PublishEventsAsync(identity, events, $"corr-{i}");
+            _ = await fakePublisher.PublishEventsAsync(identity, events, $"corr-{i}");
         }
 
         // Assert - all 5 calls go to the same single topic
@@ -136,9 +136,9 @@ public class TopicIsolationTests {
 
         // Act
         IReadOnlyList<EventEnvelope> events = [CreateEnvelope("acme", "orders", "order-1")];
-        await fakePublisher.PublishEventsAsync(identityLower, events, "corr-lower");
-        await fakePublisher.PublishEventsAsync(identityMixed, events, "corr-mixed");
-        await fakePublisher.PublishEventsAsync(identityUpper, events, "corr-upper");
+        _ = await fakePublisher.PublishEventsAsync(identityLower, events, "corr-lower");
+        _ = await fakePublisher.PublishEventsAsync(identityMixed, events, "corr-mixed");
+        _ = await fakePublisher.PublishEventsAsync(identityUpper, events, "corr-upper");
 
         // Assert - all produce the same topic due to lowercase enforcement
         fakePublisher.GetPublishedTopics().ShouldBe(["acme.orders.events"]);
@@ -151,7 +151,7 @@ public class TopicIsolationTests {
     public async Task PublishEvents_ConcurrentTenants_NoTopicCrossContamination() {
         // Arrange
         var fakePublisher = new FakeEventPublisher();
-        var tenants = new[] { "tenant-a", "tenant-b", "tenant-c", "tenant-d", "tenant-e" };
+        string[] tenants = new[] { "tenant-a", "tenant-b", "tenant-c", "tenant-d", "tenant-e" };
 
         // Act - publish concurrently
         Task[] tasks = tenants.Select(tenant => {
@@ -192,7 +192,7 @@ public class TopicIsolationTests {
         IReadOnlyList<EventEnvelope> events = [CreateEnvelope("acme-corp", "order-service", "order-1")];
 
         // Act
-        await fakePublisher.PublishEventsAsync(identity, events, "corr-1");
+        _ = await fakePublisher.PublishEventsAsync(identity, events, "corr-1");
 
         // Assert
         fakePublisher.GetPublishedTopics().ShouldBe(["acme-corp.order-service.events"]);
@@ -208,7 +208,7 @@ public class TopicIsolationTests {
         IReadOnlyList<EventEnvelope> events = [CreateEnvelope("a", "b", "order-1")];
 
         // Act
-        await fakePublisher.PublishEventsAsync(identity, events, "corr-1");
+        _ = await fakePublisher.PublishEventsAsync(identity, events, "corr-1");
 
         // Assert
         fakePublisher.GetPublishedTopics().ShouldBe(["a.b.events"]);
@@ -226,7 +226,7 @@ public class TopicIsolationTests {
         IReadOnlyList<EventEnvelope> events = [CreateEnvelope(longTenant, longDomain, "order-1")];
 
         // Act
-        await fakePublisher.PublishEventsAsync(identity, events, "corr-1");
+        _ = await fakePublisher.PublishEventsAsync(identity, events, "corr-1");
 
         // Assert - topic is {64}.{64}.events = 136 chars (64+1+64+1+6), well within all backend limits
         string expectedTopic = $"{longTenant}.{longDomain}.events";

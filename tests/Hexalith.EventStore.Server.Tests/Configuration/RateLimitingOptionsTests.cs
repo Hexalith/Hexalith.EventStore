@@ -1,10 +1,11 @@
-namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 using Hexalith.EventStore.CommandApi.Configuration;
 
 using Microsoft.Extensions.Options;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 public class RateLimitingOptionsTests {
     [Fact]

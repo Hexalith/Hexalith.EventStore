@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -10,6 +8,8 @@ using System.Text.Json;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory factory)
     : IClassFixture<RateLimitingWebApplicationFactory> {
@@ -31,8 +31,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         HttpClient client = CreateAuthenticatedClient("rate-tenant-b");
 
         // Act - send 3 requests (exceeds limit of 2)
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-b"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-b"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-b"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-b"));
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-b"));
 
         // Assert
@@ -50,13 +50,13 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         HttpClient client = CreateAuthenticatedClient("rate-tenant-c");
 
         // Act - exceed limit
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-c"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-c"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-c"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-c"));
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-c"));
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
-        response.Headers.RetryAfter.ShouldNotBeNull();
+        _ = response.Headers.RetryAfter.ShouldNotBeNull();
     }
 
     [Fact]
@@ -65,8 +65,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         HttpClient client = CreateAuthenticatedClient("rate-tenant-d");
 
         // Act - exceed limit
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-d"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-d"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-d"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-d"));
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-d"));
 
         // Assert
@@ -81,8 +81,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         HttpClient client = CreateAuthenticatedClient("rate-tenant-e");
 
         // Act - exceed limit
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-e"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-e"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-e"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-e"));
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-e"));
 
         // Assert
@@ -98,8 +98,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         HttpClient client = CreateAuthenticatedClient("rate-tenant-f");
 
         // Act - exceed limit
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-f"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-f"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-f"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-f"));
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("rate-tenant-f"));
 
         // Assert
@@ -114,8 +114,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         HttpClient clientB = CreateAuthenticatedClient("tenant-iso-b");
 
         // Act - exhaust tenant A's limit
-        await clientA.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("tenant-iso-a"));
-        await clientA.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("tenant-iso-a"));
+        _ = await clientA.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("tenant-iso-a"));
+        _ = await clientA.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("tenant-iso-a"));
         HttpResponseMessage responseA = await clientA.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("tenant-iso-a"));
 
         // Tenant B should still be OK
@@ -155,7 +155,7 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
         response1.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         response2.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         response3.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
-        response3.Headers.RetryAfter.ShouldNotBeNull("429 response must include Retry-After header for client recovery");
+        _ = response3.Headers.RetryAfter.ShouldNotBeNull("429 response must include Retry-After header for client recovery");
     }
 
     [Fact]
@@ -184,8 +184,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     public async Task HealthEndpoint_ExceedsRateLimit_StillReturns200() {
         // Arrange - exhaust rate limit for this tenant
         HttpClient client = CreateAuthenticatedClient("health-tenant");
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("health-tenant"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("health-tenant"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("health-tenant"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("health-tenant"));
         HttpResponseMessage rateLimited = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("health-tenant"));
         rateLimited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
 
@@ -201,8 +201,8 @@ public class RateLimitingIntegrationTests(RateLimitingWebApplicationFactory fact
     public async Task AliveEndpoint_ExceedsRateLimit_StillReturns200() {
         // Arrange - exhaust rate limit for this tenant
         HttpClient client = CreateAuthenticatedClient("alive-tenant");
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("alive-tenant"));
-        await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("alive-tenant"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("alive-tenant"));
+        _ = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("alive-tenant"));
         HttpResponseMessage rateLimited = await client.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("alive-tenant"));
         rateLimited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
 

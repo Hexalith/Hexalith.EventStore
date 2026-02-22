@@ -1,10 +1,12 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Events;
 
 public class EventEnvelopeTests {
     private static EventEnvelope CreateTestEnvelope(
@@ -34,7 +36,7 @@ public class EventEnvelopeTests {
         EventEnvelope? deserialized = JsonSerializer.Deserialize<EventEnvelope>(json);
 
         // Assert
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.AggregateId.ShouldBe(original.AggregateId);
         deserialized.TenantId.ShouldBe(original.TenantId);
         deserialized.Domain.ShouldBe(original.Domain);
@@ -47,7 +49,7 @@ public class EventEnvelopeTests {
         deserialized.EventTypeName.ShouldBe(original.EventTypeName);
         deserialized.SerializationFormat.ShouldBe(original.SerializationFormat);
         deserialized.Payload.ShouldBe(original.Payload);
-        deserialized.Extensions.ShouldNotBeNull();
+        _ = deserialized.Extensions.ShouldNotBeNull();
         deserialized.Extensions!["key1"].ShouldBe("val1");
         deserialized.Extensions["key2"].ShouldBe("val2");
     }
@@ -74,7 +76,7 @@ public class EventEnvelopeTests {
         EventEnvelope? deserialized = JsonSerializer.Deserialize<EventEnvelope>(json);
 
         // Assert
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Extensions.ShouldBeNull();
     }
 
@@ -84,7 +86,7 @@ public class EventEnvelopeTests {
         EventEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        var identity = envelope.Identity;
+        AggregateIdentity identity = envelope.Identity;
 
         // Assert
         identity.TenantId.ShouldBe("test-tenant");

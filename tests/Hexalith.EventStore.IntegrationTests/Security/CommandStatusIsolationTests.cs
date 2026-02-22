@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.IntegrationTests.Security;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
@@ -7,6 +6,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
 /// Component-level integration tests verifying command status key isolation between tenants (AC: #8).
 /// JWT tenant matching (SEC-3) is enforced at the API layer (Story 2.6) and not re-tested here.
@@ -42,7 +42,7 @@ public class CommandStatusIsolationTests {
 
         // But tenant-a can read its own status
         CommandStatusRecord? resultFromA = await store.ReadStatusAsync("tenant-a", sharedCorrelationId);
-        resultFromA.ShouldNotBeNull();
+        _ = resultFromA.ShouldNotBeNull();
         resultFromA.Status.ShouldBe(CommandStatus.Received);
     }
 
@@ -100,11 +100,11 @@ public class CommandStatusIsolationTests {
         CommandStatusRecord? resultA = await store.ReadStatusAsync("tenant-a", correlationId);
         CommandStatusRecord? resultB = await store.ReadStatusAsync("tenant-b", correlationId);
 
-        resultA.ShouldNotBeNull();
+        _ = resultA.ShouldNotBeNull();
         resultA.Status.ShouldBe(CommandStatus.Received);
         resultA.AggregateId.ShouldBe("agg-a");
 
-        resultB.ShouldNotBeNull();
+        _ = resultB.ShouldNotBeNull();
         resultB.Status.ShouldBe(CommandStatus.Completed);
         resultB.AggregateId.ShouldBe("agg-b");
 

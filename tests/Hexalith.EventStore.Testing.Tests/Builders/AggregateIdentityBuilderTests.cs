@@ -1,7 +1,8 @@
-namespace Hexalith.EventStore.Testing.Tests.Builders;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Testing.Builders;
+
+namespace Hexalith.EventStore.Testing.Tests.Builders;
 
 public class AggregateIdentityBuilderTests {
     [Fact]

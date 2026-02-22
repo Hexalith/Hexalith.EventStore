@@ -1,10 +1,13 @@
-namespace Hexalith.EventStore.CommandApi.Filters;
+
+using System.Reflection;
 
 using FluentValidation;
+using FluentValidation.Results;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
+namespace Hexalith.EventStore.CommandApi.Filters;
 /// <summary>
 /// Action filter that validates request models using FluentValidation.
 /// Returns RFC 7807 ProblemDetails with application/problem+json content type.
@@ -14,21 +17,20 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        foreach (var argument in context.ActionArguments.Values) {
+        foreach (object? argument in context.ActionArguments.Values) {
             if (argument == null) {
                 continue;
             }
 
-            var argumentType = argument.GetType();
-            var validatorType = typeof(IValidator<>).MakeGenericType(argumentType);
-            var validator = serviceProvider.GetService(validatorType) as IValidator;
+            Type argumentType = argument.GetType();
+            Type validatorType = typeof(IValidator<>).MakeGenericType(argumentType);
 
-            if (validator == null) {
+            if (serviceProvider.GetService(validatorType) is not IValidator validator) {
                 continue;
             }
 
             var validationContext = new ValidationContext<object>(argument);
-            var validationResult = await validator.ValidateAsync(validationContext, context.HttpContext.RequestAborted).ConfigureAwait(false);
+            ValidationResult validationResult = await validator.ValidateAsync(validationContext, context.HttpContext.RequestAborted).ConfigureAwait(false);
 
             if (!validationResult.IsValid) {
                 string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
@@ -62,12 +64,12 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
             }
         }
 
-        await next().ConfigureAwait(false);
+        _ = await next().ConfigureAwait(false);
     }
 
     private static string? ExtractTenantId(object argument) {
         // Use reflection to extract Tenant property if present
-        var tenantProp = argument.GetType().GetProperty("Tenant");
+        PropertyInfo? tenantProp = argument.GetType().GetProperty("Tenant");
         if (tenantProp?.GetValue(argument) is string tenant && !string.IsNullOrEmpty(tenant)) {
             return tenant;
         }

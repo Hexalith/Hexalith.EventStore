@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.ErrorHandling;
 
 using System.Text.Json;
 
@@ -11,6 +10,8 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.ErrorHandling;
 
 public class AuthorizationExceptionHandlerTests {
     private readonly ILogger<AuthorizationExceptionHandler> _logger;
@@ -42,9 +43,9 @@ public class AuthorizationExceptionHandlerTests {
         handled.ShouldBeTrue();
         httpContext.Response.StatusCode.ShouldBe(403);
 
-        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        problemDetails.ShouldNotBeNull();
+        _ = problemDetails.ShouldNotBeNull();
         problemDetails.Status.ShouldBe(403);
         problemDetails.Title.ShouldBe("Forbidden");
         problemDetails.Type.ShouldBe("https://tools.ietf.org/html/rfc9457#section-3");
@@ -75,10 +76,10 @@ public class AuthorizationExceptionHandlerTests {
         var exception = new CommandAuthorizationException("test-tenant", null, null, "Access denied.");
 
         // Act
-        await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
 
         // Assert - WriteAsJsonAsync may append charset, so check the content type contains problem+json
-        httpContext.Response.ContentType.ShouldNotBeNull();
+        _ = httpContext.Response.ContentType.ShouldNotBeNull();
         httpContext.Response.ContentType.ShouldContain("problem+json");
         httpContext.Response.StatusCode.ShouldBe(403);
     }

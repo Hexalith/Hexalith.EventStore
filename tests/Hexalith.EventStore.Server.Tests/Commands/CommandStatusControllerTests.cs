@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using System.Security.Claims;
 
@@ -12,6 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class CommandStatusControllerTests {
     private readonly InMemoryCommandStatusStore _statusStore = new();
@@ -189,9 +190,7 @@ public class CommandStatusControllerTests {
         response.TimeoutDuration.ShouldBe("PT30S");
     }
 
-    private void SetupHttpContext(string tenantId) {
-        SetupHttpContextWithClaims([tenantId]);
-    }
+    private void SetupHttpContext(string tenantId) => SetupHttpContextWithClaims([tenantId]);
 
     private void SetupHttpContextWithClaims(string[] tenants) {
         var claims = new List<Claim>

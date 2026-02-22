@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Actors;
 
 using Dapr.Actors.Runtime;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Checkpoints pipeline stages in actor state for crash-recovery resume (NFR25).
 /// Created per-actor-call (same pattern as IdempotencyChecker, EventPersister).

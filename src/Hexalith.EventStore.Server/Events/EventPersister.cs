@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using System.Text.Json;
 
@@ -11,6 +10,7 @@ using Hexalith.EventStore.Contracts.Results;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Persists domain events to the actor state store using write-once keys with gapless sequence numbers.
 /// Created per-actor-call (same pattern as IdempotencyChecker, EventStreamReader).
@@ -48,7 +48,7 @@ public partial class EventPersister(
 
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
-        long firstSeq = currentSequence + 1;
+        _ = currentSequence + 1;
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
         for (int i = 0; i < domainResult.Events.Count; i++) {

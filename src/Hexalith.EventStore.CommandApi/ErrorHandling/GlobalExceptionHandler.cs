@@ -1,7 +1,8 @@
-namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+
+namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {

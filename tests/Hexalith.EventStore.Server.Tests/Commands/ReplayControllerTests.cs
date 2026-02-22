@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using System.Security.Claims;
 
@@ -17,6 +16,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class ReplayControllerTests {
     private readonly InMemoryCommandArchiveStore _archiveStore = new();
@@ -74,7 +75,7 @@ public class ReplayControllerTests {
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
 
-        _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult(correlationId));
 
         ReplayController controller = CreateController();
@@ -83,8 +84,8 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var accepted = result.ShouldBeOfType<AcceptedResult>();
-        var response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
         response.CorrelationId.ShouldBe(correlationId);
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("Rejected");
@@ -96,7 +97,7 @@ public class ReplayControllerTests {
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.PublishFailed);
 
-        _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult(correlationId));
 
         ReplayController controller = CreateController();
@@ -105,8 +106,8 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var accepted = result.ShouldBeOfType<AcceptedResult>();
-        var response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("PublishFailed");
     }
@@ -117,7 +118,7 @@ public class ReplayControllerTests {
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.TimedOut);
 
-        _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult(correlationId));
 
         ReplayController controller = CreateController();
@@ -126,8 +127,8 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var accepted = result.ShouldBeOfType<AcceptedResult>();
-        var response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("TimedOut");
     }
@@ -143,9 +144,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(409);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("completed successfully");
         problemDetails.Extensions["currentStatus"]!.ToString().ShouldBe("Completed");
     }
@@ -161,9 +162,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(409);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("in-flight");
     }
 
@@ -178,7 +179,7 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(409);
     }
 
@@ -193,9 +194,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(409);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("in-flight");
     }
 
@@ -210,9 +211,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(409);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("in-flight");
     }
 
@@ -226,9 +227,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(404);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain(correlationId);
     }
 
@@ -244,7 +245,7 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert - SEC-3: returns 404, not 403
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(404);
     }
 
@@ -260,9 +261,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(403);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("No tenant authorization claims found");
     }
 
@@ -272,16 +273,16 @@ public class ReplayControllerTests {
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
 
-        _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult(correlationId));
 
         ReplayController controller = CreateController();
 
         // Act
-        await controller.Replay(correlationId, CancellationToken.None);
+        _ = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert - mediator.Send was called (handler resets status)
-        await _mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        _ = await _mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -290,16 +291,16 @@ public class ReplayControllerTests {
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
 
-        _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult(correlationId));
 
         ReplayController controller = CreateController();
 
         // Act
-        await controller.Replay(correlationId, CancellationToken.None);
+        _ = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        await _mediator.Received(1).Send(
+        _ = await _mediator.Received(1).Send(
             Arg.Is<SubmitCommand>(c => c.CorrelationId == correlationId && c.Tenant == "tenant-a"),
             Arg.Any<CancellationToken>());
     }
@@ -311,7 +312,7 @@ public class ReplayControllerTests {
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
 
         SubmitCommand? capturedCommand = null;
-        _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => {
                 capturedCommand = callInfo.Arg<SubmitCommand>();
                 return new SubmitCommandResult(correlationId);
@@ -320,10 +321,10 @@ public class ReplayControllerTests {
         ReplayController controller = CreateController();
 
         // Act
-        await controller.Replay(correlationId, CancellationToken.None);
+        _ = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        capturedCommand.ShouldNotBeNull();
+        _ = capturedCommand.ShouldNotBeNull();
         capturedCommand.CorrelationId.ShouldBe(correlationId);
     }
 
@@ -342,9 +343,9 @@ public class ReplayControllerTests {
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert - H5: null status returns 409 (indeterminate)
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(409);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("expired");
         problemDetails.Extensions["currentStatus"]!.ToString().ShouldBe("Unknown");
     }

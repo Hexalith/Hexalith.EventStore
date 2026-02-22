@@ -1,14 +1,14 @@
-namespace Microsoft.Extensions.DependencyInjection;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
-using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+namespace Hexalith.EventStore.Server.Configuration;
 /// <summary>
 /// DI registration extension methods for the EventStore Server components.
 /// </summary>
@@ -29,18 +29,16 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
-        services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
-        services.AddOptions<EventPublisherOptions>()
+        _ = services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
+        _ = services.AddOptions<EventPublisherOptions>()
             .Bind(configuration.GetSection("EventStore:Publisher"));
-        services.AddOptions<EventDrainOptions>()
+        _ = services.AddOptions<EventDrainOptions>()
             .Bind(configuration.GetSection("EventStore:Drain"));
-        services.AddOptions<SnapshotOptions>()
+        _ = services.AddOptions<SnapshotOptions>()
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
             .ValidateOnStart();
-        services.AddActors(options => {
-            options.Actors.RegisterActor<AggregateActor>();
-        });
+        services.AddActors(options => options.Actors.RegisterActor<AggregateActor>());
 
         return services;
     }

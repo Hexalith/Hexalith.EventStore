@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
 using Dapr.Client;
 
@@ -14,6 +13,8 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
 public class DaprDomainServiceInvokerTests {
     private readonly IDomainServiceResolver _resolver = Substitute.For<IDomainServiceResolver>();
@@ -38,14 +39,14 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public async Task InvokeAsync_ServiceNotFound_ThrowsDomainServiceNotFoundException() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
-        var envelope = CreateTestEnvelope();
+        CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
+        DomainServiceNotFoundException ex = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
         ex.TenantId.ShouldBe("test-tenant");
         ex.Domain.ShouldBe("test-domain");
     }
@@ -53,25 +54,25 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public async Task InvokeAsync_NullCommand_ThrowsArgumentNullException() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
+        DaprClient daprClient = Substitute.For<DaprClient>();
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentNullException>(() => invoker.InvokeAsync(null!, null));
+        _ = await Should.ThrowAsync<ArgumentNullException>(() => invoker.InvokeAsync(null!, null));
     }
 
     [Fact]
     public async Task InvokeAsync_ValidCommand_CallsResolver() {
         // Arrange -- resolver returns null to short-circuit (we only care about the resolver call)
-        var daprClient = Substitute.For<DaprClient>();
-        _resolver.ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = _resolver.ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
-        var envelope = CreateTestEnvelope(tenantId: "my-tenant", domain: "my-domain");
+        CommandEnvelope envelope = CreateTestEnvelope(tenantId: "my-tenant", domain: "my-domain");
 
         // Act & Assert -- expect exception since null registration, but verify resolver was called
-        await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
-        await _resolver.Received(1).ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
+        _ = await _resolver.Received(1).ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -114,7 +115,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void DomainServiceRequest_ContainsCommandAndState() {
         // Arrange
-        var envelope = CreateTestEnvelope();
+        CommandEnvelope envelope = CreateTestEnvelope();
         object state = new { Version = 1 };
 
         // Act
@@ -128,7 +129,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void DomainServiceRequest_NullStateAllowed() {
         // Arrange
-        var envelope = CreateTestEnvelope();
+        CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
         var request = new DomainServiceRequest(envelope, null);
@@ -176,7 +177,7 @@ public class DaprDomainServiceInvokerTests {
         var result = new DomainResult(events);
 
         // Act & Assert
-        var ex = Should.Throw<DomainServiceException>(
+        DomainServiceException ex = Should.Throw<DomainServiceException>(
             () => DaprDomainServiceInvoker.ValidateResponseLimits(result, "tenant-a", "orders", opts));
 
         ex.TenantId.ShouldBe("tenant-a");
@@ -208,12 +209,12 @@ public class DaprDomainServiceInvokerTests {
         var result = new DomainResult([largeEvent]);
 
         // Act & Assert
-        var ex = Should.Throw<DomainServiceException>(
+        DomainServiceException ex = Should.Throw<DomainServiceException>(
             () => DaprDomainServiceInvoker.ValidateResponseLimits(result, "tenant-a", "orders", opts));
 
         ex.TenantId.ShouldBe("tenant-a");
         ex.Domain.ShouldBe("orders");
-        ex.EventSizeBytes.ShouldNotBeNull();
+        _ = ex.EventSizeBytes.ShouldNotBeNull();
         ex.EventSizeBytes!.Value.ShouldBeGreaterThan(50);
         ex.Message.ShouldContain("LargeTestEvent");
         ex.Message.ShouldContain("exceeding maximum of 50 bytes");
@@ -254,7 +255,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void ExtractVersion_NoExtensions_ReturnsDefaultV1() {
         // Arrange - command with null extensions
-        var envelope = CreateTestEnvelope();
+        CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
         string version = DaprDomainServiceInvoker.ExtractVersion(envelope, _logger);
@@ -369,7 +370,7 @@ public class DaprDomainServiceInvokerTests {
             Extensions: new Dictionary<string, string> { ["domain-service-version"] = invalidVersion });
 
         // Act & Assert
-        var ex = Should.Throw<ArgumentException>(
+        ArgumentException ex = Should.Throw<ArgumentException>(
             () => DaprDomainServiceInvoker.ExtractVersion(envelope, _logger));
         ex.Message.ShouldContain("Invalid domain service version format");
     }
@@ -386,8 +387,8 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public async Task InvokeAsync_CommandWithVersionExtension_PassesVersionToResolver() {
         // Arrange - Task 8.5: verify version from extensions is forwarded to resolver
-        var daprClient = Substitute.For<DaprClient>();
-        _resolver.ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
         var envelope = new CommandEnvelope(
@@ -402,22 +403,22 @@ public class DaprDomainServiceInvokerTests {
             Extensions: new Dictionary<string, string> { ["domain-service-version"] = "v2" });
 
         // Act & Assert - expect exception since null registration, but verify v2 was passed
-        await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
-        await _resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>());
+        _ = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
+        _ = await _resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task InvokeAsync_CommandWithoutVersionExtension_PassesDefaultV1ToResolver() {
         // Arrange - no extensions, should default to v1
-        var daprClient = Substitute.For<DaprClient>();
-        _resolver.ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>())
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
-        var envelope = CreateTestEnvelope();
+        CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert
-        await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
-        await _resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+        _ = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
+        _ = await _resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
     }
 
     // Test event types

@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Client.Handlers;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 
+namespace Hexalith.EventStore.Client.Handlers;
 /// <summary>
 /// Abstract base class for domain processors that provides typed state casting.
 /// Safely converts the untyped <c>object?</c> state to <typeparamref name="TState"/>

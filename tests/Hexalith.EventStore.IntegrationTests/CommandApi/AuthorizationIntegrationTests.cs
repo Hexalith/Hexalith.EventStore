@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
@@ -19,6 +17,8 @@ using Microsoft.Extensions.Logging;
 using Shouldly;
 
 using CommandApiProgram = commandapi::Program;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class AuthorizationIntegrationTests
     : IClassFixture<AuthorizationIntegrationTests.AuthorizationLogCapturingFactory> {
@@ -243,7 +243,7 @@ public class AuthorizationIntegrationTests
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         // LoggingBehavior entry should NOT have fired (proving pre-pipeline rejection)
-        List<AuthzLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
+        var pipelineLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Message.Contains("MediatR pipeline entry"))
             .ToList();
 
@@ -265,10 +265,10 @@ public class AuthorizationIntegrationTests
         };
 
         // Act
-        await client.PostAsJsonAsync("/api/v1/commands", request);
+        _ = await client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert - warning log should contain correlationId
-        List<AuthzLogEntry> warningLogs = _factory.LogProvider.GetEntries()
+        var warningLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Level == LogLevel.Warning && e.Message.Contains("authorization failed", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -276,7 +276,7 @@ public class AuthorizationIntegrationTests
         warningLogs.ShouldContain(e => e.Message.Contains("CorrelationId="));
 
         // CRITICAL: JWT token must NOT appear in any log
-        List<AuthzLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
+        var allLogs = _factory.LogProvider.GetEntries().ToList();
         allLogs.ShouldNotContain(
             e => e.Message.Contains(token),
             "JWT token MUST NOT appear in log output (NFR11)");
@@ -342,36 +342,34 @@ public class AuthorizationIntegrationTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.ConfigureAppConfiguration(config => {
-                config.AddInMemoryCollection(new Dictionary<string, string?> {
-                    ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
-                    ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
-                    ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
-                    ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
-                });
-            });
-            builder.ConfigureServices(services => {
+            _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
+                ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
+                ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
+                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
+            }));
+            _ = builder.ConfigureServices(services => {
                 // Replace DAPR-dependent services with test fakes
                 ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(Server.Commands.ICommandStatusStore));
                 if (statusDescriptor is not null) {
-                    services.Remove(statusDescriptor);
+                    _ = services.Remove(statusDescriptor);
                 }
 
-                services.AddSingleton<Server.Commands.ICommandStatusStore>(new Testing.Fakes.InMemoryCommandStatusStore());
+                _ = services.AddSingleton<Server.Commands.ICommandStatusStore>(new Testing.Fakes.InMemoryCommandStatusStore());
 
                 ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(Server.Commands.ICommandArchiveStore));
                 if (archiveDescriptor is not null) {
-                    services.Remove(archiveDescriptor);
+                    _ = services.Remove(archiveDescriptor);
                 }
 
-                services.AddSingleton<Server.Commands.ICommandArchiveStore>(new Testing.Fakes.InMemoryCommandArchiveStore());
+                _ = services.AddSingleton<Server.Commands.ICommandArchiveStore>(new Testing.Fakes.InMemoryCommandArchiveStore());
 
                 Testing.Fakes.TestServiceOverrides.ReplaceCommandRouter(services);
                 Testing.Fakes.TestServiceOverrides.RemoveDaprHealthChecks(services);
 
-                services.AddLogging(logging => logging.AddProvider(LogProvider));
+                _ = services.AddLogging(logging => logging.AddProvider(LogProvider));
             });
         }
     }
@@ -399,9 +397,7 @@ public sealed class AuthzLogProvider : ILoggerProvider {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Enqueue(new AuthzLogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Enqueue(new AuthzLogEntry(logLevel, formatter(state, exception)));
     }
 }
 

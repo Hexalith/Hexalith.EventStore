@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Actors.Runtime;
 
@@ -14,15 +13,17 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
+
 public class SnapshotManagerTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static (SnapshotManager Manager, IActorStateManager StateManager) CreateManager(
         SnapshotOptions? options = null) {
         options ??= new SnapshotOptions();
-        var optionsWrapper = Options.Create(options);
-        var logger = Substitute.For<ILogger<SnapshotManager>>();
-        var stateManager = Substitute.For<IActorStateManager>();
+        IOptions<SnapshotOptions> optionsWrapper = Options.Create(options);
+        ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         return (new SnapshotManager(optionsWrapper, logger), stateManager);
     }
 
@@ -150,7 +151,7 @@ public class SnapshotManagerTests {
     [Fact]
     public async Task LoadSnapshot_ReturnsNullWhenNoSnapshot() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<SnapshotRecord>(false, default!));
 
         SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
@@ -164,12 +165,12 @@ public class SnapshotManagerTests {
     public async Task LoadSnapshot_ReturnsStoredSnapshot() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var snapshot = new SnapshotRecord(100, new { Value = "stored" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
 
         SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.SequenceNumber.ShouldBe(100);
     }
 
@@ -188,7 +189,7 @@ public class SnapshotManagerTests {
     public void SnapshotOptions_IntervalBelowMinimum_ValidationFails() {
         var options = new SnapshotOptions { DefaultInterval = 5 };
 
-        Should.Throw<InvalidOperationException>(() => options.Validate())
+        Should.Throw<InvalidOperationException>(options.Validate)
             .Message.ShouldContain("10");
     }
 
@@ -199,7 +200,7 @@ public class SnapshotManagerTests {
             DomainIntervals = new Dictionary<string, int> { ["bad-domain"] = 3 }
         };
 
-        Should.Throw<InvalidOperationException>(() => options.Validate())
+        Should.Throw<InvalidOperationException>(options.Validate)
             .Message.ShouldContain("bad-domain");
     }
 
@@ -210,7 +211,7 @@ public class SnapshotManagerTests {
             DomainIntervals = new Dictionary<string, int> { ["fast"] = 10, ["slow"] = 500 }
         };
 
-        Should.NotThrow(() => options.Validate());
+        Should.NotThrow(options.Validate);
     }
 
     // === 8.13: CreateSnapshot serialization failure logs warning and skips ===
@@ -220,7 +221,7 @@ public class SnapshotManagerTests {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var state = new { Value = "test" };
 
-        stateManager.SetStateAsync(
+        _ = stateManager.SetStateAsync(
             Arg.Any<string>(),
             Arg.Any<SnapshotRecord>(),
             Arg.Any<CancellationToken>())
@@ -237,7 +238,7 @@ public class SnapshotManagerTests {
     public async Task LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
 
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Deserialization failed"));
 
         SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
@@ -281,35 +282,35 @@ public class SnapshotManagerTests {
     [Fact]
     public async Task CreateSnapshot_NullIdentity_ThrowsArgumentNullException() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.CreateSnapshotAsync(null!, 100, new object(), stateManager));
     }
 
     [Fact]
     public async Task CreateSnapshot_NullState_ThrowsArgumentNullException() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.CreateSnapshotAsync(TestIdentity, 100, null!, stateManager));
     }
 
     [Fact]
     public async Task CreateSnapshot_NullStateManager_ThrowsArgumentNullException() {
         (SnapshotManager manager, _) = CreateManager();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.CreateSnapshotAsync(TestIdentity, 100, new object(), null!));
     }
 
     [Fact]
     public async Task LoadSnapshot_NullIdentity_ThrowsArgumentNullException() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
-        await Should.ThrowAsync<ArgumentNullException>(() =>
+        _ = await Should.ThrowAsync<ArgumentNullException>(() =>
             manager.LoadSnapshotAsync(null!, stateManager));
     }
 
     [Fact]
     public async Task ShouldCreateSnapshot_NullDomain_ThrowsArgumentException() {
         (SnapshotManager manager, _) = CreateManager();
-        await Should.ThrowAsync<ArgumentException>(() =>
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
             manager.ShouldCreateSnapshotAsync(null!, 100, 0));
     }
 }

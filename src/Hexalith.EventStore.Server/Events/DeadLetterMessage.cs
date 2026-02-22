@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Commands;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Dead-letter message containing full command context, error details, and correlation context.
 /// Published to per-tenant dead-letter topic when command processing fails due to infrastructure errors.

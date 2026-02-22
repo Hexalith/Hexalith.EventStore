@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -19,6 +17,8 @@ using Microsoft.Extensions.Logging;
 using Shouldly;
 
 using CommandApiProgram = commandapi::Program;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorIntegrationTests.LogCapturingFactory> {
     private readonly LogCapturingFactory _factory;
@@ -48,7 +48,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
 
-        List<TestLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
+        var pipelineLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Message.Contains("MediatR pipeline"))
             .ToList();
 
@@ -82,7 +82,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Assert - request is rejected at HTTP level, so MediatR pipeline is never reached
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        List<TestLogEntry> pipelineLogs = _factory.LogProvider.GetEntries()
+        var pipelineLogs = _factory.LogProvider.GetEntries()
             .Where(e => e.Message.Contains("MediatR pipeline"))
             .ToList();
 
@@ -104,10 +104,10 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         };
 
         // Act
-        await _client.PostAsJsonAsync("/api/v1/commands", request);
+        _ = await _client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert - LoggingBehavior entry should appear before handler log
-        List<TestLogEntry> allLogs = _factory.LogProvider.GetEntries().ToList();
+        var allLogs = _factory.LogProvider.GetEntries().ToList();
 
         int loggingEntryIndex = allLogs.FindIndex(e => e.Message.Contains("MediatR pipeline entry"));
         int handlerIndex = allLogs.FindIndex(e => e.Message.Contains("Command received:"));
@@ -131,31 +131,29 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.ConfigureAppConfiguration(config => {
-                config.AddInMemoryCollection(new Dictionary<string, string?> {
-                    ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
-                    ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
-                    ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
-                    ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
-                });
-            });
-            builder.ConfigureServices(services => {
+            _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
+                ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
+                ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
+                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
+            }));
+            _ = builder.ConfigureServices(services => {
                 // Replace Dapr stores with InMemory for tests
                 ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(ICommandStatusStore));
                 if (statusDescriptor is not null) {
-                    services.Remove(statusDescriptor);
+                    _ = services.Remove(statusDescriptor);
                 }
 
-                services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
+                _ = services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
 
                 ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
                     d => d.ServiceType == typeof(ICommandArchiveStore));
                 if (archiveDescriptor is not null) {
-                    services.Remove(archiveDescriptor);
+                    _ = services.Remove(archiveDescriptor);
                 }
 
-                services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
+                _ = services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
 
                 TestServiceOverrides.ReplaceCommandRouter(services);
                 TestServiceOverrides.RemoveDaprHealthChecks(services);

@@ -1,6 +1,9 @@
-namespace Hexalith.EventStore.Testing.Tests.Fakes;
+
+using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Testing.Fakes;
+
+namespace Hexalith.EventStore.Testing.Tests.Fakes;
 
 public class InMemoryStateManagerTests {
     [Fact]
@@ -28,7 +31,7 @@ public class InMemoryStateManagerTests {
     public async Task GetStateAsync_throws_for_missing_key() {
         var sut = new InMemoryStateManager();
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => sut.GetStateAsync<int>("missing"));
+        _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => sut.GetStateAsync<int>("missing"));
     }
 
     [Fact]
@@ -47,7 +50,7 @@ public class InMemoryStateManagerTests {
     public async Task RemoveStateAsync_throws_for_missing_key() {
         var sut = new InMemoryStateManager();
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => sut.RemoveStateAsync("missing"));
+        _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => sut.RemoveStateAsync("missing"));
     }
 
     [Fact]
@@ -84,7 +87,7 @@ public class InMemoryStateManagerTests {
     public async Task TryGetStateAsync_returns_false_for_missing_key() {
         var sut = new InMemoryStateManager();
 
-        var result = await sut.TryGetStateAsync<int>("missing");
+        ConditionalValue<int> result = await sut.TryGetStateAsync<int>("missing");
 
         Assert.False(result.HasValue);
     }
@@ -94,7 +97,7 @@ public class InMemoryStateManagerTests {
         var sut = new InMemoryStateManager();
         await sut.SetStateAsync("key1", 99);
 
-        var result = await sut.TryGetStateAsync<int>("key1");
+        ConditionalValue<int> result = await sut.TryGetStateAsync<int>("key1");
 
         Assert.True(result.HasValue);
         Assert.Equal(99, result.Value);
@@ -106,7 +109,7 @@ public class InMemoryStateManagerTests {
         await sut.SetStateAsync("key1", 1);
         await sut.SaveStateAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.AddStateAsync("key1", 2));
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.AddStateAsync("key1", 2));
     }
 
     [Fact]

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Client.Tests.Registration;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
@@ -6,6 +5,8 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
 using Microsoft.Extensions.DependencyInjection;
+
+namespace Hexalith.EventStore.Client.Tests.Registration;
 
 public class ServiceCollectionExtensionsTests {
     private sealed class TestState {
@@ -25,13 +26,13 @@ public class ServiceCollectionExtensionsTests {
     public void AddEventStoreClient_RegistersIDomainProcessor() {
         var services = new ServiceCollection();
 
-        services.AddEventStoreClient<TestProcessor>();
+        _ = services.AddEventStoreClient<TestProcessor>();
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IDomainProcessor processor = provider.GetRequiredService<IDomainProcessor>();
 
         Assert.NotNull(processor);
-        Assert.IsType<TestProcessor>(processor);
+        _ = Assert.IsType<TestProcessor>(processor);
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public class ServiceCollectionExtensionsTests {
     [Fact]
     public void AddEventStoreClient_RegistersWithScopedLifetime() {
         var services = new ServiceCollection();
-        services.AddEventStoreClient<TestProcessor>();
+        _ = services.AddEventStoreClient<TestProcessor>();
 
         using ServiceProvider provider = services.BuildServiceProvider();
 
@@ -65,6 +66,6 @@ public class ServiceCollectionExtensionsTests {
     public void AddEventStoreClient_WithNullServices_ThrowsArgumentNullException() {
         IServiceCollection services = null!;
 
-        Assert.Throws<ArgumentNullException>(() => services.AddEventStoreClient<TestProcessor>());
+        _ = Assert.Throws<ArgumentNullException>(services.AddEventStoreClient<TestProcessor>);
     }
 }

@@ -1,6 +1,7 @@
-namespace Hexalith.EventStore.Contracts.Tests.Identity;
 
 using Hexalith.EventStore.Contracts.Identity;
+
+namespace Hexalith.EventStore.Contracts.Tests.Identity;
 
 public class IdentityParserTests {
     [Fact]
@@ -30,9 +31,7 @@ public class IdentityParserTests {
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order:extra")]
-    public void Parse_InvalidInput_ThrowsFormatException(string? input) {
-        Assert.Throws<FormatException>(() => IdentityParser.Parse(input!));
-    }
+    public void Parse_InvalidInput_ThrowsFormatException(string? input) => Assert.Throws<FormatException>(() => IdentityParser.Parse(input!));
 
     [Fact]
     public void TryParse_ValidCanonicalString_ReturnsTrueAndIdentity() {
@@ -95,7 +94,5 @@ public class IdentityParserTests {
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order-123")]
-    public void ParseStateStoreKey_InvalidKey_ThrowsFormatException(string? input) {
-        Assert.Throws<FormatException>(() => IdentityParser.ParseStateStoreKey(input!));
-    }
+    public void ParseStateStoreKey_InvalidKey_ThrowsFormatException(string? input) => Assert.Throws<FormatException>(() => IdentityParser.ParseStateStoreKey(input!));
 }

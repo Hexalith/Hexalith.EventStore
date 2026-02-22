@@ -1,10 +1,11 @@
-namespace Hexalith.EventStore.CommandApi.Validation;
 
 using System.Text.RegularExpressions;
 
 using FluentValidation;
 
 using Hexalith.EventStore.CommandApi.Models;
+
+namespace Hexalith.EventStore.CommandApi.Validation;
 
 public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCommandRequest> {
     private const int MaxExtensionEntries = 50;
@@ -22,28 +23,28 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
     private static readonly Regex _injectionPattern = InjectionPattern();
 
     public SubmitCommandRequestValidator() {
-        RuleFor(x => x.Tenant)
+        _ = RuleFor(x => x.Tenant)
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")
             .MaximumLength(128).WithMessage("Tenant cannot exceed 128 characters")
             .Matches(_tenantDomainRegex).WithMessage("Tenant must contain only lowercase alphanumeric characters and hyphens")
             .When(x => !string.IsNullOrEmpty(x.Tenant), ApplyConditionTo.CurrentValidator);
 
-        RuleFor(x => x.Domain)
+        _ = RuleFor(x => x.Domain)
             .NotNull().WithMessage("Domain is required")
             .NotEmpty().WithMessage("Domain cannot be empty")
             .MaximumLength(128).WithMessage("Domain cannot exceed 128 characters")
             .Matches(_tenantDomainRegex).WithMessage("Domain must contain only lowercase alphanumeric characters and hyphens")
             .When(x => !string.IsNullOrEmpty(x.Domain), ApplyConditionTo.CurrentValidator);
 
-        RuleFor(x => x.AggregateId)
+        _ = RuleFor(x => x.AggregateId)
             .NotNull().WithMessage("AggregateId is required")
             .NotEmpty().WithMessage("AggregateId cannot be empty")
             .MaximumLength(256).WithMessage("AggregateId cannot exceed 256 characters")
             .Matches(_aggregateIdRegex).WithMessage("AggregateId must contain only alphanumeric characters, dots, hyphens, and underscores")
             .When(x => !string.IsNullOrEmpty(x.AggregateId), ApplyConditionTo.CurrentValidator);
 
-        RuleFor(x => x.CommandType)
+        _ = RuleFor(x => x.CommandType)
             .NotNull().WithMessage("CommandType is required")
             .NotEmpty().WithMessage("CommandType cannot be empty")
             .MaximumLength(256).WithMessage("CommandType cannot exceed 256 characters")
@@ -51,11 +52,11 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .WithMessage("CommandType cannot contain dangerous characters (<, >, &, ', \")")
             .When(x => !string.IsNullOrEmpty(x.CommandType), ApplyConditionTo.CurrentValidator);
 
-        RuleFor(x => x.Payload)
+        _ = RuleFor(x => x.Payload)
             .Must(p => p.ValueKind != System.Text.Json.JsonValueKind.Undefined)
             .WithMessage("Payload is required");
 
-        RuleFor(x => x.Extensions)
+        _ = RuleFor(x => x.Extensions)
             .Must(ext => ext == null || ext.Count <= MaxExtensionEntries)
             .WithMessage($"Extensions dictionary cannot exceed {MaxExtensionEntries} entries")
             .Must(ext => ext == null || ext.All(kvp => kvp.Key.Length <= MaxExtensionKeyLength && kvp.Value.Length <= MaxExtensionValueLength))

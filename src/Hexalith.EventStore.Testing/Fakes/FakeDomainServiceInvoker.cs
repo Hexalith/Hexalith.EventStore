@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.DomainServices;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Fake implementation of <see cref="IDomainServiceInvoker"/> for unit testing.
 /// Allows configuring canned responses for specific command types or tenant+domain combinations.

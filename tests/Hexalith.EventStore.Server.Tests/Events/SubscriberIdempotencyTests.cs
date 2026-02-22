@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Client;
 
@@ -13,6 +12,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.3 Task 8: Subscriber idempotency contract tests.
 /// Verifies that CloudEvents id = "{correlationId}:{sequenceNumber}" is globally unique
@@ -38,9 +38,9 @@ public class SubscriberIdempotencyTests {
             Extensions: null);
 
     private static (EventPublisher Publisher, DaprClient DaprClient) CreatePublisher() {
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions());
-        var logger = Substitute.For<ILogger<EventPublisher>>();
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions());
+        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         var publisher = new EventPublisher(daprClient, options, logger);
         return (publisher, daprClient);
     }
@@ -52,7 +52,7 @@ public class SubscriberIdempotencyTests {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedMetadata = new List<Dictionary<string, string>>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
@@ -66,7 +66,7 @@ public class SubscriberIdempotencyTests {
         };
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, events, "corr-001");
+        _ = await publisher.PublishEventsAsync(TestIdentity, events, "corr-001");
 
         // Assert -- all ids are unique
         var ids = capturedMetadata.Select(m => m["cloudevent.id"]).ToList();
@@ -86,7 +86,7 @@ public class SubscriberIdempotencyTests {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
@@ -95,8 +95,8 @@ public class SubscriberIdempotencyTests {
         EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 5, correlationId: "corr-dedup");
 
         // Act -- publish the same event twice (simulating at-least-once redelivery)
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-dedup");
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-dedup");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-dedup");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-dedup");
 
         // Assert -- deterministic: same event = same id
         capturedIds.Count.ShouldBe(2);
@@ -112,7 +112,7 @@ public class SubscriberIdempotencyTests {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
@@ -126,7 +126,7 @@ public class SubscriberIdempotencyTests {
         };
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, events, "same-corr");
+        _ = await publisher.PublishEventsAsync(TestIdentity, events, "same-corr");
 
         // Assert
         capturedIds[0].ShouldNotBe(capturedIds[1],
@@ -142,7 +142,7 @@ public class SubscriberIdempotencyTests {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
@@ -152,8 +152,8 @@ public class SubscriberIdempotencyTests {
         EventEnvelope envelope2 = CreateTestEnvelope(sequenceNumber: 1, correlationId: "corr-B");
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope1], "corr-A");
-        await publisher.PublishEventsAsync(TestIdentity, [envelope2], "corr-B");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope1], "corr-A");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope2], "corr-B");
 
         // Assert
         capturedIds[0].ShouldNotBe(capturedIds[1],

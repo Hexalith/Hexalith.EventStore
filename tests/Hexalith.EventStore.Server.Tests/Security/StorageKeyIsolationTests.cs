@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -18,6 +17,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Comprehensive unit tests verifying storage key isolation between tenants (AC: #1, #2, #3, #4, #6, #9, #10).
 /// </summary>
@@ -113,29 +113,26 @@ public class StorageKeyIsolationTests {
     // --- 2.7: AggregateIdentity rejects tenant IDs containing colons (key injection prevention) ---
 
     [Fact]
-    public void AggregateIdentity_RejectsTenantIdWithColons() {
+    public void AggregateIdentity_RejectsTenantIdWithColons() =>
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant:injected", "orders", "order-001"));
-    }
 
     // --- 2.8: AggregateIdentity rejects domain names containing colons ---
 
     [Fact]
-    public void AggregateIdentity_RejectsDomainWithColons() {
+    public void AggregateIdentity_RejectsDomainWithColons() =>
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders:fake", "order-001"));
-    }
 
     // --- 2.9: AggregateIdentity rejects aggregate IDs containing colons ---
 
     [Fact]
-    public void AggregateIdentity_RejectsAggregateIdWithColons() {
+    public void AggregateIdentity_RejectsAggregateIdWithColons() =>
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", "order:injected"));
-    }
 
     // --- 2.10: Key prefix {tenantA}: never appears as a prefix of any key derived for {tenantB} ---
 
@@ -188,7 +185,7 @@ public class StorageKeyIsolationTests {
         var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
 
         // Act & Assert - assertion should fail for wrong tenant
-        Should.Throw<ShouldAssertException>(
+        _ = Should.Throw<ShouldAssertException>(
             () => StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(identity.EventStreamKeyPrefix, "tenant-b"));
     }
 
@@ -209,7 +206,7 @@ public class StorageKeyIsolationTests {
         var identityB = new AggregateIdentity("tenant-a", "inventory", "item-001");
 
         // Act & Assert - should fail (same tenant prefix)
-        Should.Throw<ShouldAssertException>(
+        _ = Should.Throw<ShouldAssertException>(
             () => StorageKeyIsolationAssertions.AssertKeysDisjoint(identityA.MetadataKey, identityB.MetadataKey));
     }
 
@@ -222,12 +219,12 @@ public class StorageKeyIsolationTests {
     public async Task CommandRouter_AlwaysUsesAggregateIdentityActorId(string tenant, string domain, string aggregateId) {
         // Arrange
         ActorId? capturedActorId = null;
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorId = id), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorId = id), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
@@ -242,10 +239,10 @@ public class StorageKeyIsolationTests {
             UserId: "test-user");
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert - ActorId matches AggregateIdentity.ActorId exactly
-        capturedActorId.ShouldNotBeNull();
+        _ = capturedActorId.ShouldNotBeNull();
         capturedActorId.ToString().ShouldBe(expectedIdentity.ActorId);
     }
 
@@ -281,29 +278,26 @@ public class StorageKeyIsolationTests {
     [Theory]
     [InlineData("tenant%3ainjected")]
     [InlineData("tenant%3Ainjected")]
-    public void AggregateIdentity_RejectsUrlEncodedColonsInTenant(string maliciousTenant) {
+    public void AggregateIdentity_RejectsUrlEncodedColonsInTenant(string maliciousTenant) =>
         // Act & Assert - % is not in allowed character set
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity(maliciousTenant, "orders", "order-001"));
-    }
 
     [Theory]
     [InlineData("orders%3afake")]
     [InlineData("orders%3Afake")]
-    public void AggregateIdentity_RejectsUrlEncodedColonsInDomain(string maliciousDomain) {
+    public void AggregateIdentity_RejectsUrlEncodedColonsInDomain(string maliciousDomain) =>
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", maliciousDomain, "order-001"));
-    }
 
     [Theory]
     [InlineData("order%3Ainjected")]
     [InlineData("order%3ainjected")]
-    public void AggregateIdentity_RejectsUrlEncodedColonsInAggregateId(string maliciousAggId) {
+    public void AggregateIdentity_RejectsUrlEncodedColonsInAggregateId(string maliciousAggId) =>
         // Act & Assert
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", maliciousAggId));
-    }
 
     // --- 2.16: NEGATIVE -- reading key for tenantB returns null from tenantA's actor state manager ---
 
@@ -312,8 +306,7 @@ public class StorageKeyIsolationTests {
         // Arrange - two separate state managers representing two different actor instances
         var stateManagerA = new InMemoryStateManager();
         var stateManagerB = new InMemoryStateManager();
-
-        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        _ = new AggregateIdentity("tenant-a", "orders", "order-001");
         var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
 
         // Write event to tenantB's state manager
@@ -381,21 +374,16 @@ public class StorageKeyIsolationTests {
     // --- Review fix H2: DEL character (0x7F) rejection test ---
 
     [Fact]
-    public void AggregateIdentity_RejectsDelCharacterInTenant() {
+    public void AggregateIdentity_RejectsDelCharacterInTenant() =>
         // DEL (0x7F) is a control character and must be rejected
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant\u007F", "orders", "order-001"));
-    }
 
     [Fact]
-    public void AggregateIdentity_RejectsDelCharacterInDomain() {
-        Should.Throw<ArgumentException>(
+    public void AggregateIdentity_RejectsDelCharacterInDomain() => Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders\u007F", "order-001"));
-    }
 
     [Fact]
-    public void AggregateIdentity_RejectsDelCharacterInAggregateId() {
-        Should.Throw<ArgumentException>(
+    public void AggregateIdentity_RejectsDelCharacterInAggregateId() => Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", "order\u007F001"));
-    }
 }

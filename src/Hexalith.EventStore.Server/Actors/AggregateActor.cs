@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Actors;
 
 using System.Diagnostics;
 
@@ -16,6 +15,7 @@ using Hexalith.EventStore.Server.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Aggregate actor -- thin orchestrator for command processing.
 /// Story 3.2: Implements 5-step delegation pipeline.
@@ -95,8 +95,8 @@ public partial class AggregateActor(
                         causationId,
                         command.CorrelationId,
                         Host.Id);
-                    activity?.SetStatus(ActivityStatusCode.Ok);
-                    processActivity?.SetStatus(ActivityStatusCode.Ok);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
+                    _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));
                     return cached;
                 }
 
@@ -118,7 +118,7 @@ public partial class AggregateActor(
 
                     if (existingPipeline.CurrentStage == CommandStatus.EventsStored) {
                         // Events already persisted (AC #2). Skip re-persistence, proceed to terminal.
-                        activity?.SetStatus(ActivityStatusCode.Ok);
+                        _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                         return await ResumeFromEventsStoredAsync(
                             command, causationId, existingPipeline, idempotencyChecker, stateMachine,
                             pipelineKeyPrefix, processActivity, startTicks).ConfigureAwait(false);
@@ -132,7 +132,7 @@ public partial class AggregateActor(
                     // Fall through to normal processing below
                 }
 
-                activity?.SetStatus(ActivityStatusCode.Ok);
+                _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             }
 
             // SEC-2 CRITICAL: This MUST execute before any state access (Step 3+) (F-PM2)
@@ -146,7 +146,7 @@ public partial class AggregateActor(
                     Host.LoggerFactory.CreateLogger<TenantValidator>());
                 try {
                     tenantValidator.Validate(command.TenantId, Host.Id.GetId());
-                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                 }
                 catch (TenantMismatchException ex) // F-PM4: catch specifically BEFORE any broader catch blocks
                 {
@@ -165,9 +165,9 @@ public partial class AggregateActor(
                     await idempotencyChecker.RecordAsync(causationId, rejectionResult).ConfigureAwait(false);
                     // F-PM7: This SaveStateAsync commits ONLY the idempotency rejection record.
                     await StateManager.SaveStateAsync().ConfigureAwait(false);
-                    activity?.AddException(ex);
-                    activity?.SetStatus(ActivityStatusCode.Error, "TenantMismatch");
-                    processActivity?.SetStatus(ActivityStatusCode.Error, "TenantMismatch");
+                    _ = (activity?.AddException(ex));
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, "TenantMismatch"));
+                    _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "TenantMismatch"));
                     return rejectionResult;
                 }
             }
@@ -238,11 +238,11 @@ public partial class AggregateActor(
                         Host.Id,
                         command.CorrelationId);
 
-                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
-                    activity?.AddException(ex);
-                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    _ = (activity?.AddException(ex));
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
                     // Story 4.5: State rehydration infrastructure failure -- dead-letter routing
                     return await HandleInfrastructureFailureAsync(
                         command, causationId, CommandStatus.Processing, ex,
@@ -271,11 +271,11 @@ public partial class AggregateActor(
                         Host.Id,
                         command.CorrelationId);
 
-                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
-                    activity?.AddException(ex);
-                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    _ = (activity?.AddException(ex));
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
                     // Story 4.5: Domain service invocation infrastructure failure -- dead-letter routing
                     return await HandleInfrastructureFailureAsync(
                         command, causationId, CommandStatus.Processing, ex,
@@ -354,11 +354,11 @@ public partial class AggregateActor(
                     LogStageTransition(CommandStatus.EventsStored, command, causationId, startTicks);
                     await WriteAdvisoryStatusAsync(command, CommandStatus.EventsStored).ConfigureAwait(false);
 
-                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException) {
-                    activity?.AddException(ex);
-                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    _ = (activity?.AddException(ex));
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
                     // Story 4.5: Event persistence infrastructure failure -- dead-letter routing
                     return await HandleInfrastructureFailureAsync(
                         command, causationId, CommandStatus.EventsStored, ex,
@@ -454,7 +454,7 @@ public partial class AggregateActor(
                 LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
                 await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
 
-                processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
+                _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed"));
                 return failResult;
             }
         }
@@ -481,10 +481,10 @@ public partial class AggregateActor(
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsDrain);
-        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
-        activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId);
-        activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain);
-        activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId);
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId));
 
         // Load the unpublished events record
         ConditionalValue<UnpublishedEventsRecord> recordResult = await StateManager
@@ -513,8 +513,8 @@ public partial class AggregateActor(
         }
 
         UnpublishedEventsRecord record = recordResult.Value;
-        activity?.SetTag("eventstore.retry_count", record.RetryCount);
-        activity?.SetTag(EventStoreActivitySource.TagEventCount, record.EventCount);
+        _ = (activity?.SetTag("eventstore.retry_count", record.RetryCount));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagEventCount, record.EventCount));
 
         logger.LogInformation(
             "Drain attempt starting: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
@@ -591,7 +591,7 @@ public partial class AggregateActor(
                     record.RetryCount,
                     record.EventCount);
 
-                activity?.SetStatus(ActivityStatusCode.Ok);
+                _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             }
             else {
                 // Failure: increment retry, save updated record, reminder continues
@@ -610,7 +610,7 @@ public partial class AggregateActor(
                     updatedRecord.RetryCount,
                     updatedRecord.EventCount);
 
-                activity?.SetStatus(ActivityStatusCode.Error, publishResult.FailureReason);
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, publishResult.FailureReason));
             }
         }
         catch (OperationCanceledException) {
@@ -633,7 +633,7 @@ public partial class AggregateActor(
                 identity.AggregateId,
                 updatedRecord.RetryCount);
 
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
         }
     }
 
@@ -654,17 +654,16 @@ public partial class AggregateActor(
 
     private async Task StoreDrainRecordAndRegisterReminderAsync(
         string correlationId,
-        UnpublishedEventsRecord record) {
+        UnpublishedEventsRecord record) =>
         // Stage the drain record (committed with the same SaveStateAsync batch)
         await StateManager.SetStateAsync(
             UnpublishedEventsRecord.GetStateKey(correlationId),
             record).ConfigureAwait(false);
-    }
 
     private async Task RegisterDrainReminderAsync(string correlationId) {
         try {
             (TimeSpan dueTime, TimeSpan period) = GetDrainReminderSchedule();
-            await RegisterReminderAsync(
+            _ = await RegisterReminderAsync(
                 UnpublishedEventsRecord.GetReminderName(correlationId),
                 null,
                 dueTime,
@@ -721,11 +720,11 @@ public partial class AggregateActor(
             return;
         }
 
-        activity.SetTag(EventStoreActivitySource.TagCorrelationId, command.CorrelationId);
-        activity.SetTag(EventStoreActivitySource.TagTenantId, command.TenantId);
-        activity.SetTag(EventStoreActivitySource.TagDomain, command.Domain);
-        activity.SetTag(EventStoreActivitySource.TagAggregateId, command.AggregateId);
-        activity.SetTag(EventStoreActivitySource.TagCommandType, command.CommandType);
+        _ = activity.SetTag(EventStoreActivitySource.TagCorrelationId, command.CorrelationId);
+        _ = activity.SetTag(EventStoreActivitySource.TagTenantId, command.TenantId);
+        _ = activity.SetTag(EventStoreActivitySource.TagDomain, command.Domain);
+        _ = activity.SetTag(EventStoreActivitySource.TagAggregateId, command.AggregateId);
+        _ = activity.SetTag(EventStoreActivitySource.TagCommandType, command.CommandType);
     }
 
     private static bool TryGetFallbackParentContext(CommandEnvelope command, out ActivityContext parentContext) {
@@ -737,7 +736,7 @@ public partial class AggregateActor(
             return false;
         }
 
-        command.Extensions.TryGetValue(TraceStateExtensionKey, out string? traceState);
+        _ = command.Extensions.TryGetValue(TraceStateExtensionKey, out string? traceState);
         return ActivityContext.TryParse(traceParent, traceState, out parentContext);
     }
 
@@ -1004,7 +1003,7 @@ public partial class AggregateActor(
         await WriteAdvisoryStatusAsync(command, CommandStatus.PublishFailed).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, CommandStatus.PublishFailed, startTicks);
 
-        processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed");
+        _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "PublishFailed"));
         return failResult;
     }
 
@@ -1020,8 +1019,8 @@ public partial class AggregateActor(
         int cursor = startSequence;
 
         while (cursor < startSequence + count) {
-            int batchSize = Math.Min(MaxConcurrentStateReads, (startSequence + count) - cursor);
-            var readTasks = Enumerable.Range(cursor, batchSize)
+            int batchSize = Math.Min(MaxConcurrentStateReads, startSequence + count - cursor);
+            Task<EventEnvelope>[] readTasks = Enumerable.Range(cursor, batchSize)
                 .Select(async seq => {
                     ConditionalValue<EventEnvelope> result = await StateManager
                         .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
@@ -1061,7 +1060,7 @@ public partial class AggregateActor(
         int? eventCount) {
         Log.InfrastructureFailure(logger, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, failureStage.ToString(), exception.GetType().Name, exception.Message);
 
-        DeadLetterMessage deadLetterMessage = DeadLetterMessage.FromException(
+        var deadLetterMessage = DeadLetterMessage.FromException(
             command, failureStage, exception, eventCount);
 
         // Best-effort dead-letter publication (AC #7) -- BEFORE SaveStateAsync (task 6.7)
@@ -1103,7 +1102,7 @@ public partial class AggregateActor(
 
         LogStageTransition(CommandStatus.Rejected, command, causationId, startTicks);
         LogCommandCompletedSummary(command, causationId, CommandStatus.Rejected, startTicks);
-        processActivity?.SetStatus(ActivityStatusCode.Error, "InfrastructureFailure");
+        _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "InfrastructureFailure"));
         return failResult;
     }
 
@@ -1148,7 +1147,7 @@ public partial class AggregateActor(
         await WriteAdvisoryStatusAsync(command, terminalStatus).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, terminalStatus, startTicks);
 
-        processActivity?.SetStatus(ActivityStatusCode.Ok);
+        _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));
         return result;
     }
 

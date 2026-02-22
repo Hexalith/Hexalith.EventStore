@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Storage representation of a persisted event in the actor state store.
 /// Contains 11 metadata fields plus the serialized payload.

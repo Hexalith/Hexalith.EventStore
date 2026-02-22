@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
@@ -10,6 +10,7 @@ using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 7.4 / AC #4: Tenant isolation tests.
 /// Validates tenant isolation at the actor and storage level.
@@ -43,7 +44,7 @@ public class ActorTenantIsolationTests {
             nameof(AggregateActor));
 
         for (int i = 0; i < 3; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)
@@ -59,7 +60,7 @@ public class ActorTenantIsolationTests {
             new ActorId($"tenant-b:counter:{aggregateId}"),
             nameof(AggregateActor));
 
-        var tenantBCommand = new CommandEnvelopeBuilder()
+        CommandEnvelope tenantBCommand = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-b")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)
@@ -106,7 +107,7 @@ public class ActorTenantIsolationTests {
         });
 
         // Actor ID is for tenant-a, but command claims tenant-b
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-b")
             .WithDomain("counter")
             .WithAggregateId("tenant-mismatch-test")
@@ -122,7 +123,7 @@ public class ActorTenantIsolationTests {
 
         // Assert - should be rejected due to tenant mismatch
         result.Accepted.ShouldBeFalse("Tenant mismatch should be rejected");
-        result.ErrorMessage.ShouldNotBeNull();
+        _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("tenant", Case.Insensitive);
     }
 }

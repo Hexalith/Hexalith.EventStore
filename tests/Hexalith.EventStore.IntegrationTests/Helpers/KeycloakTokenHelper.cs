@@ -1,8 +1,6 @@
-namespace Hexalith.EventStore.IntegrationTests.Helpers;
-
-using System.Net.Http;
 using System.Text.Json;
 
+namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// <summary>
 /// Acquires real OIDC tokens from Keycloak via Resource Owner Password Grant (D11).
 /// Used by E2E security tests to obtain JWT access tokens from a running Keycloak instance.
@@ -47,7 +45,7 @@ public static class KeycloakTokenHelper {
                 + $"Endpoint: {tokenEndpoint}. Response: {json}");
         }
 
-        using JsonDocument doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         return doc.RootElement.GetProperty("access_token").GetString()
             ?? throw new InvalidOperationException("Keycloak token response missing access_token");
     }

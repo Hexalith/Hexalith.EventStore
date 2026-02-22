@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.IntegrationTests.Events;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -15,6 +14,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.IntegrationTests.Events;
 /// <summary>
 /// Integration tests for event persistence using InMemoryStateManager.
 /// Tests round-trip: EventPersister writes -> EventStreamReader reads.
@@ -43,8 +43,8 @@ public class EventPersistenceIntegrationTests {
 
     private static (EventPersister Persister, EventStreamReader Reader, InMemoryStateManager StateManager) CreateComponents() {
         var stateManager = new InMemoryStateManager();
-        var persisterLogger = Substitute.For<ILogger<EventPersister>>();
-        var readerLogger = Substitute.For<ILogger<EventStreamReader>>();
+        ILogger<EventPersister> persisterLogger = Substitute.For<ILogger<EventPersister>>();
+        ILogger<EventStreamReader> readerLogger = Substitute.For<ILogger<EventStreamReader>>();
         return (
             new EventPersister(stateManager, persisterLogger),
             new EventStreamReader(stateManager, readerLogger),
@@ -56,7 +56,7 @@ public class EventPersistenceIntegrationTests {
     [Fact]
     public async Task PersistAndRead_FullPipeline_EventsHaveCorrectKeysAndMetadata() {
         // Arrange
-        (EventPersister persister, EventStreamReader reader, InMemoryStateManager stateManager) = CreateComponents();
+        (EventPersister persister, _, InMemoryStateManager stateManager) = CreateComponents();
         CommandEnvelope command = CreateTestCommand(correlationId: "corr-abc", causationId: "cause-xyz");
         var domainResult = DomainResult.Success(new IEventPayload[]
         {
@@ -64,7 +64,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act -- persist
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
         await stateManager.SaveStateAsync(); // Simulate AggregateActor atomic commit
 
         // Assert -- verify event stored at correct key
@@ -106,16 +106,16 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act -- persist both commands (simulating two actor turns)
-        await persister.PersistEventsAsync(TestIdentity, cmd1, result1, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, cmd1, result1, "v1");
         await stateManager.SaveStateAsync();
 
         // Second persist reads updated metadata
-        await persister.PersistEventsAsync(TestIdentity, cmd2, result2, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, cmd2, result2, "v1");
         await stateManager.SaveStateAsync();
 
         // Assert -- read all events via EventStreamReader
         RehydrationResult? rehydrationResult = await reader.RehydrateAsync(TestIdentity);
-        rehydrationResult.ShouldNotBeNull();
+        _ = rehydrationResult.ShouldNotBeNull();
         rehydrationResult.Events.Count.ShouldBe(3);
         rehydrationResult.Events[0].SequenceNumber.ShouldBe(1);
         rehydrationResult.Events[1].SequenceNumber.ShouldBe(2);
@@ -137,13 +137,13 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
         await stateManager.SaveStateAsync();
 
         RehydrationResult? rehydrationResult = await reader.RehydrateAsync(TestIdentity);
 
         // Assert
-        rehydrationResult.ShouldNotBeNull();
+        _ = rehydrationResult.ShouldNotBeNull();
         rehydrationResult.Events.Count.ShouldBe(3);
         rehydrationResult.Events[0].EventTypeName.ShouldContain("OrderCreated");
         rehydrationResult.Events[1].EventTypeName.ShouldContain("OrderItemAdded");
@@ -155,7 +155,7 @@ public class EventPersistenceIntegrationTests {
     [Fact]
     public async Task PersistEvents_BeforeSave_NotVisibleInCommittedState() {
         // Arrange
-        (EventPersister persister, EventStreamReader reader, InMemoryStateManager stateManager) = CreateComponents();
+        (EventPersister persister, _, InMemoryStateManager stateManager) = CreateComponents();
         CommandEnvelope command = CreateTestCommand();
         var domainResult = DomainResult.Success(new IEventPayload[]
         {
@@ -164,7 +164,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act -- persist but do NOT save yet
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
 
         // Assert -- committed state should not have events yet
         stateManager.CommittedState.ShouldNotContainKey("test-tenant:test-domain:agg-001:events:1");
@@ -190,7 +190,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act
-        await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
         await stateManager.SaveStateAsync();
 
         // Assert -- metadata committed with correct sequence

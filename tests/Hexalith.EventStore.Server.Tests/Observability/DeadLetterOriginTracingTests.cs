@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Observability;
 
 using System.Reflection;
 
@@ -30,6 +29,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>
 /// Story 6.3: Dead-letter-to-origin tracing tests.
 /// Verifies that a dead-letter message's correlation ID traces back through all pipeline stages
@@ -58,14 +58,14 @@ public class DeadLetterOriginTracingTests {
         CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var fakeDeadLetter = new FakeDeadLetterPublisher();
 
-        ActorHost host = ActorHost.CreateForTest<AggregateActor>(
+        var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
@@ -77,27 +77,27 @@ public class DeadLetterOriginTracingTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: no duplicates, no pipeline state, no metadata
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: domain service returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
         // Default: snapshot not found
-        snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
+        _ = snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
             .Returns((SnapshotRecord?)null);
 
         // Default: event rehydration returns empty
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(false, default!));
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -151,11 +151,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Simulated domain service infra failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter was published with correct correlation ID
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlMessages = fakeDeadLetter.GetDeadLetterMessages();
@@ -185,11 +185,11 @@ public class DeadLetterOriginTracingTests {
             aggregateId: "origin-agg",
             correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Simulated failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Log trail includes origin context (tenant, domain, commandType)
         IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
@@ -217,15 +217,15 @@ public class DeadLetterOriginTracingTests {
 
         // Configure existing aggregate metadata so rehydration is attempted
         var metadata = new AggregateMetadata(1, DateTimeOffset.UtcNow, null);
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
         // Event stream read throws
-        stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("State store unavailable"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter published
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlMessages = fakeDeadLetter.GetDeadLetterMessages();
@@ -247,12 +247,12 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new TestEvent()]));
 
         // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored)
         int saveCallCount = 0;
-        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(_ => {
                 saveCallCount++;
                 if (saveCallCount == 2) {
@@ -263,7 +263,7 @@ public class DeadLetterOriginTracingTests {
             });
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter published
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlMessages = fakeDeadLetter.GetDeadLetterMessages();
@@ -285,11 +285,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter published with matching correlation ID
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
@@ -312,11 +312,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: ALL logs that contain the CorrelationId field contain the CORRECT correlation ID
         IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
@@ -329,7 +329,7 @@ public class DeadLetterOriginTracingTests {
         logsWithCorrelation.ShouldNotBeEmpty();
 
         // Every log with CorrelationId= should have the correct value
-        foreach ((LogLevel _, string message) in logsWithCorrelation) {
+        foreach ((_, string message) in logsWithCorrelation) {
             message.Contains(correlationId, StringComparison.Ordinal).ShouldBeTrue(
                 $"Log message contains CorrelationId field but with wrong value: {message}");
         }
@@ -344,11 +344,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Even with only Information+ logs, the tracing chain is complete
         IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
@@ -371,11 +371,11 @@ public class DeadLetterOriginTracingTests {
         // Arrange: Test that LoggingBehavior's PipelineEntry log includes SourceIP
         var logEntries = new List<ObservabilityLogEntry>();
         var testLogger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation";
         httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("192.168.1.100");
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(testLogger, httpContextAccessor);
 
@@ -390,7 +390,7 @@ public class DeadLetterOriginTracingTests {
             Extensions: null);
 
         // Act
-        await behavior.Handle(
+        _ = await behavior.Handle(
             command,
             new RequestHandlerDelegate<SubmitCommandResult>((_) => Task.FromResult(new SubmitCommandResult("test-correlation"))),
             CancellationToken.None);
@@ -420,7 +420,7 @@ public class DeadLetterOriginTracingTests {
             tenantId: "tenant-a", domain: "orders", aggregateId: "agg-001",
             correlationId: correlationA);
 
-        invokerA.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invokerA.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Tenant A failure"));
 
         // Tenant B
@@ -431,12 +431,12 @@ public class DeadLetterOriginTracingTests {
             tenantId: "tenant-b", domain: "inventory", aggregateId: "agg-002",
             correlationId: correlationB);
 
-        invokerB.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invokerB.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Tenant B failure"));
 
         // Act
-        await actorA.ProcessCommandAsync(envelopeA);
-        await actorB.ProcessCommandAsync(envelopeB);
+        _ = await actorA.ProcessCommandAsync(envelopeA);
+        _ = await actorB.ProcessCommandAsync(envelopeB);
 
         // Assert: Each dead-letter traces back to correct tenant
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlA = fakeDeadLetterA.GetDeadLetterMessages();
@@ -473,7 +473,7 @@ public class DeadLetterOriginTracingTests {
             tenantId: "tenant-a", domain: "domain-x", aggregateId: "agg-a",
             correlationId: correlationA);
 
-        invokerA.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invokerA.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Fail A"));
 
         (AggregateActor actorB, _, _, IDomainServiceInvoker invokerB, FakeDeadLetterPublisher fakeDeadLetterB, _) =
@@ -483,18 +483,18 @@ public class DeadLetterOriginTracingTests {
             tenantId: "tenant-b", domain: "domain-y", aggregateId: "agg-b",
             correlationId: correlationB);
 
-        invokerB.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invokerB.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Fail B"));
 
         // Act
-        await actorA.ProcessCommandAsync(envelopeA);
-        await actorB.ProcessCommandAsync(envelopeB);
+        _ = await actorA.ProcessCommandAsync(envelopeA);
+        _ = await actorB.ProcessCommandAsync(envelopeB);
 
         // Assert: Dead-letter messages have correct, non-overlapping correlation IDs
-        fakeDeadLetterA.GetDeadLetterMessageByCorrelationId(correlationA).ShouldNotBeNull();
+        _ = fakeDeadLetterA.GetDeadLetterMessageByCorrelationId(correlationA).ShouldNotBeNull();
         fakeDeadLetterA.GetDeadLetterMessageByCorrelationId(correlationA)!.Value.Message.TenantId.ShouldBe("tenant-a");
 
-        fakeDeadLetterB.GetDeadLetterMessageByCorrelationId(correlationB).ShouldNotBeNull();
+        _ = fakeDeadLetterB.GetDeadLetterMessageByCorrelationId(correlationB).ShouldNotBeNull();
         fakeDeadLetterB.GetDeadLetterMessageByCorrelationId(correlationB)!.Value.Message.TenantId.ShouldBe("tenant-b");
 
         // Cross-check: No cross-talk
@@ -515,11 +515,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: null);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
@@ -537,11 +537,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: causationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Replay also failed"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
@@ -562,10 +562,10 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope originalEnvelope = CreateTestEnvelope(correlationId: sharedCorrelationId, causationId: null);
 
-        invoker1.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker1.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Original failure"));
 
-        await actor1.ProcessCommandAsync(originalEnvelope);
+        _ = await actor1.ProcessCommandAsync(originalEnvelope);
 
         // Second submission (replay) with same correlation, different causation
         (AggregateActor actor2, _, _, IDomainServiceInvoker invoker2, FakeDeadLetterPublisher fakeDeadLetter2, _) =
@@ -573,10 +573,10 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope replayEnvelope = CreateTestEnvelope(correlationId: sharedCorrelationId, causationId: replayCausationId);
 
-        invoker2.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker2.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Replay failure"));
 
-        await actor2.ProcessCommandAsync(replayEnvelope);
+        _ = await actor2.ProcessCommandAsync(replayEnvelope);
 
         // Assert: Both dead-letters share the same CorrelationId
         DeadLetterMessage dl1 = fakeDeadLetter1.GetDeadLetterMessages()[0].Message;
@@ -603,11 +603,11 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Infra failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Command status store received a write for this correlation ID with Rejected status
         await statusStore.Received().WriteStatusAsync(
@@ -634,14 +634,14 @@ public class DeadLetterOriginTracingTests {
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Infra failure"));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: The last status write is for Rejected terminal state
-        capturedStatus.ShouldNotBeNull("Status store should have received a status write");
+        _ = capturedStatus.ShouldNotBeNull("Status store should have received a status write");
         capturedStatus.Status.ShouldBe(CommandStatus.Rejected);
     }
 
@@ -656,9 +656,7 @@ public class DeadLetterOriginTracingTests {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new ObservabilityLogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new ObservabilityLogEntry(logLevel, formatter(state, exception)));
     }
 
     #endregion

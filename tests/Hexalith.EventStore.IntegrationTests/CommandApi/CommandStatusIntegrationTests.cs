@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -14,6 +12,8 @@ using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.Server.Commands;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
@@ -34,7 +34,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         HttpResponseMessage submitResponse = await client.PostAsJsonAsync("/api/v1/commands", request);
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>();
-        submitResult.ShouldNotBeNull();
+        _ = submitResult.ShouldNotBeNull();
 
         // Act - query status
         HttpResponseMessage statusResponse = await client.GetAsync(
@@ -43,7 +43,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         CommandStatusResponse? status = await statusResponse.Content.ReadFromJsonAsync<CommandStatusResponse>();
-        status.ShouldNotBeNull();
+        _ = status.ShouldNotBeNull();
         status.Status.ShouldBe("Received");
         status.StatusCode.ShouldBe(0);
         status.AggregateId.ShouldBe("agg-status-1");
@@ -83,7 +83,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         HttpResponseMessage submitResponse = await tenantAClient.PostAsJsonAsync("/api/v1/commands", request);
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>();
-        submitResult.ShouldNotBeNull();
+        _ = submitResult.ShouldNotBeNull();
 
         // Act - query status as tenant-b (SEC-3: should return 404, not 403)
         HttpClient tenantBClient = CreateAuthenticatedClient("tenant-b");
@@ -129,7 +129,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         CommandStatusResponse? status = await response.Content.ReadFromJsonAsync<CommandStatusResponse>();
-        status.ShouldNotBeNull();
+        _ = status.ShouldNotBeNull();
         status.Status.ShouldBe("Completed");
         status.EventCount.ShouldBe(3);
     }
@@ -236,11 +236,11 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
 
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>();
-        submitResult.ShouldNotBeNull();
+        _ = submitResult.ShouldNotBeNull();
 
         // Get the Location header
         string? locationHeader = submitResponse.Headers.Location?.ToString();
-        locationHeader.ShouldNotBeNull();
+        _ = locationHeader.ShouldNotBeNull();
         locationHeader.ShouldContain($"/api/v1/commands/status/{submitResult.CorrelationId}");
 
         // Act - verify the Location URL is accessible

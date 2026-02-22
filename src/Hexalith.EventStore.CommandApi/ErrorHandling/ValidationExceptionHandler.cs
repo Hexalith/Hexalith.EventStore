@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 using FluentValidation;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
+namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 /// <summary>
 /// Handles FluentValidation exceptions and converts them to RFC 7807 ProblemDetails.
 /// </summary>

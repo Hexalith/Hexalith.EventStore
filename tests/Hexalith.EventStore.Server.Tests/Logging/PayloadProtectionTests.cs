@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Logging;
 
 using System.Diagnostics;
 
@@ -15,8 +14,6 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
-using MediatR;
-
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -26,6 +23,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Logging;
 /// <summary>
 /// Verifies that payload data is never written to log output (SEC-5, NFR12).
 /// Tests both direct log messages and ToString() redaction.
@@ -54,9 +52,9 @@ public class PayloadProtectionTests : IDisposable {
     public async Task SubmitCommandHandler_NeverLogsPayloadData() {
         // Arrange
         var logger = new TestLogger<SubmitCommandHandler>(_logEntries);
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var archiveStore = Substitute.For<ICommandArchiveStore>();
-        var router = Substitute.For<ICommandRouter>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         var command = new SubmitCommand(
             Tenant: "test-tenant",
@@ -69,7 +67,7 @@ public class PayloadProtectionTests : IDisposable {
             Extensions: null);
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert - no log entry should contain raw payload bytes
         foreach (LogEntry entry in _logEntries) {
@@ -83,8 +81,8 @@ public class PayloadProtectionTests : IDisposable {
     public async Task EventPersister_NeverLogsPayloadData() {
         // Arrange
         var logger = new TestLogger<EventPersister>(_logEntries);
-        var stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
         var persister = new EventPersister(stateManager, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
@@ -101,7 +99,7 @@ public class PayloadProtectionTests : IDisposable {
         var domainResult = new DomainResult([new TestEvent()]);
 
         // Act
-        await persister.PersistEventsAsync(identity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(identity, command, domainResult, "v1");
 
         // Assert
         foreach (LogEntry entry in _logEntries) {
@@ -114,10 +112,10 @@ public class PayloadProtectionTests : IDisposable {
     public async Task LoggingBehavior_NeverLogsPayloadData() {
         // Arrange
         var logger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "corr-123";
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, httpContextAccessor);
         var command = new SubmitCommand(
             Tenant: "test-tenant",
@@ -128,10 +126,10 @@ public class PayloadProtectionTests : IDisposable {
             CorrelationId: "corr-123",
             UserId: "test-user",
             Extensions: null);
-        RequestHandlerDelegate<SubmitCommandResult> next = (_) => Task.FromResult(new SubmitCommandResult("corr-123"));
+        static Task<SubmitCommandResult> next(CancellationToken _ = default) => Task.FromResult(new SubmitCommandResult("corr-123"));
 
         // Act
-        await behavior.Handle(command, next, CancellationToken.None);
+        _ = await behavior.Handle(command, next, CancellationToken.None);
 
         // Assert
         foreach (LogEntry entry in _logEntries) {
@@ -191,9 +189,7 @@ public class PayloadProtectionTests : IDisposable {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 
     private record LogEntry(LogLevel Level, string Message);

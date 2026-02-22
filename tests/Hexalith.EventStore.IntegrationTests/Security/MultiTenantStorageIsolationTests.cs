@@ -1,4 +1,5 @@
-namespace Hexalith.EventStore.IntegrationTests.Security;
+
+using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -17,6 +18,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
 /// Component-level integration tests verifying multi-tenant storage isolation through
 /// the event persistence pipeline (AC: #1, #4, #5, #7, #9).
@@ -47,8 +49,8 @@ public class MultiTenantStorageIsolationTests {
 
     private static (EventPersister Persister, EventStreamReader Reader, InMemoryStateManager StateManager) CreatePipelineForTenant() {
         var stateManager = new InMemoryStateManager();
-        var persisterLogger = Substitute.For<ILogger<EventPersister>>();
-        var readerLogger = Substitute.For<ILogger<EventStreamReader>>();
+        ILogger<EventPersister> persisterLogger = Substitute.For<ILogger<EventPersister>>();
+        ILogger<EventStreamReader> readerLogger = Substitute.For<ILogger<EventStreamReader>>();
         return (
             new EventPersister(stateManager, persisterLogger),
             new EventStreamReader(stateManager, readerLogger),
@@ -75,10 +77,10 @@ public class MultiTenantStorageIsolationTests {
         });
 
         // Act
-        await persisterA.PersistEventsAsync(identityA, cmdA, domainResult, "v1");
+        _ = await persisterA.PersistEventsAsync(identityA, cmdA, domainResult, "v1");
         await stateManagerA.SaveStateAsync();
 
-        await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
         await stateManagerB.SaveStateAsync();
 
         // Assert - keys in each state manager are tenant-prefixed correctly
@@ -105,7 +107,7 @@ public class MultiTenantStorageIsolationTests {
     [Fact]
     public async Task TenantA_CannotAccess_TenantB_StateStoreKeys() {
         // Arrange - separate state managers simulate DAPR actor scope isolation
-        (EventPersister persisterA, EventStreamReader readerA, InMemoryStateManager stateManagerA) = CreatePipelineForTenant();
+        (_, EventStreamReader readerA, _) = CreatePipelineForTenant();
         (EventPersister persisterB, _, InMemoryStateManager stateManagerB) = CreatePipelineForTenant();
 
         var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
@@ -117,7 +119,7 @@ public class MultiTenantStorageIsolationTests {
         });
 
         // Persist events for tenant-b
-        await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
         await stateManagerB.SaveStateAsync();
 
         // Act - attempt to read tenant-b's events from tenant-a's state manager
@@ -154,7 +156,7 @@ public class MultiTenantStorageIsolationTests {
 
         // But tenant-a can see its own record
         CommandProcessingResult? checkFromA = await idempotencyA.CheckAsync(causationId);
-        checkFromA.ShouldNotBeNull();
+        _ = checkFromA.ShouldNotBeNull();
     }
 
     // --- 3.5: Full pipeline test -- submit commands for two tenants, verify complete key isolation ---
@@ -183,20 +185,20 @@ public class MultiTenantStorageIsolationTests {
         });
 
         // Act - persist events for both tenants
-        await persisterA.PersistEventsAsync(identityA, cmdA, resultA, "v1");
+        _ = await persisterA.PersistEventsAsync(identityA, cmdA, resultA, "v1");
         await stateManagerA.SaveStateAsync();
 
-        await persisterB.PersistEventsAsync(identityB, cmdB, resultB, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, cmdB, resultB, "v1");
         await stateManagerB.SaveStateAsync();
 
         // Assert - each tenant's reader only sees its own events
         RehydrationResult? stateA = await readerA.RehydrateAsync(identityA);
-        stateA.ShouldNotBeNull();
+        _ = stateA.ShouldNotBeNull();
         stateA.Events.Count.ShouldBe(2);
         stateA.Events.ShouldAllBe(e => e.TenantId == "tenant-a");
 
         RehydrationResult? stateB = await readerB.RehydrateAsync(identityB);
-        stateB.ShouldNotBeNull();
+        _ = stateB.ShouldNotBeNull();
         stateB.Events.Count.ShouldBe(1);
         stateB.Events.ShouldAllBe(e => e.TenantId == "tenant-b");
 
@@ -223,12 +225,12 @@ public class MultiTenantStorageIsolationTests {
             new OrderCreated("ORD-B", 500.00m),
         });
 
-        await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
         await stateManagerB.SaveStateAsync();
 
         // Act - explicitly try to read tenant-b's event key from tenant-a's state manager
         string tenantBEventKey = $"{identityB.EventStreamKeyPrefix}1";
-        var result = await stateManagerA.TryGetStateAsync<EventEnvelope>(tenantBEventKey);
+        ConditionalValue<EventEnvelope> result = await stateManagerA.TryGetStateAsync<EventEnvelope>(tenantBEventKey);
 
         // Assert
         result.HasValue.ShouldBeFalse();
@@ -250,7 +252,7 @@ public class MultiTenantStorageIsolationTests {
             new OrderCreated("ORD-A", 300.00m),
         });
 
-        await persisterA.PersistEventsAsync(identityA, cmdA, domainResult, "v1");
+        _ = await persisterA.PersistEventsAsync(identityA, cmdA, domainResult, "v1");
         await stateManagerA.SaveStateAsync();
 
         // Act - tenant-b attempts to read tenant-a's events

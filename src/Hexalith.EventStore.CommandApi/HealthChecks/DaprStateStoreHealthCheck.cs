@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.CommandApi.HealthChecks;
 
 using Dapr.Client;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+namespace Hexalith.EventStore.CommandApi.HealthChecks;
 /// <summary>
 /// Health check that verifies DAPR state store connectivity via a read-only sentinel key probe.
 /// </summary>

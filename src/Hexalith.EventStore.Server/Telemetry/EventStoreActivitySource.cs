@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Telemetry;
 
 using System.Diagnostics;
 
+namespace Hexalith.EventStore.Server.Telemetry;
 /// <summary>
 /// Provides a single static <see cref="ActivitySource"/> for OpenTelemetry distributed tracing
 /// across the EventStore actor pipeline. Following .NET OpenTelemetry conventions, all activities

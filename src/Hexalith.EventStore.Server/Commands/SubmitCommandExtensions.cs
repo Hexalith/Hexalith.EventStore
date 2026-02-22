@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Server.Commands;
 
 using System.Diagnostics;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
+namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// Extension methods for converting <see cref="SubmitCommand"/> to <see cref="CommandEnvelope"/>.
 /// </summary>
@@ -20,8 +20,8 @@ public static class SubmitCommandExtensions {
     public static CommandEnvelope ToCommandEnvelope(this SubmitCommand command) {
         ArgumentNullException.ThrowIfNull(command);
 
-        var extensions = command.Extensions is null
-            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        Dictionary<string, string> extensions = command.Extensions is null
+            ? [with(StringComparer.OrdinalIgnoreCase)]
             : new Dictionary<string, string>(command.Extensions, StringComparer.OrdinalIgnoreCase);
 
         if (Activity.Current is Activity current) {

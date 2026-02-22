@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Dapr.Actors.Runtime;
 
@@ -8,6 +7,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Manages aggregate state snapshots at configurable intervals.
 /// Snapshot creation is advisory -- failures never block command processing (rule #12).

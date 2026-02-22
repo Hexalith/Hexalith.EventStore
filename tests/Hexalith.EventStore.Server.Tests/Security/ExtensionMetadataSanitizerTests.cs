@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using Hexalith.EventStore.CommandApi.Configuration;
 using Hexalith.EventStore.CommandApi.Validation;
@@ -7,6 +6,7 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Story 5.4, Task 8: Extension metadata sanitizer tests (AC #3, #10).
 /// Validates size limits, character sets, and injection pattern detection.

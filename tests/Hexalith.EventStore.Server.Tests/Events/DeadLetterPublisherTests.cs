@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using System.Diagnostics;
 
@@ -18,6 +17,8 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
+
 public class DeadLetterPublisherTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
@@ -34,7 +35,7 @@ public class DeadLetterPublisherTests {
         Extensions: null);
 
     private static DeadLetterMessage CreateTestDeadLetterMessage(CommandEnvelope? command = null) {
-        var cmd = command ?? CreateTestEnvelope();
+        CommandEnvelope cmd = command ?? CreateTestEnvelope();
         return DeadLetterMessage.FromException(
             cmd,
             CommandStatus.Processing,
@@ -44,19 +45,19 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_Success_ReturnsTrueAndPublishesToCorrectTopic() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
         // Act
-        var result = await publisher.PublishDeadLetterAsync(identity, message);
+        bool result = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         result.ShouldBeTrue();
@@ -71,17 +72,17 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_Success_UsesCloudEventsMetadata() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var command = CreateTestEnvelope();
-        var message = CreateTestDeadLetterMessage(command);
+        CommandEnvelope command = CreateTestEnvelope();
+        DeadLetterMessage message = CreateTestDeadLetterMessage(command);
 
         Dictionary<string, string>? capturedMetadata = null;
         await daprClient.PublishEventAsync(
@@ -92,10 +93,10 @@ public class DeadLetterPublisherTests {
             Arg.Any<CancellationToken>());
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
-        capturedMetadata.ShouldNotBeNull();
+        _ = capturedMetadata.ShouldNotBeNull();
         capturedMetadata["cloudevent.type"].ShouldBe("deadletter.command.failed");
         capturedMetadata["cloudevent.source"].ShouldBe("eventstore/test-tenant/test-domain");
         capturedMetadata["cloudevent.id"].ShouldBe(message.CorrelationId);
@@ -105,19 +106,19 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_Success_TopicFollowsDeadLetterPattern() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(
@@ -131,8 +132,8 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_DaprThrows_ReturnsFalseNeverThrows() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.PublishEventAsync(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<DeadLetterMessage>(),
@@ -140,15 +141,15 @@ public class DeadLetterPublisherTests {
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Pub/sub unavailable"));
 
-        var options = Options.Create(new EventPublisherOptions());
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions());
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
         // Act
-        var result = await publisher.PublishDeadLetterAsync(identity, message);
+        bool result = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         result.ShouldBeFalse();
@@ -157,8 +158,8 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_DaprThrows_LogsError() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        daprClient.PublishEventAsync(
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<DeadLetterMessage>(),
@@ -166,16 +167,16 @@ public class DeadLetterPublisherTests {
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Pub/sub unavailable"));
 
-        var options = Options.Create(new EventPublisherOptions());
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions());
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var message = CreateTestDeadLetterMessage();
+        DeadLetterMessage message = CreateTestDeadLetterMessage();
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         logger.Received(1).Log(
@@ -189,16 +190,16 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_Success_CreatesOpenTelemetryActivity() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var command = CreateTestEnvelope();
+        CommandEnvelope command = CreateTestEnvelope();
         var message = DeadLetterMessage.FromException(
             command,
             CommandStatus.Processing,
@@ -217,11 +218,11 @@ public class DeadLetterPublisherTests {
         ActivitySource.AddActivityListener(listener);
 
         // Act
-        var result = await publisher.PublishDeadLetterAsync(identity, message);
+        bool result = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert
         result.ShouldBeTrue();
-        capturedActivity.ShouldNotBeNull();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.OperationName.ShouldBe(EventStoreActivitySource.EventsPublishDeadLetter);
         capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId)?.ToString()
             .ShouldBe(message.CorrelationId);
@@ -244,18 +245,18 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_NeverLogsCommandPayload() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions());
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions());
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        var command = CreateTestEnvelope();
-        var message = CreateTestDeadLetterMessage(command);
+        CommandEnvelope command = CreateTestEnvelope();
+        DeadLetterMessage message = CreateTestDeadLetterMessage(command);
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity, message);
+        _ = await publisher.PublishDeadLetterAsync(identity, message);
 
         // Assert - verify logs don't contain payload bytes
         logger.Received(1).Log(
@@ -269,25 +270,25 @@ public class DeadLetterPublisherTests {
     [Fact]
     public async Task PublishDeadLetter_MultiTenant_EachTenantGetsOwnDeadLetterTopic() {
         // Arrange
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
             PubSubName = "pubsub",
             DeadLetterTopicPrefix = "deadletter"
         });
-        var logger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        ILogger<DeadLetterPublisher> logger = Substitute.For<ILogger<DeadLetterPublisher>>();
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
 
         var identity1 = new AggregateIdentity("tenant-a", "orders", "agg-001");
-        var command1 = CreateTestEnvelope("tenant-a", "orders", "agg-001");
-        var message1 = CreateTestDeadLetterMessage(command1);
+        CommandEnvelope command1 = CreateTestEnvelope("tenant-a", "orders", "agg-001");
+        DeadLetterMessage message1 = CreateTestDeadLetterMessage(command1);
 
         var identity2 = new AggregateIdentity("tenant-b", "inventory", "agg-002");
-        var command2 = CreateTestEnvelope("tenant-b", "inventory", "agg-002");
-        var message2 = CreateTestDeadLetterMessage(command2);
+        CommandEnvelope command2 = CreateTestEnvelope("tenant-b", "inventory", "agg-002");
+        DeadLetterMessage message2 = CreateTestDeadLetterMessage(command2);
 
         // Act
-        await publisher.PublishDeadLetterAsync(identity1, message1);
-        await publisher.PublishDeadLetterAsync(identity2, message2);
+        _ = await publisher.PublishDeadLetterAsync(identity1, message1);
+        _ = await publisher.PublishDeadLetterAsync(identity2, message2);
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(

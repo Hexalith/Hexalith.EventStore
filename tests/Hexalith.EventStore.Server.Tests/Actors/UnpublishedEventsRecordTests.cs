@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using Hexalith.EventStore.Server.Actors;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 4.4 Task 10: UnpublishedEventsRecord unit tests.
 /// Verifies key format, reminder name, IncrementRetry, and construction (AC: #2).
@@ -90,7 +90,5 @@ public class UnpublishedEventsRecordTests {
     }
 
     [Fact]
-    public void StateKeyPrefix_IsCorrectValue() {
-        UnpublishedEventsRecord.StateKeyPrefix.ShouldBe("drain:");
-    }
+    public void StateKeyPrefix_IsCorrectValue() => UnpublishedEventsRecord.StateKeyPrefix.ShouldBe("drain:");
 }

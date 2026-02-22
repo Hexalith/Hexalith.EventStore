@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -18,6 +16,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 using CommandApiProgram = commandapi::Program;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
@@ -212,18 +212,16 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     [Fact]
     public async Task PostCommands_UnhandledException_Returns500ProblemDetailsWithoutStackTrace() {
         // Arrange - Override handler to simulate an unhandled exception
-        using WebApplicationFactory<CommandApiProgram> customFactory = factory.WithWebHostBuilder(builder => {
-            builder.ConfigureServices(services => {
-                ServiceDescriptor? handlerDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>));
-                if (handlerDescriptor is not null) {
-                    services.Remove(handlerDescriptor);
-                }
+        using WebApplicationFactory<CommandApiProgram> customFactory = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => {
+            ServiceDescriptor? handlerDescriptor = services.FirstOrDefault(
+                d => d.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>));
+            if (handlerDescriptor is not null) {
+                _ = services.Remove(handlerDescriptor);
+            }
 
-                services.AddTransient<IRequestHandler<SubmitCommand, SubmitCommandResult>>(
-                    _ => new ThrowingSubmitCommandHandler());
-            });
-        });
+            _ = services.AddTransient<IRequestHandler<SubmitCommand, SubmitCommandResult>>(
+                _ => new ThrowingSubmitCommandHandler());
+        }));
 
         HttpClient client = customFactory.CreateClient();
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"], domains: ["test-domain"]);

@@ -1,14 +1,15 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Commands;
 /// <summary>
 /// Story 7.4 / AC #2: Command routing integration tests.
 /// Validates command routing to correct aggregate actors via Dapr.
@@ -32,7 +33,7 @@ public class CommandRoutingIntegrationTests {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
-        var commandCounter = new CommandEnvelopeBuilder()
+        CommandEnvelope commandCounter = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId("domain-routing-test")
@@ -40,7 +41,7 @@ public class CommandRoutingIntegrationTests {
             .Build();
 
         // Another domain with the same aggregate ID
-        var commandOther = new CommandEnvelopeBuilder()
+        CommandEnvelope commandOther = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("inventory")
             .WithAggregateId("domain-routing-test")
@@ -78,7 +79,7 @@ public class CommandRoutingIntegrationTests {
         });
 
         string aggregateId = $"noop-test-{Guid.NewGuid():N}";
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)

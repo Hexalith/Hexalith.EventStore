@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.CommandApi.Models;
 
 using System.Xml;
 
 using Hexalith.EventStore.Contracts.Commands;
 
+namespace Hexalith.EventStore.CommandApi.Models;
 /// <summary>
 /// API response model for command status queries.
 /// </summary>

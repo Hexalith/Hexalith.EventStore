@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Configuration;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Configuration;
 /// <summary>
 /// Configuration options for event publication via DAPR pub/sub.
 /// Bound to configuration section "EventStore:Publisher".

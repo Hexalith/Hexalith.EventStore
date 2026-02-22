@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>
 /// Validates declarative subscription dead-letter configuration for Story 4.3 AC #3.
 /// </summary>

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 using System.Text.Json;
 
@@ -6,6 +5,8 @@ using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Validation;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class SubmitCommandRequestValidatorTests {
     private readonly SubmitCommandRequestValidator _validator = new();

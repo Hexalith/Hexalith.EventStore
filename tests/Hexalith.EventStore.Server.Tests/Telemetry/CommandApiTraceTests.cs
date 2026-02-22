@@ -32,7 +32,7 @@ public class CommandApiTraceTests {
         string correlationId = $"submit-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = CreateCommandApiListener((activity) => {
+        using ActivityListener listener = CreateCommandApiListener((activity) => {
             if (activity.OperationName == EventStoreActivitySources.Submit
                 && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                 capturedActivity = activity;
@@ -44,7 +44,7 @@ public class CommandApiTraceTests {
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = correlationId;
-        accessor.HttpContext.Returns(httpContext);
+        _ = accessor.HttpContext.Returns(httpContext);
 
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, accessor);
         var command = new SubmitCommand(
@@ -58,13 +58,13 @@ public class CommandApiTraceTests {
             Extensions: null);
 
         // Act
-        await behavior.Handle(
+        _ = await behavior.Handle(
             command,
             (_) => Task.FromResult(new SubmitCommandResult(correlationId)),
             CancellationToken.None);
 
         // Assert
-        capturedActivity.ShouldNotBeNull();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.Kind.ShouldBe(ActivityKind.Server);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
     }
@@ -75,7 +75,7 @@ public class CommandApiTraceTests {
         string correlationId = Guid.NewGuid().ToString();
         Activity? capturedActivity = null;
 
-        using var listener = CreateCommandApiListener((activity) => {
+        using ActivityListener listener = CreateCommandApiListener((activity) => {
             if (activity.OperationName == EventStoreActivitySources.QueryStatus
                 && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                 capturedActivity = activity;
@@ -83,7 +83,7 @@ public class CommandApiTraceTests {
         });
 
         ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
-        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+        _ = statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
             .Returns(new CommandStatusRecord(
                 CommandStatus.Completed,
                 DateTimeOffset.UtcNow,
@@ -93,7 +93,7 @@ public class CommandApiTraceTests {
                 FailureReason: null,
                 TimeoutDuration: null));
 
-        var logger = Substitute.For<ILogger<CommandStatusController>>();
+        ILogger<CommandStatusController> logger = Substitute.For<ILogger<CommandStatusController>>();
         var controller = new CommandStatusController(statusStore, logger) {
             ControllerContext = new ControllerContext {
                 HttpContext = CreateHttpContext(
@@ -106,8 +106,8 @@ public class CommandApiTraceTests {
         IActionResult action = await controller.GetStatus(correlationId, CancellationToken.None);
 
         // Assert
-        action.ShouldBeOfType<OkObjectResult>();
-        capturedActivity.ShouldNotBeNull();
+        _ = action.ShouldBeOfType<OkObjectResult>();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.Kind.ShouldBe(ActivityKind.Server);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
         capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("tenant-a");
@@ -119,7 +119,7 @@ public class CommandApiTraceTests {
         string correlationId = Guid.NewGuid().ToString();
         Activity? capturedActivity = null;
 
-        using var listener = CreateCommandApiListener((activity) => {
+        using ActivityListener listener = CreateCommandApiListener((activity) => {
             if (activity.OperationName == EventStoreActivitySources.QueryStatus
                 && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                 capturedActivity = activity;
@@ -127,10 +127,10 @@ public class CommandApiTraceTests {
         });
 
         ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
-        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+        _ = statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
             .Returns((CommandStatusRecord?)null);
 
-        var logger = Substitute.For<ILogger<CommandStatusController>>();
+        ILogger<CommandStatusController> logger = Substitute.For<ILogger<CommandStatusController>>();
         var controller = new CommandStatusController(statusStore, logger) {
             ControllerContext = new ControllerContext {
                 HttpContext = CreateHttpContext(
@@ -145,7 +145,7 @@ public class CommandApiTraceTests {
         // Assert
         ObjectResult result = action.ShouldBeOfType<ObjectResult>();
         result.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
-        capturedActivity.ShouldNotBeNull();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Error);
     }
 
@@ -155,7 +155,7 @@ public class CommandApiTraceTests {
         string correlationId = $"replay-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = CreateCommandApiListener((activity) => {
+        using ActivityListener listener = CreateCommandApiListener((activity) => {
             if (activity.OperationName == EventStoreActivitySources.Replay
                 && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                 capturedActivity = activity;
@@ -163,7 +163,7 @@ public class CommandApiTraceTests {
         });
 
         ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
-        archiveStore.ReadCommandAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+        _ = archiveStore.ReadCommandAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
             .Returns(new ArchivedCommand(
                 Tenant: "tenant-a",
                 Domain: "orders",
@@ -174,7 +174,7 @@ public class CommandApiTraceTests {
                 OriginalTimestamp: DateTimeOffset.UtcNow));
 
         ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
-        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+        _ = statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
             .Returns(new CommandStatusRecord(
                 CommandStatus.Rejected,
                 DateTimeOffset.UtcNow,
@@ -185,10 +185,10 @@ public class CommandApiTraceTests {
                 TimeoutDuration: null));
 
         IMediator mediator = Substitute.For<IMediator>();
-        mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult(correlationId));
 
-        var logger = Substitute.For<ILogger<ReplayController>>();
+        ILogger<ReplayController> logger = Substitute.For<ILogger<ReplayController>>();
         var controller = new ReplayController(archiveStore, statusStore, mediator, logger) {
             ControllerContext = new ControllerContext {
                 HttpContext = CreateHttpContext(
@@ -201,8 +201,8 @@ public class CommandApiTraceTests {
         IActionResult action = await controller.Replay(correlationId, CancellationToken.None);
 
         // Assert
-        action.ShouldBeOfType<AcceptedResult>();
-        capturedActivity.ShouldNotBeNull();
+        _ = action.ShouldBeOfType<AcceptedResult>();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.Kind.ShouldBe(ActivityKind.Server);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
         capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("tenant-a");
@@ -214,7 +214,7 @@ public class CommandApiTraceTests {
         string correlationId = $"conflict-{Guid.NewGuid()}";
         Activity? capturedActivity = null;
 
-        using var listener = CreateCommandApiListener((activity) => {
+        using ActivityListener listener = CreateCommandApiListener((activity) => {
             if (activity.OperationName == EventStoreActivitySources.Replay
                 && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
                 capturedActivity = activity;
@@ -222,7 +222,7 @@ public class CommandApiTraceTests {
         });
 
         ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
-        archiveStore.ReadCommandAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+        _ = archiveStore.ReadCommandAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
             .Returns(new ArchivedCommand(
                 Tenant: "tenant-a",
                 Domain: "orders",
@@ -233,7 +233,7 @@ public class CommandApiTraceTests {
                 OriginalTimestamp: DateTimeOffset.UtcNow));
 
         ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
-        statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
+        _ = statusStore.ReadStatusAsync("tenant-a", correlationId, Arg.Any<CancellationToken>())
             .Returns(new CommandStatusRecord(
                 CommandStatus.Completed,
                 DateTimeOffset.UtcNow,
@@ -244,7 +244,7 @@ public class CommandApiTraceTests {
                 TimeoutDuration: null));
 
         IMediator mediator = Substitute.For<IMediator>();
-        var logger = Substitute.For<ILogger<ReplayController>>();
+        ILogger<ReplayController> logger = Substitute.For<ILogger<ReplayController>>();
 
         var controller = new ReplayController(archiveStore, statusStore, mediator, logger) {
             ControllerContext = new ControllerContext {
@@ -260,7 +260,7 @@ public class CommandApiTraceTests {
         // Assert
         ObjectResult result = action.ShouldBeOfType<ObjectResult>();
         result.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
-        capturedActivity.ShouldNotBeNull();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Error);
     }
 

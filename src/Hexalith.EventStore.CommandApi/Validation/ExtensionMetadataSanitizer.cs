@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Validation;
 
 using System.Text;
 using System.Text.RegularExpressions;
@@ -7,6 +6,7 @@ using Hexalith.EventStore.CommandApi.Configuration;
 
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.CommandApi.Validation;
 /// <summary>
 /// Sanitizes extension metadata at the API gateway to prevent injection attacks (SEC-4).
 /// Validates size limits, character sets, and injection patterns.
@@ -88,7 +88,7 @@ public partial class ExtensionMetadataSanitizer(IOptions<ExtensionMetadataOption
     private static bool ContainsControlCharacters(string value) {
         foreach (char c in value) {
             // Reject control characters \x00-\x1F except \t (0x09), \n (0x0A), \r (0x0D)
-            if (c < 0x20 && c != '\t' && c != '\n' && c != '\r') {
+            if (c is < (char)0x20 and not '\t' and not '\n' and not '\r') {
                 return true;
             }
         }

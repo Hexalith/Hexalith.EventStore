@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.DomainServices;
 
 using Hexalith.EventStore.Contracts.Commands;
 
+namespace Hexalith.EventStore.Server.DomainServices;
 /// <summary>
 /// DTO payload sent to the domain service via DAPR service invocation.
 /// </summary>

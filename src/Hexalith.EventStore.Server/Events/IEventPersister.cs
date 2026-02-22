@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Persists domain events to the actor state store using write-once keys with gapless sequence numbers.
 /// </summary>

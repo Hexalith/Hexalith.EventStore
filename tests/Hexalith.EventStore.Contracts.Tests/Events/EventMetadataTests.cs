@@ -1,11 +1,14 @@
-namespace Hexalith.EventStore.Contracts.Tests.Events;
+
+using System.Reflection;
 
 using Hexalith.EventStore.Contracts.Events;
+
+namespace Hexalith.EventStore.Contracts.Tests.Events;
 
 public class EventMetadataTests {
     [Fact]
     public void Constructor_WithValidInputs_CreatesInstance() {
-        var timestamp = DateTimeOffset.UtcNow;
+        DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var metadata = new EventMetadata(
             AggregateId: "order-123",
             TenantId: "acme",
@@ -34,7 +37,7 @@ public class EventMetadataTests {
 
     [Fact]
     public void EventMetadata_HasExactly11Fields() {
-        var properties = typeof(EventMetadata).GetProperties();
+        PropertyInfo[] properties = typeof(EventMetadata).GetProperties();
         Assert.Equal(11, properties.Length);
     }
 
@@ -42,10 +45,8 @@ public class EventMetadataTests {
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(long.MinValue)]
-    public void Constructor_WithSequenceNumberLessThan1_ThrowsArgumentOutOfRangeException(long sequenceNumber) {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
+    public void Constructor_WithSequenceNumberLessThan1_ThrowsArgumentOutOfRangeException(long sequenceNumber) => Assert.Throws<ArgumentOutOfRangeException>(() =>
             new EventMetadata("agg1", "t1", "d1", sequenceNumber, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", "json"));
-    }
 
     [Theory]
     [InlineData(1)]

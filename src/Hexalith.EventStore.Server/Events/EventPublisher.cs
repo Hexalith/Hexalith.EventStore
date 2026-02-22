@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using System.Diagnostics;
 
@@ -11,6 +10,7 @@ using Hexalith.EventStore.Server.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Publishes persisted events to DAPR pub/sub with CloudEvents 1.0 metadata (FR17).
 /// Uses DaprClient.PublishEventAsync which natively wraps data in CloudEvents format.
@@ -53,12 +53,12 @@ public partial class EventPublisher(
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPublish, ActivityKind.Producer);
-        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
-        activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId);
-        activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain);
-        activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId);
-        activity?.SetTag(EventStoreActivitySource.TagEventCount, events.Count);
-        activity?.SetTag(EventStoreActivitySource.TagTopic, topic);
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagEventCount, events.Count));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagTopic, topic));
 
         long startTicks = Stopwatch.GetTimestamp();
         int publishedCount = 0;
@@ -89,7 +89,7 @@ public partial class EventPublisher(
             // Rule #9: correlationId in every structured log entry.
             Log.EventsPublished(logger, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, events.Count, topic, durationMs);
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             return new EventPublishResult(true, publishedCount, null);
         }
         catch (OperationCanceledException) {
@@ -100,8 +100,8 @@ public partial class EventPublisher(
             // Rule #5: Never log event payload data.
             Log.EventPublicationFailed(logger, ex, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, topic, publishedCount, events.Count);
 
-            activity?.AddException(ex);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _ = (activity?.AddException(ex));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
             return new EventPublishResult(false, publishedCount, ex.Message);
         }
     }

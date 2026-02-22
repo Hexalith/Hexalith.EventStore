@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using System.Reflection;
 
@@ -23,6 +22,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 4.1 Task 7: AggregateActor publication integration tests.
 /// Verifies state machine transitions with EventPublisher integration.
@@ -43,12 +43,12 @@ public class EventPublicationIntegrationTests {
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor() {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
@@ -57,23 +57,23 @@ public class EventPublicationIntegrationTests {
         prop?.SetValue(actor, stateManager);
 
         // Default: no idempotency record
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // Default: no metadata (new aggregate)
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         // Default: no pipeline state
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // Default: domain returns NoOp
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
         // Default: event publisher succeeds
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -90,7 +90,7 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -106,7 +106,7 @@ public class EventPublicationIntegrationTests {
             Arg.Any<CancellationToken>());
 
         // EventPublisher was called
-        await eventPublisher.Received(1).PublishEventsAsync(
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-pub-test",
@@ -126,9 +126,9 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -157,7 +157,7 @@ public class EventPublicationIntegrationTests {
     public async Task ProcessCommand_NoOp_SkipsPublication_TransitionsDirectlyToCompleted() {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -168,7 +168,7 @@ public class EventPublicationIntegrationTests {
         result.EventCount.ShouldBe(0);
 
         // EventPublisher should NOT be called for no-op
-        await eventPublisher.DidNotReceive().PublishEventsAsync(
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -182,7 +182,7 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new IRejectionEvent[] { new TestRejectionEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -193,7 +193,7 @@ public class EventPublicationIntegrationTests {
         result.ErrorMessage!.ShouldContain("Domain rejection");
 
         // EventPublisher WAS called with the rejection events
-        await eventPublisher.Received(1).PublishEventsAsync(
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1),
             Arg.Any<string>(),
@@ -207,9 +207,9 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -219,10 +219,10 @@ public class EventPublicationIntegrationTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- pipeline state was cleaned up (TryRemoveStateAsync called for pipeline key)
-        await stateManager.Received().TryRemoveStateAsync(
+        _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
     }
@@ -234,11 +234,11 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- advisory EventsPublished status written
         await statusStore.Received().WriteStatusAsync(
@@ -254,9 +254,9 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
 
-        eventPublisher.PublishEventsAsync(
+        _ = eventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -266,7 +266,7 @@ public class EventPublicationIntegrationTests {
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- advisory PublishFailed status written
         await statusStore.Received().WriteStatusAsync(
@@ -282,11 +282,11 @@ public class EventPublicationIntegrationTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         var stageCheckpoints = new List<CommandStatus>();
-        stateManager.SetStateAsync(
+        _ = stateManager.SetStateAsync(
             Arg.Any<string>(),
             Arg.Any<PipelineState>(),
             Arg.Any<CancellationToken>())
@@ -294,7 +294,7 @@ public class EventPublicationIntegrationTests {
             .AndDoes(ci => stageCheckpoints.Add(ci.ArgAt<PipelineState>(1).CurrentStage));
 
         // Act
-        await actor.ProcessCommandAsync(envelope);
+        _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- checkpoints were staged in order (Processing, EventsStored, EventsPublished)
         // Note: CleanupPipelineAsync removes the pipeline state at the end, so we check the staged order

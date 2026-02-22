@@ -1,9 +1,10 @@
-namespace Hexalith.EventStore.Client.Tests.Handlers;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+
+namespace Hexalith.EventStore.Client.Tests.Handlers;
 
 public class DomainProcessorTests {
     private sealed class TestState {
@@ -30,13 +31,10 @@ public class DomainProcessorTests {
     }
 
     private sealed class DirectProcessor : IDomainProcessor {
-        public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
-            return Task.FromResult(DomainResult.NoOp());
-        }
+        public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) => Task.FromResult(DomainResult.NoOp());
     }
 
-    private static CommandEnvelope CreateTestCommand() {
-        return new CommandEnvelope(
+    private static CommandEnvelope CreateTestCommand() => new(
             TenantId: "tenant-1",
             Domain: "test-domain",
             AggregateId: "agg-1",
@@ -46,7 +44,6 @@ public class DomainProcessorTests {
             CausationId: null,
             UserId: "user-1",
             Extensions: null);
-    }
 
     [Fact]
     public async Task DirectProcessor_ProcessAsync_ReturnsDomainResult() {
@@ -67,7 +64,7 @@ public class DomainProcessorTests {
         DomainResult result = await processor.ProcessAsync(command, state);
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Events);
+        _ = Assert.Single(result.Events);
         Assert.Same(state, processor.CapturedState);
     }
 
@@ -87,7 +84,7 @@ public class DomainProcessorTests {
     public async Task DomainProcessorBase_WithNullCommand_ThrowsArgumentNullException() {
         var processor = new StateCapturingProcessor();
 
-        await Assert.ThrowsAsync<ArgumentNullException>(
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(
             () => processor.ProcessAsync(null!, null));
     }
 

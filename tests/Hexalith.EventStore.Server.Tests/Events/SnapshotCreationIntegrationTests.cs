@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Actors.Runtime;
 
@@ -14,6 +13,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Integration tests for snapshot creation within the event persistence pipeline.
 /// Uses InMemoryStateManager for real actor state behavior (pending/committed semantics).
@@ -23,8 +23,8 @@ public class SnapshotCreationIntegrationTests {
 
     private static (SnapshotManager SnapshotManager, InMemoryStateManager StateManager) CreateComponents(
         int defaultInterval = 100) {
-        var options = Options.Create(new SnapshotOptions { DefaultInterval = defaultInterval });
-        var logger = Substitute.For<ILogger<SnapshotManager>>();
+        IOptions<SnapshotOptions> options = Options.Create(new SnapshotOptions { DefaultInterval = defaultInterval });
+        ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
         var stateManager = new InMemoryStateManager();
         return (new SnapshotManager(options, logger), stateManager);
     }
@@ -211,7 +211,7 @@ public class SnapshotCreationIntegrationTests {
         SnapshotRecord? loaded = await snapshotManager.LoadSnapshotAsync(TestIdentity, stateManager);
 
         // Assert
-        loaded.ShouldNotBeNull();
+        _ = loaded.ShouldNotBeNull();
         loaded.SequenceNumber.ShouldBe(10);
         loaded.Domain.ShouldBe("test-domain");
         loaded.AggregateId.ShouldBe("agg-001");

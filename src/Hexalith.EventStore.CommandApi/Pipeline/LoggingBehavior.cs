@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Pipeline;
 
 using System.Diagnostics;
 
@@ -9,9 +8,7 @@ using Hexalith.EventStore.Server.Telemetry;
 
 using MediatR;
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-
+namespace Hexalith.EventStore.CommandApi.Pipeline;
 /// <summary>
 /// Outermost MediatR pipeline behavior that logs structured entry/exit with correlation ID,
 /// command metadata, and duration. Also creates OpenTelemetry activities for tracing.
@@ -44,10 +41,10 @@ public partial class LoggingBehavior<TRequest, TResponse>(
             EventStoreActivitySources.Submit,
             ActivityKind.Server);
         if (activity is not null) {
-            activity.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
-            activity.SetTag(EventStoreActivitySource.TagTenantId, tenant);
-            activity.SetTag(EventStoreActivitySource.TagDomain, domain);
-            activity.SetTag(EventStoreActivitySource.TagCommandType, commandType);
+            _ = activity.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+            _ = activity.SetTag(EventStoreActivitySource.TagTenantId, tenant);
+            _ = activity.SetTag(EventStoreActivitySource.TagDomain, domain);
+            _ = activity.SetTag(EventStoreActivitySource.TagCommandType, commandType);
         }
 
         Log.PipelineEntry(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, sourceIp);
@@ -59,7 +56,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
 
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            _ = (activity?.SetStatus(ActivityStatusCode.Ok));
 
             Log.PipelineExit(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, elapsed.TotalMilliseconds);
 
@@ -68,8 +65,8 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         catch (Exception ex) {
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
-            activity?.AddException(ex);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _ = (activity?.AddException(ex));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
 
             Log.PipelineError(logger, ex, correlationId, causationId, commandType, tenant, domain, aggregateId, ex.GetType().Name, ex.Message, elapsed.TotalMilliseconds);
 

@@ -1,12 +1,12 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using System.Diagnostics;
 
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class SubmitCommandExtensionsTests {
     private const string TestActivitySourceName = "Hexalith.EventStore.Tests.SubmitCommandExtensions";
@@ -30,7 +30,7 @@ public class SubmitCommandExtensionsTests {
         SubmitCommand command = CreateTestCommand(extensions: extensions);
 
         // Act
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         // Assert
         envelope.TenantId.ShouldBe("test-tenant");
@@ -39,7 +39,7 @@ public class SubmitCommandExtensionsTests {
         envelope.CommandType.ShouldBe("CreateOrder");
         envelope.Payload.ShouldBe([1, 2, 3]);
         envelope.CorrelationId.ShouldBe("corr-123");
-        envelope.Extensions.ShouldNotBeNull();
+        _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions["key"].ShouldBe("value");
     }
 
@@ -49,7 +49,7 @@ public class SubmitCommandExtensionsTests {
         SubmitCommand command = CreateTestCommand(extensions: null);
 
         // Act
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         // Assert
         envelope.Extensions.ShouldBeNull();
@@ -61,18 +61,17 @@ public class SubmitCommandExtensionsTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         // Assert
         envelope.CausationId.ShouldBe(command.CorrelationId);
     }
 
     [Fact]
-    public void ToCommandEnvelope_NullCommand_ThrowsArgumentNullException() {
+    public void ToCommandEnvelope_NullCommand_ThrowsArgumentNullException() =>
         // Act & Assert
         Should.Throw<ArgumentNullException>(
             () => SubmitCommandExtensions.ToCommandEnvelope(null!));
-    }
 
     [Fact]
     public void ToCommandEnvelope_UserId_MapsFromCommand() {
@@ -80,7 +79,7 @@ public class SubmitCommandExtensionsTests {
         SubmitCommand command = CreateTestCommand(userId: "jwt-sub-user");
 
         // Act
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         // Assert
         envelope.UserId.ShouldBe("jwt-sub-user");
@@ -100,10 +99,10 @@ public class SubmitCommandExtensionsTests {
 
         // Act
         using Activity? activity = activitySource.StartActivity("test", ActivityKind.Internal);
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         // Assert
-        envelope.Extensions.ShouldNotBeNull();
+        _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions.ContainsKey("traceparent").ShouldBeTrue();
         envelope.Extensions["traceparent"].ShouldNotBeNullOrWhiteSpace();
     }
@@ -126,10 +125,10 @@ public class SubmitCommandExtensionsTests {
 
         // Act
         using Activity? activity = activitySource.StartActivity("test", ActivityKind.Internal);
-        CommandEnvelope envelope = command.ToCommandEnvelope();
+        var envelope = command.ToCommandEnvelope();
 
         // Assert
-        envelope.Extensions.ShouldNotBeNull();
+        _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions["custom"].ShouldBe("value");
         envelope.Extensions["traceparent"].ShouldBe(activity?.Id);
     }

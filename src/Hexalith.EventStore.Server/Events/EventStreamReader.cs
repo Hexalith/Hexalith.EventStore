@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using System.Diagnostics;
 
@@ -8,6 +7,7 @@ using Hexalith.EventStore.Contracts.Identity;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Reads events from the actor state store and rehydrates aggregate state.
 /// Supports snapshot-aware rehydration: when a snapshot is provided, only tail events
@@ -91,7 +91,7 @@ public partial class EventStreamReader(
         // Load events using parallel reads (F5: NFR6 performance)
         string keyPrefix = identity.EventStreamKeyPrefix;
 
-        var loadTasks = Enumerable.Range(startSequence, eventCount)
+        Task<(int Sequence, EventEnvelope Event)>[] loadTasks = Enumerable.Range(startSequence, eventCount)
             .Select(async seq => {
                 ConditionalValue<EventEnvelope> eventResult;
                 try {
@@ -111,7 +111,7 @@ public partial class EventStreamReader(
             })
             .ToArray();
 
-        var loadedEvents = await Task.WhenAll(loadTasks).ConfigureAwait(false);
+        (int Sequence, EventEnvelope Event)[] loadedEvents = await Task.WhenAll(loadTasks).ConfigureAwait(false);
 
         // Sort by sequence to ensure strict order (AC #9)
         var events = loadedEvents

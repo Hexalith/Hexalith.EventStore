@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Events;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Fake implementation of <see cref="IEventPersister"/> for unit testing.
 /// Stores persisted events in memory for test assertions and supports configurable failure.

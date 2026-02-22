@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Testing.Assertions;
 
 using Hexalith.EventStore.Contracts.Identity;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Testing.Assertions;
 /// <summary>
 /// Static assertion helpers for verifying storage key isolation between tenants.
 /// These are test-only utilities -- NOT production runtime guards.
@@ -47,7 +47,7 @@ public static class StorageKeyIsolationAssertions {
     /// <param name="identity">The AggregateIdentity that should have produced this key.</param>
     public static void AssertEventStreamKey(string key, AggregateIdentity identity) {
         key.ShouldNotBeNullOrEmpty();
-        identity.ShouldNotBeNull();
+        _ = identity.ShouldNotBeNull();
 
         key.ShouldStartWith(identity.EventStreamKeyPrefix);
 

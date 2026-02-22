@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Controllers;
 
 using System.Text.Json;
 
@@ -11,6 +10,8 @@ using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+namespace Hexalith.EventStore.CommandApi.Controllers;
 
 [ApiController]
 [Authorize]
@@ -44,7 +45,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             return CreateForbiddenProblemDetails("User is not authenticated.", correlationId, request.Tenant);
         }
 
-        List<string> tenantClaims = User.FindAll("eventstore:tenant")
+        var tenantClaims = User.FindAll("eventstore:tenant")
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();

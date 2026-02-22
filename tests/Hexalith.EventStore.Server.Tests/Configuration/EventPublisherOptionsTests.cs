@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>
 /// Story 4.3 Task 10: EventPublisherOptions dead-letter topic configuration tests.
 /// Verifies dead-letter topic naming convention: {prefix}.{tenantId}.{domain}.events
@@ -74,7 +74,7 @@ public class EventPublisherOptionsTests {
         var options = new EventPublisherOptions();
 
         // Act & Assert
-        Should.Throw<ArgumentNullException>(() => options.GetDeadLetterTopic(null!));
+        _ = Should.Throw<ArgumentNullException>(() => options.GetDeadLetterTopic(null!));
     }
 
     [Fact]

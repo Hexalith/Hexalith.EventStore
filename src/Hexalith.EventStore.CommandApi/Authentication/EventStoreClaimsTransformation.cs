@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.CommandApi.Authentication;
 
 using System.Security.Claims;
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Authentication;
 
+namespace Hexalith.EventStore.CommandApi.Authentication;
 /// <summary>
 /// Transforms JWT claims into normalized eventstore:* claims for downstream authorization.
 /// Extracts tenant, domain, and permission information from JWT custom claims.

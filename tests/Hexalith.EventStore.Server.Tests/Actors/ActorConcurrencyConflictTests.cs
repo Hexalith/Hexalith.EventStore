@@ -1,14 +1,15 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 7.4 / AC #3: Optimistic concurrency conflict detection tests.
 /// Validates ETag-based concurrency conflict detection on aggregate metadata key.
@@ -40,7 +41,7 @@ public class ActorConcurrencyConflictTests {
 
         // Act - send multiple commands sequentially
         for (int i = 0; i < 5; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)
@@ -75,7 +76,7 @@ public class ActorConcurrencyConflictTests {
         // Act - fire multiple commands as quickly as possible
         var tasks = new List<Task<CommandProcessingResult>>();
         for (int i = 0; i < 3; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)

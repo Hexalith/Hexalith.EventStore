@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
 
+namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// Abstraction for command archive read/write operations against a state store.
 /// </summary>

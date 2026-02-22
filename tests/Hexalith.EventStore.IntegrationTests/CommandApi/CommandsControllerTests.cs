@@ -1,17 +1,18 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 using commandapi::Hexalith.EventStore.CommandApi.Models;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
@@ -35,11 +36,11 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
 
         SubmitCommandResponse? body = await response.Content.ReadFromJsonAsync<SubmitCommandResponse>();
-        body.ShouldNotBeNull();
+        _ = body.ShouldNotBeNull();
         body.CorrelationId.ShouldNotBeNullOrEmpty();
         Guid.TryParse(body.CorrelationId, out _).ShouldBeTrue();
 
-        response.Headers.Location.ShouldNotBeNull();
+        _ = response.Headers.Location.ShouldNotBeNull();
         response.Headers.Location!.ToString().ShouldContain($"/api/v1/commands/status/{body.CorrelationId}");
 
         response.Headers.GetValues("Retry-After").ShouldContain("1");
@@ -58,14 +59,14 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
         // Verify RFC 7807 ProblemDetails structure
-        var problemDetails = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        problemDetails.TryGetProperty("type", out var typeProperty).ShouldBeTrue();
+        JsonElement problemDetails = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        problemDetails.TryGetProperty("type", out JsonElement typeProperty).ShouldBeTrue();
         typeProperty.GetString().ShouldNotBeNullOrEmpty();
 
-        problemDetails.TryGetProperty("title", out var titleProperty).ShouldBeTrue();
+        problemDetails.TryGetProperty("title", out JsonElement titleProperty).ShouldBeTrue();
         titleProperty.GetString().ShouldNotBeNullOrEmpty();
 
-        problemDetails.TryGetProperty("status", out var statusProperty).ShouldBeTrue();
+        problemDetails.TryGetProperty("status", out JsonElement statusProperty).ShouldBeTrue();
         statusProperty.GetInt32().ShouldBe(400);
     }
 
@@ -102,7 +103,7 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         SubmitCommandResponse? body = await response.Content.ReadFromJsonAsync<SubmitCommandResponse>();
-        body.ShouldNotBeNull();
+        _ = body.ShouldNotBeNull();
         body.CorrelationId.ShouldNotBeNullOrEmpty();
     }
 
@@ -146,7 +147,7 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
         // Verify this is a FluentValidation error with proper structure
-        var problemDetails = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        JsonElement problemDetails = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         problemDetails.GetProperty("title").GetString().ShouldBe("Validation Failed");
         problemDetails.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
         problemDetails.GetProperty("validationErrors").GetArrayLength().ShouldBeGreaterThan(0);

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using System.Diagnostics;
 
@@ -17,6 +16,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.1 Task 6: EventPublisher unit tests.
 /// Verifies CloudEvents metadata, topic derivation, failure handling, OpenTelemetry activity, and structured logging.
@@ -41,10 +41,10 @@ public class EventPublisherTests {
             Extensions: null);
 
     private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(string pubSubName = "pubsub") {
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
-        var logger = Substitute.For<ILogger<EventPublisher>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
+        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var publisher = new EventPublisher(daprClient, options, logger);
         return (publisher, daprClient, logger);
     }
@@ -88,7 +88,7 @@ public class EventPublisherTests {
             CreateTestEnvelope(3, "OrderShipped"),
         };
         var callOrder = new List<long>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
@@ -115,7 +115,7 @@ public class EventPublisherTests {
             "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", "json", [1], null);
 
         // Act
-        await publisher.PublishEventsAsync(identity, [envelope], "corr-1");
+        _ = await publisher.PublishEventsAsync(identity, [envelope], "corr-1");
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(
@@ -135,7 +135,7 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope(eventTypeName: "CounterIncremented");
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(
@@ -153,7 +153,7 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(
@@ -171,7 +171,7 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 42);
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-xyz");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-xyz");
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(
@@ -189,7 +189,7 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
 
         // Assert
         await daprClient.Received(1).PublishEventAsync(
@@ -204,7 +204,7 @@ public class EventPublisherTests {
     public async Task PublishEventsAsync_PubSubFailure_ReturnsFailureResult_DoesNotThrow() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Pub/sub component unavailable"));
@@ -232,7 +232,7 @@ public class EventPublisherTests {
         };
 
         int callCount = 0;
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(_ => {
@@ -296,10 +296,10 @@ public class EventPublisherTests {
         ActivitySource.AddActivityListener(listener2);
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, events, expectedCorrelationId);
+        _ = await publisher.PublishEventsAsync(TestIdentity, events, expectedCorrelationId);
 
         // Assert
-        capturedActivity.ShouldNotBeNull();
+        _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe(expectedCorrelationId);
         capturedActivity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("test-tenant");
         capturedActivity.GetTagItem(EventStoreActivitySource.TagDomain).ShouldBe("test-domain");
@@ -317,7 +317,7 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-log");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-log");
 
         // Assert -- logs at Information level
         logger.Received().Log(
@@ -339,14 +339,14 @@ public class EventPublisherTests {
     public async Task PublishEventsAsync_LogsFailure_WithCorrelationIdAndTopic() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, ILogger<EventPublisher> logger) = CreatePublisher();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Broker offline"));
         EventEnvelope envelope = CreateTestEnvelope();
 
         // Act
-        await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-fail");
+        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-fail");
 
         // Assert -- logs at Error level
         logger.Received().Log(

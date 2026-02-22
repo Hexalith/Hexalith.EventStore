@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using System.Text.RegularExpressions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Story 5.4, Task 9: Secrets protection tests (AC #4).
 /// Static analysis tests that verify no hardcoded secrets appear in configuration files or source code.

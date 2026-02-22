@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Testing.Assertions;
 
 using Hexalith.EventStore.Contracts.Events;
 
 using Xunit;
 
+namespace Hexalith.EventStore.Testing.Assertions;
 /// <summary>
 /// Static assertion helpers for verifying <see cref="EventEnvelope"/> metadata completeness.
 /// </summary>

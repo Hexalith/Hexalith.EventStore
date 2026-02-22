@@ -1,8 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Events;
 
 public class SnapshotRecordTests {
     // === 9.1: SnapshotRecord created with correct properties ===
@@ -10,7 +11,7 @@ public class SnapshotRecordTests {
     [Fact]
     public void SnapshotRecord_CreatedWithCorrectProperties() {
         var state = new { Counter = 42 };
-        var createdAt = DateTimeOffset.UtcNow;
+        DateTimeOffset createdAt = DateTimeOffset.UtcNow;
 
         var record = new SnapshotRecord(
             SequenceNumber: 100,
@@ -35,7 +36,7 @@ public class SnapshotRecordTests {
         var record = new SnapshotRecord(100, "state", DateTimeOffset.UtcNow, "domain", "agg-1", "tenant-1");
 
         // Record types use value equality
-        var copy = record with { SequenceNumber = 200 };
+        SnapshotRecord copy = record with { SequenceNumber = 200 };
 
         copy.SequenceNumber.ShouldBe(200);
         record.SequenceNumber.ShouldBe(100); // Original unchanged
@@ -44,8 +45,8 @@ public class SnapshotRecordTests {
 
     [Fact]
     public void SnapshotRecord_ValueEquality() {
-        var createdAt = DateTimeOffset.UtcNow;
-        var state = "same-state";
+        DateTimeOffset createdAt = DateTimeOffset.UtcNow;
+        string state = "same-state";
 
         var record1 = new SnapshotRecord(100, state, createdAt, "domain", "agg-1", "tenant-1");
         var record2 = new SnapshotRecord(100, state, createdAt, "domain", "agg-1", "tenant-1");

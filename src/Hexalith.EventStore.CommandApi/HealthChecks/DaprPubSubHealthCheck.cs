@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.CommandApi.HealthChecks;
 
 using Dapr.Client;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+namespace Hexalith.EventStore.CommandApi.HealthChecks;
 /// <summary>
 /// Health check that verifies DAPR pub/sub component availability via the metadata API.
 /// </summary>
@@ -20,10 +20,10 @@ public class DaprPubSubHealthCheck(DaprClient daprClient, string pubSubName) : I
         ArgumentNullException.ThrowIfNull(context);
 
         try {
-            var metadata = await _daprClient.GetMetadataAsync(cancellationToken)
+            DaprMetadata metadata = await _daprClient.GetMetadataAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var component = metadata.Components.FirstOrDefault(c =>
+            DaprComponentsMetadata? component = metadata.Components.FirstOrDefault(c =>
                 string.Equals(c.Name, _pubSubName, StringComparison.OrdinalIgnoreCase)
                 && c.Type.StartsWith("pubsub.", StringComparison.OrdinalIgnoreCase));
 

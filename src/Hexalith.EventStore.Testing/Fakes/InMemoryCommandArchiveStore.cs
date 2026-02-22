@@ -1,23 +1,19 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// In-memory implementation of <see cref="ICommandArchiveStore"/> for testing.
 /// Simulates TTL expiry using stored expiration timestamps.
 /// </summary>
 public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore {
     private readonly ConcurrentDictionary<string, (ArchivedCommand Command, DateTimeOffset Expiry)> _store = new();
-    private int _ttlSeconds = CommandStatusConstants.DefaultTtlSeconds;
 
     /// <summary>Gets or sets the TTL in seconds for new entries.</summary>
-    public int TtlSeconds {
-        get => _ttlSeconds;
-        set => _ttlSeconds = value;
-    }
+    public int TtlSeconds { get; set; } = CommandStatusConstants.DefaultTtlSeconds;
 
     /// <inheritdoc/>
     public Task WriteCommandAsync(
@@ -30,7 +26,7 @@ public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore {
         ArgumentNullException.ThrowIfNull(command);
 
         string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
-        DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(_ttlSeconds);
+        DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(TtlSeconds);
         _store[key] = (command, expiry);
         return Task.CompletedTask;
     }
@@ -45,9 +41,9 @@ public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore {
 
         string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
 
-        if (_store.TryGetValue(key, out var entry)) {
+        if (_store.TryGetValue(key, out (ArchivedCommand Command, DateTimeOffset Expiry) entry)) {
             if (entry.Expiry <= DateTimeOffset.UtcNow) {
-                _store.TryRemove(key, out _);
+                _ = _store.TryRemove(key, out _);
                 return Task.FromResult<ArchivedCommand?>(null);
             }
 

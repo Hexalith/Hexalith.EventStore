@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -10,6 +8,8 @@ using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
@@ -77,7 +77,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
             commandType: "PlaceOrder");
 
         // Act
-        await client.PostAsJsonAsync("/api/v1/commands", request);
+        _ = await client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert
         fakeActor.ReceivedCommands.ShouldNotBeEmpty();
@@ -162,7 +162,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
         object request = CreateCommandRequest();
 
         // Act
-        await client.PostAsJsonAsync("/api/v1/commands", request);
+        _ = await client.PostAsJsonAsync("/api/v1/commands", request);
 
         // Assert
         fakeActor.ReceivedCommands.ShouldNotBeEmpty();

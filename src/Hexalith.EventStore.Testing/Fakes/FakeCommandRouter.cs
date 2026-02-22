@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Fake command router for integration testing that returns success without DAPR actor infrastructure.
 /// </summary>
@@ -20,7 +20,7 @@ public class FakeCommandRouter : ICommandRouter {
         if (FakeActor is not null) {
             // Let conversion exceptions propagate -- they indicate malformed commands
             // that should have been caught by validation (matches production behavior)
-            Contracts.Commands.CommandEnvelope envelope = SubmitCommandExtensions.ToCommandEnvelope(command);
+            var envelope = SubmitCommandExtensions.ToCommandEnvelope(command);
 
             // Actor exceptions should propagate (not caught)
             return FakeActor.ProcessCommandAsync(envelope);

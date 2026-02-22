@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Server.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
+namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// Extension methods for converting between <see cref="ArchivedCommand"/> and <see cref="SubmitCommand"/>.
 /// Centralizes field mapping to avoid duplication across handler and controller.

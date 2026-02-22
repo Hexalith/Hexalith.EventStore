@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.IntegrationTests.Helpers;
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -7,6 +6,7 @@ using System.Text.Json;
 
 using Microsoft.IdentityModel.Tokens;
 
+namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// <summary>
 /// Generates JWT tokens for integration testing.
 /// Uses a known symmetric key that must match the test host configuration.

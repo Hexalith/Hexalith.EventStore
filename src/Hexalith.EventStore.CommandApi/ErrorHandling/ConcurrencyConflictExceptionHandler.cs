@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 using System.Text.Json;
 
@@ -7,6 +6,8 @@ using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+
+namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
 public class ConcurrencyConflictExceptionHandler(
     ICommandStatusStore statusStore,
@@ -90,7 +91,7 @@ public class ConcurrencyConflictExceptionHandler(
         };
 
         string? tenantId = conflict.TenantId
-            ?? (httpContext.Items.TryGetValue("RequestTenantId", out var t) && t is string ts
+            ?? (httpContext.Items.TryGetValue("RequestTenantId", out object? t) && t is string ts
                 ? ts : null);
 
         if (tenantId is not null) {

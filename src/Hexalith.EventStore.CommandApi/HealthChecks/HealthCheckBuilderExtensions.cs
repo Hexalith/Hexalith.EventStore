@@ -1,11 +1,9 @@
-namespace Microsoft.Extensions.DependencyInjection;
 
 using Dapr.Client;
 
-using Hexalith.EventStore.CommandApi.HealthChecks;
-
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+namespace Hexalith.EventStore.CommandApi.HealthChecks;
 /// <summary>
 /// Extension methods for registering DAPR health checks.
 /// </summary>
@@ -23,7 +21,7 @@ public static class HealthCheckBuilderExtensions {
         // Use 15s timeout so E2E/CI (Aspire Testing, Docker) have time for sidecar and
         // Dapr infrastructure to become ready; healthy sidecar still responds in milliseconds.
         var healthCheckTimeout = TimeSpan.FromSeconds(15);
-        builder
+        _ = builder
             .AddCheck<DaprSidecarHealthCheck>(
                 "dapr-sidecar",
                 failureStatus: HealthStatus.Unhealthy,

@@ -1,7 +1,8 @@
-namespace Hexalith.EventStore.Testing.Tests.Builders;
 
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Testing.Builders;
+
+namespace Hexalith.EventStore.Testing.Tests.Builders;
 
 public class EventEnvelopeBuilderTests {
     [Fact]

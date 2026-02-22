@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Validates and derives pub/sub topic names per D6 convention ({tenant}.{domain}.events).
 /// Defense-in-depth layer -- primary enforcement is via AggregateIdentity input validation.

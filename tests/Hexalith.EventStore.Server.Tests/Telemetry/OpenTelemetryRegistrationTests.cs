@@ -1,6 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Telemetry;
-
-using System.IO;
 using System.Reflection;
 
 using Hexalith.EventStore.CommandApi.Telemetry;
@@ -8,6 +5,7 @@ using Hexalith.EventStore.Server.Telemetry;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Telemetry;
 /// <summary>
 /// Story 6.1 Task 7: OpenTelemetry registration tests.
 /// Verifies ActivitySource registration, naming conventions, and tag namespace compliance.
@@ -57,7 +55,7 @@ public class OpenTelemetryRegistrationTests {
         // Assert -- all tag constants use the eventstore.* namespace
         foreach (FieldInfo field in tagFields) {
             string? value = field.GetValue(null) as string;
-            value.ShouldNotBeNull($"Tag field {field.Name} should have a string value");
+            _ = value.ShouldNotBeNull($"Tag field {field.Name} should have a string value");
             value.ShouldStartWith("eventstore.");
         }
     }
@@ -69,24 +67,16 @@ public class OpenTelemetryRegistrationTests {
     }
 
     [Fact]
-    public void EventStoreActivitySources_CommandApiSourceNameIsCorrect() {
-        EventStoreActivitySources.CommandApi.Name.ShouldBe("Hexalith.EventStore.CommandApi");
-    }
+    public void EventStoreActivitySources_CommandApiSourceNameIsCorrect() => EventStoreActivitySources.CommandApi.Name.ShouldBe("Hexalith.EventStore.CommandApi");
 
     [Fact]
-    public void EventStoreActivitySources_SubmitConstantMatchesArchitecture() {
-        EventStoreActivitySources.Submit.ShouldBe("EventStore.CommandApi.Submit");
-    }
+    public void EventStoreActivitySources_SubmitConstantMatchesArchitecture() => EventStoreActivitySources.Submit.ShouldBe("EventStore.CommandApi.Submit");
 
     [Fact]
-    public void EventStoreActivitySources_QueryStatusConstantMatchesArchitecture() {
-        EventStoreActivitySources.QueryStatus.ShouldBe("EventStore.CommandApi.QueryStatus");
-    }
+    public void EventStoreActivitySources_QueryStatusConstantMatchesArchitecture() => EventStoreActivitySources.QueryStatus.ShouldBe("EventStore.CommandApi.QueryStatus");
 
     [Fact]
-    public void EventStoreActivitySources_ReplayConstantMatchesArchitecture() {
-        EventStoreActivitySources.Replay.ShouldBe("EventStore.CommandApi.Replay");
-    }
+    public void EventStoreActivitySources_ReplayConstantMatchesArchitecture() => EventStoreActivitySources.Replay.ShouldBe("EventStore.CommandApi.Replay");
 
     private static string FindRepositoryRoot() {
         DirectoryInfo? current = new(AppContext.BaseDirectory);

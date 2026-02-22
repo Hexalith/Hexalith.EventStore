@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 
 using Shouldly;
 
 using YamlDotNet.Serialization;
 
+namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 /// <summary>
 /// Story 7.2: DAPR component validation tests.
 /// Validates YAML structure and configuration correctness for all local DAPR component files.
@@ -26,7 +26,7 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void StateStoreComponent_HasActorStateStoreEnabled() {
-        var doc = LoadYaml(StateStorePath);
+        Dictionary<string, object> doc = LoadYaml(StateStorePath);
         GetComponentMetadataValue(doc, "actorStateStore")
             .ShouldBe("true", "State store must have actorStateStore enabled for DAPR actor state management");
     }
@@ -35,9 +35,9 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void StateStoreComponent_ScopedToCommandApiOnly() {
-        var doc = LoadYaml(StateStorePath);
-        var scopes = GetScopes(doc);
-        scopes.ShouldNotBeNull("State store must have scopes defined");
+        Dictionary<string, object> doc = LoadYaml(StateStorePath);
+        List<object>? scopes = GetScopes(doc);
+        _ = scopes.ShouldNotBeNull("State store must have scopes defined");
         scopes.Count.ShouldBe(1, "State store scopes must contain exactly one entry (commandapi only)");
         scopes[0]?.ToString().ShouldBe("commandapi", "State store must be scoped to commandapi only (D4)");
     }
@@ -46,7 +46,7 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void PubSubComponent_HasDeadLetterEnabled() {
-        var doc = LoadYaml(PubSubPath);
+        Dictionary<string, object> doc = LoadYaml(PubSubPath);
         GetComponentMetadataValue(doc, "enableDeadLetter")
             .ShouldBe("true", "Pub/sub must have dead-letter enabled for undeliverable message routing");
     }
@@ -55,9 +55,9 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void PubSubComponent_DenySamplePublishing() {
-        var doc = LoadYaml(PubSubPath);
+        Dictionary<string, object> doc = LoadYaml(PubSubPath);
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
-        publishingScopes.ShouldNotBeNull("Pub/sub must have publishingScopes defined");
+        _ = publishingScopes.ShouldNotBeNull("Pub/sub must have publishingScopes defined");
         publishingScopes!.Contains("sample=").ShouldBeTrue(
             "Pub/sub publishingScopes must deny sample from publishing (empty value = deny all)");
     }
@@ -66,9 +66,9 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void PubSubComponent_DenySampleSubscription() {
-        var doc = LoadYaml(PubSubPath);
+        Dictionary<string, object> doc = LoadYaml(PubSubPath);
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
-        subscriptionScopes.ShouldNotBeNull("Pub/sub must have subscriptionScopes defined");
+        _ = subscriptionScopes.ShouldNotBeNull("Pub/sub must have subscriptionScopes defined");
         subscriptionScopes!.Contains("sample=").ShouldBeTrue(
             "Pub/sub subscriptionScopes must deny sample from subscribing (empty value = deny all)");
     }
@@ -77,7 +77,7 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void AccessControl_DefaultActionIsDeny() {
-        var doc = LoadYaml(AccessControlPath);
+        Dictionary<string, object> doc = LoadYaml(AccessControlPath);
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
             .ShouldBe("deny", "Access control must have defaultAction: deny for secure-by-default posture (D4)");
     }
@@ -86,26 +86,26 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void AccessControl_CommandApiCanInvokePostOnly() {
-        var doc = LoadYaml(AccessControlPath);
-        var policies = NavList(doc, "spec", "accessControl", "policies");
-        policies.ShouldNotBeNull();
+        Dictionary<string, object> doc = LoadYaml(AccessControlPath);
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
 
-        var commandApiPolicy = policies
+        Dictionary<object, object>? commandApiPolicy = policies
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(p => GetString(p, "appId") == "commandapi");
-        commandApiPolicy.ShouldNotBeNull("Access control must have a commandapi policy");
+        _ = commandApiPolicy.ShouldNotBeNull("Access control must have a commandapi policy");
 
-        var operations = commandApiPolicy.TryGetValue("operations", out object? ops)
+        List<object>? operations = commandApiPolicy.TryGetValue("operations", out object? ops)
             ? ops as List<object> : null;
-        operations.ShouldNotBeNull("commandapi policy must have operations");
+        _ = operations.ShouldNotBeNull("commandapi policy must have operations");
 
-        var wildcardOp = operations!
+        Dictionary<object, object>? wildcardOp = operations!
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(op => GetString(op, "name") == "/**");
-        wildcardOp.ShouldNotBeNull("commandapi must allow wildcard path /** for domain service invocation (D7)");
+        _ = wildcardOp.ShouldNotBeNull("commandapi must allow wildcard path /** for domain service invocation (D7)");
 
-        var httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
-        httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
+        List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
+        _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
         httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST",
             "commandapi wildcard must allow POST");
         GetString(wildcardOp, "action").ShouldBe("allow");
@@ -115,14 +115,14 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void AccessControl_SampleHasZeroAllowedOperations() {
-        var doc = LoadYaml(AccessControlPath);
-        var policies = NavList(doc, "spec", "accessControl", "policies");
-        policies.ShouldNotBeNull();
+        Dictionary<string, object> doc = LoadYaml(AccessControlPath);
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
 
-        var samplePolicy = policies
+        Dictionary<object, object>? samplePolicy = policies
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(p => GetString(p, "appId") == "sample");
-        samplePolicy.ShouldNotBeNull("Access control must have a sample policy");
+        _ = samplePolicy.ShouldNotBeNull("Access control must have a sample policy");
 
         GetString(samplePolicy, "defaultAction").ShouldBe("deny",
             "sample must have defaultAction: deny (zero-trust, D4)");
@@ -134,7 +134,7 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void Resiliency_SidecarTimeoutIsFiveSeconds() {
-        var doc = LoadYaml(ResiliencyPath);
+        Dictionary<string, object> doc = LoadYaml(ResiliencyPath);
         Nav(doc, "spec", "policies", "timeouts", "daprSidecar", "general")?.ToString()
             .ShouldBe("5s", "DAPR sidecar general timeout must be 5 seconds (Rule #14)");
     }
@@ -143,10 +143,10 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void Resiliency_PubSubHasCircuitBreaker() {
-        var doc = LoadYaml(ResiliencyPath);
+        Dictionary<string, object> doc = LoadYaml(ResiliencyPath);
 
         // Verify pubsubBreaker policy exists
-        Nav(doc, "spec", "policies", "circuitBreakers", "pubsubBreaker").ShouldNotBeNull(
+        _ = Nav(doc, "spec", "policies", "circuitBreakers", "pubsubBreaker").ShouldNotBeNull(
             "Resiliency must define a pubsubBreaker circuit breaker policy");
 
         // Verify it's wired to the pubsub component target
@@ -169,8 +169,8 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void Resiliency_HasStateStoreComponentTarget() {
-        var doc = LoadYaml(ResiliencyPath);
-        Nav(doc, "spec", "targets", "components", "statestore").ShouldNotBeNull(
+        Dictionary<string, object> doc = LoadYaml(ResiliencyPath);
+        _ = Nav(doc, "spec", "targets", "components", "statestore").ShouldNotBeNull(
             "Resiliency must have a statestore component target for event persistence retry/circuit breaker (D1, D2)");
         Nav(doc, "spec", "targets", "components", "statestore", "retry")?.ToString()
             .ShouldNotBeNullOrEmpty("Statestore target must have a retry policy");
@@ -193,8 +193,9 @@ public class DaprComponentValidationTests {
                 Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
                 _ => null,
             };
-            if (current is null)
+            if (current is null) {
                 return null;
+            }
         }
         return current;
     }
@@ -209,11 +210,12 @@ public class DaprComponentValidationTests {
         => doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
 
     private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
-        var metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null)
+        List<object>? metadataList = NavList(doc, "spec", "metadata");
+        if (metadataList is null) {
             return null;
+        }
 
-        var entry = metadataList
+        Dictionary<object, object>? entry = metadataList
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(m => GetString(m, "name") == metadataName);
         return entry is not null ? GetString(entry, "value") : null;

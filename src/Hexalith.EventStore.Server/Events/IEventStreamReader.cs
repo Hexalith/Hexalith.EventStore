@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 
+namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Reads events from the actor state store and rehydrates aggregate state.
 /// Supports snapshot-aware rehydration: when a snapshot is provided, only tail events

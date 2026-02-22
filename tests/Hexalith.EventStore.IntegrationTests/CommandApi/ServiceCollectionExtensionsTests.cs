@@ -1,9 +1,6 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using commandapi::Hexalith.EventStore.CommandApi.ErrorHandling;
-using commandapi::Microsoft.Extensions.DependencyInjection;
 
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
@@ -13,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
+
 public class ServiceCollectionExtensionsTests {
     [Fact]
     public void AddCommandApi_RegistersExceptionHandlers_InCorrectOrder() {
@@ -20,12 +19,12 @@ public class ServiceCollectionExtensionsTests {
         var services = new ServiceCollection();
 
         // Add minimal required services for AddCommandApi
-        services.AddLogging();
-        services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
-        services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
+        _ = services.AddLogging();
+        _ = services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
+        _ = services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
 
         // Act
-        services.AddCommandApi();
+        _ = services.AddCommandApi();
 
         // Assert - verify handler registration order
         ServiceDescriptor[] handlers = services

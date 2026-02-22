@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
@@ -11,6 +11,7 @@ using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 7.4 / AC #2: Actor processing pipeline integration tests.
 /// Validates the full pipeline with real Dapr sidecar and Redis state store.
@@ -35,7 +36,7 @@ public class AggregateActorIntegrationTests {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId("counter-001")
@@ -51,7 +52,7 @@ public class AggregateActorIntegrationTests {
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Accepted.ShouldBeTrue("Command should be accepted by the actor");
         result.CorrelationId.ShouldBe(command.CorrelationId);
         result.EventCount.ShouldBe(1, "IncrementCounter should produce 1 event");
@@ -68,14 +69,14 @@ public class AggregateActorIntegrationTests {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
-        var command1 = new CommandEnvelopeBuilder()
+        CommandEnvelope command1 = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId("route-test-1")
             .WithCommandType("IncrementCounter")
             .Build();
 
-        var command2 = new CommandEnvelopeBuilder()
+        CommandEnvelope command2 = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId("route-test-2")
@@ -118,7 +119,7 @@ public class AggregateActorIntegrationTests {
 
         // Act - send 3 increment commands
         for (int i = 0; i < 3; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)
@@ -152,7 +153,7 @@ public class AggregateActorIntegrationTests {
         });
 
         string aggregateId = $"atomic-test-{Guid.NewGuid():N}";
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)
@@ -183,7 +184,7 @@ public class AggregateActorIntegrationTests {
         });
 
         string aggregateId = $"stages-test-{Guid.NewGuid():N}";
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)
@@ -216,7 +217,7 @@ public class AggregateActorIntegrationTests {
         string aggregateId = $"idempotent-test-{Guid.NewGuid():N}";
         string correlationId = Guid.NewGuid().ToString();
 
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)
@@ -256,7 +257,7 @@ public class AggregateActorIntegrationTests {
         });
 
         string aggregateId = $"reject-test-{Guid.NewGuid():N}";
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)

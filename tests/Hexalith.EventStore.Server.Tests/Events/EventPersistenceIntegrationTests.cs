@@ -1,14 +1,15 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 7.4 / AC #2, AC #6: Event persistence and Redis backend integration tests.
 /// Validates event persistence atomicity and Redis state store behavior.
@@ -40,7 +41,7 @@ public class EventPersistenceIntegrationTests {
 
         // Act - persist 10 events
         for (int i = 0; i < 10; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)
@@ -66,7 +67,7 @@ public class EventPersistenceIntegrationTests {
         string aggregateId = $"redis-actor-state-{Guid.NewGuid():N}";
         string correlationId = Guid.NewGuid().ToString();
 
-        var command = new CommandEnvelopeBuilder()
+        CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)
@@ -107,7 +108,7 @@ public class EventPersistenceIntegrationTests {
 
         // Act - send 105 commands (exceeds snapshot interval of 100)
         for (int i = 0; i < 105; i++) {
-            var command = new CommandEnvelopeBuilder()
+            CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
                 .WithAggregateId(aggregateId)
@@ -119,7 +120,7 @@ public class EventPersistenceIntegrationTests {
         }
 
         // Assert - verify the aggregate can still process commands (state rehydrated from snapshot + tail)
-        var finalCommand = new CommandEnvelopeBuilder()
+        CommandEnvelope finalCommand = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
             .WithAggregateId(aggregateId)

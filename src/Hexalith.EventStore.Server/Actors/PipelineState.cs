@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Server.Actors;
 
 using Hexalith.EventStore.Contracts.Commands;
 
+namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Tracks in-flight command lifecycle through the actor pipeline.
 /// Persisted via IActorStateManager for crash-recovery resume (NFR25).

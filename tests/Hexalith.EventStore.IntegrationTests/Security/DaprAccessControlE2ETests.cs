@@ -1,7 +1,5 @@
-namespace Hexalith.EventStore.IntegrationTests.Security;
 
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 
@@ -9,6 +7,7 @@ using global::Aspire.Hosting.Testing;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
 /// E2E tests verifying DAPR access control policies at the sidecar level (AC #3, #5, #6).
 /// These tests start the full Aspire topology and exercise DAPR service-to-service

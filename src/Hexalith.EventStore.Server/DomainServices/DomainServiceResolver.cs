@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.DomainServices;
 
 using System.Text.Json;
 
@@ -7,6 +6,7 @@ using Dapr.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.Server.DomainServices;
 /// <summary>
 /// Resolves domain service registrations from the DAPR config store.
 /// Encapsulates config store lookup logic (AC #1, #7).

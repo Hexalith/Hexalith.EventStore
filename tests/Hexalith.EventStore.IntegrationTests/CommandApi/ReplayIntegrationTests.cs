@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -13,6 +11,8 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 
 public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
@@ -28,17 +28,15 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         HttpResponseMessage submitResponse = await client.PostAsJsonAsync("/api/v1/commands", request).ConfigureAwait(false);
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>().ConfigureAwait(false);
-        submitResult.ShouldNotBeNull();
+        _ = submitResult.ShouldNotBeNull();
         return submitResult.CorrelationId;
     }
 
-    private async Task SetCommandStatus(string tenant, string correlationId, CommandStatus status) {
-        await factory.StatusStore.WriteStatusAsync(
+    private async Task SetCommandStatus(string tenant, string correlationId, CommandStatus status) => await factory.StatusStore.WriteStatusAsync(
             tenant,
             correlationId,
             new CommandStatusRecord(status, DateTimeOffset.UtcNow, "agg-replay", null, null, null, null),
             CancellationToken.None).ConfigureAwait(false);
-    }
 
     [Fact]
     public async Task PostReplay_RejectedCommand_Returns202() {
@@ -56,7 +54,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         response.Headers.TryGetValues("Retry-After", out System.Collections.Generic.IEnumerable<string>? retryValues).ShouldBeTrue();
         retryValues!.First().ShouldBe("1");
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
-        replayResult.ShouldNotBeNull();
+        _ = replayResult.ShouldNotBeNull();
         replayResult.IsReplay.ShouldBeTrue();
         replayResult.PreviousStatus.ShouldBe("Rejected");
     }
@@ -75,7 +73,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
-        replayResult.ShouldNotBeNull();
+        _ = replayResult.ShouldNotBeNull();
         replayResult.IsReplay.ShouldBeTrue();
         replayResult.PreviousStatus.ShouldBe("PublishFailed");
     }
@@ -93,12 +91,12 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
-        response.Headers.Location.ShouldNotBeNull();
+        _ = response.Headers.Location.ShouldNotBeNull();
         response.Headers.Location.ToString().ShouldContain($"/api/v1/commands/status/{correlationId}");
         response.Headers.TryGetValues("Retry-After", out System.Collections.Generic.IEnumerable<string>? retryValues).ShouldBeTrue();
         retryValues!.First().ShouldBe("1");
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
-        replayResult.ShouldNotBeNull();
+        _ = replayResult.ShouldNotBeNull();
         replayResult.CorrelationId.ShouldBe(correlationId);
         replayResult.IsReplay.ShouldBeTrue();
         replayResult.PreviousStatus.ShouldBe("TimedOut");
@@ -229,7 +227,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
             $"/api/v1/commands/status/{correlationId}");
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         CommandStatusResponse? status = await statusResponse.Content.ReadFromJsonAsync<CommandStatusResponse>();
-        status.ShouldNotBeNull();
+        _ = status.ShouldNotBeNull();
         status.Status.ShouldBe("Received");
     }
 
@@ -247,7 +245,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         string? location = response.Headers.Location?.ToString();
-        location.ShouldNotBeNull();
+        _ = location.ShouldNotBeNull();
         location.ShouldContain($"/api/v1/commands/status/{correlationId}");
     }
 
@@ -265,7 +263,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
-        replayResult.ShouldNotBeNull();
+        _ = replayResult.ShouldNotBeNull();
         replayResult.PreviousStatus.ShouldBe("TimedOut");
     }
 

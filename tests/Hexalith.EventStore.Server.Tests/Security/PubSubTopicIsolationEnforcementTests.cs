@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using Shouldly;
 
 using YamlDotNet.Serialization;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Story 5.3: Pub/Sub topic isolation enforcement tests (AC #1, #2, #5, #6, #9).
 /// Validates subscriber-side scoping in all pub/sub YAML configurations:
@@ -34,7 +34,7 @@ public class PubSubTopicIsolationEnforcementTests {
 
         // subscriptionScopes metadata must exist
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
-        subscriptionScopes.ShouldNotBeNull(
+        _ = subscriptionScopes.ShouldNotBeNull(
             "Local pub/sub must have subscriptionScopes metadata for subscriber-side isolation (FR29)");
 
         // sample must be explicitly denied subscription access
@@ -49,7 +49,7 @@ public class PubSubTopicIsolationEnforcementTests {
         Dictionary<string, object> doc = LoadYaml(LocalPubSubPath);
 
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
-        publishingScopes.ShouldNotBeNull(
+        _ = publishingScopes.ShouldNotBeNull(
             "Local pub/sub must have publishingScopes for publisher-side isolation (Story 5.1)");
 
         // sample must be explicitly denied publishing access
@@ -71,12 +71,12 @@ public class PubSubTopicIsolationEnforcementTests {
         // Dead-letter must be enabled
         GetComponentMetadataValue(doc, "enableDeadLetter").ShouldBe("true",
             "Local pub/sub must have dead-letter enabled");
-        GetComponentMetadataValue(doc, "deadLetterTopic").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(doc, "deadLetterTopic").ShouldNotBeNull(
             "Local pub/sub must configure a dead-letter topic");
 
         // subscriptionScopes must exist (dead-letter topic scoping is controlled by the same field)
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
-        subscriptionScopes.ShouldNotBeNull(
+        _ = subscriptionScopes.ShouldNotBeNull(
             "Local pub/sub must have subscriptionScopes for dead-letter topic isolation (AC #6)");
 
         // Verify that sample is denied all subscription access (including dead-letter topics)
@@ -97,7 +97,7 @@ public class PubSubTopicIsolationEnforcementTests {
 
         // subscriptionScopes metadata must exist
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
-        subscriptionScopes.ShouldNotBeNull(
+        _ = subscriptionScopes.ShouldNotBeNull(
             "Production RabbitMQ pub/sub must have subscriptionScopes metadata (FR29)");
         subscriptionScopes.ShouldNotBeEmpty(
             "Production RabbitMQ pub/sub subscriptionScopes must be non-empty to enforce subscriber isolation");
@@ -109,7 +109,7 @@ public class PubSubTopicIsolationEnforcementTests {
 
         // publishingScopes must also exist and not restrict commandapi
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
-        publishingScopes.ShouldNotBeNull(
+        _ = publishingScopes.ShouldNotBeNull(
             "Production RabbitMQ pub/sub must have publishingScopes metadata");
         ShouldNotContainAppId(publishingScopes!, "commandapi",
             "Production RabbitMQ: commandapi must NOT be listed in publishingScopes (NFR20)");
@@ -123,7 +123,7 @@ public class PubSubTopicIsolationEnforcementTests {
 
         // subscriptionScopes metadata must exist
         string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
-        subscriptionScopes.ShouldNotBeNull(
+        _ = subscriptionScopes.ShouldNotBeNull(
             "Production Kafka pub/sub must have subscriptionScopes metadata (FR29)");
         subscriptionScopes.ShouldNotBeEmpty(
             "Production Kafka pub/sub subscriptionScopes must be non-empty to enforce subscriber isolation");
@@ -135,7 +135,7 @@ public class PubSubTopicIsolationEnforcementTests {
 
         // publishingScopes must also exist and not restrict commandapi
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
-        publishingScopes.ShouldNotBeNull(
+        _ = publishingScopes.ShouldNotBeNull(
             "Production Kafka pub/sub must have publishingScopes metadata");
         ShouldNotContainAppId(publishingScopes!, "commandapi",
             "Production Kafka: commandapi must NOT be listed in publishingScopes (NFR20)");
@@ -150,19 +150,19 @@ public class PubSubTopicIsolationEnforcementTests {
         Dictionary<string, object> kafkaDoc = LoadYaml(ProductionKafkaPath);
 
         // All configs must have subscriptionScopes metadata
-        GetComponentMetadataValue(localDoc, "subscriptionScopes").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(localDoc, "subscriptionScopes").ShouldNotBeNull(
             "Local pub/sub must have subscriptionScopes");
-        GetComponentMetadataValue(rabbitDoc, "subscriptionScopes").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(rabbitDoc, "subscriptionScopes").ShouldNotBeNull(
             "Production RabbitMQ pub/sub must have subscriptionScopes");
-        GetComponentMetadataValue(kafkaDoc, "subscriptionScopes").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(kafkaDoc, "subscriptionScopes").ShouldNotBeNull(
             "Production Kafka pub/sub must have subscriptionScopes");
 
         // All configs must have publishingScopes metadata
-        GetComponentMetadataValue(localDoc, "publishingScopes").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(localDoc, "publishingScopes").ShouldNotBeNull(
             "Local pub/sub must have publishingScopes");
-        GetComponentMetadataValue(rabbitDoc, "publishingScopes").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(rabbitDoc, "publishingScopes").ShouldNotBeNull(
             "Production RabbitMQ pub/sub must have publishingScopes");
-        GetComponentMetadataValue(kafkaDoc, "publishingScopes").ShouldNotBeNull(
+        _ = GetComponentMetadataValue(kafkaDoc, "publishingScopes").ShouldNotBeNull(
             "Production Kafka pub/sub must have publishingScopes");
 
         // All configs must have component-level scopes restricting to commandapi
@@ -211,7 +211,7 @@ public class PubSubTopicIsolationEnforcementTests {
             Dictionary<string, object> doc = LoadYaml(path);
 
             string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
-            publishingScopes.ShouldNotBeNull(
+            _ = publishingScopes.ShouldNotBeNull(
                 $"{name} must have publishingScopes metadata entry");
 
             // commandapi must NOT appear in publishingScopes
@@ -241,12 +241,12 @@ public class PubSubTopicIsolationEnforcementTests {
 
         // Local: sample must be explicitly denied in publishingScopes and subscriptionScopes
         string? localPubScopes = GetComponentMetadataValue(localDoc, "publishingScopes");
-        localPubScopes.ShouldNotBeNull("Local pub/sub must have publishingScopes");
+        _ = localPubScopes.ShouldNotBeNull("Local pub/sub must have publishingScopes");
         localPubScopes!.Contains("sample=").ShouldBeTrue(
             "Local pub/sub publishingScopes must deny sample publishing");
 
         string? localSubScopes = GetComponentMetadataValue(localDoc, "subscriptionScopes");
-        localSubScopes.ShouldNotBeNull("Local pub/sub must have subscriptionScopes");
+        _ = localSubScopes.ShouldNotBeNull("Local pub/sub must have subscriptionScopes");
         localSubScopes!.Contains("sample=").ShouldBeTrue(
             "Local pub/sub subscriptionScopes must deny sample subscription");
 
@@ -320,14 +320,14 @@ public class PubSubTopicIsolationEnforcementTests {
 
     private static void VerifyScopesContainCommandApi(Dictionary<string, object> doc, string componentName) {
         List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
-        scopes.ShouldNotBeNull($"{componentName} must have component-level scopes");
+        _ = scopes.ShouldNotBeNull($"{componentName} must have component-level scopes");
         scopes.Select(s => s?.ToString()).ShouldContain("commandapi",
             $"{componentName} scopes must include commandapi");
     }
 
     private static void VerifySampleExcludedFromScopes(Dictionary<string, object> doc, string componentName) {
         List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
-        scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
+        _ = scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
         scopes.Select(s => s?.ToString()).ShouldNotContain("sample",
             $"{componentName} scopes must NOT include sample -- zero-trust posture (D4)");
     }
@@ -337,7 +337,5 @@ public class PubSubTopicIsolationEnforcementTests {
     /// Scoping format: "app1=topic1,topic2;app2=topic3" -- checks for "appId=" pattern.
     /// An app NOT listed in scoping metadata has UNRESTRICTED access (DAPR default-open behavior).
     /// </summary>
-    private static void ShouldNotContainAppId(string scopingValue, string appId, string message) {
-        scopingValue.Contains($"{appId}=").ShouldBeFalse(message);
-    }
+    private static void ShouldNotContainAppId(string scopingValue, string appId, string message) => scopingValue.Contains($"{appId}=").ShouldBeFalse(message);
 }

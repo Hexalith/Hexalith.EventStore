@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using System.Reflection;
 
@@ -22,6 +21,7 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 4.2 Task 5: AggregateActor multi-tenant topic isolation integration tests.
 /// Verifies that the full actor pipeline publishes events to the correct per-tenant-per-domain topic
@@ -41,11 +41,11 @@ public class MultiTenantPublicationTests {
 
     private static (AggregateActor Actor, IActorStateManager StateManager, FakeEventPublisher Publisher) CreateActorForTenant(
         string tenantId, string domain, string aggregateId) {
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
         var fakePublisher = new FakeEventPublisher();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggregateId}") });
@@ -55,19 +55,19 @@ public class MultiTenantPublicationTests {
         prop?.SetValue(actor, stateManager);
 
         // Domain service returns a success event
-        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.Success([new TestEvent()]));
 
         // No pipeline state (fresh command)
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
         // No duplicate
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         // New aggregate (no metadata)
-        stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         return (actor, stateManager, fakePublisher);
@@ -82,7 +82,7 @@ public class MultiTenantPublicationTests {
         CommandEnvelope command = CreateCommand("acme", "orders", "order-1");
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert
         publisher.GetPublishedTopics().ShouldBe(["acme.orders.events"]);
@@ -98,7 +98,7 @@ public class MultiTenantPublicationTests {
         CommandEnvelope command = CreateCommand("globex", "orders", "order-1");
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert
         publisher.GetPublishedTopics().ShouldBe(["globex.orders.events"]);
@@ -111,14 +111,14 @@ public class MultiTenantPublicationTests {
     public async Task ProcessCommand_MultipleTenants_Sequential_CorrectTopicsPerTenant() {
         // Arrange - shared publisher to verify topic isolation across sequential calls
         var fakePublisher = new FakeEventPublisher();
-        var tenants = new[] { "acme", "globex", "initech" };
+        string[] tenants = new[] { "acme", "globex", "initech" };
 
         foreach (string tenant in tenants) {
-            var stateManager = Substitute.For<IActorStateManager>();
-            var logger = Substitute.For<ILogger<AggregateActor>>();
-            var invoker = Substitute.For<IDomainServiceInvoker>();
-            var snapshotManager = Substitute.For<ISnapshotManager>();
-            var commandStatusStore = Substitute.For<ICommandStatusStore>();
+            IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+            ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+            IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+            ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+            ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
             var host = ActorHost.CreateForTest<AggregateActor>(
                 new ActorTestOptions { ActorId = new ActorId($"{tenant}:orders:order-1") });
             var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
@@ -126,17 +126,17 @@ public class MultiTenantPublicationTests {
             PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
             prop?.SetValue(actor, stateManager);
 
-            invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
                 .Returns(DomainResult.Success([new TestEvent()]));
-            stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<PipelineState>(false, default!));
-            stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-            stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
             // Act
-            await actor.ProcessCommandAsync(CreateCommand(tenant, "orders", "order-1"));
+            _ = await actor.ProcessCommandAsync(CreateCommand(tenant, "orders", "order-1"));
         }
 
         // Assert
@@ -153,14 +153,14 @@ public class MultiTenantPublicationTests {
     public async Task ProcessCommand_MultipleDomains_Sequential_CorrectTopicsPerDomain() {
         // Arrange - shared publisher for domain isolation
         var fakePublisher = new FakeEventPublisher();
-        var domains = new[] { "orders", "inventory", "shipping" };
+        string[] domains = new[] { "orders", "inventory", "shipping" };
 
         foreach (string domain in domains) {
-            var stateManager = Substitute.For<IActorStateManager>();
-            var logger = Substitute.For<ILogger<AggregateActor>>();
-            var invoker = Substitute.For<IDomainServiceInvoker>();
-            var snapshotManager = Substitute.For<ISnapshotManager>();
-            var commandStatusStore = Substitute.For<ICommandStatusStore>();
+            IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+            ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+            IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+            ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+            ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
             var host = ActorHost.CreateForTest<AggregateActor>(
                 new ActorTestOptions { ActorId = new ActorId($"acme:{domain}:agg-1") });
             var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
@@ -168,17 +168,17 @@ public class MultiTenantPublicationTests {
             PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
             prop?.SetValue(actor, stateManager);
 
-            invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
                 .Returns(DomainResult.Success([new TestEvent()]));
-            stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<PipelineState>(false, default!));
-            stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-            stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
             // Act
-            await actor.ProcessCommandAsync(CreateCommand("acme", domain, "agg-1"));
+            _ = await actor.ProcessCommandAsync(CreateCommand("acme", domain, "agg-1"));
         }
 
         // Assert
@@ -195,7 +195,7 @@ public class MultiTenantPublicationTests {
     public async Task ProcessCommand_TenantDomainMatrix_AllTopicsDistinct() {
         // Arrange - 2x2 matrix: (acme, globex) x (orders, inventory)
         var fakePublisher = new FakeEventPublisher();
-        var matrix = new[]
+        (string Tenant, string Domain)[] matrix = new[]
         {
             (Tenant: "acme", Domain: "orders"),
             (Tenant: "acme", Domain: "inventory"),
@@ -204,11 +204,11 @@ public class MultiTenantPublicationTests {
         };
 
         foreach ((string tenant, string domain) in matrix) {
-            var stateManager = Substitute.For<IActorStateManager>();
-            var logger = Substitute.For<ILogger<AggregateActor>>();
-            var invoker = Substitute.For<IDomainServiceInvoker>();
-            var snapshotManager = Substitute.For<ISnapshotManager>();
-            var commandStatusStore = Substitute.For<ICommandStatusStore>();
+            IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+            ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+            IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+            ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+            ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
             var host = ActorHost.CreateForTest<AggregateActor>(
                 new ActorTestOptions { ActorId = new ActorId($"{tenant}:{domain}:agg-1") });
             var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
@@ -216,17 +216,17 @@ public class MultiTenantPublicationTests {
             PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
             prop?.SetValue(actor, stateManager);
 
-            invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
                 .Returns(DomainResult.Success([new TestEvent()]));
-            stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<PipelineState>(false, default!));
-            stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-            stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
             // Act
-            await actor.ProcessCommandAsync(CreateCommand(tenant, domain, "agg-1"));
+            _ = await actor.ProcessCommandAsync(CreateCommand(tenant, domain, "agg-1"));
         }
 
         // Assert - all 4 topics are distinct

@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Actors;
 
 using Dapr.Actors;
 
 using Hexalith.EventStore.Contracts.Commands;
 
+namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// DAPR actor interface for aggregate command processing.
 /// </summary>

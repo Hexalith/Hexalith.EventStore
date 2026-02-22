@@ -1,8 +1,9 @@
-namespace Hexalith.EventStore.Contracts.Tests.Events;
 
 using System.Collections.ObjectModel;
 
 using Hexalith.EventStore.Contracts.Events;
+
+namespace Hexalith.EventStore.Contracts.Tests.Events;
 
 public class EventEnvelopeTests {
     private static EventMetadata CreateMetadata(long sequenceNumber = 1) =>
@@ -21,7 +22,7 @@ public class EventEnvelopeTests {
 
     [Fact]
     public void Constructor_WithValidInputs_CreatesInstance() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload = [1, 2, 3];
         var extensions = new ReadOnlyDictionary<string, string>(new Dictionary<string, string> { ["key"] = "value" });
 
@@ -35,7 +36,7 @@ public class EventEnvelopeTests {
 
     [Fact]
     public void Constructor_WithNullExtensions_StoresEmptyReadOnlyDictionary() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload = [1, 2, 3];
 
         var envelope = new EventEnvelope(metadata, payload, null);
@@ -46,18 +47,18 @@ public class EventEnvelopeTests {
 
     [Fact]
     public void Extensions_IsIReadOnlyDictionary() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload = [1, 2, 3];
         var dict = new Dictionary<string, string> { ["k"] = "v" };
 
         var envelope = new EventEnvelope(metadata, payload, dict);
 
-        Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(envelope.Extensions);
+        _ = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(envelope.Extensions);
     }
 
     [Fact]
     public void RecordEquality_SameMetadataDifferentPayloadArrays_AreNotEqual() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload1 = [1, 2, 3];
         byte[] payload2 = [1, 2, 3];
 
@@ -70,7 +71,7 @@ public class EventEnvelopeTests {
 
     [Fact]
     public void RecordEquality_SamePayloadReference_AreEqual() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload = [1, 2, 3];
 
         var envelope1 = new EventEnvelope(metadata, payload, null);
@@ -81,7 +82,7 @@ public class EventEnvelopeTests {
 
     [Fact]
     public void PayloadComparison_UseSequenceEqual_ForByteComparison() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload1 = [1, 2, 3];
         byte[] payload2 = [1, 2, 3];
 
@@ -92,14 +93,12 @@ public class EventEnvelopeTests {
     }
 
     [Fact]
-    public void Constructor_WithNullMetadata_ThrowsArgumentNullException() {
-        Assert.Throws<ArgumentNullException>(() => new EventEnvelope(null!, [1, 2, 3], null));
-    }
+    public void Constructor_WithNullMetadata_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() => new EventEnvelope(null!, [1, 2, 3], null));
 
     [Fact]
     public void Constructor_WithNullPayload_ThrowsArgumentNullException() {
-        var metadata = CreateMetadata();
-        Assert.Throws<ArgumentNullException>(() => new EventEnvelope(metadata, null!, null));
+        EventMetadata metadata = CreateMetadata();
+        _ = Assert.Throws<ArgumentNullException>(() => new EventEnvelope(metadata, null!, null));
     }
 
     [Fact]
@@ -114,7 +113,7 @@ public class EventEnvelopeTests {
 
     [Fact]
     public void Metadata_ExposesAll11Fields() {
-        var metadata = CreateMetadata();
+        EventMetadata metadata = CreateMetadata();
         byte[] payload = [1, 2, 3];
         var envelope = new EventEnvelope(metadata, payload, null);
 

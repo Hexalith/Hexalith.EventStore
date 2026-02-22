@@ -1,6 +1,7 @@
-namespace Hexalith.EventStore.CommandApi.Telemetry;
 
 using System.Diagnostics;
+
+namespace Hexalith.EventStore.CommandApi.Telemetry;
 
 internal static class EventStoreActivitySources {
     public const string Submit = "EventStore.CommandApi.Submit";

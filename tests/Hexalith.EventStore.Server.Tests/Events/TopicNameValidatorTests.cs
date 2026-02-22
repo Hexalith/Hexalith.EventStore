@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
@@ -9,13 +8,14 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.2 Task 4: TopicNameValidator unit tests.
 /// Verifies D6 topic name validation and compatibility with DAPR pub/sub backends (AC: #5).
 /// </summary>
 public class TopicNameValidatorTests {
     private static TopicNameValidator CreateValidator() {
-        var logger = Substitute.For<ILogger<TopicNameValidator>>();
+        ILogger<TopicNameValidator> logger = Substitute.For<ILogger<TopicNameValidator>>();
         return new TopicNameValidator(logger);
     }
 
@@ -145,7 +145,7 @@ public class TopicNameValidatorTests {
         TopicNameValidator validator = CreateValidator();
 
         // Act & Assert
-        Should.Throw<ArgumentNullException>(() => validator.IsValidTopicName(null!));
+        _ = Should.Throw<ArgumentNullException>(() => validator.IsValidTopicName(null!));
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class TopicNameValidatorTests {
     [Fact]
     public void IsValidTopicName_TopicApproachingLengthLimit_ReturnsTrue_LogsWarning() {
         // Arrange - topic > 200 chars but < 249 chars
-        var logger = Substitute.For<ILogger<TopicNameValidator>>();
+        ILogger<TopicNameValidator> logger = Substitute.For<ILogger<TopicNameValidator>>();
         var validator = new TopicNameValidator(logger);
         string longTenant = new('a', 100);
         string longDomain = new('b', 100);
@@ -198,6 +198,6 @@ public class TopicNameValidatorTests {
         TopicNameValidator validator = CreateValidator();
 
         // Act & Assert
-        Should.Throw<ArgumentNullException>(() => validator.DeriveTopicName(null!));
+        _ = Should.Throw<ArgumentNullException>(() => validator.DeriveTopicName(null!));
     }
 }

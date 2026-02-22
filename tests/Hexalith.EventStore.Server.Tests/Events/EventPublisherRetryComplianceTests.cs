@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Events;
 
 using Dapr.Client;
 
@@ -14,6 +13,7 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.3 Task 7: EventPublisher no-retry compliance tests.
 /// Verifies that EventPublisher has ZERO custom retry logic -- all retries are DAPR resiliency policies (rule #4).
@@ -38,9 +38,9 @@ public class EventPublisherRetryComplianceTests {
             Extensions: null);
 
     private static (EventPublisher Publisher, DaprClient DaprClient) CreatePublisher() {
-        var daprClient = Substitute.For<DaprClient>();
-        var options = Options.Create(new EventPublisherOptions());
-        var logger = Substitute.For<ILogger<EventPublisher>>();
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions());
+        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         var publisher = new EventPublisher(daprClient, options, logger);
         return (publisher, daprClient);
     }
@@ -51,7 +51,7 @@ public class EventPublisherRetryComplianceTests {
     public async Task PublishEventsAsync_TransientFailure_NoRetry_ReturnsFailed() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Transient broker error"));
@@ -122,7 +122,7 @@ public class EventPublisherRetryComplianceTests {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         int callCount = 0;
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .Returns(_ => {

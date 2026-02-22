@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Sample.Counter.State;
 
 using Hexalith.EventStore.Sample.Counter.Events;
 
+namespace Hexalith.EventStore.Sample.Counter.State;
 /// <summary>
 /// Aggregate state for the Counter domain. Tracks the current count value
 /// and applies events to reconstruct state from event replay.

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -13,6 +12,8 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Commands;
+
 public class SubmitCommandHandlerRoutingTests {
     private static SubmitCommand CreateTestCommand(string? correlationId = null) => new(
         Tenant: "test-tenant",
@@ -26,8 +27,8 @@ public class SubmitCommandHandlerRoutingTests {
     [Fact]
     public async Task Handle_ValidCommand_RoutesToActor() {
         // Arrange
-        var router = Substitute.For<ICommandRouter>();
-        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
 
         var handler = new SubmitCommandHandler(
@@ -39,10 +40,10 @@ public class SubmitCommandHandlerRoutingTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await router.Received(1).RouteCommandAsync(
+        _ = await router.Received(1).RouteCommandAsync(
             Arg.Is<SubmitCommand>(c => c.CorrelationId == command.CorrelationId),
             Arg.Any<CancellationToken>());
     }
@@ -50,8 +51,8 @@ public class SubmitCommandHandlerRoutingTests {
     [Fact]
     public async Task Handle_RouterThrows_PropagatesException() {
         // Arrange
-        var router = Substitute.For<ICommandRouter>();
-        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Actor failed"));
 
         var handler = new SubmitCommandHandler(
@@ -63,7 +64,7 @@ public class SubmitCommandHandlerRoutingTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act & Assert - exception should NOT be swallowed (unlike status/archive writes)
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => handler.Handle(command, CancellationToken.None));
     }
 }

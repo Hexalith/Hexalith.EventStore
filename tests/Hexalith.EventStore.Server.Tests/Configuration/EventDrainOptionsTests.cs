@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 using Hexalith.EventStore.Server.Configuration;
 
@@ -8,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>
 /// Story 4.4 Task 11: EventDrainOptions unit tests (AC: #11).
 /// </summary>
@@ -36,7 +36,7 @@ public class EventDrainOptionsTests {
             .Build();
 
         var services = new ServiceCollection();
-        services.AddOptions<EventDrainOptions>()
+        _ = services.AddOptions<EventDrainOptions>()
             .Bind(configuration.GetSection("EventStore:Drain"));
 
         ServiceProvider provider = services.BuildServiceProvider();

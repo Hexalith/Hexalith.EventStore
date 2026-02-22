@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Server.DomainServices;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 
+namespace Hexalith.EventStore.Server.DomainServices;
 /// <summary>
 /// Minimal contract for invoking a domain service to process a command.
 /// The server calls domain services via DAPR; in tests, this is faked.

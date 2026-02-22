@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.CommandApi.Controllers;
 
 using System.Diagnostics;
 
@@ -7,16 +6,14 @@ using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
-using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.CommandApi.Controllers;
 /// <summary>
 /// Controller for replaying previously failed commands.
 /// Route: POST /api/v1/commands/replay/{correlationId}
@@ -51,7 +48,7 @@ public class ReplayController(
 
         using Activity? activity = EventStoreActivitySources.CommandApi.StartActivity(
             EventStoreActivitySources.Replay, ActivityKind.Server);
-        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId));
 
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? correlationId;
@@ -61,7 +58,7 @@ public class ReplayController(
             HttpContext.Items["ReplayCorrelationId"] = correlationId;
 
             // Extract tenant claims (same pattern as Story 2.5/2.6)
-            List<string> tenantClaims = User.FindAll("eventstore:tenant")
+            var tenantClaims = User.FindAll("eventstore:tenant")
                 .Select(c => c.Value)
                 .Where(v => !string.IsNullOrWhiteSpace(v))
                 .ToList();
@@ -72,7 +69,7 @@ public class ReplayController(
                     "Replay denied: no tenant claims. CorrelationId={CorrelationId}",
                     requestCorrelationId);
 
-                activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims");
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
                 return CreateProblemDetails(
                     StatusCodes.Status403Forbidden,
                     "Forbidden",
@@ -85,7 +82,7 @@ public class ReplayController(
             string? foundTenant = null;
 
             foreach (string tenant in tenantClaims) {
-                activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant);
+                _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant));
 
                 archivedCommand = await archiveStore
                     .ReadCommandAsync(tenant, correlationId, cancellationToken)
@@ -104,7 +101,7 @@ public class ReplayController(
                     correlationId,
                     string.Join(",", tenantClaims));
 
-                activity?.SetStatus(ActivityStatusCode.Error, "NotFound");
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "NotFound"));
                 return CreateProblemDetails(
                     StatusCodes.Status404NotFound,
                     "Not Found",
@@ -122,7 +119,7 @@ public class ReplayController(
 
             // H5: Null status (expired or never written) -- cannot determine replayability
             if (statusRecord is null) {
-                activity?.SetStatus(ActivityStatusCode.Error, "Conflict");
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "Conflict"));
                 return CreateConflictProblemDetails(
                     "Unknown",
                     $"Status tracking for command '{correlationId}' has expired. Cannot determine replayability. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut).",
@@ -135,7 +132,7 @@ public class ReplayController(
                     ? $"Command '{correlationId}' has already completed successfully. Replay is not permitted for completed commands. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut)."
                     : $"Command '{correlationId}' is currently in-flight (status: {statusRecord.Status}). Wait for processing to complete or time out before replaying. Replay is permitted only for commands with terminal failure status (Rejected, PublishFailed, TimedOut).";
 
-                activity?.SetStatus(ActivityStatusCode.Error, "Conflict");
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "Conflict"));
                 return CreateConflictProblemDetails(
                     statusRecord.Status.ToString(),
                     detail,
@@ -145,7 +142,7 @@ public class ReplayController(
             string previousStatus = statusRecord.Status.ToString();
 
             // AC #1, #2: Create SubmitCommand from archived data and send through full MediatR pipeline
-            SubmitCommand command = archivedCommand.ToSubmitCommand(correlationId);
+            var command = archivedCommand.ToSubmitCommand(correlationId);
 
             logger.LogInformation(
                 "Replay initiated: CorrelationId={CorrelationId}, TenantId={TenantId}, PreviousStatus={PreviousStatus}, IsReplay={IsReplay}",
@@ -154,18 +151,18 @@ public class ReplayController(
                 previousStatus,
                 true);
 
-            await mediator.Send(command, cancellationToken).ConfigureAwait(false);
+            _ = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
             // AC #1: Return 202 Accepted with replay response
             string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{correlationId}";
             Response.Headers["Retry-After"] = "1";
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             return Accepted(absoluteLocationUri, new ReplayCommandResponse(correlationId, IsReplay: true, PreviousStatus: previousStatus));
         }
         catch (Exception ex) {
-            activity?.AddException(ex);
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _ = (activity?.AddException(ex));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
             throw;
         }
     }

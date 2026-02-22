@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Dapr.Client;
 
@@ -14,6 +13,8 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Commands;
+
 public class DaprCommandStatusStoreTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
     private readonly IOptions<CommandStatusOptions> _options = Options.Create(new CommandStatusOptions());
@@ -24,7 +25,7 @@ public class DaprCommandStatusStoreTests {
     [Fact]
     public async Task WriteStatusAsync_ValidStatus_CallsSaveStateWithCorrectKey() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandStatusStore store = CreateStore();
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
 
         // Act
@@ -43,7 +44,7 @@ public class DaprCommandStatusStoreTests {
     [Fact]
     public async Task WriteStatusAsync_IncludesTtlMetadata_Default86400Seconds() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandStatusStore store = CreateStore();
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
 
         // Act
@@ -62,10 +63,10 @@ public class DaprCommandStatusStoreTests {
     [Fact]
     public async Task WriteStatusAsync_DaprClientThrows_PropagatesException() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandStatusStore store = CreateStore();
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
 
-        _daprClient.SaveStateAsync(
+        _ = _daprClient.SaveStateAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CommandStatusRecord>(),
@@ -75,17 +76,17 @@ public class DaprCommandStatusStoreTests {
             .ThrowsAsync(new InvalidOperationException("Dapr sidecar unavailable"));
 
         // Act & Assert - exception propagates to caller (advisory handling is caller's responsibility)
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => store.WriteStatusAsync("tenant-a", "corr-123", record, CancellationToken.None));
     }
 
     [Fact]
     public async Task ReadStatusAsync_ExistingKey_ReturnsRecord() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandStatusStore store = CreateStore();
         var expected = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
 
-        _daprClient.GetStateAsync<CommandStatusRecord>(
+        _ = _daprClient.GetStateAsync<CommandStatusRecord>(
             "statestore",
             "tenant-a:corr-123:status",
             consistencyMode: Arg.Any<ConsistencyMode?>(),
@@ -97,16 +98,16 @@ public class DaprCommandStatusStoreTests {
         CommandStatusRecord? result = await store.ReadStatusAsync("tenant-a", "corr-123", CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.ShouldBe(expected);
     }
 
     [Fact]
     public async Task ReadStatusAsync_NonExistentKey_ReturnsNull() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandStatusStore store = CreateStore();
 
-        _daprClient.GetStateAsync<CommandStatusRecord>(
+        _ = _daprClient.GetStateAsync<CommandStatusRecord>(
             Arg.Any<string>(),
             Arg.Any<string>(),
             consistencyMode: Arg.Any<ConsistencyMode?>(),
@@ -124,9 +125,9 @@ public class DaprCommandStatusStoreTests {
     [Fact]
     public async Task ReadStatusAsync_DaprClientThrows_LogsWarningAndReturnsNull() {
         // Arrange
-        var store = CreateStore();
+        DaprCommandStatusStore store = CreateStore();
 
-        _daprClient.GetStateAsync<CommandStatusRecord>(
+        _ = _daprClient.GetStateAsync<CommandStatusRecord>(
             Arg.Any<string>(),
             Arg.Any<string>(),
             consistencyMode: Arg.Any<ConsistencyMode?>(),

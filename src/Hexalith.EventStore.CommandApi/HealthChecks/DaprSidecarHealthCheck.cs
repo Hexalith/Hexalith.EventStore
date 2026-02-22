@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.CommandApi.HealthChecks;
 
 using Dapr.Client;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+namespace Hexalith.EventStore.CommandApi.HealthChecks;
 /// <summary>
 /// Health check that verifies DAPR sidecar responsiveness via the gRPC metadata API.
 /// Uses <see cref="DaprClient.GetMetadataAsync"/> (gRPC) instead of
@@ -23,7 +23,7 @@ public class DaprSidecarHealthCheck(DaprClient daprClient) : IHealthCheck {
         ArgumentNullException.ThrowIfNull(context);
 
         try {
-            var metadata = await _daprClient.GetMetadataAsync(cancellationToken)
+            DaprMetadata? metadata = await _daprClient.GetMetadataAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return metadata is not null

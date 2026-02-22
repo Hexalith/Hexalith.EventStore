@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -23,6 +21,8 @@ using Shouldly;
 
 using CommandApiProgram = commandapi::Program;
 
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
+
 public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     private const string ConflictTriggerCommandType = "SimulateConcurrencyConflict";
@@ -32,7 +32,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -51,7 +51,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -67,7 +67,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest(aggregateId: "order-789");
+        object request = CreateConflictRequest(aggregateId: "order-789");
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -83,7 +83,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest(aggregateId: "order-detail-test");
+        object request = CreateConflictRequest(aggregateId: "order-detail-test");
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -102,7 +102,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         var statusStore = new Testing.Fakes.InMemoryCommandStatusStore();
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory(statusStore);
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -111,11 +111,11 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
         // The status store should have a Rejected entry
-        var allStatuses = statusStore.GetAllStatuses();
+        IReadOnlyDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)> allStatuses = statusStore.GetAllStatuses();
         CommandStatusRecord? rejectedStatus = allStatuses.Values
             .Select(entry => entry.Record)
             .FirstOrDefault(s => s.Status == CommandStatus.Rejected);
-        rejectedStatus.ShouldNotBeNull();
+        _ = rejectedStatus.ShouldNotBeNull();
         rejectedStatus.FailureReason.ShouldBe("ConcurrencyConflict");
     }
 
@@ -126,7 +126,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         HttpClient client = CreateAuthenticatedClient(customFactory);
 
         // First request: trigger conflict
-        var conflictRequest = CreateConflictRequest();
+        object conflictRequest = CreateConflictRequest();
         HttpResponseMessage conflictResponse = await client.PostAsJsonAsync("/api/v1/commands", conflictRequest);
         conflictResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
@@ -151,7 +151,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange - no auth header
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = customFactory.CreateClient();
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -165,7 +165,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -179,7 +179,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -197,7 +197,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // the response would be 500 instead of 409.
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -212,7 +212,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<CommandApiProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        var request = CreateConflictRequest();
+        object request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -242,32 +242,30 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         Testing.Fakes.InMemoryCommandStatusStore? statusStore = null) {
         statusStore ??= new Testing.Fakes.InMemoryCommandStatusStore();
 
-        return factory.WithWebHostBuilder(builder => {
-            builder.ConfigureServices(services => {
-                // Replace status store with test instance
-                ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(ICommandStatusStore));
-                if (statusDescriptor is not null) {
-                    services.Remove(statusDescriptor);
-                }
+        return factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => {
+            // Replace status store with test instance
+            ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
+                d => d.ServiceType == typeof(ICommandStatusStore));
+            if (statusDescriptor is not null) {
+                _ = services.Remove(statusDescriptor);
+            }
 
-                services.AddSingleton<ICommandStatusStore>(statusStore);
+            _ = services.AddSingleton<ICommandStatusStore>(statusStore);
 
-                // Replace command handler with concurrency-conflict-simulating handler
-                ServiceDescriptor? handlerDescriptor = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>));
-                if (handlerDescriptor is not null) {
-                    services.Remove(handlerDescriptor);
-                }
+            // Replace command handler with concurrency-conflict-simulating handler
+            ServiceDescriptor? handlerDescriptor = services.FirstOrDefault(
+                d => d.ServiceType == typeof(IRequestHandler<SubmitCommand, SubmitCommandResult>));
+            if (handlerDescriptor is not null) {
+                _ = services.Remove(handlerDescriptor);
+            }
 
-                services.AddTransient<IRequestHandler<SubmitCommand, SubmitCommandResult>>(sp =>
-                    new ConcurrencyConflictSimulatingHandler(
-                        sp.GetRequiredService<ICommandStatusStore>(),
-                        sp.GetRequiredService<ICommandArchiveStore>(),
-                        sp.GetRequiredService<ICommandRouter>(),
-                        sp.GetRequiredService<ILogger<SubmitCommandHandler>>()));
-            });
-        });
+            _ = services.AddTransient<IRequestHandler<SubmitCommand, SubmitCommandResult>>(sp =>
+                new ConcurrencyConflictSimulatingHandler(
+                    sp.GetRequiredService<ICommandStatusStore>(),
+                    sp.GetRequiredService<ICommandArchiveStore>(),
+                    sp.GetRequiredService<ICommandRouter>(),
+                    sp.GetRequiredService<ILogger<SubmitCommandHandler>>()));
+        }));
     }
 
     /// <summary>
@@ -284,7 +282,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
             if (request.CommandType == ConflictTriggerCommandType) {
                 // Write Received status first (mimics normal flow up to conflict point)
-                await _inner.Handle(request, cancellationToken).ConfigureAwait(false);
+                _ = await _inner.Handle(request, cancellationToken).ConfigureAwait(false);
                 throw new ConcurrencyConflictException(
                     request.CorrelationId,
                     request.AggregateId,

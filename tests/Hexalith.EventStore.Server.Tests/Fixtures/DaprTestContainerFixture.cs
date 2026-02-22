@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Fixtures;
 
 using System.Diagnostics;
 using System.Net;
@@ -16,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
+namespace Hexalith.EventStore.Server.Tests.Fixtures;
 /// <summary>
 /// Integration test fixture that starts a local <c>daprd</c> process,
 /// reusing the existing Dapr infrastructure (Redis, placement, scheduler) from <c>dapr init</c>.
@@ -132,7 +132,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             },
         };
 
-        _daprProcess.Start();
+        _ = _daprProcess.Start();
 
         if (_daprProcess.HasExited) {
             string stderr = _daprProcess.StandardError.ReadToEnd();
@@ -156,29 +156,27 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private async Task StartTestHostAsync() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
-        builder.WebHost.UseUrls($"http://0.0.0.0:{_appPort}");
+        _ = builder.WebHost.UseUrls($"http://0.0.0.0:{_appPort}");
 
-        builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
 
-        builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
-        builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
-        builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
-        builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
+        _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
+        _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
+        _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
+        _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
 
-        builder.Services.Configure<SnapshotOptions>(o => {
-            o.DomainIntervals["counter"] = 100;
-        });
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 100);
 
         _testHost = builder.Build();
 
-        _testHost.MapActorsHandlers();
+        _ = _testHost.MapActorsHandlers();
 
         await _testHost.StartAsync().ConfigureAwait(false);
     }
 
     private static string CreateComponentFiles() {
         string tempDir = Path.Combine(Path.GetTempPath(), $"dapr-components-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
+        _ = Directory.CreateDirectory(tempDir);
 
         string stateStoreYaml = $$"""
             apiVersion: dapr.io/v1alpha1

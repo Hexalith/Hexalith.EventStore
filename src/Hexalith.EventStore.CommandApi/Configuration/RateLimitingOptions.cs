@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.CommandApi.Configuration;
 
 using Microsoft.Extensions.Options;
 
+namespace Hexalith.EventStore.CommandApi.Configuration;
 /// <summary>
 /// Configuration options for per-tenant rate limiting.
 /// Bound from the "EventStore:RateLimiting" configuration section.

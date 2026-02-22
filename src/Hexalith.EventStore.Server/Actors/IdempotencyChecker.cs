@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.Server.Actors;
 
 using Dapr.Actors.Runtime;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Checks and records command idempotency using DAPR actor state.
 /// Created per-actor-call (not via DI) because it requires the actor's IActorStateManager instance.
@@ -37,7 +37,7 @@ public partial class IdempotencyChecker(
         ArgumentNullException.ThrowIfNull(result);
 
         string key = $"{KeyPrefix}{causationId}";
-        IdempotencyRecord record = IdempotencyRecord.FromResult(causationId, result);
+        var record = IdempotencyRecord.FromResult(causationId, result);
 
         await stateManager
             .SetStateAsync(key, record)

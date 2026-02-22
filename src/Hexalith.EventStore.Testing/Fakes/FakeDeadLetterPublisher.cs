@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// Fake implementation of <see cref="IDeadLetterPublisher"/> for unit testing.
 /// Thread-safe for concurrent test scenarios. Captures all published dead-letter messages
@@ -35,9 +35,7 @@ public sealed class FakeDeadLetterPublisher : IDeadLetterPublisher {
     /// Configures all publish calls to return false (simulating dead-letter publication failure).
     /// </summary>
     /// <param name="failureMessage">The failure reason for diagnostics.</param>
-    public void SetupFailure(string failureMessage = "Dead-letter pub/sub unavailable") {
-        _failureMessage = failureMessage;
-    }
+    public void SetupFailure(string failureMessage = "Dead-letter pub/sub unavailable") => _failureMessage = failureMessage;
 
     /// <summary>
     /// Returns all published dead-letter messages.

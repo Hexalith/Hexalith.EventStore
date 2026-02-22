@@ -1,8 +1,8 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// In-memory implementation of <see cref="IEventStreamReader"/> for unit testing.
 /// Records all rehydration calls for test assertions and returns configurable results.

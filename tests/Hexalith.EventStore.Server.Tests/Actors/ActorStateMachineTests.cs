@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
@@ -9,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class ActorStateMachineTests {
     private const string PipelineKeyPrefix = "test-tenant:test-domain:agg-001:pipeline:";
@@ -25,7 +26,7 @@ public class ActorStateMachineTests {
         RejectionEventType: null);
 
     private static ActorStateMachine CreateStateMachine(InMemoryStateManager stateManager) {
-        var logger = Substitute.For<ILogger<ActorStateMachine>>();
+        ILogger<ActorStateMachine> logger = Substitute.For<ILogger<ActorStateMachine>>();
         return new ActorStateMachine(stateManager, logger);
     }
 
@@ -62,7 +63,7 @@ public class ActorStateMachineTests {
         PipelineState? loaded = await sm.LoadPipelineStateAsync(PipelineKeyPrefix, CorrelationId);
 
         // Assert
-        loaded.ShouldNotBeNull();
+        _ = loaded.ShouldNotBeNull();
         loaded.CurrentStage.ShouldBe(CommandStatus.EventsStored);
     }
 
@@ -119,7 +120,7 @@ public class ActorStateMachineTests {
         var stateManager = new InMemoryStateManager();
         ActorStateMachine sm = CreateStateMachine(stateManager);
 
-        var processingState = CreateTestPipelineState(CommandStatus.Processing);
+        PipelineState processingState = CreateTestPipelineState(CommandStatus.Processing);
         await sm.CheckpointAsync(PipelineKeyPrefix, processingState);
         await stateManager.SaveStateAsync();
 

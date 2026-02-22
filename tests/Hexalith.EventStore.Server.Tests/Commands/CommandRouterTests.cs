@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -14,6 +13,8 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class CommandRouterTests {
     private static SubmitCommand CreateTestCommand(
@@ -32,12 +33,12 @@ public class CommandRouterTests {
 
     private static (CommandRouter Router, IActorProxyFactory Factory, IAggregateActor ActorProxy) CreateRouter(
         CommandProcessingResult? result = null) {
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(result ?? new CommandProcessingResult(true, CorrelationId: "test-correlation"));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
@@ -51,10 +52,10 @@ public class CommandRouterTests {
         SubmitCommand command = CreateTestCommand(tenant: "acme", domain: "orders", aggregateId: "order-123");
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert
-        factory.Received(1).CreateActorProxy<IAggregateActor>(
+        _ = factory.Received(1).CreateActorProxy<IAggregateActor>(
             Arg.Is<ActorId>(id => id.ToString() == "acme:orders:order-123"),
             Arg.Is<string>(s => s == nameof(AggregateActor)));
     }
@@ -66,10 +67,10 @@ public class CommandRouterTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert
-        await actorProxy.Received(1).ProcessCommandAsync(Arg.Any<CommandEnvelope>());
+        _ = await actorProxy.Received(1).ProcessCommandAsync(Arg.Any<CommandEnvelope>());
     }
 
     [Fact]
@@ -79,10 +80,10 @@ public class CommandRouterTests {
         SubmitCommand command = CreateTestCommand(commandType: "PlaceOrder");
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert
-        await actorProxy.Received(1).ProcessCommandAsync(
+        _ = await actorProxy.Received(1).ProcessCommandAsync(
             Arg.Is<CommandEnvelope>(e =>
                 e.TenantId == "test-tenant" &&
                 e.Domain == "test-domain" &&
@@ -107,19 +108,19 @@ public class CommandRouterTests {
     [Fact]
     public async Task RouteCommandAsync_ActorThrows_PropagatesException() {
         // Arrange
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .ThrowsAsync(new InvalidOperationException("Actor failure"));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
         SubmitCommand command = CreateTestCommand();
 
         // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => router.RouteCommandAsync(command));
     }
 
@@ -129,22 +130,22 @@ public class CommandRouterTests {
         string correlationId = Guid.NewGuid().ToString();
         CommandEnvelope? capturedEnvelope = null;
 
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Do<CommandEnvelope>(e => capturedEnvelope = e))
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Do<CommandEnvelope>(e => capturedEnvelope = e))
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
         SubmitCommand command = CreateTestCommand(correlationId: correlationId);
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert
-        capturedEnvelope.ShouldNotBeNull();
+        _ = capturedEnvelope.ShouldNotBeNull();
         capturedEnvelope.CorrelationId.ShouldBe(correlationId);
     }
 
@@ -154,22 +155,22 @@ public class CommandRouterTests {
         string correlationId = Guid.NewGuid().ToString();
         CommandEnvelope? capturedEnvelope = null;
 
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Do<CommandEnvelope>(e => capturedEnvelope = e))
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Do<CommandEnvelope>(e => capturedEnvelope = e))
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
         SubmitCommand command = CreateTestCommand(correlationId: correlationId);
 
         // Act
-        await router.RouteCommandAsync(command);
+        _ = await router.RouteCommandAsync(command);
 
         // Assert
-        capturedEnvelope.ShouldNotBeNull();
+        _ = capturedEnvelope.ShouldNotBeNull();
         capturedEnvelope.CausationId.ShouldBe(correlationId);
     }
 
@@ -179,7 +180,7 @@ public class CommandRouterTests {
         (CommandRouter router, _, _) = CreateRouter();
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentNullException>(
+        _ = await Should.ThrowAsync<ArgumentNullException>(
             () => router.RouteCommandAsync(null!));
     }
 
@@ -189,19 +190,19 @@ public class CommandRouterTests {
     public async Task RouteCommandAsync_DifferentTenants_CreatesDistinctActorIds() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorIds.Add(id)), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(capturedActorIds.Add), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
 
         // Act
-        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "orders", aggregateId: "order-001"));
-        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-b", domain: "orders", aggregateId: "order-001"));
+        _ = await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "orders", aggregateId: "order-001"));
+        _ = await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-b", domain: "orders", aggregateId: "order-001"));
 
         // Assert
         capturedActorIds.Count.ShouldBe(2);
@@ -214,19 +215,19 @@ public class CommandRouterTests {
     public async Task RouteCommandAsync_DifferentDomains_CreatesDistinctActorIds() {
         // Arrange
         var capturedActorIds = new List<ActorId>();
-        var actorProxy = Substitute.For<IAggregateActor>();
-        actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
+        IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
+        _ = actorProxy.ProcessCommandAsync(Arg.Any<CommandEnvelope>())
             .Returns(new CommandProcessingResult(true));
 
-        var proxyFactory = Substitute.For<IActorProxyFactory>();
-        proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(id => capturedActorIds.Add(id)), Arg.Any<string>())
+        IActorProxyFactory proxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Do<ActorId>(capturedActorIds.Add), Arg.Any<string>())
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
 
         // Act
-        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "orders", aggregateId: "item-001"));
-        await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "inventory", aggregateId: "item-001"));
+        _ = await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "orders", aggregateId: "item-001"));
+        _ = await router.RouteCommandAsync(CreateTestCommand(tenant: "tenant-a", domain: "inventory", aggregateId: "item-001"));
 
         // Assert
         capturedActorIds.Count.ShouldBe(2);

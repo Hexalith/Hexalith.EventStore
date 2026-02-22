@@ -1,11 +1,12 @@
-namespace Hexalith.EventStore.Contracts.Tests.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
+
+namespace Hexalith.EventStore.Contracts.Tests.Commands;
 
 public class CommandStatusRecordTests {
     [Fact]
     public void Constructor_WithCompletedStatus_SetsEventCount() {
-        var timestamp = DateTimeOffset.UtcNow;
+        DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var record = new CommandStatusRecord(
             Status: CommandStatus.Completed,
             Timestamp: timestamp,

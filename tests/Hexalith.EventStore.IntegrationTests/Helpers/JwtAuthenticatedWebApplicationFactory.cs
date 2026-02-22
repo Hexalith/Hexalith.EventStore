@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.Helpers;
-
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -12,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using CommandApiProgram = commandapi::Program;
 
+namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// <summary>
 /// WebApplicationFactory configured with test JWT symmetric key authentication.
 /// Used by all integration tests that need authenticated requests.
@@ -29,35 +28,33 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Comma
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.ConfigureAppConfiguration(config => {
-            config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
-                ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
-                ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
-                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
-                // H16: High rate limit to prevent existing tests from hitting rate limits
-                ["EventStore:RateLimiting:PermitLimit"] = "10000",
-            });
-        });
+        _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Authentication:JwtBearer:Issuer"] = TestJwtTokenGenerator.Issuer,
+            ["Authentication:JwtBearer:Audience"] = TestJwtTokenGenerator.Audience,
+            ["Authentication:JwtBearer:SigningKey"] = TestJwtTokenGenerator.SigningKey,
+            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
+            // H16: High rate limit to prevent existing tests from hitting rate limits
+            ["EventStore:RateLimiting:PermitLimit"] = "10000",
+        }));
 
-        builder.ConfigureServices(services => {
+        _ = builder.ConfigureServices(services => {
             // Remove the DaprCommandStatusStore registration and replace with InMemory
             ServiceDescriptor? statusDescriptor = services.FirstOrDefault(
                 d => d.ServiceType == typeof(ICommandStatusStore));
             if (statusDescriptor is not null) {
-                services.Remove(statusDescriptor);
+                _ = services.Remove(statusDescriptor);
             }
 
-            services.AddSingleton<ICommandStatusStore>(StatusStore);
+            _ = services.AddSingleton<ICommandStatusStore>(StatusStore);
 
             // Remove the DaprCommandArchiveStore registration and replace with InMemory
             ServiceDescriptor? archiveDescriptor = services.FirstOrDefault(
                 d => d.ServiceType == typeof(ICommandArchiveStore));
             if (archiveDescriptor is not null) {
-                services.Remove(archiveDescriptor);
+                _ = services.Remove(archiveDescriptor);
             }
 
-            services.AddSingleton<ICommandArchiveStore>(ArchiveStore);
+            _ = services.AddSingleton<ICommandArchiveStore>(ArchiveStore);
 
             // Replace CommandRouter with fake (no DAPR actor infrastructure needed)
             TestServiceOverrides.ReplaceCommandRouter(services, Router);

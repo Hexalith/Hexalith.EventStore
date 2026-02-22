@@ -1,10 +1,10 @@
-namespace Hexalith.EventStore.Testing.Assertions;
 
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
 using Xunit;
 
+namespace Hexalith.EventStore.Testing.Assertions;
 /// <summary>
 /// Static assertion helpers for verifying <see cref="DomainResult"/> instances in tests.
 /// </summary>

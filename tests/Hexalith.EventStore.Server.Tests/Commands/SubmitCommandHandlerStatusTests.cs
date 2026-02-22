@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
@@ -15,10 +14,12 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Commands;
+
 public class SubmitCommandHandlerStatusTests {
     private static ICommandRouter CreateMockRouter() {
-        var router = Substitute.For<ICommandRouter>();
-        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
         return router;
     }
@@ -41,13 +42,13 @@ public class SubmitCommandHandlerStatusTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         CommandStatusRecord? status = await statusStore.ReadStatusAsync(
             command.Tenant, command.CorrelationId, CancellationToken.None);
 
-        status.ShouldNotBeNull();
+        _ = status.ShouldNotBeNull();
         status.Status.ShouldBe(CommandStatus.Received);
         status.AggregateId.ShouldBe(command.AggregateId);
     }
@@ -55,8 +56,8 @@ public class SubmitCommandHandlerStatusTests {
     [Fact]
     public async Task Handle_StatusWriteFails_StillReturnsResult() {
         // Arrange
-        var mockStore = Substitute.For<ICommandStatusStore>();
-        mockStore.WriteStatusAsync(
+        ICommandStatusStore mockStore = Substitute.For<ICommandStatusStore>();
+        _ = mockStore.WriteStatusAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CommandStatusRecord>(),
@@ -71,15 +72,15 @@ public class SubmitCommandHandlerStatusTests {
         SubmitCommandResult result = await handler.Handle(command, CancellationToken.None);
 
         // Assert - handler should still return result (rule #12)
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.CorrelationId.ShouldBe(command.CorrelationId);
     }
 
     [Fact]
     public async Task Handle_StatusWriteFails_LogsWarning() {
         // Arrange
-        var mockStore = Substitute.For<ICommandStatusStore>();
-        mockStore.WriteStatusAsync(
+        ICommandStatusStore mockStore = Substitute.For<ICommandStatusStore>();
+        _ = mockStore.WriteStatusAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CommandStatusRecord>(),
@@ -87,13 +88,13 @@ public class SubmitCommandHandlerStatusTests {
             .ThrowsAsync(new InvalidOperationException("Store unavailable"));
 
         var archiveStore = new InMemoryCommandArchiveStore();
-        var logger = Substitute.For<ILogger<SubmitCommandHandler>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        ILogger<SubmitCommandHandler> logger = Substitute.For<ILogger<SubmitCommandHandler>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), logger);
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert - warning should have been logged
         logger.Received(1).Log(

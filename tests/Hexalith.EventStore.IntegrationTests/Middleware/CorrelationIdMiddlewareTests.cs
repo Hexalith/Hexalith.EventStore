@@ -1,12 +1,12 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.Middleware;
-
 using commandapi::Hexalith.EventStore.CommandApi.Middleware;
 
 using Microsoft.AspNetCore.Http;
 
 using Shouldly;
+
+namespace Hexalith.EventStore.IntegrationTests.Middleware;
 
 public class CorrelationIdMiddlewareTests {
     [Fact]

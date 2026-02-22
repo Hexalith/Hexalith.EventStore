@@ -1,7 +1,5 @@
 extern alias commandapi;
 
-namespace Hexalith.EventStore.IntegrationTests.CommandApi;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -11,6 +9,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.IntegrationTests.CommandApi;
 /// <summary>
 /// Integration tests verifying multi-domain and multi-tenant command processing (Story 3.6, AC #1-#5).
 /// </summary>
@@ -170,9 +169,9 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
         object commandC = CreateCommandRequest(tenant: "tenant-c", domain: "orders", aggregateId: "shared-agg");
 
         // Act
-        await clientA.PostAsJsonAsync("/api/v1/commands", commandA);
-        await clientB.PostAsJsonAsync("/api/v1/commands", commandB);
-        await clientC.PostAsJsonAsync("/api/v1/commands", commandC);
+        _ = await clientA.PostAsJsonAsync("/api/v1/commands", commandA);
+        _ = await clientB.PostAsJsonAsync("/api/v1/commands", commandB);
+        _ = await clientC.PostAsJsonAsync("/api/v1/commands", commandC);
 
         // Assert - all three commands received with unique actor IDs
         fakeActor.ReceivedCommands.Count.ShouldBe(3);

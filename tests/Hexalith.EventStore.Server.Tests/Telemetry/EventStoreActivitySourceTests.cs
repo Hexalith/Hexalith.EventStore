@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Telemetry;
 
 using System.Diagnostics;
 
@@ -6,6 +5,7 @@ using Hexalith.EventStore.Server.Telemetry;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Telemetry;
 /// <summary>
 /// Story 3.11 Task 9: OpenTelemetry activity source tests.
 /// Verifies activity creation, naming conventions, and tag constants.
@@ -25,7 +25,7 @@ public class EventStoreActivitySourceTests {
             EventStoreActivitySource.ProcessCommand);
 
         // Assert
-        activity.ShouldNotBeNull();
+        _ = activity.ShouldNotBeNull();
         activity.OperationName.ShouldBe(EventStoreActivitySource.ProcessCommand);
     }
 
@@ -41,14 +41,14 @@ public class EventStoreActivitySourceTests {
         // Act
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.IdempotencyCheck);
-        activity?.SetTag(EventStoreActivitySource.TagCorrelationId, "corr-123");
-        activity?.SetTag(EventStoreActivitySource.TagTenantId, "tenant-a");
-        activity?.SetTag(EventStoreActivitySource.TagDomain, "orders");
-        activity?.SetTag(EventStoreActivitySource.TagAggregateId, "order-001");
-        activity?.SetTag(EventStoreActivitySource.TagCommandType, "CreateOrder");
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, "corr-123"));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, "tenant-a"));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagDomain, "orders"));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, "order-001"));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCommandType, "CreateOrder"));
 
         // Assert
-        activity.ShouldNotBeNull();
+        _ = activity.ShouldNotBeNull();
         activity.GetTagItem(EventStoreActivitySource.TagCorrelationId).ShouldBe("corr-123");
         activity.GetTagItem(EventStoreActivitySource.TagTenantId).ShouldBe("tenant-a");
         activity.GetTagItem(EventStoreActivitySource.TagDomain).ShouldBe("orders");
@@ -67,8 +67,7 @@ public class EventStoreActivitySourceTests {
     [InlineData(EventStoreActivitySource.EventsDrain, "EventStore.Events.")]
     [InlineData(EventStoreActivitySource.EventsPublishDeadLetter, "EventStore.Events.")]
     [InlineData(EventStoreActivitySource.StateMachineTransition, "EventStore.Actor.")]
-    public void Activities_FollowNamingConvention(string activityName, string expectedPrefix) {
+    public void Activities_FollowNamingConvention(string activityName, string expectedPrefix) =>
         // Assert -- activity names follow EventStore.{Component}.{Action} pattern
         activityName.ShouldStartWith(expectedPrefix);
-    }
 }

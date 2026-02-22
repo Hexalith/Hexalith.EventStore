@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Security;
 
 using System.Reflection;
 
@@ -23,6 +22,7 @@ using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
+namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
 /// Structural injection prevention tests verifying AggregateIdentity prevents namespace escape attacks,
 /// and tenant mismatch causes zero state access.
@@ -32,11 +32,10 @@ public class TenantInjectionPreventionTests {
     // --- Task 3.2: AC #10 ---
 
     [Fact]
-    public void AggregateIdentity_ColonInTenantId_Throws() {
+    public void AggregateIdentity_ColonInTenantId_Throws() =>
         // Colon injection to escape key namespace
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-b:orders", "orders", "order-001"));
-    }
 
     // --- Task 3.3: AC #10 ---
 
@@ -44,10 +43,8 @@ public class TenantInjectionPreventionTests {
     [InlineData("tenant\0id")]       // null byte
     [InlineData("tenant\u0001id")]   // control char SOH
     [InlineData("tenant\u001Fid")]   // control char US
-    public void AggregateIdentity_ControlCharsInTenantId_Throws(string tenantId) {
-        Should.Throw<ArgumentException>(
+    public void AggregateIdentity_ControlCharsInTenantId_Throws(string tenantId) => Should.Throw<ArgumentException>(
             () => new AggregateIdentity(tenantId, "orders", "order-001"));
-    }
 
     // --- Task 3.4: AC #10 ---
 
@@ -55,23 +52,21 @@ public class TenantInjectionPreventionTests {
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("   ")]
-    public void AggregateIdentity_EmptyOrWhitespaceTenantId_Throws(string tenantId) {
-        Should.Throw<ArgumentException>(
+    public void AggregateIdentity_EmptyOrWhitespaceTenantId_Throws(string tenantId) => Should.Throw<ArgumentException>(
             () => new AggregateIdentity(tenantId, "orders", "order-001"));
-    }
 
     // --- Task 3.5: AC #4, #8 ---
 
     [Fact]
     public async Task TenantValidator_MismatchDetected_NoStateManagerAccess() {
         // Arrange -- actor with tenant-b, command with tenant-a
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant-b:orders:order-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
@@ -80,21 +75,21 @@ public class TenantInjectionPreventionTests {
         prop?.SetValue(actor, stateManager);
 
         // No pipeline state, no duplicate
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), "cause-mismatch", "system", null);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert -- StateManager should NOT have been called for metadata (Step 3) or event reads
-        await stateManager.DidNotReceive().TryGetStateAsync<AggregateMetadata>(
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<AggregateMetadata>(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -103,13 +98,13 @@ public class TenantInjectionPreventionTests {
     [Fact]
     public async Task TenantValidator_MismatchDetected_RejectionRecordedViaIdempotency() {
         // Arrange
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant-b:orders:order-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
@@ -117,16 +112,16 @@ public class TenantInjectionPreventionTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), "cause-reject", "system", null);
 
         // Act
-        await actor.ProcessCommandAsync(command);
+        _ = await actor.ProcessCommandAsync(command);
 
         // Assert -- idempotency record stored with rejection
         await stateManager.Received(1).SetStateAsync(
@@ -143,13 +138,13 @@ public class TenantInjectionPreventionTests {
     [Fact]
     public async Task AggregateActor_TenantMismatch_ResultContainsTenantMismatchError() {
         // Arrange
-        var stateManager = Substitute.For<IActorStateManager>();
-        var logger = Substitute.For<ILogger<AggregateActor>>();
-        var invoker = Substitute.For<IDomainServiceInvoker>();
-        var snapshotManager = Substitute.For<ISnapshotManager>();
-        var commandStatusStore = Substitute.For<ICommandStatusStore>();
-        var eventPublisher = Substitute.For<IEventPublisher>();
-        var deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant-b:orders:order-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
@@ -157,9 +152,9 @@ public class TenantInjectionPreventionTests {
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
 
-        stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
-        stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
         var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
@@ -170,7 +165,7 @@ public class TenantInjectionPreventionTests {
 
         // Assert
         result.Accepted.ShouldBeFalse();
-        result.ErrorMessage.ShouldNotBeNull();
+        _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("TenantMismatch");
         result.ErrorMessage.ShouldContain("tenant-a");
         result.ErrorMessage.ShouldContain("tenant-b");
@@ -183,10 +178,8 @@ public class TenantInjectionPreventionTests {
     [InlineData("tenant-\u0430")]    // Cyrillic 'а' embedded
     [InlineData("\uFF11")]           // Fullwidth digit '1'
     [InlineData("tenant-\u0435")]    // Cyrillic 'е' (looks like Latin 'e')
-    public void AggregateIdentity_UnicodeHomoglyphInTenantId_Throws(string tenantId) {
-        Should.Throw<ArgumentException>(
+    public void AggregateIdentity_UnicodeHomoglyphInTenantId_Throws(string tenantId) => Should.Throw<ArgumentException>(
             () => new AggregateIdentity(tenantId, "orders", "order-001"));
-    }
 
     // --- Task 3.9: AC #11, GAP-R3 ---
 
@@ -202,18 +195,17 @@ public class TenantInjectionPreventionTests {
     public void AggregateIdentity_OverMaxLengthTenantId_Throws() {
         // 65-char tenant ID should be rejected
         string overMaxTenant = new('a', 65);
-        Should.Throw<ArgumentException>(
+        _ = Should.Throw<ArgumentException>(
             () => new AggregateIdentity(overMaxTenant, "orders", "order-001"));
     }
 
     // --- Task 3.10: AC #11, GAP-PM2 ---
 
     [Fact]
-    public void AggregateIdentity_DotInTenantId_Throws() {
+    public void AggregateIdentity_DotInTenantId_Throws() =>
         // Dots could create ambiguous pub/sub topics
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant.a", "orders", "order-001"));
-    }
 
     // --- Task 3.11: GAP-F1 ---
 
@@ -225,7 +217,7 @@ public class TenantInjectionPreventionTests {
         var validator = new TenantValidator(NullLogger<TenantValidator>.Instance);
 
         // Different tenants should not match
-        Should.Throw<TenantMismatchException>(
+        _ = Should.Throw<TenantMismatchException>(
             () => validator.Validate("tenant-a", "tenant-b:orders:order-001"));
 
         // Same tenant should pass
@@ -234,7 +226,7 @@ public class TenantInjectionPreventionTests {
 
         // Case-sensitive: Ordinal treats "Tenant-A" != "tenant-a".
         // This assertion would NOT catch a regression to OrdinalIgnoreCase without it.
-        Should.Throw<TenantMismatchException>(
+        _ = Should.Throw<TenantMismatchException>(
             () => validator.Validate("Tenant-A", "tenant-a:orders:order-001"));
     }
 
@@ -267,7 +259,7 @@ public class TenantInjectionPreventionTests {
 
         // TenantValidator.Validate MUST be called before any state access
         var validator = new TenantValidator(NullLogger<TenantValidator>.Instance);
-        Should.Throw<TenantMismatchException>(
+        _ = Should.Throw<TenantMismatchException>(
             () => validator.Validate(commandTenant, actorId));
     }
 }

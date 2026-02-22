@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Actors;
 
 using Dapr.Actors.Runtime;
 
@@ -10,6 +9,8 @@ using NSubstitute;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Actors;
+
 public class IdempotencyCheckerTests {
     private readonly IActorStateManager _stateManager = Substitute.For<IActorStateManager>();
     private readonly ILogger<IdempotencyChecker> _logger = Substitute.For<ILogger<IdempotencyChecker>>();
@@ -19,7 +20,7 @@ public class IdempotencyCheckerTests {
     [Fact]
     public async Task CheckAsync_NoExistingRecord_ReturnsNull() {
         // Arrange
-        _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
         IdempotencyChecker checker = CreateChecker();
 
@@ -34,7 +35,7 @@ public class IdempotencyCheckerTests {
     public async Task CheckAsync_ExistingRecord_ReturnsCachedResult() {
         // Arrange
         var record = new IdempotencyRecord("cause-123", "corr-456", true, null, DateTimeOffset.UtcNow);
-        _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         IdempotencyChecker checker = CreateChecker();
 
@@ -42,7 +43,7 @@ public class IdempotencyCheckerTests {
         CommandProcessingResult? result = await checker.CheckAsync("cause-123");
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Accepted.ShouldBeTrue();
         result.CorrelationId.ShouldBe("corr-456");
     }
@@ -85,7 +86,7 @@ public class IdempotencyCheckerTests {
         IdempotencyChecker checker = CreateChecker();
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentException>(() => checker.CheckAsync(null!));
+        _ = await Should.ThrowAsync<ArgumentException>(() => checker.CheckAsync(null!));
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public class IdempotencyCheckerTests {
         IdempotencyChecker checker = CreateChecker();
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentException>(() => checker.CheckAsync("   "));
+        _ = await Should.ThrowAsync<ArgumentException>(() => checker.CheckAsync("   "));
     }
 
     [Fact]
@@ -104,7 +105,7 @@ public class IdempotencyCheckerTests {
         var result = new CommandProcessingResult(Accepted: true);
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentException>(() => checker.RecordAsync(null!, result));
+        _ = await Should.ThrowAsync<ArgumentException>(() => checker.RecordAsync(null!, result));
     }
 
     [Fact]
@@ -113,21 +114,21 @@ public class IdempotencyCheckerTests {
         IdempotencyChecker checker = CreateChecker();
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentNullException>(() => checker.RecordAsync("cause-1", null!));
+        _ = await Should.ThrowAsync<ArgumentNullException>(() => checker.RecordAsync("cause-1", null!));
     }
 
     [Fact]
     public async Task CheckAsync_CorrectKeyFormat_UsesIdempotencyPrefix() {
         // Arrange
-        _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
         IdempotencyChecker checker = CreateChecker();
 
         // Act
-        await checker.CheckAsync("my-causation-id");
+        _ = await checker.CheckAsync("my-causation-id");
 
         // Assert
-        await _stateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
+        _ = await _stateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
             "idempotency:my-causation-id",
             Arg.Any<CancellationToken>());
     }

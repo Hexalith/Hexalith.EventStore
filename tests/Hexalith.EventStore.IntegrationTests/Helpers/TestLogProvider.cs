@@ -1,9 +1,9 @@
-namespace Hexalith.EventStore.IntegrationTests.Helpers;
 
 using System.Collections.Concurrent;
 
 using Microsoft.Extensions.Logging;
 
+namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// <summary>
 /// Shared ILoggerProvider for integration tests that captures log entries for assertion.
 /// </summary>
@@ -29,9 +29,7 @@ public sealed class TestLogProvider : ILoggerProvider {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            entries.Enqueue(new TestLogEntry(logLevel, formatter(state, exception)));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Enqueue(new TestLogEntry(logLevel, formatter(state, exception)));
     }
 }
 

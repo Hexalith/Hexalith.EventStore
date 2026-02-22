@@ -1,6 +1,7 @@
-namespace Hexalith.EventStore.Contracts.Tests.Identity;
 
 using Hexalith.EventStore.Contracts.Identity;
+
+namespace Hexalith.EventStore.Contracts.Tests.Identity;
 
 public class AggregateIdentityTests {
     [Fact]
@@ -72,45 +73,33 @@ public class AggregateIdentityTests {
 
     [Theory]
     [InlineData(null)]
-    public void Constructor_WithNullTenantId_ThrowsArgumentNullException(string? tenantId) {
-        Assert.Throws<ArgumentNullException>(() => new AggregateIdentity(tenantId!, "payments", "order-123"));
-    }
+    public void Constructor_WithNullTenantId_ThrowsArgumentNullException(string? tenantId) => Assert.Throws<ArgumentNullException>(() => new AggregateIdentity(tenantId!, "payments", "order-123"));
 
     [Theory]
     [InlineData(null)]
-    public void Constructor_WithNullDomain_ThrowsArgumentNullException(string? domain) {
-        Assert.Throws<ArgumentNullException>(() => new AggregateIdentity("acme", domain!, "order-123"));
-    }
+    public void Constructor_WithNullDomain_ThrowsArgumentNullException(string? domain) => Assert.Throws<ArgumentNullException>(() => new AggregateIdentity("acme", domain!, "order-123"));
 
     [Theory]
     [InlineData(null)]
-    public void Constructor_WithNullAggregateId_ThrowsArgumentNullException(string? aggregateId) {
-        Assert.Throws<ArgumentNullException>(() => new AggregateIdentity("acme", "payments", aggregateId!));
-    }
+    public void Constructor_WithNullAggregateId_ThrowsArgumentNullException(string? aggregateId) => Assert.Throws<ArgumentNullException>(() => new AggregateIdentity("acme", "payments", aggregateId!));
 
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
-    public void Constructor_WithEmptyOrWhitespaceTenantId_ThrowsArgumentException(string tenantId) {
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity(tenantId, "payments", "order-123"));
-    }
+    public void Constructor_WithEmptyOrWhitespaceTenantId_ThrowsArgumentException(string tenantId) => Assert.Throws<ArgumentException>(() => new AggregateIdentity(tenantId, "payments", "order-123"));
 
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
-    public void Constructor_WithEmptyOrWhitespaceDomain_ThrowsArgumentException(string domain) {
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", domain, "order-123"));
-    }
+    public void Constructor_WithEmptyOrWhitespaceDomain_ThrowsArgumentException(string domain) => Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", domain, "order-123"));
 
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
-    public void Constructor_WithEmptyOrWhitespaceAggregateId_ThrowsArgumentException(string aggregateId) {
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", "payments", aggregateId));
-    }
+    public void Constructor_WithEmptyOrWhitespaceAggregateId_ThrowsArgumentException(string aggregateId) => Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", "payments", aggregateId));
 
     [Theory]
     [InlineData("tenant:id")]
@@ -120,9 +109,7 @@ public class AggregateIdentityTests {
     [InlineData("tenant-")]
     [InlineData("ten\u0001ant")]
     [InlineData("ten\u00e9nt")]
-    public void Constructor_WithInvalidTenantId_ThrowsArgumentException(string tenantId) {
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity(tenantId, "payments", "order-123"));
-    }
+    public void Constructor_WithInvalidTenantId_ThrowsArgumentException(string tenantId) => Assert.Throws<ArgumentException>(() => new AggregateIdentity(tenantId, "payments", "order-123"));
 
     [Theory]
     [InlineData("domain:name")]
@@ -132,9 +119,7 @@ public class AggregateIdentityTests {
     [InlineData("domain-")]
     [InlineData("dom\u0001ain")]
     [InlineData("dom\u00e9in")]
-    public void Constructor_WithInvalidDomain_ThrowsArgumentException(string domain) {
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", domain, "order-123"));
-    }
+    public void Constructor_WithInvalidDomain_ThrowsArgumentException(string domain) => Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", domain, "order-123"));
 
     [Theory]
     [InlineData("aggregate:id")]
@@ -145,26 +130,24 @@ public class AggregateIdentityTests {
     [InlineData("aggregate.")]
     [InlineData("agg\u0001regate")]
     [InlineData("agg\u00e9regate")]
-    public void Constructor_WithInvalidAggregateId_ThrowsArgumentException(string aggregateId) {
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", "payments", aggregateId));
-    }
+    public void Constructor_WithInvalidAggregateId_ThrowsArgumentException(string aggregateId) => Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", "payments", aggregateId));
 
     [Fact]
     public void Constructor_WithTenantIdExceeding64Chars_ThrowsArgumentException() {
         string longTenantId = new('a', 65);
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity(longTenantId, "payments", "order-123"));
+        _ = Assert.Throws<ArgumentException>(() => new AggregateIdentity(longTenantId, "payments", "order-123"));
     }
 
     [Fact]
     public void Constructor_WithDomainExceeding64Chars_ThrowsArgumentException() {
         string longDomain = new('a', 65);
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", longDomain, "order-123"));
+        _ = Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", longDomain, "order-123"));
     }
 
     [Fact]
     public void Constructor_WithAggregateIdExceeding256Chars_ThrowsArgumentException() {
         string longAggregateId = new('a', 257);
-        Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", "payments", longAggregateId));
+        _ = Assert.Throws<ArgumentException>(() => new AggregateIdentity("acme", "payments", longAggregateId));
     }
 
     [Fact]

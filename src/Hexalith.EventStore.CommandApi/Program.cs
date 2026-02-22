@@ -1,6 +1,8 @@
 using Hexalith.EventStore.CommandApi.Middleware;
 
-var builder = WebApplication.CreateBuilder(args);
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
@@ -9,7 +11,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddCommandApi();
 builder.Services.AddEventStoreServer(builder.Configuration);
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Middleware order per architecture: CorrelationIdMiddleware FIRST (before everything)
 app.UseMiddleware<CorrelationIdMiddleware>();
@@ -21,8 +23,8 @@ app.UseAuthorization();
 
 // OpenAPI/Swagger UI (gated by configuration, H13)
 if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
-    app.MapOpenApi();
-    app.UseSwaggerUI(options => {
+    _ = app.MapOpenApi();
+    _ = app.UseSwaggerUI(options => {
         options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore API v1");
         options.RoutePrefix = "swagger";
     });
@@ -33,10 +35,8 @@ app.MapActorsHandlers();
 
 // Configure global request body size limit (1MB)
 app.Lifetime.ApplicationStarted.Register(() => {
-    var kestrelOptions = app.Services.GetService<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>();
-    if (kestrelOptions != null) {
-        kestrelOptions.Limits.MaxRequestBodySize = 1_048_576;
-    }
+    KestrelServerOptions? kestrelOptions = app.Services.GetService<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>();
+    _ = kestrelOptions?.Limits.MaxRequestBodySize = 1_048_576;
 });
 
 app.Run();

@@ -1,7 +1,7 @@
-namespace Hexalith.EventStore.Testing.Fakes;
 
 using Dapr.Actors.Runtime;
 
+namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
 /// In-memory implementation of <see cref="IActorStateManager"/> for unit testing without DAPR runtime.
 /// Uses two dictionaries to simulate DAPR actor turn-based commit semantics:
@@ -28,7 +28,7 @@ public sealed class InMemoryStateManager : IActorStateManager {
         }
 
         _pendingState[stateName] = value!;
-        _pendingRemovals.Remove(stateName);
+        _ = _pendingRemovals.Remove(stateName);
         return Task.CompletedTask;
     }
 
@@ -44,12 +44,12 @@ public sealed class InMemoryStateManager : IActorStateManager {
         if (TryGetPendingOrCommitted<T>(stateName, out T? existing)) {
             T updated = updateValueFactory(stateName, existing);
             _pendingState[stateName] = updated!;
-            _pendingRemovals.Remove(stateName);
+            _ = _pendingRemovals.Remove(stateName);
             return Task.FromResult(updated);
         }
 
         _pendingState[stateName] = addValue!;
-        _pendingRemovals.Remove(stateName);
+        _ = _pendingRemovals.Remove(stateName);
         return Task.FromResult(addValue);
     }
 
@@ -85,7 +85,7 @@ public sealed class InMemoryStateManager : IActorStateManager {
         }
 
         _pendingState[stateName] = value!;
-        _pendingRemovals.Remove(stateName);
+        _ = _pendingRemovals.Remove(stateName);
         return Task.FromResult(value);
     }
 
@@ -123,15 +123,15 @@ public sealed class InMemoryStateManager : IActorStateManager {
             throw new KeyNotFoundException($"Actor state with name '{stateName}' was not found.");
         }
 
-        _pendingState.Remove(stateName);
-        _pendingRemovals.Add(stateName);
+        _ = _pendingState.Remove(stateName);
+        _ = _pendingRemovals.Add(stateName);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
     public Task SaveStateAsync(CancellationToken cancellationToken = default) {
         foreach (string key in _pendingRemovals) {
-            _committedState.Remove(key);
+            _ = _committedState.Remove(key);
         }
 
         foreach (KeyValuePair<string, object> kvp in _pendingState) {
@@ -148,7 +148,7 @@ public sealed class InMemoryStateManager : IActorStateManager {
         ArgumentNullException.ThrowIfNull(stateName);
 
         _pendingState[stateName] = value!;
-        _pendingRemovals.Remove(stateName);
+        _ = _pendingRemovals.Remove(stateName);
         return Task.CompletedTask;
     }
 
@@ -165,7 +165,7 @@ public sealed class InMemoryStateManager : IActorStateManager {
         }
 
         _pendingState[stateName] = value!;
-        _pendingRemovals.Remove(stateName);
+        _ = _pendingRemovals.Remove(stateName);
         return Task.FromResult(true);
     }
 
@@ -203,8 +203,8 @@ public sealed class InMemoryStateManager : IActorStateManager {
             return Task.FromResult(false);
         }
 
-        _pendingState.Remove(stateName);
-        _pendingRemovals.Add(stateName);
+        _ = _pendingState.Remove(stateName);
+        _ = _pendingRemovals.Add(stateName);
         return Task.FromResult(true);
     }
 

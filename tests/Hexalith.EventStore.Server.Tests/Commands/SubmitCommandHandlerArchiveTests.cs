@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Server.Tests.Commands;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
@@ -15,10 +14,12 @@ using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
+namespace Hexalith.EventStore.Server.Tests.Commands;
+
 public class SubmitCommandHandlerArchiveTests {
     private static ICommandRouter CreateMockRouter() {
-        var router = Substitute.For<ICommandRouter>();
-        router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(true));
         return router;
     }
@@ -42,13 +43,13 @@ public class SubmitCommandHandlerArchiveTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         ArchivedCommand? archived = await archiveStore.ReadCommandAsync(
             command.Tenant, command.CorrelationId, CancellationToken.None);
 
-        archived.ShouldNotBeNull();
+        _ = archived.ShouldNotBeNull();
         archived.Tenant.ShouldBe(command.Tenant);
         archived.CommandType.ShouldBe(command.CommandType);
     }
@@ -57,8 +58,8 @@ public class SubmitCommandHandlerArchiveTests {
     public async Task Handle_ArchiveWriteFails_StillReturnsResult() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
-        var mockArchiveStore = Substitute.For<ICommandArchiveStore>();
-        mockArchiveStore.WriteCommandAsync(
+        ICommandArchiveStore mockArchiveStore = Substitute.For<ICommandArchiveStore>();
+        _ = mockArchiveStore.WriteCommandAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<ArchivedCommand>(),
@@ -72,7 +73,7 @@ public class SubmitCommandHandlerArchiveTests {
         SubmitCommandResult result = await handler.Handle(command, CancellationToken.None);
 
         // Assert - handler should still return result (rule #12)
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.CorrelationId.ShouldBe(command.CorrelationId);
     }
 
@@ -80,21 +81,21 @@ public class SubmitCommandHandlerArchiveTests {
     public async Task Handle_ArchiveWriteFails_LogsWarning() {
         // Arrange
         var statusStore = new InMemoryCommandStatusStore();
-        var mockArchiveStore = Substitute.For<ICommandArchiveStore>();
-        mockArchiveStore.WriteCommandAsync(
+        ICommandArchiveStore mockArchiveStore = Substitute.For<ICommandArchiveStore>();
+        _ = mockArchiveStore.WriteCommandAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<ArchivedCommand>(),
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Archive store unavailable"));
 
-        var logger = Substitute.For<ILogger<SubmitCommandHandler>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        ILogger<SubmitCommandHandler> logger = Substitute.For<ILogger<SubmitCommandHandler>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         var handler = new SubmitCommandHandler(statusStore, mockArchiveStore, CreateMockRouter(), logger);
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert - warning should have been logged
         logger.Received(1).Log(
@@ -114,19 +115,19 @@ public class SubmitCommandHandlerArchiveTests {
         SubmitCommand command = CreateTestCommand();
 
         // Act
-        await handler.Handle(command, CancellationToken.None);
+        _ = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         ArchivedCommand? archived = await archiveStore.ReadCommandAsync(
             command.Tenant, command.CorrelationId, CancellationToken.None);
 
-        archived.ShouldNotBeNull();
+        _ = archived.ShouldNotBeNull();
         archived.Tenant.ShouldBe(command.Tenant);
         archived.Domain.ShouldBe(command.Domain);
         archived.AggregateId.ShouldBe(command.AggregateId);
         archived.CommandType.ShouldBe(command.CommandType);
         archived.Payload.ShouldBe(command.Payload);
-        archived.Extensions.ShouldNotBeNull();
+        _ = archived.Extensions.ShouldNotBeNull();
         archived.Extensions["key1"].ShouldBe("val1");
     }
 }
