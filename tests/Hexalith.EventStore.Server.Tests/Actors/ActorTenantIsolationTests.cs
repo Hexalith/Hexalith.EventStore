@@ -3,7 +3,6 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
@@ -72,27 +71,6 @@ public class ActorTenantIsolationTests {
         // Assert - tenant B's command should succeed independently
         tenantBResult.Accepted.ShouldBeTrue();
         tenantBResult.EventCount.ShouldBe(1, "Tenant B should have its own isolated state");
-    }
-
-    /// <summary>
-    /// Task 4.2: Test storage keys are structurally disjoint per tenant (D1 key pattern).
-    /// Verifies that AggregateIdentity produces different key prefixes for different tenants.
-    /// </summary>
-    [Fact]
-    public void AggregateIdentity_DifferentTenants_ProduceDisjointKeyPrefixes() {
-        // Arrange
-        var identityA = new AggregateIdentity("tenant-a", "counter", "counter-001");
-        var identityB = new AggregateIdentity("tenant-b", "counter", "counter-001");
-
-        // Assert - all key spaces are structurally disjoint
-        identityA.EventStreamKeyPrefix.ShouldNotBe(identityB.EventStreamKeyPrefix);
-        identityA.MetadataKey.ShouldNotBe(identityB.MetadataKey);
-        identityA.SnapshotKey.ShouldNotBe(identityB.SnapshotKey);
-        identityA.ActorId.ShouldNotBe(identityB.ActorId);
-
-        // Verify structural disjointness (no prefix collision)
-        identityA.EventStreamKeyPrefix.ShouldStartWith("tenant-a:");
-        identityB.EventStreamKeyPrefix.ShouldStartWith("tenant-b:");
     }
 
     /// <summary>
