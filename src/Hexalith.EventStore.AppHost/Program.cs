@@ -64,7 +64,6 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(new DaprSidecarOptions {
             AppId = "sample",
-            AppPort = 8081,
             Config = accessControlConfigPath,
         }));
 

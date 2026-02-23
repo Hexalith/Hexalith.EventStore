@@ -7,6 +7,7 @@ namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
+        ArgumentNullException.ThrowIfNull(exception);
 
         string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
 
@@ -14,11 +15,16 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         string? tenantId = httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string t && !string.IsNullOrEmpty(t) ? t : null;
 
+        bool isDevelopment = httpContext.RequestServices
+            .GetService<IHostEnvironment>()?.IsDevelopment() == true;
+
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status500InternalServerError,
             Title = "Internal Server Error",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
-            Detail = "An unexpected error occurred while processing your request.",
+            Detail = isDevelopment
+                ? $"[{exception.GetType().Name}] {exception.Message}"
+                : "An unexpected error occurred while processing your request.",
             Instance = httpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
         };

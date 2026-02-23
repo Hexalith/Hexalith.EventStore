@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
@@ -27,6 +28,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private const int PlacementPort = 6050;
     private const int SchedulerPort = 6060;
     private const int RedisPort = 6379;
+    private const int HealthTimeoutSeconds = 60;
 
     private Process? _daprProcess;
     private WebApplication? _testHost;
@@ -34,6 +36,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private int _daprHttpPort;
     private int _daprGrpcPort;
     private string? _componentsDir;
+    private readonly StringBuilder _daprStdout = new();
+    private readonly StringBuilder _daprStderr = new();
 
     /// <summary>Gets the Dapr HTTP endpoint for test clients.</summary>
     public string DaprHttpEndpoint => $"http://localhost:{_daprHttpPort}";
@@ -58,6 +62,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         _appPort = GetAvailablePort();
         _daprHttpPort = GetAvailablePort();
         _daprGrpcPort = GetAvailablePort();
+
+        await VerifyPrerequisitesAsync().ConfigureAwait(false);
 
         _componentsDir = CreateComponentFiles();
 
@@ -109,6 +115,40 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterReset() }));
     }
 
+    private static async Task VerifyPrerequisitesAsync() {
+        var failures = new List<string>();
+
+        if (!await IsPortReachableAsync("localhost", RedisPort, "Redis").ConfigureAwait(false)) {
+            failures.Add($"Redis is not reachable on localhost:{RedisPort}");
+        }
+
+        if (!await IsPortReachableAsync("localhost", PlacementPort, "Placement").ConfigureAwait(false)) {
+            failures.Add($"Dapr placement service is not reachable on localhost:{PlacementPort}");
+        }
+
+        if (!await IsPortReachableAsync("localhost", SchedulerPort, "Scheduler").ConfigureAwait(false)) {
+            failures.Add($"Dapr scheduler service is not reachable on localhost:{SchedulerPort}");
+        }
+
+        if (failures.Count > 0) {
+            throw new InvalidOperationException(
+                $"Dapr infrastructure pre-flight check failed. Have you run 'dapr init'?\n" +
+                string.Join("\n", failures.Select(f => $"  - {f}")));
+        }
+    }
+
+    private static async Task<bool> IsPortReachableAsync(string host, int port, string serviceName) {
+        try {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception) {
+            return false;
+        }
+    }
+
     private void StartDaprSidecar() {
         string daprdPath = ResolveDaprdPath();
 
@@ -130,14 +170,32 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                 RedirectStandardError = true,
                 CreateNoWindow = true,
             },
+            EnableRaisingEvents = true,
+        };
+
+        _daprProcess.OutputDataReceived += (_, e) => {
+            if (e.Data is not null) {
+                lock (_daprStdout) {
+                    _ = _daprStdout.AppendLine(e.Data);
+                }
+            }
+        };
+
+        _daprProcess.ErrorDataReceived += (_, e) => {
+            if (e.Data is not null) {
+                lock (_daprStderr) {
+                    _ = _daprStderr.AppendLine(e.Data);
+                }
+            }
         };
 
         _ = _daprProcess.Start();
+        _daprProcess.BeginOutputReadLine();
+        _daprProcess.BeginErrorReadLine();
 
         if (_daprProcess.HasExited) {
-            string stderr = _daprProcess.StandardError.ReadToEnd();
             throw new InvalidOperationException(
-                $"daprd exited immediately with code {_daprProcess.ExitCode}. stderr: {stderr}");
+                $"daprd exited immediately with code {_daprProcess.ExitCode}.\nstderr: {GetCapturedStderr()}");
         }
     }
 
@@ -149,7 +207,6 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             return candidate;
         }
 
-        // Fall back to PATH
         return OperatingSystem.IsWindows() ? "daprd.exe" : "daprd";
     }
 
@@ -222,31 +279,69 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         return tempDir;
     }
 
+    /// <summary>
+    /// Waits for daprd to become healthy using the outbound healthcheck,
+    /// which verifies placement connectivity required for actors.
+    /// </summary>
     private async Task WaitForDaprHealthAsync() {
         using var httpClient = new HttpClient();
-        string healthUrl = $"{DaprHttpEndpoint}/v1.0/healthz";
+        string healthUrl = $"{DaprHttpEndpoint}/v1.0/healthz/outbound";
 
-        for (int i = 0; i < 30; i++) {
+        HttpStatusCode lastStatus = default;
+        string? lastError = null;
+
+        for (int i = 0; i < HealthTimeoutSeconds; i++) {
             if (_daprProcess?.HasExited == true) {
-                string stderr = await _daprProcess.StandardError.ReadToEndAsync().ConfigureAwait(false);
                 throw new InvalidOperationException(
-                    $"daprd exited with code {_daprProcess.ExitCode} during health check. stderr: {stderr}");
+                    $"daprd exited with code {_daprProcess.ExitCode} during health check.\n" +
+                    $"stdout:\n{GetCapturedStdout()}\n" +
+                    $"stderr:\n{GetCapturedStderr()}");
             }
 
             try {
                 HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                lastStatus = response.StatusCode;
                 if (response.IsSuccessStatusCode) {
                     return;
                 }
             }
-            catch (HttpRequestException) {
-                // Sidecar not ready yet
+            catch (HttpRequestException ex) {
+                lastError = ex.Message;
             }
 
             await Task.Delay(1000).ConfigureAwait(false);
         }
 
-        throw new InvalidOperationException("Dapr sidecar did not become healthy within 30 seconds");
+        string diagnostics =
+            $"Dapr sidecar did not become healthy within {HealthTimeoutSeconds} seconds.\n" +
+            $"Health endpoint: {healthUrl}\n" +
+            $"Last HTTP status: {lastStatus}\n" +
+            $"Last connection error: {lastError ?? "(none)"}\n" +
+            $"Ports: app={_appPort}, daprHttp={_daprHttpPort}, daprGrpc={_daprGrpcPort}\n" +
+            $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
+            $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}";
+
+        throw new InvalidOperationException(diagnostics);
+    }
+
+    private string GetCapturedStdout() {
+        lock (_daprStdout) {
+            return _daprStdout.ToString();
+        }
+    }
+
+    private string GetCapturedStderr() {
+        lock (_daprStderr) {
+            return _daprStderr.ToString();
+        }
+    }
+
+    private static string TailString(string value, int maxChars) {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxChars) {
+            return value;
+        }
+
+        return "..." + value[^maxChars..];
     }
 
     private static int GetAvailablePort() {

@@ -1,6 +1,4 @@
 
-using System.Collections.ObjectModel;
-
 using Hexalith.EventStore.Contracts.Identity;
 
 using System.Runtime.Serialization;
@@ -30,8 +28,8 @@ public record CommandEnvelope(
     [property: DataMember] string? CausationId,
     string UserId,
     Dictionary<string, string>? Extensions) {
-    /// <summary>Gets the computed aggregate identity derived from TenantId, Domain, and AggregateId. Eagerly validated at construction.</summary>
-    public AggregateIdentity AggregateIdentity { get; } = new(TenantId, Domain, AggregateId);
+    /// <summary>Gets the computed aggregate identity derived from TenantId, Domain, and AggregateId.</summary>
+    public AggregateIdentity AggregateIdentity => new(TenantId, Domain, AggregateId);
 
     /// <summary>Gets the fully qualified command type name.</summary>
     [DataMember]

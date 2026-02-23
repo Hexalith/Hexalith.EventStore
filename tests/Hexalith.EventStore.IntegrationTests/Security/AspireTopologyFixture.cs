@@ -63,7 +63,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
 
         // Create HTTP client for CommandApi
         _commandApiClient = _app.CreateHttpClient("commandapi");
-        _commandApiClient.Timeout = TimeSpan.FromSeconds(30);
+        _commandApiClient.Timeout = TimeSpan.FromSeconds(60);
 
         // Get the Keycloak base URL for token acquisition
         Uri keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
@@ -103,6 +103,18 @@ public class AspireTopologyFixture : IAsyncLifetime {
             expectedStatusCodes: [HttpStatusCode.OK],
             timeout: TimeSpan.FromMinutes(3),
             pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+
+        // Wait for the sample domain service to be ready. The CommandApi's actor pipeline
+        // invokes the sample service via Dapr service invocation. Without this check,
+        // the first command submission hangs until the sample sidecar becomes available.
+        using var sampleProbeClient = _app.CreateHttpClient("sample");
+        sampleProbeClient.Timeout = TimeSpan.FromSeconds(15);
+        await WaitForEndpointAsync(
+            sampleProbeClient,
+            "/health",
+            expectedStatusCodes: [HttpStatusCode.OK],
+            timeout: TimeSpan.FromMinutes(3),
+            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
     }
 
     public async Task DisposeAsync() {

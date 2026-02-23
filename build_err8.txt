@@ -1,0 +1,7 @@
+D:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\HexalithEventStoreExtensions.cs(45,17): error CS0117: 'DaprComponentOptions' ne contient pas de définition pour 'Metadata' [D:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj]
+
+ÉCHEC de la build.
+    0 Avertissement(s)
+    1 Erreur(s)
+
+Temps écoulé 00:00:02.42
