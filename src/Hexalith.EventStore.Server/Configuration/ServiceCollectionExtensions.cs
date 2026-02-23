@@ -38,7 +38,14 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
             .ValidateOnStart();
-        services.AddActors(options => options.Actors.RegisterActor<AggregateActor>());
+        services.AddActors(options => {
+            string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
+            if (!string.IsNullOrEmpty(daprHttpPort)) {
+                options.HttpEndpoint = $"http://127.0.0.1:{daprHttpPort}";
+            }
+
+            options.Actors.RegisterActor<AggregateActor>();
+        });
 
         return services;
     }

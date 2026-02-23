@@ -39,6 +39,8 @@ public class EventPersistenceIntegrationTests {
             new ActorId($"tenant-a:counter:{aggregateId}"),
             nameof(AggregateActor));
 
+        _fixture.ThrowIfHostStopped();
+
         // Act - persist 10 events
         for (int i = 0; i < 10; i++) {
             CommandEnvelope command = new CommandEnvelopeBuilder()
@@ -78,6 +80,8 @@ public class EventPersistenceIntegrationTests {
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
             nameof(AggregateActor));
+
+        _fixture.ThrowIfHostStopped();
 
         // Act - first call creates idempotency record, second returns cached
         CommandProcessingResult result1 = await proxy.ProcessCommandAsync(command);

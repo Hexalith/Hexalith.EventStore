@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>
@@ -7,4 +9,9 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="ErrorMessage">Optional error message if the command was rejected.</param>
 /// <param name="CorrelationId">The correlation identifier from the processed command.</param>
 /// <param name="EventCount">The number of events persisted (0 for rejections and no-ops).</param>
-public record CommandProcessingResult(bool Accepted, string? ErrorMessage = null, string? CorrelationId = null, int EventCount = 0);
+[DataContract]
+public record CommandProcessingResult(
+    [property: DataMember] bool Accepted,
+    [property: DataMember] string? ErrorMessage = null,
+    [property: DataMember] string? CorrelationId = null,
+    [property: DataMember] int EventCount = 0);

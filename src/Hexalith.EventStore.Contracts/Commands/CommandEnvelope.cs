@@ -28,8 +28,18 @@ public record CommandEnvelope(
     [property: DataMember] string? CausationId,
     string UserId,
     Dictionary<string, string>? Extensions) {
+    // Eagerly validate identity components during normal construction.
+    // DataContractSerializer bypasses constructors, so deserialized instances skip this —
+    // which is correct since the data was already validated when originally constructed.
+    private readonly bool _identityValidated = ValidateIdentityComponents(TenantId, Domain, AggregateId);
+
     /// <summary>Gets the computed aggregate identity derived from TenantId, Domain, and AggregateId.</summary>
     public AggregateIdentity AggregateIdentity => new(TenantId, Domain, AggregateId);
+
+    private static bool ValidateIdentityComponents(string tenantId, string domain, string aggregateId) {
+        _ = new AggregateIdentity(tenantId, domain, aggregateId);
+        return true;
+    }
 
     /// <summary>Gets the fully qualified command type name.</summary>
     [DataMember]

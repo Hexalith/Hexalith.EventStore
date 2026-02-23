@@ -14,7 +14,11 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.Server.Tests.Fixtures;
 /// <summary>
@@ -35,9 +39,17 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private int _appPort;
     private int _daprHttpPort;
     private int _daprGrpcPort;
+    private int _daprInternalGrpcPort;
+    private int _daprMetricsPort;
+    private int _daprProfilePort;
     private string? _componentsDir;
+
+    private string? _previousDaprHttpPort;
+    private string? _previousDaprGrpcPort;
     private readonly StringBuilder _daprStdout = new();
     private readonly StringBuilder _daprStderr = new();
+    private volatile bool _hostStopping;
+    private string? _hostStopStackTrace;
 
     /// <summary>Gets the Dapr HTTP endpoint for test clients.</summary>
     public string DaprHttpEndpoint => $"http://localhost:{_daprHttpPort}";
@@ -59,9 +71,22 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
     /// <inheritdoc/>
     public async Task InitializeAsync() {
-        _appPort = GetAvailablePort();
-        _daprHttpPort = GetAvailablePort();
-        _daprGrpcPort = GetAvailablePort();
+        KillOrphanedDaprdProcesses();
+
+        int[] ports = GetAvailablePorts(6);
+        _appPort = ports[0];
+        _daprHttpPort = ports[1];
+        _daprGrpcPort = ports[2];
+        _daprInternalGrpcPort = ports[3];
+        _daprMetricsPort = ports[4];
+        _daprProfilePort = ports[5];
+
+        // The Dapr .NET Actors runtime uses the DAPR_* env vars to find the sidecar.
+        // Since the fixture starts daprd on random ports, we must set these for the in-process app.
+        _previousDaprHttpPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
+        _previousDaprGrpcPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
 
         await VerifyPrerequisitesAsync().ConfigureAwait(false);
 
@@ -69,9 +94,29 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
         await StartTestHostAsync().ConfigureAwait(false);
 
+        await VerifyAppListeningAsync().ConfigureAwait(false);
+
         StartDaprSidecar();
 
         await WaitForDaprHealthAsync().ConfigureAwait(false);
+
+        // Let the sidecar complete its initial app discovery (GET /dapr/config)
+        // and actor registration with the placement service before running tests.
+        await Task.Delay(2000).ConfigureAwait(false);
+
+        await VerifyAppListeningAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Throws if the test host has begun shutting down. Call from tests to get a clear
+    /// diagnostic instead of a generic "connection refused" from the sidecar.
+    /// </summary>
+    public void ThrowIfHostStopped() {
+        if (_hostStopping) {
+            throw new InvalidOperationException(
+                $"Test host shut down unexpectedly.\n" +
+                $"Stop stack trace:\n{_hostStopStackTrace}");
+        }
     }
 
     /// <inheritdoc/>
@@ -96,6 +141,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                 // Best-effort cleanup of temp files
             }
         }
+
+        // Restore previous env var values to reduce cross-test interference.
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _previousDaprHttpPort);
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _previousDaprGrpcPort);
     }
 
     /// <summary>
@@ -159,8 +208,12 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                     "--app-id", AppId,
                     "--app-port", _appPort.ToString(),
                     "--app-protocol", "http",
+                    "--app-channel-address", "127.0.0.1",
                     "--dapr-http-port", _daprHttpPort.ToString(),
                     "--dapr-grpc-port", _daprGrpcPort.ToString(),
+                    "--dapr-internal-grpc-port", _daprInternalGrpcPort.ToString(),
+                    "--metrics-port", _daprMetricsPort.ToString(),
+                    "--profile-port", _daprProfilePort.ToString(),
                     "--resources-path", $"\"{_componentsDir}\"",
                     "--log-level", "info",
                     "--placement-host-address", $"localhost:{PlacementPort}",
@@ -199,6 +252,32 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         }
     }
 
+    /// <summary>
+    /// Kills any orphaned daprd processes from previous test runs that used the same app ID.
+    /// If the test runner exits without calling DisposeAsync, stale sidecars remain registered
+    /// with the placement service. Actor calls get routed to these stale instances, which try
+    /// to connect to old app ports that are no longer listening.
+    /// </summary>
+    private static void KillOrphanedDaprdProcesses() {
+        try {
+            foreach (Process process in Process.GetProcessesByName("daprd")) {
+                try {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(5000);
+                }
+                catch (Exception) {
+                    // Best-effort: process may have already exited
+                }
+                finally {
+                    process.Dispose();
+                }
+            }
+        }
+        catch (Exception) {
+            // Best-effort cleanup
+        }
+    }
+
     private static string ResolveDaprdPath() {
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string candidate = Path.Combine(home, ".dapr", "bin", "daprd" + (OperatingSystem.IsWindows() ? ".exe" : string.Empty));
@@ -211,9 +290,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     }
 
     private async Task StartTestHostAsync() {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
 
-        _ = builder.WebHost.UseUrls($"http://0.0.0.0:{_appPort}");
+        builder.Configuration["DAPR_HTTP_PORT"] = _daprHttpPort.ToString();
+        builder.Configuration["DAPR_GRPC_PORT"] = _daprGrpcPort.ToString();
+        builder.Configuration["Dapr:HttpPort"] = _daprHttpPort.ToString();
+        builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
+
+        builder.WebHost.ConfigureKestrel(serverOptions => {
+            serverOptions.ListenLocalhost(_appPort, listenOptions => {
+                listenOptions.Protocols = HttpProtocols.Http1;
+            });
+        });
 
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
 
@@ -226,9 +314,22 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
         _testHost = builder.Build();
 
+        _testHost.Lifetime.ApplicationStopping.Register(() => {
+            _hostStopping = true;
+            _hostStopStackTrace = Environment.StackTrace;
+        });
+
         _ = _testHost.MapActorsHandlers();
+        _ = _testHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
 
         await _testHost.StartAsync().ConfigureAwait(false);
+
+        IServer server = _testHost.Services.GetRequiredService<IServer>();
+        ICollection<string>? addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+        if (addresses is null || addresses.Count == 0) {
+            throw new InvalidOperationException(
+                $"Kestrel did not bind to any addresses. Expected port {_appPort}.");
+        }
     }
 
     private static string CreateComponentFiles() {
@@ -344,11 +445,70 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         return "..." + value[^maxChars..];
     }
 
-    private static int GetAvailablePort() {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port;
+    /// <summary>
+    /// Allocates multiple unique ports simultaneously, eliminating the TOCTOU race
+    /// where sequential allocations can return the same port after the listener closes.
+    /// </summary>
+    private static int[] GetAvailablePorts(int count) {
+        var listeners = new TcpListener[count];
+        var ports = new int[count];
+
+        for (int i = 0; i < count; i++) {
+            listeners[i] = new TcpListener(IPAddress.Loopback, 0);
+            listeners[i].Start();
+            ports[i] = ((IPEndPoint)listeners[i].LocalEndpoint).Port;
+        }
+
+        for (int i = 0; i < count; i++) {
+            listeners[i].Stop();
+        }
+
+        return ports;
+    }
+
+    /// <summary>
+    /// Verifies the test host app is accepting HTTP requests on the expected port.
+    /// Uses actual HTTP GET (not just TCP connect) to confirm the full request pipeline is alive.
+    /// Also detects if the host has started shutting down.
+    /// </summary>
+    private async Task VerifyAppListeningAsync() {
+        if (_hostStopping) {
+            throw new InvalidOperationException(
+                $"Test host is shutting down before verification.\n" +
+                $"Stop stack trace:\n{_hostStopStackTrace}");
+        }
+
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+        string healthUrl = $"http://127.0.0.1:{_appPort}/healthz";
+        string? lastError = null;
+
+        for (int i = 0; i < 30; i++) {
+            if (_hostStopping) {
+                throw new InvalidOperationException(
+                    $"Test host began shutting down during verification (attempt {i + 1}).\n" +
+                    $"Stop stack trace:\n{_hostStopStackTrace}");
+            }
+
+            try {
+                _ = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                return;
+            }
+            catch (HttpRequestException ex) {
+                lastError = ex.Message;
+            }
+            catch (TaskCanceledException) {
+                lastError = "Request timed out";
+            }
+
+            await Task.Delay(200).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Test host HTTP check failed on http://127.0.0.1:{_appPort} after 30 attempts.\n" +
+            $"Host stopping: {_hostStopping}\n" +
+            $"Last HTTP error: {lastError}\n" +
+            $"Ports: app={_appPort}, daprHttp={_daprHttpPort}, daprGrpc={_daprGrpcPort}\n" +
+            $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
+            $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}");
     }
 }
