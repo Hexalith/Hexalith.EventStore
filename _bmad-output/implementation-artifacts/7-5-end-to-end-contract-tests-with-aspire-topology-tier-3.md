@@ -1,6 +1,6 @@
 # Story 7.5: End-to-End Contract Tests with Aspire Topology (Tier 3)
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -21,39 +21,39 @@ so that I can verify the entire system works correctly before release (FR47).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create AspireTestFixture with DistributedApplicationTestingBuilder (AC: #1)
-  - [ ] 1.1 Implement xUnit `IAsyncLifetime` fixture using `DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>()`
-  - [ ] 1.2 Configure test logging (Debug level for app, Warning for Aspire infrastructure)
-  - [ ] 1.3 Configure `HttpClientDefaults` with standard resilience handler
-  - [ ] 1.4 Build and start the distributed application, wait for `commandapi` resource to be healthy
-  - [ ] 1.5 Expose `HttpClient` factory for `commandapi` resource via `app.CreateHttpClient("commandapi")`
-  - [ ] 1.6 Create xUnit `[CollectionDefinition("AspireTopology")]` collection fixture to share topology across tests
-  - [ ] 1.7 Add `TestJwtTokenGenerator` helper to create valid JWT tokens with tenant/domain/permission claims (reuse from existing Testing package or create if needed)
-- [ ] Task 2: Command lifecycle end-to-end tests (AC: #2)
-  - [ ] 2.1 Test POST /api/v1/commands with valid IncrementCounter command -> 202 Accepted with correlation ID
-  - [ ] 2.2 Test GET /api/v1/commands/{id}/status -> returns command status tracking through stages to Completed
-  - [ ] 2.3 Test full lifecycle: submit command -> poll status -> verify events persisted (via second command proving state was updated) -> Completed
-  - [ ] 2.4 Test multiple sequential commands: IncrementCounter x3 -> DecrementCounter -> verify counter state = 2 via IncrementCounter (state reflects all prior events)
-  - [ ] 2.5 Test ResetCounter command -> verify counter state resets
-  - [ ] 2.6 Test DecrementCounter on zero counter -> CounterCannotGoNegative rejection event -> verify rejection is recorded
-- [ ] Task 3: JWT authentication and authorization tests (AC: #3)
-  - [ ] 3.1 Test request without JWT token -> 401 Unauthorized
-  - [ ] 3.2 Test request with valid JWT but missing `command:submit` permission -> 403 Forbidden
-  - [ ] 3.3 Test request with valid JWT including correct tenant, domain, permissions -> 202 Accepted
-  - [ ] 3.4 Test request with JWT for wrong tenant -> tenant validation rejection
-  - [ ] 3.5 (Optional, E2E trait) Test with real Keycloak OIDC token if Keycloak enabled (D11, Rule #16)
-- [ ] Task 4: RFC 7807 error response tests (AC: #4)
-  - [ ] 4.1 Test malformed JSON body -> 400 Bad Request with ProblemDetails
-  - [ ] 4.2 Test missing required fields -> 400 Bad Request with validation errors in ProblemDetails
-  - [ ] 4.3 Test unauthorized request -> 401 with ProblemDetails containing correlationId
-  - [ ] 4.4 Test forbidden request -> 403 with ProblemDetails
-  - [ ] 4.5 Verify all error responses include `correlationId` and `tenantId` extension fields where applicable
-- [ ] Task 5: Dead-letter routing tests (AC: #5)
-  - [ ] 5.1 Test command to non-existent domain service -> dead-letter routing triggered
-  - [ ] 5.2 Verify dead-letter includes full context (original command, failure reason, correlation ID)
-- [ ] Task 6: Infrastructure portability documentation (AC: #6)
-  - [ ] 6.1 Document in test file comments how to swap Redis for PostgreSQL via Dapr component config
-  - [ ] 6.2 Verify test design is backend-agnostic (no Redis-specific assertions)
+- [x] Task 1: Create AspireTestFixture with DistributedApplicationTestingBuilder (AC: #1)
+  - [x] 1.1 Implement xUnit `IAsyncLifetime` fixture using `DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>()`
+  - [x] 1.2 Configure test logging (Debug level for app, Warning for Aspire infrastructure)
+  - [x] 1.3 Configure `HttpClientDefaults` with standard resilience handler
+  - [x] 1.4 Build and start the distributed application, wait for `commandapi` resource to be healthy
+  - [x] 1.5 Expose `HttpClient` factory for `commandapi` resource via `app.CreateHttpClient("commandapi")`
+  - [x] 1.6 Create xUnit `[CollectionDefinition("AspireContractTests")]` collection fixture to share topology across tests
+  - [x] 1.7 Add `TestJwtTokenGenerator` helper to create valid JWT tokens with tenant/domain/permission claims (reused existing helper in Helpers/)
+- [x] Task 2: Command lifecycle end-to-end tests (AC: #2)
+  - [x] 2.1 Test POST /api/v1/commands with valid IncrementCounter command -> 202 Accepted with correlation ID
+  - [x] 2.2 Test GET /api/v1/commands/{id}/status -> returns command status tracking through stages to Completed
+  - [x] 2.3 Test full lifecycle: submit command -> poll status -> verify events persisted (via second command proving state was updated) -> Completed
+  - [x] 2.4 Test multiple sequential commands: IncrementCounter x3 -> DecrementCounter -> verify counter state = 2 via IncrementCounter (state reflects all prior events)
+  - [x] 2.5 Test ResetCounter command -> verify counter state resets
+  - [x] 2.6 Test DecrementCounter on zero counter -> CounterCannotGoNegative rejection event -> verify rejection is recorded
+- [x] Task 3: JWT authentication and authorization tests (AC: #3)
+  - [x] 3.1 Test request without JWT token -> 401 Unauthorized
+  - [x] 3.2 Test request with valid JWT but missing `command:submit` permission -> 403 Forbidden
+  - [x] 3.3 Test request with valid JWT including correct tenant, domain, permissions -> 202 Accepted
+  - [x] 3.4 Test request with JWT for wrong tenant -> tenant validation rejection
+  - [x] 3.5 (Optional, E2E trait) Test with real Keycloak OIDC token if Keycloak enabled (D11, Rule #16) -- Existing KeycloakE2ESecurityTests already cover this in Security/ directory
+- [x] Task 4: RFC 7807 error response tests (AC: #4)
+  - [x] 4.1 Test malformed JSON body -> 400 Bad Request with ProblemDetails
+  - [x] 4.2 Test missing required fields -> 400 Bad Request with validation errors in ProblemDetails
+  - [x] 4.3 Test unauthorized request -> 401 with ProblemDetails containing correlationId
+  - [x] 4.4 Test forbidden request -> 403 with ProblemDetails
+  - [x] 4.5 Verify all error responses include `correlationId` and `tenantId` extension fields where applicable
+- [x] Task 5: Dead-letter routing tests (AC: #5)
+  - [x] 5.1 Test command to non-existent domain service -> dead-letter routing triggered
+  - [x] 5.2 Verify dead-letter includes full context (original command, failure reason, correlation ID)
+- [x] Task 6: Infrastructure portability documentation (AC: #6)
+  - [x] 6.1 Document in test file comments how to swap Redis for PostgreSQL via Dapr component config
+  - [x] 6.2 Verify test design is backend-agnostic (no Redis-specific assertions)
 
 ## Dev Notes
 
@@ -230,10 +230,38 @@ Recent commits show:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Build verification: 0 errors, 0 warnings after implementation
+- Regression test: 746 passed, 1 pre-existing failure (SecretsProtectionTests) in Server.Tests; 128 passed, 1 pre-existing failure (ValidationTests) in IntegrationTests -- no new regressions
+
 ### Completion Notes List
 
+- Created `AspireContractTestFixture` in `Fixtures/` directory -- lighter fixture than existing `AspireTopologyFixture` (no Keycloak, uses symmetric key JWT auth for fast contract tests)
+- Created `AspireContractTestCollection` with `[CollectionDefinition("AspireContractTests")]` to share fixture across all Tier 3 test classes
+- Reused existing `TestJwtTokenGenerator` in `Helpers/` (already existed from previous stories)
+- Created 6 command lifecycle tests covering submit, status polling, sequential commands, reset, and rejection
+- Created 4 JWT authentication/authorization tests covering no-token, missing-permission, valid-claims, wrong-tenant
+- Keycloak OIDC test (Task 3.5 optional) already covered by existing `KeycloakE2ESecurityTests` in `Security/` directory
+- Created 5 RFC 7807 error response tests covering malformed JSON, missing fields, 401, 403 with extensions, 404 with correlationId
+- Created 2 dead-letter routing tests for non-existent domain processing and failure context verification
+- Created infrastructure portability test with comprehensive documentation comments explaining Redis-to-PostgreSQL swap procedure
+- All tests follow established conventions: `{Method}_{Scenario}_{ExpectedResult}` naming, AAA pattern, Shouldly assertions, `[Trait("Category", "E2E")]` and `[Trait("Tier", "3")]` tags
+- ConfigureAwait pattern: No ConfigureAwait in test methods (xUnit1030), ConfigureAwait(false) in private helper methods (CA2007)
+
+### Change Log
+
+- 2026-02-24: Implemented all 6 tasks for Story 7.5 -- Tier 3 E2E contract tests with Aspire topology
+
 ### File List
+
+- tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestCollection.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/ContractTests/CommandLifecycleTests.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/ContractTests/AuthenticationTests.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/ContractTests/ErrorResponseTests.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/ContractTests/DeadLetterTests.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/ContractTests/InfrastructurePortabilityTests.cs (NEW)
+- _bmad-output/implementation-artifacts/sprint-status.yaml (MODIFIED)
