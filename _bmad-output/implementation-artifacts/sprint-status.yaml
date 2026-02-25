@@ -113,5 +113,5 @@ development_status:
   7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: in-progress
   7-6-cicd-pipeline-and-nuget-publishing: review
   7-7-aspire-publisher-deployment-manifests: review
-  7-8-domain-service-hot-reload-validation: ready-for-dev
+  7-8-domain-service-hot-reload-validation: review
   epic-7-retrospective: optional
