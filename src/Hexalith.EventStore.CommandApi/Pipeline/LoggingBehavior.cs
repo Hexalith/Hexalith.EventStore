@@ -22,13 +22,17 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
+        HttpContext? httpContext = httpContextAccessor.HttpContext;
         string correlationId = GetCorrelationId();
         string commandType = typeof(TRequest).Name;
         string? tenant = null;
         string? domain = null;
         string? aggregateId = null;
         string causationId = correlationId; // For original submissions, CausationId = CorrelationId
-        string? sourceIp = httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+        string? sourceIp = httpContext?.Connection.RemoteIpAddress?.ToString();
+        string? endpoint = httpContext?.Request.Path.Value;
+        string? userId = httpContext?.User.FindFirst("sub")?.Value;
+        DateTimeOffset receivedAtUtc = DateTimeOffset.UtcNow;
 
         if (request is SubmitCommand submitCommand) {
             tenant = submitCommand.Tenant;
@@ -45,9 +49,12 @@ public partial class LoggingBehavior<TRequest, TResponse>(
             _ = activity.SetTag(EventStoreActivitySource.TagTenantId, tenant);
             _ = activity.SetTag(EventStoreActivitySource.TagDomain, domain);
             _ = activity.SetTag(EventStoreActivitySource.TagCommandType, commandType);
+            _ = activity.SetTag("eventstore.user_id", userId);
+            _ = activity.SetTag("eventstore.source_ip", sourceIp);
+            _ = activity.SetTag("url.path", endpoint);
         }
 
-        Log.PipelineEntry(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, sourceIp);
+        Log.PipelineEntry(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, sourceIp, endpoint, userId, receivedAtUtc);
 
         long startTimestamp = Stopwatch.GetTimestamp();
 
@@ -87,7 +94,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         [LoggerMessage(
             EventId = 1000,
             Level = LogLevel.Information,
-            Message = "MediatR pipeline entry: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, SourceIp={SourceIp}, Stage=PipelineEntry")]
+            Message = "MediatR pipeline entry: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, SourceIp={SourceIp}, Endpoint={Endpoint}, UserId={UserId}, ReceivedAtUtc={ReceivedAtUtc}, Stage=PipelineEntry")]
         public static partial void PipelineEntry(
             ILogger logger,
             string correlationId,
@@ -96,7 +103,10 @@ public partial class LoggingBehavior<TRequest, TResponse>(
             string? tenant,
             string? domain,
             string? aggregateId,
-            string? sourceIp);
+            string? sourceIp,
+            string? endpoint,
+            string? userId,
+            DateTimeOffset receivedAtUtc);
 
         [LoggerMessage(
             EventId = 1001,

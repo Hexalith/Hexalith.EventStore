@@ -1,6 +1,6 @@
 # Story 6.4: Health Check Endpoints
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -168,6 +168,14 @@ So that I can monitor infrastructure dependencies and configure load balancer pr
   - [x] 9.5 All new DaprConfigStoreHealthCheck tests pass (3)
   - [x] 9.6 All new registration/response tests pass (7)
   - [x] 9.7 All existing tests (938 unit tests) still pass with zero regressions
+
+### Review Follow-ups (AI)
+
+- [x] (AI-Review, HIGH) Restore AC #2 sidecar probe contract: `DaprSidecarHealthCheck` now uses `DaprClient.CheckHealthAsync(cancellationToken)`.
+- [x] (AI-Review, HIGH) Restore AC #6 timeout contract to 3 seconds for all DAPR checks: `HealthCheckBuilderExtensions` timeout reverted to `TimeSpan.FromSeconds(3)`.
+- [x] (AI-Review, HIGH) Re-align sidecar unit tests with required behavior: added explicit `CheckHealthAsync` false-result path test and updated sidecar tests to validate `CheckHealthAsync` path.
+- [x] (AI-Review, MEDIUM) Add per-check `data` object in development JSON response payload: `WriteHealthCheckJsonResponse` now emits `data` object per check.
+- [ ] (AI-Review, MEDIUM) Reconcile story File List / completion claims with current git working-set reality (uncommitted changes are unrelated to this story and this story’s files are not present in current uncommitted diff), to keep auditability accurate.
 
 ## Dev Notes
 
@@ -459,6 +467,35 @@ Recent commits show the progression through Epic 6:
 - [Source: https://docs.dapr.io/reference/api/metadata_api/ -- DAPR metadata API for component verification]
 - [Source: https://github.com/dapr/dotnet-sdk -- DaprClient.CheckHealthAsync, GetStateAsync, GetMetadataAsync]
 
+## Senior Developer Review (AI)
+
+### Review Date
+
+2026-02-25
+
+### Outcome
+
+Outcome: Changes Requested
+
+### Findings Summary
+
+- **High:** 3
+- **Medium:** 2
+- **Low:** 0
+
+### Evidence-Based Findings
+
+- **HIGH — AC #2 mismatch: sidecar check implementation does not use `CheckHealthAsync`.** Story/architecture require `DaprClient.CheckHealthAsync()` for sidecar responsiveness, but implementation uses `DaprClient.GetMetadataAsync()`. Evidence: `src/Hexalith.EventStore.CommandApi/HealthChecks/DaprSidecarHealthCheck.cs:26`.
+- **HIGH — AC #6 mismatch: timeout contract drifted from 3s to 15s.** Story requires 3s timeout per registered DAPR check, but implementation registers 15s timeout for all checks. Evidence: `src/Hexalith.EventStore.CommandApi/HealthChecks/HealthCheckBuilderExtensions.cs:23`.
+- **HIGH — Task/test completion claim mismatch for sidecar behavior.** Story claims sidecar tests include false-result unhealthy path and validate `CheckHealthAsync` semantics, but current suite has 3 sidecar tests and validates metadata path. Evidence: `tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprSidecarHealthCheckTests.cs:31-71`.
+- **MEDIUM — Dev JSON response misses `data` object mentioned in task 6.4.** Current response contains `status`, `description`, `duration`, but no `data` node. Evidence: `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs:115-121`.
+- **MEDIUM — Story documentation and current git working set are out of sync.** Current uncommitted file set is unrelated to Story 6.4 while Story 6.4 file list claims a focused implementation set, reducing traceability confidence for the review context.
+
+### Validation Performed
+
+- Ran health-check test subset: `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~HealthChecks"`
+- Result: **33 passed, 0 failed**
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -478,10 +515,12 @@ Claude Opus 4.6 (claude-opus-4-6)
 - Created 22 unit tests across 5 test files covering all health checks, registration, and edge cases
 - All 960 unit tests pass (938 existing + 22 new), zero regressions
 - DAPR component names confirmed: statestore, pubsub (no config store component file, defaults to "configstore")
+- Senior Developer Review (AI) executed on 2026-02-25: 3 HIGH and 2 MEDIUM issues identified; story returned to in-progress with follow-up tasks added.
 
 ### Change Log
 
 - 2026-02-15: Implemented Story 6.4 - Health Check Endpoints (FR38). Added 4 DAPR health check classes, registration extension method, environment-aware response format, and 22 unit tests.
+- 2026-02-25: Senior Developer Review (AI) completed. Outcome: Changes Requested. Added review follow-up tasks and moved status to in-progress.
 
 ### File List
 

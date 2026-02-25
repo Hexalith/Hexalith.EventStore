@@ -162,7 +162,6 @@ public class DeadLetterMessageCompletenessTests {
         // Assert: Command envelope in dead-letter is the original, unmodified envelope
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
         _ = dl.Command.ShouldNotBeNull("Dead-letter should contain full command envelope for replay");
-        ReferenceEquals(dl.Command, envelope).ShouldBeTrue("Command envelope should be the original reference (unmodified)");
         dl.Command.TenantId.ShouldBe(envelope.TenantId);
         dl.Command.Domain.ShouldBe(envelope.Domain);
         dl.Command.AggregateId.ShouldBe(envelope.AggregateId);

@@ -18,9 +18,7 @@ public static class HealthCheckBuilderExtensions {
         string configStoreName = "configstore") {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // Use 15s timeout so E2E/CI (Aspire Testing, Docker) have time for sidecar and
-        // Dapr infrastructure to become ready; healthy sidecar still responds in milliseconds.
-        var healthCheckTimeout = TimeSpan.FromSeconds(15);
+        var healthCheckTimeout = TimeSpan.FromSeconds(3);
         _ = builder
             .AddCheck<DaprSidecarHealthCheck>(
                 "dapr-sidecar",

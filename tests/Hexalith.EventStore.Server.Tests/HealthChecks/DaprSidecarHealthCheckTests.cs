@@ -21,18 +21,12 @@ public class DaprSidecarHealthCheckTests {
         };
     }
 
-    private static DaprMetadata CreateMetadata() => new(
-            id: "commandapi",
-            actors: [],
-            extended: new Dictionary<string, string>(),
-            components: []);
-
     [Fact]
     public async Task CheckHealth_SidecarHealthy_ReturnsHealthy() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
-            .Returns(CreateMetadata());
+        _ = daprClient.CheckHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(true);
         var healthCheck = new DaprSidecarHealthCheck(daprClient);
 
         // Act
@@ -44,11 +38,11 @@ public class DaprSidecarHealthCheckTests {
     }
 
     [Fact]
-    public async Task CheckHealth_SidecarUnreachable_ReturnsUnhealthy() {
+    public async Task CheckHealth_SidecarUnhealthy_ReturnsUnhealthy() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "Connection refused")));
+        _ = daprClient.CheckHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(false);
         var healthCheck = new DaprSidecarHealthCheck(daprClient);
 
         // Act
@@ -56,14 +50,30 @@ public class DaprSidecarHealthCheckTests {
 
         // Assert
         result.Status.ShouldBe(HealthStatus.Unhealthy);
-        result.Description!.ShouldContain("RpcException");
+        result.Description!.ShouldContain("not responsive");
+    }
+
+    [Fact]
+    public async Task CheckHealth_SidecarUnreachable_ReturnsUnhealthy() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.CheckHealthAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Connection refused"));
+        var healthCheck = new DaprSidecarHealthCheck(daprClient);
+
+        // Act
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(CreateContext());
+
+        // Assert
+        result.Status.ShouldBe(HealthStatus.Unhealthy);
+        result.Description!.ShouldContain("HttpRequestException");
     }
 
     [Fact]
     public async Task CheckHealth_DaprException_ReturnsUnhealthy() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.CheckHealthAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new Dapr.DaprException("Sidecar unavailable"));
         var healthCheck = new DaprSidecarHealthCheck(daprClient);
 

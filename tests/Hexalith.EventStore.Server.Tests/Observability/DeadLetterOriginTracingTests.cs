@@ -1,9 +1,11 @@
 
 using System.Reflection;
+using System.Security.Claims;
 
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
@@ -20,6 +22,7 @@ using Hexalith.EventStore.Testing.Fakes;
 using MediatR;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -174,24 +177,64 @@ public class DeadLetterOriginTracingTests {
 
     [Fact]
     public async Task DomainServiceFailure_OriginatingRequestIdentifiable() {
-        // Arrange
+        // Arrange: build a realistic API->pipeline->actor flow sharing one correlation ID
         string correlationId = Guid.NewGuid().ToString();
+        var behaviorLogs = new List<ObservabilityLogEntry>();
+        var behaviorLogger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(behaviorLogs);
+        IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        var httpContext = new DefaultHttpContext();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = correlationId;
+        httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("192.168.1.100");
+        httpContext.Request.Path = "/api/v1/commands";
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "operator-user")], "TestAuth"));
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
+
+        var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(behaviorLogger, httpContextAccessor);
+
         (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
             CreateActorWithFakeDeadLetter();
 
+        var submitCommand = new SubmitCommand(
+            Tenant: "origin-tenant",
+            Domain: "origin-domain",
+            AggregateId: "origin-agg",
+            CommandType: "CreateOrder",
+            Payload: [1, 2, 3],
+            CorrelationId: correlationId,
+            UserId: "operator-user",
+            Extensions: null);
+
         CommandEnvelope envelope = CreateTestEnvelope(
-            tenantId: "origin-tenant",
-            domain: "origin-domain",
-            aggregateId: "origin-agg",
-            correlationId: correlationId);
+            tenantId: submitCommand.Tenant,
+            domain: submitCommand.Domain,
+            aggregateId: submitCommand.AggregateId,
+            correlationId: submitCommand.CorrelationId,
+            causationId: submitCommand.CorrelationId);
 
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Simulated failure"));
 
         // Act
-        _ = await actor.ProcessCommandAsync(envelope);
+        _ = await behavior.Handle(
+            submitCommand,
+            new RequestHandlerDelegate<SubmitCommandResult>(async (ct) => {
+                _ = await actor.ProcessCommandAsync(envelope).ConfigureAwait(false);
+                return new SubmitCommandResult(correlationId);
+            }),
+            CancellationToken.None);
 
-        // Assert: Log trail includes origin context (tenant, domain, commandType)
+        // Assert: API origin log includes source IP, timestamp, user identity, command type, and endpoint
+        behaviorLogs.Any(e => e.Level == LogLevel.Information
+                        && e.Message.Contains("PipelineEntry", StringComparison.Ordinal)
+                        && e.Message.Contains("CorrelationId=" + correlationId, StringComparison.Ordinal)
+                        && e.Message.Contains("SourceIp=192.168.1.100", StringComparison.Ordinal)
+                        && e.Message.Contains("Endpoint=/api/v1/commands", StringComparison.Ordinal)
+                        && e.Message.Contains("UserId=operator-user", StringComparison.Ordinal)
+                        && e.Message.Contains("ReceivedAtUtc=", StringComparison.Ordinal)
+                        && e.Message.Contains("CommandType=CreateOrder", StringComparison.Ordinal))
+            .ShouldBeTrue("Origin tracing requires source IP, endpoint, user identity, timestamp, and command type in the API receipt log");
+
+        // Assert: actor-side log trail still carries same correlation ID
         IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
         IReadOnlyList<(LogLevel Level, string Message)> correlatedLogs = logEntries
             .Where(e => e.Message.Contains(correlationId, StringComparison.Ordinal))
@@ -507,13 +550,13 @@ public class DeadLetterOriginTracingTests {
     #region Task 7: Causation chain verification tests (AC #9, #10)
 
     [Fact]
-    public async Task OriginalSubmission_CausationIdIsNull() {
-        // Arrange: Original submission has CausationId = null
+    public async Task OriginalSubmission_CausationIdMatchesCorrelationId() {
+        // Arrange: Original submission has CausationId = CorrelationId
         string correlationId = Guid.NewGuid().ToString();
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
             CreateActorWithFakeDeadLetter();
 
-        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: null);
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId, causationId: correlationId);
 
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Failure"));
@@ -524,7 +567,7 @@ public class DeadLetterOriginTracingTests {
         // Assert
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
         dl.CorrelationId.ShouldBe(correlationId);
-        dl.CausationId.ShouldBeNull("Original submission should have null CausationId");
+        dl.CausationId.ShouldBe(correlationId, "Original submission should have matching CorrelationId/CausationId");
     }
 
     [Fact]
@@ -643,6 +686,107 @@ public class DeadLetterOriginTracingTests {
         // Assert: The last status write is for Rejected terminal state
         _ = capturedStatus.ShouldNotBeNull("Status store should have received a status write");
         capturedStatus.Status.ShouldBe(CommandStatus.Rejected);
+    }
+
+    [Fact]
+    public async Task DeadLetterCorrelationId_ReplayEndpointWithinTtl_ReplaysCommand() {
+        // Arrange: create a dead-letter to obtain a real correlation ID
+        string correlationId = Guid.NewGuid().ToString();
+        (AggregateActor actor, _, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
+            CreateActorWithFakeDeadLetter();
+
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Infra failure"));
+
+        _ = await actor.ProcessCommandAsync(envelope);
+        string deadLetterCorrelationId = fakeDeadLetter.GetDeadLetterMessages()[0].Message.CorrelationId;
+
+        // Seed replay endpoint stores with within-TTL data for same correlation ID
+        var archiveStore = new InMemoryCommandArchiveStore();
+        var statusStore = new InMemoryCommandStatusStore();
+        await archiveStore.WriteCommandAsync(
+            envelope.TenantId,
+            deadLetterCorrelationId,
+            new ArchivedCommand(envelope.TenantId, envelope.Domain, envelope.AggregateId, envelope.CommandType, envelope.Payload, envelope.Extensions, DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        await statusStore.WriteStatusAsync(
+            envelope.TenantId,
+            deadLetterCorrelationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, envelope.AggregateId, null, null, null, null),
+            CancellationToken.None);
+
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitCommandResult(deadLetterCorrelationId));
+
+        var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>(new List<ObservabilityLogEntry>())) {
+            ControllerContext = new ControllerContext {
+                HttpContext = new DefaultHttpContext {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim("sub", "operator-user"),
+                        new Claim("eventstore:tenant", envelope.TenantId),
+                    ], "TestAuth")),
+                },
+            },
+        };
+        replayController.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey] = deadLetterCorrelationId;
+
+        // Act
+        IActionResult result = await replayController.Replay(deadLetterCorrelationId, CancellationToken.None);
+
+        // Assert
+        _ = result.ShouldBeOfType<AcceptedResult>();
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitCommand>(c => c.CorrelationId == deadLetterCorrelationId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeadLetterCorrelationId_ReplayEndpointExpiredStatus_ReturnsConflict() {
+        // Arrange: create a dead-letter to obtain a real correlation ID
+        string correlationId = Guid.NewGuid().ToString();
+        (AggregateActor actor, _, _, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
+            CreateActorWithFakeDeadLetter();
+
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Infra failure"));
+
+        _ = await actor.ProcessCommandAsync(envelope);
+        string deadLetterCorrelationId = fakeDeadLetter.GetDeadLetterMessages()[0].Message.CorrelationId;
+
+        // Seed archive only; status intentionally missing to model expired TTL
+        var archiveStore = new InMemoryCommandArchiveStore();
+        var statusStore = new InMemoryCommandStatusStore();
+        await archiveStore.WriteCommandAsync(
+            envelope.TenantId,
+            deadLetterCorrelationId,
+            new ArchivedCommand(envelope.TenantId, envelope.Domain, envelope.AggregateId, envelope.CommandType, envelope.Payload, envelope.Extensions, DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
+        IMediator mediator = Substitute.For<IMediator>();
+        var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>(new List<ObservabilityLogEntry>())) {
+            ControllerContext = new ControllerContext {
+                HttpContext = new DefaultHttpContext {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim("sub", "operator-user"),
+                        new Claim("eventstore:tenant", envelope.TenantId),
+                    ], "TestAuth")),
+                },
+            },
+        };
+        replayController.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey] = deadLetterCorrelationId;
+
+        // Act
+        IActionResult result = await replayController.Replay(deadLetterCorrelationId, CancellationToken.None);
+
+        // Assert
+        ObjectResult conflict = result.ShouldBeOfType<ObjectResult>();
+        conflict.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        ProblemDetails pd = conflict.Value.ShouldBeOfType<ProblemDetails>();
+        _ = pd.Detail.ShouldNotBeNull();
+        pd.Detail.ShouldContain("expired");
     }
 
     #endregion
