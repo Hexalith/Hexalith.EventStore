@@ -11,6 +11,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// </summary>
 public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     private readonly ConcurrentDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)> _store = new();
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<CommandStatusRecord>> _history = new();
 
     /// <summary>Gets or sets the TTL in seconds for new entries.</summary>
     public int TtlSeconds { get; set; } = CommandStatusConstants.DefaultTtlSeconds;
@@ -28,6 +29,8 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
         string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(TtlSeconds);
         _store[key] = (status, expiry);
+        ConcurrentQueue<CommandStatusRecord> queue = _history.GetOrAdd(key, _ => new ConcurrentQueue<CommandStatusRecord>());
+        queue.Enqueue(status);
         return Task.CompletedTask;
     }
 
@@ -60,6 +63,25 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     /// <summary>Gets the count of stored status entries.</summary>
     public int GetStatusCount() => _store.Count;
 
+    /// <summary>
+    /// Gets the write history for a status key in append order.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="correlationId">Correlation identifier.</param>
+    /// <returns>Status history in write order, or empty if none.</returns>
+    public IReadOnlyList<CommandStatusRecord> GetStatusHistory(string tenantId, string correlationId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+
+        string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
+        return _history.TryGetValue(key, out ConcurrentQueue<CommandStatusRecord>? queue)
+            ? [.. queue]
+            : [];
+    }
+
     /// <summary>Clears all stored entries.</summary>
-    public void Clear() => _store.Clear();
+    public void Clear() {
+        _store.Clear();
+        _history.Clear();
+    }
 }

@@ -5,6 +5,7 @@ using Dapr.Actors.Client;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
@@ -201,6 +202,22 @@ public class AggregateActorIntegrationTests {
         // Assert - terminal state should be reached (Completed)
         result.Accepted.ShouldBeTrue();
         result.ErrorMessage.ShouldBeNull();
+
+        // Assert - stage history captures Processing -> EventsStored -> EventsPublished -> Completed
+        IReadOnlyList<CommandStatusRecord> history = _fixture.CommandStatusStore.GetStatusHistory(
+            command.TenantId,
+            command.CorrelationId);
+
+        history.Count.ShouldBeGreaterThanOrEqualTo(4);
+        history.Select(h => h.Status).ShouldContain(CommandStatus.Processing);
+        history.Select(h => h.Status).ShouldContain(CommandStatus.EventsStored);
+        history.Select(h => h.Status).ShouldContain(CommandStatus.EventsPublished);
+        history.Select(h => h.Status).ShouldContain(CommandStatus.Completed);
+
+        // Assert - event publication happened to the expected tenant/domain topic (Tier 2 fake publisher scope)
+        string expectedTopic = command.AggregateIdentity.PubSubTopic;
+        _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);
+        _fixture.EventPublisher.GetEventsForTopic(expectedTopic).ShouldNotBeEmpty();
     }
 
     /// <summary>

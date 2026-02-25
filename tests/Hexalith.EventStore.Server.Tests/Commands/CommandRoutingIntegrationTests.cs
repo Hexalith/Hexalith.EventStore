@@ -33,10 +33,11 @@ public class CommandRoutingIntegrationTests {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
+        string aggregateId = $"domain-routing-{Guid.NewGuid():N}";
         CommandEnvelope commandCounter = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
-            .WithAggregateId("domain-routing-test")
+            .WithAggregateId(aggregateId)
             .WithCommandType("IncrementCounter")
             .Build();
 
@@ -44,7 +45,7 @@ public class CommandRoutingIntegrationTests {
         CommandEnvelope commandOther = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("inventory")
-            .WithAggregateId("domain-routing-test")
+            .WithAggregateId(aggregateId)
             .WithCommandType("IncrementCounter")
             .Build();
 

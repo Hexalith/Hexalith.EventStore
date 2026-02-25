@@ -1,8 +1,11 @@
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
+using System.Net;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
@@ -53,6 +56,11 @@ public class EventPersistenceIntegrationTests {
             CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
             result.Accepted.ShouldBeTrue($"Command {i + 1} should succeed on Redis state store");
         }
+
+        // Assert - Tier 2 pub/sub path is exercised through FakeEventPublisher
+        string expectedTopic = "tenant-a.counter.events";
+        _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);
+        _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(10);
     }
 
     /// <summary>
@@ -94,11 +102,12 @@ public class EventPersistenceIntegrationTests {
     }
 
     /// <summary>
-    /// Task 2.5: Test snapshot creation at configured intervals (default 100 events, Rule #15).
-    /// After 100+ events, the system should create a snapshot.
-    /// Note: This test is long-running as it sends many commands.
+    /// Task 2.5: Test snapshot creation at configured intervals (Rule #15).
+    /// Fixture configures counter domain snapshot interval to 15 events.
+    /// After 15+ events the system should create a snapshot; subsequent commands
+    /// verify state rehydration from snapshot + tail events (FR12, FR14).
     /// </summary>
-    [Fact(Skip = "Long-running: sends 105 commands to trigger snapshot at interval 100")]
+    [Fact]
     public async Task ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot() {
         // Arrange
         var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
@@ -106,12 +115,15 @@ public class EventPersistenceIntegrationTests {
         });
 
         string aggregateId = $"snapshot-test-{Guid.NewGuid():N}";
+        var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
             nameof(AggregateActor));
 
-        // Act - send 105 commands (exceeds snapshot interval of 100)
-        for (int i = 0; i < 105; i++) {
+        _fixture.ThrowIfHostStopped();
+
+        // Act - send 20 commands (exceeds snapshot interval of 15)
+        for (int i = 0; i < 20; i++) {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -123,6 +135,16 @@ public class EventPersistenceIntegrationTests {
             result.Accepted.ShouldBeTrue($"Command {i + 1} should succeed");
         }
 
+        // Assert - snapshot key exists in real Dapr state store
+        string snapshotJson = await GetStateJsonAsync(identity.SnapshotKey);
+        snapshotJson.ShouldNotBeNullOrWhiteSpace();
+        using JsonDocument snapshotDoc = JsonDocument.Parse(snapshotJson);
+        _ = snapshotDoc.RootElement.GetProperty("SequenceNumber").GetInt64();
+
+        // Assert - metadata is present and sequence has advanced
+        long sequenceBeforeFinal = await GetCurrentSequenceAsync(identity.MetadataKey);
+        sequenceBeforeFinal.ShouldBeGreaterThanOrEqualTo(20);
+
         // Assert - verify the aggregate can still process commands (state rehydrated from snapshot + tail)
         CommandEnvelope finalCommand = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
@@ -133,5 +155,24 @@ public class EventPersistenceIntegrationTests {
 
         CommandProcessingResult finalResult = await proxy.ProcessCommandAsync(finalCommand);
         finalResult.Accepted.ShouldBeTrue("Post-snapshot command should succeed (state rehydrated)");
+
+        long sequenceAfterFinal = await GetCurrentSequenceAsync(identity.MetadataKey);
+        sequenceAfterFinal.ShouldBe(sequenceBeforeFinal + 1);
+    }
+
+    private async Task<string> GetStateJsonAsync(string key) {
+        using var http = new HttpClient();
+        string url = $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(key)}";
+
+        using HttpResponseMessage response = await http.GetAsync(url);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
+        string metadataJson = await GetStateJsonAsync(metadataKey);
+        using JsonDocument doc = JsonDocument.Parse(metadataJson);
+        return doc.RootElement.GetProperty("CurrentSequence").GetInt64();
     }
 }
