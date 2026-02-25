@@ -49,13 +49,33 @@ public partial class DaprDomainServiceInvoker(
         // DAPR resiliency policies handle retries, circuit breaker, timeout (rule #4)
         var request = new DomainServiceRequest(command, currentState);
 
-        DomainResult result = await daprClient
-            .InvokeMethodAsync<DomainServiceRequest, DomainResult>(
+        DomainServiceWireResult wireResult;
+        try {
+            wireResult = await daprClient
+                .InvokeMethodAsync<DomainServiceRequest, DomainServiceWireResult>(
+                    registration.AppId,
+                    registration.MethodName,
+                    request,
+                cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            logger.LogError(
+                ex,
+                "Domain service invocation failed: AppId={AppId}, Method={MethodName}, TenantId={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
                 registration.AppId,
                 registration.MethodName,
-                request,
-                cancellationToken)
-            .ConfigureAwait(false);
+                command.TenantId,
+                command.Domain,
+                command.CorrelationId);
+
+            string detail = ex.InnerException?.Message ?? ex.Message;
+            throw new DomainServiceException(
+                $"Domain service invocation failed for tenant '{command.TenantId}', domain '{command.Domain}', service '{registration.AppId}/{registration.MethodName}': {detail}",
+                ex);
+        }
+
+        DomainResult result = ToDomainResult(wireResult);
 
         // Validate response size limits (AC #6)
         ValidateResponseLimits(result, command.TenantId, command.Domain, options.Value);
@@ -80,6 +100,24 @@ public partial class DaprDomainServiceInvoker(
             causationId);
 
         return result;
+    }
+
+    private static DomainResult ToDomainResult(DomainServiceWireResult wireResult) {
+        ArgumentNullException.ThrowIfNull(wireResult);
+
+        if (wireResult.Events.Count == 0) {
+            return DomainResult.NoOp();
+        }
+
+        var events = new IEventPayload[wireResult.Events.Count];
+        for (int i = 0; i < wireResult.Events.Count; i++) {
+            DomainServiceWireEvent wireEvent = wireResult.Events[i];
+            events[i] = wireResult.IsRejection
+                ? new SerializedRejectionEventPayload(wireEvent.EventTypeName, wireEvent.Payload, wireEvent.SerializationFormat)
+                : new SerializedEventPayload(wireEvent.EventTypeName, wireEvent.Payload, wireEvent.SerializationFormat);
+        }
+
+        return new DomainResult(events);
     }
 
     private static partial class Log {
@@ -193,15 +231,34 @@ public partial class DaprDomainServiceInvoker(
         // Check individual event payload size (reuse stream to avoid per-event byte[] allocations)
         using var sizeStream = new MemoryStream();
         foreach (IEventPayload eventPayload in result.Events) {
-            sizeStream.SetLength(0);
-            JsonSerializer.Serialize(sizeStream, eventPayload, eventPayload.GetType());
-            if (sizeStream.Length > opts.MaxEventSizeBytes) {
+            long payloadSize;
+            if (eventPayload is ISerializedEventPayload serializedPayload) {
+                payloadSize = serializedPayload.PayloadBytes.Length;
+            }
+            else {
+                sizeStream.SetLength(0);
+                JsonSerializer.Serialize(sizeStream, eventPayload, eventPayload.GetType());
+                payloadSize = sizeStream.Length;
+            }
+
+            if (payloadSize > opts.MaxEventSizeBytes) {
                 throw new DomainServiceException(
                     tenantId,
                     domain,
-                    $"Event payload of type '{eventPayload.GetType().Name}' is {sizeStream.Length} bytes, exceeding maximum of {opts.MaxEventSizeBytes} bytes",
-                    eventSizeBytes: (int)sizeStream.Length);
+                    $"Event payload of type '{GetEventTypeName(eventPayload)}' is {payloadSize} bytes, exceeding maximum of {opts.MaxEventSizeBytes} bytes",
+                    eventSizeBytes: (int)payloadSize);
             }
         }
     }
+
+    private static string GetEventTypeName(IEventPayload eventPayload) =>
+        eventPayload is ISerializedEventPayload serializedPayload
+            ? serializedPayload.EventTypeName
+            : eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
+
+    private sealed record SerializedEventPayload(string EventTypeName, byte[] PayloadBytes, string SerializationFormat)
+        : ISerializedEventPayload;
+
+    private sealed record SerializedRejectionEventPayload(string EventTypeName, byte[] PayloadBytes, string SerializationFormat)
+        : ISerializedEventPayload, IRejectionEvent;
 }

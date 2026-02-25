@@ -12,8 +12,8 @@ namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// Uses a known symmetric key that must match the test host configuration.
 /// </summary>
 public static class TestJwtTokenGenerator {
-    public const string SigningKey = "TestSigningKey-MustBeAtLeast32Characters!";
-    public const string Issuer = "hexalith-test";
+    public const string SigningKey = "DevOnlySigningKey-AtLeast32Chars!";
+    public const string Issuer = "hexalith-dev";
     public const string Audience = "hexalith-eventstore";
 
     private static readonly SymmetricSecurityKey s_securityKey = new(Encoding.UTF8.GetBytes(SigningKey));

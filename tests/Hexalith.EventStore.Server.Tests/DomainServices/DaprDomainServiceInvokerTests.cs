@@ -172,7 +172,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void ValidateResponseLimits_ExceedsMaxEvents_ThrowsDomainServiceException() {
         // Arrange - create a result with more events than allowed
-        var opts = new DomainServiceOptions(MaxEventsPerResult: 3);
+        var opts = new DomainServiceOptions { MaxEventsPerResult = 3 };
         var events = new IEventPayload[] { new TestEvent(), new TestEvent(), new TestEvent(), new TestEvent() };
         var result = new DomainResult(events);
 
@@ -190,7 +190,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void ValidateResponseLimits_AtMaxEvents_DoesNotThrow() {
         // Arrange - exactly at the limit
-        var opts = new DomainServiceOptions(MaxEventsPerResult: 3);
+        var opts = new DomainServiceOptions { MaxEventsPerResult = 3 };
         var events = new IEventPayload[] { new TestEvent(), new TestEvent(), new TestEvent() };
         var result = new DomainResult(events);
 
@@ -204,7 +204,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void ValidateResponseLimits_EventExceedsMaxSize_ThrowsDomainServiceException() {
         // Arrange - create an event with a large payload
-        var opts = new DomainServiceOptions(MaxEventSizeBytes: 50); // very low threshold
+        var opts = new DomainServiceOptions { MaxEventSizeBytes = 50 }; // very low threshold
         var largeEvent = new LargeTestEvent(new string('x', 100)); // will serialize to > 50 bytes
         var result = new DomainResult([largeEvent]);
 
@@ -223,7 +223,7 @@ public class DaprDomainServiceInvokerTests {
     [Fact]
     public void ValidateResponseLimits_SmallEvent_DoesNotThrow() {
         // Arrange
-        var opts = new DomainServiceOptions(MaxEventSizeBytes: 1_048_576);
+        var opts = new DomainServiceOptions { MaxEventSizeBytes = 1_048_576 };
         var result = new DomainResult([new TestEvent()]);
 
         // Act & Assert
@@ -419,6 +419,20 @@ public class DaprDomainServiceInvokerTests {
         // Act & Assert
         _ = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
         _ = await _resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void DomainResult_JsonRoundTrip_WithInterfaceEvents_DeserializationFails() {
+        // Arrange -- DomainResult contains interface-typed events (IEventPayload)
+        // which cannot be materialized by System.Text.Json without polymorphic metadata.
+        var original = DomainResult.Success([new TestEvent()]);
+        string json = System.Text.Json.JsonSerializer.Serialize(original);
+
+        // Act & Assert -- this is the current runtime behavior that causes
+        // DaprDomainServiceInvoker.InvokeMethodAsync<DomainServiceRequest, DomainResult>
+        // to fail across process boundaries.
+        _ = Should.Throw<System.NotSupportedException>(
+            () => System.Text.Json.JsonSerializer.Deserialize<DomainResult>(json));
     }
 
     // Test event types

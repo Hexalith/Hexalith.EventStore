@@ -327,7 +327,7 @@ public partial class AggregateActor(
 
                     // Checkpoint EventsStored in SAME batch as events (AC #9)
                     string? rejectionEventType = domainResult.IsRejection
-                        ? domainResult.Events[0].GetType().Name
+                        ? GetEventTypeName(domainResult.Events[0])
                         : null;
                     var eventsStoredState = new PipelineState(
                         command.CorrelationId,
@@ -381,7 +381,7 @@ public partial class AggregateActor(
                     command.CommandType,
                     pipelineState.StartedAt,
                     EventCount: domainResult.Events.Count,
-                    RejectionEventType: domainResult.IsRejection ? domainResult.Events[0].GetType().Name : null);
+                    RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null);
                 await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
                 LogStageTransition(CommandStatus.EventsPublished, command, causationId, startTicks);
@@ -390,7 +390,7 @@ public partial class AggregateActor(
                 // Terminal state: Completed (or Rejected advisory)
                 bool accepted = !domainResult.IsRejection;
                 string? errorMessage = domainResult.IsRejection
-                    ? $"Domain rejection: {domainResult.Events[0].GetType().Name}"
+                    ? $"Domain rejection: {GetEventTypeName(domainResult.Events[0])}"
                     : null;
 
                 return await CompleteTerminalAsync(
@@ -406,7 +406,7 @@ public partial class AggregateActor(
                     command.CommandType,
                     pipelineState.StartedAt,
                     EventCount: domainResult.Events.Count,
-                    RejectionEventType: domainResult.IsRejection ? domainResult.Events[0].GetType().Name : null);
+                    RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null);
                 await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
                 // Cleanup pipeline and commit atomically
@@ -726,6 +726,11 @@ public partial class AggregateActor(
         _ = activity.SetTag(EventStoreActivitySource.TagAggregateId, command.AggregateId);
         _ = activity.SetTag(EventStoreActivitySource.TagCommandType, command.CommandType);
     }
+
+    private static string GetEventTypeName(Hexalith.EventStore.Contracts.Events.IEventPayload eventPayload) =>
+        eventPayload is Hexalith.EventStore.Contracts.Events.ISerializedEventPayload serializedPayload
+            ? serializedPayload.EventTypeName
+            : eventPayload.GetType().Name;
 
     private static bool TryGetFallbackParentContext(CommandEnvelope command, out ActivityContext parentContext) {
         parentContext = default;

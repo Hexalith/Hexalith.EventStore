@@ -38,7 +38,6 @@ spec:
       - appId: commandapi
         defaultAction: deny  # Deny any operations not explicitly listed
         trustDomain: "hexalith.io"
-        namespace: "default"
         operations:
           # Domain service invocation: actor host invokes domain services via
           # DaprClient.InvokeMethodAsync with POST to configurable method paths (D7).
@@ -49,6 +48,7 @@ spec:
           - name: /**
             httpVerb: ['POST']
             action: allow
+        namespace: "default"
       # sample: Domain service -- zero outbound access (D4, AC #3, AC #13)
       # Domain services are pure functions: they receive invocations and return results.
       # They MUST NOT initiate outbound service invocations, access state stores,

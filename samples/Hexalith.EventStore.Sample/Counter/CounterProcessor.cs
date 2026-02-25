@@ -1,5 +1,6 @@
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
@@ -15,10 +16,12 @@ namespace Hexalith.EventStore.Sample.Counter;
 /// (Command, CurrentState?) -> DomainResult with three possible outcomes:
 /// success events, rejection events, or no-op.
 /// </summary>
-public sealed class CounterProcessor : DomainProcessorBase<CounterState> {
+public sealed class CounterProcessor : IDomainProcessor {
     /// <inheritdoc/>
-    protected override Task<DomainResult> HandleAsync(CommandEnvelope command, CounterState? currentState) {
+    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
         ArgumentNullException.ThrowIfNull(command);
+
+        int currentCount = RehydrateCount(currentState);
 
         // Deserialize command.Payload to the concrete command type (D3 pattern).
         // Even for parameterless commands, this validates the payload is well-formed JSON.
@@ -27,10 +30,10 @@ public sealed class CounterProcessor : DomainProcessorBase<CounterState> {
                 DeserializePayload<IncrementCounter>(command)),
             nameof(DecrementCounter) => HandleDecrement(
                 DeserializePayload<DecrementCounter>(command),
-                currentState),
+                currentCount),
             nameof(ResetCounter) => HandleReset(
                 DeserializePayload<ResetCounter>(command),
-                currentState),
+                currentCount),
             _ => throw new InvalidOperationException($"Unknown command type: '{command.CommandType}'."),
         };
 
@@ -48,19 +51,110 @@ public sealed class CounterProcessor : DomainProcessorBase<CounterState> {
     private static DomainResult HandleIncrement(IncrementCounter _)
         => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
 
-    private static DomainResult HandleDecrement(DecrementCounter _, CounterState? currentState) {
-        if (currentState is null || currentState.Count == 0) {
+    private static DomainResult HandleDecrement(DecrementCounter _, int currentCount) {
+        if (currentCount == 0) {
             return DomainResult.Rejection(new IRejectionEvent[] { new CounterCannotGoNegative() });
         }
 
         return DomainResult.Success(new IEventPayload[] { new CounterDecremented() });
     }
 
-    private static DomainResult HandleReset(ResetCounter _, CounterState? currentState) {
-        if (currentState is null || currentState.Count == 0) {
+    private static DomainResult HandleReset(ResetCounter _, int currentCount) {
+        if (currentCount == 0) {
             return DomainResult.NoOp();
         }
 
         return DomainResult.Success(new IEventPayload[] { new CounterReset() });
+    }
+
+    private static int RehydrateCount(object? currentState) {
+        if (currentState is null) {
+            return 0;
+        }
+
+        if (currentState is CounterState typedState) {
+            return typedState.Count;
+        }
+
+        if (currentState is JsonElement json) {
+            return RehydrateCountFromJson(json);
+        }
+
+        return RehydrateCountFromObjectEnumerable(currentState);
+    }
+
+    private static int RehydrateCountFromJson(JsonElement json) {
+        if (json.ValueKind == JsonValueKind.Object) {
+            if (json.TryGetProperty("count", out JsonElement countElement)
+                && countElement.ValueKind == JsonValueKind.Number
+                && countElement.TryGetInt32(out int count)) {
+                return count;
+            }
+
+            return 0;
+        }
+
+        if (json.ValueKind != JsonValueKind.Array) {
+            return 0;
+        }
+
+        int countValue = 0;
+        foreach (JsonElement eventElement in json.EnumerateArray()) {
+            if (eventElement.ValueKind != JsonValueKind.Object) {
+                continue;
+            }
+
+            if (!eventElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
+                || eventTypeElement.ValueKind != JsonValueKind.String) {
+                continue;
+            }
+
+            string? eventTypeName = eventTypeElement.GetString();
+            if (string.IsNullOrWhiteSpace(eventTypeName)) {
+                continue;
+            }
+
+            ApplyEventToCount(eventTypeName, ref countValue);
+        }
+
+        return Math.Max(0, countValue);
+    }
+
+    private static int RehydrateCountFromObjectEnumerable(object currentState) {
+        if (currentState is not System.Collections.IEnumerable events) {
+            return 0;
+        }
+
+        int countValue = 0;
+        foreach (object? evt in events) {
+            if (evt is null) {
+                continue;
+            }
+
+            string? eventTypeName = evt.GetType().GetProperty("EventTypeName")?.GetValue(evt) as string;
+            if (string.IsNullOrWhiteSpace(eventTypeName)) {
+                eventTypeName = evt.GetType().FullName ?? evt.GetType().Name;
+            }
+
+            ApplyEventToCount(eventTypeName, ref countValue);
+        }
+
+        return Math.Max(0, countValue);
+    }
+
+    private static void ApplyEventToCount(string eventTypeName, ref int countValue) {
+        if (eventTypeName.EndsWith("CounterIncremented", StringComparison.Ordinal)) {
+            countValue++;
+            return;
+        }
+
+        if (eventTypeName.EndsWith("CounterDecremented", StringComparison.Ordinal)) {
+            countValue = Math.Max(0, countValue - 1);
+            return;
+        }
+
+        if (eventTypeName.EndsWith("CounterReset", StringComparison.Ordinal)) {
+            countValue = 0;
+        }
     }
 }
