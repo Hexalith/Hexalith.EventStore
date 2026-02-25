@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+    <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
   </ItemGroup>
 
   <ItemGroup>

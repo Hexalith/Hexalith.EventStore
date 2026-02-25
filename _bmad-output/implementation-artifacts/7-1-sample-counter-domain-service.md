@@ -1,6 +1,6 @@
 # Story 7.1: Sample Counter Domain Service
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -165,6 +165,25 @@ Claude Opus 4.6 (claude-opus-4-6)
 ### Change Log
 
 - 2026-02-16: Story 7.1 implemented — Sample Counter domain service with full D3 outcome demonstration
+- 2026-02-25: Code review fixes — H1: DomainProcessorBase JsonElement deserialization, H2: command payload deserialization pattern, M1: test project layering fix, M3: noted DomainResult serialization follow-up, L1: sealed CounterState
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Jerome (via adversarial code review workflow)
+**Date:** 2026-02-25
+**Outcome:** Approved with fixes applied
+
+**Issues Found:** 2 High, 3 Medium, 2 Low
+**Issues Fixed:** 2 High, 2 Medium, 1 Low = 5 fixed
+**Follow-up Items:**
+- M2 (config store seed data): No actual Redis seed data maps tenant=sample-tenant, domain=counter to appId=sample. Deferred — requires integration with domain service resolver story.
+- M3 (DomainResult JSON serialization): IEventPayload lacks polymorphic type discriminators. Architectural concern spanning multiple stories. Needs custom JsonConverter or [JsonPolymorphic] design decision.
+
+**Fixes Applied:**
+1. **H1** — `DomainProcessorBase` now handles `JsonElement` state (DAPR JSON round-trip). Added 2 tests.
+2. **H2** — `CounterProcessor` now deserializes `command.Payload` via `JsonSerializer.Deserialize<T>()`, demonstrating the full D3 pattern for reference implementations. Added `EmptyPayload` error test.
+3. **M1** — Moved CounterProcessor tests from `Contracts.Tests` to new `Sample.Tests` project. Removed Sample `ProjectReference` from Contracts.Tests. Added new project to solution.
+4. **L1** — Sealed `CounterState` for consistency with all other types.
 
 ### File List
 
@@ -175,8 +194,12 @@ Claude Opus 4.6 (claude-opus-4-6)
 - samples/Hexalith.EventStore.Sample/Counter/Events/CounterDecremented.cs (new)
 - samples/Hexalith.EventStore.Sample/Counter/Events/CounterReset.cs (new)
 - samples/Hexalith.EventStore.Sample/Counter/Events/CounterCannotGoNegative.cs (new)
-- samples/Hexalith.EventStore.Sample/Counter/State/CounterState.cs (new)
-- samples/Hexalith.EventStore.Sample/Counter/CounterProcessor.cs (new)
+- samples/Hexalith.EventStore.Sample/Counter/State/CounterState.cs (modified — sealed)
+- samples/Hexalith.EventStore.Sample/Counter/CounterProcessor.cs (modified — payload deserialization)
 - samples/Hexalith.EventStore.Sample/Program.cs (modified)
-- tests/Hexalith.EventStore.Contracts.Tests/Counter/CounterProcessorTests.cs (new)
-- tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj (modified)
+- src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs (modified — JsonElement handling)
+- tests/Hexalith.EventStore.Client.Tests/Handlers/DomainProcessorTests.cs (modified — 2 new tests)
+- tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj (new)
+- tests/Hexalith.EventStore.Sample.Tests/Counter/CounterProcessorTests.cs (new — moved from Contracts.Tests)
+- tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj (modified — removed Sample ref)
+- Hexalith.EventStore.slnx (modified — added Sample.Tests project)
