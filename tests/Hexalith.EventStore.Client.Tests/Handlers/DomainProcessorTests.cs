@@ -1,4 +1,6 @@
 
+using System.Text.Json;
+
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -99,5 +101,33 @@ public class DomainProcessorTests {
 
         Assert.Contains("TestState", exception.Message);
         Assert.Contains("WrongState", exception.Message);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithJsonElement_DeserializesToTypedState() {
+        var processor = new StateCapturingProcessor();
+        var originalState = new TestState { Value = "from-json" };
+        JsonElement jsonState = JsonSerializer.Deserialize<JsonElement>(
+            JsonSerializer.Serialize(originalState));
+        CommandEnvelope command = CreateTestCommand();
+
+        DomainResult result = await processor.ProcessAsync(command, jsonState);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(processor.CapturedState);
+        Assert.Equal("from-json", processor.CapturedState!.Value);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithNullJsonElement_DeserializesToNull() {
+        var processor = new StateCapturingProcessor();
+        JsonElement jsonState = JsonSerializer.Deserialize<JsonElement>("null");
+        CommandEnvelope command = CreateTestCommand();
+
+        // JsonElement with ValueKind.Null deserializes to null for reference types
+        DomainResult result = await processor.ProcessAsync(command, jsonState);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(processor.CapturedState);
     }
 }

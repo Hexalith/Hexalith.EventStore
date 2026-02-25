@@ -100,13 +100,13 @@ development_status:
   6-1-end-to-end-opentelemetry-trace-instrumentation: done
   6-2-structured-logging-completeness-verification: done
   6-3-dead-letter-to-origin-tracing: done
-  6-4-health-check-endpoints: in-progress
+  6-4-health-check-endpoints: done
   6-5-readiness-check-endpoints: done
   epic-6-retrospective: optional
 
   # Epic 7: Sample Application, Testing, CI/CD & Deployment
   epic-7: in-progress
-  7-1-sample-counter-domain-service: review
+  7-1-sample-counter-domain-service: done
   7-2-local-dapr-component-configurations: review
   7-3-production-dapr-component-configurations: done
   7-4-integration-tests-with-dapr-test-containers-tier-2: review
