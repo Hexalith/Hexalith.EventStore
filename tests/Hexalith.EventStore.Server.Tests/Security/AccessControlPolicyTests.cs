@@ -1,6 +1,6 @@
 using Shouldly;
 
-using YamlDotNet.Serialization;
+using static Hexalith.EventStore.Server.Tests.DaprComponents.DaprYamlTestHelper;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
@@ -10,8 +10,6 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// Uses YamlDotNet for robust YAML parsing instead of brittle string-based assertions.
 /// </summary>
 public class AccessControlPolicyTests {
-    private static readonly IDeserializer YamlParser = new DeserializerBuilder().Build();
-
     // --- File path construction (matches ResiliencyConfigurationTests pattern) ---
 
     private static readonly string LocalAccessControlPath = Path.GetFullPath(
@@ -201,9 +199,11 @@ public class AccessControlPolicyTests {
         localOps.Any(op => GetString(op, "name") == "/**").ShouldBeTrue("Local commandapi must have wildcard path");
         prodOps.Any(op => GetString(op, "name") == "/**").ShouldBeTrue("Production commandapi must have wildcard path");
 
-        // Both must have the same trust domain
+        // Both must have the same trust domain (production may use env var with default)
         Nav(localAc, "spec", "accessControl", "trustDomain")?.ToString().ShouldBe("hexalith.io");
-        Nav(prodAc, "spec", "accessControl", "trustDomain")?.ToString().ShouldBe("hexalith.io");
+        string? prodTrustDomain = Nav(prodAc, "spec", "accessControl", "trustDomain")?.ToString();
+        (prodTrustDomain is "hexalith.io" or "{env:DAPR_TRUST_DOMAIN|hexalith.io}").ShouldBeTrue(
+            $"Production trust domain must be hexalith.io or env-parameterized with hexalith.io default, found '{prodTrustDomain}'");
 
         // Local pub/sub allows commandapi + explicitly authorized subscribers.
         VerifyPubSubScopesAllowAuthorizedSubscribersOnly(
@@ -295,8 +295,9 @@ public class AccessControlPolicyTests {
         Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
         Dictionary<object, object>? prodCommandApi = FindPolicy(prodDoc, "commandapi");
         _ = prodCommandApi.ShouldNotBeNull();
-        GetString(prodCommandApi, "namespace").ShouldBe("hexalith",
-            "Production access control namespace must be 'hexalith' (production Kubernetes namespace)");
+        string prodNamespace = GetString(prodCommandApi, "namespace");
+        (prodNamespace is "hexalith" or "{env:DAPR_NAMESPACE|hexalith}").ShouldBeTrue(
+            $"Production access control namespace must be 'hexalith' or env-parameterized with hexalith default, found '{prodNamespace}'");
     }
 
     // --- Task 5.13: Domain service zero-infrastructure-access ---
@@ -350,47 +351,7 @@ public class AccessControlPolicyTests {
             "Production Kafka pub/sub must have active subscriptionScopes for defense-in-depth");
     }
 
-    // --- YAML navigation helpers ---
-
-    /// <summary>
-    /// Loads and parses a YAML file into a dictionary structure.
-    /// </summary>
-    private static Dictionary<string, object> LoadYaml(string path) {
-        string content = File.ReadAllText(path);
-        return YamlParser.Deserialize<Dictionary<string, object>>(content);
-    }
-
-    /// <summary>
-    /// Navigates a nested YAML dictionary by key path.
-    /// Returns null if any segment is missing.
-    /// </summary>
-    private static object? Nav(object root, params string[] path) {
-        object? current = root;
-        foreach (string key in path) {
-            current = current switch {
-                Dictionary<string, object> stringDict when stringDict.TryGetValue(key, out object? val) => val,
-                Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
-                _ => null,
-            };
-            if (current is null) {
-                return null;
-            }
-        }
-
-        return current;
-    }
-
-    /// <summary>
-    /// Navigates to a list node in the YAML structure.
-    /// </summary>
-    private static List<object>? NavList(object root, params string[] path)
-        => Nav(root, path) as List<object>;
-
-    /// <summary>
-    /// Gets a string value from a YAML map node.
-    /// </summary>
-    private static string GetString(Dictionary<object, object> map, string key)
-        => map.TryGetValue(key, out object? val) ? val?.ToString() ?? string.Empty : string.Empty;
+    // --- Helpers (LoadYaml, Nav, NavList, GetString, GetComponentMetadataValue imported from DaprYamlTestHelper) ---
 
     /// <summary>
     /// Gets a list from a YAML map node.
@@ -415,22 +376,6 @@ public class AccessControlPolicyTests {
         List<object>? ops = GetList(policy, "operations");
         return ops?.Cast<Dictionary<object, object>>().ToList()
             ?? [];
-    }
-
-    /// <summary>
-    /// Gets a metadata value from a DAPR Component spec's metadata list.
-    /// Component metadata is a list of {name, value} pairs under spec.metadata.
-    /// </summary>
-    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
-        List<object>? metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null) {
-            return null;
-        }
-
-        Dictionary<object, object>? entry = metadataList
-            .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(m => GetString(m, "name") == metadataName);
-        return entry is not null ? GetString(entry, "value") : null;
     }
 
     /// <summary>
@@ -482,9 +427,11 @@ public class AccessControlPolicyTests {
         string[] scopeValues = scopes.Select(s => s?.ToString() ?? string.Empty).ToArray();
         scopeValues.ShouldContain("commandapi",
             $"{componentName} scopes must include commandapi");
-        scopeValues.Any(s => s is "{subscriber-app-id}" or "example-subscriber").ShouldBeTrue(
+        scopeValues.Any(s => s is "{subscriber-app-id}" or "example-subscriber"
+            or "{env:SUBSCRIBER_APP_ID}").ShouldBeTrue(
             $"{componentName} scopes must include subscriber app-id (placeholder or concrete)");
-        scopeValues.Any(s => s is "{ops-monitor-app-id}" or "ops-monitor").ShouldBeTrue(
+        scopeValues.Any(s => s is "{ops-monitor-app-id}" or "ops-monitor"
+            or "{env:OPS_MONITOR_APP_ID}").ShouldBeTrue(
             $"{componentName} scopes must include ops-monitor app-id (placeholder or concrete)");
         scopeValues.ShouldNotContain("sample",
             $"{componentName} scopes must not include sample");

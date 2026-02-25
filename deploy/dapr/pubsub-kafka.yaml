@@ -44,15 +44,16 @@
 #         Use the production app-id (may differ from local development).
 #
 # Step 2: Add the subscriber to 'subscriptionScopes' with authorized tenant topics.
-#         Format: ";{subscriber-app-id}={tenant1}.{domain1}.events,{tenant2}.{domain2}.events"
+#         Format: ";{env:NEW_SUBSCRIBER_APP_ID}={tenant1}.{domain1}.events,{tenant2}.{domain2}.events"
 #         Append to existing value with semicolon separator.
+#         Use {env:...} syntax for app-ids to match the existing DAPR env-var pattern.
 #
 # Step 3: Do NOT add the subscriber to 'publishingScopes'.
 #         External subscribers should NEVER publish -- only commandapi publishes.
 #
 # Step 4: Dead-letter access is SEPARATE. Only add dead-letter topics if the
 #         subscriber is an operational/monitoring tool.
-#         Format: ";{ops-tool-app-id}=deadletter.{tenant}.{domain}.events"
+#         Format: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.{tenant}.{domain}.events"
 #
 # Step 5: Update PubSubTopicIsolationEnforcementTests.cs to reflect the new topology.
 #
@@ -114,19 +115,23 @@ spec:
     # not a wildcard. Omitting commandapi achieves unrestricted access.
     #
     # When adding production domain services to component scopes, you MUST add
-    # denial entries here: ";{domain-service-app-id}=" to deny publishing.
+    # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
+    # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID environment variables before deployment.
+    # If left unset, DAPR env var references will not resolve and scoping will not match real app-ids.
     - name: publishingScopes
-      value: "{subscriber-app-id}=;{ops-monitor-app-id}="
+      value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
     # Subscription scoping (Story 5.3, FR29):
     # commandapi is NOT listed = unrestricted subscription to all topics.
     # External subscribers must be explicitly added with authorized tenant topics.
     #
     # Example with production subscriber:
-    #   value: ";{subscriber-app-id}=acme.orders.events,acme.inventory.events"
+    #   value: ";{env:NEW_SUBSCRIBER_APP_ID}=tenant.domain.events,tenant2.domain2.events"
     # Example with ops-monitor for dead-letter topics:
-    #   value: ";{ops-monitor-app-id}=deadletter.acme.orders.events"
+    #   value: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.tenant.domain.events"
+    # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
+    # with your actual tenant.domain.events topics before deployment.
     - name: subscriptionScopes
-      value: "{subscriber-app-id}=acme.orders.events,acme.inventory.events;{ops-monitor-app-id}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+      value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Component-level scoping: commandapi and explicitly authorized subscriber app-ids
 # can access this pub/sub component. Domain services have zero pub/sub access (D4).
 #
@@ -134,9 +139,9 @@ spec:
 # AND scope their topic access via subscriptionScopes above:
 #   scopes:
 #     - commandapi
-#     - {subscriber-app-id}
-#     - {ops-monitor-app-id}
+#     - "{env:SUBSCRIBER_APP_ID}"
+#     - "{env:OPS_MONITOR_APP_ID}"
 scopes:
   - commandapi
-  - "{subscriber-app-id}"
-  - "{ops-monitor-app-id}"
+  - "{env:SUBSCRIBER_APP_ID}"
+  - "{env:OPS_MONITOR_APP_ID}"

@@ -44,15 +44,16 @@
 #         Use the production app-id (may differ from local development).
 #
 # Step 2: Add the subscriber to 'subscriptionScopes' with authorized tenant topics.
-#         Format: ";{subscriber-app-id}={tenant1}.{domain1}.events,{tenant2}.{domain2}.events"
+#         Format: ";{env:NEW_SUBSCRIBER_APP_ID}={tenant1}.{domain1}.events,{tenant2}.{domain2}.events"
 #         Append to existing value with semicolon separator.
+#         Use {env:...} syntax for app-ids to match the existing DAPR env-var pattern.
 #
 # Step 3: Do NOT add the subscriber to 'publishingScopes'.
 #         External subscribers should NEVER publish -- only commandapi publishes.
 #
 # Step 4: Dead-letter access is SEPARATE. Only add dead-letter topics if the
 #         subscriber is an operational/monitoring tool.
-#         Format: ";{ops-tool-app-id}=deadletter.{tenant}.{domain}.events"
+#         Format: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.{tenant}.{domain}.events"
 #
 # Step 5: Update PubSubTopicIsolationEnforcementTests.cs to reflect the new topology.
 #
@@ -105,6 +106,8 @@ spec:
     # If left unset, these values may remain literal and scoping will not match real app-ids.
     - name: publishingScopes
       value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
+    # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
+    # with your actual tenant.domain.events topics before deployment.
     - name: subscriptionScopes
       value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 scopes:

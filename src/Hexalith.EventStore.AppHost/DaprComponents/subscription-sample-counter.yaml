@@ -3,6 +3,18 @@
 # Demonstrates per-subscription dead-letter routing for Story 4.3 AC #3.
 # Topic follows D6: {tenant}.{domain}.events
 # Dead-letter topic follows Story 4.3/4.5 convention: deadletter.{tenant}.{domain}.events
+#
+# NOTE ON SCOPING INTERACTION:
+# This subscription scopes to 'sample' (below), but the pubsub component's scopes
+# do NOT include 'sample', and subscriptionScopes has 'sample=' (deny all).
+# This is INTENTIONAL: the sample domain service has zero infrastructure access (D4).
+# This file serves as a PATTERN REFERENCE for adding new subscriber subscriptions.
+# At runtime, DAPR will NOT deliver events to sample through this subscription
+# because component-level scoping (Layer 1) blocks access before subscription
+# evaluation occurs. To make this subscription active, you would need to:
+#   1. Add 'sample' to pubsub.yaml component scopes
+#   2. Add 'sample=sample.counter.events' to pubsub.yaml subscriptionScopes
+# Neither is recommended -- domain services should not subscribe to events (D4).
 apiVersion: dapr.io/v2alpha1
 kind: Subscription
 metadata:

@@ -1,7 +1,7 @@
 
 using Shouldly;
 
-using YamlDotNet.Serialization;
+using static Hexalith.EventStore.Server.Tests.DaprComponents.DaprYamlTestHelper;
 
 namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 /// <summary>
@@ -10,8 +10,6 @@ namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 /// Uses YamlDotNet for robust YAML parsing (following AccessControlPolicyTests pattern from Story 5.1).
 /// </summary>
 public class DaprComponentValidationTests {
-    private static readonly IDeserializer YamlParser = new DeserializerBuilder().Build();
-
     private static readonly string DaprComponentsDir = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.AppHost", "DaprComponents"));
@@ -178,46 +176,4 @@ public class DaprComponentValidationTests {
             .ShouldNotBeNullOrEmpty("Statestore target must have a circuit breaker policy");
     }
 
-    // --- YAML navigation helpers (same pattern as AccessControlPolicyTests) ---
-
-    private static Dictionary<string, object> LoadYaml(string path) {
-        string content = File.ReadAllText(path);
-        return YamlParser.Deserialize<Dictionary<string, object>>(content);
-    }
-
-    private static object? Nav(object root, params string[] path) {
-        object? current = root;
-        foreach (string key in path) {
-            current = current switch {
-                Dictionary<string, object> stringDict when stringDict.TryGetValue(key, out object? val) => val,
-                Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
-                _ => null,
-            };
-            if (current is null) {
-                return null;
-            }
-        }
-        return current;
-    }
-
-    private static List<object>? NavList(object root, params string[] path)
-        => Nav(root, path) as List<object>;
-
-    private static string GetString(Dictionary<object, object> map, string key)
-        => map.TryGetValue(key, out object? val) ? val?.ToString() ?? string.Empty : string.Empty;
-
-    private static List<object>? GetScopes(Dictionary<string, object> doc)
-        => doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
-
-    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
-        List<object>? metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null) {
-            return null;
-        }
-
-        Dictionary<object, object>? entry = metadataList
-            .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(m => GetString(m, "name") == metadataName);
-        return entry is not null ? GetString(entry, "value") : null;
-    }
 }

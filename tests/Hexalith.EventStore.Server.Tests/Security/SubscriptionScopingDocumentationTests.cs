@@ -81,11 +81,11 @@ public class SubscriptionScopingDocumentationTests {
         kafkaContent.Contains("ADDING A NEW SUBSCRIBER", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
             "Production Kafka YAML must document subscriber onboarding (AC #8)");
 
-        // Production configs must document placeholder app-id patterns
-        rabbitContent.Contains("{subscriber-app-id}").ShouldBeTrue(
-            "Production RabbitMQ YAML must use placeholder app-ids for deployment substitution");
-        kafkaContent.Contains("{subscriber-app-id}").ShouldBeTrue(
-            "Production Kafka YAML must use placeholder app-ids for deployment substitution");
+        // Production configs must document placeholder app-id patterns using DAPR env-var syntax
+        rabbitContent.Contains("{env:").ShouldBeTrue(
+            "Production RabbitMQ YAML must use {env:...} placeholder app-ids for deployment substitution");
+        kafkaContent.Contains("{env:").ShouldBeTrue(
+            "Production Kafka YAML must use {env:...} placeholder app-ids for deployment substitution");
 
         // Production configs must document production vs local differences
         rabbitContent.Contains("production", StringComparison.OrdinalIgnoreCase).ShouldBeTrue(

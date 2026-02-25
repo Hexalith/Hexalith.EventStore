@@ -1,17 +1,17 @@
 
 using Shouldly;
 
-using YamlDotNet.Serialization;
+using static Hexalith.EventStore.Server.Tests.DaprComponents.DaprYamlTestHelper;
 
 namespace Hexalith.EventStore.Server.Tests.DaprComponents;
 /// <summary>
-/// Story 7.3: Production DAPR component validation tests.
+/// Production DAPR component validation tests.
 /// Validates structural correctness of production configs in deploy/dapr/ and
 /// verifies parity with local configs (NFR29).
+/// NOTE: Created during Story 7.2 review as scope overlap with Story 7.3.
+/// Story 7.3 should reference these existing tests rather than recreating them.
 /// </summary>
 public class ProductionDaprComponentValidationTests {
-    private static readonly IDeserializer YamlParser = new DeserializerBuilder().Build();
-
     private static readonly string DeployDaprDir = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "deploy", "dapr"));
@@ -20,7 +20,7 @@ public class ProductionDaprComponentValidationTests {
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.AppHost", "DaprComponents"));
 
-    // --- Task 6.2: AllProductionComponentFiles_ExistInDeployDaprDirectory ---
+    // --- AllProductionComponentFiles_ExistInDeployDaprDirectory ---
 
     [Fact]
     public void AllProductionComponentFiles_ExistInDeployDaprDirectory() {
@@ -42,7 +42,7 @@ public class ProductionDaprComponentValidationTests {
         }
     }
 
-    // --- Task 6.3: ProductionStateStores_HaveActorStateStoreEnabled ---
+    // --- ProductionStateStores_HaveActorStateStoreEnabled ---
 
     [Theory]
     [InlineData("statestore-postgresql.yaml")]
@@ -53,7 +53,7 @@ public class ProductionDaprComponentValidationTests {
             .ShouldBe("true", $"{fileName} must have actorStateStore enabled for DAPR actor state management");
     }
 
-    // --- Task 6.4: ProductionStateStores_ScopedToCommandApiOnly ---
+    // --- ProductionStateStores_ScopedToCommandApiOnly ---
 
     [Theory]
     [InlineData("statestore-postgresql.yaml")]
@@ -66,7 +66,7 @@ public class ProductionDaprComponentValidationTests {
         scopes[0]?.ToString().ShouldBe("commandapi", $"{fileName} must be scoped to commandapi only (D4)");
     }
 
-    // --- Task 6.5: ProductionPubSubs_HaveDeadLetterEnabled ---
+    // --- ProductionPubSubs_HaveDeadLetterEnabled ---
 
     [Theory]
     [InlineData("pubsub-rabbitmq.yaml")]
@@ -88,7 +88,7 @@ public class ProductionDaprComponentValidationTests {
             .ShouldBe("deadletter", $"{fileName} must set deadLetterTopic to the shared dead-letter topic name");
     }
 
-    // --- Task 6.6: ProductionAccessControl_DefaultActionIsDeny ---
+    // --- ProductionAccessControl_DefaultActionIsDeny ---
 
     [Fact]
     public void ProductionAccessControl_DefaultActionIsDeny() {
@@ -97,7 +97,7 @@ public class ProductionDaprComponentValidationTests {
             .ShouldBe("deny", "Production access control must have defaultAction: deny (D4)");
     }
 
-    // --- Task 6.7: ProductionAccessControl_CommandApiCanPostOnly ---
+    // --- ProductionAccessControl_CommandApiCanPostOnly ---
 
     [Fact]
     public void ProductionAccessControl_CommandApiCanPostOnly() {
@@ -125,7 +125,7 @@ public class ProductionDaprComponentValidationTests {
         GetString(wildcardOp, "action").ShouldBe("allow");
     }
 
-    // --- Task 6.8: ProductionAccessControl_NoSampleDomainService ---
+    // --- ProductionAccessControl_NoSampleDomainService ---
 
     [Fact]
     public void ProductionAccessControl_NoSampleDomainService() {
@@ -139,7 +139,7 @@ public class ProductionDaprComponentValidationTests {
         samplePolicy.ShouldBeNull("Production access control must NOT include sample domain service (production-only config)");
     }
 
-    // --- Task 6.9: ProductionResiliency_HasStatestoreTarget ---
+    // --- ProductionResiliency_HasStatestoreTarget ---
 
     [Fact]
     public void ProductionResiliency_HasStatestoreTarget() {
@@ -152,7 +152,7 @@ public class ProductionDaprComponentValidationTests {
             .ShouldNotBeNullOrEmpty("Statestore target must have a circuit breaker policy");
     }
 
-    // --- Task 6.10: ProductionResiliency_SidecarTimeoutIsFiveSeconds ---
+    // --- ProductionResiliency_SidecarTimeoutIsFiveSeconds ---
 
     [Fact]
     public void ProductionResiliency_SidecarTimeoutIsFiveSeconds() {
@@ -161,7 +161,7 @@ public class ProductionDaprComponentValidationTests {
             .ShouldBe("5s", "Production DAPR sidecar general timeout must be 5 seconds (Rule #14)");
     }
 
-    // --- Task 6.11: LocalAndProduction_StateStoreComponentNames_Match ---
+    // --- LocalAndProduction_StateStoreComponentNames_Match ---
 
     [Fact]
     public void LocalAndProduction_StateStoreComponentNames_Match() {
@@ -178,7 +178,7 @@ public class ProductionDaprComponentValidationTests {
         prodCosmosName.ShouldBe("statestore", "Cosmos DB state store component name must match local (NFR29)");
     }
 
-    // --- Task 6.12: LocalAndProduction_PubSubComponentNames_Match ---
+    // --- LocalAndProduction_PubSubComponentNames_Match ---
 
     [Fact]
     public void LocalAndProduction_PubSubComponentNames_Match() {
@@ -198,7 +198,7 @@ public class ProductionDaprComponentValidationTests {
         prodSbName.ShouldBe("pubsub", "Service Bus pub/sub component name must match local (NFR29)");
     }
 
-    // --- Task 6.13: DeployReadme_Exists ---
+    // --- DeployReadme_Exists ---
 
     [Fact]
     public void DeployReadme_Exists() {
@@ -210,46 +210,4 @@ public class ProductionDaprComponentValidationTests {
         content.Length.ShouldBeGreaterThan(500, "deploy/README.md must be non-trivial (comprehensive deployment guide)");
     }
 
-    // --- YAML navigation helpers (same pattern as DaprComponentValidationTests) ---
-
-    private static Dictionary<string, object> LoadYaml(string path) {
-        string content = File.ReadAllText(path);
-        return YamlParser.Deserialize<Dictionary<string, object>>(content);
-    }
-
-    private static object? Nav(object root, params string[] path) {
-        object? current = root;
-        foreach (string key in path) {
-            current = current switch {
-                Dictionary<string, object> stringDict when stringDict.TryGetValue(key, out object? val) => val,
-                Dictionary<object, object> objDict when objDict.TryGetValue(key, out object? val) => val,
-                _ => null,
-            };
-            if (current is null) {
-                return null;
-            }
-        }
-        return current;
-    }
-
-    private static List<object>? NavList(object root, params string[] path)
-        => Nav(root, path) as List<object>;
-
-    private static string GetString(Dictionary<object, object> map, string key)
-        => map.TryGetValue(key, out object? val) ? val?.ToString() ?? string.Empty : string.Empty;
-
-    private static List<object>? GetScopes(Dictionary<string, object> doc)
-        => doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
-
-    private static string? GetComponentMetadataValue(Dictionary<string, object> doc, string metadataName) {
-        List<object>? metadataList = NavList(doc, "spec", "metadata");
-        if (metadataList is null) {
-            return null;
-        }
-
-        Dictionary<object, object>? entry = metadataList
-            .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(m => GetString(m, "name") == metadataName);
-        return entry is not null ? GetString(entry, "value") : null;
-    }
 }
