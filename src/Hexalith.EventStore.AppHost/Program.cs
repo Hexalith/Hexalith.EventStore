@@ -67,4 +67,19 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
             Config = accessControlConfigPath,
         }));
 
+// --- Publisher environments (only activate during `aspire publish`) ---
+// Aspire requires exactly one compute environment per resource at publish time.
+// Set PUBLISH_TARGET to select the target publisher:
+//   PUBLISH_TARGET=docker  -> Docker Compose (docker-compose.yaml + .env)
+//   PUBLISH_TARGET=k8s     -> Kubernetes (Helm charts / K8s YAML manifests)
+//   PUBLISH_TARGET=aca     -> Azure Container Apps (Bicep modules)
+// Example: PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker
+string? publishTarget = builder.Configuration["PUBLISH_TARGET"];
+if (string.Equals(publishTarget, "docker", StringComparison.OrdinalIgnoreCase))
+    builder.AddDockerComposeEnvironment("docker");
+else if (string.Equals(publishTarget, "k8s", StringComparison.OrdinalIgnoreCase))
+    builder.AddKubernetesEnvironment("k8s");
+else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase))
+    builder.AddAzureContainerAppEnvironment("aca");
+
 builder.Build().Run();

@@ -428,5 +428,8 @@ NUL
 test_debug_output.txt
 test_output.txt
 
+# Aspire publisher output
+publish-output/
+
 # Added by ggshield
 .cache_ggshield
