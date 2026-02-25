@@ -253,15 +253,32 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     }
 
     /// <summary>
-    /// Kills any orphaned daprd processes from previous test runs that used the same app ID.
+    /// Kills orphaned daprd processes from previous test runs that used the same app ID.
     /// If the test runner exits without calling DisposeAsync, stale sidecars remain registered
     /// with the placement service. Actor calls get routed to these stale instances, which try
     /// to connect to old app ports that are no longer listening.
     /// </summary>
+    /// <remarks>
+    /// <para><b>Safety:</b> Only kills daprd processes whose command line contains the test
+    /// app ID ("<see cref="AppId"/>"). Set environment variable <c>DAPR_TEST_PRESERVE_SIDECARS=1</c>
+    /// to skip cleanup entirely (useful when running a local Dapr sidecar for other projects).</para>
+    /// </remarks>
     private static void KillOrphanedDaprdProcesses() {
+        if (Environment.GetEnvironmentVariable("DAPR_TEST_PRESERVE_SIDECARS") == "1") {
+            return;
+        }
+
         try {
             foreach (Process process in Process.GetProcessesByName("daprd")) {
                 try {
+                    // Only kill sidecars started with our test app-id to avoid
+                    // disrupting other local Dapr workloads.
+                    string? cmdLine = GetProcessCommandLine(process);
+                    if (cmdLine is null || !cmdLine.Contains(AppId, StringComparison.OrdinalIgnoreCase)) {
+                        process.Dispose();
+                        continue;
+                    }
+
                     process.Kill(entireProcessTree: true);
                     process.WaitForExit(5000);
                 }
@@ -276,6 +293,42 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         catch (Exception) {
             // Best-effort cleanup
         }
+    }
+
+    /// <summary>
+    /// Attempts to read the command line of a process. Returns null if inaccessible.
+    /// </summary>
+    private static string? GetProcessCommandLine(Process process) {
+        try {
+            // On Windows, MainModule.FileName + StartInfo are not available for other processes.
+            // Fall back to reading /proc on Linux or wmic on Windows.
+            if (OperatingSystem.IsWindows()) {
+                using var searcher = new Process {
+                    StartInfo = new ProcessStartInfo {
+                        FileName = "wmic",
+                        Arguments = $"process where processid={process.Id} get CommandLine /format:list",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true,
+                    },
+                };
+                _ = searcher.Start();
+                string output = searcher.StandardOutput.ReadToEnd();
+                searcher.WaitForExit(3000);
+                return output;
+            }
+
+            // On Linux/macOS, read /proc/{pid}/cmdline
+            string cmdlinePath = $"/proc/{process.Id}/cmdline";
+            if (File.Exists(cmdlinePath)) {
+                return File.ReadAllText(cmdlinePath).Replace('\0', ' ');
+            }
+        }
+        catch {
+            // Best-effort: access denied or process exited
+        }
+
+        return null;
     }
 
     private static string ResolveDaprdPath() {
@@ -310,7 +363,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
         _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
 
-        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 100);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
 
         _testHost = builder.Build();
 

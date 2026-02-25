@@ -3,6 +3,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
@@ -103,5 +104,44 @@ public class ActorTenantIsolationTests {
         result.Accepted.ShouldBeFalse("Tenant mismatch should be rejected");
         _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("tenant", Case.Insensitive);
+    }
+
+    /// <summary>
+    /// Task 4.2: Test storage keys are structurally disjoint per tenant (D1 key pattern).
+    /// Verifies that different tenants produce non-overlapping key prefixes,
+    /// ensuring no tenant can access another tenant's event stream, metadata, or snapshot.
+    /// </summary>
+    [Fact]
+    public void AggregateIdentity_DifferentTenants_ProduceDisjointKeyPrefixes() {
+        // Arrange
+        var identityA = new AggregateIdentity("tenant-a", "counter", "agg-001");
+        var identityB = new AggregateIdentity("tenant-b", "counter", "agg-001");
+
+        // Act
+        string eventsA = identityA.EventStreamKeyPrefix;
+        string eventsB = identityB.EventStreamKeyPrefix;
+        string metaA = identityA.MetadataKey;
+        string metaB = identityB.MetadataKey;
+        string snapA = identityA.SnapshotKey;
+        string snapB = identityB.SnapshotKey;
+
+        // Assert - keys must not overlap (no prefix relationship)
+        eventsA.ShouldNotStartWith(eventsB);
+        eventsB.ShouldNotStartWith(eventsA);
+        metaA.ShouldNotBe(metaB);
+        snapA.ShouldNotBe(snapB);
+
+        // Verify D1 key pattern structure
+        eventsA.ShouldBe("tenant-a:counter:agg-001:events:");
+        eventsB.ShouldBe("tenant-b:counter:agg-001:events:");
+        metaA.ShouldBe("tenant-a:counter:agg-001:metadata");
+        metaB.ShouldBe("tenant-b:counter:agg-001:metadata");
+        snapA.ShouldBe("tenant-a:counter:agg-001:snapshot");
+        snapB.ShouldBe("tenant-b:counter:agg-001:snapshot");
+
+        // Verify actor IDs are also disjoint
+        identityA.ActorId.ShouldNotBe(identityB.ActorId);
+        identityA.ActorId.ShouldBe("tenant-a:counter:agg-001");
+        identityB.ActorId.ShouldBe("tenant-b:counter:agg-001");
     }
 }
