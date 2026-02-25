@@ -107,7 +107,7 @@ development_status:
   # Epic 7: Sample Application, Testing, CI/CD & Deployment
   epic-7: in-progress
   7-1-sample-counter-domain-service: done
-  7-2-local-dapr-component-configurations: review
+  7-2-local-dapr-component-configurations: done
   7-3-production-dapr-component-configurations: done
   7-4-integration-tests-with-dapr-test-containers-tier-2: review
   7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: review
