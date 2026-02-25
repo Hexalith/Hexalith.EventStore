@@ -101,11 +101,13 @@ spec:
       value: "true"
     - name: deadLetterTopic
       value: "deadletter"
+    # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID before deployment.
+    # If left unset, these values may remain literal and scoping will not match real app-ids.
     - name: publishingScopes
-      value: "{subscriber-app-id}=;{ops-monitor-app-id}="
+      value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
     - name: subscriptionScopes
-      value: "{subscriber-app-id}=acme.orders.events,acme.inventory.events;{ops-monitor-app-id}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+      value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 scopes:
   - commandapi
-  - "{subscriber-app-id}"
-  - "{ops-monitor-app-id}"
+  - "{env:SUBSCRIBER_APP_ID}"
+  - "{env:OPS_MONITOR_APP_ID}"

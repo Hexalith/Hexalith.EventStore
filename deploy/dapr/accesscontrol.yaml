@@ -31,9 +31,10 @@ spec:
   accessControl:
     defaultAction: deny  # Deny-by-default security posture (D4, AC #4)
     # SPIFFE trust domain for mTLS identity validation (AC #11).
-    # Replace with your production trust domain. All sidecars must present certificates
+    # Replace with your production trust domain (or set DAPR_TRUST_DOMAIN env var).
+    # All sidecars must present certificates
     # from this trust domain. Mismatched trust domains are rejected at TLS handshake.
-    trustDomain: "hexalith.io"
+    trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
     policies:
       # commandapi: Trusted caller -- REST API + actor host + event publisher (D4)
       # When commandapi invokes a domain service via DaprClient.InvokeMethodAsync (D7),
@@ -42,9 +43,10 @@ spec:
       # State store and pub/sub access are controlled by component scoping, not access control.
       - appId: commandapi
         defaultAction: deny  # Deny any operations not explicitly listed
-        trustDomain: "hexalith.io"
+        trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
         # Replace with production Kubernetes namespace where commandapi is deployed
-        namespace: "hexalith"
+        # (or set DAPR_NAMESPACE env var).
+        namespace: "{env:DAPR_NAMESPACE|hexalith}"
         operations:
           # Domain service invocation: actor host invokes domain services via
           # DaprClient.InvokeMethodAsync with POST to configurable method paths (D7).
@@ -62,6 +64,6 @@ spec:
       #
       # - appId: <domain-service-app-id>
       #   defaultAction: deny  # Zero-trust posture (AC #13)
-      #   trustDomain: "hexalith.io"
+      #   trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
       #   namespace: "<production-namespace>"
       #   # No allowed operations: domain services cannot invoke any other service (D4)

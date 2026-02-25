@@ -1,6 +1,6 @@
 # Story 7.3: Production DAPR Component Configurations
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -39,7 +39,7 @@ so that I can deploy to different environments by changing only DAPR config file
 
 5. **Production access control is secure-by-default** - Given the production `accesscontrol.yaml`, Then `defaultAction: deny` is enforced, And commandapi can POST to `/**` for domain service invocation (D4), And domain service template shows zero allowed operations, And the sample domain service is intentionally omitted (production-only config).
 
-6. **Scoping, access control, and resiliency are structurally identical between local and production** - Given local and production configs, When comparing their structure, Then the only differences are component type, connection metadata, and tuning parameters (NFR29), And key patterns (`{tenant}:{domain}:{aggId}:events:{seq}`) work identically across backends.
+6. **Scoping, access control, and resiliency are structurally identical between local and production** - Given local and production configs, When comparing their structure, Then the only differences are component type, connection metadata, and tuning parameters (NFR29), **except** that production access control intentionally omits the local sample domain-service policy (AC #5), And key patterns (`{tenant}:{domain}:{aggId}:events:{seq}`) work identically across backends.
 
 7. **Comprehensive deployment README documents the configuration guide** - Given `deploy/README.md`, Then it documents: which config files to use for each environment, how to substitute secrets, the backend compatibility matrix, step-by-step deployment instructions for Docker Compose/Kubernetes/Azure Container Apps, and how to validate the configuration.
 
@@ -76,7 +76,7 @@ so that I can deploy to different environments by changing only DAPR config file
   - [x] 5.1 Compare `DaprComponents/statestore.yaml` (Redis) with `deploy/dapr/statestore-postgresql.yaml` and `statestore-cosmosdb.yaml` -- verify only component type and connection metadata differ
   - [x] 5.2 Compare `DaprComponents/pubsub.yaml` (Redis) with `deploy/dapr/pubsub-rabbitmq.yaml`, `pubsub-kafka.yaml`, and `pubsub-servicebus.yaml` -- verify only component type and connection metadata differ
   - [x] 5.3 Compare `DaprComponents/resiliency.yaml` with `deploy/dapr/resiliency.yaml` -- verify structural identity with only tuning parameter differences
-  - [x] 5.4 Compare `DaprComponents/accesscontrol.yaml` with `deploy/dapr/accesscontrol.yaml` -- verify same security posture (only namespace/trust domain may differ for production)
+  - [x] 5.4 Compare `DaprComponents/accesscontrol.yaml` with `deploy/dapr/accesscontrol.yaml` -- verify same security posture (only namespace/trust domain may differ for production, and sample domain-service policy is intentionally omitted in production)
   - [x] 5.5 Document any portability issues found and fix them
 
 - [x] Task 6: Create production config validation tests (AC: #8)
@@ -317,22 +317,28 @@ Claude Opus 4.6
 None required.
 
 ### Completion Notes List
+
 - Task 1: Created `deploy/dapr/pubsub-servicebus.yaml` with Azure Service Bus pub/sub config, three-layer scoping, dead-letter support, and comprehensive inline documentation matching RabbitMQ/Kafka depth.
 - Task 2: Production `resiliency.yaml` already had `components.statestore` target with exponential backoff (maxRetries: 10) and circuit breaker. Inline comments already present. No changes needed.
 - Task 3: Replaced all TODO placeholders with `{env:*}` patterns across 4 config files. Added format documentation comments for each connection parameter. Verified zero TODOs remain (NFR14).
 - Task 4: Rewrote `deploy/README.md` from 2 sentences to comprehensive deployment guide: directory structure, backend compatibility matrix, per-backend env var tables, secret management, Docker Compose/Kubernetes/Azure Container Apps deployment steps, validation procedures, and guides for adding domain services and subscribers.
-- Task 5: NFR29 portability validation confirmed structural parity: identical component names (`statestore`, `pubsub`), identical scoping patterns, identical security posture (`defaultAction: deny`), identical dead-letter configuration. Only differences are component type, connection metadata, and resiliency tuning parameters. No portability issues found.
+- Task 5: NFR29 portability validation confirmed structural parity: identical component names (`statestore`, `pubsub`), identical scoping patterns, identical security posture (`defaultAction: deny`), identical dead-letter configuration. Only differences are component type, connection metadata, and resiliency tuning parameters, with one intentional production-only exception: `accesscontrol.yaml` omits the local `sample` domain-service policy. No portability issues found.
 - Task 6: Created 16 production validation tests (13 specified + 3 Theory variations) covering file existence, actorStateStore, scoping, dead-letter, access control, resiliency, component name parity, and README existence. All 16 pass.
 - Task 7: Build succeeds with 0 errors/0 warnings. All 16 new tests pass. All 29 DAPR component tests (local + production) pass. Pre-existing AggregateActorTests and integration test failures are unrelated to this story.
+- Review remediation (2026-02-25): Added dead-letter topic value assertions in production validation tests, hardened production template placeholders (`DAPR_TRUST_DOMAIN`, `DAPR_NAMESPACE`, `SUBSCRIBER_APP_ID`, `OPS_MONITOR_APP_ID`), and clarified Azure Container Apps deployment/readme guidance.
 
 ### Change Log
+
 - 2026-02-16: Story 7.3 implementation complete. Created Azure Service Bus pub/sub config, replaced TODO placeholders with env var patterns, wrote comprehensive deployment README, validated NFR29 portability, added 16 production config validation tests.
+- 2026-02-25: Code review remediation: corrected NFR29 parity wording for intentional sample-policy omission, strengthened dead-letter metadata tests, and improved production template/deployment guidance.
 
 ### File List
+
 - `deploy/dapr/pubsub-servicebus.yaml` (new) -- Azure Service Bus pub/sub config
+- `deploy/dapr/accesscontrol.yaml` (modified) -- trust-domain/namespace template env placeholders for safer production reuse
 - `deploy/dapr/statestore-postgresql.yaml` (modified) -- env var placeholders replacing TODOs
 - `deploy/dapr/statestore-cosmosdb.yaml` (modified) -- env var placeholders replacing TODOs
 - `deploy/dapr/pubsub-rabbitmq.yaml` (modified) -- env var placeholder replacing TODO
 - `deploy/dapr/pubsub-kafka.yaml` (modified) -- env var placeholders replacing TODOs
-- `deploy/README.md` (modified) -- comprehensive deployment guide rewrite
-- `tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs` (new) -- 16 production config validation tests
+- `deploy/README.md` (modified) -- comprehensive deployment guide rewrite + explicit production template variable and ACA guidance
+- `tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs` (new/modified) -- production config validation tests with dead-letter topic assertions

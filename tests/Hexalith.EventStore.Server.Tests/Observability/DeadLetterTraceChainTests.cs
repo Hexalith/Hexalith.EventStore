@@ -6,6 +6,7 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 using Dapr.Client;
 
+using Hexalith.EventStore.CommandApi.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
@@ -160,6 +161,58 @@ public class DeadLetterTraceChainTests {
         return (actor, stateManager, logger, invoker, deadLetterPublisher);
     }
 
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker)
+        CreateActorWithRealDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
+        ILogger<DeadLetterPublisher> deadLetterLogger = Substitute.For<ILogger<DeadLetterPublisher>>();
+        var deadLetterPublisher = new DeadLetterPublisher(daprClient, options, deadLetterLogger);
+
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId(actorId) });
+
+        var actor = new AggregateActor(
+            host, logger, invoker, snapshotManager, commandStatusStore,
+            eventPublisher, Options.Create(new EventDrainOptions()),
+            deadLetterPublisher);
+
+        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
+        prop?.SetValue(actor, stateManager);
+
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(false, default!));
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
+
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns(DomainResult.NoOp());
+
+        _ = snapshotManager.LoadSnapshotAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IActorStateManager>(), Arg.Any<string>())
+            .Returns((SnapshotRecord?)null);
+
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(false, default!));
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(true, 0, null));
+
+        return (actor, stateManager, logger, invoker);
+    }
+
     /// <summary>
     /// Extracts all log messages from an NSubstitute ILogger mock by inspecting received calls.
     /// </summary>
@@ -212,7 +265,7 @@ public class DeadLetterTraceChainTests {
         };
         ActivitySource.AddActivityListener(listener);
 
-        (AggregateActor actor, _, _, IDomainServiceInvoker invoker, _) = CreateActorWithFakeDeadLetter();
+        (AggregateActor actor, _, _, IDomainServiceInvoker invoker) = CreateActorWithRealDeadLetter();
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
@@ -229,6 +282,7 @@ public class DeadLetterTraceChainTests {
             EventStoreActivitySource.TenantValidation,
             EventStoreActivitySource.StateRehydration,
             EventStoreActivitySource.DomainServiceInvoke,
+            EventStoreActivitySource.EventsPublishDeadLetter,
         ];
 
         foreach (string expected in expectedActivities) {
@@ -238,6 +292,53 @@ public class DeadLetterTraceChainTests {
         }
 
         // All activities should share the same trace ID
+        ActivityTraceId traceId = capturedActivities[0].TraceId;
+        foreach (Activity activity in capturedActivities) {
+            activity.TraceId.ShouldBe(traceId, $"Activity '{activity.OperationName}' should share the same trace ID");
+        }
+    }
+
+    [Fact]
+    public async Task DomainServiceFailure_ApiToActorToDeadLetter_UsesSingleTraceId() {
+        // Arrange
+        string correlationId = $"trace-full-{Guid.NewGuid()}";
+        List<Activity> capturedActivities = [];
+
+        using var listener = new ActivityListener {
+            ShouldListenTo = source =>
+                source.Name == EventStoreActivitySource.SourceName
+                || source.Name == "Hexalith.EventStore.CommandApi",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => {
+                if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
+                    capturedActivities.Add(activity);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        (AggregateActor actor, _, _, IDomainServiceInvoker invoker) = CreateActorWithRealDeadLetter();
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Simulated domain service failure"));
+
+        // Act: create API submit span, then run actor processing
+        using (Activity? apiActivity = EventStoreActivitySources.CommandApi.StartActivity(EventStoreActivitySources.Submit, ActivityKind.Server)) {
+            _ = apiActivity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
+            _ = apiActivity?.SetTag(EventStoreActivitySource.TagTenantId, envelope.TenantId);
+            _ = apiActivity?.SetTag(EventStoreActivitySource.TagDomain, envelope.Domain);
+            _ = apiActivity?.SetTag(EventStoreActivitySource.TagCommandType, envelope.CommandType);
+
+            _ = await actor.ProcessCommandAsync(envelope);
+            _ = apiActivity?.SetStatus(ActivityStatusCode.Ok);
+        }
+
+        // Assert
+        capturedActivities.ShouldContain(a => a.OperationName == EventStoreActivitySources.Submit);
+        capturedActivities.ShouldContain(a => a.OperationName == EventStoreActivitySource.ProcessCommand);
+        capturedActivities.ShouldContain(a => a.OperationName == EventStoreActivitySource.DomainServiceInvoke);
+        capturedActivities.ShouldContain(a => a.OperationName == EventStoreActivitySource.EventsPublishDeadLetter);
+
         ActivityTraceId traceId = capturedActivities[0].TraceId;
         foreach (Activity activity in capturedActivities) {
             activity.TraceId.ShouldBe(traceId, $"Activity '{activity.OperationName}' should share the same trace ID");

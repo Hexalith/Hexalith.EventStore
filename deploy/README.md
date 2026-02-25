@@ -98,6 +98,17 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 **Note:** Azure Service Bus does not auto-create topics. Pre-create topics matching the `{tenant}.{domain}.events` pattern before deployment.
 
+### Access Control and Subscriber Scoping Template Variables
+
+Some production templates use environment variable placeholders for environment-specific identity values:
+
+- `DAPR_TRUST_DOMAIN` (used in `accesscontrol.yaml`): SPIFFE trust domain for mTLS identity validation.
+- `DAPR_NAMESPACE` (used in `accesscontrol.yaml`): Kubernetes namespace where `commandapi` runs.
+- `SUBSCRIBER_APP_ID` (used in `pubsub-servicebus.yaml`): Authorized external subscriber app-id.
+- `OPS_MONITOR_APP_ID` (used in `pubsub-servicebus.yaml`): Operational/monitoring subscriber app-id for dead-letter topics.
+
+Set these before applying production templates to avoid unresolved/literal placeholder values.
+
 ## Secret Management
 
 **Never store secrets in configuration files committed to source control (NFR14).**
@@ -116,6 +127,7 @@ Recommended approaches by platform:
 2. Copy chosen files plus `resiliency.yaml` and `accesscontrol.yaml` to your DAPR components directory
 3. Set required environment variables in your `.env` file
 4. Mount the components directory in your `docker-compose.yaml`:
+
    ```yaml
    services:
      commandapi-dapr:
@@ -125,17 +137,21 @@ Recommended approaches by platform:
        command: ["./daprd", "-app-id", "commandapi", "-components-path", "/components"]
    ```
 
+
 ### Kubernetes
 
 1. Apply chosen component configs as DAPR component resources:
+
    ```bash
    kubectl apply -f statestore-postgresql.yaml
    kubectl apply -f pubsub-rabbitmq.yaml
    kubectl apply -f resiliency.yaml
    kubectl apply -f accesscontrol.yaml
    ```
+
 2. Create Kubernetes Secrets for connection strings referenced by environment variables
 3. Configure DAPR annotations on your application pods:
+
    ```yaml
    annotations:
      dapr.io/enabled: "true"
@@ -145,10 +161,12 @@ Recommended approaches by platform:
 
 ### Azure Container Apps (Aspire Publisher)
 
-1. Use `dotnet publish` with the Aspire Azure Container Apps publisher
-2. Override DAPR component configurations via Azure CLI or Bicep templates
-3. Set environment variables via Container Apps secrets referencing Azure Key Vault
-4. The Aspire publisher generates base deployment manifests -- customize DAPR components post-publish
+1. Publish the Aspire app for Azure Container Apps and generate deployment artifacts.
+2. Create/update Container Apps secrets for all required component values (for example: `POSTGRES_CONNECTION_STRING`, `SERVICEBUS_CONNECTION_STRING`, `DAPR_TRUST_DOMAIN`, `DAPR_NAMESPACE`, `SUBSCRIBER_APP_ID`, `OPS_MONITOR_APP_ID`).
+3. Apply DAPR production components (`statestore-*`, `pubsub-*`, `resiliency.yaml`, `accesscontrol.yaml`) to the target environment, ensuring placeholders resolve from environment/secrets.
+4. Configure the `commandapi` container app with matching environment variables and DAPR settings (app-id `commandapi`, config name `accesscontrol`).
+5. Pre-create Azure Service Bus topics/subscriptions used by your tenant/domain topology before traffic cutover.
+6. Verify component load and sidecar health through Container Apps logs and DAPR health endpoint checks before promoting traffic.
 
 ## Validating Configuration
 

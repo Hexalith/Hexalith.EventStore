@@ -119,6 +119,16 @@ public static class Extensions {
                 writer.WriteString("status", entry.Value.Status.ToString());
                 writer.WriteString("description", entry.Value.Description);
                 writer.WriteString("duration", entry.Value.Duration.ToString());
+                writer.WriteStartObject("data");
+                foreach (KeyValuePair<string, object> dataEntry in entry.Value.Data) {
+                    writer.WritePropertyName(dataEntry.Key);
+                    System.Text.Json.JsonSerializer.Serialize(
+                        writer,
+                        dataEntry.Value,
+                        dataEntry.Value?.GetType() ?? typeof(object));
+                }
+
+                writer.WriteEndObject();
                 writer.WriteEndObject();
             }
 

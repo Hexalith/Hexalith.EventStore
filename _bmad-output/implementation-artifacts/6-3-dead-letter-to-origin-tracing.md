@@ -1,6 +1,6 @@
 # Story 6.3: Dead-Letter to Origin Tracing
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -469,21 +469,36 @@ Claude Opus 4.6 (claude-opus-4-6)
 ### Completion Notes List
 
 - Task 0: Full tracing chain audit completed. All 9 OTel activities have correlation ID tags. Actor proxy trace context uses fallback via CommandEnvelope.Extensions (traceparent/tracestate).
-- Task 1: Added SourceIP to LoggingBehavior.PipelineEntry log via IHttpContextAccessor.HttpContext.Connection.RemoteIpAddress
+- Task 1: Enhanced LoggingBehavior.PipelineEntry origin context with SourceIP, endpoint path, user identity (JWT sub), and explicit receipt timestamp.
 - Task 2: No trace gaps found -- all activities already had correlation tags. Traceparent fallback verified working.
-- Tasks 3-8: Created 28 new tests across 3 test files covering all acceptance criteria
-- Task 9: All 902 unit tests pass (745 Server.Tests + 157 Contracts.Tests), 0 failures
+- Tasks 3-8: Expanded verification to 31 tests across 3 observability test files, including API-origin correlation fields, full API-to-actor-to-dead-letter trace continuity, and replay endpoint TTL scenarios.
+- Review fix pass: corrected causation-chain assertion for original submissions (CausationId == CorrelationId), improved command-envelope completeness assertion to value-based checks, and resolved ActivitySource listener initialization edge case.
+- Validation: targeted suite passed 54/54 tests (0 failed) covering replay, logging behavior, and observability chains.
 
 ### Change Log
 
-- `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs` -- Added SourceIP to PipelineEntry log message and method signature (gap fix)
+- `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs` -- Added endpoint path, user identity, and receipt timestamp to PipelineEntry log; added matching activity tags for origin tracing.
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs` -- Strengthened AC #2 verification, aligned original causation test with story requirement, and added replay endpoint within-TTL/expired-TTL tests.
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterTraceChainTests.cs` -- Added end-to-end API->actor->dead-letter single-trace test and included dead-letter span in lifecycle assertions.
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs` -- Replaced reference-equality command check with value-based envelope assertions.
 
 ### File List
 
 #### Modified Files
-- `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs` -- Added SourceIP parameter to PipelineEntry LoggerMessage
+
+- `src/Hexalith.EventStore.CommandApi/Pipeline/LoggingBehavior.cs` -- Added SourceIP + endpoint + user identity + receipt timestamp to PipelineEntry logging and tags.
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs` -- Added stronger origin tracing and replay endpoint TTL coverage.
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterTraceChainTests.cs` -- Added full API-to-dead-letter trace-chain verification.
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs` -- Updated envelope completeness check to value semantics.
 
 #### New Files
+
 - `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs` -- 15 tests: log-based tracing (8), multi-tenant (2), causation chain (3), replay correlation (2)
 - `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterTraceChainTests.cs` -- 7 tests: OTel trace lifecycle, correlation tags, error status, DL activity success/failure, traceparent propagation, sidecar unavailable
 - `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs` -- 6 tests: correlation fields, command envelope, failure context, correlation match, no stack trace, null causation
+
+### Senior Developer Review (AI)
+
+- Outcome: **Approved with fixes applied**.
+- High/medium findings from adversarial review were addressed in code and tests.
+- Story status moved to **done** after verification run (54/54 targeted tests passing).

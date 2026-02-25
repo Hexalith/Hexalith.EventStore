@@ -78,6 +78,16 @@ public class ProductionDaprComponentValidationTests {
             .ShouldBe("true", $"{fileName} must have dead-letter enabled for undeliverable message routing");
     }
 
+    [Theory]
+    [InlineData("pubsub-rabbitmq.yaml")]
+    [InlineData("pubsub-kafka.yaml")]
+    [InlineData("pubsub-servicebus.yaml")]
+    public void ProductionPubSubs_DeadLetterTopicIsConfigured(string fileName) {
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
+        GetComponentMetadataValue(doc, "deadLetterTopic")
+            .ShouldBe("deadletter", $"{fileName} must set deadLetterTopic to the shared dead-letter topic name");
+    }
+
     // --- Task 6.6: ProductionAccessControl_DefaultActionIsDeny ---
 
     [Fact]

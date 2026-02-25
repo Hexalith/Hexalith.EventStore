@@ -10,13 +10,6 @@
         "mcp",
         "start"
       ]
-    },
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ]
     }
   }
 }

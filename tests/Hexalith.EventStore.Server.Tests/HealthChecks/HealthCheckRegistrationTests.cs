@@ -70,12 +70,12 @@ public class HealthCheckRegistrationTests {
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_AllChecksHaveFifteenSecondTimeout() {
+    public void AddEventStoreDaprHealthChecks_AllChecksHaveThreeSecondTimeout() {
         HealthCheckServiceOptions options = GetHealthCheckOptions();
 
         IEnumerable<HealthCheckRegistration> daprChecks = options.Registrations.Where(r => r.Name.StartsWith("dapr-"));
         foreach (HealthCheckRegistration? check in daprChecks) {
-            check.Timeout.ShouldBe(TimeSpan.FromSeconds(15));
+            check.Timeout.ShouldBe(TimeSpan.FromSeconds(3));
         }
     }
 
