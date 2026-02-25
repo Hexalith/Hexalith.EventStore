@@ -1,6 +1,6 @@
 # Story 7.7: Aspire Publisher Deployment Manifests
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,51 +22,46 @@ so that I can deploy the complete EventStore topology to any target environment 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add publisher NuGet packages to AppHost (AC: #1, #2, #3)
-  - [ ] 1.1 Verify actual available versions on nuget.org for `Aspire.Hosting.Docker`, `Aspire.Hosting.Kubernetes`, `Aspire.Hosting.Azure.AppContainers` matching Aspire SDK 13.x. Use the latest stable 13.x version (may not be exactly `13.1.1` -- check nuget.org).
-  - [ ] 1.2 Add verified versions to `Directory.Packages.props` under the `Aspire` ItemGroup
-  - [ ] 1.3 Add package references to `Hexalith.EventStore.AppHost.csproj` (no version -- central management)
-  - [ ] 1.4 Run `dotnet restore` and `dotnet build` to verify packages resolve correctly
-- [ ] Task 2: Configure publisher environments in AppHost Program.cs (AC: #1, #2, #3, #5)
-  - [ ] 2.1 Add publisher environment lines BEFORE `builder.Build().Run()`:
-    ```csharp
-    builder.AddDockerComposeEnvironment("docker");
-    builder.AddKubernetesEnvironment("k8s");
-    builder.AddAzureContainerAppEnvironment("aca");
-    ```
-  - [ ] 2.2 Verify `dotnet run --project src/Hexalith.EventStore.AppHost/` still works (environments must be inert at runtime)
-  - [ ] 2.3 Verify `dotnet build` succeeds for the entire solution
-- [ ] Task 3: Verify multi-environment coexistence (AC: #5)
-  - [ ] 3.1 Run all Tier 1 unit tests: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ tests/Hexalith.EventStore.Client.Tests/ tests/Hexalith.EventStore.Testing.Tests/ --configuration Release` -- zero regressions
-  - [ ] 3.2 Run Tier 2 integration tests (if DAPR available): `dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release` -- zero regressions
-  - [ ] 3.3 Verify Tier 3 test fixture still works: `dotnet build tests/Hexalith.EventStore.IntegrationTests/` must compile. If DAPR runtime available, run a smoke test to confirm `DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>()` still starts the topology.
-- [ ] Task 4: Validate Docker Compose publisher output (AC: #1, #4)
-  - [ ] 4.1 Install Aspire CLI if not present: `dotnet workload install aspire`
-  - [ ] 4.2 Run `aspire publish --publisher docker -o ./publish-output/docker`
-  - [ ] 4.3 Inspect generated `docker-compose.yaml`: verify commandapi and sample services present
-  - [ ] 4.4 Check whether DAPR sidecar containers are included. Document actual behavior: if sidecars are missing, this is expected (CommunityToolkit.Aspire.Hosting.Dapr is primarily a local dev tool)
-  - [ ] 4.5 Verify `.env` file contains parameterized placeholders
-  - [ ] 4.6 If Docker is available: run `docker compose -f ./publish-output/docker/docker-compose.yaml config` to validate syntax
-- [ ] Task 5: Validate Kubernetes publisher output (AC: #2, #4)
-  - [ ] 5.1 Run `aspire publish --publisher kubernetes -o ./publish-output/k8s`
-  - [ ] 5.2 Inspect generated manifests: verify Deployments/Services for commandapi and sample
-  - [ ] 5.3 Check whether DAPR annotations are auto-generated on pod templates. Document actual behavior.
-  - [ ] 5.4 If `helm` available: run `helm lint ./publish-output/k8s/`. If `kubectl` available: `kubectl apply --dry-run=client -f ./publish-output/k8s/`
-- [ ] Task 6: Validate Azure Container Apps publisher output (AC: #3, #4)
-  - [ ] 6.1 Run `aspire publish --publisher azure -o ./publish-output/azure`
-  - [ ] 6.2 Inspect generated Bicep modules: verify Container Apps Environment, container app definitions, managed identity
-  - [ ] 6.3 Check whether DAPR configuration is present in Bicep resources. Document actual behavior.
-- [ ] Task 7: Enhance deploy/README.md with Aspire publisher integration (AC: #4)
-  - [ ] 7.1 Add "Aspire Publisher Integration" section to `deploy/README.md` with subsections for Docker Compose, Kubernetes, and Azure Container Apps
-  - [ ] 7.2 For each target, document: (a) the `aspire publish` command, (b) what the publisher generates, (c) what DAPR components are missing and how to supplement them from `deploy/dapr/`, (d) environment variable resolution for secrets
-  - [ ] 7.3 Document that generated manifests are tied to the Aspire SDK version -- regenerate (don't manually edit) when upgrading Aspire
-  - [ ] 7.4 Document external OIDC provider configuration for production auth (replacing Keycloak)
-- [ ] Task 8: Handle Keycloak conditional exclusion (AC: #6)
-  - [ ] 8.1 Run `aspire publish --publisher docker -o ./publish-output/docker-no-keycloak` with `EnableKeycloak=false` environment variable
-  - [ ] 8.2 Verify Keycloak is NOT present in the generated output
-  - [ ] 8.3 Document the `EnableKeycloak=false` flag and external OIDC configuration in deploy/README.md
-- [ ] Task 9: Add publish-output to .gitignore (AC: #7)
-  - [ ] 9.1 Add `publish-output/` entry to root `.gitignore`
+- [x] Task 1: Add publisher NuGet packages to AppHost (AC: #1, #2, #3)
+  - [x] 1.1 Verify actual available versions on nuget.org for `Aspire.Hosting.Docker`, `Aspire.Hosting.Kubernetes`, `Aspire.Hosting.Azure.AppContainers` matching Aspire SDK 13.x. Use the latest stable 13.x version (may not be exactly `13.1.1` -- check nuget.org).
+  - [x] 1.2 Add verified versions to `Directory.Packages.props` under the `Aspire` ItemGroup
+  - [x] 1.3 Add package references to `Hexalith.EventStore.AppHost.csproj` (no version -- central management)
+  - [x] 1.4 Run `dotnet restore` and `dotnet build` to verify packages resolve correctly
+- [x] Task 2: Configure publisher environments in AppHost Program.cs (AC: #1, #2, #3, #5)
+  - [x] 2.1 Add publisher environment lines BEFORE `builder.Build().Run()` -- adapted to use PUBLISH_TARGET config-driven selection (see Implementation Notes)
+  - [x] 2.2 Verify `dotnet run --project src/Hexalith.EventStore.AppHost/` still works (environments must be inert at runtime)
+  - [x] 2.3 Verify `dotnet build` succeeds for the entire solution
+- [x] Task 3: Verify multi-environment coexistence (AC: #5)
+  - [x] 3.1 Run all Tier 1 unit tests -- 216 passed, 0 failures (157 Contracts + 11 Client + 48 Testing)
+  - [x] 3.2 Run Tier 2 integration tests (if DAPR available) -- Server.Tests has pre-existing CA2007 build errors (unrelated to publisher changes)
+  - [x] 3.3 Verify Tier 3 test fixture still works: `dotnet build tests/Hexalith.EventStore.IntegrationTests/` compiles successfully with 0 errors
+- [x] Task 4: Validate Docker Compose publisher output (AC: #1, #4)
+  - [x] 4.1 Install Aspire CLI: `dotnet tool install -g Aspire.Cli` (workload deprecated, now a global tool)
+  - [x] 4.2 Run `PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker`
+  - [x] 4.3 Inspect generated `docker-compose.yaml`: commandapi, sample, keycloak services present
+  - [x] 4.4 DAPR sidecar containers are NOT included (confirmed: CommunityToolkit.Aspire.Hosting.Dapr is local dev only)
+  - [x] 4.5 `.env` file contains parameterized placeholders (COMMANDAPI_IMAGE, COMMANDAPI_PORT, KEYCLOAK_PASSWORD, SAMPLE_IMAGE, SAMPLE_PORT, KEYCLOAK_BINDMOUNT_0)
+  - [x] 4.6 Docker not available in this environment -- skipped per prerequisites
+- [x] Task 5: Validate Kubernetes publisher output (AC: #2, #4)
+  - [x] 5.1 Run `PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish -o ./publish-output/k8s`
+  - [x] 5.2 Helm chart generated with Deployments/Services for commandapi and sample
+  - [x] 5.3 DAPR annotations are NOT auto-generated on pod templates (confirmed: manual addition required)
+  - [x] 5.4 helm/kubectl not available in this environment -- skipped per prerequisites
+- [x] Task 6: Validate Azure Container Apps publisher output (AC: #3, #4)
+  - [x] 6.1 Run `PUBLISH_TARGET=aca EnableKeycloak=false aspire publish -o ./publish-output/azure`
+  - [x] 6.2 Bicep modules generated: main.bicep, aca/aca.bicep (Container Apps Environment), aca-acr/aca-acr.bicep (ACR), commandapi/commandapi.bicep, sample/sample.bicep -- all with managed identity
+  - [x] 6.3 DAPR configuration is NOT present in Bicep resources (confirmed: manual ACA DAPR config required)
+- [x] Task 7: Enhance deploy/README.md with Aspire publisher integration (AC: #4)
+  - [x] 7.1 Add "Aspire Publisher Integration" section to `deploy/README.md` with subsections for Docker Compose, Kubernetes, and Azure Container Apps
+  - [x] 7.2 For each target, documented: aspire publish command, generated output, DAPR gaps, manual supplementation steps
+  - [x] 7.3 Document that generated manifests are tied to the Aspire SDK version
+  - [x] 7.4 Document external OIDC provider configuration for production auth (External OIDC Configuration section)
+- [x] Task 8: Handle Keycloak conditional exclusion (AC: #6)
+  - [x] 8.1 Run `PUBLISH_TARGET=docker EnableKeycloak=false aspire publish -o ./publish-output/docker-no-keycloak`
+  - [x] 8.2 Verified Keycloak is NOT present in the generated docker-compose.yaml (only commandapi, sample, docker-dashboard)
+  - [x] 8.3 Documented `EnableKeycloak=false` flag and external OIDC configuration in deploy/README.md
+- [x] Task 9: Add publish-output to .gitignore (AC: #7)
+  - [x] 9.1 Add `publish-output/` entry to root `.gitignore`
 
 ## Dev Notes
 
@@ -289,10 +284,44 @@ Recent commits show:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Aspire workload (`dotnet workload install aspire`) is deprecated in .NET 10. Aspire CLI is now a global tool: `dotnet tool install -g Aspire.Cli`.
+- Multiple publisher environments cannot coexist at publish time. Aspire 13.1.1 throws "Resource has multiple compute environments" when more than one environment is registered and `aspire publish` runs. Solution: config-driven selection via `PUBLISH_TARGET` env var.
+- Kubernetes publisher does not support bind mounts. Keycloak's `WithRealmImport()` creates a bind mount that crashes the K8s publisher. Solution: `EnableKeycloak=false` required for K8s/ACA publishing.
+- Docker and Kubernetes publisher packages (`Aspire.Hosting.Docker`, `Aspire.Hosting.Kubernetes`) are only available as preview versions at `13.1.1-preview.1.26105.8`. `Aspire.Hosting.Azure.AppContainers` has stable `13.1.1`.
+- Server.Tests (Tier 2) has pre-existing CA2007 (ConfigureAwait) build errors unrelated to this story.
+
 ### Completion Notes List
 
+- Added 3 publisher NuGet packages to Directory.Packages.props and AppHost.csproj
+- Implemented config-driven publisher environment selection in Program.cs via PUBLISH_TARGET env var
+- Validated Docker Compose publisher: generates docker-compose.yaml + .env with parameterized placeholders; services: commandapi, sample, keycloak, docker-dashboard; NO DAPR sidecars
+- Validated Kubernetes publisher: generates Helm chart with Deployments/Services/ConfigMaps for commandapi and sample; NO DAPR annotations
+- Validated Azure Container Apps publisher: generates Bicep modules for ACR, Container Apps Environment, commandapi, sample with managed identity; NO DAPR configuration
+- Confirmed Keycloak exclusion with EnableKeycloak=false (AC #6)
+- Added comprehensive "Aspire Publisher Integration" section to deploy/README.md documenting all three publishers, DAPR supplementation steps, and external OIDC configuration
+- Added publish-output/ to .gitignore
+- All Tier 1 tests pass (216/216), Tier 3 IntegrationTests build succeeds
+
+### Implementation Notes
+
+The story Dev Notes assumed all three publisher environments could be registered simultaneously. In practice, Aspire 13.1.1 requires exactly one compute environment per resource at publish time. The implementation uses a `PUBLISH_TARGET` configuration variable to select the target publisher:
+- `PUBLISH_TARGET=docker` -> Docker Compose
+- `PUBLISH_TARGET=k8s` -> Kubernetes
+- `PUBLISH_TARGET=aca` -> Azure Container Apps
+- Not set -> No publisher registered (normal `dotnet run` behavior)
+
+### Change Log
+
+- 2026-02-25: Story 7.7 implemented - Aspire publisher deployment manifests for Docker Compose, Kubernetes, and Azure Container Apps
+
 ### File List
+
+- `Directory.Packages.props` (modified: added Aspire.Hosting.Docker, Aspire.Hosting.Kubernetes, Aspire.Hosting.Azure.AppContainers package versions)
+- `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` (modified: added 3 publisher package references)
+- `src/Hexalith.EventStore.AppHost/Program.cs` (modified: added PUBLISH_TARGET-driven publisher environment selection)
+- `deploy/README.md` (modified: added "Aspire Publisher Integration" section with Docker/K8s/ACA documentation and External OIDC Configuration)
+- `.gitignore` (modified: added publish-output/ entry)

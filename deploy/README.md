@@ -168,6 +168,120 @@ Recommended approaches by platform:
 5. Pre-create Azure Service Bus topics/subscriptions used by your tenant/domain topology before traffic cutover.
 6. Verify component load and sidecar health through Container Apps logs and DAPR health endpoint checks before promoting traffic.
 
+## Aspire Publisher Integration
+
+The AppHost supports three Aspire publisher targets for generating deployment manifests. Publisher environments are configured in `src/Hexalith.EventStore.AppHost/Program.cs` and selected at publish time via the `PUBLISH_TARGET` environment variable.
+
+**Prerequisites:** Install the Aspire CLI as a global tool: `dotnet tool install -g Aspire.Cli`
+
+**Generated manifests are version-tied:** Publisher output format is specific to the Aspire SDK version (currently 13.1.1). When upgrading Aspire, regenerate manifests via `aspire publish` -- do not manually edit previously generated files.
+
+### Docker Compose Publisher
+
+**Command:**
+
+```bash
+PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
+```
+
+**Generated output:** `docker-compose.yaml` + `.env` file containing parameterized placeholders for container images, ports, and secrets.
+
+**Services generated:** `commandapi`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
+
+**DAPR sidecar handling:** `CommunityToolkit.Aspire.Hosting.Dapr` is a local dev orchestration tool. The Docker Compose publisher does **NOT** generate DAPR sidecar containers. To add DAPR support:
+
+1. Add sidecar container definitions for each service in `docker-compose.yaml`:
+
+   ```yaml
+   services:
+     commandapi-dapr:
+       image: "daprio/daprd:latest"
+       network_mode: "service:commandapi"
+       volumes:
+         - ./dapr-components:/components
+       command: ["./daprd", "-app-id", "commandapi", "-app-port", "8080", "-components-path", "/components", "-config", "/components/accesscontrol.yaml"]
+     sample-dapr:
+       image: "daprio/daprd:latest"
+       network_mode: "service:sample"
+       volumes:
+         - ./dapr-components:/components
+       command: ["./daprd", "-app-id", "sample", "-components-path", "/components", "-config", "/components/accesscontrol.yaml"]
+   ```
+
+2. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume.
+3. Resolve environment variable placeholders in the `.env` file with production values.
+
+### Kubernetes Publisher
+
+**Command:**
+
+```bash
+PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+```
+
+**Note:** `EnableKeycloak=false` is required because the Kubernetes publisher does not support bind mounts (used by Keycloak's realm import). For production Kubernetes deployments, use an external OIDC provider instead of Keycloak (see [External OIDC Configuration](#external-oidc-configuration-for-production)).
+
+**Generated output:** Helm chart with `Chart.yaml`, `values.yaml`, and templates containing Deployments, Services, and ConfigMaps for `commandapi` and `sample`.
+
+**DAPR annotation handling:** The Kubernetes publisher does **NOT** auto-generate DAPR annotations on pod templates. To add DAPR support:
+
+1. Add DAPR annotations to each Deployment's pod template:
+
+   ```yaml
+   spec:
+     template:
+       metadata:
+         annotations:
+           dapr.io/enabled: "true"
+           dapr.io/app-id: "commandapi"
+           dapr.io/app-port: "8080"
+           dapr.io/config: "accesscontrol"
+   ```
+
+2. Install the DAPR operator in your Kubernetes cluster.
+3. Apply production DAPR components as Kubernetes CRDs:
+
+   ```bash
+   kubectl apply -f deploy/dapr/statestore-postgresql.yaml
+   kubectl apply -f deploy/dapr/pubsub-rabbitmq.yaml
+   kubectl apply -f deploy/dapr/resiliency.yaml
+   kubectl apply -f deploy/dapr/accesscontrol.yaml
+   ```
+
+4. Create Kubernetes Secrets for connection strings referenced by environment variables.
+
+### Azure Container Apps Publisher
+
+**Command:**
+
+```bash
+PUBLISH_TARGET=aca EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+```
+
+**Note:** `EnableKeycloak=false` is recommended for production ACA deployments. Use an external OIDC provider.
+
+**Generated output:** Bicep modules including: `main.bicep` (subscription-scoped orchestrator), ACR module (Azure Container Registry), Container Apps Environment module, and per-service modules (`commandapi.bicep`, `sample.bicep`) with managed identity.
+
+**DAPR configuration handling:** The Bicep output does **NOT** include DAPR configuration. Azure Container Apps has native DAPR support that must be configured separately:
+
+1. Enable DAPR in the Container Apps Environment via Bicep or Azure Portal.
+2. Configure each container app with DAPR settings (app-id, app-port).
+3. Create DAPR components in the Container Apps Environment for state store and pub/sub, referencing the production configs from `deploy/dapr/`.
+4. Use managed identity for secret references where possible.
+
+### External OIDC Configuration for Production
+
+Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production auth, configure an external OIDC provider via these environment variables on the `commandapi` container:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `Authentication__JwtBearer__Authority` | OIDC discovery URL (issuer) | `https://login.microsoftonline.com/{tenant}/v2.0` |
+| `Authentication__JwtBearer__Issuer` | Expected token issuer | `https://login.microsoftonline.com/{tenant}/v2.0` |
+| `Authentication__JwtBearer__Audience` | Expected token audience | `api://hexalith-eventstore` |
+| `Authentication__JwtBearer__RequireHttpsMetadata` | Require HTTPS for metadata | `true` (recommended for production) |
+
+When `Authentication__JwtBearer__Authority` is set, the application uses OIDC discovery to validate tokens. When it is not set, it falls back to symmetric key validation via `Authentication__JwtBearer__SigningKey`.
+
 ## Validating Configuration
 
 After deployment, verify the configuration:
