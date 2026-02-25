@@ -55,8 +55,12 @@ public partial class EventPersister(
             IEventPayload eventPayload = domainResult.Events[i];
             long sequenceNumber = currentSequence + 1 + i;
 
-            string eventTypeName = eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
-            byte[] payloadBytes = JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
+            string eventTypeName = eventPayload is ISerializedEventPayload serializedPayload
+                ? serializedPayload.EventTypeName
+                : eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
+            byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
+                ? serialized.PayloadBytes
+                : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
 
             var envelope = new EventEnvelope(
                 AggregateId: identity.AggregateId,

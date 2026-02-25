@@ -40,8 +40,14 @@ public class DomainServiceResolver(
 
         string configKey = $"{tenantId}:{domain}:{version}";
 
-        // Check static registrations first (local dev/testing)
-        if (options.Value.Registrations.TryGetValue(configKey, out DomainServiceRegistration? staticRegistration)) {
+        // Check static registrations first (local dev/testing).
+        // Try both colon-separated (canonical) and pipe-separated (config-friendly) key formats.
+        // .NET configuration binding treats colons as section separators, so JSON/env-var-based
+        // registrations must use a pipe '|' separator instead.
+        string configFriendlyKey = $"{tenantId}|{domain}|{version}";
+
+        if (options.Value.Registrations.TryGetValue(configKey, out DomainServiceRegistration? staticRegistration)
+            || options.Value.Registrations.TryGetValue(configFriendlyKey, out staticRegistration)) {
             logger.LogDebug(
                 "Resolved domain service from static registration: AppId={AppId}, Method={MethodName}, ConfigKey={ConfigKey}",
                 staticRegistration.AppId,

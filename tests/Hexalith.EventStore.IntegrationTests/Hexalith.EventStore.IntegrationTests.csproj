@@ -14,6 +14,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" />
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

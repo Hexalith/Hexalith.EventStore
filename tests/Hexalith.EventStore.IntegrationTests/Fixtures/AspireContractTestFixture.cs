@@ -1,8 +1,9 @@
 
-using System.Net;
-
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 /// <summary>
@@ -15,6 +16,8 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private string? _previousEnableKeycloak;
+    private string? _previousAspNetCoreEnvironment;
+    private string? _previousDotNetEnvironment;
     private HttpClient? _commandApiClient;
 
     /// <summary>
@@ -35,6 +38,13 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
 
+        // Force Development environment so AppHost children (especially CommandApi)
+        // load appsettings.Development.json expected by Tier 3 contract tests.
+        _previousAspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+        Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+
         // 3-minute timeout for Aspire topology startup (no Keycloak container to pull/start).
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
 
@@ -42,38 +52,33 @@ public class AspireContractTestFixture : IAsyncLifetime {
             .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
             .ConfigureAwait(false);
 
+
+        // Task 1.2: Configure test logging -- Debug for app, Warning for Aspire infrastructure.
+        _builder.Services.AddLogging(logging =>
+        {
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.AddFilter(_builder.Environment.ApplicationName, LogLevel.Debug);
+            logging.AddFilter("Aspire.", LogLevel.Warning);
+        });
+
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);
+
+        // Task 1.4 / AC #1: Wait for commandapi resource to be healthy via Aspire resource notifications.
+        await _app.ResourceNotifications
+            .WaitForResourceHealthyAsync("commandapi", cts.Token)
+            .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+            .ConfigureAwait(false);
 
         // Create HTTP client for CommandApi
         _commandApiClient = _app.CreateHttpClient("commandapi");
         _commandApiClient.Timeout = TimeSpan.FromSeconds(60);
 
-        // Wait for CommandApi endpoint to respond (any status code means the service is up)
-        await WaitForEndpointAsync(
-            _commandApiClient,
-            "/api/v1/commands",
-            expectedStatusCodes: [HttpStatusCode.Unauthorized, HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound],
-            timeout: TimeSpan.FromMinutes(3),
-            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
-
-        // Wait for CommandApi health endpoint (includes Dapr sidecar, state store, pub/sub checks).
-        await WaitForEndpointAsync(
-            _commandApiClient,
-            "/health",
-            expectedStatusCodes: [HttpStatusCode.OK],
-            timeout: TimeSpan.FromMinutes(3),
-            pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
-
-        // Wait for the sample domain service to be ready.
-        using var sampleProbeClient = _app.CreateHttpClient("sample");
-        sampleProbeClient.Timeout = TimeSpan.FromSeconds(15);
-        await WaitForEndpointAsync(
-            sampleProbeClient,
-            "/health",
-            expectedStatusCodes: [HttpStatusCode.OK],
-            timeout: TimeSpan.FromMinutes(3),
-            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        // Also wait for the sample domain service to be healthy.
+        await _app.ResourceNotifications
+            .WaitForResourceHealthyAsync("sample", cts.Token)
+            .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+            .ConfigureAwait(false);
     }
 
     public async Task DisposeAsync() {
@@ -87,35 +92,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
         }
 
         Environment.SetEnvironmentVariable("EnableKeycloak", _previousEnableKeycloak);
-    }
-
-    private static async Task WaitForEndpointAsync(
-        HttpClient client,
-        string url,
-        IReadOnlyCollection<HttpStatusCode> expectedStatusCodes,
-        TimeSpan timeout,
-        TimeSpan pollInterval) {
-        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
-        Exception? lastException = null;
-
-        while (DateTimeOffset.UtcNow < deadline) {
-            try {
-                using HttpResponseMessage response = await client
-                    .GetAsync(url)
-                    .ConfigureAwait(false);
-
-                if (expectedStatusCodes.Contains(response.StatusCode)) {
-                    return;
-                }
-            }
-            catch (Exception ex) {
-                lastException = ex;
-            }
-
-            await Task.Delay(pollInterval).ConfigureAwait(false);
-        }
-
-        throw new TimeoutException(
-            $"Endpoint did not become ready within {timeout}. Url: {url}. Last error: {lastException?.Message ?? "n/a"}");
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _previousAspNetCoreEnvironment);
+        Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
     }
 }

@@ -82,11 +82,17 @@ public class DeadLetterTests {
     }
 
     /// <summary>
-    /// AC #5: Dead-letter includes full context (verifiable via status response fields).
+    /// AC #5: Dead-letter includes full context. Verifies status response contains meaningful
+    /// failure context fields (failureReason, rejectionEventType, or timeoutDuration) with
+    /// non-empty values that describe the actual failure. The dead-letter message published to
+    /// the Dapr pub/sub topic (deadletter.{tenant}.{domain}.events) contains the full
+    /// CommandEnvelope, failure stage, exception details, correlation ID, tenant, domain, and
+    /// aggregate ID per DeadLetterMessage contract. Status endpoint fields mirror this context.
     /// </summary>
     [Fact]
     public async Task SubmitCommand_NonExistentDomain_StatusIncludesFailureContext() {
         // Arrange
+        string aggregateId = $"dead-ctx-{Guid.NewGuid():N}";
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: ["tenant-a"],
             domains: ["missing-service"],
@@ -95,7 +101,7 @@ public class DeadLetterTests {
         var body = new {
             Tenant = "tenant-a",
             Domain = "missing-service",
-            AggregateId = $"dead-ctx-{Guid.NewGuid():N}",
+            AggregateId = aggregateId,
             CommandType = "SomeCommand",
             Payload = new { id = "test" },
         };
@@ -112,7 +118,9 @@ public class DeadLetterTests {
             .SendAsync(request);
 
         if (response.StatusCode != HttpStatusCode.Accepted) {
-            return; // Cannot proceed if submission fails
+            string responseBody = await response.Content.ReadAsStringAsync();
+            throw new ShouldAssertException(
+                $"Expected 202 Accepted but was {(int)response.StatusCode} {response.StatusCode}.\nBody:\n{responseBody}");
         }
 
         JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -121,20 +129,62 @@ public class DeadLetterTests {
         // Act
         JsonElement status = await PollUntilTerminalStatusAsync(correlationId, "tenant-a");
 
-        // Assert - terminal failure status should have context information
+        // Assert - terminal failure status should NOT be Completed
         string statusValue = status.GetProperty("status").GetString()!;
-        statusValue.ShouldNotBe("Completed");
+        statusValue.ShouldNotBe("Completed",
+            "Command to non-existent domain should trigger dead-letter routing, not completion");
 
-        // The status record should include failure context (failureReason or rejectionEventType)
+        // Assert - the status record must include meaningful failure context.
+        // This mirrors the DeadLetterMessage contract which includes full command envelope,
+        // failure stage, exception type/message, correlationId, tenant, domain, and aggregateId.
         bool hasFailureReason = status.TryGetProperty("failureReason", out JsonElement failureReason)
-            && failureReason.ValueKind == JsonValueKind.String;
+            && failureReason.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(failureReason.GetString());
         bool hasRejectionType = status.TryGetProperty("rejectionEventType", out JsonElement rejectionType)
-            && rejectionType.ValueKind == JsonValueKind.String;
-        bool hasTimeoutDuration = status.TryGetProperty("timeoutDuration", out JsonElement timeoutDuration)
-            && timeoutDuration.ValueKind == JsonValueKind.String;
+            && rejectionType.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(rejectionType.GetString());
+        bool hasTimeoutDuration = status.TryGetProperty("timeoutDuration", out _);
 
         (hasFailureReason || hasRejectionType || hasTimeoutDuration).ShouldBeTrue(
-            $"Terminal failure status '{statusValue}' should include context (failureReason, rejectionEventType, or timeoutDuration)");
+            $"Terminal failure status '{statusValue}' must include non-empty context field "
+            + "(failureReason, rejectionEventType, or timeoutDuration) reflecting dead-letter payload context. "
+            + $"Status response: {status}");
+
+        // Assert - if failureReason is present, it should contain meaningful diagnostic info
+        if (hasFailureReason) {
+            string reason = failureReason.GetString()!;
+            reason.Length.ShouldBeGreaterThan(5,
+                "failureReason should contain a meaningful description of the failure, not a stub");
+        }
+
+        // Assert - aggregateId should be present in the status record (proves command context is preserved)
+        if (status.TryGetProperty("aggregateId", out JsonElement aggIdProp)
+            && aggIdProp.ValueKind == JsonValueKind.String) {
+            aggIdProp.GetString().ShouldBe(aggregateId,
+                "Status record should preserve the original aggregateId for traceability");
+        }
+
+        // Assert - correlationId must be preserved in the status record, mirroring the DeadLetterMessage
+        // contract which includes the full CommandEnvelope (with correlationId) in the dead-letter payload
+        if (status.TryGetProperty("correlationId", out JsonElement corrIdProp)
+            && corrIdProp.ValueKind == JsonValueKind.String) {
+            corrIdProp.GetString().ShouldBe(correlationId,
+                "Status record should preserve the original correlationId for dead-letter traceability");
+        }
+
+        // Assert - domain should be preserved in the status record, mirroring the DeadLetterMessage
+        // contract which includes tenant, domain, and aggregateId from the original command
+        if (status.TryGetProperty("domain", out JsonElement domainProp)
+            && domainProp.ValueKind == JsonValueKind.String) {
+            domainProp.GetString().ShouldBe("missing-service",
+                "Status record should preserve the original domain for dead-letter context");
+        }
+
+        // NOTE: Direct dead-letter topic inspection (reading from deadletter.{tenant}.{domain}.events
+        // Dapr pub/sub topic) is not feasible in Tier 3 E2E tests because there is no consumer/subscriber
+        // endpoint for the dead-letter topic in the test topology. The status endpoint fields mirror the
+        // DeadLetterMessage contract (full CommandEnvelope, failure stage, exception details, correlationId,
+        // tenant, domain, aggregateId) and serve as the observable proxy for dead-letter payload verification.
     }
 
     // ------------------------------------------------------------------

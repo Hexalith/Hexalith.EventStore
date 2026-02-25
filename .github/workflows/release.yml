@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+# NO concurrency block -- each release must complete independently
+
+permissions:
+  contents: write # For GitHub Release creation
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Optional: configure a 'release' environment in GitHub Settings
+    # with required reviewers for production NuGet publishing
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0 # MinVer needs full history
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+
+      - name: Cache NuGet packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Install DAPR CLI
+        run: |
+          wget -q https://raw.githubusercontent.com/dapr/cli/v1.16.0/install/install.sh -O - | /bin/bash
+          dapr init --slim
+
+      - name: Run All Tests (Tier 1 + 2)
+        run: dotnet test --no-build --configuration Release
+
+      - name: Pack NuGet
+        run: dotnet pack --no-build --configuration Release --output ./nupkgs
+
+      - name: Validate packages
+        run: |
+          expected=5
+          actual=$(ls ./nupkgs/*.nupkg | wc -l)
+          echo "Found $actual packages (expected $expected):"
+          ls -la ./nupkgs/*.nupkg
+          if [ "$actual" -ne "$expected" ]; then
+            echo "::error::Expected $expected packages, found $actual"
+            exit 1
+          fi
+
+      - name: Validate version matches tag
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version=$(ls ./nupkgs/*.nupkg | head -1 | sed 's/.*\.\([0-9]\)/\1/' | sed 's/\.nupkg//')
+          echo "Tag version: $tag_version"
+          echo "Package version: $pkg_version"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Version mismatch! Tag=$tag_version, Package=$pkg_version"
+            echo "Ensure fetch-depth: 0 is set and MinVer can see the tag."
+            exit 1
+          fi
+
+      - name: Publish to NuGet
+        run: >
+          dotnet nuget push ./nupkgs/*.nupkg
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ secrets.NUGET_API_KEY }}
+          --skip-duplicate
+          --verbosity quiet
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          files: ./nupkgs/*.nupkg
+          generate_release_notes: true
