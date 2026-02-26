@@ -1,6 +1,6 @@
 # Story 7.8: Domain Service Hot Reload Validation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -271,7 +271,12 @@ Claude Opus 4.6
 **Task 5: Regression Verification**
 - All Tier 1 tests pass: 224/224 (Contracts 157, Client 11, Testing 48, Sample 8)
 - IntegrationTests project builds successfully with new HotReloadTests
-- Tier 3 tests cannot be run locally without DAPR/Docker infrastructure but build verification confirms integration
+- HotReloadTests were re-run during code review fix validation; health endpoint and restart-window timing logic were corrected
+- Full Tier 3 suite run completed (Task 5.2): 160 total tests, 149 passed, 11 failed (all pre-existing)
+  - All 21 AspireContractTests collection tests PASSED (including 3 new HotReloadTests)
+  - HotReloadTests: ProcessCommand_AfterDomainServiceRestart (10s), CommandApi_DuringDomainServiceRestart (10s), ProcessCommand_DuringDomainServiceRestart (10s) -- all PASSED
+  - CommandLifecycleTests: 6/6 PASSED, AuthenticationTests: 4/4 PASSED, DeadLetterTests: 2/2 PASSED, ErrorResponseTests: 5/5 PASSED, InfrastructurePortabilityTests: 1/1 PASSED
+  - 11 pre-existing failures: 1x ValidationTests (Development mode exception detail leak), 8x Keycloak E2E (Keycloak disabled), 2x DaprAccessControlE2E (requires Keycloak topology)
 - Server.Tests CA2007 errors are pre-existing (documented in Known Issues)
 
 **Task 6: Developer Inner Loop Walkthrough (AC #6)**
@@ -300,9 +305,12 @@ The architecture enables independent domain service restarts through DAPR servic
 ### Change Log
 
 - 2026-02-25: Implemented Story 7.8 - Created HotReloadTests.cs with 3 Tier 3 contract tests validating domain service hot reload. Used Aspire ResourceCommands API (not StopResourceAsync which doesn't exist). All Tier 1 tests pass (224/224). Documented developer inner loop workflow.
+- 2026-02-26: Code review fixes applied - corrected CommandApi responsiveness verification to status/control-plane probes, tightened AC #4 terminal-status assertion (removed `Rejected`), stabilized restart-window command submission with retry semantics, and added stronger continuity assertion (post-restart `DecrementCounter`). Updated fixture support for sample-client probing and set Task 5.2 pending until full Tier 3 suite is re-run.
+- 2026-02-26: Task 5.2 completed -- Full Tier 3 test suite run: 21/21 AspireContractTests PASSED (including 3 HotReloadTests). 11 pre-existing failures unrelated to story 7.8. All tasks complete, story ready for review.
+- 2026-02-26: Code review #2 fixes applied -- (M1) Removed unused SampleServiceClient from shared fixture (dead code). (M2) Restored command acceptance (202) assertion while domain service is down in AC #5 dedicated test. (M3) Extracted duplicated helper methods to shared ContractTestHelpers.cs (DRY). (M4) Added OperationCanceledException rethrow in retry helpers to prevent swallowing cancellation. Fixed double blank lines and corrected File List (sprint-status.yaml was not actually modified in git).
 
 ### File List
 
-- tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs (NEW)
+- tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs (MODIFIED)
+- tests/Hexalith.EventStore.IntegrationTests/Helpers/ContractTestHelpers.cs (CREATED)
 - _bmad-output/implementation-artifacts/7-8-domain-service-hot-reload-validation.md (MODIFIED)
-- _bmad-output/implementation-artifacts/sprint-status.yaml (MODIFIED)
