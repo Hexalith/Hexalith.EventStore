@@ -49,7 +49,7 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 **Environment variables:**
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+| ---------- | ------------- | --------- |
 | `POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | `host=mydb.postgres.database.azure.com;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require` |
 
 ### Cosmos DB State Store
@@ -59,7 +59,7 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 **Environment variables:**
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+| ---------- | ------------- | --------- |
 | `COSMOSDB_URL` | Account endpoint URL | `https://myaccount.documents.azure.com:443/` |
 | `COSMOSDB_KEY` | Primary or secondary key | (from Azure Portal or Key Vault) |
 | `COSMOSDB_DATABASE` | Database name | `eventstore` |
@@ -184,6 +184,13 @@ The AppHost supports three Aspire publisher targets for generating deployment ma
 PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
+**PowerShell (Windows):**
+
+```powershell
+$env:PUBLISH_TARGET="docker"
+aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
+```
+
 **Generated output:** `docker-compose.yaml` + `.env` file containing parameterized placeholders for container images, ports, and secrets.
 
 **Services generated:** `commandapi`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
@@ -217,6 +224,14 @@ PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost/H
 
 ```bash
 PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+```
+
+**PowerShell (Windows):**
+
+```powershell
+$env:PUBLISH_TARGET="k8s"
+$env:EnableKeycloak="false"
+aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\k8s
 ```
 
 **Note:** `EnableKeycloak=false` is required because the Kubernetes publisher does not support bind mounts (used by Keycloak's realm import). For production Kubernetes deployments, use an external OIDC provider instead of Keycloak (see [External OIDC Configuration](#external-oidc-configuration-for-production)).
@@ -258,6 +273,14 @@ PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.Ev
 PUBLISH_TARGET=aca EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 ```
 
+**PowerShell (Windows):**
+
+```powershell
+$env:PUBLISH_TARGET="aca"
+$env:EnableKeycloak="false"
+aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\azure
+```
+
 **Note:** `EnableKeycloak=false` is recommended for production ACA deployments. Use an external OIDC provider.
 
 **Generated output:** Bicep modules including: `main.bicep` (subscription-scoped orchestrator), ACR module (Azure Container Registry), Container Apps Environment module, and per-service modules (`commandapi.bicep`, `sample.bicep`) with managed identity.
@@ -274,7 +297,7 @@ PUBLISH_TARGET=aca EnableKeycloak=false aspire publish --project src/Hexalith.Ev
 Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production auth, configure an external OIDC provider via these environment variables on the `commandapi` container:
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+| ---------- | ------------- | --------- |
 | `Authentication__JwtBearer__Authority` | OIDC discovery URL (issuer) | `https://login.microsoftonline.com/{tenant}/v2.0` |
 | `Authentication__JwtBearer__Issuer` | Expected token issuer | `https://login.microsoftonline.com/{tenant}/v2.0` |
 | `Authentication__JwtBearer__Audience` | Expected token audience | `api://hexalith-eventstore` |
