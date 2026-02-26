@@ -59,3 +59,37 @@ IMPORTANT! Always prefer official documentation when available. The following si
 1. https://aspire.dev
 2. https://learn.microsoft.com/dotnet/aspire
 3. https://nuget.org (for specific integration package details)
+
+## Cursor Cloud specific instructions
+
+### System dependencies
+
+The VM environment provides: .NET 10 SDK, Docker, Aspire CLI (`aspire`), Dapr CLI (`dapr`), and Dapr runtime (`daprd`, `placement`, `scheduler`) under `$HOME/.dapr/bin`. The update script handles `dotnet restore` automatically.
+
+### Running the application
+
+1. Ensure Docker is running: `sudo dockerd &>/tmp/dockerd.log &` then `sudo chmod 666 /var/run/docker.sock`.
+2. Start Dapr placement and scheduler services manually (slim mode does not auto-start them):
+   ```
+   $HOME/.dapr/bin/placement --port 50005 &
+   $HOME/.dapr/bin/scheduler --port 50006 --etcd-data-dir /tmp/dapr-scheduler-data &
+   ```
+3. Run with `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` to skip the Keycloak container (auth falls back to symmetric key JWT).
+4. The CommandAPI listens on `http://localhost:8080`. The Aspire dashboard is at `https://localhost:17017`.
+
+### Testing
+
+- **Unit tests**: `dotnet test tests/Hexalith.EventStore.Client.Tests tests/Hexalith.EventStore.Contracts.Tests tests/Hexalith.EventStore.Sample.Tests tests/Hexalith.EventStore.Testing.Tests` (run individually, not in a single `dotnet test` call).
+- **Pre-existing build failure**: `Hexalith.EventStore.Server.Tests` does not build due to CA2007 warnings treated as errors (pre-existing in the repo).
+- **Integration tests** (`tests/Hexalith.EventStore.IntegrationTests`) require Docker and a running Aspire environment.
+
+### API authentication (dev mode)
+
+With `EnableKeycloak=false`, JWT tokens are validated against the symmetric key `DevOnlySigningKey-AtLeast32Chars!` (configured in `appsettings.Development.json`). Tokens must include `iss=hexalith-dev`, `aud=hexalith-eventstore`, and claims `tenants` (JSON array) and `permissions` (e.g. `["commands:*"]`) for authorization.
+
+### Known gotchas
+
+- DAPR slim mode does not start placement/scheduler automatically — you must start them before `aspire run` or actors will fail with "did not find address for actor".
+- DAPR access control policies (in `DaprComponents/accesscontrol.yaml`) enforce deny-by-default. In slim mode without mTLS, service-to-service invocations from commandapi to domain services (e.g. sample) may be rejected with 403. This does not affect unit tests or actor processing.
+- The HTTPS dev certificate cannot be fully trusted in the cloud VM — `aspire run` will warn but continues to work. Use `http://localhost:8080` for API calls.
+- Run test projects individually (not via a solution-level `dotnet test`) since there is no `.sln` file.
