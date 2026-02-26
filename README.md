@@ -1,9 +1,7 @@
 <!-- TODO: Replace with animated GIF demo (Story 8-5) at docs/assets/quickstart-demo.gif showing: clone → run → send command → see event -->
 > **See it in action:** An animated demo will be added here ([`docs/assets/quickstart-demo.gif`](docs/assets/quickstart-demo.gif)) showing the complete flow from clone to events flowing in the Aspire dashboard.
 
-# Hexalith.EventStore
-
-**DAPR-native event sourcing server for .NET**
+# Hexalith.EventStore — DAPR-native event sourcing server for .NET
 
 [![GitHub stars](https://img.shields.io/github/stars/Hexalith/Hexalith.EventStore)](https://github.com/Hexalith/Hexalith.EventStore/stargazers)
 [![NuGet](https://img.shields.io/nuget/v/Hexalith.EventStore.Contracts)](https://www.nuget.org/packages/Hexalith.EventStore.Contracts)
@@ -12,33 +10,32 @@
 
 If you've spent weeks wiring up an event store, a message broker, and multi-tenant isolation — only to realize you'll do it again for your next project — we built this for you. Hexalith.EventStore is a distributed, CQRS and DDD-ready event sourcing framework that handles command routing, event persistence, snapshots, and pub/sub delivery so you can focus on domain logic. Built on DAPR for infrastructure portability.
 
+**Get started in under 10 minutes:** [Quickstart Guide](docs/getting-started/quickstart.md)
+
 ## The Programming Model
 
-Your entire domain logic is a pure function. Hexalith handles everything else.
+Your domain logic is conceptually a pure function: $(Command, CurrentState?) \rightarrow List<DomainEvent>$. The runtime contract uses `Task<DomainResult>` so Hexalith can carry success/rejection outcomes alongside emitted events.
 
 ```csharp
-// Your domain is one pure function: (Command, CurrentState?) → DomainResult
+// (Command, CurrentState?) → List<DomainEvent>
 public interface IDomainProcessor {
     Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState);
 }
 
-// A complete Counter domain service
 public class CounterProcessor : IDomainProcessor {
-    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
-        => Task.FromResult(command.CommandType switch {
-            "IncrementCounter" => DomainResult.Success(new[] { new CounterIncremented() }),
-            "DecrementCounter" when GetCount(currentState) > 0
-                               => DomainResult.Success(new[] { new CounterDecremented() }),
-            "DecrementCounter" => DomainResult.Rejection(new[] { new CounterCannotGoNegative() }),
-            _ => throw new InvalidOperationException($"Unknown: {command.CommandType}")
-        });
+    public Task<DomainResult> ProcessAsync(CommandEnvelope cmd, object? state) => Task.FromResult(cmd.CommandType switch {
+        "Increment" => DomainResult.Success(new[] { new CounterIncremented() }),
+        "Decrement" when (int)(state ?? 0) > 0 => DomainResult.Success(new[] { new CounterDecremented() }),
+        "Decrement" => DomainResult.Rejection(new[] { new CannotGoNegative() }),
+        _ => throw new InvalidOperationException($"Unknown: {cmd.CommandType}")
+    });
 }
 ```
 
 ## Why Hexalith?
 
 | Feature | Hexalith | Marten | EventStoreDB | Custom |
-|---------|----------|--------|--------------|--------|
+| --------- | ---------- | -------- | -------------- | -------- |
 | Infrastructure portability | Any store/broker, zero-code swap | PostgreSQL only | Dedicated server | You build it |
 | Multi-tenant isolation | Built-in: data, topics, access | Manual | Manual | You build it |
 | CQRS/ES framework | Complete, infra-agnostic | Complete, PG-coupled | Storage only, BYO framework | You build it |
