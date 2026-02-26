@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh run view 22438820195 --log-failed)"
+    ]
+  }
+}
