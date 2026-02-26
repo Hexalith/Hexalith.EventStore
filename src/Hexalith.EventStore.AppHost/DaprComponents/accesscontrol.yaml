@@ -11,12 +11,21 @@
 #   - sample (port 8081): Reference domain service. Zero infrastructure access -- can only
 #     respond to incoming invocations from the actor host.
 #
-# Security Posture: defaultAction: deny (secure by default, D4)
-# Trust Domain: hexalith.io (SPIFFE identity for mTLS, AC #11)
+# Security Posture (D4, FR34, NFR15):
+#   defaultAction: allow (self-hosted mode without mTLS).
+#   Dapr access control policy matching requires mTLS to extract caller identity
+#   (SPIFFE trust domain, namespace, app ID) from TLS certificates.
+#   Without mTLS, policies cannot verify callers -- deny-by-default would block
+#   ALL service invocations regardless of policy rules.
+#
+#   For PRODUCTION (Kubernetes with mTLS + Sentry):
+#     1. Change defaultAction to "deny"
+#     2. Set trustDomain to your SPIFFE domain (e.g. "hexalith.io")
+#     3. Update each policy trustDomain + namespace to match the caller's K8s identity
+#     4. Domain service isolation (D4, AC #13) is then enforced by the policies below
 #
 # Adding New Domain Services:
 #   1. Add a new policy entry for the new app-id with defaultAction: deny and NO allowed operations.
-#      This explicitly blocks the new domain service from invoking any other service.
 #   2. The commandapi policy already uses wildcard (/**) so no changes needed for commandapi
 #      to invoke the new domain service.
 #   3. DO NOT add the new domain service to pub/sub scopes, state store scopes, or publishingScopes.
@@ -27,35 +36,21 @@ metadata:
   name: accesscontrol
 spec:
   accessControl:
-    defaultAction: deny  # Deny-by-default security posture (D4, AC #4)
-    trustDomain: "hexalith.io"  # SPIFFE trust domain for mTLS identity validation (AC #11)
+    defaultAction: allow  # Allow-by-default in self-hosted mode; change to deny with mTLS
+    trustDomain: "public"
     policies:
       # commandapi: Trusted caller -- REST API + actor host + event publisher (D4)
-      # When commandapi invokes a domain service via DaprClient.InvokeMethodAsync (D7),
-      # the domain service's sidecar evaluates this policy to allow the call.
-      # commandapi needs outbound service invocation to domain services only.
-      # State store and pub/sub access are controlled by component scoping, not access control.
       - appId: commandapi
-        defaultAction: deny  # Deny any operations not explicitly listed
-        trustDomain: "hexalith.io"
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
         operations:
-          # Domain service invocation: actor host invokes domain services via
-          # DaprClient.InvokeMethodAsync with POST to configurable method paths (D7).
-          # Wildcard (/**) allows any method path since domain service method names
-          # are dynamically resolved from the domain service registry.
-          # INTENTIONALLY POST-ONLY: DaprClient.InvokeMethodAsync uses POST by default.
-          # GET/PUT/DELETE are blocked. If domain services need other verbs, add them here.
           - name: /**
             httpVerb: ['POST']
             action: allow
-        namespace: "default"
       # sample: Domain service -- zero outbound access (D4, AC #3, AC #13)
-      # Domain services are pure functions: they receive invocations and return results.
-      # They MUST NOT initiate outbound service invocations, access state stores,
-      # or publish to pub/sub topics. If compromised, a domain service cannot exfiltrate
-      # data, publish malicious events, or pivot to other services.
+      # With mTLS + deny-by-default, this blocks sample from calling any other service.
       - appId: sample
-        defaultAction: deny  # Deny ALL operations -- zero-trust posture (AC #13)
-        trustDomain: "hexalith.io"
+        defaultAction: deny
+        trustDomain: "public"
         namespace: "default"
-        # No allowed operations: domain services cannot invoke any other service (D4)

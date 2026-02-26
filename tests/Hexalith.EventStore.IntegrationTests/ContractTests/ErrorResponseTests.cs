@@ -87,6 +87,12 @@ public class ErrorResponseTests {
 
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
         problemDetails.GetProperty("status").GetInt32().ShouldBe(400);
+        problemDetails.GetProperty("title").GetString().ShouldNotBeNullOrEmpty();
+
+        if (problemDetails.TryGetProperty("errors", out JsonElement errors)) {
+            errors.ValueKind.ShouldBe(JsonValueKind.Object,
+                "Validation errors should be an object mapping field names to error arrays");
+        }
     }
 
     /// <summary>

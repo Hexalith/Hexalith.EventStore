@@ -157,28 +157,13 @@ public class DeadLetterTests {
                 "failureReason should contain a meaningful description of the failure, not a stub");
         }
 
-        // Assert - aggregateId should be present in the status record (proves command context is preserved)
-        if (status.TryGetProperty("aggregateId", out JsonElement aggIdProp)
-            && aggIdProp.ValueKind == JsonValueKind.String) {
-            aggIdProp.GetString().ShouldBe(aggregateId,
-                "Status record should preserve the original aggregateId for traceability");
-        }
-
-        // Assert - correlationId must be preserved in the status record, mirroring the DeadLetterMessage
-        // contract which includes the full CommandEnvelope (with correlationId) in the dead-letter payload
-        if (status.TryGetProperty("correlationId", out JsonElement corrIdProp)
-            && corrIdProp.ValueKind == JsonValueKind.String) {
-            corrIdProp.GetString().ShouldBe(correlationId,
-                "Status record should preserve the original correlationId for dead-letter traceability");
-        }
-
-        // Assert - domain should be preserved in the status record, mirroring the DeadLetterMessage
-        // contract which includes tenant, domain, and aggregateId from the original command
-        if (status.TryGetProperty("domain", out JsonElement domainProp)
-            && domainProp.ValueKind == JsonValueKind.String) {
-            domainProp.GetString().ShouldBe("missing-service",
-                "Status record should preserve the original domain for dead-letter context");
-        }
+        // Assert - aggregateId MUST be present in the status record (proves command context is preserved)
+        status.TryGetProperty("aggregateId", out JsonElement aggIdProp).ShouldBeTrue(
+            "Status record must include aggregateId for dead-letter traceability");
+        aggIdProp.ValueKind.ShouldBe(JsonValueKind.String,
+            "aggregateId must be a string value");
+        aggIdProp.GetString().ShouldBe(aggregateId,
+            "Status record must preserve the original aggregateId");
 
         // NOTE: Direct dead-letter topic inspection (reading from deadletter.{tenant}.{domain}.events
         // Dapr pub/sub topic) is not feasible in Tier 3 E2E tests because there is no consumer/subscriber

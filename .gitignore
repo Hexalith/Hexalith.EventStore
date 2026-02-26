@@ -433,3 +433,7 @@ publish-output/
 
 # Added by ggshield
 .cache_ggshield
+
+
+#Ignore cursor AI rules
+.cursor\rules\codacy.mdc
