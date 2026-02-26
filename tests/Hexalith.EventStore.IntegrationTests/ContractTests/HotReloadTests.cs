@@ -1,8 +1,4 @@
 
-using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Fixtures;
@@ -23,8 +19,6 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Trait("Feature", "HotReload")]
 [Collection("AspireContractTests")]
 public class HotReloadTests {
-    private static readonly TimeSpan s_statusPollTimeout = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan s_statusPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan s_resourceRecoveryTimeout = TimeSpan.FromSeconds(60);
 
     private readonly AspireContractTestFixture _fixture;
@@ -44,30 +38,30 @@ public class HotReloadTests {
     public async Task ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully() {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken ct = cts.Token;
+        HttpClient client = _fixture.CommandApiClient;
 
         // Phase 1 (baseline): Send IncrementCounter command, verify Completed with events
         string aggregateId = $"counter-hotreload-{Guid.NewGuid():N}";
-        string correlationId1 = await SubmitCommandAndGetCorrelationIdAsync(
-            tenant: "tenant-a",
-            domain: "counter",
-            aggregateId: aggregateId,
-            commandType: "IncrementCounter");
+        string correlationId1 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+            client, tenant: "tenant-a", domain: "counter",
+            aggregateId: aggregateId, commandType: "IncrementCounter");
 
-        JsonElement status1 = await PollUntilTerminalStatusAsync(correlationId1, "tenant-a");
+        JsonElement status1 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+            client, correlationId1, "tenant-a");
         status1.GetProperty("status").GetString().ShouldBe("Completed",
             "Baseline command should complete before restart");
         status1.TryGetProperty("eventCount", out JsonElement ec1).ShouldBeTrue();
         ec1.GetInt32().ShouldBeGreaterThan(0, "Baseline command should produce events");
 
         // AC #5: Verify CommandApi is responsive before restart
-        await AssertCommandApiResponsiveAsync();
+        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
 
         // Phase 2 (restart): Stop sample domain service, then restart it
         await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
         // AC #5: CommandApi should remain responsive while domain service is stopped
-        await AssertCommandApiResponsiveAsync();
+        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
 
         await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-start", ct);
@@ -78,20 +72,29 @@ public class HotReloadTests {
             .WaitAsync(s_resourceRecoveryTimeout, ct);
 
         // Phase 3 (verify): Send another command after restart, verify Completed
-        string correlationId2 = await SubmitCommandAndGetCorrelationIdAsync(
-            tenant: "tenant-a",
-            domain: "counter",
-            aggregateId: aggregateId,
-            commandType: "IncrementCounter");
+        string correlationId2 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+            client, tenant: "tenant-a", domain: "counter",
+            aggregateId: aggregateId, commandType: "IncrementCounter");
 
-        JsonElement status2 = await PollUntilTerminalStatusAsync(correlationId2, "tenant-a");
+        JsonElement status2 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+            client, correlationId2, "tenant-a");
         status2.GetProperty("status").GetString().ShouldBe("Completed",
             "Post-restart command should complete successfully (AC #1, #2)");
         status2.TryGetProperty("eventCount", out JsonElement ec2).ShouldBeTrue();
         ec2.GetInt32().ShouldBeGreaterThan(0, "Post-restart command should produce events");
 
+        // Stronger continuity assertion: state updated by IncrementCounter should allow a DecrementCounter.
+        string correlationId3 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+            client, tenant: "tenant-a", domain: "counter",
+            aggregateId: aggregateId, commandType: "DecrementCounter");
+
+        JsonElement status3 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+            client, correlationId3, "tenant-a");
+        status3.GetProperty("status").GetString().ShouldBe("Completed",
+            "Decrement after post-restart increment should complete, proving command flow continuity across restart");
+
         // AC #5: CommandApi should still be responsive after restart cycle
-        await AssertCommandApiResponsiveAsync();
+        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
     }
 
     // ------------------------------------------------------------------
@@ -108,18 +111,17 @@ public class HotReloadTests {
     public async Task ProcessCommand_DuringDomainServiceRestart_HandledByResiliency() {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken ct = cts.Token;
+        HttpClient client = _fixture.CommandApiClient;
 
         // Stop sample domain service
         await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
-        // Immediately submit a command while service is down
+        // Submit while restart is in-flight (retry through transient transport windows).
         string aggregateId = $"counter-resiliency-{Guid.NewGuid():N}";
-        string correlationId = await SubmitCommandAndGetCorrelationIdAsync(
-            tenant: "tenant-a",
-            domain: "counter",
-            aggregateId: aggregateId,
-            commandType: "IncrementCounter");
+        Task<string> submitTask = ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
+            client, tenant: "tenant-a", domain: "counter",
+            aggregateId: aggregateId, commandType: "IncrementCounter");
 
         // Restart sample domain service
         await _fixture.App.ResourceCommands
@@ -130,17 +132,17 @@ public class HotReloadTests {
             .WaitForResourceHealthyAsync("sample", ct)
             .WaitAsync(s_resourceRecoveryTimeout, ct);
 
+        string correlationId = await submitTask.ConfigureAwait(true);
+
         // Poll the in-flight command with extended timeout (DAPR retries may take time)
-        JsonElement status = await PollUntilTerminalStatusAsync(
-            correlationId,
-            "tenant-a",
-            timeout: s_resourceRecoveryTimeout);
+        JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+            client, correlationId, "tenant-a", timeout: s_resourceRecoveryTimeout);
 
         // AC #4: Command should reach a terminal state -- either Completed (DAPR retried)
         // or a terminal failure (PublishFailed/TimedOut). No hung commands.
         string statusValue = status.GetProperty("status").GetString()!;
         statusValue.ShouldBeOneOf(
-            ["Completed", "Rejected", "PublishFailed", "TimedOut"],
+            ["Completed", "PublishFailed", "TimedOut"],
             $"Command submitted during restart must reach terminal state, got: {statusValue}");
     }
 
@@ -156,138 +158,37 @@ public class HotReloadTests {
     public async Task CommandApi_DuringDomainServiceRestart_RemainsResponsive() {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken ct = cts.Token;
+        HttpClient client = _fixture.CommandApiClient;
 
         // Stop sample domain service
         await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
-        // AC #5: Assert CommandApi health endpoint returns 200 OK
-        await AssertCommandApiResponsiveAsync();
+        // AC #5 (Task 4.3): Assert CommandApi remains reachable while domain service is stopped.
+        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
 
-        // AC #5: Assert CommandApi can accept new commands (returns 202 Accepted with tracking ID)
-        string aggregateId = $"counter-apicheck-{Guid.NewGuid():N}";
-        using HttpRequestMessage request = CreateCommandRequest(
-            tenant: "tenant-a",
-            domain: "counter",
-            aggregateId: aggregateId,
-            commandType: "IncrementCounter");
+        // AC #5 (Task 4.4): Assert CommandApi can accept new commands while domain service is down.
+        string aggregateIdWhileDown = $"counter-apicheck-down-{Guid.NewGuid():N}";
+        string correlationIdWhileDown = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
+            client, tenant: "tenant-a", domain: "counter",
+            aggregateId: aggregateIdWhileDown, commandType: "IncrementCounter");
+        correlationIdWhileDown.ShouldNotBeNullOrWhiteSpace(
+            "CommandApi should return a tracking correlationId while domain service is down (AC #5, Task 4.4)");
 
-        using HttpResponseMessage response = await _fixture.CommandApiClient.SendAsync(request);
-
-        if (response.StatusCode != HttpStatusCode.Accepted) {
-            string body = await response.Content.ReadAsStringAsync();
-            throw new ShouldAssertException(
-                $"CommandApi should accept commands while domain service is down. "
-                + $"Expected 202 but got {(int)response.StatusCode}.\nBody:\n{body}");
-        }
-
-        JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
-        result.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty(
-            "CommandApi should return correlationId even when domain service is down");
-
-        // Restart sample domain service (cleanup for other tests)
+        // Restart sample domain service
         await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-start", ct);
 
         await _fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", ct)
             .WaitAsync(s_resourceRecoveryTimeout, ct);
-    }
 
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
-
-    private async Task AssertCommandApiResponsiveAsync() {
-        using var healthRequest = new HttpRequestMessage(HttpMethod.Get, "/");
-        using HttpResponseMessage healthResponse = await _fixture.CommandApiClient
-            .SendAsync(healthRequest).ConfigureAwait(false);
-        healthResponse.StatusCode.ShouldBe(HttpStatusCode.OK,
-            "CommandApi health endpoint should return 200 OK during domain service restart");
-    }
-
-    private async Task<string> SubmitCommandAndGetCorrelationIdAsync(
-        string tenant,
-        string domain,
-        string aggregateId,
-        string commandType) {
-        using HttpRequestMessage request = CreateCommandRequest(tenant, domain, aggregateId, commandType);
-        using HttpResponseMessage response = await _fixture.CommandApiClient
-            .SendAsync(request).ConfigureAwait(false);
-
-        if (response.StatusCode != HttpStatusCode.Accepted) {
-            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            throw new ShouldAssertException(
-                $"Expected 202 Accepted but was {(int)response.StatusCode} {response.StatusCode}.\nBody:\n{body}");
-        }
-
-        JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
-        return result.GetProperty("correlationId").GetString()!;
-    }
-
-    private async Task<JsonElement> PollUntilTerminalStatusAsync(
-        string correlationId,
-        string tenant,
-        TimeSpan? timeout = null) {
-        string token = TestJwtTokenGenerator.GenerateToken(
-            tenants: [tenant],
-            domains: ["counter"],
-            permissions: ["command:submit", "command:query"]);
-
-        TimeSpan effectiveTimeout = timeout ?? s_statusPollTimeout;
-        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(effectiveTimeout);
-        JsonElement lastStatus = default;
-
-        while (DateTimeOffset.UtcNow < deadline) {
-            using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
-            statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            using HttpResponseMessage statusResponse = await _fixture.CommandApiClient
-                .SendAsync(statusRequest).ConfigureAwait(false);
-
-            if (statusResponse.StatusCode == HttpStatusCode.OK) {
-                lastStatus = await statusResponse.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
-                string statusValue = lastStatus.GetProperty("status").GetString()!;
-
-                // Terminal states: Completed, Rejected, PublishFailed, TimedOut
-                if (statusValue is "Completed" or "Rejected" or "PublishFailed" or "TimedOut") {
-                    return lastStatus;
-                }
-            }
-
-            await Task.Delay(s_statusPollInterval).ConfigureAwait(false);
-        }
-
-        throw new TimeoutException(
-            $"Command {correlationId} did not reach terminal status within {effectiveTimeout}. "
-            + $"Last status: {lastStatus}");
-    }
-
-    private static HttpRequestMessage CreateCommandRequest(
-        string tenant,
-        string domain,
-        string aggregateId,
-        string commandType) {
-        string token = TestJwtTokenGenerator.GenerateToken(
-            tenants: [tenant],
-            domains: [domain],
-            permissions: ["command:submit", "command:query"]);
-
-        var body = new {
-            Tenant = tenant,
-            Domain = domain,
-            AggregateId = aggregateId,
-            CommandType = commandType,
-            Payload = new { id = Guid.NewGuid().ToString() },
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
-            Content = new StringContent(
-                JsonSerializer.Serialize(body),
-                Encoding.UTF8,
-                "application/json"),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return request;
+        // Verify command acceptance also works post-restart.
+        string aggregateId = $"counter-apicheck-{Guid.NewGuid():N}";
+        string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
+            client, tenant: "tenant-a", domain: "counter",
+            aggregateId: aggregateId, commandType: "IncrementCounter");
+        correlationId.ShouldNotBeNullOrWhiteSpace(
+            "CommandApi should return a tracking correlationId after restart");
     }
 }

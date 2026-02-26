@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-15
+generated: 2026-02-26
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -113,5 +113,83 @@ development_status:
   7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: done
   7-6-cicd-pipeline-and-nuget-publishing: done
   7-7-aspire-publisher-deployment-manifests: done
-  7-8-domain-service-hot-reload-validation: review
+  7-8-domain-service-hot-reload-validation: done
   epic-7-retrospective: optional
+
+  # ============================================================================
+  # DOCUMENTATION INITIATIVE (from prd-documentation.md)
+  # ============================================================================
+
+  # Epic 8: Foundation & First Impression (Phase 1a)
+  epic-8: in-progress
+  8-1-documentation-folder-structure-and-page-conventions: ready-for-dev
+  8-2-readme-rewrite-with-progressive-disclosure: backlog
+  8-3-prerequisites-and-local-dev-environment-page: backlog
+  8-4-choose-the-right-tool-decision-aid: backlog
+  8-5-animated-gif-demo-capture: backlog
+  8-6-changelog-initialization: backlog
+  epic-8-retrospective: optional
+
+  # Epic 9: Quickstart & Onboarding (Phase 1a)
+  epic-9: backlog
+  9-1-quickstart-guide: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Community Infrastructure (Phase 1a)
+  epic-10: backlog
+  10-1-contributing-and-code-of-conduct: backlog
+  10-2-github-issue-templates: backlog
+  10-3-pr-template-and-review-process: backlog
+  10-4-github-discussions-setup: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: Documentation CI Pipeline (Phase 1a)
+  epic-11: backlog
+  11-1-markdown-linting-configuration: backlog
+  11-2-link-checking-configuration: backlog
+  11-3-documentation-validation-github-actions-workflow: backlog
+  11-4-stale-content-detection: backlog
+  epic-11-retrospective: optional
+
+  # Epic 12: Concept Deep Dives & Technical Reference (Phase 1b)
+  epic-12: backlog
+  12-1-architecture-overview-with-mermaid-topology: backlog
+  12-2-command-lifecycle-deep-dive: backlog
+  12-3-event-envelope-metadata-structure: backlog
+  12-4-identity-scheme-documentation: backlog
+  12-5-dapr-trade-offs-and-faq-intro: backlog
+  12-6-first-domain-service-tutorial: backlog
+  12-7-command-api-reference: backlog
+  12-8-nuget-packages-guide-and-dependency-graph: backlog
+  12-9-awesome-event-sourcing-ecosystem-page: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: Sample Integration Tests & Local Validation (Phase 1b)
+  epic-13: backlog
+  13-1-sample-integration-test-project: backlog
+  13-2-dapr-component-variants-for-backend-swap-demo: backlog
+  13-3-local-validation-script: backlog
+  13-4-fr-traceability-check: backlog
+  epic-13-retrospective: optional
+
+  # Epic 14: Deployment & Operations Guides (Phase 2)
+  epic-14: backlog
+  14-1-docker-compose-deployment-guide-and-configuration: backlog
+  14-2-kubernetes-deployment-guide-and-configuration: backlog
+  14-3-azure-container-apps-deployment-guide-and-configuration: backlog
+  14-4-deployment-progression-guide: backlog
+  14-5-dapr-component-configuration-reference: backlog
+  14-6-security-model-documentation: backlog
+  14-7-troubleshooting-guide: backlog
+  14-8-disaster-recovery-procedure: backlog
+  epic-14-retrospective: optional
+
+  # Epic 15: Configuration, Versioning & Lifecycle (Phase 2)
+  epic-15: backlog
+  15-1-configuration-reference: backlog
+  15-2-auto-generated-api-reference-and-ci-workflow: backlog
+  15-3-event-versioning-and-schema-evolution-guide: backlog
+  15-4-upgrade-path-documentation: backlog
+  15-5-public-product-roadmap: backlog
+  15-6-dapr-faq-deep-dive: backlog
+  epic-15-retrospective: optional
