@@ -134,6 +134,14 @@ public class DeadLetterTests {
         statusValue.ShouldNotBe("Completed",
             "Command to non-existent domain should trigger dead-letter routing, not completion");
 
+        // Assert - correlation ID must be present in status response for end-to-end traceability.
+        status.TryGetProperty("correlationId", out JsonElement correlationProp).ShouldBeTrue(
+            "Status record must include correlationId for dead-letter traceability");
+        correlationProp.ValueKind.ShouldBe(JsonValueKind.String,
+            "correlationId must be a string value");
+        correlationProp.GetString().ShouldBe(correlationId,
+            "Status record must preserve the original correlationId");
+
         // Assert - the status record must include meaningful failure context.
         // This mirrors the DeadLetterMessage contract which includes full command envelope,
         // failure stage, exception type/message, correlationId, tenant, domain, and aggregateId.

@@ -114,7 +114,10 @@
       "mcp__claude_ai_Microsoft_Learn__microsoft_code_sample_search",
       "mcp__claude_ai_Microsoft_Learn__microsoft_docs_fetch",
       "WebFetch(domain:medium.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__MCP_DOCKER__microsoft_docs_search",
+      "mcp__MCP_DOCKER__microsoft_docs_fetch",
+      "Bash(head:*)"
     ]
   }
 }

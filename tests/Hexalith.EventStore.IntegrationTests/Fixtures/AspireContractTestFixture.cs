@@ -3,6 +3,7 @@ using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.IntegrationTests.Fixtures;
@@ -59,6 +60,12 @@ public class AspireContractTestFixture : IAsyncLifetime {
             logging.SetMinimumLevel(LogLevel.Debug);
             logging.AddFilter(_builder.Environment.ApplicationName, LogLevel.Debug);
             logging.AddFilter("Aspire.", LogLevel.Warning);
+        });
+
+        // Task 1.3: Configure resilient HTTP defaults for test clients.
+        _builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
+        {
+            _ = clientBuilder.AddStandardResilienceHandler();
         });
 
         _app = await _builder.BuildAsync().ConfigureAwait(false);

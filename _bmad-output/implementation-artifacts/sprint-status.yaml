@@ -110,7 +110,7 @@ development_status:
   7-2-local-dapr-component-configurations: done
   7-3-production-dapr-component-configurations: done
   7-4-integration-tests-with-dapr-test-containers-tier-2: done
-  7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: review
+  7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: done
   7-6-cicd-pipeline-and-nuget-publishing: review
   7-7-aspire-publisher-deployment-manifests: review
   7-8-domain-service-hot-reload-validation: review

@@ -1,6 +1,7 @@
 
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -50,6 +51,19 @@ public class AuthenticationTests {
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        string contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+        contentType.ShouldContain("problem+json");
+
+        JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problemDetails.GetProperty("status").GetInt32().ShouldBe(401);
+        problemDetails.TryGetProperty("correlationId", out JsonElement corrIdProp).ShouldBeTrue();
+        corrIdProp.GetString().ShouldNotBeNullOrEmpty();
+
+        // tenantId is best-effort on 401 (available when request payload can be parsed).
+        if (problemDetails.TryGetProperty("tenantId", out JsonElement tenantIdProp)) {
+            tenantIdProp.GetString().ShouldBe("tenant-a");
+        }
     }
 
     /// <summary>
