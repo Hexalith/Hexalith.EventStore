@@ -8,6 +8,7 @@ namespace Hexalith.EventStore.CommandApi.Models;
 /// API response model for command status queries.
 /// </summary>
 public record CommandStatusResponse(
+    string CorrelationId,
     string Status,
     int StatusCode,
     DateTimeOffset Timestamp,
@@ -19,9 +20,11 @@ public record CommandStatusResponse(
     /// <summary>
     /// Creates a <see cref="CommandStatusResponse"/> from a <see cref="CommandStatusRecord"/>.
     /// </summary>
-    public static CommandStatusResponse FromRecord(CommandStatusRecord record) {
+    public static CommandStatusResponse FromRecord(string correlationId, CommandStatusRecord record) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentNullException.ThrowIfNull(record);
         return new CommandStatusResponse(
+            CorrelationId: correlationId,
             Status: record.Status.ToString(),
             StatusCode: (int)record.Status,
             Timestamp: record.Timestamp,

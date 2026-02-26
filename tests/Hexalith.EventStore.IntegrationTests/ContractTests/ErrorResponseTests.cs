@@ -87,6 +87,12 @@ public class ErrorResponseTests {
 
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
         problemDetails.GetProperty("status").GetInt32().ShouldBe(400);
+        problemDetails.GetProperty("title").GetString().ShouldNotBeNullOrEmpty();
+
+        if (problemDetails.TryGetProperty("errors", out JsonElement errors)) {
+            errors.ValueKind.ShouldBe(JsonValueKind.Object,
+                "Validation errors should be an object mapping field names to error arrays");
+        }
     }
 
     /// <summary>
@@ -116,6 +122,20 @@ public class ErrorResponseTests {
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        string contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+        contentType.ShouldContain("problem+json");
+
+        JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problemDetails.GetProperty("status").GetInt32().ShouldBe(401);
+        problemDetails.GetProperty("title").GetString().ShouldNotBeNullOrEmpty();
+        problemDetails.TryGetProperty("correlationId", out JsonElement corrIdProp).ShouldBeTrue();
+        corrIdProp.GetString().ShouldNotBeNullOrEmpty();
+
+        // tenantId is best-effort on 401 (available when request payload can be parsed).
+        if (problemDetails.TryGetProperty("tenantId", out JsonElement tenantIdProp)) {
+            tenantIdProp.GetString().ShouldBe("tenant-a");
+        }
     }
 
     /// <summary>

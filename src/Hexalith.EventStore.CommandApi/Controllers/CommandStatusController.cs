@@ -92,7 +92,7 @@ public class CommandStatusController(
                         record.Status);
 
                     _ = (activity?.SetStatus(ActivityStatusCode.Ok));
-                    return Ok(CommandStatusResponse.FromRecord(record));
+                    return Ok(CommandStatusResponse.FromRecord(correlationId, record));
                 }
             }
 

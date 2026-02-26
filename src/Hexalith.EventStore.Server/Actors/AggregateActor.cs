@@ -389,14 +389,18 @@ public partial class AggregateActor(
 
                 // Terminal state: Completed (or Rejected advisory)
                 bool accepted = !domainResult.IsRejection;
-                string? errorMessage = domainResult.IsRejection
-                    ? $"Domain rejection: {GetEventTypeName(domainResult.Events[0])}"
+                string? rejectionType = domainResult.IsRejection
+                    ? GetEventTypeName(domainResult.Events[0])
+                    : null;
+                string? errorMessage = rejectionType is not null
+                    ? $"Domain rejection: {rejectionType}"
                     : null;
 
                 return await CompleteTerminalAsync(
                     command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
                     accepted, domainResult.Events.Count, errorMessage,
-                    processActivity, startTicks).ConfigureAwait(false);
+                    processActivity, startTicks,
+                    rejectionEventType: rejectionType).ConfigureAwait(false);
             }
             else {
                 // Publication failed: transition to PublishFailed terminal state
@@ -836,7 +840,8 @@ public partial class AggregateActor(
             eventCount,
             errorMessage,
             processActivity,
-            startTicks).ConfigureAwait(false);
+            startTicks,
+            rejectionEventType: existingPipeline.RejectionEventType).ConfigureAwait(false);
 
         logger.LogInformation(
             "Resume completed: Actor {ActorId}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
@@ -1124,7 +1129,8 @@ public partial class AggregateActor(
         int eventCount,
         string? errorMessage,
         Activity? processActivity,
-        long startTicks) {
+        long startTicks,
+        string? rejectionEventType = null) {
         var result = new CommandProcessingResult(
             Accepted: accepted,
             ErrorMessage: errorMessage,
@@ -1149,7 +1155,10 @@ public partial class AggregateActor(
 
         CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;
         LogStageTransition(terminalStatus, command, causationId, startTicks);
-        await WriteAdvisoryStatusAsync(command, terminalStatus).ConfigureAwait(false);
+        await WriteAdvisoryStatusAsync(
+            command, terminalStatus,
+            eventCount: eventCount > 0 ? eventCount : null,
+            rejectionEventType: rejectionEventType).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, terminalStatus, startTicks);
 
         _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));
@@ -1176,7 +1185,9 @@ public partial class AggregateActor(
     private async Task WriteAdvisoryStatusAsync(
         CommandEnvelope command,
         CommandStatus status,
-        string? failureReason = null) {
+        string? failureReason = null,
+        int? eventCount = null,
+        string? rejectionEventType = null) {
         try {
             await commandStatusStore.WriteStatusAsync(
                 command.TenantId,
@@ -1185,8 +1196,8 @@ public partial class AggregateActor(
                     status,
                     DateTimeOffset.UtcNow,
                     command.AggregateId,
-                    EventCount: null,
-                    RejectionEventType: null,
+                    EventCount: eventCount,
+                    RejectionEventType: rejectionEventType,
                     FailureReason: failureReason,
                     TimeoutDuration: null)).ConfigureAwait(false);
         }
