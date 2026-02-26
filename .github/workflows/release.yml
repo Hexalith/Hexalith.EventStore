@@ -41,26 +41,150 @@ jobs:
           dapr init --slim
 
       - name: Run All Tests (Tier 1 + 2)
-        run: dotnet test --no-build --configuration Release
+        run: |
+          dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --no-build --configuration Release --logger "trx;LogFileName=contracts-results.trx"
+          dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-build --configuration Release --logger "trx;LogFileName=client-results.trx"
+          dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=testing-results.trx"
+          dotnet test tests/Hexalith.EventStore.Server.Tests/ --no-build --configuration Release --logger "trx;LogFileName=server-results.trx"
 
       - name: Pack NuGet
         run: dotnet pack --no-build --configuration Release --output ./nupkgs
 
       - name: Validate packages
         run: |
-          expected=5
-          actual=$(ls ./nupkgs/*.nupkg | wc -l)
-          echo "Found $actual packages (expected $expected):"
-          ls -la ./nupkgs/*.nupkg
-          if [ "$actual" -ne "$expected" ]; then
-            echo "::error::Expected $expected packages, found $actual"
-            exit 1
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+          import zipfile
+          import xml.etree.ElementTree as ET
+
+          expected_ids = {
+            "Hexalith.EventStore.Contracts",
+            "Hexalith.EventStore.Client",
+            "Hexalith.EventStore.Server",
+            "Hexalith.EventStore.Testing",
+            "Hexalith.EventStore.Aspire",
+          }
+
+          nupkg_dir = Path("./nupkgs")
+          packages = sorted(
+            p
+            for p in nupkg_dir.glob("*.nupkg")
+            if not p.name.endswith(".snupkg") and ".symbols." not in p.name
+          )
+
+          print(f"Found {len(packages)} package(s):")
+          for p in packages:
+            print(f" - {p.name}")
+
+          if len(packages) != 5:
+            print(f"::error::Expected exactly 5 .nupkg files, found {len(packages)}")
+            sys.exit(1)
+
+          found_ids = set()
+          package_versions = set()
+          file_version_pattern = re.compile(r"^(?P<id>.+)\.(?P<version>\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)\.nupkg$")
+
+          for pkg in packages:
+            match = file_version_pattern.match(pkg.name)
+            if not match:
+              print(f"::error::Package filename does not match expected pattern: {pkg.name}")
+              sys.exit(1)
+
+            package_id = match.group("id")
+            file_version = match.group("version")
+            found_ids.add(package_id)
+            package_versions.add(file_version)
+
+            with zipfile.ZipFile(pkg) as zf:
+              nuspec_name = next((n for n in zf.namelist() if n.endswith(".nuspec")), None)
+              if not nuspec_name:
+                print(f"::error::No .nuspec found in package {pkg.name}")
+                sys.exit(1)
+
+              nuspec_xml = zf.read(nuspec_name)
+              root = ET.fromstring(nuspec_xml)
+              metadata = root.find("{http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd}metadata")
+              if metadata is None:
+                print(f"::error::Invalid nuspec metadata in {pkg.name}")
+                sys.exit(1)
+
+              def get_text(tag: str):
+                node = metadata.find(f"{{http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd}}{tag}")
+                return (node.text or "").strip() if node is not None and node.text else ""
+
+              nuspec_version = get_text("version")
+              if nuspec_version != file_version:
+                print(
+                  f"::error::Version mismatch in {pkg.name}: filename={file_version}, nuspec={nuspec_version or '<missing>'}"
+                )
+                sys.exit(1)
+
+              readme_file = get_text("readme")
+              if not readme_file:
+                print(f"::error::Package {pkg.name} is missing nuspec metadata <readme>")
+                sys.exit(1)
+              if readme_file not in zf.namelist():
+                print(f"::error::Package {pkg.name} readme file '{readme_file}' not found in package contents")
+                sys.exit(1)
+
+              license_expr = get_text("license")
+              license_file = get_text("licenseFile")
+              if not license_expr and not license_file:
+                print(f"::error::Package {pkg.name} is missing license metadata (<license> or <licenseFile>)")
+                sys.exit(1)
+
+          if found_ids != expected_ids:
+            missing = sorted(expected_ids - found_ids)
+            unexpected = sorted(found_ids - expected_ids)
+            if missing:
+              print(f"::error::Missing expected packages: {', '.join(missing)}")
+            if unexpected:
+              print(f"::error::Unexpected packages produced (likely non-packable projects): {', '.join(unexpected)}")
+            sys.exit(1)
+
+          if len(package_versions) != 1:
+            print(f"::error::Expected a single shared package version, found: {', '.join(sorted(package_versions))}")
+            sys.exit(1)
+
+          print("Package validation passed.")
+          PY
 
       - name: Validate version matches tag
         run: |
+          set -euo pipefail
           tag_version="${GITHUB_REF_NAME#v}"
-          pkg_version=$(ls ./nupkgs/*.nupkg | head -1 | sed 's/.*\.\([0-9]\)/\1/' | sed 's/\.nupkg//')
+          pkg_version=$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          packages = sorted(
+            p
+            for p in Path("./nupkgs").glob("*.nupkg")
+            if not p.name.endswith(".snupkg") and ".symbols." not in p.name
+          )
+          if not packages:
+            print("::error::No packages found for version validation", file=sys.stderr)
+            raise SystemExit(1)
+
+          pattern = re.compile(r"^.+\.(\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)\.nupkg$")
+          versions = set()
+          for package in packages:
+            m = pattern.match(package.name)
+            if not m:
+              print(f"::error::Could not parse version from package filename: {package.name}", file=sys.stderr)
+              raise SystemExit(1)
+            versions.add(m.group(1))
+
+          if len(versions) != 1:
+            print(f"::error::Expected one package version, found: {', '.join(sorted(versions))}", file=sys.stderr)
+            raise SystemExit(1)
+
+          print(next(iter(versions)))
+          PY
+          )
           echo "Tag version: $tag_version"
           echo "Package version: $pkg_version"
           if [ "$tag_version" != "$pkg_version" ]; then

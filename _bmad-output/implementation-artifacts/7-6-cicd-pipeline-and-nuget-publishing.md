@@ -1,6 +1,6 @@
 # Story 7.6: CI/CD Pipeline and NuGet Publishing
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -403,12 +403,24 @@ Claude Opus 4.6 (claude-opus-4-6)
 - MinVer version validation step compares tag version to package version before publishing
 - Package count validation ensures exactly 5 `.nupkg` files before publish
 - Concurrency: CI uses `cancel-in-progress: true`; Release has NO concurrency block (prevents partial publishes)
+- Code review fixes applied: release test gating now runs explicit Tier 1 + Tier 2 test projects (Contracts, Client, Testing, Server) instead of broad solution-wide test discovery
+- Code review fixes applied: package validation now enforces exactly 5 expected package IDs, validates README metadata and presence, validates license metadata, and rejects unexpected packages
+- Code review fixes applied: MinVer/tag validation now parses semantic versions robustly from all generated package filenames and enforces a single shared package version
+
+### Senior Developer Review (AI)
+
+- 2026-02-26: Adversarial review identified and fixed release pipeline issues:
+  - Fixed AC #6 gap by adding package metadata validation (README + license) and strict expected package ID validation.
+  - Fixed brittle version parsing logic in `Validate version matches tag` with robust semantic-version extraction and consistency checks.
+  - Aligned release test gate with story scope by running explicit Tier 1 + Tier 2 test projects.
+  - Verified release workflow remains SHA-pinned and least-privilege compatible.
 
 ### Change Log
 
 - 2026-02-25: Created CI/CD pipeline (ci.yml + release.yml) with all 11 acceptance criteria satisfied
+- 2026-02-26: Applied senior code-review fixes to release workflow validation and test scope; story moved to done
 
 ### File List
 
 - .github/workflows/ci.yml (NEW)
-- .github/workflows/release.yml (NEW)
+- .github/workflows/release.yml (NEW, UPDATED 2026-02-26 with review fixes)
