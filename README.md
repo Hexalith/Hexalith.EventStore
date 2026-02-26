@@ -1,5 +1,4 @@
-<!-- TODO: Replace with animated GIF demo (Story 8-5) at docs/assets/quickstart-demo.gif showing: clone → run → send command → see event -->
-> **See it in action:** An animated demo will be added here ([`docs/assets/quickstart-demo.gif`](docs/assets/quickstart-demo.gif)) showing the complete flow from clone to events flowing in the Aspire dashboard.
+![Quickstart demo: Aspire dashboard showing services running, a command sent via Swagger UI, and the resulting event in the event stream](docs/assets/quickstart-demo.gif)
 
 # Hexalith.EventStore — DAPR-native event sourcing server for .NET
 
