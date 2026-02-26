@@ -123,7 +123,7 @@ development_status:
   # Epic 8: Foundation & First Impression (Phase 1a)
   epic-8: in-progress
   8-1-documentation-folder-structure-and-page-conventions: done
-  8-2-readme-rewrite-with-progressive-disclosure: in-progress
+  8-2-readme-rewrite-with-progressive-disclosure: done
   8-3-prerequisites-and-local-dev-environment-page: ready-for-dev
   8-4-choose-the-right-tool-decision-aid: backlog
   8-5-animated-gif-demo-capture: backlog
