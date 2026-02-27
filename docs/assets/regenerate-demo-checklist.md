@@ -40,7 +40,9 @@ Target total duration: 10-15 seconds.
 
 > **Note:** The goal is to show the complete command-to-event flow. Make sure text is readable at GitHub's default image rendering width.
 
-## Convert to GIF
+## Convert and Optimize
+
+### Convert to GIF
 
 Use ffmpeg to convert the screen recording to GIF with an optimized palette:
 
@@ -48,7 +50,7 @@ Use ffmpeg to convert the screen recording to GIF with an optimized palette:
 $ ffmpeg -i recording.mp4 -vf "fps=10,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 raw.gif
 ```
 
-## Optimize the GIF
+### Optimize with Gifsicle
 
 Use gifsicle to reduce file size:
 
