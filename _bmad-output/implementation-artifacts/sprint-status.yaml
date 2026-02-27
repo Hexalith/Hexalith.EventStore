@@ -131,8 +131,8 @@ development_status:
   epic-8-retrospective: optional
 
   # Epic 9: Quickstart & Onboarding (Phase 1a)
-  epic-9: backlog
-  9-1-quickstart-guide: backlog
+  epic-9: in-progress
+  9-1-quickstart-guide: done
   epic-9-retrospective: optional
 
   # Epic 10: Community Infrastructure (Phase 1a)
