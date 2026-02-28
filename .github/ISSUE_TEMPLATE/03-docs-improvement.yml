@@ -1,0 +1,49 @@
+name: "Documentation Improvement"
+description: "Report an issue or suggest an improvement to documentation"
+labels: ["documentation"]
+body:
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL or File Path
+      description: "Link to the documentation page or file path in the repository."
+      placeholder: "https://github.com/Hexalith/Hexalith.EventStore/blob/main/docs/..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Type of Documentation Issue
+      options:
+        - "Missing documentation"
+        - "Incorrect or outdated information"
+        - "Unclear or confusing explanation"
+        - "Code sample doesn't work"
+        - "Broken link"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What's Wrong or Missing
+      description: "Describe what needs to be fixed or added."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested Fix
+      description: "If you have a specific suggestion, describe it here."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+    validations:
+      required: false

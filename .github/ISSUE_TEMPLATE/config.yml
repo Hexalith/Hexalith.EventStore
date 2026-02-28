@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: "Questions & Discussions"
+    url: "https://github.com/Hexalith/Hexalith.EventStore/discussions"
+    about: "Ask questions, share ideas, and get community support"
+  - name: "Security Vulnerability"
+    url: "https://github.com/Hexalith/Hexalith.EventStore/security/advisories/new"
+    about: "Report a security vulnerability privately"
