@@ -254,6 +254,51 @@ public class EventStoreAggregateTests {
     }
 
     [Fact]
+    public async Task ProcessAsync_JsonElementArray_WithNonObjectEntry_ThrowsInvalidOperationException() {
+        var aggregate = new TestAggregate();
+        string eventsJson = """
+            [
+                42
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new ResetItems());
+
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => aggregate.ProcessAsync(command, jsonArray));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_JsonElementArray_WithMissingEventTypeName_ThrowsInvalidOperationException() {
+        var aggregate = new TestAggregate();
+        string eventsJson = """
+            [
+                {"payload":{"Name":"x"}}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new ResetItems());
+
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => aggregate.ProcessAsync(command, jsonArray));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_JsonElementArray_WithInvalidPayloadShape_ThrowsInvalidOperationException() {
+        var aggregate = new TestAggregate();
+        string eventsJson = """
+            [
+                {"eventTypeName":"ItemAdded","payload":123}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new ResetItems());
+
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => aggregate.ProcessAsync(command, jsonArray));
+    }
+
+    [Fact]
     public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         var events = new object[] { new UnknownCommand() };
@@ -368,6 +413,27 @@ public class EventStoreAggregateTests {
 
         Assert.True(testResult.IsSuccess);
         Assert.True(otherResult.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DifferentAggregateTypes_ConcurrentFirstUse_DoesNotInterfere() {
+        const int iterations = 32;
+        Task<DomainResult>[] calls = Enumerable.Range(0, iterations)
+            .SelectMany(i => {
+                var testAggregate = new TestAggregate();
+                var otherAggregate = new OtherAggregate();
+
+                return new[] {
+                    testAggregate.ProcessAsync(CreateCommand(new AddItem($"t-{i}")), null),
+                    otherAggregate.ProcessAsync(CreateCommand(new AddItem($"o-{i}")), null),
+                };
+            })
+            .ToArray();
+
+        DomainResult[] results = await Task.WhenAll(calls);
+
+        Assert.Equal(iterations * 2, results.Length);
+        Assert.All(results, r => Assert.True(r.IsSuccess));
     }
 
     // --- Null command guard ---

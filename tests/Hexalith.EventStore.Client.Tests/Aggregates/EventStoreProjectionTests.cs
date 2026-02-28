@@ -108,4 +108,51 @@ public class EventStoreProjectionTests {
 
         Assert.Equal(0, model.Count);
     }
+
+    [Fact]
+    public void ProjectFromJson_UnknownEventType_ThrowsInvalidOperationException() {
+        var projection = new TestProjection();
+        string json = """
+            [
+                {"eventTypeName":"UnknownEvent","payload":{}}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(json);
+
+        _ = Assert.Throws<InvalidOperationException>(() => projection.ProjectFromJson(jsonArray));
+    }
+
+    [Fact]
+    public void ProjectFromJson_NonObjectEntry_ThrowsInvalidOperationException() {
+        var projection = new TestProjection();
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>("[1]");
+
+        _ = Assert.Throws<InvalidOperationException>(() => projection.ProjectFromJson(jsonArray));
+    }
+
+    [Fact]
+    public void ProjectFromJson_MissingEventTypeName_ThrowsInvalidOperationException() {
+        var projection = new TestProjection();
+        string json = """
+            [
+                {"payload":{"Name":"x"}}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(json);
+
+        _ = Assert.Throws<InvalidOperationException>(() => projection.ProjectFromJson(jsonArray));
+    }
+
+    [Fact]
+    public void ProjectFromJson_InvalidPayloadShape_ThrowsInvalidOperationException() {
+        var projection = new TestProjection();
+        string json = """
+            [
+                {"eventTypeName":"ItemAdded","payload":123}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(json);
+
+        _ = Assert.Throws<InvalidOperationException>(() => projection.ProjectFromJson(jsonArray));
+    }
 }

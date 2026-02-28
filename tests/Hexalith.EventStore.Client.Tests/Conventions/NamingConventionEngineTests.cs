@@ -187,6 +187,21 @@ public class NamingConventionEngineTests : IDisposable {
         Assert.Equal("order-eventstore", result);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("Order")]
+    [InlineData("-order")]
+    [InlineData("order-")]
+    public void GetStateStoreName_InvalidDomain_ThrowsArgumentException(string domain) {
+        _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetStateStoreName(domain));
+    }
+
+    [Fact]
+    public void GetStateStoreName_NullDomain_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetStateStoreName(null!));
+    }
+
     [Fact]
     public void GetPubSubTopic_ValidInputs_ReturnsExpectedFormat() {
         string result = NamingConventionEngine.GetPubSubTopic("acme", "order");
@@ -194,11 +209,49 @@ public class NamingConventionEngineTests : IDisposable {
         Assert.Equal("acme.order.events", result);
     }
 
+    [Theory]
+    [InlineData("", "order")]
+    [InlineData("  ", "order")]
+    [InlineData("Acme", "order")]
+    [InlineData("acme", "")]
+    [InlineData("acme", "  ")]
+    [InlineData("acme", "Order")]
+    [InlineData("acme", "-order")]
+    [InlineData("acme", "order-")]
+    public void GetPubSubTopic_InvalidInputs_ThrowsArgumentException(string tenantId, string domain) {
+        _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetPubSubTopic(tenantId, domain));
+    }
+
+    [Fact]
+    public void GetPubSubTopic_NullTenant_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetPubSubTopic(null!, "order"));
+    }
+
+    [Fact]
+    public void GetPubSubTopic_NullDomain_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetPubSubTopic("acme", null!));
+    }
+
     [Fact]
     public void GetCommandEndpoint_ValidDomain_ReturnsExpectedFormat() {
         string result = NamingConventionEngine.GetCommandEndpoint("order");
 
         Assert.Equal("order-commands", result);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("Order")]
+    [InlineData("-order")]
+    [InlineData("order-")]
+    public void GetCommandEndpoint_InvalidDomain_ThrowsArgumentException(string domain) {
+        _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetCommandEndpoint(domain));
+    }
+
+    [Fact]
+    public void GetCommandEndpoint_NullDomain_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetCommandEndpoint(null!));
     }
 
     // --- Task 4.8: Cache behavior tests ---

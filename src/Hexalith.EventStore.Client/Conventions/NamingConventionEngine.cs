@@ -51,7 +51,10 @@ public static class NamingConventionEngine {
     /// </summary>
     /// <param name="domain">The validated domain name.</param>
     /// <returns>The state store name in the format "{domain}-eventstore".</returns>
-    public static string GetStateStoreName(string domain) => $"{domain}-eventstore";
+    public static string GetStateStoreName(string domain) {
+        ValidateDomainArgument(domain, nameof(domain));
+        return $"{domain}-eventstore";
+    }
 
     /// <summary>
     /// Gets the DAPR pub/sub topic for the specified tenant and domain.
@@ -59,14 +62,21 @@ public static class NamingConventionEngine {
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="domain">The validated domain name.</param>
     /// <returns>The pub/sub topic in the format "{tenantId}.{domain}.events".</returns>
-    public static string GetPubSubTopic(string tenantId, string domain) => $"{tenantId}.{domain}.events";
+    public static string GetPubSubTopic(string tenantId, string domain) {
+        ValidateDomainArgument(tenantId, nameof(tenantId));
+        ValidateDomainArgument(domain, nameof(domain));
+        return $"{tenantId}.{domain}.events";
+    }
 
     /// <summary>
     /// Gets the DAPR command endpoint name for the specified domain.
     /// </summary>
     /// <param name="domain">The validated domain name.</param>
     /// <returns>The command endpoint name in the format "{domain}-commands".</returns>
-    public static string GetCommandEndpoint(string domain) => $"{domain}-commands";
+    public static string GetCommandEndpoint(string domain) {
+        ValidateDomainArgument(domain, nameof(domain));
+        return $"{domain}-commands";
+    }
 
     /// <summary>
     /// Clears the domain name resolution cache. Intended for test isolation.
@@ -114,6 +124,24 @@ public static class NamingConventionEngine {
             throw new ArgumentException(
                 $"Domain name '{name}' derived from type '{type.Name}' is invalid. " +
                 "Must match ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ (lowercase alphanumeric + hyphens, no leading/trailing hyphens).");
+        }
+    }
+
+    private static void ValidateDomainArgument(string value, string parameterName) {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (string.IsNullOrWhiteSpace(value)) {
+            throw new ArgumentException($"{parameterName} cannot be empty or whitespace.", parameterName);
+        }
+
+        if (value.Length > 64) {
+            throw new ArgumentException($"{parameterName} cannot exceed 64 characters. Got {value.Length}.", parameterName);
+        }
+
+        if (!_domainNameRegex.IsMatch(value)) {
+            throw new ArgumentException(
+                $"{parameterName} '{value}' is invalid. Must match ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ (lowercase alphanumeric + hyphens, no leading/trailing hyphens).",
+                parameterName);
         }
     }
 }
