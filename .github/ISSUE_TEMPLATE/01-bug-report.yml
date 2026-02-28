@@ -1,0 +1,118 @@
+name: "Bug Report"
+description: "Report a bug in Hexalith.EventStore"
+labels: ["bug"]
+body:
+  - type: markdown
+    id: intro
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below.
+
+        **Before filing a bug report**, please check if your issue is a usage question — if so, please use [GitHub Discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions) instead.
+
+  - type: checkboxes
+    id: existing-issue
+    attributes:
+      label: Duplicate Check
+      options:
+        - label: I have searched the existing issues and this has not been reported before
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      placeholder: "A clear and concise description of what the bug is."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: regression
+    attributes:
+      label: Is this a regression?
+      description: "Did this work in a previous version?"
+    validations:
+      required: false
+
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: ".NET SDK Version"
+      description: "Run `dotnet --version`"
+      placeholder: "e.g. 10.0.102"
+    validations:
+      required: false
+
+  - type: input
+    id: dapr-version
+    attributes:
+      label: "DAPR CLI Version"
+      description: "Run `dapr version`"
+      placeholder: "e.g. 1.16.0"
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: "Operating System"
+      placeholder: "e.g. Windows 11, Ubuntu 24.04, macOS 15"
+    validations:
+      required: false
+
+  - type: input
+    id: docker-version
+    attributes:
+      label: "Docker Version"
+      description: "Run `docker --version`"
+      placeholder: "e.g. 27.0.3"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output / Stack Trace
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's [Code of Conduct](../../CODE_OF_CONDUCT.md)
+          required: true

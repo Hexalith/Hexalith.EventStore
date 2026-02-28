@@ -1,0 +1,65 @@
+name: "Feature Request"
+description: "Suggest a new feature or enhancement"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    id: intro
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! If your idea is still in the early stages, consider starting a conversation in [GitHub Discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions) first to gather feedback.
+
+  - type: checkboxes
+    id: existing-issue
+    attributes:
+      label: Duplicate Check
+      options:
+        - label: I have searched the existing issues and this has not been reported before
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: "A clear description of what you want to happen. Include API examples if applicable."
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Intended Use Case
+      description: "Describe the scenario where you would use this feature."
+      placeholder: "In my application I need to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: "Any alternative solutions or workarounds you've considered."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's [Code of Conduct](../../CODE_OF_CONDUCT.md)
+          required: true
