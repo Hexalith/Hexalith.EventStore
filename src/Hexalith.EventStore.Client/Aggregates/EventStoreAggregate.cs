@@ -25,7 +25,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
 
         AggregateMetadata metadata = GetOrBuildMetadata();
         TState? state = RehydrateState(currentState, metadata);
-        return await DispatchCommand(command, state, metadata).ConfigureAwait(false);
+        return await DispatchCommandAsync(command, state, metadata).ConfigureAwait(false);
     }
 
     private AggregateMetadata GetOrBuildMetadata() =>
@@ -142,17 +142,30 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
         var state = new TState();
         foreach (JsonElement eventElement in jsonArray.EnumerateArray()) {
             if (eventElement.ValueKind != JsonValueKind.Object) {
-                continue;
+                throw new InvalidOperationException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Unable to rehydrate aggregate state '{0}'. Historical event entry must be a JSON object but found '{1}'.",
+                        typeof(TState).Name,
+                        eventElement.ValueKind));
             }
 
             if (!eventElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
                 || eventTypeElement.ValueKind != JsonValueKind.String) {
-                continue;
+                throw new InvalidOperationException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Unable to rehydrate aggregate state '{0}'. Historical event is missing required string property 'eventTypeName'.",
+                        typeof(TState).Name));
             }
 
             string? eventTypeName = eventTypeElement.GetString();
             if (string.IsNullOrWhiteSpace(eventTypeName)) {
-                continue;
+                throw new InvalidOperationException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Unable to rehydrate aggregate state '{0}'. Historical event has empty 'eventTypeName'.",
+                        typeof(TState).Name));
             }
 
             ApplyEventByName(state, eventTypeName, eventElement, metadata);
@@ -207,21 +220,49 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
         }
 
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
-        if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
-            object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
-            if (deserializedEvent is not null) {
+        try {
+            if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
+                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
+                if (deserializedEvent is null) {
+                    throw new InvalidOperationException(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Unable to rehydrate aggregate state '{0}'. Payload for event type '{1}' could not be deserialized to '{2}'.",
+                            typeof(TState).Name,
+                            eventTypeName,
+                            eventType.Name));
+                }
+
+                applyMethod.Invoke(state, [deserializedEvent]);
+            }
+            else {
+                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType);
+                if (deserializedEvent is null) {
+                    throw new InvalidOperationException(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Unable to rehydrate aggregate state '{0}'. Event '{1}' could not be deserialized to '{2}'.",
+                            typeof(TState).Name,
+                            eventTypeName,
+                            eventType.Name));
+                }
+
                 applyMethod.Invoke(state, [deserializedEvent]);
             }
         }
-        else {
-            object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType);
-            if (deserializedEvent is not null) {
-                applyMethod.Invoke(state, [deserializedEvent]);
-            }
+        catch (JsonException ex) {
+            throw new InvalidOperationException(
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Unable to rehydrate aggregate state '{0}'. Event '{1}' could not be deserialized to '{2}'.",
+                    typeof(TState).Name,
+                    eventTypeName,
+                    eventType.Name),
+                ex);
         }
     }
 
-    private async Task<DomainResult> DispatchCommand(CommandEnvelope command, TState? state, AggregateMetadata metadata) {
+    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateMetadata metadata) {
         if (!metadata.HandleMethods.TryGetValue(command.CommandType, out HandleMethodInfo? handleInfo)) {
             throw new InvalidOperationException(
                 $"No Handle method found for command type '{command.CommandType}' on aggregate '{GetType().Name}'.");

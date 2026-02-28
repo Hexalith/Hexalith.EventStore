@@ -1,5 +1,6 @@
 
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
@@ -56,17 +57,30 @@ public abstract class EventStoreProjection<TReadModel>
 
         foreach (JsonElement eventElement in jsonArray.EnumerateArray()) {
             if (eventElement.ValueKind != JsonValueKind.Object) {
-                continue;
+                throw new InvalidOperationException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Unable to project read model '{0}'. Historical event entry must be a JSON object but found '{1}'.",
+                        typeof(TReadModel).Name,
+                        eventElement.ValueKind));
             }
 
             if (!eventElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
                 || eventTypeElement.ValueKind != JsonValueKind.String) {
-                continue;
+                throw new InvalidOperationException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Unable to project read model '{0}'. Historical event is missing required string property 'eventTypeName'.",
+                        typeof(TReadModel).Name));
             }
 
             string? eventTypeName = eventTypeElement.GetString();
             if (string.IsNullOrWhiteSpace(eventTypeName)) {
-                continue;
+                throw new InvalidOperationException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Unable to project read model '{0}'. Historical event has empty 'eventTypeName'.",
+                        typeof(TReadModel).Name));
             }
 
             ApplyEventByName(model, eventTypeName, eventElement, applyMethods);
@@ -115,21 +129,54 @@ public abstract class EventStoreProjection<TReadModel>
         }
 
         if (applyMethod is null) {
-            return;
+            throw new InvalidOperationException(
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Unable to project read model '{0}'. Event type '{1}' has no matching Apply method.",
+                    typeof(TReadModel).Name,
+                    eventTypeName));
         }
 
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
-        if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
-            object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
-            if (deserializedEvent is not null) {
+        try {
+            if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
+                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
+                if (deserializedEvent is null) {
+                    throw new InvalidOperationException(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Unable to project read model '{0}'. Payload for event type '{1}' could not be deserialized to '{2}'.",
+                            typeof(TReadModel).Name,
+                            eventTypeName,
+                            eventType.Name));
+                }
+
+                applyMethod.Invoke(model, [deserializedEvent]);
+            }
+            else {
+                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType);
+                if (deserializedEvent is null) {
+                    throw new InvalidOperationException(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Unable to project read model '{0}'. Event '{1}' could not be deserialized to '{2}'.",
+                            typeof(TReadModel).Name,
+                            eventTypeName,
+                            eventType.Name));
+                }
+
                 applyMethod.Invoke(model, [deserializedEvent]);
             }
         }
-        else {
-            object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType);
-            if (deserializedEvent is not null) {
-                applyMethod.Invoke(model, [deserializedEvent]);
-            }
+        catch (JsonException ex) {
+            throw new InvalidOperationException(
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Unable to project read model '{0}'. Event '{1}' could not be deserialized to '{2}'.",
+                    typeof(TReadModel).Name,
+                    eventTypeName,
+                    eventType.Name),
+                ex);
         }
     }
 }

@@ -204,6 +204,7 @@ builder.Services.AddEventStoreClient<CounterAggregate>();
 
 - 2026-02-28: Implemented `EventStoreAggregate&lt;TState&gt;` and `EventStoreProjection&lt;TReadModel&gt;` base classes with reflection-based dispatch, state rehydration, and comprehensive unit tests. All existing tests pass with zero modifications.
 - 2026-02-28: Senior code review follow-up fixes applied automatically: hardened JsonElement object state rehydration, fail-fast behavior for unknown replay events, stricter enumerable state handling, and backward-compatibility registration coverage for `EventStoreAggregate&lt;TState&gt;` with `AddEventStoreClient&lt;TProcessor&gt;()`.
+- 2026-02-28: Adversarial review remediation pass: enforced fail-fast handling for malformed historical JSON event entries and payload deserialization errors, added concurrent first-use metadata cache test coverage, hardened projection replay behavior, and synchronized story File List with actual changed files.
 
 ## Dev Agent Record
 
@@ -225,14 +226,24 @@ Claude Opus 4.6
 - Review Fix 2 (HIGH): Aggregate replay no longer silently skips unknown events; unknown event types now throw `InvalidOperationException` with clear context.
 - Review Fix 3 (MEDIUM): Restricted non-typed state replay path by excluding string state values from IEnumerable replay handling.
 - Review Fix 4 (MEDIUM): Added registration compatibility test proving `AddEventStoreClient&lt;TProcessor&gt;()` works with new `EventStoreAggregate&lt;TState&gt;` implementations.
-- Verification: `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` passed (40/40).
+- Review Fix 5 (HIGH): Aggregate replay now fails fast on malformed JSON historical entries (non-object items, missing/blank `eventTypeName`) instead of silently skipping.
+- Review Fix 6 (HIGH): Aggregate replay now wraps payload deserialization failures in `InvalidOperationException` with explicit state/event context.
+- Review Fix 7 (MEDIUM): Projection replay now fails fast for malformed/unknown events and payload deserialization failures.
+- Review Fix 8 (MEDIUM): Added concurrent first-use cache initialization test to validate static metadata cache independence under parallel startup-like conditions.
+- Review Fix 9 (MEDIUM): Story File List updated to include additional changed source/test files present in git.
+- Verification: `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` passed (87/87).
 
 ### File List
 
 - src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs (NEW)
 - src/Hexalith.EventStore.Client/Aggregates/EventStoreProjection.cs (NEW)
+- src/Hexalith.EventStore.Client/Attributes/EventStoreDomainAttribute.cs (NEW)
+- src/Hexalith.EventStore.Client/Conventions/NamingConventionEngine.cs (NEW)
+- src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (MODIFIED)
 - tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs (NEW)
 - tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreProjectionTests.cs (NEW)
+- tests/Hexalith.EventStore.Client.Tests/Attributes/EventStoreDomainAttributeTests.cs (NEW)
+- tests/Hexalith.EventStore.Client.Tests/Conventions/NamingConventionEngineTests.cs (NEW)
 - tests/Hexalith.EventStore.Client.Tests/Registration/ServiceCollectionExtensionsTests.cs (MODIFIED)
 
 ## Senior Developer Review (AI)
@@ -251,3 +262,6 @@ Approve — all identified HIGH and MEDIUM review issues were fixed in code and 
 - Enforced deterministic replay by failing fast when an event cannot be mapped to an `Apply` method.
 - Tightened state-shape handling by preventing string values from being treated as event streams.
 - Added backward-compatibility test proving registration path works with both legacy `DomainProcessorBase&lt;TState&gt;` and new `EventStoreAggregate&lt;TState&gt;` implementations.
+- Enforced fail-fast behavior for malformed JSON historical event entries and payload deserialization failures during aggregate state replay.
+- Enforced fail-fast behavior for malformed/unknown events during projection replay.
+- Added concurrent first-use cache initialization test coverage for aggregate metadata reflection cache.
