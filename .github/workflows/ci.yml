@@ -35,6 +35,36 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Validate GitHub discussion template YAML
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pyyaml
+          python - <<'PY'
+          import glob
+          import sys
+          import yaml
+
+          files = glob.glob('.github/DISCUSSION_TEMPLATE/*.yml')
+          if not files:
+            raise SystemExit('No .github/DISCUSSION_TEMPLATE/*.yml files found')
+
+          for path in files:
+            with open(path, 'r', encoding='utf-8') as f:
+              data = yaml.safe_load(f)
+            if not isinstance(data, dict):
+              raise SystemExit(f'{path}: root must be a mapping')
+            body = data.get('body')
+            if not isinstance(body, list):
+              raise SystemExit(f'{path}: missing body array')
+            has_non_markdown = any(
+              isinstance(item, dict) and str(item.get('type', '')).lower() != 'markdown'
+              for item in body
+            )
+            if not has_non_markdown:
+              raise SystemExit(f'{path}: body must contain at least one non-Markdown field')
+
+          print('Discussion template YAML validation passed.')
+          PY
+
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
