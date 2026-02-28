@@ -1,0 +1,51 @@
+title: "[Idea] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing your idea! Feature proposals and RFCs help shape the future of Hexalith.EventStore.
+
+        **Before posting**, please search [existing ideas](https://github.com/Hexalith/Hexalith.EventStore/discussions/categories/ideas) to avoid duplicates.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe Your Idea
+      description: "A clear and concise description of the feature or enhancement you'd like to see."
+      placeholder: "It would be great if..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case / Motivation
+      description: "Describe the scenario where this would be useful. What problem does it solve?"
+      placeholder: "In my application I need to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: "If you have a specific solution in mind, describe it here. Include API examples if applicable."
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: "Any alternative approaches or workarounds you've considered."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: "Any other information, references, or examples that support your idea."
+    validations:
+      required: false

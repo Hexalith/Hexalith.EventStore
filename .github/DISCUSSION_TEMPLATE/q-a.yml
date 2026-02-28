@@ -1,0 +1,64 @@
+title: "[Q&A] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for asking a question! Please fill out the form below so the community can help you effectively.
+
+        **Before asking**, please search [existing discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions/categories/q-a) to see if your question has already been answered.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: "Describe your question clearly. Include context about what you're trying to achieve."
+      placeholder: "I'm trying to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-i-tried
+    attributes:
+      label: What I've Tried
+      description: "Describe what you've already tried or researched."
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: code-snippet
+    attributes:
+      label: Relevant Code or Configuration
+      description: "Share any relevant code, configuration, or error messages."
+      render: csharp
+    validations:
+      required: false
+
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: ".NET SDK Version"
+      description: "Run `dotnet --version`"
+      placeholder: "e.g. 10.0.102"
+    validations:
+      required: false
+
+  - type: input
+    id: dapr-version
+    attributes:
+      label: "Dapr CLI Version"
+      description: "Run `dapr version`"
+      placeholder: "e.g. 1.16.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: "Any other information that might help answer your question."
+    validations:
+      required: false

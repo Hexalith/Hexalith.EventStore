@@ -138,9 +138,9 @@ development_status:
   # Epic 10: Community Infrastructure (Phase 1a)
   epic-10: in-progress
   10-1-contributing-and-code-of-conduct: done
-  10-2-github-issue-templates: backlog
-  10-3-pr-template-and-review-process: backlog
-  10-4-github-discussions-setup: backlog
+  10-2-github-issue-templates: done
+  10-3-pr-template-and-review-process: done
+  10-4-github-discussions-setup: done
   epic-10-retrospective: optional
 
   # Epic 11: Documentation CI Pipeline (Phase 1a)
