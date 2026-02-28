@@ -176,7 +176,7 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 | Package | Purpose | Consumers |
 |---------|---------|-----------|
 | `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme | Domain service developers |
-| `Hexalith.EventStore.Client` | Domain service SDK for registration and integration | Domain service developers |
+| `Hexalith.EventStore.Client` | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
 | `Hexalith.EventStore.Server` | Core EventStore server with actor processing pipeline | Platform operators |
 | `Hexalith.EventStore.Aspire` | Aspire AppHost integration and service defaults | Both |
 | `Hexalith.EventStore.Testing` | Test helpers, in-memory DAPR mocks, assertion utilities | Domain service developers |
@@ -529,6 +529,29 @@ Hexalith.EventStore/
 | Event payload (opaque) | Determined by domain service | EventStore is schema-ignorant |
 | ProblemDetails extensions | camelCase | `correlationId`, `tenantId`, `validationErrors` |
 
+**Convention Engine Naming (Fluent API):**
+
+| Input | Convention | Output |
+|-------|-----------|--------|
+| Type name to domain | Strip "Aggregate"/"Projection" suffix, kebab-case | `OrderAggregate` → `order` |
+| Domain to state store | `{domain}-eventstore` | `order-eventstore` |
+| Domain to pub/sub topic | `{tenant}.{domain}.events` (per D6) | `acme.order.events` |
+| Domain to command endpoint | `{domain}-commands` | `order-commands` |
+| Attribute override | `[EventStoreDomain("custom")]` replaces derived name | `[EventStoreDomain("billing")]` → `billing` |
+| Multi-tenant pattern | `{domain}-{tenantId}-eventstore` (when enabled) | `order-acme-eventstore` |
+
+**Convention Override Priority (5-layer cascade):**
+
+| Layer | Source | Example |
+|-------|--------|---------|
+| 1. Convention defaults | Domain type name derivation | `OrderAggregate` → `order` |
+| 2. Global code options | `AddEventStore(options => ...)` | Custom serializer for all domains |
+| 3. Domain self-config | `OnConfiguring()` override | Per-domain state store component |
+| 4. External config | `appsettings.json` / environment variables | Deployment-time overrides |
+| 5. Explicit override | `Configure<EventStoreDomainOptions>(...)` | Full manual control |
+
+Lower layers override higher layers. Layer 1 always applies unless overridden. Layers 4-5 enable deployment-time customization without recompilation.
+
 ### Structure Patterns
 
 **Project Organization:**
@@ -706,14 +729,26 @@ Hexalith.EventStore/
 │   │
 │   ├── Hexalith.EventStore.Client/             # NuGet: Domain service SDK
 │   │   ├── Hexalith.EventStore.Client.csproj
+│   │   ├── Aggregates/
+│   │   │   ├── EventStoreAggregate.cs          # High-level base class (wraps IDomainProcessor)
+│   │   │   └── EventStoreProjection.cs         # Projection base class
+│   │   ├── Attributes/
+│   │   │   └── EventStoreDomainAttribute.cs    # [EventStoreDomain("name")] override
+│   │   ├── Conventions/
+│   │   │   └── NamingConventionEngine.cs       # Type name -> kebab-case resource names
+│   │   ├── Discovery/
+│   │   │   └── AssemblyScanner.cs              # Auto-discovery of aggregate/projection types
 │   │   ├── Registration/
 │   │   │   ├── DomainServiceRegistration.cs    # Registration metadata
-│   │   │   └── ServiceCollectionExtensions.cs  # AddEventStoreClient()
+│   │   │   ├── ServiceCollectionExtensions.cs  # AddEventStoreClient() + AddEventStore()
+│   │   │   └── HostExtensions.cs               # UseEventStore() activation
 │   │   ├── Handlers/
-│   │   │   ├── IDomainProcessor.cs             # (Command, State?) -> List<Event>
+│   │   │   ├── IDomainProcessor.cs             # (Command, State?) -> List<Event> (low-level)
 │   │   │   └── DomainProcessorBase.cs          # Base class with common patterns
 │   │   └── Configuration/
-│   │       └── EventStoreClientOptions.cs      # Client configuration
+│   │       ├── EventStoreClientOptions.cs      # Client configuration
+│   │       ├── EventStoreOptions.cs            # Global cross-cutting options
+│   │       └── EventStoreDomainOptions.cs      # Per-domain options
 │   │
 │   ├── Hexalith.EventStore.Server/             # NuGet: Core processing pipeline
 │   │   ├── Hexalith.EventStore.Server.csproj
@@ -1059,7 +1094,7 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 - **Resolution:** Default 24-hour TTL on status entries via DAPR `ttlInSeconds` metadata, configurable per-tenant
 - **Impact:** Affects D2 specification, operational guidance
 
-### Enforcement Rules Summary (Final: 16 Rules)
+### Enforcement Rules Summary (Final: 17 Rules)
 
 | # | Rule | Category |
 |---|------|----------|
@@ -1079,6 +1114,7 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 | 14 | DAPR sidecar call timeout is 5 seconds | Resilience |
 | 15 | Snapshot configuration is mandatory (default 100 events) | Performance |
 | 16 | E2E security tests use real Keycloak OIDC tokens -- never synthetic JWTs for runtime security verification | Testing |
+| 17 | Convention-derived resource names use kebab-case; type suffix stripping is automatic (Aggregate, Projection); attribute overrides are validated at startup for non-empty, kebab-case compliance | Naming |
 
 ### Security Constraints Summary (Final: 5 Constraints)
 

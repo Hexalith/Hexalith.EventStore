@@ -143,6 +143,26 @@ development_status:
   10-4-github-discussions-setup: done
   epic-10-retrospective: optional
 
+  # ============================================================================
+  # FLUENT CLIENT SDK API (from brainstorming session 2026-02-28)
+  # ============================================================================
+
+  # Epic 16: Fluent Client SDK API (Phase 1 Foundation)
+  # DEPENDENCY: Must complete before Epics 12-15 (documentation deep dives)
+  # SOURCE: sprint-change-proposal-2026-02-28.md
+  epic-16: in-progress
+  16-1-eventstore-aggregate-base-class: done
+  16-2-eventstore-domain-attribute-and-naming-convention-engine: review
+  16-3-assembly-scanner-and-auto-discovery: backlog
+  16-4-add-eventstore-extension-method-with-global-options: backlog
+  16-5-use-eventstore-extension-method-with-activation: backlog
+  16-6-five-layer-cascading-configuration: backlog
+  16-7-updated-sample-with-fluent-api: backlog
+  16-8-unit-tests-for-convention-engine-and-discovery: backlog
+  16-9-readme-and-quickstart-code-example-updates: backlog
+  16-10-integration-test-for-fluent-api-registration-path: backlog
+  epic-16-retrospective: optional
+
   # Epic 11: Documentation CI Pipeline (Phase 1a)
   epic-11: backlog
   11-1-markdown-linting-configuration: backlog
