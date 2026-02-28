@@ -416,7 +416,7 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 | Package | Purpose | Consumers |
 |---------|---------|-----------|
 | `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme | Domain service developers |
-| `Hexalith.EventStore.Client` | Domain service SDK for registration and integration | Domain service developers |
+| `Hexalith.EventStore.Client` | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
 | `Hexalith.EventStore.Server` | Core EventStore server with actor processing pipeline | Platform operators |
 | `Hexalith.EventStore.Aspire` | Aspire AppHost integration and service defaults | Both |
 | `Hexalith.EventStore.Testing` | Test helpers, in-memory DAPR mocks, assertion utilities | Domain service developers |
@@ -682,7 +682,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 ### Domain Service Integration
 
 - FR21: A domain service developer can implement a domain processor as a pure function with the contract `(Command, CurrentState?) -> List<DomainEvent>`
-- FR22: A domain service developer can register their domain service with EventStore by tenant and domain via configuration
+- FR22: A domain service developer can register their domain service with EventStore by tenant and domain via explicit configuration or automatically via convention-based assembly scanning
 - FR23: The system can invoke a registered domain service when processing a command, passing the command and current aggregate state
 - FR24: The system can process commands for multiple independent domains within the same EventStore instance
 - FR25: The system can process commands for multiple tenants within the same domain, each with isolated event streams
@@ -714,12 +714,13 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 - FR40: A developer can start the complete EventStore system (server, sample domain service, state store, message broker, OpenTelemetry) with a single Aspire command
 - FR41: A developer can reference a sample domain service implementation as a working example of the pure function programming model
-- FR42: A developer can install EventStore client packages via NuGet to build and register domain services
+- FR42: A developer can install EventStore client packages via NuGet to build and register domain services, with a zero-configuration quickstart via convention-based `AddEventStore()` registration and auto-discovery of domain types
 - FR43: A DevOps engineer can deploy EventStore to different environments by changing only DAPR component configuration files with zero application code changes
 - FR44: A DevOps engineer can generate deployment manifests for Docker Compose, Kubernetes, or Azure Container Apps via Aspire publishers
 - FR45: A developer can run unit tests against domain service pure functions without any DAPR runtime dependency
 - FR46: A developer can run integration tests against the actor processing pipeline using DAPR test containers
 - FR47: A developer can run end-to-end contract tests validating the full command lifecycle across the complete Aspire topology
+- FR48: A domain service developer can implement a domain aggregate by inheriting from EventStoreAggregate with typed Apply methods, as a higher-level alternative to implementing IDomainProcessor directly, with convention-based DAPR resource naming derived from the aggregate type name
 
 ## Non-Functional Requirements
 
