@@ -154,7 +154,7 @@ development_status:
   16-1-eventstore-aggregate-base-class: done
   16-2-eventstore-domain-attribute-and-naming-convention-engine: done
   16-3-assembly-scanner-and-auto-discovery: done
-  16-4-add-eventstore-extension-method-with-global-options: ready-for-dev
+  16-4-add-eventstore-extension-method-with-global-options: done
   16-5-use-eventstore-extension-method-with-activation: backlog
   16-6-five-layer-cascading-configuration: backlog
   16-7-updated-sample-with-fluent-api: backlog

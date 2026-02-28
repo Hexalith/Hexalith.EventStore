@@ -1,6 +1,6 @@
 # Story 16.4: AddEventStore Extension Method with Global Options
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,39 +42,39 @@ so that I can wire up my entire event-sourced domain with zero infrastructure kn
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `EventStoreOptions` class (AC: #5)
-  - [ ] 1.1: Create `src/Hexalith.EventStore.Client/Configuration/` folder
-  - [ ] 1.2: Implement `EventStoreOptions` public class in `EventStoreOptions.cs` with minimal initial properties
-  - [ ] 1.3: Add XML documentation
+- [x] Task 1: Create `EventStoreOptions` class (AC: #5)
+  - [x] 1.1: Create `src/Hexalith.EventStore.Client/Configuration/` folder
+  - [x] 1.2: Implement `EventStoreOptions` public class in `EventStoreOptions.cs` with minimal initial properties
+  - [x] 1.3: Add XML documentation
 
-- [ ] Task 2: Implement `AddEventStore()` extension methods (AC: #1, #2, #3, #4, #6, #7, #8, #9, #10, #13)
-  - [ ] 2.1: Add zero-config `AddEventStore()` overload with `[MethodImpl(MethodImplOptions.NoInlining)]` and `Assembly.GetCallingAssembly()`
-  - [ ] 2.2: Add `AddEventStore(Action<EventStoreOptions>)` overload
-  - [ ] 2.3: Add `AddEventStore(params Assembly[])` overload
-  - [ ] 2.4: Add `AddEventStore(Action<EventStoreOptions>, params Assembly[])` overload
-  - [ ] 2.5: Implement core registration logic (shared private method): scan assemblies, register aggregates as IDomainProcessor (non-keyed + keyed), register DiscoveryResult as singleton
-  - [ ] 2.6: Implement idempotency check via `DiscoveryResult` marker
-  - [ ] 2.7: Add null/empty guards on all parameters
+- [x] Task 2: Implement `AddEventStore()` extension methods (AC: #1, #2, #3, #4, #6, #7, #8, #9, #10, #13)
+  - [x] 2.1: Add zero-config `AddEventStore()` overload with `[MethodImpl(MethodImplOptions.NoInlining)]` and `Assembly.GetCallingAssembly()`
+  - [x] 2.2: Add `AddEventStore(Action<EventStoreOptions>)` overload
+  - [x] 2.3: Add `AddEventStore(params Assembly[])` overload
+  - [x] 2.4: Add `AddEventStore(Action<EventStoreOptions>, params Assembly[])` overload
+  - [x] 2.5: Implement core registration logic (shared private method): scan assemblies, register aggregates as IDomainProcessor (non-keyed + keyed), register DiscoveryResult as singleton
+  - [x] 2.6: Implement idempotency check via `DiscoveryResult` marker
+  - [x] 2.7: Add null/empty guards on all parameters
 
-- [ ] Task 3: Create unit tests (AC: all)
-  - [ ] 3.1: Create test file `tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs`
-  - [ ] 3.2: Test zero-config overload discovers and registers aggregates from test assembly
-  - [ ] 3.3: Test options overload registers `EventStoreOptions` in DI via `IOptions<EventStoreOptions>`
-  - [ ] 3.4: Test explicit assembly overload scans specified assemblies
-  - [ ] 3.5: Test keyed service registration resolves correct aggregate by domain name
-  - [ ] 3.6: Test `DiscoveryResult` singleton is registered and accessible
-  - [ ] 3.7: Test idempotent registration (calling twice doesn't duplicate)
-  - [ ] 3.8: Test null `services` throws `ArgumentNullException`
-  - [ ] 3.9: Test null `configureOptions` throws `ArgumentNullException`
-  - [ ] 3.10: Test null/empty `assemblies` throws appropriate exception
-  - [ ] 3.11: Test backward compatibility: `AddEventStoreClient<T>()` still works alongside `AddEventStore()`
-  - [ ] 3.12: Test registered aggregates resolve as `IDomainProcessor` from service provider
-  - [ ] 3.13: Test options lambda is applied (configure a property, resolve IOptions, verify value)
+- [x] Task 3: Create unit tests (AC: all)
+  - [x] 3.1: Create test file `tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs`
+  - [x] 3.2: Test zero-config overload discovers and registers aggregates from test assembly
+  - [x] 3.3: Test options overload registers `EventStoreOptions` in DI via `IOptions<EventStoreOptions>`
+  - [x] 3.4: Test explicit assembly overload scans specified assemblies
+  - [x] 3.5: Test keyed service registration resolves correct aggregate by domain name
+  - [x] 3.6: Test `DiscoveryResult` singleton is registered and accessible
+  - [x] 3.7: Test idempotent registration (calling twice doesn't duplicate)
+  - [x] 3.8: Test null `services` throws `ArgumentNullException`
+  - [x] 3.9: Test null `configureOptions` throws `ArgumentNullException`
+  - [x] 3.10: Test null/empty `assemblies` throws appropriate exception
+  - [x] 3.11: Test backward compatibility: `AddEventStoreClient<T>()` still works alongside `AddEventStore()`
+  - [x] 3.12: Test registered aggregates resolve as `IDomainProcessor` from service provider
+  - [x] 3.13: Test options lambda is applied (configure a property, resolve IOptions, verify value)
 
-- [ ] Task 4: Verify build and backward compatibility (AC: #11, #12)
-  - [ ] 4.1: Verify `dotnet build` succeeds with no warnings
-  - [ ] 4.2: Verify ALL existing tests pass with zero modifications
-  - [ ] 4.3: Verify no new NuGet dependencies added
+- [x] Task 4: Verify build and backward compatibility (AC: #11, #12)
+  - [x] 4.1: Verify `dotnet build` succeeds with no warnings
+  - [x] 4.2: Verify ALL existing tests pass with zero modifications
+  - [x] 4.3: Verify no new NuGet dependencies added
 
 ## Dev Notes
 
@@ -353,14 +353,65 @@ using Microsoft.Extensions.DependencyInjection.Extensions; // for TryAdd if need
 - [Source: _bmad-output/planning-artifacts/prd.md#FR42] — FR42: Zero-configuration quickstart via auto-discovery
 - [Source: _bmad-output/planning-artifacts/prd.md#FR48] — FR48: EventStoreAggregate with convention-based naming
 
+## Change Log
+
+- 2026-02-28: Implemented AddEventStore() extension methods with 4 overloads, EventStoreOptions class, aggregate registration (non-keyed + keyed), DiscoveryResult singleton, idempotency, and 13 unit tests. All 156 tests pass.
+- 2026-02-28: Senior code review follow-up fixes applied: added explicit zero-config overload coverage, verified configured EventStoreOptions value application, clarified XML docs that only aggregates are registered as services, and aligned story/testing metadata counts.
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+- Build compilation error CS0121 (ambiguous null! cast between `Action<EventStoreOptions>` and `Assembly[]` overloads) — resolved with explicit cast in test
+- Build warning CS0184 (SmokeTestProjection never implements IDomainProcessor) — resolved by checking service descriptors instead of runtime type check
+
 ### Completion Notes List
 
+- Created `EventStoreOptions` as an empty POCO class in `Configuration/` folder per AC5
+- Added minimal `EventStoreOptions.EnableRegistrationDiagnostics` property to verify options-lambda application through `IOptions<EventStoreOptions>`
+- Implemented all 4 `AddEventStore()` overloads delegating to a private `AddEventStoreCore()` method
+- Zero-config and options-only overloads use `[MethodImpl(MethodImplOptions.NoInlining)]` with `Assembly.GetCallingAssembly()` per AC13
+- Aggregates registered as non-keyed `IDomainProcessor` (AC6) and keyed by domain name (AC7)
+- `DiscoveryResult` registered as singleton (AC8)
+- Idempotency via `DiscoveryResult` marker check (AC10)
+- All parameter validation with `ArgumentNullException.ThrowIfNull` and `ArgumentException` for empty arrays (AC9)
+- Projections discovered in `DiscoveryResult` but NOT registered as services (AC14)
+- Existing `AddEventStoreClient<T>()` unchanged (AC11)
+- No new NuGet dependencies (AC12)
+- 15 unit tests in `AddEventStoreTests` covering all acceptance criteria, including zero-config calling-assembly behavior and options value application; full `Hexalith.EventStore.Client.Tests` now passes with 157/157 tests.
+
 ### File List
+
+- `src/Hexalith.EventStore.Client/Configuration/EventStoreOptions.cs` (NEW)
+- `src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs` (MODIFIED)
+- `tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs` (NEW)
+
+### Senior Developer Review (AI)
+
+#### Reviewer
+
+GitHub Copilot (GPT-5.3-Codex)
+
+#### Review Date
+
+2026-02-28
+
+#### Outcome
+
+Approved after fixes.
+
+#### Findings Resolved
+
+- High: Task 3.2 had been marked complete without explicit zero-config overload coverage. Added dedicated test using a no-inline helper to validate calling-assembly discovery and aggregate registration.
+- High: Task 3.13 had been marked complete without proving configured option values. Added minimal options property and assertion via `IOptions<EventStoreOptions>`.
+- Medium: XML summary text suggested projections were registered in DI. Updated summary to state only aggregates are registered and discovery results include projections.
+- Medium: Story metadata listed 13 tests while file contained more. Updated story to reflect current test inventory and suite totals.
+
+#### Validation Evidence
+
+- Focused test file run: `AddEventStoreTests.cs` passing.
+- Full project run: `Hexalith.EventStore.Client.Tests` passing (`157 passed, 0 failed`).
