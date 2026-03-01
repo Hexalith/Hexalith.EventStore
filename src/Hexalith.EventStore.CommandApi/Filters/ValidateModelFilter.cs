@@ -35,6 +35,9 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
             if (!validationResult.IsValid) {
                 string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
                 string? tenantId = ExtractTenantId(argument);
+                Dictionary<string, string[]> errorsDictionary = validationResult.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
 
                 var problemDetails = new ProblemDetails {
                     Status = StatusCodes.Status400BadRequest,
@@ -44,6 +47,7 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
                     Instance = context.HttpContext.Request.Path,
                     Extensions =
                     {
+                        ["errors"] = errorsDictionary,
                         ["correlationId"] = correlationId,
                         ["validationErrors"] = validationResult.Errors.Select(e => new
                         {

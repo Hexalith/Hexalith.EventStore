@@ -1,11 +1,27 @@
-# Hexalith.EventStore — lychee link checker exclusions
-# One regex pattern per line
-
-# Localhost/loopback URLs (quickstart uses localhost:8080, localhost:8180)
 ^https?://localhost(:\d+)?
 ^https?://127\.0\.0\.1(:\d+)?
 ^https?://\[::1\](:\d+)?
 
-# Example/placeholder domains
 ^https?://example\.com
 ^https?://example\.invalid
+
+# Leanpub free-read URLs (rate-limited/403 in CI)
+
+^https://leanpub\.com/esversioning/read$
+
+# Greg Young CQRS PDF (hosted on WordPress, intermittent availability)
+
+^https://cqrs\.files\.wordpress\.com/2010/11/cqrs_documents\.pdf$
+
+# Slack workspace invites (requires authentication)
+
+^https://ddd-cqrs-es\.slack\.com/
+
+# aka.ms short links (redirect-based, lychee may not follow)
+
+^https://aka\.ms/dapr-discord$
+
+# Dead links to future documentation pages (Phase 2)
+
+^\.\./guides/dapr-faq\.md$
+^docs/guides/dapr-faq\.md$

@@ -21,6 +21,7 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/commands/replay")]
+[Consumes("application/json")]
 public class ReplayController(
     ICommandArchiveStore archiveStore,
     ICommandStatusStore statusStore,
@@ -37,7 +38,9 @@ public class ReplayController(
     /// Replays a previously failed command by correlation ID.
     /// </summary>
     [HttpPost("{correlationId}")]
+    [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(ReplayCommandResponse), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
@@ -54,6 +57,16 @@ public class ReplayController(
             ?? correlationId;
 
         try {
+            // Validate GUID format for path parameter
+            if (!Guid.TryParse(correlationId, out _)) {
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
+                return CreateProblemDetails(
+                    StatusCodes.Status400BadRequest,
+                    "Bad Request",
+                    $"Correlation ID '{correlationId}' is not a valid GUID format.",
+                    requestCorrelationId);
+            }
+
             // Store correlationId in HttpContext.Items for error handler access
             HttpContext.Items["ReplayCorrelationId"] = correlationId;
 
@@ -141,12 +154,15 @@ public class ReplayController(
 
             string previousStatus = statusRecord.Status.ToString();
 
+            // Generate a new correlation ID for replay tracking
+            string replayCorrelationId = Guid.NewGuid().ToString();
+
             // AC #1, #2: Create SubmitCommand from archived data and send through full MediatR pipeline
-            var command = archivedCommand.ToSubmitCommand(correlationId);
+            var command = archivedCommand.ToSubmitCommand(replayCorrelationId);
 
             logger.LogInformation(
                 "Replay initiated: CorrelationId={CorrelationId}, TenantId={TenantId}, PreviousStatus={PreviousStatus}, IsReplay={IsReplay}",
-                correlationId,
+                replayCorrelationId,
                 foundTenant,
                 previousStatus,
                 true);
@@ -154,11 +170,12 @@ public class ReplayController(
             _ = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
             // AC #1: Return 202 Accepted with replay response
-            string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{correlationId}";
+            string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{replayCorrelationId}";
+            Response.Headers["Location"] = absoluteLocationUri;
             Response.Headers["Retry-After"] = "1";
 
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
-            return Accepted(absoluteLocationUri, new ReplayCommandResponse(correlationId, IsReplay: true, PreviousStatus: previousStatus));
+            return Accepted(absoluteLocationUri, new ReplayCommandResponse(replayCorrelationId, IsReplay: true, PreviousStatus: previousStatus));
         }
         catch (Exception ex) {
             _ = (activity?.AddException(ex));
