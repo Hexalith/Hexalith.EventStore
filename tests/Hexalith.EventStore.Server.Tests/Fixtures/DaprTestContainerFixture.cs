@@ -29,8 +29,8 @@ namespace Hexalith.EventStore.Server.Tests.Fixtures;
 /// </summary>
 public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private const string AppId = "commandapi";
-    private const int PlacementPort = 6050;
-    private const int SchedulerPort = 6060;
+    private static readonly int PlacementPort = OperatingSystem.IsWindows() ? 6050 : 50005;
+    private static readonly int SchedulerPort = OperatingSystem.IsWindows() ? 6060 : 50006;
     private const int RedisPort = 6379;
     private const int HealthTimeoutSeconds = 60;
 

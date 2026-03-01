@@ -45,6 +45,7 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --no-build --configuration Release --logger "trx;LogFileName=contracts-results.trx"
           dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-build --configuration Release --logger "trx;LogFileName=client-results.trx"
           dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=testing-results.trx"
+          dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=sample-results.trx"
           dotnet test tests/Hexalith.EventStore.Server.Tests/ --no-build --configuration Release --logger "trx;LogFileName=server-results.trx"
 
       - name: Pack NuGet
