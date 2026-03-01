@@ -1,0 +1,81 @@
+# Hexalith.EventStore link checking configuration
+# Aligned with architecture-documentation.md D3 (CI Pipeline)
+# Tool: lychee (Rust, async link checker)
+
+#############################  Display  #############################
+
+# Clean output for CI (no interactive progress bar)
+no_progress = true
+
+#############################  Cache  ###############################
+
+# Enable caching to speed up repeat runs and reduce rate limiting
+cache = true
+
+# Cache entries valid for 1 day
+max_cache_age = "1d"
+
+#############################  Runtime  #############################
+
+# Maximum concurrent link checks (balance speed vs. rate limiting)
+max_concurrency = 14
+
+# Maximum redirects to follow
+max_redirects = 10
+
+# Maximum retries for failed requests
+max_retries = 2
+
+#############################  Requests  ############################
+
+# Timeout per request in seconds
+timeout = 20
+
+# Minimum wait between retries (seconds)
+retry_wait_time = 2
+
+# Accept common non-error status codes:
+# - 200-204: standard success
+# - 403: GitHub unauthenticated rate limits
+# - 429: rate limiting
+# In CI (Story 11-3), GITHUB_TOKEN provides proper authenticated checking
+accept = ["200..=204", "403", "429"]
+
+# Don't enforce HTTPS — some legitimate HTTP links in docs
+require_https = false
+
+# Check anchor/fragment links
+include_fragments = true
+
+# Resolve cross-references without extensions (common in doc tools)
+fallback_extensions = ["md", "html"]
+
+#############################  Exclusions  ##########################
+
+# Exclude loopback/localhost (quickstart uses localhost:8080, localhost:8180)
+exclude_loopback = true
+
+# Exclude specific URL/path patterns (regex)
+exclude = [
+    # Example/placeholder domains
+    '^https?://example\.com',
+    '^https?://example\.invalid',
+    # Known unauthenticated false-404 endpoints observed in local runs
+    '^https?://github\.com/Hexalith/Hexalith\.EventStore/issues(?:\?.*)?$',
+    '^https?://github\.com/Hexalith/Hexalith\.EventStore/discussions$',
+    '^https?://github\.com/Hexalith/Hexalith\.EventStore/fork$',
+    '^https?://github\.com/Hexalith/Hexalith\.EventStore/stargazers$',
+    '^https?://github\.com/Hexalith/Hexalith\.EventStore/actions/workflows/ci\.yml$',
+    '^https?://www\.nuget\.org/packages/Hexalith\.EventStore\.Contracts$',
+    # Not-yet-created documentation targets (remove when Stories 12-5/12-6 create these files)
+    'first-domain-service',
+    'guides/dapr-faq',
+]
+
+# Exclude source paths with known non-functional links (template file)
+exclude_path = [
+    "docs/page-template.md",
+]
+
+# Don't check links inside code blocks (they're examples, not real URLs)
+include_verbatim = false

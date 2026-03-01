@@ -1,2 +1,11 @@
-# Generated BMAD implementation artifacts are managed by automation and are not hand-maintained docs.
-_bmad-output/implementation-artifacts/**/*.md
+# BMAD framework files (not project documentation)
+_bmad/**
+
+# BMAD output artifacts (planning + implementation)
+_bmad-output/**
+
+# npm cache (if npx caches locally)
+node_modules/**
+
+# AI agent instructions (not documentation)
+**/CLAUDE.md

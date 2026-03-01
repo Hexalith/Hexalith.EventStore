@@ -164,11 +164,11 @@ development_status:
   epic-16-retrospective: optional
 
   # Epic 11: Documentation CI Pipeline (Phase 1a)
-  epic-11: backlog
-  11-1-markdown-linting-configuration: backlog
-  11-2-link-checking-configuration: backlog
-  11-3-documentation-validation-github-actions-workflow: backlog
-  11-4-stale-content-detection: backlog
+  epic-11: in-progress
+  11-1-markdown-linting-configuration: done
+  11-2-link-checking-configuration: done
+  11-3-documentation-validation-github-actions-workflow: ready-for-dev
+  11-4-stale-content-detection: ready-for-dev
   epic-11-retrospective: optional
 
   # Epic 12: Concept Deep Dives & Technical Reference (Phase 1b)

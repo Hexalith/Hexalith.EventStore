@@ -51,7 +51,7 @@ $ curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/
   -d "password=admin-pass"
 ```
 
-> **Note:** The `\` line continuation works in bash, Zsh, and PowerShell 7+. On Windows PowerShell 5.x, use the single-line alternative below.
+> **Note:** The `\` line continuation works in bash and Zsh. In PowerShell (5.x and 7+), use the single-line alternative below.
 
 The response contains an `access_token` field. Copy its value — you need it in the next step.
 
@@ -66,7 +66,7 @@ $ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/pro
 Find the `commandapi` service in the Aspire dashboard and open its URL. Append `/swagger` to the URL to open the Swagger UI.
 
 1. Click the **Authorize** button at the top of the page
-2. In the **Value** field, paste the `access_token` you copied earlier — do not include the `Bearer ` prefix, Swagger adds it automatically
+2. In the **Value** field, paste the `access_token` you copied earlier — do not include the `Bearer` prefix, Swagger adds it automatically
 3. Click **Authorize**, then **Close**
 
 Expand the **POST /api/v1/commands** endpoint, click **Try it out**, and use this request body:

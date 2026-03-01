@@ -56,9 +56,9 @@ DAPR provides the infrastructure abstraction layer — it handles state storage,
 
 **Install:** Use the official DAPR CLI installation guidance for your platform:
 
-- [Windows](https://docs.dapr.io/getting-started/install-dapr-cli/#install-via-winget-windows)
-- [macOS](https://docs.dapr.io/getting-started/install-dapr-cli/#install-via-homebrew-macos)
-- [Linux](https://docs.dapr.io/getting-started/install-dapr-cli/#install-via-script-linux)
+- [Windows](https://docs.dapr.io/getting-started/install-dapr-cli/#install-using-winget)
+- [macOS](https://docs.dapr.io/getting-started/install-dapr-cli/#install-from-homebrew)
+- [Linux](https://docs.dapr.io/getting-started/install-dapr-cli/#install-from-terminal)
 
 Or use one of these platform-specific commands:
 
