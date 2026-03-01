@@ -1,6 +1,6 @@
 # Story 16.7: Updated Sample with Fluent API
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -47,36 +47,36 @@ so that I can see the fluent API in action and use it as a template for my own d
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `CounterAggregate` class (AC: #1, #3)
-  - [ ] 1.1: Create `samples/Hexalith.EventStore.Sample/Counter/CounterAggregate.cs`
-  - [ ] 1.2: Inherit from `EventStoreAggregate<CounterState>`
-  - [ ] 1.3: Add `[EventStoreDomain("counter")]` attribute (or rely on convention: "CounterAggregate" -> "counter")
-  - [ ] 1.4: Implement `Handle(IncrementCounter command, CounterState? state)` — returns `DomainResult.Success(new[] { new CounterIncremented() })`
-  - [ ] 1.5: Implement `Handle(DecrementCounter command, CounterState? state)` — check `state?.Count == 0` for rejection
-  - [ ] 1.6: Implement `Handle(ResetCounter command, CounterState? state)` — check `state?.Count == 0` for no-op
-  - [ ] 1.7: All Handle methods should be `public static` (pure functions, CA1822 compliant)
+- [x] Task 1: Create `CounterAggregate` class (AC: #1, #3)
+  - [x] 1.1: Create `samples/Hexalith.EventStore.Sample/Counter/CounterAggregate.cs`
+  - [x] 1.2: Inherit from `EventStoreAggregate<CounterState>`
+  - [x] 1.3: Add `[EventStoreDomain("counter")]` attribute (or rely on convention: "CounterAggregate" -> "counter") — Used convention (no attribute needed)
+  - [x] 1.4: Implement `Handle(IncrementCounter command, CounterState? state)` — returns `DomainResult.Success(new[] { new CounterIncremented() })`
+  - [x] 1.5: Implement `Handle(DecrementCounter command, CounterState? state)` — check `state?.Count == 0` for rejection
+  - [x] 1.6: Implement `Handle(ResetCounter command, CounterState? state)` — check `state?.Count == 0` for no-op
+  - [x] 1.7: All Handle methods should be `public static` (pure functions, CA1822 compliant)
 
-- [ ] Task 2: Update `Program.cs` to fluent API (AC: #2, #6)
-  - [ ] 2.1: Replace `builder.Services.AddEventStoreClient<CounterProcessor>()` with `builder.Services.AddEventStore()`
-  - [ ] 2.2: Add `app.UseEventStore()` after `builder.Build()` and before `app.Run()`
-  - [ ] 2.3: Remove `using Hexalith.EventStore.Sample.Counter` if only used for `CounterProcessor` reference
-  - [ ] 2.4: Keep `/process` endpoint unchanged — `IDomainProcessor` resolves to `CounterAggregate` now
-  - [ ] 2.5: Verify necessary usings are present (`Hexalith.EventStore.Client.Registration` for `AddEventStore`/`UseEventStore`)
+- [x] Task 2: Update `Program.cs` to fluent API (AC: #2, #6)
+  - [x] 2.1: Replace `builder.Services.AddEventStoreClient<CounterProcessor>()` with `builder.Services.AddEventStore()`
+  - [x] 2.2: Add `app.UseEventStore()` after `builder.Build()` and before `app.Run()`
+  - [x] 2.3: Remove `using Hexalith.EventStore.Sample.Counter` if only used for `CounterProcessor` reference
+  - [x] 2.4: Keep `/process` endpoint unchanged — `IDomainProcessor` resolves to `CounterAggregate` now
+  - [x] 2.5: Verify necessary usings are present (`Hexalith.EventStore.Client.Registration` for `AddEventStore`/`UseEventStore`)
 
-- [ ] Task 3: Mark `CounterProcessor` as legacy (AC: #5)
-  - [ ] 3.1: Add comment at top of `CounterProcessor.cs`: `// Legacy IDomainProcessor implementation. See CounterAggregate for the fluent API approach.`
-  - [ ] 3.2: Do NOT delete the file — it serves as a reference for the manual approach
+- [x] Task 3: Mark `CounterProcessor` as legacy (AC: #5)
+  - [x] 3.1: Add comment at top of `CounterProcessor.cs`: `// Legacy IDomainProcessor implementation. See CounterAggregate for the fluent API approach.`
+  - [x] 3.2: Do NOT delete the file — it serves as a reference for the manual approach
 
-- [ ] Task 4: Verify build and tests (AC: #7, #9, #10)
-  - [ ] 4.1: Run `dotnet build` for the sample project — zero errors
-  - [ ] 4.2: Run existing tests in `Hexalith.EventStore.Sample.Tests` — all pass
-  - [ ] 4.3: Verify `CounterAggregate` handles all three commands correctly (increment, decrement with rejection, reset with no-op)
+- [x] Task 4: Verify build and tests (AC: #7, #9, #10)
+  - [x] 4.1: Run `dotnet build` for the sample project — zero errors, zero warnings
+  - [x] 4.2: Run existing tests in `Hexalith.EventStore.Sample.Tests` — all 16 pass (8 existing + 8 new)
+  - [x] 4.3: Verify `CounterAggregate` handles all three commands correctly (increment, decrement with rejection, reset with no-op) — verified via CounterAggregateTests
 
-- [ ] Task 5: Verify convention names match server expectations (AC: #8)
-  - [ ] 5.1: Enable `EnableRegistrationDiagnostics = true` temporarily or check activation context
-  - [ ] 5.2: Verify domain name resolves to `counter` (from `CounterAggregate` -> strip `Aggregate` suffix -> kebab-case)
-  - [ ] 5.3: Verify state store = `counter-eventstore`, topic = `counter.events`, dead-letter = `deadletter.counter.events`
-  - [ ] 5.4: Cross-check with server-side `EventPublisherOptions` if accessible
+- [x] Task 5: Verify convention names match server expectations (AC: #8)
+  - [x] 5.1: Enable diagnostics or check activation context — Verified via runtime `UseEventStore()` activation test and startup log (`EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])`)
+  - [x] 5.2: Verify domain name resolves to `counter` (from `CounterAggregate` -> strip `Aggregate` suffix -> kebab-case) — Confirmed
+  - [x] 5.3: Verify state store = `counter-eventstore`, topic = `counter.events`, dead-letter = `deadletter.counter.events` — Confirmed via cascade Layer 1 defaults
+  - [x] 5.4: Cross-check with server-side `EventPublisherOptions` if accessible — Convention names match expected patterns
 
 ## Dev Notes
 
@@ -273,10 +273,57 @@ Recent commits:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No debug issues encountered. Clean implementation.
+
 ### Completion Notes List
 
+- Created `CounterAggregate` class inheriting `EventStoreAggregate<CounterState>` with three static Handle methods for IncrementCounter, DecrementCounter, and ResetCounter commands
+- Updated `Program.cs` from `AddEventStoreClient<CounterProcessor>()` to `AddEventStore()` / `UseEventStore()` fluent two-line pattern
+- Removed `using Hexalith.EventStore.Sample.Counter` from Program.cs (no longer needed without CounterProcessor reference)
+- Added legacy comment to top of `CounterProcessor.cs`
+- Created `CounterAggregateTests.cs` with 8 tests:
+  - 6 command/state tests via `IDomainProcessor.ProcessAsync()`
+  - 1 DI registration test proving unkeyed + keyed (`"counter"`) `IDomainProcessor` resolves to `CounterAggregate`
+  - 1 runtime activation test proving convention-derived names (`counter-eventstore`, `counter.events`, `deadletter.counter.events`)
+- All 16 sample tests pass (8 existing CounterProcessor + 8 CounterAggregate)
+- Full solution unit tests pass: Client.Tests (187), Contracts.Tests (157), Testing.Tests (48), Sample.Tests (16) — all green
+- Integration tests have pre-existing failures (infrastructure-dependent Aspire/Dapr tests) unrelated to this story
+- Convention naming verified: `CounterAggregate` → `counter` domain, `counter-eventstore` state store, `counter.events` topic, `deadletter.counter.events` dead-letter
+- Aspire AppHost startup smoke check succeeds with `EnableKeycloak=false` (dashboard URL emitted and apphost running)
+- No new NuGet dependencies added
+
 ### File List
+
+- `samples/Hexalith.EventStore.Sample/Counter/CounterAggregate.cs` (NEW)
+- `samples/Hexalith.EventStore.Sample/Program.cs` (MODIFIED)
+- `samples/Hexalith.EventStore.Sample/Counter/CounterProcessor.cs` (MODIFIED — legacy comment added)
+- `tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs` (NEW)
+
+## Change Log
+
+- 2026-03-01: Story 16-7 implemented — Migrated Counter sample from manual `AddEventStoreClient<CounterProcessor>()` to fluent `AddEventStore()` / `UseEventStore()` API with new `CounterAggregate` class. Added comprehensive tests.
+- 2026-03-01: Senior review fixes applied — strengthened evidence for AC6/AC8/AC9 by adding DI + activation tests and runtime AppHost startup verification; status set to done.
+
+## Senior Developer Review (AI)
+
+- Reviewer: Jerome (AI-assisted)
+- Date: 2026-03-01
+- Outcome: **Approved**
+
+### Review Summary
+
+- AC1/AC2/AC3/AC4/AC5/AC10 validated in source.
+- AC6 validated with DI registration test proving unkeyed and keyed (`"counter"`) `IDomainProcessor` resolve to `CounterAggregate`.
+- AC7 validated with direct processor tests and interface-based aggregate command tests.
+- AC8 validated with activation-context assertion test and runtime startup log (`EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])`).
+- AC9 validated with Aspire AppHost startup smoke check (`aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`).
+
+### Files Updated During Review
+
+- `tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs`
+- `_bmad-output/implementation-artifacts/16-7-updated-sample-with-fluent-api.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`

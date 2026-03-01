@@ -1,6 +1,6 @@
 # Story 16.5: UseEventStore Extension Method with Activation
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -142,6 +142,10 @@ so that my domain service has a complete inventory of convention-derived DAPR re
 - [x] [AI-Review][MEDIUM] Story File List reconciled with implementation scope; added missing source/test files (`EventStoreDomainOptions.cs`, `EventStoreAggregate.cs`, `EventStoreProjection.cs`, `CascadeConfigurationTests.cs`).
 - [x] [AI-Review][MEDIUM] Test for AC2 now verifies the required full exception message text via exact assertion in `UseEventStoreTests`.
 - [x] [AI-Review][MEDIUM] Story boundary clarified: five-layer cascade and per-domain configuration semantics are owned by Story 16-6; Story 16-5 remains activation-lifecycle focused and consumes resolved values.
+- [x] [AI-Review][HIGH] Removed dead code block (empty `if (instance is EventStoreAggregate<object>)`) in `EventStoreHostExtensions.cs:149-152`.
+- [x] [AI-Review][HIGH] Narrowed `catch (Exception)` to `catch (MissingMethodException)` and `catch (TargetInvocationException)` in `ResolveDomainOptions` to avoid swallowing critical runtime exceptions.
+- [x] [AI-Review][MEDIUM] Replaced null-forgiving operators (`!`) with explicit `?? throw new InvalidOperationException(...)` for post-cascade resolved values.
+- [x] [AI-Review][MEDIUM] Normalized tab indentation to spaces in `EventStoreDomainOptions.cs` and `EventStoreOptions.cs` for consistency with other story files.
 
 ## Dev Notes
 
@@ -442,6 +446,7 @@ Claude Opus 4.6
 - 2026-03-01: HIGH review follow-up update: resolved AC7 by clarifying dependency boundary to allow minimal explicit `Microsoft.Extensions.Hosting.Abstractions` while continuing to prohibit ASP.NET Core packages.
 - 2026-03-01: Final review alignment: all in-story HIGH/MEDIUM findings closed; review outcome updated to Approved with external blockers, while story remains `in-progress` pending pre-existing solution-level build/test blockers outside story scope.
 - 2026-03-01: Task 5 wording normalized to distinguish story-scope verification (complete) from global solution health checks (externally blocked).
+- 2026-03-01: Second code review (AI). Fixed 2 HIGH issues (dead code removal, narrowed exception handling) and 2 MEDIUM issues (null-forgiving operators replaced with explicit validation, tab indentation normalized). All 185 Client tests pass. 2 LOW issues noted (brace style, no AC4 logging test).
 
 ### File List
 

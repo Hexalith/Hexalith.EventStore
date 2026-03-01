@@ -10,7 +10,9 @@ Clone the repository, run the sample application with .NET Aspire, send a comman
 
 The sample application includes a Counter domain service that processes three commands: `IncrementCounter`, `DecrementCounter`, and `ResetCounter`. Each command produces a corresponding event (`CounterIncremented`, `CounterDecremented`, `CounterReset`) that updates the `CounterState`.
 
-Your domain logic is a pure function — you implement a `CounterProcessor` that receives a command and the current state, then returns events. The platform handles everything else: routing, persistence, snapshots, and pub/sub delivery.
+Your domain logic lives in a `CounterAggregate` class that extends `EventStoreAggregate<CounterState>`. Each command gets a typed `Handle` method that receives the command and current state, then returns events. State is reconstructed via `Apply` methods on `CounterState`. The platform handles everything else: routing, persistence, snapshots, and pub/sub delivery.
+
+> `IDomainProcessor` remains available as an escape hatch for advanced scenarios — see the legacy `CounterProcessor` in the sample for an example.
 
 DAPR handles message delivery and state storage — you don't write infrastructure code.
 
@@ -95,7 +97,7 @@ Go back to the Aspire dashboard and open the **Traces** tab. You should see a tr
 
 1. CommandAPI received the HTTP request
 2. The command was routed to the aggregate actor
-3. The actor invoked the `CounterProcessor` domain service
+3. The actor invoked the `CounterAggregate` domain service
 4. The domain service produced a `CounterIncremented` event
 5. The event was persisted to the state store
 6. The event was published to the pub/sub topic
@@ -110,9 +112,9 @@ Here is what happened when you sent that command:
 
 1. You sent an `IncrementCounter` command to the CommandAPI via REST
 2. The CommandAPI validated the request and authenticated your JWT token
-3. DAPR activated a `CounterProcessor` actor for `tenant-a|counter|counter-1`
-4. The actor loaded the current `CounterState` (empty for a new aggregate) and called the pure function
-5. The `CounterProcessor` produced a `CounterIncremented` event
+3. DAPR activated a `CounterAggregate` actor for `tenant-a|counter|counter-1` — `AddEventStore()` auto-discovered the aggregate at startup
+4. The actor loaded the current `CounterState` (empty for a new aggregate) and called the typed `Handle` method
+5. The `CounterAggregate` produced a `CounterIncremented` event
 6. The event was persisted to the state store and published to the event topic
 
 You wrote zero infrastructure code — DAPR handled state, messaging, and actor lifecycle.

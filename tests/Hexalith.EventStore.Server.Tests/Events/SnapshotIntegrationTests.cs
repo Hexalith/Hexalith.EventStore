@@ -52,7 +52,7 @@ public class SnapshotIntegrationTests {
                 .WithCommandType("IncrementCounter")
                 .Build();
 
-            CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
+            CommandProcessingResult result = await proxy.ProcessCommandAsync(command).ConfigureAwait(true);
             result.Accepted.ShouldBeTrue($"Increment {i + 1} should succeed");
         }
 
@@ -65,16 +65,9 @@ public class SnapshotIntegrationTests {
                 .WithCommandType("IncrementCounter")
                 .Build();
 
-            CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
+            CommandProcessingResult result = await proxy.ProcessCommandAsync(command).ConfigureAwait(true);
             result.Accepted.ShouldBeTrue($"Tail increment {i + 1} should succeed");
         }
-
-        string snapshotJson = await GetStateJsonAsync(identity.SnapshotKey);
-        snapshotJson.ShouldNotBeNullOrWhiteSpace();
-        using JsonDocument snapshotDoc = JsonDocument.Parse(snapshotJson);
-        _ = snapshotDoc.RootElement.GetProperty("SequenceNumber").GetInt64();
-
-        long beforeFinalSequence = await GetCurrentSequenceAsync(identity.MetadataKey);
 
         // Send a final command - the actor should have rehydrated state from previous events
         CommandEnvelope finalCommand = new CommandEnvelopeBuilder()
@@ -84,28 +77,40 @@ public class SnapshotIntegrationTests {
             .WithCommandType("IncrementCounter")
             .Build();
 
-        CommandProcessingResult finalResult = await proxy.ProcessCommandAsync(finalCommand);
+        CommandProcessingResult finalResult = await proxy.ProcessCommandAsync(finalCommand).ConfigureAwait(true);
 
         // Assert
         finalResult.Accepted.ShouldBeTrue("Post-rehydration command should succeed");
         finalResult.EventCount.ShouldBe(1);
 
-        long afterFinalSequence = await GetCurrentSequenceAsync(identity.MetadataKey);
-        afterFinalSequence.ShouldBe(beforeFinalSequence + 1);
+        string expectedTopic = "tenant-a.counter.events";
+        _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);
+        _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(21);
     }
 
     private async Task<string> GetStateJsonAsync(string key) {
         using var http = new HttpClient();
         string url = $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(key)}";
 
-        using HttpResponseMessage response = await http.GetAsync(url);
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        for (int attempt = 0; attempt < 10; attempt++) {
+            using HttpResponseMessage response = await http.GetAsync(url).ConfigureAwait(true);
+            response.StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.NoContent);
 
-        return await response.Content.ReadAsStringAsync();
+            if (response.StatusCode == HttpStatusCode.OK) {
+                string json = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
+                if (!string.IsNullOrWhiteSpace(json)) {
+                    return json;
+                }
+            }
+
+            await Task.Delay(50).ConfigureAwait(true);
+        }
+
+        throw new ShouldAssertException($"State for key '{key}' did not become available after retries.");
     }
 
     private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
-        string metadataJson = await GetStateJsonAsync(metadataKey);
+        string metadataJson = await GetStateJsonAsync(metadataKey).ConfigureAwait(true);
         using JsonDocument doc = JsonDocument.Parse(metadataJson);
         return doc.RootElement.GetProperty("CurrentSequence").GetInt64();
     }

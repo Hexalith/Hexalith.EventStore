@@ -59,8 +59,24 @@ internal class BaseWithAttribute;
 
 internal class DerivedWithoutAttribute : BaseWithAttribute;
 
-// Empty after suffix strip
+// Empty after suffix strip (all three suffix-only type names)
 internal class Aggregate;
+
+internal class Projection;
+
+internal class Processor;
+
+// Multi-digit boundary: Order12Aggregate -> "order-12" (not "order-1-2")
+internal class Order12Aggregate;
+
+// ProjectionAggregate: strips "Aggregate" first, leaving "Projection" -> "projection"
+internal class ProjectionAggregate;
+
+// ProcessorAggregate: strips "Aggregate" first, leaving "Processor" -> "processor"
+internal class ProcessorAggregate;
+
+// Single-char after suffix strip: XAggregate -> "x"
+internal class XAggregate;
 
 // Name too long (>64 chars after conversion)
 internal class ThisIsAnExtremelyLongClassNameThatWillDefinitelyExceedTheSixtyFourCharacterLimitWhenConvertedToKebabCaseFormat;
@@ -290,5 +306,95 @@ public class NamingConventionEngineTests : IDisposable {
     public void GetDomainName_NullType_ThrowsArgumentNullException() {
         _ = Assert.Throws<ArgumentNullException>(
             () => NamingConventionEngine.GetDomainName(null!));
+    }
+
+    // --- Story 16-8: Multi-digit boundary tests (AC#1: 2.1) ---
+
+    [Fact]
+    public void GetDomainName_MultiDigitBoundary_ProducesCorrectKebabCase() {
+        // Multi-digit number should stay together: Order12 -> "order-12" (not "order-1-2")
+        string result = NamingConventionEngine.GetDomainName(typeof(Order12Aggregate));
+
+        Assert.Equal("order-12", result);
+    }
+
+    // --- Story 16-8: Consecutive suffix tests (AC#1: 2.1) ---
+
+    [Theory]
+    [InlineData(typeof(ProjectionAggregate), "projection")]
+    [InlineData(typeof(ProcessorAggregate), "processor")]
+    public void GetDomainName_ConsecutiveSuffixes_StripsFirstMatchAndProducesValidName(Type input, string expected) {
+        string result = NamingConventionEngine.GetDomainName(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    // --- Story 16-8: Single-char after suffix strip (AC#1: 2.1) ---
+
+    [Fact]
+    public void GetDomainName_SingleCharAfterSuffixStrip_ReturnsValidName() {
+        string result = NamingConventionEngine.GetDomainName(typeof(XAggregate));
+
+        Assert.Equal("x", result);
+    }
+
+    // --- Story 16-8: All three suffix-only names throw (AC#1: 2.4) ---
+
+    [Theory]
+    [InlineData(typeof(Projection))]
+    [InlineData(typeof(Processor))]
+    public void GetDomainName_SuffixOnlyName_ThrowsArgumentException(Type input) {
+        _ = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetDomainName(input));
+    }
+
+    // --- Story 16-8: Thread-safety test (AC#1: 2.2) ---
+
+    [Fact]
+    public void GetDomainName_ConcurrentCalls_AllReturnCorrectResults() {
+        const int parallelism = 64;
+        Type[] types = [
+            typeof(CounterAggregate), typeof(UserManagementAggregate),
+            typeof(OrderProjection), typeof(PaymentProcessor),
+            typeof(OrderHandler), typeof(Order),
+        ];
+        var results = new string[parallelism];
+
+        Parallel.For(0, parallelism, i => {
+            Type type = types[i % types.Length];
+            results[i] = NamingConventionEngine.GetDomainName(type);
+        });
+
+        // Verify correctness: each type should always produce the same name
+        for (int i = 0; i < parallelism; i++) {
+            Type type = types[i % types.Length];
+            string expected = NamingConventionEngine.GetDomainName(type);
+            Assert.Equal(expected, results[i]);
+        }
+    }
+
+    // --- Story 16-8: Generic overload with various types (AC#1: 2.3) ---
+
+    [Fact]
+    public void GetDomainName_Generic_MatchesNonGenericOverload() {
+        Assert.Equal(NamingConventionEngine.GetDomainName(typeof(OrderProjection)), NamingConventionEngine.GetDomainName<OrderProjection>());
+        Assert.Equal(NamingConventionEngine.GetDomainName(typeof(PaymentProcessor)), NamingConventionEngine.GetDomainName<PaymentProcessor>());
+        Assert.Equal(NamingConventionEngine.GetDomainName(typeof(Order)), NamingConventionEngine.GetDomainName<Order>());
+    }
+
+    // --- Story 16-8: GetPubSubTopic with hyphenated domain (AC#1: 2.5) ---
+
+    [Fact]
+    public void GetPubSubTopic_HyphenatedDomain_ReturnsExpectedFormat() {
+        string result = NamingConventionEngine.GetPubSubTopic("acme", "order-item");
+
+        Assert.Equal("acme.order-item.events", result);
+    }
+
+    [Fact]
+    public void GetPubSubTopic_DomainWithDigits_ReturnsExpectedFormat() {
+        string result = NamingConventionEngine.GetPubSubTopic("tenant1", "order-2");
+
+        Assert.Equal("tenant1.order-2.events", result);
     }
 }

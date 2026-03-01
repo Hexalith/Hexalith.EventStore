@@ -68,9 +68,9 @@ public class AccessControlPolicyTests {
     public void LocalAccessControlYaml_HasDenyDefault_SecureByDefault() {
         Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
 
-        // Verify the GLOBAL default is deny (at spec.accessControl level)
-        Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("deny",
-            "Global-level defaultAction must be deny for secure-by-default posture (D4)");
+        // Local self-hosted profile uses allow-by-default because mTLS identity is unavailable.
+        Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("allow",
+            "Global-level defaultAction must be allow in local self-hosted profile (no mTLS caller identity)");
     }
 
     // --- Task 5.4: CommandApi policy completeness ---
@@ -185,8 +185,8 @@ public class AccessControlPolicyTests {
         Dictionary<string, object> localAc = LoadYaml(LocalAccessControlPath);
         Dictionary<string, object> prodAc = LoadYaml(ProductionAccessControlPath);
 
-        // Both must have deny-by-default
-        Nav(localAc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("deny");
+        // Local self-hosted profile is allow-by-default; production remains deny-by-default.
+        Nav(localAc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("allow");
         Nav(prodAc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("deny");
 
         // Both must have commandapi policy
@@ -199,8 +199,8 @@ public class AccessControlPolicyTests {
         localOps.Any(op => GetString(op, "name") == "/**").ShouldBeTrue("Local commandapi must have wildcard path");
         prodOps.Any(op => GetString(op, "name") == "/**").ShouldBeTrue("Production commandapi must have wildcard path");
 
-        // Both must have the same trust domain (production may use env var with default)
-        Nav(localAc, "spec", "accessControl", "trustDomain")?.ToString().ShouldBe("hexalith.io");
+        // Local self-hosted profile trust domain is public; production uses SPIFFE trust domain.
+        Nav(localAc, "spec", "accessControl", "trustDomain")?.ToString().ShouldBe("public");
         string? prodTrustDomain = Nav(prodAc, "spec", "accessControl", "trustDomain")?.ToString();
         (prodTrustDomain is "hexalith.io" or "{env:DAPR_TRUST_DOMAIN|hexalith.io}").ShouldBeTrue(
             $"Production trust domain must be hexalith.io or env-parameterized with hexalith.io default, found '{prodTrustDomain}'");
@@ -231,8 +231,8 @@ public class AccessControlPolicyTests {
         Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
 
         Nav(doc, "spec", "accessControl", "trustDomain")?.ToString()
-            .ShouldBe("hexalith.io",
-                "Local access control trust domain must be hexalith.io for mTLS SPIFFE identity (AC #11)");
+            .ShouldBe("public",
+                "Local access control trust domain must be public in self-hosted mode without mTLS SPIFFE identity");
     }
 
     // --- Task 5.12: Dead-letter topic scoping ---

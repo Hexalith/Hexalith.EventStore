@@ -57,9 +57,9 @@ public static class EventStoreHostExtensions {
                 Kind: domain.Kind,
                 Type: domain.Type,
                 StateType: domain.StateType,
-                StateStoreName: resolved.StateStoreName!,
-                TopicPattern: resolved.TopicPattern!,
-                DeadLetterTopicPattern: resolved.DeadLetterTopicPattern!));
+                StateStoreName: resolved.StateStoreName ?? throw new InvalidOperationException($"StateStoreName resolved to null for domain '{domain.DomainName}'."),
+                TopicPattern: resolved.TopicPattern ?? throw new InvalidOperationException($"TopicPattern resolved to null for domain '{domain.DomainName}'."),
+                DeadLetterTopicPattern: resolved.DeadLetterTopicPattern ?? throw new InvalidOperationException($"DeadLetterTopicPattern resolved to null for domain '{domain.DomainName}'.")));
         }
 
         // Idempotency check
@@ -146,11 +146,6 @@ public static class EventStoreHostExtensions {
             EventStoreDomainOptions domainOpts = new();
             bool invoked = false;
 
-            if (instance is EventStoreAggregate<object>) {
-                // Use the internal method via reflection-free approach
-                // We need the actual generic type, so use dynamic dispatch
-            }
-
             // Use reflection to call InvokeOnConfiguring since we don't know TState at compile time
             System.Reflection.MethodInfo? invokeMethod = domain.Type.GetMethod(
                 "InvokeOnConfiguring",
@@ -167,9 +162,21 @@ public static class EventStoreHostExtensions {
                 }
             }
         }
+        catch (MissingMethodException ex) {
+            logger?.LogDebug(
+                "Domain '{DomainName}': skipping OnConfiguring (no parameterless constructor: {Error})",
+                domain.DomainName,
+                ex.Message);
+        }
+        catch (System.Reflection.TargetInvocationException ex) {
+            logger?.LogDebug(
+                "Domain '{DomainName}': skipping OnConfiguring (invocation error: {Error})",
+                domain.DomainName,
+                ex.InnerException?.Message ?? ex.Message);
+        }
         catch (Exception ex) {
             logger?.LogDebug(
-                "Domain '{DomainName}': skipping OnConfiguring (no parameterless constructor or invocation error: {Error})",
+                "Domain '{DomainName}': skipping OnConfiguring (activation error: {Error})",
                 domain.DomainName,
                 ex.Message);
         }
