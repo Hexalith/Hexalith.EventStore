@@ -34,7 +34,9 @@ public class UseEventStoreTests : IDisposable {
         using IHost host = Host.CreateDefaultBuilder().Build();
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => host.UseEventStore());
-        Assert.Contains("AddEventStore", ex.Message);
+        Assert.Equal(
+            "UseEventStore() requires AddEventStore() to be called first during service registration. Ensure builder.Services.AddEventStore() is called before building the host.",
+            ex.Message);
     }
 
     [Fact]
