@@ -69,13 +69,11 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Unit Tests (Tier 1)
-        run: >
-          dotnet test
-          tests/Hexalith.EventStore.Contracts.Tests/
-          tests/Hexalith.EventStore.Client.Tests/
-          tests/Hexalith.EventStore.Testing.Tests/
-          --no-build --configuration Release
-          --logger "trx;LogFileName=test-results.trx"
+        run: |
+          dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+          dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+          dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+          dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
 
       - name: Install DAPR CLI
         run: |
