@@ -718,7 +718,7 @@ public class DeadLetterOriginTracingTests {
 
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitCommandResult(deadLetterCorrelationId));
+            .Returns(callInfo => new SubmitCommandResult(callInfo.Arg<SubmitCommand>().CorrelationId));
 
         var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>(new List<ObservabilityLogEntry>())) {
             ControllerContext = new ControllerContext {
@@ -735,10 +735,10 @@ public class DeadLetterOriginTracingTests {
         // Act
         IActionResult result = await replayController.Replay(deadLetterCorrelationId, CancellationToken.None);
 
-        // Assert
+        // Assert — replay generates a new correlation ID for tracking
         _ = result.ShouldBeOfType<AcceptedResult>();
         _ = await mediator.Received(1).Send(
-            Arg.Is<SubmitCommand>(c => c.CorrelationId == deadLetterCorrelationId),
+            Arg.Is<SubmitCommand>(c => c.CorrelationId != deadLetterCorrelationId && Guid.TryParse(c.CorrelationId, out _)),
             Arg.Any<CancellationToken>());
     }
 
