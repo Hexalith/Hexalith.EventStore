@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -8,7 +10,18 @@ using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.Client.Tests.Handlers;
 
-public class DomainProcessorTests {
+public class DomainProcessorTests : IDisposable {
+    public DomainProcessorTests() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+    }
+
+    public void Dispose() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+        GC.SuppressFinalize(this);
+    }
+
     private sealed class TestState {
         public string Value { get; init; } = "default";
     }

@@ -155,12 +155,12 @@ development_status:
   16-2-eventstore-domain-attribute-and-naming-convention-engine: done
   16-3-assembly-scanner-and-auto-discovery: done
   16-4-add-eventstore-extension-method-with-global-options: done
-  16-5-use-eventstore-extension-method-with-activation: in-progress
-  16-6-five-layer-cascading-configuration: review
-  16-7-updated-sample-with-fluent-api: ready-for-dev
-  16-8-unit-tests-for-convention-engine-and-discovery: backlog
-  16-9-readme-and-quickstart-code-example-updates: backlog
-  16-10-integration-test-for-fluent-api-registration-path: backlog
+  16-5-use-eventstore-extension-method-with-activation: done
+  16-6-five-layer-cascading-configuration: done
+  16-7-updated-sample-with-fluent-api: done
+  16-8-unit-tests-for-convention-engine-and-discovery: done
+  16-9-readme-and-quickstart-code-example-updates: done
+  16-10-integration-test-for-fluent-api-registration-path: done
   epic-16-retrospective: optional
 
   # Epic 11: Documentation CI Pipeline (Phase 1a)

@@ -10,10 +10,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Client.Tests.Configuration;
 
 public class CascadeConfigurationTests : IDisposable {
+    public CascadeConfigurationTests() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+    }
+
     public void Dispose() {
         AssemblyScanner.ClearCache();
         NamingConventionEngine.ClearCache();
@@ -216,6 +222,47 @@ public class CascadeConfigurationTests : IDisposable {
     }
 
     [Fact]
+    public void AddEventStore_WithConfiguration_BindsEventStoreSectionToOptions() {
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:DefaultStateStoreSuffix"] = "store",
+                ["EventStore:DefaultTopicSuffix"] = "domain-events",
+            })
+            .Build();
+
+        ServiceCollection services = new();
+        _ = services.AddSingleton(configuration);
+        _ = services.AddEventStore(typeof(Discovery.SmokeTestAggregate).Assembly);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        EventStoreOptions options = provider.GetRequiredService<IOptions<EventStoreOptions>>().Value;
+
+        Assert.Equal("store", options.DefaultStateStoreSuffix);
+        Assert.Equal("domain-events", options.DefaultTopicSuffix);
+    }
+
+    [Fact]
+    public void UseEventStore_WithAppSettingsGlobalSuffix_AppliesLayer2FromBoundOptions() {
+        using IHost host = Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration(config => {
+                _ = config.AddInMemoryCollection(new Dictionary<string, string?> {
+                    ["EventStore:DefaultStateStoreSuffix"] = "store",
+                });
+            })
+            .ConfigureServices(s => s.AddEventStore(typeof(Discovery.SmokeTestAggregate).Assembly))
+            .Build();
+
+        _ = host.UseEventStore();
+
+        EventStoreActivationContext context = host.Services.GetRequiredService<EventStoreActivationContext>();
+        EventStoreDomainActivation aggregate = Assert.Single(
+            context.Activations,
+            a => a.Kind == DomainKind.Aggregate && a.Type == typeof(Discovery.SmokeTestAggregate));
+
+        Assert.Equal($"{aggregate.DomainName}-store", aggregate.StateStoreName);
+    }
+
+    [Fact]
     public void ResolveDomainOptions_ProjectionOnConfiguring_Works() {
         DiscoveredDomain domain = CreateDomain<ConfiguredInternalProjection>("configured-internal", DomainKind.Projection);
         EventStoreOptions globalOptions = new();
@@ -223,6 +270,101 @@ public class CascadeConfigurationTests : IDisposable {
         EventStoreDomainOptions resolved = EventStoreHostExtensions.ResolveDomainOptions(domain, globalOptions, null, NullLogger.Instance);
 
         Assert.Equal("custom-projection-store", resolved.StateStoreName);
+    }
+
+    // --- Story 16-8: Layer 5 overrides Layer 4 (AC#3: 4.1) ---
+
+    [Fact]
+    public void ResolveDomainOptions_Layer5OverridesLayer4_OnSameProperty() {
+        DiscoveredDomain domain = CreateDomain<CascadeInternalAggregate>("cascade-test");
+        IConfiguration config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:Domains:cascade-test:StateStoreName"] = "appsettings-store",
+                ["EventStore:Domains:cascade-test:TopicPattern"] = "appsettings-topic",
+            })
+            .Build();
+        EventStoreOptions globalOptions = new();
+        globalOptions.ConfigureDomain("cascade-test", d => d.StateStoreName = "explicit-store");
+
+        EventStoreDomainOptions resolved = EventStoreHostExtensions.ResolveDomainOptions(domain, globalOptions, config, NullLogger.Instance);
+
+        // Layer 5 overrides Layer 4 for StateStoreName
+        Assert.Equal("explicit-store", resolved.StateStoreName);
+        // Layer 4 still applies for TopicPattern (no Layer 5 override)
+        Assert.Equal("appsettings-topic", resolved.TopicPattern);
+    }
+
+    // --- Story 16-8: Layer 4 overrides Layer 3 (AC#3: 4.2) ---
+
+    [Fact]
+    public void ResolveDomainOptions_Layer4OverridesLayer3_OnSameProperty() {
+        DiscoveredDomain domain = CreateDomain<ConfiguredInternalAggregate>("configured-test");
+        // ConfiguredInternalAggregate.OnConfiguring sets StateStoreName = "custom-configured-store" (Layer 3)
+        IConfiguration config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:Domains:configured-test:StateStoreName"] = "appsettings-overrides-layer3",
+            })
+            .Build();
+        EventStoreOptions globalOptions = new();
+
+        EventStoreDomainOptions resolved = EventStoreHostExtensions.ResolveDomainOptions(domain, globalOptions, config, NullLogger.Instance);
+
+        // Layer 4 (appsettings) overrides Layer 3 (OnConfiguring) for StateStoreName
+        Assert.Equal("appsettings-overrides-layer3", resolved.StateStoreName);
+    }
+
+    // --- Story 16-8: Partial override - one property set, others fall through (AC#3: 4.3) ---
+
+    [Fact]
+    public void ResolveDomainOptions_PartialLayer3_OthersFallThroughFromConvention() {
+        // ConfiguredInternalAggregate only sets StateStoreName in OnConfiguring
+        DiscoveredDomain domain = CreateDomain<ConfiguredInternalAggregate>("configured-test");
+        EventStoreOptions globalOptions = new();
+
+        EventStoreDomainOptions resolved = EventStoreHostExtensions.ResolveDomainOptions(domain, globalOptions, null, NullLogger.Instance);
+
+        // Layer 3 sets StateStoreName
+        Assert.Equal("custom-configured-store", resolved.StateStoreName);
+        // TopicPattern and DeadLetterTopicPattern fall through from Layer 1 (convention)
+        Assert.Equal("configured-test.events", resolved.TopicPattern);
+        Assert.Equal("deadletter.configured-test.events", resolved.DeadLetterTopicPattern);
+    }
+
+    // --- Story 16-8: Multi-domain independent resolution (AC#3: 4.4) ---
+
+    [Fact]
+    public void ResolveDomainOptions_TwoDomains_ResolvedIndependently() {
+        DiscoveredDomain domainA = CreateDomain<CascadeInternalAggregate>("domain-a");
+        DiscoveredDomain domainB = CreateDomain<ConfiguredInternalAggregate>("domain-b");
+        EventStoreOptions globalOptions = new();
+        globalOptions.ConfigureDomain("domain-a", d => d.StateStoreName = "a-explicit-store");
+        // domain-b has NO Layer 5 override
+
+        EventStoreDomainOptions resolvedA = EventStoreHostExtensions.ResolveDomainOptions(domainA, globalOptions, null, NullLogger.Instance);
+        EventStoreDomainOptions resolvedB = EventStoreHostExtensions.ResolveDomainOptions(domainB, globalOptions, null, NullLogger.Instance);
+
+        // domain-a gets Layer 5 override
+        Assert.Equal("a-explicit-store", resolvedA.StateStoreName);
+        // domain-b gets Layer 3 override (OnConfiguring sets "custom-configured-store")
+        Assert.Equal("custom-configured-store", resolvedB.StateStoreName);
+        // Both have independent topic patterns
+        Assert.Equal("domain-a.events", resolvedA.TopicPattern);
+        Assert.Equal("domain-b.events", resolvedB.TopicPattern);
+    }
+
+    // --- Story 16-8: ConfigureDomain with null/whitespace rejection (AC#3: 4.5) ---
+    // (Already covered by existing tests, but verify case-insensitive matching)
+
+    [Fact]
+    public void ConfigureDomain_CaseInsensitive_MatchesDiscoveredDomainName() {
+        DiscoveredDomain domain = CreateDomain<CascadeInternalAggregate>("cascade-test");
+        EventStoreOptions globalOptions = new();
+        // Register with different case — DomainConfigurations uses OrdinalIgnoreCase
+        globalOptions.ConfigureDomain("Cascade-Test", d => d.StateStoreName = "case-insensitive-store");
+
+        EventStoreDomainOptions resolved = EventStoreHostExtensions.ResolveDomainOptions(domain, globalOptions, null, NullLogger.Instance);
+
+        Assert.Equal("case-insensitive-store", resolved.StateStoreName);
     }
 
     private static DiscoveredDomain CreateDomain<T>(string domainName, DomainKind kind = DomainKind.Aggregate) =>

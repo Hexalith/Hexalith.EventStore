@@ -40,7 +40,7 @@ public class AggregateActorIntegrationTests {
         CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
-            .WithAggregateId("counter-001")
+            .WithAggregateId($"counter-{Guid.NewGuid():N}")
             .WithCommandType("IncrementCounter")
             .Build();
 
@@ -73,14 +73,14 @@ public class AggregateActorIntegrationTests {
         CommandEnvelope command1 = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
-            .WithAggregateId("route-test-1")
+            .WithAggregateId($"route-test-1-{Guid.NewGuid():N}")
             .WithCommandType("IncrementCounter")
             .Build();
 
         CommandEnvelope command2 = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
-            .WithAggregateId("route-test-2")
+            .WithAggregateId($"route-test-2-{Guid.NewGuid():N}")
             .WithCommandType("IncrementCounter")
             .Build();
 

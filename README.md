@@ -9,27 +9,41 @@
 
 If you've spent weeks wiring up an event store, a message broker, and multi-tenant isolation — only to realize you'll do it again for your next project — we built this for you. Hexalith.EventStore is a distributed, CQRS and DDD-ready event sourcing framework that handles command routing, event persistence, snapshots, and pub/sub delivery so you can focus on domain logic. Built on DAPR for infrastructure portability.
 
-**Get started in under 10 minutes:** [Quickstart Guide](docs/getting-started/quickstart.md)
-
 ## The Programming Model
 
-Your domain logic is conceptually a pure function: $(Command, CurrentState?) \rightarrow List<DomainEvent>$. The runtime contract uses `Task<DomainResult>` so Hexalith can carry success/rejection outcomes alongside emitted events.
+Your domain logic lives in an aggregate class with typed `Handle` methods — conceptually a pure function: $(Command, CurrentState?) \rightarrow List<DomainEvent>$. Each `Handle` method receives a specific command and the current state, then returns a `DomainResult` carrying success events or rejections.
 
 ```csharp
-// (Command, CurrentState?) → List<DomainEvent>
-public interface IDomainProcessor {
-    Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState);
+public sealed class CounterAggregate : EventStoreAggregate<CounterState>
+{
+    public static DomainResult Handle(IncrementCounter command, CounterState? state)
+        => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
+
+    public static DomainResult Handle(DecrementCounter command, CounterState? state)
+    {
+        if ((state?.Count ?? 0) == 0)
+            return DomainResult.Rejection(new IRejectionEvent[] { new CounterCannotGoNegative() });
+        return DomainResult.Success(new IEventPayload[] { new CounterDecremented() });
+    }
+
+    public static DomainResult Handle(ResetCounter command, CounterState? state)
+    {
+        if ((state?.Count ?? 0) == 0)
+            return DomainResult.NoOp();
+        return DomainResult.Success(new IEventPayload[] { new CounterReset() });
+    }
 }
 
-public class CounterProcessor : IDomainProcessor {
-    public Task<DomainResult> ProcessAsync(CommandEnvelope cmd, object? state) => Task.FromResult(cmd.CommandType switch {
-        "Increment" => DomainResult.Success(new[] { new CounterIncremented() }),
-        "Decrement" when (int)(state ?? 0) > 0 => DomainResult.Success(new[] { new CounterDecremented() }),
-        "Decrement" => DomainResult.Rejection(new[] { new CannotGoNegative() }),
-        _ => throw new InvalidOperationException($"Unknown: {cmd.CommandType}")
-    });
+public sealed class CounterState
+{
+    public int Count { get; private set; }
+    public void Apply(CounterIncremented e) => Count++;
+    public void Apply(CounterDecremented e) => Count--;
+    public void Apply(CounterReset e) => Count = 0;
 }
 ```
+
+> Under the hood, `EventStoreAggregate<TState>` implements `IDomainProcessor` — you can still use that interface directly for advanced scenarios (see the legacy [`CounterProcessor`](samples/Hexalith.EventStore.Sample/Counter/CounterProcessor.cs) example).
 
 ## Why Hexalith?
 
@@ -44,6 +58,14 @@ public class CounterProcessor : IDomainProcessor {
 > **Note:** Hexalith is not the right tool for every scenario. If you need raw event stream performance or already run PostgreSQL everywhere, see the [decision aid](docs/concepts/choose-the-right-tool.md).
 
 ## Get Started
+
+Register the event store in two lines — `AddEventStore()` scans your assembly for aggregate types, no manual registration needed:
+
+```csharp
+builder.Services.AddEventStore();  // Auto-discovers CounterAggregate
+// ...
+app.UseEventStore();               // Activates domains with convention-derived names
+```
 
 **Get started in under 10 minutes** — follow the [Quickstart Guide](docs/getting-started/quickstart.md).
 

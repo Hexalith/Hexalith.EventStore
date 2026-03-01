@@ -2,13 +2,26 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.Client.Tests.Aggregates;
 
-public class EventStoreAggregateTests {
+public class EventStoreAggregateTests : IDisposable {
+    public EventStoreAggregateTests() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+    }
+
+    public void Dispose() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+        GC.SuppressFinalize(this);
+    }
+
     // --- Test Event Types ---
     private sealed class ItemAdded : IEventPayload {
         public string Name { get; init; } = string.Empty;
@@ -82,6 +95,14 @@ public class EventStoreAggregateTests {
 
         public static Task<DomainResult> Handle(AsyncAddItem command, TestState? state) =>
             Task.FromResult(DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } }));
+    }
+
+    // --- Test Aggregate with INSTANCE (non-static) Handle methods ---
+    private sealed class InstanceHandleAggregate : EventStoreAggregate<TestState> {
+        private readonly string _prefix = "instance";
+
+        public DomainResult Handle(AddItem command, TestState? state)
+            => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = $"{_prefix}-{command.Name}" } });
     }
 
     // --- Separate aggregate type for cache independence tests ---
@@ -444,5 +465,100 @@ public class EventStoreAggregateTests {
 
         _ = await Assert.ThrowsAsync<ArgumentNullException>(
             () => aggregate.ProcessAsync(null!, null));
+    }
+
+    // --- Story 16-8: Instance (non-static) Handle method (AC#5: 6.2) ---
+
+    [Fact]
+    public async Task ProcessAsync_InstanceHandleMethod_DispatchesCorrectly() {
+        var aggregate = new InstanceHandleAggregate();
+        CommandEnvelope command = CreateCommand(new AddItem("test"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        var evt = Assert.IsType<ItemAdded>(result.Events[0]);
+        // Verifies instance data (_prefix) is accessible — proving non-static dispatch
+        Assert.Equal("instance-test", evt.Name);
+    }
+
+    // --- Story 16-8: Multiple Handle methods dispatched correctly (AC#5: 6.3) ---
+
+    [Fact]
+    public async Task ProcessAsync_MultipleHandleMethods_AllDispatchCorrectly() {
+        var aggregate = new TestAggregate();
+
+        // Dispatch AddItem
+        DomainResult addResult = await aggregate.ProcessAsync(CreateCommand(new AddItem("a")), null);
+        Assert.True(addResult.IsSuccess);
+        Assert.IsType<ItemAdded>(addResult.Events[0]);
+
+        // Dispatch RemoveItem (with state having items)
+        var state = new TestState();
+        state.Apply(new ItemAdded { Name = "a" });
+        DomainResult removeResult = await aggregate.ProcessAsync(CreateCommand(new RemoveItem()), state);
+        Assert.True(removeResult.IsSuccess);
+        Assert.IsType<ItemRemoved>(removeResult.Events[0]);
+
+        // Dispatch ResetItems (with state having items)
+        DomainResult resetResult = await aggregate.ProcessAsync(CreateCommand(new ResetItems()), state);
+        Assert.True(resetResult.IsSuccess);
+        Assert.IsType<ItemReset>(resetResult.Events[0]);
+    }
+
+    // --- Story 16-8: JsonElement array suffix-match fallback (AC#5: 6.4) ---
+
+    [Fact]
+    public async Task ProcessAsync_JsonElementArray_SuffixMatchedEventTypeName_ReplaysCorrectly() {
+        var aggregate = new TestAggregate();
+        // Use fully-qualified-style eventTypeName that ends with "ItemAdded"
+        string eventsJson = """
+            [
+                {"eventTypeName":"MyNamespace.ItemAdded","payload":{"Name":"suffix-match"}}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new RemoveItem());
+
+        // The suffix fallback should match "MyNamespace.ItemAdded" to the "ItemAdded" Apply method
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    // --- Story 16-8: IEnumerable replay with null elements (AC#5) ---
+
+    [Fact]
+    public async Task ProcessAsync_EnumerableEvents_WithNullElements_SkipsNulls() {
+        var aggregate = new TestAggregate();
+        var events = new object?[] {
+            new ItemAdded { Name = "one" },
+            null,
+            new ItemAdded { Name = "two" },
+        };
+        CommandEnvelope command = CreateCommand(new RemoveItem());
+
+        DomainResult result = await aggregate.ProcessAsync(command, events);
+
+        Assert.True(result.IsSuccess); // 2 items added, remove succeeds
+    }
+
+    // --- Story 16-8: JsonElement array without payload wrapper (direct element) ---
+
+    [Fact]
+    public async Task ProcessAsync_JsonElementArray_DirectEvent_WithoutPayloadWrapper() {
+        var aggregate = new TestAggregate();
+        // Event element has no "payload" property — entire element is deserialized directly
+        string eventsJson = """
+            [
+                {"eventTypeName":"ItemAdded","Name":"direct-event"}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new RemoveItem());
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess);
     }
 }

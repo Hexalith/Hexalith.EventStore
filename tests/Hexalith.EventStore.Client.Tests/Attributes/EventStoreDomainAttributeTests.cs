@@ -1,9 +1,22 @@
 
 using Hexalith.EventStore.Client.Attributes;
+using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Discovery;
 
 namespace Hexalith.EventStore.Client.Tests.Attributes;
 
-public class EventStoreDomainAttributeTests {
+public class EventStoreDomainAttributeTests : IDisposable {
+    public EventStoreDomainAttributeTests() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+    }
+
+    public void Dispose() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+        GC.SuppressFinalize(this);
+    }
+
     [Fact]
     public void Constructor_ValidDomainName_SetsProperty() {
         var attribute = new EventStoreDomainAttribute("billing");

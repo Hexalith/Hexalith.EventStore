@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Client.Registration;
@@ -100,6 +101,12 @@ public static class EventStoreServiceCollectionExtensions {
             _ = services.Configure(configureOptions);
         }
 
+        // Opportunistic appsettings binding (AC3): bind EventStore section when IConfiguration is available.
+        IConfiguration? configuration = TryGetConfiguration(services);
+        if (configuration is not null) {
+            _ = services.Configure<EventStoreOptions>(configuration.GetSection("EventStore"));
+        }
+
         // Scan assemblies for domain types
         DiscoveryResult discoveryResult = AssemblyScanner.ScanForDomainTypes(assemblies);
 
@@ -119,5 +126,21 @@ public static class EventStoreServiceCollectionExtensions {
         }
 
         return services;
+    }
+
+    private static IConfiguration? TryGetConfiguration(IServiceCollection services) {
+        ArgumentNullException.ThrowIfNull(services);
+
+        ServiceDescriptor? descriptor = services.LastOrDefault(static s => s.ServiceType == typeof(IConfiguration));
+        if (descriptor?.ImplementationInstance is IConfiguration configurationInstance) {
+            return configurationInstance;
+        }
+
+        if (descriptor is null) {
+            return null;
+        }
+
+        using ServiceProvider tempProvider = services.BuildServiceProvider();
+        return tempProvider.GetService<IConfiguration>();
     }
 }

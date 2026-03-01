@@ -1,6 +1,6 @@
 # Story 16.6: Five-Layer Cascading Configuration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -396,6 +396,7 @@ The `EventStoreAggregate<TState>` base class (from 16-1) uses reflection-based c
 ## Change Log
 
 - 2026-02-28: Implemented five-layer cascading configuration (Tasks 1-8). Added `EventStoreDomainOptions` POCO, extended `EventStoreOptions` with `ConfigureDomain()` and global suffix overrides, added `OnConfiguring()` to both `EventStoreAggregate<TState>` and `EventStoreProjection<TReadModel>`, implemented cascade resolver in `UseEventStore()`, added `Microsoft.Extensions.Configuration.Binder` dependency, created 15 unit tests covering all cascade scenarios. All 185 tests pass.
+- 2026-03-01: Applied AI review remediation. Added opportunistic `EventStore` section binding in `AddEventStore()` (`EventStoreServiceCollectionExtensions`), hardened Layer 3 cascade resolution to gracefully skip on broader activation/invocation failures, and added regression tests verifying appsettings global binding at registration and runtime activation resolution.
 
 ## Dev Agent Record
 
@@ -419,6 +420,8 @@ Claude Opus 4.6
 - Task 6: Cascade resolver implemented as `ResolveDomainOptions()` internal static method with all 5 layers, diagnostic logging, and `MergeNonNull()` helper
 - Task 7: 15 unit tests covering all scenarios (convention-only, global suffix, OnConfiguring, appsettings, explicit override, full cascade, partial override, null guards, no-ctor skip, backward compat, projection OnConfiguring)
 - Task 8: Build clean (0 warnings, 0 errors for Client + Client.Tests), all 185 tests pass, 1 new dependency documented
+- 2026-03-01 review remediation: AC3 gap closed by binding `EventStore` section in `AddEventStore()` when `IConfiguration` is present; added tests proving bound options flow into `UseEventStore()` resolved activation values.
+- 2026-03-01 review remediation: Layer 3 graceful-skip behavior hardened with broader activation error handling while preserving debug diagnostics.
 
 ### File List
 
@@ -430,3 +433,20 @@ Claude Opus 4.6
 - `src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj` — MODIFIED
 - `Directory.Packages.props` — MODIFIED
 - `tests/Hexalith.EventStore.Client.Tests/Configuration/CascadeConfigurationTests.cs` — NEW
+
+## Senior Developer Review (AI)
+
+### Outcome
+
+Review approved after fixes. Previously identified HIGH/MEDIUM findings were remediated in code and test coverage.
+
+### Findings Closed
+
+1. **AC3 implementation fidelity** — fixed by opportunistic binding of `EventStore` section in `AddEventStore()` when `IConfiguration` exists.
+2. **Layer 3 graceful skip robustness** — fixed by broad activation-error catch/log path to avoid hard-failing `UseEventStore()` on non-fatal activation issues.
+3. **Coverage gap for AC3** — fixed with new tests validating registration-time `EventStore` options binding and runtime suffix application in activation resolution.
+
+### Validation Evidence
+
+- Client test suite executed successfully after remediation (`Hexalith.EventStore.Client.Tests`).
+

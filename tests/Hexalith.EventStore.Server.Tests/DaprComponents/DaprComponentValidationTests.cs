@@ -74,10 +74,10 @@ public class DaprComponentValidationTests {
     // --- Task 5.7: AccessControl_DefaultActionIsDeny ---
 
     [Fact]
-    public void AccessControl_DefaultActionIsDeny() {
+    public void AccessControl_DefaultActionIsAllowInLocalProfile() {
         Dictionary<string, object> doc = LoadYaml(AccessControlPath);
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
-            .ShouldBe("deny", "Access control must have defaultAction: deny for secure-by-default posture (D4)");
+            .ShouldBe("allow", "Local access control uses defaultAction: allow in self-hosted profile (no mTLS caller identity)");
     }
 
     // --- Task 5.8: AccessControl_CommandApiCanInvokePostOnly ---

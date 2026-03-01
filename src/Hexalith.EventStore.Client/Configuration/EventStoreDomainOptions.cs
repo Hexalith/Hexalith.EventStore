@@ -19,21 +19,21 @@ namespace Hexalith.EventStore.Client.Configuration;
 /// </para>
 /// </remarks>
 public class EventStoreDomainOptions {
-	/// <summary>
-	/// Gets or sets the DAPR state store name for this domain.
-	/// When <c>null</c>, the convention default is used (e.g., <c>{domain}-eventstore</c>).
-	/// </summary>
-	public string? StateStoreName { get; set; }
+    /// <summary>
+    /// Gets or sets the DAPR state store name for this domain.
+    /// When <c>null</c>, the convention default is used (e.g., <c>{domain}-eventstore</c>).
+    /// </summary>
+    public string? StateStoreName { get; set; }
 
-	/// <summary>
-	/// Gets or sets the pub/sub topic pattern for this domain.
-	/// When <c>null</c>, the convention default is used (e.g., <c>{domain}.events</c>).
-	/// </summary>
-	public string? TopicPattern { get; set; }
+    /// <summary>
+    /// Gets or sets the pub/sub topic pattern for this domain.
+    /// When <c>null</c>, the convention default is used (e.g., <c>{domain}.events</c>).
+    /// </summary>
+    public string? TopicPattern { get; set; }
 
-	/// <summary>
-	/// Gets or sets the dead-letter topic pattern for this domain.
-	/// When <c>null</c>, the convention default is used (e.g., <c>deadletter.{domain}.events</c>).
-	/// </summary>
-	public string? DeadLetterTopicPattern { get; set; }
+    /// <summary>
+    /// Gets or sets the dead-letter topic pattern for this domain.
+    /// When <c>null</c>, the convention default is used (e.g., <c>deadletter.{domain}.events</c>).
+    /// </summary>
+    public string? DeadLetterTopicPattern { get; set; }
 }

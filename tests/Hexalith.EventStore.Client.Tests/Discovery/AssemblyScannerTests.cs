@@ -453,6 +453,166 @@ public sealed class AssemblyScannerTests : IDisposable {
     }
 
     [Fact]
+    public void ScanForAggregates_Assembly_DiscoversPublicSmokeAggregate() {
+        Assembly testAssembly = typeof(AssemblyScannerTests).Assembly;
+
+        IReadOnlyList<DiscoveredDomain> aggregates = AssemblyScanner.ScanForAggregates(testAssembly);
+
+        Assert.Contains(aggregates, d => d.Type == typeof(SmokeTestAggregate));
+    }
+
+    [Fact]
+    public void ScanForProjections_Assembly_DiscoversPublicSmokeProjection() {
+        Assembly testAssembly = typeof(AssemblyScannerTests).Assembly;
+
+        IReadOnlyList<DiscoveredDomain> projections = AssemblyScanner.ScanForProjections(testAssembly);
+
+        Assert.Contains(projections, d => d.Type == typeof(SmokeTestProjection));
+    }
+
+    // --- Story 16-8: Empty assembly (AC#2: 3.1) ---
+
+    [Fact]
+    public void ScanForDomainTypes_OnlyNonDomainTypes_ReturnsEmptyResult() {
+        // Scan an assembly that has types but none are domain types
+        Type[] types = [typeof(string), typeof(int), typeof(object), typeof(List<int>)];
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
+
+        Assert.Empty(result.Aggregates);
+        Assert.Empty(result.Projections);
+        Assert.Equal(0, result.TotalCount);
+    }
+
+    // --- Story 16-8: Abstract-only assembly (AC#2: 3.2) ---
+
+    [Fact]
+    public void ScanForDomainTypes_OnlyAbstractTypes_ReturnsEmptyResult() {
+        Type[] types = [typeof(AbstractTestAggregate), typeof(VersionedAggregate<>)];
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
+
+        Assert.Empty(result.Aggregates);
+        Assert.Empty(result.Projections);
+        Assert.Equal(0, result.TotalCount);
+    }
+
+    // --- Story 16-8: Projection-only assembly (AC#2: 3.3) ---
+
+    [Fact]
+    public void ScanForDomainTypes_ProjectionOnly_NoAggregates() {
+        Type[] types = [typeof(TestOrderProjection)];
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
+
+        Assert.Empty(result.Aggregates);
+        Assert.Single(result.Projections);
+    }
+
+    [Fact]
+    public void ScanForDomainTypes_AggregateOnly_NoProjections() {
+        Type[] types = [typeof(TestCounterAggregate)];
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
+
+        Assert.Single(result.Aggregates);
+        Assert.Empty(result.Projections);
+    }
+
+    // --- Story 16-8: ScanForAggregates on projection-only types returns empty (AC#2: 3.3) ---
+
+    [Fact]
+    public void ScanForAggregates_AssemblyWithOnlyProjections_ReturnsEmpty() {
+        // ScanForAggregates delegates to ScanForDomainTypes().Aggregates
+        // Verify it returns empty when no aggregates exist
+        Type[] types = [typeof(TestOrderProjection)];
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
+
+        Assert.Empty(result.Aggregates);
+    }
+
+    // --- Story 16-8: Multi-assembly cross-assembly duplicate domain names (AC#2: 3.4) ---
+
+    [Fact]
+    public void ScanForDomainTypes_CrossAssemblyDuplicateProjectionDomainName_Throws() {
+        // Two projections with same domain name should conflict
+        // Create a dynamic assembly with a projection that has the same domain name as TestOrderProjection
+        Assembly staticAssembly = typeof(SmokeTestProjection).Assembly;
+        // SmokeTestProjection has domain name "smoke-test"
+        // Create a dynamic assembly with another projection also named "smoke-test"
+        Assembly dynamicAssembly = CreateDynamicProjectionAssemblyWithTypeName(nameof(SmokeTestProjection));
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => AssemblyScanner.ScanForDomainTypes([staticAssembly, dynamicAssembly]));
+
+        Assert.Contains("smoke-test", ex.Message);
+    }
+
+    // --- Story 16-8: ReflectionTypeLoadException resilience (AC#2: 3.5) ---
+
+    [Fact]
+    public void ScanForDomainTypes_DynamicAssembly_DoesNotThrow() {
+        // Dynamic assemblies may throw NotSupportedException from GetExportedTypes
+        // which is handled by the GetLoadableTypes fallback
+        // Use public SmokeTestState to avoid access issues with dynamic assemblies
+        Assembly dynamicAssembly = CreateDynamicAggregateAssemblyWithTypeName("DynamicResilience", typeof(SmokeTestState));
+
+        // Should not throw — exercises the NotSupportedException fallback in GetLoadableTypes
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(dynamicAssembly);
+
+        Assert.True(result.TotalCount >= 1);
+    }
+
+    [Fact]
+    public void ScanForDomainTypes_ReflectionTypeLoadException_UsesLoadableTypesFallback() {
+        Assembly faultingAssembly = new ThrowingReflectionTypeLoadAssembly(
+            [typeof(SmokeTestAggregate), null!],
+            [new TypeLoadException("Simulated loader failure")]);
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(faultingAssembly);
+
+        DiscoveredDomain aggregate = Assert.Single(result.Aggregates);
+        Assert.Equal(typeof(SmokeTestAggregate), aggregate.Type);
+        Assert.Equal("smoke-test", aggregate.DomainName);
+    }
+
+    // --- Story 16-8: Open generic exclusion via types (AC#2: 3.6) ---
+
+    [Fact]
+    public void ScanForDomainTypes_MultipleOpenGenerics_AllExcluded() {
+        Type[] types = [typeof(VersionedAggregate<>), typeof(EventStoreAggregate<>), typeof(EventStoreProjection<>)];
+
+        DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
+
+        Assert.Empty(result.Aggregates);
+        Assert.Empty(result.Projections);
+        Assert.Equal(0, result.TotalCount);
+    }
+
+    private static Assembly CreateDynamicProjectionAssemblyWithTypeName(string typeName) {
+        string assemblyName = $"Hexalith.EventStore.Client.Tests.Dynamic.Proj.{Guid.NewGuid():N}";
+        var name = new AssemblyName(assemblyName);
+        AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run);
+        ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("Main");
+
+        Type projectionBase = typeof(EventStoreProjection<>).MakeGenericType(typeof(SmokeTestReadModel));
+        TypeBuilder typeBuilder = moduleBuilder.DefineType(
+            $"Dynamic.{typeName}",
+            TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed,
+            projectionBase);
+
+        _ = typeBuilder.DefineDefaultConstructor(MethodAttributes.Public);
+        _ = typeBuilder.CreateType();
+
+        return assemblyBuilder;
+    }
+
+    private sealed class ThrowingReflectionTypeLoadAssembly(Type[] classes, Exception[] exceptions) : Assembly {
+        public override Type[] GetExportedTypes() => throw new ReflectionTypeLoadException(classes, exceptions);
+    }
+
+    [Fact]
     public void ScanForDomainTypes_Assembly_SmokeStubsHaveCorrectProperties() {
         Assembly testAssembly = typeof(AssemblyScannerTests).Assembly;
 

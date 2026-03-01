@@ -1,5 +1,7 @@
 
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
@@ -10,7 +12,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Client.Tests.Registration;
 
-public class ServiceCollectionExtensionsTests {
+public class ServiceCollectionExtensionsTests : IDisposable {
+    public ServiceCollectionExtensionsTests() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+    }
+
+    public void Dispose() {
+        AssemblyScanner.ClearCache();
+        NamingConventionEngine.ClearCache();
+        GC.SuppressFinalize(this);
+    }
+
     private sealed class TestState {
         public string Value { get; init; } = "default";
     }

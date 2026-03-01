@@ -36,7 +36,7 @@ public class ActorTenantIsolationTests {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
-        string aggregateId = "shared-counter-001";
+        string aggregateId = $"shared-counter-{Guid.NewGuid():N}";
 
         // Tenant A: send 3 increments
         IAggregateActor tenantAProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
