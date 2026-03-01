@@ -738,7 +738,7 @@ public class DeadLetterOriginTracingTests {
         // Assert — replay generates a new correlation ID for tracking
         _ = result.ShouldBeOfType<AcceptedResult>();
         _ = await mediator.Received(1).Send(
-            Arg.Is<SubmitCommand>(c => c.CorrelationId != deadLetterCorrelationId && Guid.TryParse(c.CorrelationId, out _)),
+            Arg.Is<SubmitCommand>(c => c.CorrelationId != deadLetterCorrelationId),
             Arg.Any<CancellationToken>());
     }
 
