@@ -437,3 +437,6 @@ publish-output/
 
 #Ignore cursor AI rules
 .cursor\rules\codacy.mdc
+
+# Lychee link checker cache
+.lycheecache

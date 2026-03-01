@@ -69,18 +69,18 @@ dotnet test tests/Hexalith.EventStore.Sample.Tests
 dotnet test tests/Hexalith.EventStore.Testing.Tests
 ```
 
-The solution file is `Hexalith.EventStore.sln`.
+The solution file is `Hexalith.EventStore.slnx`.
 
 ## Documentation Contributions
 
 ### Where Documentation Lives
 
 - **`docs/`** — Main documentation, organized by section:
-  - `getting-started/` — Prerequisites, quickstart guide
-  - `concepts/` — Architecture overview, decision aids
-  - `guides/` — Deployment and operational guides
-  - `reference/` — API reference, configuration
-  - `community/` — Community resources
+    - `getting-started/` — Prerequisites, quickstart guide
+    - `concepts/` — Architecture overview, decision aids
+    - `guides/` — Deployment and operational guides
+    - `reference/` — API reference, configuration
+    - `community/` — Community resources
 - **Root-level docs** — `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `CODE_OF_CONDUCT.md`
 - **Page template** — `docs/page-template.md` (use this as a starting point for new pages)
 
@@ -96,7 +96,7 @@ The solution file is `Hexalith.EventStore.sln`.
 Before opening a PR for documentation changes, run:
 
 ```bash
-npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md"
+npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "CODE_OF_CONDUCT.md"
 ```
 
 ## Code Contributions

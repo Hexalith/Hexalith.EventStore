@@ -1,0 +1,50 @@
+{
+  // Hexalith.EventStore markdown linting configuration
+  // Aligned with architecture-documentation.md Markdown Formatting Patterns
+  // Format: markdownlint-cli2 (top-level "config" key required)
+  "config": {
+    "default": true,
+    // MD013: Line length — disabled (architecture: no hard wrap)
+    "MD013": false,
+    // MD014: Dollar signs before commands — disabled (docs use $ prefix convention for shell commands)
+    "MD014": false,
+    // MD033: Inline HTML — minimal allowlist for Mermaid accessibility
+    // Add more elements ONLY if actual violations require it
+    "MD033": {
+      "allowed_elements": [
+        "details",
+        "summary",
+        "br",
+        "img",
+        "picture",
+        "source"
+      ]
+    },
+    // MD024: Duplicate headings — allow in different sections
+    "MD024": {
+      "siblings_only": true
+    },
+    // MD041: First line heading — disabled (README has badges, docs pages have nav links before H1)
+    "MD041": false,
+    // MD046: Fenced code blocks only (no indented style)
+    "MD046": {
+      "style": "fenced"
+    },
+    // MD048: Backtick fences only (no tildes)
+    "MD048": {
+      "style": "backtick"
+    },
+    // MD007: Unordered list indent — match .editorconfig 4-space standard
+    "MD007": {
+      "indent": 4
+    },
+    // MD029: Ordered list numbering — sequential (architecture: ordered for steps)
+    "MD029": {
+      "style": "ordered"
+    },
+    // MD036: No emphasis as heading — prevent **bold** used as fake headings (NFR6)
+    "MD036": true,
+    // MD060: Table column style — disabled (not in architecture requirements, triggers on compact separator rows)
+    "MD060": false
+  }
+}

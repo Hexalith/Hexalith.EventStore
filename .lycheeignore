@@ -1,0 +1,11 @@
+# Hexalith.EventStore — lychee link checker exclusions
+# One regex pattern per line
+
+# Localhost/loopback URLs (quickstart uses localhost:8080, localhost:8180)
+^https?://localhost(:\d+)?
+^https?://127\.0\.0\.1(:\d+)?
+^https?://\[::1\](:\d+)?
+
+# Example/placeholder domains
+^https?://example\.com
+^https?://example\.invalid
