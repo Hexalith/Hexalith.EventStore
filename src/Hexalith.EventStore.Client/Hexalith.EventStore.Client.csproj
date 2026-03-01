@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <PackageReference Include="Dapr.Client" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
 </Project>
