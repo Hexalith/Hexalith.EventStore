@@ -185,8 +185,8 @@ development_status:
   epic-12-retrospective: optional
 
   # Epic 13: Sample Integration Tests & Local Validation (Phase 1b)
-  epic-13: backlog
-  13-1-sample-integration-test-project: backlog
+  epic-13: in-progress
+  13-1-sample-integration-test-project: done
   13-2-dapr-component-variants-for-backend-swap-demo: backlog
   13-3-local-validation-script: backlog
   13-4-fr-traceability-check: backlog
