@@ -76,17 +76,18 @@ public class ReplayControllerTests {
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
 
         _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitCommandResult(correlationId));
+            .Returns(callInfo => new SubmitCommandResult(callInfo.Arg<SubmitCommand>().CorrelationId));
 
         ReplayController controller = CreateController();
 
         // Act
         IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
 
-        // Assert
+        // Assert — replay generates a new correlation ID distinct from the original
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
-        response.CorrelationId.ShouldBe(correlationId);
+        response.CorrelationId.ShouldNotBe(correlationId);
+        Guid.TryParse(response.CorrelationId, out _).ShouldBeTrue();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("Rejected");
     }
@@ -299,14 +300,14 @@ public class ReplayControllerTests {
         // Act
         _ = await controller.Replay(correlationId, CancellationToken.None);
 
-        // Assert
+        // Assert — replay generates a new correlation ID, so just verify Send was called with correct tenant
         _ = await _mediator.Received(1).Send(
-            Arg.Is<SubmitCommand>(c => c.CorrelationId == correlationId && c.Tenant == "tenant-a"),
+            Arg.Is<SubmitCommand>(c => c.Tenant == "tenant-a"),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Replay_PreservesOriginalCorrelationId() {
+    public async Task Replay_GeneratesNewCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
         await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
@@ -315,7 +316,7 @@ public class ReplayControllerTests {
         _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => {
                 capturedCommand = callInfo.Arg<SubmitCommand>();
-                return new SubmitCommandResult(correlationId);
+                return new SubmitCommandResult(callInfo.Arg<SubmitCommand>().CorrelationId);
             });
 
         ReplayController controller = CreateController();
@@ -323,9 +324,10 @@ public class ReplayControllerTests {
         // Act
         _ = await controller.Replay(correlationId, CancellationToken.None);
 
-        // Assert
+        // Assert — replay should generate a new correlation ID, not reuse the original
         _ = capturedCommand.ShouldNotBeNull();
-        capturedCommand.CorrelationId.ShouldBe(correlationId);
+        capturedCommand.CorrelationId.ShouldNotBe(correlationId);
+        Guid.TryParse(capturedCommand.CorrelationId, out _).ShouldBeTrue();
     }
 
     [Fact]

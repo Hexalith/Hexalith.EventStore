@@ -89,15 +89,16 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         HttpResponseMessage response = await client.PostAsync(
             $"/api/v1/commands/replay/{correlationId}", null);
 
-        // Assert
+        // Assert — replay generates a new correlation ID for tracking
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         _ = response.Headers.Location.ShouldNotBeNull();
-        response.Headers.Location.ToString().ShouldContain($"/api/v1/commands/status/{correlationId}");
+        response.Headers.Location.ToString().ShouldContain("/api/v1/commands/status/");
         response.Headers.TryGetValues("Retry-After", out System.Collections.Generic.IEnumerable<string>? retryValues).ShouldBeTrue();
         retryValues!.First().ShouldBe("1");
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
         _ = replayResult.ShouldNotBeNull();
-        replayResult.CorrelationId.ShouldBe(correlationId);
+        replayResult.CorrelationId.ShouldNotBe(correlationId);
+        Guid.TryParse(replayResult.CorrelationId, out _).ShouldBeTrue();
         replayResult.IsReplay.ShouldBeTrue();
         replayResult.PreviousStatus.ShouldBe("TimedOut");
     }
@@ -217,14 +218,17 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         string correlationId = await SubmitCommandAndGetCorrelationId(client);
         await SetCommandStatus("test-tenant", correlationId, CommandStatus.Rejected);
 
-        // Act - replay
+        // Act - replay (generates a new correlation ID)
         HttpResponseMessage replayResponse = await client.PostAsync(
             $"/api/v1/commands/replay/{correlationId}", null);
         replayResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        ReplayCommandResponse? replayResult = await replayResponse.Content.ReadFromJsonAsync<ReplayCommandResponse>();
+        _ = replayResult.ShouldNotBeNull();
+        string replayCorrelationId = replayResult.CorrelationId;
 
-        // Assert - status should be Received (reset by handler)
+        // Assert - status of the new replay correlation ID should be Received
         HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{correlationId}");
+            $"/api/v1/commands/status/{replayCorrelationId}");
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         CommandStatusResponse? status = await statusResponse.Content.ReadFromJsonAsync<CommandStatusResponse>();
         _ = status.ShouldNotBeNull();
@@ -242,11 +246,15 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         HttpResponseMessage response = await client.PostAsync(
             $"/api/v1/commands/replay/{correlationId}", null);
 
-        // Assert
+        // Assert — Location header points to status endpoint with the new replay correlation ID
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         string? location = response.Headers.Location?.ToString();
         _ = location.ShouldNotBeNull();
-        location.ShouldContain($"/api/v1/commands/status/{correlationId}");
+        location.ShouldContain("/api/v1/commands/status/");
+        // The location uses the new replay correlation ID, not the original
+        ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
+        _ = replayResult.ShouldNotBeNull();
+        location.ShouldContain(replayResult.CorrelationId);
     }
 
     [Fact]

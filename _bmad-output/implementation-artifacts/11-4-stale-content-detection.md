@@ -1,6 +1,6 @@
 # Story 11.4: Stale Content Detection
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -29,32 +29,33 @@ These properties are delivered by Story 11-3 (`docs-validation.yml`) and are ass
 ## Definition of Done
 
 This story is complete when:
+
 - **If `docs-validation.yml` exists** (Story 11-3 done): AC1 + AC2 + AC3 all pass
 - **If `docs-validation.yml` does NOT exist** (Story 11-3 not yet done): AC2 + AC3 pass, and AC1 is documented as deferred — add a note in Completion Notes with the exact comment block to insert once 11-3 is merged. Story can be marked `done` in this case
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Check Story 11-3 dependency status (Decision gate)
-  - [ ] Check if `.github/workflows/docs-validation.yml` exists on disk
-  - [ ] **If YES** → proceed with Tasks 2, 3, 4, 5
-  - [ ] **If NO** → skip Task 2, proceed with Tasks 3, 4, 5. Document the deferred YAML comment in Completion Notes
-- [ ] Task 2: Add documentation mapping comment to `docs-validation.yml` sample-build job (AC: 1)
-  - [ ] **SKIP if `docs-validation.yml` does not exist** (see Task 1)
-  - [ ] Add a YAML comment block at the top of the `sample-build` job listing the mapping (see exact text in Dev Notes)
-  - [ ] Comment format: `# STALE CONTENT MAPPING:` header, then `#   <project> → <doc pages>` entries
-- [ ] Task 3: Add stale content triage section to `CONTRIBUTING.md` (AC: 2)
-  - [ ] Insert new subsection **after** `### Run Docs Validation Locally` (line ~101, after the markdownlint code block) and **before** `## Code Contributions` (line ~102)
-  - [ ] Section title: `### Triaging Documentation CI Failures`
-  - [ ] Use exact content from Dev Notes section below
-  - [ ] Ensure 4-space indent for sub-list items (MD007 compliance)
-  - [ ] Keep it concise — 10-15 lines maximum
-- [ ] Task 4: Verify lint and link compliance (AC: 3)
-  - [ ] Run `npx markdownlint-cli2 "CONTRIBUTING.md"` — must exit with zero violations
-  - [ ] Run `lychee --cache "CONTRIBUTING.md"` — must exit with zero errors (use `--cache` to avoid GitHub rate limits on CONTRIBUTING.md's 9+ links)
-  - [ ] Fix any violations before proceeding
-- [ ] Task 5: Final verification
-  - [ ] If Task 2 was completed: visually confirm comment block is inside the `sample-build` job, not at the workflow top level
-  - [ ] If Task 2 was skipped: add Completion Note with the deferred comment block text and instruction to apply after 11-3 merge
+- [x] Task 1: Check Story 11-3 dependency status (Decision gate)
+    - [x] Check if `.github/workflows/docs-validation.yml` exists on disk
+    - [x] **If YES** → proceed with Tasks 2, 3, 4, 5
+    - [ ] **If NO** → skip Task 2, proceed with Tasks 3, 4, 5. Document the deferred YAML comment in Completion Notes
+- [x] Task 2: Add documentation mapping comment to `docs-validation.yml` sample-build job (AC: 1)
+    - [x] **SKIP if `docs-validation.yml` does not exist** (see Task 1)
+    - [x] Add a YAML comment block at the top of the `sample-build` job listing the mapping (see exact text in Dev Notes)
+    - [x] Comment format: `# STALE CONTENT MAPPING:` header, then `#   <project> → <doc pages>` entries
+- [x] Task 3: Add stale content triage section to `CONTRIBUTING.md` (AC: 2)
+    - [x] Insert new subsection **after** `### Run Docs Validation Locally` (line ~101, after the markdownlint code block) and **before** `## Code Contributions` (line ~102)
+    - [x] Section title: `### Triaging Documentation CI Failures`
+    - [x] Use exact content from Dev Notes section below
+    - [x] Ensure 4-space indent for sub-list items (MD007 compliance)
+    - [x] Keep it concise — 10-15 lines maximum
+- [x] Task 4: Verify lint and link compliance (AC: 3)
+    - [x] Run `npx markdownlint-cli2 "CONTRIBUTING.md"` — must exit with zero violations
+    - [x] Run `lychee --cache "CONTRIBUTING.md"` — must exit with zero errors (use `--cache` to avoid GitHub rate limits on CONTRIBUTING.md's 9+ links)
+    - [x] Fix any violations before proceeding
+- [x] Task 5: Final verification
+    - [x] If Task 2 was completed: visually confirm comment block is inside the `sample-build` job, not at the workflow top level
+    - [ ] If Task 2 was skipped: add Completion Note with the deferred comment block text and instruction to apply after 11-3 merge
 
 ## Dev Notes
 
@@ -91,26 +92,26 @@ This story is complete when:
 
 ### CONTRIBUTING.md Triage Section (for Task 3)
 
-Insert between `### Run Docs Validation Locally` (after the closing ``` on line ~100) and `## Code Contributions` (line ~102):
+Insert between `### Run Docs Validation Locally` (after the closing ```on line ~100) and`## Code Contributions` (line ~102):
 
 ```markdown
 ### Triaging Documentation CI Failures
 
-When the **Docs** CI pipeline fails on the `sample-build` job, it means the sample project
-no longer compiles or its tests fail. This signals that documentation may reference outdated
-code or behavior.
+When the **Docs** CI pipeline fails on the `sample-build` job, the sample no longer builds
+or tests cleanly. Treat this as a stale documentation signal.
 
 **How to triage:**
 
 1. Check the CI failure output — identify whether `dotnet build` or `dotnet test` failed
 2. Map the failure to documentation pages:
     - `samples/Hexalith.EventStore.Sample/` build failure → review `docs/getting-started/quickstart.md` and `README.md` code examples
-    - `tests/Hexalith.EventStore.Sample.Tests/` test failure → review `docs/getting-started/quickstart.md` (expected behavior may have changed)
-3. Update the affected documentation pages to match the new code/behavior
-4. Push fixes and verify the Docs CI passes
 
-As the project grows, additional sample-to-documentation mappings are documented in the
-CI workflow comments inside `docs-validation.yml`.
+- `tests/Hexalith.EventStore.Sample.Tests/` test failure → review `docs/getting-started/quickstart.md` and `README.md` behavior notes
+
+3. Update the affected documentation pages to match the new code/behavior
+4. Push fixes and verify the Docs CI passes.
+
+Additional sample-to-documentation mappings are maintained in comments inside `docs-validation.yml`.
 ```
 
 ### Files to Modify
@@ -132,12 +133,14 @@ CI workflow comments inside `docs-validation.yml`.
 ### Previous Story Intelligence
 
 **Patterns to follow:**
+
 - Branch: `feat/story-11-4-stale-content-detection`
 - Commit: `feat: Complete Story 11-4 stale content detection`
 - Pure documentation changes — no code changes to `src/` or `tests/`
 - CONTRIBUTING.md was previously modified in Story 11-1 (sub-list indentation fix, solution filename, lint command scope)
 
 **Lint rules affecting CONTRIBUTING.md (from Story 11-1):**
+
 - MD007: 4-space indent for unordered sub-lists
 - MD013: disabled (no line length limit)
 - MD029: ordered list numbering must be sequential (1, 2, 3, 4)
@@ -145,6 +148,7 @@ CI workflow comments inside `docs-validation.yml`.
 - MD033: inline HTML allowed for `details`, `summary`, `br`, `img`, `picture`, `source` only
 
 **Story 11-3 reference (if applying Task 2):**
+
 - `sample-build` job uses matrix: ubuntu-latest, windows-latest, macos-latest
 - Steps: checkout → setup-dotnet → cache NuGet → dotnet restore → dotnet build → dotnet test
 - Insert the STALE CONTENT MAPPING comment block as the first content inside the `sample-build:` job block (position-agnostic — exact YAML structure depends on Story 11-3 implementation)
@@ -175,6 +179,45 @@ Claude Opus 4.6
 
 ### Debug Log References
 
+- No issues encountered. Both files modified cleanly, lint and link checks passed on first attempt.
+
 ### Completion Notes List
 
+- `docs-validation.yml` EXISTS (Story 11-3 delivered) — full path taken (Tasks 2+3+4+5)
+- AC1: STALE CONTENT MAPPING comment block added inside the `sample-build` job in `docs-validation.yml`
+- AC2: `### Triaging Documentation CI Failures` subsection inserted in CONTRIBUTING.md between `### Run Docs Validation Locally` and `## Code Contributions`
+- AC3: markdownlint-cli2 → 0 errors; lychee --cache → 0 errors
+- The triage subsection was tightened to meet the stated 10–15 line concision goal in Task 3
+- No new files were created by this story; this story updated existing files only
+- No code changes to src/, tests/, or samples/
+- Additional modified files present in the working tree are out-of-scope artifacts from other stories/workflows
+
+### Change Log
+
+- 2026-03-01: Story 11-4 implementation — added stale content mapping comment to docs-validation.yml sample-build job and triage guide to CONTRIBUTING.md
+- 2026-03-01: Code review remediation — tightened triage subsection, reconciled completion notes with current working tree context, and approved story as done
+
 ### File List
+
+- `.github/workflows/docs-validation.yml` — added STALE CONTENT MAPPING comment block inside sample-build job
+- `CONTRIBUTING.md` — added `### Triaging Documentation CI Failures` subsection
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+Jerome (AI-assisted adversarial review)
+
+### Date
+
+2026-03-01
+
+### Outcome
+
+Approved
+
+### Findings Resolution Summary
+
+- High: Triaging section concision mismatch (task checked but >15 lines) — fixed by tightening content to concise form.
+- Medium: Completion note ambiguity about file creation — clarified story-scope ownership and wording.
+- Medium: Working-tree/file-list ambiguity — documented out-of-scope modifications from other workflows.

@@ -5,6 +5,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/Hexalith/Hexalith.EventStore)](https://github.com/Hexalith/Hexalith.EventStore/stargazers)
 [![NuGet](https://img.shields.io/nuget/v/Hexalith.EventStore.Contracts)](https://www.nuget.org/packages/Hexalith.EventStore.Contracts)
 [![Build](https://img.shields.io/github/actions/workflow/status/Hexalith/Hexalith.EventStore/ci.yml?branch=main)](https://github.com/Hexalith/Hexalith.EventStore/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/github/actions/workflow/status/Hexalith/Hexalith.EventStore/docs-validation.yml?branch=main&label=Docs)](https://github.com/Hexalith/Hexalith.EventStore/actions/workflows/docs-validation.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 If you've spent weeks wiring up an event store, a message broker, and multi-tenant isolation — only to realize you'll do it again for your next project — we built this for you. Hexalith.EventStore is a distributed, CQRS and DDD-ready event sourcing framework that handles command routing, event persistence, snapshots, and pub/sub delivery so you can focus on domain logic. Built on DAPR for infrastructure portability.
@@ -119,6 +120,7 @@ The system follows a command-event architecture: Client applications send comman
 
 ### Community
 
+- [Awesome Event Sourcing](docs/community/awesome-event-sourcing.md) — curated ecosystem resources
 - [GitHub Discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions) — questions, ideas, and community support
 - [Issue Tracker](https://github.com/Hexalith/Hexalith.EventStore/issues) — bug reports and feature requests
 

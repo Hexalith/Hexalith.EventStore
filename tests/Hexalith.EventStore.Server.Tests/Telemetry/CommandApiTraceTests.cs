@@ -152,12 +152,11 @@ public class CommandApiTraceTests {
     [Fact]
     public async Task Replay_Controller_CreatesReplayActivity_OnSuccessAsync() {
         // Arrange
-        string correlationId = $"replay-{Guid.NewGuid()}";
+        string correlationId = Guid.NewGuid().ToString();
         Activity? capturedActivity = null;
 
         using ActivityListener listener = CreateCommandApiListener((activity) => {
-            if (activity.OperationName == EventStoreActivitySources.Replay
-                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
+            if (activity.OperationName == EventStoreActivitySources.Replay) {
                 capturedActivity = activity;
             }
         });
@@ -186,7 +185,7 @@ public class CommandApiTraceTests {
 
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitCommandResult(correlationId));
+            .Returns(callInfo => new SubmitCommandResult(callInfo.Arg<SubmitCommand>().CorrelationId));
 
         ILogger<ReplayController> logger = Substitute.For<ILogger<ReplayController>>();
         var controller = new ReplayController(archiveStore, statusStore, mediator, logger) {
@@ -200,8 +199,8 @@ public class CommandApiTraceTests {
         // Act
         IActionResult action = await controller.Replay(correlationId, CancellationToken.None);
 
-        // Assert
-        _ = action.ShouldBeOfType<AcceptedResult>();
+        // Assert — replay generates a new correlation ID, so result type is AcceptedResult
+        AcceptedResult acceptedResult = action.ShouldBeOfType<AcceptedResult>();
         _ = capturedActivity.ShouldNotBeNull();
         capturedActivity.Kind.ShouldBe(ActivityKind.Server);
         capturedActivity.Status.ShouldBe(ActivityStatusCode.Ok);
@@ -211,12 +210,11 @@ public class CommandApiTraceTests {
     [Fact]
     public async Task Replay_Controller_SetsErrorStatus_OnConflictAsync() {
         // Arrange
-        string correlationId = $"conflict-{Guid.NewGuid()}";
+        string correlationId = Guid.NewGuid().ToString();
         Activity? capturedActivity = null;
 
         using ActivityListener listener = CreateCommandApiListener((activity) => {
-            if (activity.OperationName == EventStoreActivitySources.Replay
-                && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
+            if (activity.OperationName == EventStoreActivitySources.Replay) {
                 capturedActivity = activity;
             }
         });

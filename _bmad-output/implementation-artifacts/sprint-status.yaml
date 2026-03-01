@@ -167,26 +167,26 @@ development_status:
   epic-11: in-progress
   11-1-markdown-linting-configuration: done
   11-2-link-checking-configuration: done
-  11-3-documentation-validation-github-actions-workflow: ready-for-dev
-  11-4-stale-content-detection: ready-for-dev
+  11-3-documentation-validation-github-actions-workflow: done
+  11-4-stale-content-detection: done
   epic-11-retrospective: optional
 
   # Epic 12: Concept Deep Dives & Technical Reference (Phase 1b)
-  epic-12: backlog
-  12-1-architecture-overview-with-mermaid-topology: backlog
-  12-2-command-lifecycle-deep-dive: backlog
-  12-3-event-envelope-metadata-structure: backlog
-  12-4-identity-scheme-documentation: backlog
-  12-5-dapr-trade-offs-and-faq-intro: backlog
-  12-6-first-domain-service-tutorial: backlog
-  12-7-command-api-reference: backlog
-  12-8-nuget-packages-guide-and-dependency-graph: backlog
-  12-9-awesome-event-sourcing-ecosystem-page: backlog
+  epic-12: in-progress
+  12-1-architecture-overview-with-mermaid-topology: done
+  12-2-command-lifecycle-deep-dive: done
+  12-3-event-envelope-metadata-structure: done
+  12-4-identity-scheme-documentation: done
+  12-5-dapr-trade-offs-and-faq-intro: done
+  12-6-first-domain-service-tutorial: done
+  12-7-command-api-reference: done
+  12-8-nuget-packages-guide-and-dependency-graph: done
+  12-9-awesome-event-sourcing-ecosystem-page: done
   epic-12-retrospective: optional
 
   # Epic 13: Sample Integration Tests & Local Validation (Phase 1b)
-  epic-13: backlog
-  13-1-sample-integration-test-project: backlog
+  epic-13: in-progress
+  13-1-sample-integration-test-project: done
   13-2-dapr-component-variants-for-backend-swap-demo: backlog
   13-3-local-validation-script: backlog
   13-4-fr-traceability-check: backlog
