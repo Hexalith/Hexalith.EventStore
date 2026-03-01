@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj" />
+    <Project Path="samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj" />

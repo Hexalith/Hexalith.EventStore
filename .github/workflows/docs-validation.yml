@@ -73,10 +73,17 @@ jobs:
           restore-keys: nuget-
 
       - name: Restore
-        run: dotnet restore samples/Hexalith.EventStore.Sample/
+        run: |
+          dotnet restore samples/Hexalith.EventStore.Sample.Tests/
+          dotnet restore tests/Hexalith.EventStore.Sample.Tests/
 
       - name: Build
-        run: dotnet build samples/Hexalith.EventStore.Sample/ --configuration Release --no-restore
+        run: |
+          dotnet build samples/Hexalith.EventStore.Sample.Tests/ --configuration Release --no-restore
+          dotnet build tests/Hexalith.EventStore.Sample.Tests/ --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test tests/Hexalith.EventStore.Sample.Tests/ --configuration Release
+      - name: Test (Domain unit tests)
+        run: dotnet test tests/Hexalith.EventStore.Sample.Tests/ --configuration Release --no-build
+
+      - name: Test (Quickstart smoke tests)
+        run: dotnet test samples/Hexalith.EventStore.Sample.Tests/ --configuration Release --no-build
