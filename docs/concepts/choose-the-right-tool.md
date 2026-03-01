@@ -14,26 +14,26 @@ Hexalith uses three DAPR building blocks to abstract infrastructure:
 - **[Pub/sub](https://docs.dapr.io/developing-applications/building-blocks/pubsub/)** — delivers domain events to subscribers through any supported broker (RabbitMQ, Kafka, Azure Service Bus, and others)
 - **[Actors](https://docs.dapr.io/developing-applications/building-blocks/actors/)** — provides turn-based concurrency for aggregate processing with the virtual actor pattern
 
-This means you can swap Redis for PostgreSQL for Cosmos DB by changing a YAML configuration file, not your code.
+This means you can swap Redis for PostgreSQL or Cosmos DB by changing a YAML configuration file, not your code.
 
 ## Comparison at a Glance
 
-| Dimension | Hexalith | Marten (Critter Stack) | EventStoreDB (KurrentDB) | Custom / DIY |
-|-----------|----------|------------------------|--------------------------|--------------|
-| **Type** | DAPR-native server | .NET library | Dedicated event database | You build it |
-| **License** | MIT | MIT | KLv1 (source-available) | N/A |
-| **.NET support** | .NET 10 (pre-release) | .NET 8, .NET 9 | .NET 8, .NET 9, .NET Fx 4.8 | Any |
-| **Infrastructure portability** | Any DAPR-supported store/broker | PostgreSQL only | EventStoreDB server only | Chosen database |
-| **Multi-tenant isolation** | Built-in (4-layer model) | Manual implementation | Manual implementation | You build it |
-| **CQRS framework** | Complete, infrastructure-agnostic | Complete, PostgreSQL-coupled | Storage only — bring your own framework | You build it |
-| **Projection system** | Event handlers via pub/sub | Built-in with LINQ support | Built-in subscriptions and projections | You build it |
-| **LINQ querying** | Not supported | Full LINQ over events and documents | Not supported | Depends on database |
-| **Pub/sub** | Built-in via DAPR (any broker) | Wolverine (Critter Stack) | Built-in subscriptions | You build it |
-| **Deployment model** | DAPR sidecar (Docker, K8s, ACA) | In-process library | Dedicated server cluster | Varies |
-| **Database lock-in** | None | PostgreSQL | EventStoreDB | Chosen database |
-| **Polyglot SDK support** | .NET only | .NET only | 6+ languages | Varies |
-| **Community maturity** | Pre-release | Established (years of production use) | Established (10+ years) | N/A |
-| **Operational complexity** | Medium (DAPR runtime required) | Low (library, PostgreSQL only) | Medium (dedicated server cluster) | Low to high |
+| Dimension                      | Hexalith                          | Marten (Critter Stack)                | EventStoreDB (KurrentDB)                | Custom / DIY        |
+| ------------------------------ | --------------------------------- | ------------------------------------- | --------------------------------------- | ------------------- |
+| **Type**                       | DAPR-native server                | .NET library                          | Dedicated event database                | You build it        |
+| **License**                    | MIT                               | MIT                                   | KLv1 (source-available)                 | N/A                 |
+| **.NET support**               | .NET 10 (pre-release)             | .NET 8, .NET 9                        | .NET 8, .NET 9, .NET Fx 4.8             | Any                 |
+| **Infrastructure portability** | Any DAPR-supported store/broker   | PostgreSQL only                       | EventStoreDB server only                | Chosen database     |
+| **Multi-tenant isolation**     | Built-in (4-layer model)          | Manual implementation                 | Manual implementation                   | You build it        |
+| **CQRS framework**             | Complete, infrastructure-agnostic | Complete, PostgreSQL-coupled          | Storage only — bring your own framework | You build it        |
+| **Projection system**          | Event handlers via pub/sub        | Built-in with LINQ support            | Built-in subscriptions and projections  | You build it        |
+| **LINQ querying**              | Not supported                     | Full LINQ over events and documents   | Not supported                           | Depends on database |
+| **Pub/sub**                    | Built-in via DAPR (any broker)    | Wolverine (Critter Stack)             | Built-in subscriptions                  | You build it        |
+| **Deployment model**           | DAPR sidecar (Docker, K8s, ACA)   | In-process library                    | Dedicated server cluster                | Varies              |
+| **Database lock-in**           | None                              | PostgreSQL                            | EventStoreDB                            | Chosen database     |
+| **Polyglot SDK support**       | .NET only                         | .NET only                             | 6+ languages                            | Varies              |
+| **Community maturity**         | Pre-release                       | Established (years of production use) | Established (10+ years)                 | N/A                 |
+| **Operational complexity**     | Medium (DAPR runtime required)    | Low (library, PostgreSQL only)        | Medium (dedicated server cluster)       | Low to high         |
 
 > **Note:** Competitor versions verified as of February 2026: Marten 8.x ([martendb.io](https://martendb.io/)), KurrentDB 26.x ([docs.kurrent.io](https://docs.kurrent.io/)). EventStoreDB was rebranded to KurrentDB in late 2024 — both names are used interchangeably in the community.
 
@@ -153,22 +153,70 @@ Hexalith's infrastructure portability comes from [DAPR](https://docs.dapr.io/) (
 
 **What DAPR building blocks does Hexalith use?**
 
-| Building Block | Purpose in Hexalith | DAPR Documentation |
-|----------------|--------------------|--------------------|
-| [State management](https://docs.dapr.io/developing-applications/building-blocks/state-management/) | Persist events, snapshots, and command status to any supported store | [State management overview](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/) |
-| [Pub/sub](https://docs.dapr.io/developing-applications/building-blocks/pubsub/) | Deliver domain events to subscribers through any supported broker | [Pub/sub overview](https://docs.dapr.io/developing-applications/building-blocks/pubsub/pubsub-overview/) |
-| [Actors](https://docs.dapr.io/developing-applications/building-blocks/actors/) | Provide turn-based concurrency for aggregate processing (virtual actor pattern) | [Actors overview](https://docs.dapr.io/developing-applications/building-blocks/actors/actors-overview/) |
+| Building Block                                                                                     | Purpose in Hexalith                                                             | DAPR Documentation                                                                                                                    |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| [State management](https://docs.dapr.io/developing-applications/building-blocks/state-management/) | Persist events, snapshots, and command status to any supported store            | [State management overview](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/) |
+| [Pub/sub](https://docs.dapr.io/developing-applications/building-blocks/pubsub/)                    | Deliver domain events to subscribers through any supported broker               | [Pub/sub overview](https://docs.dapr.io/developing-applications/building-blocks/pubsub/pubsub-overview/)                              |
+| [Actors](https://docs.dapr.io/developing-applications/building-blocks/actors/)                     | Provide turn-based concurrency for aggregate processing (virtual actor pattern) | [Actors overview](https://docs.dapr.io/developing-applications/building-blocks/actors/actors-overview/)                               |
 
-**Why DAPR?** DAPR decouples your application from specific infrastructure products. Instead of writing code against a Redis client or a Kafka producer, you write against DAPR's standard APIs. DAPR's sidecar handles the translation to whichever backend you configure. This means the same Hexalith deployment can use Redis in development, PostgreSQL in staging, and Cosmos DB in production — with zero code changes.
+### Why DAPR?
 
-**What trade-offs does DAPR introduce?**
+DAPR decouples your application from specific infrastructure products. Instead of writing code against a Redis client or a Kafka producer, you write against DAPR's standard APIs. DAPR's sidecar handles the translation to whichever backend you configure. This means the same Hexalith deployment can use Redis in development, PostgreSQL in staging, and Cosmos DB in production — with zero code changes.
 
-- **Runtime dependency** — DAPR must be installed and running alongside your application. This adds operational overhead compared to an in-process library like Marten.
-- **Sidecar network hop** — Every state operation and pub/sub message passes through the DAPR sidecar via localhost gRPC. This adds measurable latency compared to direct database access under load.
-- **Learning curve** — Your team needs to understand DAPR component configuration, sidecar lifecycle, and debugging through the sidecar layer.
-- **Version coupling** — Hexalith depends on specific DAPR SDK versions. DAPR upgrades may require coordinated updates.
+Infrastructure portability is the core value proposition, but it is not the only one. DAPR provides a building block abstraction model — standard APIs backed by pluggable component implementations. Your team learns one API surface for state management, messaging, and actor invocation instead of learning vendor-specific SDKs for each backend. DAPR's [component catalog](https://docs.dapr.io/reference/components-reference/) includes dozens of state store implementations, dozens of pub/sub brokers, and a growing set of bindings — all reachable through the same three API calls your code already uses.
 
-> **Note:** A deeper analysis of DAPR trade-offs, risk assessment, and "what-if" scenarios will be available at `docs/guides/dapr-faq.md` in a future release.
+Hexalith trades direct database access for the ability to swap backends without code changes. Without DAPR, Hexalith would need to build and maintain its own state store abstraction layer, pub/sub integration, actor framework, and service discovery — essentially rebuilding what DAPR provides as a CNCF-governed, community-maintained runtime. That engineering cost would dwarf the trade-offs described below.
+
+### What trade-offs does DAPR introduce?
+
+| Trade-off          | Cost                                           | Mitigation                                          |
+| ------------------ | ---------------------------------------------- | --------------------------------------------------- |
+| Runtime dependency | DAPR sidecar must run alongside every instance | CNCF graduated; Aspire automates dev lifecycle      |
+| Sidecar latency    | Localhost gRPC hop per state/pub/sub operation | Negligible for most apps; no network hop            |
+| Learning curve     | YAML config, sidecar debugging, dashboard      | Hexalith pre-configures; devs never write DAPR YAML |
+| Version coupling   | Coordinated DAPR SDK upgrades                  | SemVer; minor upgrades safe; CI verifies            |
+
+#### Runtime dependency
+
+DAPR must run as a sidecar alongside every application instance. In production, this means managing DAPR installation, configuration, and upgrades across your deployment environment. DAPR is a [CNCF graduated project](https://www.cncf.io/projects/dapr/) (graduated February 2024) with broad cloud provider support — Azure Container Apps, AWS ECS, and GKE all support DAPR natively. In development, .NET Aspire handles the sidecar lifecycle automatically — you run `dotnet run` on the AppHost and Aspire starts, configures, and tears down the DAPR sidecars for you.
+
+#### Sidecar latency
+
+Every state store read/write and pub/sub publish passes through a localhost gRPC call to the DAPR sidecar, adding microseconds-to-low-milliseconds per operation. For most business applications this is negligible, but for sub-millisecond event stream performance, direct database access (EventStoreDB) is faster. The latency is localhost-only — there is no network hop — and is amortized over batch operations. The future [DAPR FAQ Deep Dive](../guides/dapr-faq.md) will cover quantitative benchmarks.
+
+#### Learning curve and debugging complexity
+
+Your team needs to understand DAPR component YAML configuration, sidecar debugging, and the DAPR dashboard. This is a one-time investment per team. When something fails through DAPR, errors surface through the gRPC-to-sidecar-to-backend chain, making stack traces harder to read than direct database calls. Hexalith pre-configures all DAPR components — domain service developers never write DAPR YAML. The [quickstart](../getting-started/quickstart.md) runs everything automatically via Aspire, and the DAPR dashboard provides sidecar-level observability for debugging.
+
+#### Version coupling
+
+Hexalith depends on a specific DAPR SDK version (currently 1.16.1, as pinned in `Directory.Packages.props`). DAPR follows semantic versioning and maintains backward compatibility within major versions. Coordinated upgrades are required when Hexalith bumps its DAPR dependency, but minor version upgrades are safe. Hexalith's CI pipeline tests against the pinned DAPR SDK version on every commit — you can verify compatibility with a newer DAPR release by bumping the version in a feature branch and running the test suite.
+
+Every trade-off above is the price of infrastructure portability — the ability to swap storage and messaging backends without touching application code. You trade one form of coupling (database vendor lock-in) for another (DAPR runtime coupling). The difference is that DAPR coupling is isolated to a single infrastructure package, while direct database coupling would pervade your entire codebase.
+
+Understanding the trade-offs leads to a natural question: what happens if DAPR itself changes?
+
+### What if DAPR changes direction?
+
+**DAPR is deprecated or abandoned.** DAPR is a [CNCF graduated project](https://www.cncf.io/projects/dapr/) (graduated February 2024) governed by the CNCF community, not by any single company — although Microsoft initiated it, DAPR's governance is independent. Graduation is the highest CNCF maturity level, requiring demonstrated production adoption and governance. If DAPR were deprecated, Hexalith's architecture isolates the DAPR dependency to the Server package — domain service code (the `Handle`/`Apply` pure functions) has zero DAPR imports and would survive a migration to a different runtime.
+
+**DAPR introduces breaking changes.** DAPR follows SemVer. Breaking changes only occur in major versions, which are rare — DAPR has been on v1.x since February 2021, over five years of backward-compatible releases. Hexalith pins to a specific DAPR SDK version and tests against it. Major version upgrades would be handled as a Hexalith release with migration guidance.
+
+**A better abstraction emerges.** Hexalith's architecture separates the domain processing model (`Hexalith.EventStore.Contracts` and `Hexalith.EventStore.Client`, zero DAPR dependency) from the infrastructure runtime (`Hexalith.EventStore.Server`, DAPR-dependent). If a superior runtime appeared, only the Server package would need replacement — the same pure function contract (`Handle(Command, State?) → DomainResult`) would continue to work. The Server package contains all actor lifecycle, event persistence, snapshot, pub/sub, and idempotency logic — replacing it is a significant engineering effort, not a trivial swap. The architectural boundary protects _domain code_, not _infrastructure code_.
+
+The deepest risk assessment — including DAPR performance benchmarks, operational cost analysis, and detailed migration scenarios — will be covered in a future [DAPR FAQ Deep Dive](../guides/dapr-faq.md).
+
+These risks are real — here is how Hexalith's architecture limits your exposure.
+
+### The Hexalith isolation guarantee
+
+Hexalith's five NuGet packages split into two tiers: **DAPR-free** (`Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, `Hexalith.EventStore.Testing`, `Hexalith.EventStore.Aspire`) and **DAPR-dependent** (`Hexalith.EventStore.Server` only). Domain service developers reference only the Client package — they never import DAPR SDKs. Your business logic (`Handle`/`Apply` methods) is portable regardless of what happens to DAPR.
+
+One caveat: not all DAPR state store backends support identical consistency guarantees — infrastructure portability means portable _code_, not portable _behavior_. The future [DAPR FAQ Deep Dive](../guides/dapr-faq.md) will cover backend-specific consistency differences.
+
+This isolation is by design — it is the same principle that keeps your domain services free of database imports, as described in the [Architecture Overview](architecture-overview.md).
+
+> **Note:** This section covers DAPR trade-offs at architectural depth — why DAPR was chosen, what it costs, and what the risk profile looks like. For operational-depth content including performance benchmarks, operational cost analysis, sidecar resource consumption, and detailed migration scenarios, see the future [DAPR FAQ Deep Dive](../guides/dapr-faq.md).
 
 ## Next Steps
 

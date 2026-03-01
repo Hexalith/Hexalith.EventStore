@@ -9,31 +9,31 @@ Thank you for your interest in contributing to Hexalith.EventStore! Whether you'
 1. [Fork the repository](https://github.com/Hexalith/Hexalith.EventStore/fork) to your GitHub account.
 2. Clone your fork locally:
 
-   ```bash
-   git clone https://github.com/<your-username>/Hexalith.EventStore.git
-   cd Hexalith.EventStore
-   ```
+    ```bash
+    git clone https://github.com/<your-username>/Hexalith.EventStore.git
+    cd Hexalith.EventStore
+    ```
 
 3. Create a feature branch from `main` using one of these naming conventions:
 
-   | Prefix | Use for |
-   |--------|---------|
-   | `feat/<description>` | New features or enhancements |
-   | `fix/<description>` | Bug fixes |
-   | `docs/<description>` | Documentation changes |
+    | Prefix               | Use for                      |
+    | -------------------- | ---------------------------- |
+    | `feat/<description>` | New features or enhancements |
+    | `fix/<description>`  | Bug fixes                    |
+    | `docs/<description>` | Documentation changes        |
 
-   ```bash
-   git checkout -b feat/my-new-feature
-   ```
+    ```bash
+    git checkout -b feat/my-new-feature
+    ```
 
 ### Submit a Pull Request
 
 1. Commit your changes with a clear, descriptive commit message.
 2. Push your branch to your fork:
 
-   ```bash
-   git push origin feat/my-new-feature
-   ```
+    ```bash
+    git push origin feat/my-new-feature
+    ```
 
 3. Open a pull request against the `main` branch of the upstream repository.
 4. Reference a related issue in the PR description if one exists (e.g., "Closes #42").
@@ -99,6 +99,22 @@ Before opening a PR for documentation changes, run:
 npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "CODE_OF_CONDUCT.md"
 ```
 
+### Triaging Documentation CI Failures
+
+When the **Docs** CI pipeline fails on the `sample-build` job, the sample no longer builds
+or tests cleanly. Treat this as a stale documentation signal.
+
+**How to triage:**
+
+1. Check the CI failure output — identify whether `dotnet build` or `dotnet test` failed
+2. Map the failure to documentation pages:
+    - `samples/Hexalith.EventStore.Sample/` build failure → review `docs/getting-started/quickstart.md` and `README.md` code examples
+    - `tests/Hexalith.EventStore.Sample.Tests/` test failure → review `docs/getting-started/quickstart.md` and `README.md` behavior notes
+3. Update the affected documentation pages to match the new code/behavior
+4. Push fixes and verify the Docs CI passes.
+
+Additional sample-to-documentation mappings are maintained in comments inside `docs-validation.yml`.
+
 ## Code Contributions
 
 ### Coding Standards
@@ -110,10 +126,10 @@ npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md
 
 The project uses a three-tier testing structure:
 
-| Tier | Scope | Location |
-|------|-------|----------|
-| Tier 1 | Unit tests | `tests/**/` |
-| Tier 2 | Integration tests with DAPR | `tests/**/` |
+| Tier   | Scope                            | Location    |
+| ------ | -------------------------------- | ----------- |
+| Tier 1 | Unit tests                       | `tests/**/` |
+| Tier 2 | Integration tests with DAPR      | `tests/**/` |
 | Tier 3 | Aspire end-to-end contract tests | `tests/**/` |
 
 - **New features should include Tier 1 unit tests at minimum.**

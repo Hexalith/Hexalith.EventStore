@@ -91,6 +91,7 @@ public class CommandStatusController(
                         tenant,
                         record.Status);
 
+                    Response.Headers["Retry-After"] = "1";
                     _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     return Ok(CommandStatusResponse.FromRecord(correlationId, record));
                 }
