@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -18,6 +19,25 @@ namespace Hexalith.EventStore.Client.Aggregates;
 public abstract class EventStoreAggregate<TState> : IDomainProcessor
     where TState : class, new() {
     private static readonly ConcurrentDictionary<Type, AggregateMetadata> _metadataCache = new();
+
+    /// <summary>
+    /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
+    /// The default implementation is a no-op. Override this method to customize domain resource names.
+    /// </summary>
+    /// <param name="options">The domain options to configure. Set non-null values to override convention defaults.</param>
+    /// <remarks>
+    /// This method is called during <c>UseEventStore()</c> cascade resolution, NOT during command processing.
+    /// It is invoked via <c>Activator.CreateInstance()</c> — the aggregate must have a parameterless constructor.
+    /// </remarks>
+    protected virtual void OnConfiguring(EventStoreDomainOptions options) {
+        // No-op by default. Subclasses override to set per-domain options.
+    }
+
+    /// <summary>
+    /// Internal entry point for the cascade resolver to invoke <see cref="OnConfiguring"/>.
+    /// </summary>
+    /// <param name="options">The domain options to configure.</param>
+    internal void InvokeOnConfiguring(EventStoreDomainOptions options) => OnConfiguring(options);
 
     /// <inheritdoc/>
     public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {

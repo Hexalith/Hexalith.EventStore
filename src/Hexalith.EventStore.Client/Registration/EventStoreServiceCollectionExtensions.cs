@@ -106,6 +106,9 @@ public static class EventStoreServiceCollectionExtensions {
         // Register DiscoveryResult as singleton
         _ = services.AddSingleton(discoveryResult);
 
+        // Register empty activation context (populated by UseEventStore())
+        _ = services.AddSingleton<EventStoreActivationContext>();
+
         // Register each discovered aggregate as IDomainProcessor
         foreach (DiscoveredDomain aggregate in discoveryResult.Aggregates) {
             // Non-keyed: backward compat + enumeration of all processors

@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Configuration;
+
 namespace Hexalith.EventStore.Client.Aggregates;
 /// <summary>
 /// Abstract base class for event-sourced read-model projections.
@@ -15,6 +17,24 @@ namespace Hexalith.EventStore.Client.Aggregates;
 public abstract class EventStoreProjection<TReadModel>
     where TReadModel : class, new() {
     private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> _applyCache = new();
+
+    /// <summary>
+    /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
+    /// The default implementation is a no-op. Override this method to customize domain resource names.
+    /// </summary>
+    /// <param name="options">The domain options to configure. Set non-null values to override convention defaults.</param>
+    /// <remarks>
+    /// This method is called during <c>UseEventStore()</c> cascade resolution, NOT during event projection.
+    /// </remarks>
+    protected virtual void OnConfiguring(EventStoreDomainOptions options) {
+        // No-op by default. Subclasses override to set per-domain options.
+    }
+
+    /// <summary>
+    /// Internal entry point for the cascade resolver to invoke <see cref="OnConfiguring"/>.
+    /// </summary>
+    /// <param name="options">The domain options to configure.</param>
+    internal void InvokeOnConfiguring(EventStoreDomainOptions options) => OnConfiguring(options);
 
     /// <summary>
     /// Projects events onto a read model by replaying them through typed Apply methods.
