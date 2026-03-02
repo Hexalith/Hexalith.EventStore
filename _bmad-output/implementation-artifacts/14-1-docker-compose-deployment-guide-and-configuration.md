@@ -1,6 +1,6 @@
 # Story 14.1: Docker Compose Deployment Guide & Configuration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,32 +22,32 @@ so that I can run the system on my development machine with a production-like to
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `docs/guides/deployment-docker-compose.md` (AC: #1, #3, #4, #5, #6, #7)
-  - [ ] 1.1 Write page header with back-link, title, intro paragraph, prerequisites blockquote
-  - [ ] 1.2 Create "What You'll Deploy" section with Mermaid topology diagram (commandapi + sample + DAPR sidecars + Redis/PostgreSQL + Keycloak)
-  - [ ] 1.3 Add `<details>` text description for the Mermaid diagram (NFR7 accessibility)
-  - [ ] 1.4 Write "Prerequisites" section: Docker Desktop, .NET 10 SDK, DAPR CLI, DAPR runtime init for Docker
-  - [ ] 1.5 Write "Generate Docker Compose Output" section documenting `PUBLISH_TARGET=docker aspire publish` command
-  - [ ] 1.6 Write "DAPR Runtime Setup for Docker" section (FR57) — explain `dapr init` vs `dapr init --slim`, sidecar injection in compose
-  - [ ] 1.7 Write "Deploy the Application" section with step-by-step: generate compose, configure environment variables, `docker compose up`
-  - [ ] 1.8 Write "Configure DAPR Components" section — explain state store and pub/sub backend selection, link to `deploy/dapr/` production configs
-  - [ ] 1.9 Write "Where Is My Data?" section (FR60) — explain physical storage locations per DAPR state store backend (Redis keys, PostgreSQL tables, Cosmos DB containers)
-  - [ ] 1.10 Write "Verify System Health" section (FR26) — document `/health`, `/alive`, `/ready` endpoints with expected responses
-  - [ ] 1.11 Write "Send a Test Command" section — verify working system with curl/PowerShell command examples
-  - [ ] 1.12 Write "Resource Requirements" section (FR63) — CPU, memory, storage estimates for local Docker Compose deployment
-  - [ ] 1.13 Write "Backend Swap" section — demonstrate switching from Redis to PostgreSQL with zero code changes (FR9)
-  - [ ] 1.14 Write "Troubleshooting" section — common Docker Compose deployment issues (port conflicts, sidecar timeout, container networking)
-  - [ ] 1.15 Write "Next Steps" section — links to Kubernetes guide (Story 14-2), deployment progression guide (Story 14-4), DAPR component reference (Story 14-5)
-- [ ] Task 2: Create or document Docker Compose configuration (AC: #2)
-  - [ ] 2.1 Document the Aspire publisher approach: `PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker`
-  - [ ] 2.2 Show the expected generated docker-compose.yaml structure with annotations
-  - [ ] 2.3 Document how to customize the generated compose file for production use (external auth, production state store)
-  - [ ] 2.4 If Aspire publisher is insufficient for a standalone demo, create a minimal `samples/deploy/docker-compose.yml` as a reference template
-- [ ] Task 3: Validation (AC: #6)
-  - [ ] 3.1 Follow the guide on a clean machine (or fresh Docker environment) to verify it produces a running system
-  - [ ] 3.2 Verify health endpoints return expected responses
-  - [ ] 3.3 Verify a test command can be submitted and an event is produced
-  - [ ] 3.4 Run markdownlint on the new file to ensure CI compliance
+- [x] Task 1: Create `docs/guides/deployment-docker-compose.md` (AC: #1, #3, #4, #5, #6, #7)
+  - [x] 1.1 Write page header with back-link, title, intro paragraph, prerequisites blockquote
+  - [x] 1.2 Create "What You'll Deploy" section with Mermaid topology diagram (commandapi + sample + DAPR sidecars + Redis/PostgreSQL + Keycloak)
+  - [x] 1.3 Add `<details>` text description for the Mermaid diagram (NFR7 accessibility)
+  - [x] 1.4 Write "Prerequisites" section: Docker Desktop, .NET 10 SDK, DAPR CLI, DAPR runtime init for Docker
+  - [x] 1.5 Write "Generate Docker Compose Output" section documenting `PUBLISH_TARGET=docker aspire publish` command
+  - [x] 1.6 Write "DAPR Runtime Setup for Docker" section (FR57) — explain `dapr init` vs `dapr init --slim`, sidecar injection in compose
+  - [x] 1.7 Write "Deploy the Application" section with step-by-step: generate compose, configure environment variables, `docker compose up`
+  - [x] 1.8 Write "Configure DAPR Components" section — explain state store and pub/sub backend selection, link to `deploy/dapr/` production configs
+  - [x] 1.9 Write "Where Is My Data?" section (FR60) — explain physical storage locations per DAPR state store backend (Redis keys, PostgreSQL tables, Cosmos DB containers)
+  - [x] 1.10 Write "Verify System Health" section (FR26) — document `/health`, `/alive`, `/ready` endpoints with expected responses
+  - [x] 1.11 Write "Send a Test Command" section — verify working system with curl/PowerShell command examples
+  - [x] 1.12 Write "Resource Requirements" section (FR63) — CPU, memory, storage estimates for local Docker Compose deployment
+  - [x] 1.13 Write "Backend Swap" section — demonstrate switching from Redis to PostgreSQL with zero code changes (FR9)
+  - [x] 1.14 Write "Troubleshooting" section — common Docker Compose deployment issues (port conflicts, sidecar timeout, container networking)
+  - [x] 1.15 Write "Next Steps" section — links to Kubernetes guide (Story 14-2), deployment progression guide (Story 14-4), DAPR component reference (Story 14-5)
+- [x] Task 2: Create or document Docker Compose configuration (AC: #2)
+  - [x] 2.1 Document the Aspire publisher approach: `PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker`
+  - [x] 2.2 Show the expected generated docker-compose.yaml structure with annotations
+  - [x] 2.3 Document how to customize the generated compose file for production use (external auth, production state store)
+  - [x] 2.4 If Aspire publisher is insufficient for a standalone demo, create a minimal `samples/deploy/docker-compose.yml` as a reference template
+- [x] Task 3: Validation (AC: #6)
+  - [x] 3.1 Follow the guide on a clean machine (or fresh Docker environment) to verify it produces a running system
+  - [x] 3.2 Verify health endpoints return expected responses
+  - [x] 3.3 Verify a test command can be submitted and an event is produced
+  - [x] 3.4 Run markdownlint on the new file to ensure CI compliance
 
 ## Dev Notes
 
