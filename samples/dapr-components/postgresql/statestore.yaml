@@ -9,17 +9,22 @@
 #   docker run -d --name dapr-postgres -p 5432:5432 \
 #     -e POSTGRES_PASSWORD=dapr-demo -e POSTGRES_DB=daprstate \
 #     postgres:16-alpine
+
+# DAPR component manifest version. All DAPR components use the v1alpha1 schema.
 apiVersion: dapr.io/v1alpha1
+# Resource type. DAPR building blocks (state stores, pub/sub, etc.) use "Component".
 kind: Component
 metadata:
   # Component name MUST be "statestore" — same as the Redis variant.
   # This is what makes the swap zero-code-change: the application references
   # "statestore" regardless of which backend implements it.
   name: statestore
+# Component specification: type, version, and configuration metadata.
 spec:
   # PostgreSQL state store component type.
   # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-postgresql/
   type: state.postgresql
+  # Component implementation version. Use "v1" for stable DAPR components.
   version: v1
   metadata:
     # PostgreSQL connection string (libpq format — space-separated, NOT semicolons).

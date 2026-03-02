@@ -7,15 +7,20 @@
 # changes only the state store (statestore.yaml), not the message broker.
 # In production, you might also swap pub/sub (e.g., to RabbitMQ or Kafka),
 # but that is a separate concern demonstrated in deploy/dapr/.
+
+# DAPR component manifest version. All DAPR components use the v1alpha1 schema.
 apiVersion: dapr.io/v1alpha1
+# Resource type. DAPR building blocks (state stores, pub/sub, etc.) use "Component".
 kind: Component
 metadata:
   # Component name referenced by the application. Must match across all variants.
   name: pubsub
+# Component specification: type, version, and configuration metadata.
 spec:
   # Redis Streams pub/sub component type.
   # Full reference: https://docs.dapr.io/reference/components-reference/supported-pubsub/setup-redis-pubsub/
   type: pubsub.redis
+  # Component implementation version. Use "v1" for stable DAPR components.
   version: v1
   metadata:
     # Redis server address. Same Redis instance as the state store in local dev.

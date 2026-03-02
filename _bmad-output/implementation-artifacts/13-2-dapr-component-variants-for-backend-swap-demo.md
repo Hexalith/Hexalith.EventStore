@@ -1,6 +1,6 @@
 # Story 13.2: DAPR Component Variants for Backend Swap Demo
 
-Status: review
+Status: done
 
 ## Story
 
@@ -19,29 +19,36 @@ so that I can experience a backend swap with zero code changes.
 
 The dev agent must create exactly these files:
 
-| Action | File | Purpose |
-| ------ | ---- | ------- |
-| CREATE | `samples/dapr-components/redis/statestore.yaml` | Redis state store component for local dev |
-| CREATE | `samples/dapr-components/redis/pubsub.yaml` | Redis pub/sub component for local dev |
-| CREATE | `samples/dapr-components/postgresql/statestore.yaml` | PostgreSQL state store component for backend swap |
-| CREATE | `samples/dapr-components/postgresql/pubsub.yaml` | PostgreSQL pub/sub component (Redis — pub/sub backend unchanged in swap) |
+| Action | File                                                 | Purpose                                                                                         |
+| ------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| CREATE | `samples/dapr-components/redis/statestore.yaml`      | Redis state store component for local dev                                                       |
+| CREATE | `samples/dapr-components/redis/pubsub.yaml`          | Redis pub/sub component for local dev                                                           |
+| CREATE | `samples/dapr-components/postgresql/statestore.yaml` | PostgreSQL state store component for backend swap                                               |
+| CREATE | `samples/dapr-components/postgresql/pubsub.yaml`     | Redis pub/sub component duplicated in `postgresql/` variant (pub/sub backend unchanged in swap) |
 
 No other source/configuration files. Do NOT modify existing files in `src/`, `deploy/`, `tests/`, or `samples/Hexalith.EventStore.Sample/`. BMAD workflow tracking artifacts under `_bmad-output/implementation-artifacts/` may be updated automatically by workflow execution.
 
 ## Tasks / Subtasks
 
 - [x] Task 1: Create `samples/dapr-components/redis/` directory with component YAML files (AC: #1, #4)
-  - [x] 1.1 Create `samples/dapr-components/redis/statestore.yaml` — Redis state store with inline field comments
-  - [x] 1.2 Create `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub with inline field comments
-  - [x] 1.3 Verify YAML validity (valid DAPR component schema)
+    - [x] 1.1 Create `samples/dapr-components/redis/statestore.yaml` — Redis state store with inline field comments
+    - [x] 1.2 Create `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub with inline field comments
+    - [x] 1.3 Verify YAML validity (valid DAPR component schema)
 - [x] Task 2: Create `samples/dapr-components/postgresql/` directory with component YAML files (AC: #2, #4)
-  - [x] 2.1 Create `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store with inline field comments
-  - [x] 2.2 Create `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub (same as redis/ variant — see Dev Notes)
-  - [x] 2.3 Verify YAML validity (valid DAPR component schema)
+    - [x] 2.1 Create `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store with inline field comments
+    - [x] 2.2 Create `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub (same as redis/ variant — see Dev Notes)
+    - [x] 2.3 Verify YAML validity (valid DAPR component schema)
 - [x] Task 3: Validate backend swap flow (AC: #3)
-  - [x] 3.1 Verify both directories are structurally identical (same filenames, same component names)
-  - [x] 3.2 Verify only `statestore.yaml` differs between redis/ and postgresql/ (pub/sub stays Redis in both)
-  - [x] 3.3 Verify both directories use identical component names (`statestore`, `pubsub`) — this is what makes the swap zero-code-change
+    - [x] 3.1 Verify both directories are structurally identical (same filenames, same component names)
+    - [x] 3.2 Verify only `statestore.yaml` differs between redis/ and postgresql/ (pub/sub stays Redis in both)
+    - [x] 3.3 Verify both directories use identical component names (`statestore`, `pubsub`) — this is what makes the swap zero-code-change
+
+### Review Follow-ups (AI)
+
+- [x] (AI-Review, HIGH) AC #4 is only partially satisfied: top-level YAML fields are not consistently explained inline (e.g., `apiVersion`, `kind`, `spec`, `version`, `scopes`) across all four files. Add concise inline comments so every field is explicitly documented. [`samples/dapr-components/redis/statestore.yaml:10`, `samples/dapr-components/redis/pubsub.yaml:8`, `samples/dapr-components/postgresql/statestore.yaml:12`, `samples/dapr-components/postgresql/pubsub.yaml:10`]
+- [x] (AI-Review, MEDIUM) Tasks 1.3 and 2.3 are marked complete, but there is no reproducible validation evidence in the story record (Debug Log says none). Add the exact validation command(s) and output summary used to confirm YAML validity. [`_bmad-output/implementation-artifacts/13-2-dapr-component-variants-for-backend-swap-demo.md:36`, `:40`, `:327`]
+- [x] (AI-Review, MEDIUM) Exact File Manifest wording is inconsistent for `postgresql/pubsub.yaml` (“PostgreSQL pub/sub component”) while implementation intentionally keeps Redis pubsub unchanged; updated wording to explicitly state Redis pub/sub duplication in the postgresql variant for resources-dir parity. [`_bmad-output/implementation-artifacts/13-2-dapr-component-variants-for-backend-swap-demo.md:27`, `samples/dapr-components/postgresql/pubsub.yaml:17`]
+- [x] (AI-Review, LOW) Completion note claims “Full Tier 1 regression suite passed (465 tests, 0 failures)” but no supporting log reference is linked in Debug Log References; add evidence or trim claim scope to what was actually run for this story. [`_bmad-output/implementation-artifacts/13-2-dapr-component-variants-for-backend-swap-demo.md:327`, `:339`]
 
 ## Dev Notes
 
@@ -50,6 +57,7 @@ No other source/configuration files. Do NOT modify existing files in `src/`, `de
 These YAML files are **documentation assets**, not runtime infrastructure. They demonstrate FR9 (backend swap with zero code changes) for the first domain service tutorial. The actual AppHost development topology uses Aspire-generated DAPR configuration (see `src/Hexalith.EventStore.AppHost/DaprComponents/`).
 
 **These files are NOT used by Aspire.** They exist so a developer reading the tutorial can:
+
 1. See a complete, self-contained Redis DAPR config
 2. See the same config swapped to PostgreSQL
 3. Understand that only the state store type changes — no app code changes
@@ -61,14 +69,15 @@ DAPR loads ALL component YAML files from a `--resources-dir` directory. If `pubs
 ### CRITICAL: What Changes Between Redis and PostgreSQL
 
 **ONLY the state store component differs.** The pub/sub component stays Redis in both variants because:
-- FR9 demonstrates a *state store* backend swap (event persistence)
+
+- FR9 demonstrates a _state store_ backend swap (event persistence)
 - Pub/sub backend swap is a separate concern (not in scope for this demo)
 - Keeping pub/sub identical makes the swap demo clearer — exactly ONE file changes
 
-| Component | `redis/` Variant | `postgresql/` Variant | Changed? |
-| --------- | ---------------- | -------------------- | -------- |
-| `statestore.yaml` | `state.redis` type | `state.postgresql` type | YES |
-| `pubsub.yaml` | `pubsub.redis` type | `pubsub.redis` type | NO |
+| Component         | `redis/` Variant    | `postgresql/` Variant   | Changed? |
+| ----------------- | ------------------- | ----------------------- | -------- |
+| `statestore.yaml` | `state.redis` type  | `state.postgresql` type | YES      |
+| `pubsub.yaml`     | `pubsub.redis` type | `pubsub.redis` type     | NO       |
 
 ### CRITICAL: Component Name Must Be "statestore"
 
@@ -77,6 +86,7 @@ Both Redis and PostgreSQL state store YAML files MUST use `metadata.name: states
 ### CRITICAL: Simplified vs Production YAML
 
 These sample YAML files must be **simplified** compared to the production templates in `deploy/dapr/`:
+
 - **NO** environment variable substitution (`{env:...}`) — use hardcoded localhost values
 - **NO** three-layer pub/sub scoping complexity — simple single-scope setup
 - **NO** external subscriber configurations — just `commandapi`
@@ -102,30 +112,30 @@ The goal is **developer comprehension**, not production readiness. Production DA
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  # Component name referenced by the application. Must match across all
-  # backend variants to enable zero-code-change swaps.
-  name: statestore
+    # Component name referenced by the application. Must match across all
+    # backend variants to enable zero-code-change swaps.
+    name: statestore
 spec:
-  # Redis state store component type.
-  # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-redis/
-  type: state.redis
-  version: v1
-  metadata:
-    # Redis server address. Default Docker Desktop Redis runs on localhost:6379.
-    - name: redisHost
-      value: "localhost:6379"
-    # Redis password. Empty string for default local Redis without auth.
-    - name: redisPassword
-      value: ""
-    # Required for DAPR actor state management. The EventStore uses DAPR actors
-    # to process commands, so the state store must support actor state.
-    - name: actorStateStore
-      value: "true"
+    # Redis state store component type.
+    # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-redis/
+    type: state.redis
+    version: v1
+    metadata:
+        # Redis server address. Default Docker Desktop Redis runs on localhost:6379.
+        - name: redisHost
+          value: "localhost:6379"
+        # Redis password. Empty string for default local Redis without auth.
+        - name: redisPassword
+          value: ""
+        # Required for DAPR actor state management. The EventStore uses DAPR actors
+        # to process commands, so the state store must support actor state.
+        - name: actorStateStore
+          value: "true"
 # Scope to commandapi only. Domain services (e.g., the sample Counter service)
 # never access the state store directly — they receive commands via service
 # invocation and return events. This enforces the zero-trust architecture.
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 ### Exact YAML Content — Redis Pub/Sub
@@ -143,30 +153,30 @@ scopes:
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  # Component name referenced by the application. Must match across all variants.
-  name: pubsub
+    # Component name referenced by the application. Must match across all variants.
+    name: pubsub
 spec:
-  # Redis Streams pub/sub component type.
-  # Full reference: https://docs.dapr.io/reference/components-reference/supported-pubsub/setup-redis-pubsub/
-  type: pubsub.redis
-  version: v1
-  metadata:
-    # Redis server address. Same Redis instance as the state store in local dev.
-    - name: redisHost
-      value: "localhost:6379"
-    # Redis password. Empty string for default local Redis without auth.
-    - name: redisPassword
-      value: ""
-    # Enable dead-letter topic for messages that exhaust delivery retries.
-    - name: enableDeadLetter
-      value: "true"
-    # Default dead-letter topic name. Per-subscription dead-letter routing
-    # (deadletter.{tenant}.{domain}.events) is configured separately.
-    - name: deadLetterTopic
-      value: "deadletter"
+    # Redis Streams pub/sub component type.
+    # Full reference: https://docs.dapr.io/reference/components-reference/supported-pubsub/setup-redis-pubsub/
+    type: pubsub.redis
+    version: v1
+    metadata:
+        # Redis server address. Same Redis instance as the state store in local dev.
+        - name: redisHost
+          value: "localhost:6379"
+        # Redis password. Empty string for default local Redis without auth.
+        - name: redisPassword
+          value: ""
+        # Enable dead-letter topic for messages that exhaust delivery retries.
+        - name: enableDeadLetter
+          value: "true"
+        # Default dead-letter topic name. Per-subscription dead-letter routing
+        # (deadletter.{tenant}.{domain}.events) is configured separately.
+        - name: deadLetterTopic
+          value: "deadletter"
 # Scope to commandapi only. Domain services have zero pub/sub access.
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 ### Exact YAML Content — PostgreSQL State Store
@@ -188,31 +198,31 @@ scopes:
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  # Component name MUST be "statestore" — same as the Redis variant.
-  # This is what makes the swap zero-code-change: the application references
-  # "statestore" regardless of which backend implements it.
-  name: statestore
+    # Component name MUST be "statestore" — same as the Redis variant.
+    # This is what makes the swap zero-code-change: the application references
+    # "statestore" regardless of which backend implements it.
+    name: statestore
 spec:
-  # PostgreSQL state store component type.
-  # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-postgresql/
-  type: state.postgresql
-  version: v1
-  metadata:
-    # PostgreSQL connection string (libpq format — space-separated, NOT semicolons).
-    # Format: host=<host> port=<port> user=<user> password=<pass> dbname=<db> sslmode=disable
-    # For local development, sslmode=disable avoids TLS certificate setup.
-    - name: connectionString
-      value: "host=localhost port=5432 user=postgres password=dapr-demo dbname=daprstate sslmode=disable"
-    # Required for DAPR actor state management — same requirement as Redis.
-    - name: actorStateStore
-      value: "true"
-    # DAPR creates a default table named "state" in the target database.
-    # Uncomment to use a custom table name:
-    # - name: tableName
-    #   value: "daprstate"
+    # PostgreSQL state store component type.
+    # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-postgresql/
+    type: state.postgresql
+    version: v1
+    metadata:
+        # PostgreSQL connection string (libpq format — space-separated, NOT semicolons).
+        # Format: host=<host> port=<port> user=<user> password=<pass> dbname=<db> sslmode=disable
+        # For local development, sslmode=disable avoids TLS certificate setup.
+        - name: connectionString
+          value: "host=localhost port=5432 user=postgres password=dapr-demo dbname=daprstate sslmode=disable"
+        # Required for DAPR actor state management — same requirement as Redis.
+        - name: actorStateStore
+          value: "true"
+        # DAPR creates a default table named "state" in the target database.
+        # Uncomment to use a custom table name:
+        # - name: tableName
+        #   value: "daprstate"
 # Scope to commandapi only — same security posture as Redis variant.
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 ### Exact YAML Content — PostgreSQL Pub/Sub (Same as Redis)
@@ -234,30 +244,30 @@ This file is **identical** to `samples/dapr-components/redis/pubsub.yaml`. Copy 
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  # Component name referenced by the application. Must match across all variants.
-  name: pubsub
+    # Component name referenced by the application. Must match across all variants.
+    name: pubsub
 spec:
-  # Redis Streams pub/sub component type.
-  # Full reference: https://docs.dapr.io/reference/components-reference/supported-pubsub/setup-redis-pubsub/
-  type: pubsub.redis
-  version: v1
-  metadata:
-    # Redis server address. Same Redis instance as the state store in local dev.
-    - name: redisHost
-      value: "localhost:6379"
-    # Redis password. Empty string for default local Redis without auth.
-    - name: redisPassword
-      value: ""
-    # Enable dead-letter topic for messages that exhaust delivery retries.
-    - name: enableDeadLetter
-      value: "true"
-    # Default dead-letter topic name. Per-subscription dead-letter routing
-    # (deadletter.{tenant}.{domain}.events) is configured separately.
-    - name: deadLetterTopic
-      value: "deadletter"
+    # Redis Streams pub/sub component type.
+    # Full reference: https://docs.dapr.io/reference/components-reference/supported-pubsub/setup-redis-pubsub/
+    type: pubsub.redis
+    version: v1
+    metadata:
+        # Redis server address. Same Redis instance as the state store in local dev.
+        - name: redisHost
+          value: "localhost:6379"
+        # Redis password. Empty string for default local Redis without auth.
+        - name: redisPassword
+          value: ""
+        # Enable dead-letter topic for messages that exhaust delivery retries.
+        - name: enableDeadLetter
+          value: "true"
+        # Default dead-letter topic name. Per-subscription dead-letter routing
+        # (deadletter.{tenant}.{domain}.events) is configured separately.
+        - name: deadLetterTopic
+          value: "deadletter"
 # Scope to commandapi only. Domain services have zero pub/sub access.
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 ### Project Structure Notes
@@ -269,11 +279,11 @@ scopes:
 
 ### Relationship to Existing DAPR Components
 
-| Location | Purpose | Used By |
-| -------- | ------- | ------- |
-| `src/Hexalith.EventStore.AppHost/DaprComponents/` | Aspire local dev topology | Aspire AppHost (runtime) |
-| `deploy/dapr/` | Production backend templates | Kubernetes/Azure deployment |
-| `samples/dapr-components/` (NEW) | Documentation demo — backend swap | Tutorial readers (educational) |
+| Location                                          | Purpose                           | Used By                        |
+| ------------------------------------------------- | --------------------------------- | ------------------------------ |
+| `src/Hexalith.EventStore.AppHost/DaprComponents/` | Aspire local dev topology         | Aspire AppHost (runtime)       |
+| `deploy/dapr/`                                    | Production backend templates      | Kubernetes/Azure deployment    |
+| `samples/dapr-components/` (NEW)                  | Documentation demo — backend swap | Tutorial readers (educational) |
 
 The new files are **simplified, educational versions** of the production configs. They share the same component names and structure but use hardcoded localhost values and omit advanced scoping.
 
@@ -326,7 +336,21 @@ Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
-None — clean implementation with no errors or retries.
+**YAML Validation (Tasks 1.3/2.3):** Python `yaml.safe_load` parse + DAPR component schema assertions (apiVersion, kind, metadata.name, spec.type, spec.version). Cross-file invariant checks: component name parity (statestore/pubsub across both variants), pubsub spec identity between redis/ and postgresql/ variants.
+
+Exact command executed:
+
+`python -c "from pathlib import Path; import yaml; files=[Path('samples/dapr-components/redis/statestore.yaml'),Path('samples/dapr-components/redis/pubsub.yaml'),Path('samples/dapr-components/postgresql/statestore.yaml'),Path('samples/dapr-components/postgresql/pubsub.yaml')]; docs={str(p):yaml.safe_load(p.read_text(encoding='utf-8')) for p in files}; assert all(d.get('apiVersion')=='dapr.io/v1alpha1' for d in docs.values()); assert all(d.get('kind')=='Component' for d in docs.values()); assert docs[str(files[0])]['metadata']['name']=='statestore' and docs[str(files[2])]['metadata']['name']=='statestore'; assert docs[str(files[1])]['metadata']['name']=='pubsub' and docs[str(files[3])]['metadata']['name']=='pubsub'; assert docs[str(files[0])]['spec']['type']=='state.redis'; assert docs[str(files[2])]['spec']['type']=='state.postgresql'; pr={k:v for k,v in docs[str(files[1])]['spec'].items() if k!='metadata'}; pp={k:v for k,v in docs[str(files[3])]['spec'].items() if k!='metadata'}; assert pr==pp; print('PASS: 4/4 files parsed, 7/7 assertions passed')"`
+
+Output summary: `PASS: 4/4 files parsed, 7/7 assertions passed`.
+
+**Tier 1 Regression (2026-03-02):** `dotnet test` per-project in Release configuration:
+
+- Contracts.Tests: 157 passed, 0 failed
+- Client.Tests: 231 passed, 0 failed
+- Sample.Tests: 4 passed, 0 failed
+- Testing.Tests: 48 passed, 0 failed
+- **Total: 440 passed, 0 failures**
 
 ### Completion Notes List
 
@@ -336,7 +360,11 @@ None — clean implementation with no errors or retries.
 - All files use simplified, hardcoded localhost values with comprehensive inline comments for educational purposes
 - Validated: YAML schema correctness, component name parity (`statestore`/`pubsub` across both variants), only statestore type differs between variants
 - No .NET code changes — these are YAML documentation assets only
-- Full Tier 1 regression suite passed (465 tests, 0 failures)
+- Tier 1 regression suite passed (440 tests: 157 Contracts + 231 Client + 4 Sample + 48 Testing, 0 failures)
+- ✅ Resolved review finding [HIGH]: Added inline comments for `apiVersion`, `kind`, `spec`, `version` across all 4 YAML files — AC #4 now fully satisfied
+- ✅ Resolved review finding [MEDIUM]: Added YAML validation evidence (Python yaml.safe_load + schema assertions + cross-file invariants) to Debug Log References
+- ✅ Resolved review finding [MEDIUM]: Updated Exact File Manifest wording for `postgresql/pubsub.yaml` to explicitly state Redis pub/sub duplication and unchanged backend behavior
+- ✅ Resolved review finding [LOW]: Corrected test count from 465 to 440 and linked full per-project evidence in Debug Log References
 
 ### Implementation Plan
 
@@ -344,11 +372,58 @@ Straightforward file creation following exact YAML content specified in story De
 
 ### File List
 
-- NEW: `samples/dapr-components/redis/statestore.yaml` — Redis state store component (state.redis)
-- NEW: `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub component (pubsub.redis)
-- NEW: `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store component (state.postgresql)
-- NEW: `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub component (pubsub.redis, identical to redis variant)
+- MODIFIED: `samples/dapr-components/redis/statestore.yaml` — Redis state store component (state.redis) — added inline comments for apiVersion, kind, spec, version
+- MODIFIED: `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub component (pubsub.redis) — added inline comments for apiVersion, kind, spec, version
+- MODIFIED: `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store component (state.postgresql) — added inline comments for apiVersion, kind, spec, version
+- MODIFIED: `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub component (pubsub.redis, identical to redis variant) — added inline comments for apiVersion, kind, spec, version
+- MODIFIED: `_bmad-output/implementation-artifacts/13-2-dapr-component-variants-for-backend-swap-demo.md` — story traceability updates (manifest wording, reproducible validation evidence, review closure)
+- MODIFIED: `_bmad-output/implementation-artifacts/sprint-status.yaml` — sprint tracking sync to `done`
 
 ## Change Log
 
 - 2026-03-02: Created 4 DAPR component YAML files for Redis and PostgreSQL backend swap demo (Story 13-2)
+- 2026-03-02: Senior Developer Review (AI) completed — 1 high, 2 medium, 1 low findings; status set to in-progress; follow-up tasks added.
+- 2026-03-02: Addressed code review findings — 4 items resolved (1 HIGH, 2 MEDIUM, 1 LOW). Added inline comments for all top-level YAML fields, YAML validation evidence, corrected test count with linked proof. Status: review.
+- 2026-03-02: Follow-up re-review completed — remaining HIGH/MEDIUM documentation traceability issues fixed (manifest wording clarified, reproducible validation command added). Status: done.
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+Jerome (AI Code Review)
+
+### Date
+
+2026-03-02
+
+### Outcome
+
+Approved
+
+### Summary
+
+- Story requirements are fully implemented and backend swap invariants are in place.
+- Redis/PostgreSQL directory parity is correct; pub/sub differs only in header comments.
+- Review traceability is complete, including reproducible validation evidence and corrected manifest wording.
+
+### Findings
+
+1. **[RESOLVED] AC #4 compliance** — all top-level YAML fields are now explained inline across all files.
+2. **[RESOLVED] Validation traceability gap** — tasks 1.3/2.3 now include exact reproducible command and output summary.
+3. **[RESOLVED] Manifest wording mismatch** — postgresql pubsub purpose now explicitly states Redis pubsub duplication/unchanged backend.
+4. **[RESOLVED] Test evidence mismatch** — Tier 1 regression claim corrected and linked in Debug Log References.
+
+### Follow-up Re-review (AI)
+
+#### Date
+
+2026-03-02
+
+#### Outcome
+
+Approved
+
+#### Closure Notes
+
+- All previously identified HIGH and MEDIUM findings are resolved.
+- Story status is moved to `done` and sprint tracking is synced.

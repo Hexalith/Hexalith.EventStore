@@ -7,16 +7,21 @@
 # postgresql/ resources directory instead:
 #   dapr run --resources-dir ./samples/dapr-components/postgresql/ -- dotnet run
 # No application code changes needed.
+
+# DAPR component manifest version. All DAPR components use the v1alpha1 schema.
 apiVersion: dapr.io/v1alpha1
+# Resource type. DAPR building blocks (state stores, pub/sub, etc.) use "Component".
 kind: Component
 metadata:
   # Component name referenced by the application. Must match across all
   # backend variants to enable zero-code-change swaps.
   name: statestore
+# Component specification: type, version, and configuration metadata.
 spec:
   # Redis state store component type.
   # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-redis/
   type: state.redis
+  # Component implementation version. Use "v1" for stable DAPR components.
   version: v1
   metadata:
     # Redis server address. Default Docker Desktop Redis runs on localhost:6379.
