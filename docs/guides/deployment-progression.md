@@ -225,9 +225,9 @@ All state store backends support ETag optimistic concurrency, actor state store,
 
 ## Next Steps
 
-- [DAPR Component Configuration Reference (planned)](../../_bmad-output/planning-artifacts/epics.md#story-75-dapr-component-configuration-reference) — detailed per-backend setup
-- [Security Model Documentation (planned)](../../_bmad-output/planning-artifacts/epics.md#story-76-security-model-documentation) — access control and mTLS patterns
-- [Troubleshooting Guide (planned)](../../_bmad-output/planning-artifacts/epics.md#story-77-troubleshooting-guide) — common issues and solutions
+- [DAPR Component Configuration Reference](dapr-component-reference.md) — detailed per-backend setup
+- [Security Model Documentation](security-model.md) — access control and mTLS patterns
+- [Troubleshooting Guide](troubleshooting.md) — common issues and solutions
 - **Individual deployment guides** for detailed walkthroughs:
     - [Docker Compose Deployment Guide](deployment-docker-compose.md)
     - [Kubernetes Deployment Guide](deployment-kubernetes.md)

@@ -996,8 +996,8 @@ All backends use `{env:VAR_NAME}` substitution in DAPR component YAML. Set these
 
 ## Next Steps
 
-- [Security Model Documentation](security-model.md) — authentication, authorization, and security architecture (Story 14-6)
-- [Troubleshooting Guide](troubleshooting.md) — common DAPR component configuration issues and solutions (Story 14-7)
+- [Security Model Documentation](security-model.md) — authentication, authorization, and security architecture
+- [Troubleshooting Guide](troubleshooting.md) — common DAPR component configuration issues and solutions
 - [Deployment Progression Guide](deployment-progression.md) — how to move between deployment environments
 - [Docker Compose Deployment](deployment-docker-compose.md) — local development with Docker Compose
 - [Kubernetes Deployment](deployment-kubernetes.md) — on-premise production with Kubernetes
