@@ -1002,4 +1002,4 @@ All backends use `{env:VAR_NAME}` substitution in DAPR component YAML. Set these
 - [Docker Compose Deployment](deployment-docker-compose.md) — local development with Docker Compose
 - [Kubernetes Deployment](deployment-kubernetes.md) — on-premise production with Kubernetes
 - [Azure Container Apps Deployment](deployment-azure-container-apps.md) — cloud PaaS with Azure Container Apps
-- Configuration Reference (Story 15-1) — application-level configuration settings (future)
+- [Configuration Reference](configuration-reference.md) — application-level configuration settings
