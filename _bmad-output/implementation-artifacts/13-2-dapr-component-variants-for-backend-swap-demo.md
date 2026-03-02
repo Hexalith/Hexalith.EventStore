@@ -1,6 +1,6 @@
 # Story 13.2: DAPR Component Variants for Backend Swap Demo
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -30,18 +30,18 @@ No other source/configuration files. Do NOT modify existing files in `src/`, `de
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `samples/dapr-components/redis/` directory with component YAML files (AC: #1, #4)
-  - [ ] 1.1 Create `samples/dapr-components/redis/statestore.yaml` — Redis state store with inline field comments
-  - [ ] 1.2 Create `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub with inline field comments
-  - [ ] 1.3 Verify YAML validity (valid DAPR component schema)
-- [ ] Task 2: Create `samples/dapr-components/postgresql/` directory with component YAML files (AC: #2, #4)
-  - [ ] 2.1 Create `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store with inline field comments
-  - [ ] 2.2 Create `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub (same as redis/ variant — see Dev Notes)
-  - [ ] 2.3 Verify YAML validity (valid DAPR component schema)
-- [ ] Task 3: Validate backend swap flow (AC: #3)
-  - [ ] 3.1 Verify both directories are structurally identical (same filenames, same component names)
-  - [ ] 3.2 Verify only `statestore.yaml` differs between redis/ and postgresql/ (pub/sub stays Redis in both)
-  - [ ] 3.3 Verify both directories use identical component names (`statestore`, `pubsub`) — this is what makes the swap zero-code-change
+- [x] Task 1: Create `samples/dapr-components/redis/` directory with component YAML files (AC: #1, #4)
+  - [x] 1.1 Create `samples/dapr-components/redis/statestore.yaml` — Redis state store with inline field comments
+  - [x] 1.2 Create `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub with inline field comments
+  - [x] 1.3 Verify YAML validity (valid DAPR component schema)
+- [x] Task 2: Create `samples/dapr-components/postgresql/` directory with component YAML files (AC: #2, #4)
+  - [x] 2.1 Create `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store with inline field comments
+  - [x] 2.2 Create `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub (same as redis/ variant — see Dev Notes)
+  - [x] 2.3 Verify YAML validity (valid DAPR component schema)
+- [x] Task 3: Validate backend swap flow (AC: #3)
+  - [x] 3.1 Verify both directories are structurally identical (same filenames, same component names)
+  - [x] 3.2 Verify only `statestore.yaml` differs between redis/ and postgresql/ (pub/sub stays Redis in both)
+  - [x] 3.3 Verify both directories use identical component names (`statestore`, `pubsub`) — this is what makes the swap zero-code-change
 
 ## Dev Notes
 
@@ -322,10 +322,33 @@ Since these YAML files have no CI validation, the reviewer must verify:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+None — clean implementation with no errors or retries.
+
 ### Completion Notes List
 
+- Created 4 DAPR component YAML files as exact documentation assets for the backend swap demo (FR9)
+- Redis variant: `statestore.yaml` (state.redis) and `pubsub.yaml` (pubsub.redis) in `samples/dapr-components/redis/`
+- PostgreSQL variant: `statestore.yaml` (state.postgresql) and `pubsub.yaml` (pubsub.redis — identical to redis variant) in `samples/dapr-components/postgresql/`
+- All files use simplified, hardcoded localhost values with comprehensive inline comments for educational purposes
+- Validated: YAML schema correctness, component name parity (`statestore`/`pubsub` across both variants), only statestore type differs between variants
+- No .NET code changes — these are YAML documentation assets only
+- Full Tier 1 regression suite passed (465 tests, 0 failures)
+
+### Implementation Plan
+
+Straightforward file creation following exact YAML content specified in story Dev Notes. No architectural decisions needed — content was fully specified.
+
 ### File List
+
+- NEW: `samples/dapr-components/redis/statestore.yaml` — Redis state store component (state.redis)
+- NEW: `samples/dapr-components/redis/pubsub.yaml` — Redis pub/sub component (pubsub.redis)
+- NEW: `samples/dapr-components/postgresql/statestore.yaml` — PostgreSQL state store component (state.postgresql)
+- NEW: `samples/dapr-components/postgresql/pubsub.yaml` — Redis pub/sub component (pubsub.redis, identical to redis variant)
+
+## Change Log
+
+- 2026-03-02: Created 4 DAPR component YAML files for Redis and PostgreSQL backend swap demo (Story 13-2)

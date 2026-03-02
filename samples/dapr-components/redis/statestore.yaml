@@ -1,0 +1,36 @@
+# DAPR State Store — Redis (Default Local Development)
+# =====================================================
+# Stores aggregate state, event streams, snapshots, and command status.
+# This is the default backend for local development with Docker.
+#
+# Backend swap demo: To switch to PostgreSQL, run DAPR with the
+# postgresql/ resources directory instead:
+#   dapr run --resources-dir ./samples/dapr-components/postgresql/ -- dotnet run
+# No application code changes needed.
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  # Component name referenced by the application. Must match across all
+  # backend variants to enable zero-code-change swaps.
+  name: statestore
+spec:
+  # Redis state store component type.
+  # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-redis/
+  type: state.redis
+  version: v1
+  metadata:
+    # Redis server address. Default Docker Desktop Redis runs on localhost:6379.
+    - name: redisHost
+      value: "localhost:6379"
+    # Redis password. Empty string for default local Redis without auth.
+    - name: redisPassword
+      value: ""
+    # Required for DAPR actor state management. The EventStore uses DAPR actors
+    # to process commands, so the state store must support actor state.
+    - name: actorStateStore
+      value: "true"
+# Scope to commandapi only. Domain services (e.g., the sample Counter service)
+# never access the state store directly — they receive commands via service
+# invocation and return events. This enforces the zero-trust architecture.
+scopes:
+  - commandapi

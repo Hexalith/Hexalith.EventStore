@@ -1,0 +1,36 @@
+# DAPR Pub/Sub — Redis Streams (Local Development)
+# ==================================================
+# Distributes domain events to subscribers after command processing.
+# Topic pattern: {tenant}.{domain}.events (e.g., "sample.counter.events")
+#
+# NOTE: This file is identical to the redis/ variant. The backend swap demo
+# changes only the state store (statestore.yaml), not the message broker.
+# In production, you might also swap pub/sub (e.g., to RabbitMQ or Kafka),
+# but that is a separate concern demonstrated in deploy/dapr/.
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  # Component name referenced by the application. Must match across all variants.
+  name: pubsub
+spec:
+  # Redis Streams pub/sub component type.
+  # Full reference: https://docs.dapr.io/reference/components-reference/supported-pubsub/setup-redis-pubsub/
+  type: pubsub.redis
+  version: v1
+  metadata:
+    # Redis server address. Same Redis instance as the state store in local dev.
+    - name: redisHost
+      value: "localhost:6379"
+    # Redis password. Empty string for default local Redis without auth.
+    - name: redisPassword
+      value: ""
+    # Enable dead-letter topic for messages that exhaust delivery retries.
+    - name: enableDeadLetter
+      value: "true"
+    # Default dead-letter topic name. Per-subscription dead-letter routing
+    # (deadletter.{tenant}.{domain}.events) is configured separately.
+    - name: deadLetterTopic
+      value: "deadletter"
+# Scope to commandapi only. Domain services have zero pub/sub access.
+scopes:
+  - commandapi

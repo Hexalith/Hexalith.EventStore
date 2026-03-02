@@ -1,0 +1,39 @@
+# DAPR State Store — PostgreSQL (Backend Swap Demo)
+# ===================================================
+# Stores aggregate state, event streams, snapshots, and command status.
+# This variant demonstrates FR9: infrastructure backend swap with zero
+# code changes. The application code is identical — only this YAML differs.
+#
+# Prerequisites: A PostgreSQL instance running on localhost:5432.
+# Quick start with Docker:
+#   docker run -d --name dapr-postgres -p 5432:5432 \
+#     -e POSTGRES_PASSWORD=dapr-demo -e POSTGRES_DB=daprstate \
+#     postgres:16-alpine
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  # Component name MUST be "statestore" — same as the Redis variant.
+  # This is what makes the swap zero-code-change: the application references
+  # "statestore" regardless of which backend implements it.
+  name: statestore
+spec:
+  # PostgreSQL state store component type.
+  # Full reference: https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-postgresql/
+  type: state.postgresql
+  version: v1
+  metadata:
+    # PostgreSQL connection string (libpq format — space-separated, NOT semicolons).
+    # Format: host=<host> port=<port> user=<user> password=<pass> dbname=<db> sslmode=disable
+    # For local development, sslmode=disable avoids TLS certificate setup.
+    - name: connectionString
+      value: "host=localhost port=5432 user=postgres password=dapr-demo dbname=daprstate sslmode=disable"
+    # Required for DAPR actor state management — same requirement as Redis.
+    - name: actorStateStore
+      value: "true"
+    # DAPR creates a default table named "state" in the target database.
+    # Uncomment to use a custom table name:
+    # - name: tableName
+    #   value: "daprstate"
+# Scope to commandapi only — same security posture as Redis variant.
+scopes:
+  - commandapi
