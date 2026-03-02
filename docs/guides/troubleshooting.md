@@ -57,10 +57,10 @@ Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docke
 **Symptom:** The application fails to start with an "address already in use" error:
 
 ```text
-System.IO.IOException: Failed to bind to address http://localhost:5001: address already in use.
+System.IO.IOException: Failed to bind to address http://localhost:8080: address already in use.
 ```
 
-**Probable Cause:** Another process is using one of the default ports. The Aspire AppHost allocates ports for the Command API (5001), Keycloak (8180), Redis (6379), and PostgreSQL (5432).
+**Probable Cause:** Another process is using one of the default ports. The Aspire AppHost allocates ports for the Command API (8080), Keycloak (8180), Redis (6379), and PostgreSQL (5432).
 
 **Resolution:**
 
@@ -68,10 +68,10 @@ System.IO.IOException: Failed to bind to address http://localhost:5001: address 
 
     ```bash
     # Linux / macOS
-    $ lsof -i :5001
+    $ lsof -i :8080
 
     # Windows (PowerShell)
-    $ netstat -ano | findstr :5001
+    $ netstat -ano | findstr :8080
     ```
 
 2. Stop the conflicting process, or change the port in the AppHost configuration. For Keycloak, the port is set in `src/Hexalith.EventStore.AppHost/Program.cs`:
@@ -999,7 +999,7 @@ Hexalith.EventStore assigns a correlation ID to every command submission. Use it
 4. **Check command status** using the status tracking endpoint:
 
     ```bash
-    $ curl http://localhost:5001/api/v1/commands/status/<correlation-id>
+    $ curl http://localhost:8080/api/v1/commands/status/<correlation-id>
     ```
 
 5. **Inspect dead-letter topics** if the command failed. Dead-letter messages include the full command payload, error details, and the correlation ID:
@@ -1038,6 +1038,7 @@ $ az servicebus topic subscription list \
 ## Next Steps
 
 - **Next:** [Security Model](security-model.md) — security configuration and access control troubleshooting
+- **Related:** [Disaster Recovery Procedure](disaster-recovery.md) — backup strategies and recovery procedures per backend
 - **Related:** [DAPR Component Configuration Reference](dapr-component-reference.md) — detailed component configuration per backend
 - **Related:** [Deployment Progression Guide](deployment-progression.md) — how environments differ and when to use each
 - **Related:** [Docker Compose Deployment Guide](deployment-docker-compose.md) — full Docker Compose setup instructions

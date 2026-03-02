@@ -228,6 +228,7 @@ All state store backends support ETag optimistic concurrency, actor state store,
 - [DAPR Component Configuration Reference](dapr-component-reference.md) — detailed per-backend setup
 - [Security Model Documentation](security-model.md) — access control and mTLS patterns
 - [Troubleshooting Guide](troubleshooting.md) — common issues and solutions
+- [Disaster Recovery Procedure](disaster-recovery.md) — backup and recovery per backend
 - **Individual deployment guides** for detailed walkthroughs:
     - [Docker Compose Deployment Guide](deployment-docker-compose.md)
     - [Kubernetes Deployment Guide](deployment-kubernetes.md)

@@ -201,7 +201,7 @@ development_status:
   14-5-dapr-component-configuration-reference: done
   14-6-security-model-documentation: done
   14-7-troubleshooting-guide: done
-  14-8-disaster-recovery-procedure: backlog
+  14-8-disaster-recovery-procedure: done
   epic-14-retrospective: optional
 
   # Epic 15: Configuration, Versioning & Lifecycle (Phase 2)
