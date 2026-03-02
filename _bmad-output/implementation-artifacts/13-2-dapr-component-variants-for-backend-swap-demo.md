@@ -11,7 +11,7 @@ so that I can experience a backend swap with zero code changes.
 ## Acceptance Criteria
 
 1. `samples/dapr-components/redis/` contains DAPR component YAML files configured for Redis (default local dev backend)
-2. `samples/dapr-components/postgresql/` contains DAPR component YAML files configured for PostgreSQL
+2. `samples/dapr-components/postgresql/` contains DAPR component YAML files configured with PostgreSQL state store (pub/sub remains Redis — only the state store swaps)
 3. The backend swap is achievable by pointing DAPR to a different component directory — no application code changes
 4. Each YAML file includes inline comments explaining every field per the code example patterns in the architecture document
 
@@ -41,7 +41,7 @@ No other source/configuration files. Do NOT modify existing files in `src/`, `de
 - [ ] Task 3: Validate backend swap flow (AC: #3)
   - [ ] 3.1 Verify both directories are structurally identical (same filenames, same component names)
   - [ ] 3.2 Verify only `statestore.yaml` differs between redis/ and postgresql/ (pub/sub stays Redis in both)
-  - [ ] 3.3 Verify no application code references a specific backend — swap is pure YAML config change
+  - [ ] 3.3 Verify both directories use identical component names (`statestore`, `pubsub`) — this is what makes the swap zero-code-change
 
 ## Dev Notes
 
@@ -53,6 +53,10 @@ These YAML files are **documentation assets**, not runtime infrastructure. They 
 1. See a complete, self-contained Redis DAPR config
 2. See the same config swapped to PostgreSQL
 3. Understand that only the state store type changes — no app code changes
+
+### CRITICAL: Both Files Required in Each Directory
+
+DAPR loads ALL component YAML files from a `--resources-dir` directory. If `pubsub.yaml` is missing from `postgresql/`, DAPR won't find a pub/sub component and event publishing will fail. Both `statestore.yaml` AND `pubsub.yaml` must exist in each variant directory for a working topology.
 
 ### CRITICAL: What Changes Between Redis and PostgreSQL
 
@@ -91,8 +95,10 @@ The goal is **developer comprehension**, not production readiness. Production DA
 # Stores aggregate state, event streams, snapshots, and command status.
 # This is the default backend for local development with Docker.
 #
-# Backend swap demo: To switch to PostgreSQL, point DAPR at the
-# ../postgresql/ directory instead. No application code changes needed.
+# Backend swap demo: To switch to PostgreSQL, run DAPR with the
+# postgresql/ resources directory instead:
+#   dapr run --resources-dir ./samples/dapr-components/postgresql/ -- dotnet run
+# No application code changes needed.
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -192,14 +198,18 @@ spec:
   type: state.postgresql
   version: v1
   metadata:
-    # PostgreSQL connection string.
-    # Format: host=<host>;port=<port>;username=<user>;password=<pass>;database=<db>;sslmode=disable
+    # PostgreSQL connection string (libpq format — space-separated, NOT semicolons).
+    # Format: host=<host> port=<port> user=<user> password=<pass> dbname=<db> sslmode=disable
     # For local development, sslmode=disable avoids TLS certificate setup.
     - name: connectionString
-      value: "host=localhost;port=5432;username=postgres;password=dapr-demo;database=daprstate;sslmode=disable"
+      value: "host=localhost port=5432 user=postgres password=dapr-demo dbname=daprstate sslmode=disable"
     # Required for DAPR actor state management — same requirement as Redis.
     - name: actorStateStore
       value: "true"
+    # DAPR creates a default table named "state" in the target database.
+    # Uncomment to use a custom table name:
+    # - name: tableName
+    #   value: "daprstate"
 # Scope to commandapi only — same security posture as Redis variant.
 scopes:
   - commandapi
@@ -278,6 +288,8 @@ The new files are **simplified, educational versions** of the production configs
 - Do NOT add resiliency or access control YAML to `samples/dapr-components/` — out of scope for FR9 demo
 - Do NOT change the pub/sub backend in the postgresql/ variant — only state store changes
 - Do NOT add configstore.yaml — configuration store is not relevant to the backend swap demo
+- Do NOT create README.md, Docker Compose files, shell scripts, or any automation in `samples/dapr-components/`
+- Do NOT modify `.gitignore`, CI workflows (`.github/workflows/`), or `Hexalith.EventStore.slnx`
 
 ### References
 
@@ -289,22 +301,22 @@ The new files are **simplified, educational versions** of the production configs
 - [Source: deploy/dapr/statestore-postgresql.yaml — PostgreSQL state store reference]
 - [Source: _bmad-output/implementation-artifacts/13-1-sample-integration-test-project.md — previous story patterns]
 
-### Previous Story Intelligence (13-1)
+### Previous Story & Git Intelligence
 
-**Learnings from Story 13-1:**
-- Used Shouldly for assertions, xUnit test framework — not relevant to this YAML-only story
-- `samples/Hexalith.EventStore.Sample.Tests/` was created in `samples/` folder — confirms `samples/` is the correct parent for new demo assets
-- CI pipeline `docs-validation.yml` has a `sample-build` job — YAML files are not built/tested by CI
-- Story was straightforward with no major technical blockers
-- Review found cross-platform evidence gaps — not applicable here (YAML is platform-agnostic)
+- Story 13-1 created `samples/Hexalith.EventStore.Sample.Tests/` in `samples/` folder (commit `fba3ddb`) — confirms `samples/` is the correct parent for new demo assets
+- YAML files are not built/tested by CI (`docs-validation.yml` only covers .NET projects) — correctness verified by code review
 
-### Git Intelligence
+### Verification Criteria (for Code Reviewer)
 
-Recent commits show:
-- `fba3ddb` — Story 13-1 created `samples/Hexalith.EventStore.Sample.Tests/` (confirms samples/ folder pattern)
-- `6a901ad` — Epic 11-12 documentation and Command API hardening
-- `01128c4` — Markdown linting cleanup
-- Codebase is stable, no breaking changes in progress
+Since these YAML files have no CI validation, the reviewer must verify:
+
+1. **Schema correctness:** Each file starts with `apiVersion: dapr.io/v1alpha1`, has `kind: Component`, and valid `metadata`/`spec` structure
+2. **Component name parity:** Both `redis/statestore.yaml` and `postgresql/statestore.yaml` use `metadata.name: statestore`; both `pubsub.yaml` files use `metadata.name: pubsub`
+3. **Only statestore differs:** `diff samples/dapr-components/redis/pubsub.yaml samples/dapr-components/postgresql/pubsub.yaml` should show only header comment differences
+4. **PostgreSQL connection format:** Uses libpq space-separated format (`host=localhost port=5432 user=postgres ...`), NOT semicolons
+5. **Inline comments:** Every metadata field has an explanatory comment above it
+6. **No advanced scoping:** No `publishingScopes`, `subscriptionScopes`, or external subscriber app-ids — only `commandapi` in scopes
+7. **No env vars:** No `{env:...}` patterns — hardcoded localhost values only
 
 ## Dev Agent Record
 
