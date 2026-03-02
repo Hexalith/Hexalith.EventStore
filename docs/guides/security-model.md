@@ -510,7 +510,7 @@ Verify every item before deploying to production:
 
 ## Next Steps
 
-- Troubleshooting Guide (`troubleshooting.md`) — common deployment and security issues (coming in Story 14-7)
+- [Troubleshooting Guide](troubleshooting.md) — common deployment and security issues
 - [DAPR Component Configuration Reference](dapr-component-reference.md) — component scoping, state store and pub/sub configuration
 - [Identity Scheme](../concepts/identity-scheme.md) — complete key derivation patterns and validation rules
 - [Command API Reference](../reference/command-api.md) — endpoint authentication requirements and error responses

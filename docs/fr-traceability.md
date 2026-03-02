@@ -18,11 +18,11 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | Metric           | Count                                             |
 | ---------------- | ------------------------------------------------- |
 | Total FRs        | 63                                                |
-| Covered          | 39                                                |
+| Covered          | 42                                                |
 | Partial          | 2                                                 |
-| Gap              | 21                                                |
+| Gap              | 18                                                |
 | Self-referential | 1 (FR62)                                          |
-| Phase 1 coverage | 66% (42/63 covered, partial, or self-referential) |
+| Phase 1 coverage | 71% (45/63 covered, partial, or self-referential) |
 
 ## Traceability Matrix
 
@@ -128,9 +128,9 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 
 | FR   | Description                                                                                                                                                                                                                       | Status | Documentation Page(s) | Notes                         |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | --------------------- | ----------------------------- |
-| FR47 | A developer can find troubleshooting guidance for quickstart errors including: Docker not running, port conflicts, DAPR sidecar timeout, .NET SDK version mismatch, and sample build failure                                      | `GAP`  | —                     | Epic 14, Phase 2 (story 14-7) |
-| FR48 | A developer can find documented solutions for DAPR integration issues including: sidecar injection failure, state store connection timeout, pub/sub message loss, actor activation conflict, and component configuration mismatch | `GAP`  | —                     | Epic 14, Phase 2 (story 14-7) |
-| FR49 | A developer can access troubleshooting information for deployment failures per target environment                                                                                                                                 | `GAP`  | —                     | Epic 14, Phase 2 (story 14-7) |
+| FR47 | A developer can find troubleshooting guidance for quickstart errors including: Docker not running, port conflicts, DAPR sidecar timeout, .NET SDK version mismatch, and sample build failure                                      | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | Quickstart Errors section |
+| FR48 | A developer can find documented solutions for DAPR integration issues including: sidecar injection failure, state store connection timeout, pub/sub message loss, actor activation conflict, and component configuration mismatch | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | DAPR Integration Issues section |
+| FR49 | A developer can access troubleshooting information for deployment failures per target environment                                                                                                                                 | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | Docker Compose, Kubernetes, and Azure Container Apps sections |
 
 ### Lifecycle and Versioning
 
@@ -146,7 +146,7 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 
 ## Gap Analysis by Phase
 
-### Phase 2 — Epic 14: Deployment and Operations (16 gaps)
+### Phase 2 — Epic 14: Deployment and Operations (13 gaps)
 
 | FR   | Description                                 | Target Story      |
 | ---- | ------------------------------------------- | ----------------- |
@@ -156,9 +156,6 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR25 | DAPR component configuration reference      | 14-5              |
 | FR26 | Health/readiness endpoint documentation     | 14-6              |
 | FR27 | Security model documentation                | 14-6              |
-| FR47 | Quickstart troubleshooting                  | 14-7              |
-| FR48 | DAPR integration troubleshooting            | 14-7              |
-| FR49 | Deployment failure troubleshooting          | 14-7              |
 | FR55 | Disaster recovery procedure                 | 14-8              |
 | FR56 | Deployment progression guide                | 14-4              |
 | FR57 | DAPR runtime setup per environment          | 14-1 through 14-3 |
