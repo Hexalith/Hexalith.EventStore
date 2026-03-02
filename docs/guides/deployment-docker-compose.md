@@ -109,7 +109,7 @@ $ PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost
 > **PowerShell (Windows):**
 >
 > ```powershell
-> $ $env:PUBLISH_TARGET="docker"
+> $env:PUBLISH_TARGET="docker"
 > $ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 > ```
 
@@ -126,32 +126,36 @@ The Aspire publisher generates a compose file with this general structure (abbre
 
 ```yaml
 services:
-  commandapi:
-    image: ${COMMANDAPI_IMAGE}
-    ports:
-      - "8080:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - Authentication__JwtBearer__Authority=${AUTH_AUTHORITY}
-      # ... additional environment variables from .env
+    commandapi:
+        image: ${COMMANDAPI_IMAGE}
+        ports:
+            - "8080:8080"
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Production
+            - Authentication__JwtBearer__Authority=${AUTH_AUTHORITY}
+            # ... additional environment variables from .env
 
-  sample:
-    image: ${SAMPLE_IMAGE}
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+    sample:
+        image: ${SAMPLE_IMAGE}
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Production
 
-  keycloak:
-    image: ${KEYCLOAK_IMAGE}
-    ports:
-      - "8180:8180"
-    # ... realm import volumes
+    keycloak:
+        image: "quay.io/keycloak/keycloak:26.4"
+        command: ["start-dev", "--import-realm"]
+        ports:
+            - "8180:8080"
+        # ... realm import volumes, environment variables
 
-  # Aspire dashboard (optional, remove for production)
-  docker-dashboard:
-    image: ${DASHBOARD_IMAGE}
+    # Aspire dashboard (optional, remove for production)
+    docker-dashboard:
+        image: ${DASHBOARD_IMAGE}
 ```
 
-> **Note:** Exact field names and structure depend on the Aspire SDK version (currently 13.1.x). Always use the generated output rather than copying this example verbatim.
+> **Note:** Exact field names and structure depend on the Aspire SDK version (currently 13.1.x). Always use the generated output rather than copying this example verbatim. Two changes are typically needed in the generated file:
+>
+> 1. **Keycloak:** Change `command: ["start", "--import-realm"]` to `command: ["start-dev", "--import-realm"]` for HTTP-only local deployments. The `start` command requires HTTPS configuration.
+> 2. **Port mappings:** The generated file may use `expose` instead of `ports` for `commandapi`. Add `ports: ["8080:8080"]` to make the API accessible from the host.
 
 ### Customize for Production Use
 
@@ -181,6 +185,15 @@ $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.
 ```
 
 > For production backends (PostgreSQL, RabbitMQ, etc.), copy from `deploy/dapr/` instead. See [Configure DAPR Components](#configure-dapr-components).
+>
+> **Important:** The local development DAPR component files use `{env:REDIS_HOST|localhost:6379}` for the Redis host. This environment variable substitution syntax is **not reliably resolved** by all DAPR runtime versions when running inside Docker Compose. After copying the component files, update `redisHost` values to use the Docker service name directly:
+>
+> ```yaml
+> - name: redisHost
+>   value: "redis:6379"
+> ```
+>
+> Apply this change to `statestore.yaml`, `pubsub.yaml`, and `configstore.yaml` in your `dapr-components/` directory.
 
 ### Step 2: Add DAPR Sidecar Containers
 
@@ -188,54 +201,82 @@ Add the following service definitions to the generated `docker-compose.yaml`. Ea
 
 ```yaml
 services:
-  # ... (existing generated services above)
+    # ... (existing generated services above)
 
-  commandapi-dapr:
-    image: "daprio/daprd:latest"
-    network_mode: "service:commandapi"
-    depends_on:
-      - commandapi
-    volumes:
-      - ./dapr-components:/components
-    command:
-      [
-        "./daprd",
-        "-app-id", "commandapi",
-        "-app-port", "8080",
-        "-placement-host-address", "placement:50006",
-        "-components-path", "/components",
-        "-config", "/components/accesscontrol.yaml",
-      ]
+    commandapi-dapr:
+        image: "daprio/daprd:latest"
+        network_mode: "service:commandapi"
+        depends_on:
+            - commandapi
+        volumes:
+            - ./dapr-components:/components
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "commandapi",
+                "-app-port",
+                "8080",
+                "-placement-host-address",
+                "placement:50006",
+                "-components-path",
+                "/components",
+                "-config",
+                "/components/accesscontrol.yaml",
+            ]
 
-  sample-dapr:
-    image: "daprio/daprd:latest"
-    network_mode: "service:sample"
-    depends_on:
-      - sample
-    volumes:
-      - ./dapr-components:/components
-    command:
-      [
-        "./daprd",
-        "-app-id", "sample",
-        "-placement-host-address", "placement:50006",
-        "-components-path", "/components",
-        "-config", "/components/accesscontrol.yaml",
-      ]
+    sample-dapr:
+        image: "daprio/daprd:latest"
+        network_mode: "service:sample"
+        depends_on:
+            - sample
+        volumes:
+            - ./dapr-components:/components
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "sample",
+                "-placement-host-address",
+                "placement:50006",
+                "-components-path",
+                "/components",
+                "-config",
+                "/components/accesscontrol.yaml",
+            ]
 
-  placement:
-    image: "daprio/placement:latest"
-    ports:
-      - "50006:50006"
-    command: ["./placement", "-port", "50006"]
+    placement:
+        image: "daprio/placement:latest"
+        ports:
+            - "50006:50006"
+        command: ["./placement", "-port", "50006"]
 
-  redis:
-    image: "redis:7-alpine"
-    ports:
-      - "6379:6379"
+    redis:
+        image: "redis:7-alpine"
+        ports:
+            - "6379:6379"
 ```
 
 > **Note:** The `network_mode: "service:commandapi"` directive makes the DAPR sidecar share the same network namespace as the application container. This means the sidecar is accessible at `localhost:3500` from inside the application container — exactly how DAPR expects to communicate.
+
+### Step 2b: Register Domain Services for the Sample
+
+The Counter sample domain service registration is only configured in `appsettings.Development.json`. Since Docker Compose runs in Production mode, you must add the registration via environment variables on the `commandapi` service:
+
+```yaml
+services:
+    commandapi:
+        environment:
+            # ... (existing environment variables)
+            # Counter sample domain service registration
+            EventStore__DomainServices__Registrations__tenant-a|counter|v1__AppId: "sample"
+            EventStore__DomainServices__Registrations__tenant-a|counter|v1__MethodName: "process"
+            EventStore__DomainServices__Registrations__tenant-a|counter|v1__TenantId: "tenant-a"
+            EventStore__DomainServices__Registrations__tenant-a|counter|v1__Domain: "counter"
+            EventStore__DomainServices__Registrations__tenant-a|counter|v1__Version: "v1"
+```
+
+> **Note:** In production, domain service registrations should be managed via the DAPR config store rather than environment variables. See the architecture documentation for the config store registration pattern.
 
 ### Step 3: Configure Environment Variables
 
@@ -254,11 +295,11 @@ REDIS_PASSWORD=
 AUTH_AUTHORITY=http://keycloak:8180/realms/hexalith
 ```
 
-> **Tip:** For local development, build the container images from source:
+> **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
 >
 > ```bash
-> $ docker build -t hexalith-commandapi:latest -f src/Hexalith.EventStore.CommandApi/Dockerfile .
-> $ docker build -t hexalith-sample:latest -f samples/Hexalith.EventStore.Sample/Dockerfile .
+> $ dotnet publish src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-commandapi -p:ContainerImageTag=latest
+> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag=latest
 > ```
 
 ### Step 4: Start the Application
@@ -290,19 +331,19 @@ The default deployment uses Redis for both the state store and pub/sub. For prod
 
 ### State Store Backend Selection
 
-| Backend | Config Source | Use Case |
-|---------|-------------|----------|
-| Redis | `DaprComponents/statestore.yaml` | Local development, prototyping |
-| PostgreSQL | `deploy/dapr/statestore-postgresql.yaml` | Production with ACID transactions |
-| Azure Cosmos DB | `deploy/dapr/statestore-cosmosdb.yaml` | Global distribution, elastic scale |
+| Backend         | Config Source                            | Use Case                           |
+| --------------- | ---------------------------------------- | ---------------------------------- |
+| Redis           | `DaprComponents/statestore.yaml`         | Local development, prototyping     |
+| PostgreSQL      | `deploy/dapr/statestore-postgresql.yaml` | Production with ACID transactions  |
+| Azure Cosmos DB | `deploy/dapr/statestore-cosmosdb.yaml`   | Global distribution, elastic scale |
 
 ### Pub/Sub Backend Selection
 
-| Backend | Config Source | Use Case |
-|---------|-------------|----------|
-| Redis Streams | `DaprComponents/pubsub.yaml` | Local development, prototyping |
-| RabbitMQ | `deploy/dapr/pubsub-rabbitmq.yaml` | Production, flexible routing |
-| Kafka | `deploy/dapr/pubsub-kafka.yaml` | High throughput, log-based |
+| Backend           | Config Source                        | Use Case                          |
+| ----------------- | ------------------------------------ | --------------------------------- |
+| Redis Streams     | `DaprComponents/pubsub.yaml`         | Local development, prototyping    |
+| RabbitMQ          | `deploy/dapr/pubsub-rabbitmq.yaml`   | Production, flexible routing      |
+| Kafka             | `deploy/dapr/pubsub-kafka.yaml`      | High throughput, log-based        |
 | Azure Service Bus | `deploy/dapr/pubsub-servicebus.yaml` | Native Azure, enterprise features |
 
 To swap backends, copy the desired production component files into `dapr-components/`, set the required environment variables in `.env`, and restart:
@@ -332,7 +373,7 @@ Events, snapshots, and actor state are stored as Redis keys following the compos
 Inspect Redis keys while the system is running:
 
 ```bash
-$ docker exec -it redis redis-cli KEYS "commandapi||*"
+$ docker compose exec redis redis-cli KEYS "*"
 ```
 
 ### PostgreSQL
@@ -363,20 +404,9 @@ $ curl -s http://localhost:8080/health | jq .
 > $ Invoke-RestMethod -Uri "http://localhost:8080/health"
 > ```
 
-Expected response (HTTP 200):
+Expected response (HTTP 200): `Healthy`
 
-```json
-{
-  "status": "Healthy",
-  "results": {
-    "self": { "status": "Healthy" },
-    "dapr-sidecar": { "status": "Healthy" },
-    "dapr-statestore": { "status": "Healthy" },
-    "dapr-pubsub": { "status": "Healthy" },
-    "dapr-configstore": { "status": "Healthy" }
-  }
-}
-```
+> **Note:** The default ASP.NET Core health check response is a plain text status string. To get detailed JSON with individual check results, configure the health check response writer in the application (see `ServiceDefaults/Extensions.cs`).
 
 ### Liveness Probe
 
@@ -415,7 +445,7 @@ $ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-
 > **PowerShell:**
 >
 > ```powershell
-> $ $token = (Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"}).access_token
+> $token = (Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"}).access_token
 > ```
 
 If Keycloak is disabled (`EnableKeycloak=false`), the system uses symmetric key authentication. Set the `Authentication__JwtBearer__SigningKey` environment variable and generate a token using that key.
@@ -438,7 +468,7 @@ $ curl -s -X POST http://localhost:8080/api/v1/commands \
 > **PowerShell:**
 >
 > ```powershell
-> $ $body = '{"tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'
+> $body = '{"tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'
 > $ Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/v1/commands" -Headers @{Authorization="Bearer $token"} -ContentType "application/json" -Body $body
 > ```
 
@@ -446,7 +476,7 @@ Expected response (HTTP 202 Accepted):
 
 ```json
 {
-  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -455,26 +485,26 @@ Expected response (HTTP 202 Accepted):
 Check that the event was persisted to the state store:
 
 ```bash
-$ docker exec -it redis redis-cli KEYS "commandapi||tenant-a||counter||counter-1||*"
+$ docker compose exec redis redis-cli KEYS "*counter-1*"
 ```
 
-You should see keys for the event stream, actor state, and command status.
+You should see keys for the event stream, idempotency record, and aggregate metadata — confirming the command was processed and an event was stored.
 
 ## Resource Requirements
 
 Estimated resource requirements for running the full Docker Compose topology on a local machine:
 
-| Component | CPU | Memory | Storage |
-|-----------|-----|--------|---------|
-| Command API Gateway | 0.5 core | 256 MB | Minimal |
-| Counter Sample | 0.25 core | 128 MB | Minimal |
-| DAPR Sidecar (commandapi) | 0.25 core | 128 MB | Minimal |
-| DAPR Sidecar (sample) | 0.1 core | 64 MB | Minimal |
-| DAPR Placement Service | 0.1 core | 64 MB | Minimal |
-| Redis | 0.25 core | 256 MB | 1 GB+ (depends on event volume) |
-| Keycloak (optional) | 0.5 core | 512 MB | Minimal |
-| **Total (with Keycloak)** | **~2 cores** | **~1.4 GB** | **~1 GB** |
-| **Total (without Keycloak)** | **~1.5 cores** | **~900 MB** | **~1 GB** |
+| Component                    | CPU            | Memory      | Storage                         |
+| ---------------------------- | -------------- | ----------- | ------------------------------- |
+| Command API Gateway          | 0.5 core       | 256 MB      | Minimal                         |
+| Counter Sample               | 0.25 core      | 128 MB      | Minimal                         |
+| DAPR Sidecar (commandapi)    | 0.25 core      | 128 MB      | Minimal                         |
+| DAPR Sidecar (sample)        | 0.1 core       | 64 MB       | Minimal                         |
+| DAPR Placement Service       | 0.1 core       | 64 MB       | Minimal                         |
+| Redis                        | 0.25 core      | 256 MB      | 1 GB+ (depends on event volume) |
+| Keycloak (optional)          | 0.5 core       | 512 MB      | Minimal                         |
+| **Total (with Keycloak)**    | **~2 cores**   | **~1.4 GB** | **~1 GB**                       |
+| **Total (without Keycloak)** | **~1.5 cores** | **~900 MB** | **~1 GB**                       |
 
 ### Performance Expectations
 
@@ -496,19 +526,19 @@ One of DAPR's core benefits is infrastructure portability. You can switch from R
 
     ```yaml
     services:
-      postgres:
-        image: "postgres:16-alpine"
-        ports:
-          - "5432:5432"
-        environment:
-          POSTGRES_USER: dapr
-          POSTGRES_PASSWORD: dapr-secret
-          POSTGRES_DB: eventstore
-        volumes:
-          - pgdata:/var/lib/postgresql/data
+        postgres:
+            image: "postgres:16-alpine"
+            ports:
+                - "5432:5432"
+            environment:
+                POSTGRES_USER: dapr
+                POSTGRES_PASSWORD: dapr-secret
+                POSTGRES_DB: eventstore
+            volumes:
+                - pgdata:/var/lib/postgresql/data
 
     volumes:
-      pgdata:
+        pgdata:
     ```
 
 2. Replace the state store component:
@@ -554,6 +584,8 @@ $ lsof -i :6379   # Redis
 ```
 
 Stop conflicting processes or change port mappings in `docker-compose.yaml`.
+
+> **Note:** The `dapr init` command creates its own Redis container (`dapr_redis`) on port 6379. If you have port conflicts with Redis, either remove the host port mapping from your `redis` service in the compose file (DAPR sidecars reach Redis via Docker DNS, not host ports) or stop the DAPR Redis container: `docker stop dapr_redis`.
 
 ### DAPR Sidecar Timeout
 
@@ -605,7 +637,7 @@ Common causes:
 
 ## Next Steps
 
-- **Next:** [Kubernetes Deployment Guide](deployment-kubernetes.md) — deploy to a Kubernetes cluster with DAPR operator and Helm charts
+- **Next:** Kubernetes Deployment Guide (Story 14-2, coming soon) — deploy to a Kubernetes cluster with DAPR operator and Helm charts
 - **Related:** [Deployment Configuration Reference](../../deploy/README.md) — full backend compatibility matrix and per-backend environment variables
 - **Related:** [Architecture Overview](../concepts/architecture-overview.md) — understand the system topology and DAPR building blocks
 - **Related:** [Quickstart Guide](../getting-started/quickstart.md) — run the system locally with Aspire (no Docker Compose)

@@ -23,31 +23,31 @@ so that I can run the system on my development machine with a production-like to
 ## Tasks / Subtasks
 
 - [x] Task 1: Create `docs/guides/deployment-docker-compose.md` (AC: #1, #3, #4, #5, #6, #7)
-  - [x] 1.1 Write page header with back-link, title, intro paragraph, prerequisites blockquote
-  - [x] 1.2 Create "What You'll Deploy" section with Mermaid topology diagram (commandapi + sample + DAPR sidecars + Redis/PostgreSQL + Keycloak)
-  - [x] 1.3 Add `<details>` text description for the Mermaid diagram (NFR7 accessibility)
-  - [x] 1.4 Write "Prerequisites" section: Docker Desktop, .NET 10 SDK, DAPR CLI, DAPR runtime init for Docker
-  - [x] 1.5 Write "Generate Docker Compose Output" section documenting `PUBLISH_TARGET=docker aspire publish` command
-  - [x] 1.6 Write "DAPR Runtime Setup for Docker" section (FR57) — explain `dapr init` vs `dapr init --slim`, sidecar injection in compose
-  - [x] 1.7 Write "Deploy the Application" section with step-by-step: generate compose, configure environment variables, `docker compose up`
-  - [x] 1.8 Write "Configure DAPR Components" section — explain state store and pub/sub backend selection, link to `deploy/dapr/` production configs
-  - [x] 1.9 Write "Where Is My Data?" section (FR60) — explain physical storage locations per DAPR state store backend (Redis keys, PostgreSQL tables, Cosmos DB containers)
-  - [x] 1.10 Write "Verify System Health" section (FR26) — document `/health`, `/alive`, `/ready` endpoints with expected responses
-  - [x] 1.11 Write "Send a Test Command" section — verify working system with curl/PowerShell command examples
-  - [x] 1.12 Write "Resource Requirements" section (FR63) — CPU, memory, storage estimates for local Docker Compose deployment
-  - [x] 1.13 Write "Backend Swap" section — demonstrate switching from Redis to PostgreSQL with zero code changes (FR9)
-  - [x] 1.14 Write "Troubleshooting" section — common Docker Compose deployment issues (port conflicts, sidecar timeout, container networking)
-  - [x] 1.15 Write "Next Steps" section — links to Kubernetes guide (Story 14-2), deployment progression guide (Story 14-4), DAPR component reference (Story 14-5)
+    - [x] 1.1 Write page header with back-link, title, intro paragraph, prerequisites blockquote
+    - [x] 1.2 Create "What You'll Deploy" section with Mermaid topology diagram (commandapi + sample + DAPR sidecars + Redis/PostgreSQL + Keycloak)
+    - [x] 1.3 Add `<details>` text description for the Mermaid diagram (NFR7 accessibility)
+    - [x] 1.4 Write "Prerequisites" section: Docker Desktop, .NET 10 SDK, DAPR CLI, DAPR runtime init for Docker
+    - [x] 1.5 Write "Generate Docker Compose Output" section documenting `PUBLISH_TARGET=docker aspire publish` command
+    - [x] 1.6 Write "DAPR Runtime Setup for Docker" section (FR57) — explain `dapr init` vs `dapr init --slim`, sidecar injection in compose
+    - [x] 1.7 Write "Deploy the Application" section with step-by-step: generate compose, configure environment variables, `docker compose up`
+    - [x] 1.8 Write "Configure DAPR Components" section — explain state store and pub/sub backend selection, link to `deploy/dapr/` production configs
+    - [x] 1.9 Write "Where Is My Data?" section (FR60) — explain physical storage locations per DAPR state store backend (Redis keys, PostgreSQL tables, Cosmos DB containers)
+    - [x] 1.10 Write "Verify System Health" section (FR26) — document `/health`, `/alive`, `/ready` endpoints with expected responses
+    - [x] 1.11 Write "Send a Test Command" section — verify working system with curl/PowerShell command examples
+    - [x] 1.12 Write "Resource Requirements" section (FR63) — CPU, memory, storage estimates for local Docker Compose deployment
+    - [x] 1.13 Write "Backend Swap" section — demonstrate switching from Redis to PostgreSQL with zero code changes (FR9)
+    - [x] 1.14 Write "Troubleshooting" section — common Docker Compose deployment issues (port conflicts, sidecar timeout, container networking)
+    - [x] 1.15 Write "Next Steps" section — links to Kubernetes guide (Story 14-2), deployment progression guide (Story 14-4), DAPR component reference (Story 14-5)
 - [x] Task 2: Create or document Docker Compose configuration (AC: #2)
-  - [x] 2.1 Document the Aspire publisher approach: `PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker`
-  - [x] 2.2 Show the expected generated docker-compose.yaml structure with annotations
-  - [x] 2.3 Document how to customize the generated compose file for production use (external auth, production state store)
-  - [x] 2.4 If Aspire publisher is insufficient for a standalone demo, create a minimal `samples/deploy/docker-compose.yml` as a reference template
+    - [x] 2.1 Document the Aspire publisher approach: `PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker`
+    - [x] 2.2 Show the expected generated docker-compose.yaml structure with annotations
+    - [x] 2.3 Document how to customize the generated compose file for production use (external auth, production state store)
+    - [x] 2.4 If Aspire publisher is insufficient for a standalone demo, create a minimal `samples/deploy/docker-compose.yml` as a reference template
 - [x] Task 3: Validation (AC: #6)
-  - [x] 3.1 Follow the guide on a clean machine (or fresh Docker environment) to verify it produces a running system
-  - [x] 3.2 Verify health endpoints return expected responses
-  - [x] 3.3 Verify a test command can be submitted and an event is produced
-  - [x] 3.4 Run markdownlint on the new file to ensure CI compliance
+    - [x] 3.1 Follow the guide on a clean machine (or fresh Docker environment) to verify it produces a running system
+    - [x] 3.2 Verify health endpoints return expected responses
+    - [x] 3.3 Verify a test command can be submitted and an event is produced
+    - [x] 3.4 Run markdownlint on the new file to ensure CI compliance
 
 ## Dev Notes
 
@@ -57,14 +57,14 @@ so that I can run the system on my development machine with a production-like to
 - **DO NOT create a hand-written Docker Compose file as the primary artifact.** The Aspire publisher is the intended path. A hand-written compose file may be provided as a reference/template only if the Aspire output needs manual customization.
 - **DAPR sidecar injection:** In Docker Compose (unlike Kubernetes), DAPR sidecars must be explicitly defined as separate containers sharing the network namespace. The Aspire publisher handles this.
 - **Health check endpoints** are already implemented in `ServiceDefaults/Extensions.cs`:
-  - `/health` — full health (200 Healthy/Degraded, 503 Unhealthy)
-  - `/alive` — liveness probe (`"live"` tagged checks only)
-  - `/ready` — readiness probe (`"ready"` tagged checks only)
+    - `/health` — full health (200 Healthy/Degraded, 503 Unhealthy)
+    - `/alive` — liveness probe (`"live"` tagged checks only)
+    - `/ready` — readiness probe (`"ready"` tagged checks only)
 - **DAPR health checks** in `CommandApi/HealthChecks/`:
-  - `dapr-sidecar` → Unhealthy failure status
-  - `dapr-statestore` → Unhealthy failure status
-  - `dapr-pubsub` → Degraded failure status
-  - `dapr-configstore` → Degraded failure status
+    - `dapr-sidecar` → Unhealthy failure status
+    - `dapr-statestore` → Unhealthy failure status
+    - `dapr-pubsub` → Degraded failure status
+    - `dapr-configstore` → Degraded failure status
 - **Keycloak** runs on port 8180 (avoids conflict with CommandApi on 8080). Realm `hexalith` with client `hexalith-eventstore`. Can be disabled with `EnableKeycloak=false` (falls back to symmetric key auth).
 - **Domain service isolation (D4):** The sample domain service has zero infrastructure access — no state store, no pub/sub references. Only receives service invocations from CommandApi's DAPR sidecar.
 - **Access control:** Development uses allow-by-default; production uses deny-by-default with mTLS. The `deploy/dapr/accesscontrol.yaml` documents the production pattern.
@@ -72,6 +72,7 @@ so that I can run the system on my development machine with a production-like to
 ### DAPR Component Topology
 
 **Local development components** (`src/Hexalith.EventStore.AppHost/DaprComponents/`):
+
 - `statestore.yaml` — Redis state store with actor support
 - `pubsub.yaml` — Redis Streams pub/sub with three-layer scoping
 - `accesscontrol.yaml` — Allow-by-default for dev
@@ -80,6 +81,7 @@ so that I can run the system on my development machine with a production-like to
 - `subscription-sample-counter.yaml` — Sample subscription with dead-letter routing
 
 **Production components** (`deploy/dapr/`):
+
 - `statestore-postgresql.yaml` — PostgreSQL state store
 - `statestore-cosmosdb.yaml` — Azure Cosmos DB state store
 - `pubsub-rabbitmq.yaml` — RabbitMQ pub/sub
@@ -89,6 +91,7 @@ so that I can run the system on my development machine with a production-like to
 - `resiliency.yaml` — Production retry, timeout, circuit breaker
 
 **Key patterns:**
+
 - Composite key: `{tenant}||{domain}||{aggregateId}`
 - Topic naming: `{tenant}.{domain}.events`
 - Dead-letter: `deadletter.{tenant}.{domain}.events`
@@ -97,12 +100,14 @@ so that I can run the system on my development machine with a production-like to
 ### Configuration Patterns
 
 **CommandApi configuration** (`src/Hexalith.EventStore.CommandApi/appsettings.json`):
+
 - `EventStore:DomainServices:Registrations` — Domain service routing (tenant|domain|version → AppId + MethodName)
 - `Authentication:JwtBearer` — JWT auth config (Authority, Audience, Issuer, SigningKey)
 - `EventStore:OpenApi:Enabled` — Swagger UI toggle (default: true)
 - Global request body size limit: 1 MB via Kestrel
 
 **Environment variable override pattern:**
+
 - `Authentication__JwtBearer__Authority` — OIDC discovery URL
 - `Authentication__JwtBearer__SigningKey` — Clear to force OIDC mode
 - DAPR component YAMLs use `{env:VARIABLE_NAME|default_value}` for secrets
@@ -110,6 +115,7 @@ so that I can run the system on my development machine with a production-like to
 ### Page Template Convention
 
 Follow the established documentation page structure (see `docs/concepts/architecture-overview.md` and `docs/getting-started/quickstart.md`):
+
 1. Back link: `[<- Back to Hexalith.EventStore](../../README.md)`
 2. H1 title
 3. Opening paragraph explaining what the page covers and who it's for
@@ -170,10 +176,70 @@ Follow the established documentation page structure (see `docs/concepts/architec
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Build: 0 warnings, 0 errors
+- Markdownlint: 0 errors
+- Tier 1 tests: 465 passed (Contracts 157, Client 231, Sample 29, Testing 48)
+
 ### Completion Notes List
 
+- Created `docs/guides/deployment-docker-compose.md` — comprehensive Docker Compose deployment guide (~400 lines)
+- Guide covers: Aspire publisher workflow, DAPR runtime setup, sidecar injection, DAPR component configuration, health check verification, test command walkthrough, resource requirements, backend swap demo, and troubleshooting
+- Mermaid deployment topology diagram with `<details>` accessibility text (NFR7)
+- Both bash and PowerShell command alternatives throughout
+- Links to `deploy/README.md` for production backend details (no duplication)
+- AC #2 satisfied via Aspire publisher documentation approach (no hand-written compose file per Dev Notes mandate)
+- Task 2.4: Aspire publisher is sufficient — the guide documents manual DAPR sidecar additions on top of generated output, which is the intended workflow
+- Task 3.1–3.3: Completed — full Docker Compose end-to-end validation executed successfully.
+- Task 3.4: Markdownlint passes with 0 errors
+- Fixed PowerShell snippets in guide (`$env:PUBLISH_TARGET`, `$token`, `$body`) to ensure Windows commands are copy/paste runnable.
+- Replaced broken Next Steps link to non-existent `deployment-kubernetes.md` with explicit "coming soon" text tied to Story 14-2.
+- Validation findings addressed in guide updates:
+  - Added .NET SDK container publishing instructions (no Dockerfiles exist)
+  - Documented DAPR component `redisHost` override for Docker networking
+  - Added Keycloak `start-dev` requirement for HTTP-only local deployment
+  - Added domain service registration via environment variables for Production mode
+  - Updated health endpoint expected response to match actual output
+  - Added port conflict note for `dapr init` Redis container
+  - Updated Redis key inspection commands to use `docker compose exec`
+- Fixed Keycloak realm: added "counter" to admin-user's domains for sample compatibility
+- Validation evidence:
+  - 8 containers running (commandapi, commandapi-dapr, sample, sample-dapr, placement, redis, keycloak, dashboard)
+  - `/health` → HTTP 200 "Healthy"
+  - `/alive` → HTTP 200
+  - `/ready` → HTTP 200 "Healthy"
+  - Command POST → HTTP 202 with correlationId
+  - Redis keys confirm event persistence (event stream, idempotency, metadata)
+
+### Change Log
+
+- 2026-03-02: Created Docker Compose deployment guide (Story 14-1)
+- 2026-03-02: Senior code review follow-up — corrected PowerShell command syntax, removed broken next-step link, and aligned validation tasks with actual execution evidence.
+- 2026-03-02: End-to-end Docker Compose validation — updated guide with 6 fixes found during validation, added counter domain to Keycloak realm, completed all validation tasks.
+
 ### File List
+
+- `docs/guides/deployment-docker-compose.md` (updated) — Docker Compose deployment guide with validation fixes
+- `src/Hexalith.EventStore.AppHost/KeycloakRealms/hexalith-realm.json` (updated) — added "counter" to admin-user domains
+- `_bmad-output/implementation-artifacts/14-1-docker-compose-deployment-guide-and-configuration.md` (updated) — story completion
+
+### Senior Developer Review (AI)
+
+#### Outcome
+
+- **Result:** Changes requested and partially fixed.
+- **Current story status:** `review` (all tasks complete, validation passed).
+
+#### Findings addressed
+
+1. Fixed invalid PowerShell examples in `docs/guides/deployment-docker-compose.md`.
+2. Removed broken link to missing `deployment-kubernetes.md` from guide Next Steps.
+3. Corrected task completion claims for validation subtasks 3.1–3.3 to reflect actual execution state.
+4. Tasks 3.1–3.3 executed and verified in Docker environment (8 containers, health checks, command processing, event persistence).
+
+#### Remaining follow-up
+
+- None. All review items addressed.

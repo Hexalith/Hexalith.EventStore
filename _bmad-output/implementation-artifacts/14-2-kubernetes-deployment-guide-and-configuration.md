@@ -12,8 +12,8 @@ so that I can run the system in a production environment.
 
 ## Acceptance Criteria
 
-1. `docs/guides/deployment-kubernetes.md` exists with a complete walkthrough: DAPR runtime setup for Kubernetes (FR57), step-by-step deployment instructions, Kubernetes YAML manifests, DAPR component configuration for Kubernetes, and health/readiness verification (FR26)
-2. `samples/deploy/kubernetes/` contains all necessary Kubernetes manifests and DAPR component configs (OR the guide documents the Aspire publisher approach to generate them)
+1. `docs/guides/deployment-kubernetes.md` exists with a complete walkthrough (FR23): DAPR runtime setup for Kubernetes (FR57), step-by-step deployment instructions, Kubernetes YAML manifests, DAPR component configuration for Kubernetes, and health/readiness verification (FR26)
+2. `samples/deploy/kubernetes/` contains supplementary Kubernetes manifests (namespace, DAPR annotation reference, secrets template) that complement the Aspire publisher output documented in the guide
 3. The guide explicitly references what the reader already knows from the Docker quickstart and what's new (FR59)
 4. The guide explains infrastructure differences between local Docker and Kubernetes (FR58)
 5. The guide includes resource requirements and pod sizing guidance (FR63)
@@ -28,38 +28,72 @@ so that I can run the system in a production environment.
   - [ ] 1.2 Write "What You Already Know" bridge section referencing Docker Compose guide concepts (FR59) — topology, DAPR building blocks, health endpoints. State what's NEW in K8s: DAPR operator, sidecar injection via annotations, CRD-based components, Helm chart output, K8s Secrets, external OIDC
   - [ ] 1.3 Create "What You'll Deploy" section with Mermaid deployment topology diagram showing: K8s cluster with namespace, commandapi Pod + DAPR sidecar, sample Pod + DAPR sidecar, DAPR operator, DAPR placement service, external state store (PostgreSQL), external pub/sub (RabbitMQ/Kafka), external OIDC provider
   - [ ] 1.4 Add `<details>` text description for the Mermaid diagram (NFR7 accessibility)
-  - [ ] 1.5 Write "Prerequisites" section: kubectl, Helm 3, Kubernetes cluster (minikube/kind/AKS/EKS/GKE), .NET 10 SDK, Aspire CLI (`dotnet tool install -g Aspire.Cli`), DAPR CLI, container registry access
-  - [ ] 1.6 Write "Install DAPR on Kubernetes" section (FR57): `dapr init -k` or Helm chart install, verify DAPR system pods (`dapr-operator`, `dapr-sidecar-injector`, `dapr-placement`, `dapr-sentry`), version compatibility note (DAPR SDK 1.17.0)
-  - [ ] 1.7 Write "Generate Kubernetes Manifests" section: Aspire publisher command `PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s` with both bash and PowerShell variants. Explain `EnableKeycloak=false` is REQUIRED (K8s publisher does not support bind mounts for realm import). Document expected Helm chart output: `Chart.yaml`, `values.yaml`, templates with Deployments/Services/ConfigMaps for commandapi and sample
-  - [ ] 1.8 Write "Add DAPR Annotations" section: The K8s publisher does NOT auto-generate DAPR annotations. Show exact annotation block to add to each Deployment pod template:
-    - commandapi: `dapr.io/enabled: "true"`, `dapr.io/app-id: "commandapi"`, `dapr.io/app-port: "8080"`, `dapr.io/config: "accesscontrol"`
-    - sample: `dapr.io/enabled: "true"`, `dapr.io/app-id: "sample"`, `dapr.io/config: "accesscontrol"`
-  - [ ] 1.9 Write "Apply DAPR Components" section: Apply production DAPR components from `deploy/dapr/` as K8s CRDs. Show `kubectl apply -f` for chosen state store + pub/sub + resiliency + accesscontrol + subscription. Explain component scoping and namespace targeting
-  - [ ] 1.10 Write "Configure Secrets" section: Create K8s Secrets for connection strings (e.g., `POSTGRES_CONNECTION_STRING`, `RABBITMQ_CONNECTION_STRING`). Show `kubectl create secret generic` commands. Explain env-var-to-secret mapping in Deployment manifests. Reference deploy/README.md for per-backend env var details
-  - [ ] 1.11 Write "Configure External OIDC Authentication" section: Set env vars on commandapi Deployment — `Authentication__JwtBearer__Authority`, `Authentication__JwtBearer__Issuer`, `Authentication__JwtBearer__Audience`, `Authentication__JwtBearer__RequireHttpsMetadata=true`. Reference deploy/README.md "External OIDC Configuration" section. Show example for Entra ID (Azure AD)
-  - [ ] 1.12 Write "Deploy the Application" section: `helm install` or `kubectl apply` commands, wait for pod readiness, verify DAPR sidecar injection (`kubectl get pods` showing 2/2 containers)
-  - [ ] 1.13 Write "Verify System Health" section (FR26): port-forward to commandapi, check `/health`, `/alive`, `/ready` endpoints, verify DAPR sidecar health at `localhost:3500/v1.0/healthz`, check sidecar logs for `component loaded` messages
+  - [ ] 1.5 Write "Prerequisites" section: kubectl, Helm 3, Kubernetes cluster (minikube/kind/AKS/EKS/GKE), .NET 10 SDK, Aspire CLI (`dotnet tool install -g Aspire.Cli`), DAPR CLI, container registry access. Include a "Quick Start Cluster" subsection with exact commands for one local option (e.g., `minikube start --cpus=4 --memory=8192 --driver=docker`) and note minimum node requirements (2 nodes, 4GB RAM each)
+  - [ ] 1.6 Write "Install DAPR on Kubernetes" section (FR57): Pin the exact DAPR runtime version with `dapr init -k --runtime-version <version>` (or Helm chart install with pinned chart version). Show `dapr status -k` to verify all 4 system pods are Running (`dapr-operator`, `dapr-sidecar-injector`, `dapr-placement`, `dapr-sentry`). Show `kubectl get crd | grep dapr` to verify CRDs are installed (`components.dapr.io`, `configurations.dapr.io`, `resiliencies.dapr.io`, `subscriptions.dapr.io`). Link to DAPR SDK-to-runtime compatibility matrix. Note: verify the actual DAPR SDK version in `Directory.Packages.props` and recommend matching runtime version
+  - [ ] 1.7 Write "Generate Kubernetes Manifests" section: Aspire publisher command with BOTH bash and PowerShell variants explicitly:
+    - Bash: `PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s`
+    - PowerShell: `$env:PUBLISH_TARGET='k8s'; $env:EnableKeycloak='false'; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s`
+    - Explain `EnableKeycloak=false` is REQUIRED (K8s publisher does not support bind mounts for realm import)
+    - Provide annotated directory tree of the generated Helm chart output (exact filenames, purpose of each file, which files need manual modification)
+    - Document how to customize key `values.yaml` parameters: container image registry/tag, replica counts, resource requests/limits
+    - Add warning: "The Aspire Kubernetes publisher (`Aspire.Hosting.Kubernetes`) is a preview package. Generated output may require manual adjustments."
+  - [ ] 1.7a Write "Build and Push Container Images" section: Explain that K8s clusters pull images from container registries (unlike local Docker). Show `docker build` commands for commandapi and sample images, `docker tag` and `docker push` to a registry. For local clusters: show `minikube image load` or `kind load docker-image` alternatives. Show how to update `values.yaml` with the correct image repository and tag
+  - [ ] 1.8 Write "Add DAPR Annotations and K8s Probes" section: The K8s publisher does NOT auto-generate DAPR annotations. Show a complete before/after YAML diff of the Deployment manifest at `spec.template.metadata.annotations`. Exact annotation blocks:
+    - commandapi: `dapr.io/enabled: "true"`, `dapr.io/app-id: "commandapi"`, `dapr.io/app-port: "8080"`, `dapr.io/config: "accesscontrol"`, `dapr.io/sidecar-cpu-request: "100m"`, `dapr.io/sidecar-memory-request: "128Mi"`, `dapr.io/sidecar-cpu-limit: "300m"`, `dapr.io/sidecar-memory-limit: "256Mi"`
+    - sample: `dapr.io/enabled: "true"`, `dapr.io/app-id: "sample"`, `dapr.io/app-port: "8080"`, `dapr.io/config: "accesscontrol"`, `dapr.io/sidecar-cpu-request: "100m"`, `dapr.io/sidecar-memory-request: "128Mi"`, `dapr.io/sidecar-cpu-limit: "300m"`, `dapr.io/sidecar-memory-limit: "256Mi"`
+    - Also add K8s liveness, readiness, and startup probe definitions to each Deployment pod spec using `/alive`, `/ready` endpoints. Include `startupProbe` with `failureThreshold: 30` for DAPR sidecar initialization time
+    - Also add resource requests/limits block to app containers
+  - [ ] 1.9 Write "Apply DAPR Components" section: Create the target namespace first (`kubectl create namespace hexalith`). Apply production DAPR components from `deploy/dapr/` as K8s CRDs with `-n hexalith` on ALL commands. Enumerate each file with its CRD kind and clarify selection:
+    - Pick ONE state store: `statestore-postgresql.yaml` (Component) OR `statestore-cosmosdb.yaml` (Component)
+    - Pick ONE pub/sub: `pubsub-rabbitmq.yaml` (Component) OR `pubsub-kafka.yaml` (Component) OR `pubsub-servicebus.yaml` (Component)
+    - ALWAYS apply: `resiliency.yaml` (Resiliency kind), `accesscontrol.yaml` (Configuration kind), `subscription-sample-counter.yaml` (Subscription kind, requires DAPR 1.12+)
+    - Add `scopes: [commandapi]` to state store, pub/sub, and config store CRDs to restrict access to commandapi only (replicates Aspire local isolation where domain services have zero infrastructure access per D4)
+    - Warn: `DAPR_TRUST_DOMAIN` and `DAPR_NAMESPACE` in accesscontrol.yaml MUST be explicitly set — fallback defaults are for reference only
+  - [ ] 1.10 Write "Adapt DAPR Components for Kubernetes Secrets" section: **CRITICAL** — The `{env:VAR}` syntax in production DAPR component YAMLs (e.g., `{env:POSTGRES_CONNECTION_STRING}`) does NOT work with K8s auto-injected sidecars because the sidecar does not inherit app container env vars. Show TWO approaches:
+    - Approach A (recommended): Convert DAPR component metadata from `{env:VAR}` to DAPR `secretKeyRef` syntax. Create a `secretstores.kubernetes` secret store component. Show complete modified `statestore-postgresql.yaml` using `secretKeyRef`
+    - Approach B: Use `dapr.io/env` annotation to inject env vars into the sidecar container
+    - Show full chain: (1) `kubectl create secret generic` command, (2) DAPR secret store component YAML, (3) modified component YAML with secretKeyRef, (4) verification command `kubectl logs <pod> -c daprd | grep "component loaded"`
+    - For `SUBSCRIBER_APP_ID`/`OPS_MONITOR_APP_ID`: note these should be removed from scopes for minimal deployments without external subscribers
+  - [ ] 1.11 Write "Configure External OIDC Authentication" section: Set env vars on commandapi Deployment — `Authentication__JwtBearer__Authority`, `Authentication__JwtBearer__Issuer`, `Authentication__JwtBearer__Audience`, `Authentication__JwtBearer__RequireHttpsMetadata=true`. **CRITICAL**: Instruct to clear or omit `Authentication__JwtBearer__SigningKey` — if a SigningKey is present, the app uses symmetric key validation and ignores OIDC Authority. Reference deploy/README.md "External OIDC Configuration" section. Provide complete Entra ID walkthrough: create app registration, set API scope, note authority/issuer/audience values, show token acquisition via `curl` to the token endpoint. Add troubleshooting: "401 on all requests — check: (a) Is Authority URL reachable from inside pod? (b) Is SigningKey cleared? (c) Does token `aud` claim match Audience? (d) Is RequireHttpsMetadata=true but OIDC endpoint uses self-signed cert?"
+  - [ ] 1.12 Write "Deploy the Application" section with explicit ordering: (1) Create namespace `kubectl create namespace hexalith`, (2) Apply DAPR component CRDs, (3) Create secrets / secret store component, (4) `helm install` or `kubectl apply` the application manifests, (5) Wait for pod readiness — explain pods may crash-loop initially until DAPR components are loaded. Verify DAPR sidecar injection (`kubectl get pods -n hexalith` showing `2/2` containers)
+  - [ ] 1.13 Write "Verify System Health" section (FR26): Show explicit port-forward commands:
+    - App: `kubectl port-forward svc/commandapi 8080:8080 -n hexalith`
+    - DAPR sidecar: `kubectl port-forward pod/<commandapi-pod> 3500:3500 -n hexalith` (separate terminal)
+    - Check `/health`, `/alive`, `/ready` on `localhost:8080`
+    - Check DAPR sidecar health: `localhost:3500/v1.0/healthz`
+    - Alternative: `kubectl exec <pod> -c daprd -n hexalith -- wget -qO- http://localhost:3500/v1.0/healthz`
+    - Check sidecar logs: `kubectl logs <pod> -c daprd -n hexalith | grep "component loaded"` (note: sidecar container name is `daprd`)
+    - Include a Quick Validation Checklist: DAPR installed? CRDs present? All pods 2/2? /health returns 200? Can get token? Can submit command?
   - [ ] 1.14 Write "Send a Test Command" section: port-forward, obtain token from external OIDC, submit IncrementCounter command via curl/PowerShell, verify event in state store
   - [ ] 1.15 Write "Where Is My Data?" section (FR60): explain physical storage per DAPR state store backend — PostgreSQL tables, Cosmos DB containers. Composite key pattern `{tenant}||{domain}||{aggregateId}`. Link to deploy/README.md for full backend compatibility matrix
-  - [ ] 1.16 Write "Resource Requirements" section (FR63): pod resource requests/limits for commandapi and sample, DAPR sidecar overhead (~128Mi memory, 0.1 CPU per sidecar), state store and pub/sub sizing guidance, node sizing for a minimal cluster
-  - [ ] 1.17 Write "Infrastructure Differences: Docker vs Kubernetes" section (FR58): comparison table — sidecar injection (manual containers vs annotation-based), component config (file mount vs CRDs), secret management (.env vs K8s Secrets), networking (Docker network vs K8s Service DNS), scaling (manual vs HPA), health checks (Docker healthcheck vs K8s probes)
+  - [ ] 1.16 Write "Resource Requirements" section (FR63): Complete resource block examples for both app containers and DAPR sidecar annotations. App container recommendations: requests 250m CPU / 256Mi memory, limits 1000m CPU / 512Mi memory. DAPR sidecar: requests 100m / 128Mi, limits 300m / 256Mi. Note: .NET runtime respects container memory limits — set at least 512Mi for commandapi to avoid GC pressure. Minimal cluster sizing: 2 nodes, 4GB RAM each for commandapi + sample + DAPR system pods + state store + pub/sub. Mention HPA/KEDA configuration is out of scope for this walkthrough — see deployment progression guide (Story 14-4)
+  - [ ] 1.17 Write "Infrastructure Differences: Docker vs Kubernetes" section (FR58): comparison table — sidecar injection (manual containers vs annotation-based), component config (file mount vs CRDs), secret management (.env vs K8s Secrets), networking (Docker network vs K8s Service DNS), scaling (manual vs HPA), health checks (Docker healthcheck vs K8s probes), image delivery (local build vs container registry)
+  - [ ] 1.17a Write "Expose the Service" section: Document external access options for commandapi — Kubernetes Ingress (nginx/traefik), LoadBalancer Service, or cloud-specific (Azure Application Gateway, AWS ALB). Provide a minimal reference Ingress manifest. Note that TLS termination should be configured at the ingress level
   - [ ] 1.18 Write "Backend Swap" section: demonstrate switching state store or pub/sub by applying different CRDs — same zero-code-change principle as Docker Compose
-  - [ ] 1.19 Write "Troubleshooting" section: common K8s deployment issues — sidecar not injecting (missing annotations, DAPR operator not running), component load failures (wrong namespace, missing secrets), pod crash loops (missing env vars), DAPR placement service issues
-  - [ ] 1.20 Write "Next Steps" section: links to Azure Container Apps guide (Story 14-3), deployment progression guide (Story 14-4), DAPR component configuration reference (Story 14-5), security model docs (Story 14-6)
-- [ ] Task 2: Create or document Kubernetes manifests (AC: #2)
-  - [ ] 2.1 Create `samples/deploy/kubernetes/` directory
+  - [ ] 1.19 Write "Troubleshooting" section: common K8s deployment issues:
+    - Sidecar not injecting: missing annotations, DAPR operator not running, namespace mismatch
+    - Component load failures: wrong namespace on `kubectl apply`, missing secrets, CRDs not installed
+    - Pod crash loops: missing env vars, ImagePullBackOff (images not in registry), OOMKilled (check `kubectl describe pod | grep "Last State"`)
+    - DAPR placement service issues: actors fail without placement, verify with `kubectl get pods -n dapr-system -l app=dapr-placement`
+    - Service invocation failures: app-id must match K8s Service name, verify namespace alignment
+    - 401 on all requests: SigningKey not cleared, Authority URL unreachable from pod, audience mismatch
+    - Use `dapr dashboard -k` for visual component/sidecar inspection
+  - [ ] 1.20 Write "Next Steps" section: links to Azure Container Apps guide (Story 14-3), deployment progression guide (Story 14-4), DAPR component configuration reference (Story 14-5), security model docs (Story 14-6). Note that production hardening topics (RBAC, NetworkPolicy, secret rotation, mTLS certificate management, container image security, audit logging) are covered in the Security Model documentation (Story 14-6)
+- [ ] Task 2: Create supplementary Kubernetes manifests (AC: #2)
+  - [ ] 2.1 Create `samples/deploy/kubernetes/` directory (note: `samples/deploy/` does not exist yet — create the full path)
   - [ ] 2.2 Document the Aspire publisher approach as the PRIMARY path: `PUBLISH_TARGET=k8s aspire publish`
   - [ ] 2.3 Show the expected generated Helm chart structure with annotations explaining each file
   - [ ] 2.4 Create a minimal reference `samples/deploy/kubernetes/namespace.yaml` defining the target namespace
-  - [ ] 2.5 Create `samples/deploy/kubernetes/dapr-annotations-patch.yaml` as a kustomize-style overlay showing DAPR annotation additions (since publisher doesn't generate them)
-  - [ ] 2.6 Create `samples/deploy/kubernetes/secrets-template.yaml` showing the Secret structure (values replaced with placeholders) for PostgreSQL + RabbitMQ connection strings
-  - [ ] 2.7 Create `samples/deploy/kubernetes/README.md` documenting the files in the directory and how they complement the Aspire publisher output
+  - [ ] 2.5 Create `samples/deploy/kubernetes/dapr-annotations-example.yaml` as a reference snippet showing the exact DAPR annotations and K8s probes to add to the Aspire-generated Deployments (NOT a kustomize overlay — a copyable reference example with comments)
+  - [ ] 2.6 Create `samples/deploy/kubernetes/secrets-template.yaml` showing the Secret structure (values replaced with placeholders) for PostgreSQL + RabbitMQ connection strings, plus a `secretstores.kubernetes` DAPR component for `secretKeyRef` usage
+  - [ ] 2.7 Add a brief comment header in the YAML files (or a single `README.md` of 10 lines or fewer) explaining that these files are supplementary to the Aspire publisher output — link to `docs/guides/deployment-kubernetes.md` for the full guide
 - [ ] Task 3: Validation (AC: #7)
   - [ ] 3.1 Verify the guide structure follows the page template convention (back-link, H1, intro, prerequisites, content, next steps)
   - [ ] 3.2 Verify all Mermaid diagrams render correctly
-  - [ ] 3.3 Verify all code blocks include both bash and PowerShell alternatives where applicable
+  - [ ] 3.3 Verify all code blocks include both bash and PowerShell alternatives where applicable (required for: env var exports `export` vs `$env:`, Aspire publish command, pipeline commands using `|`; NOT required for platform-neutral commands like `kubectl`, `helm`)
   - [ ] 3.4 Verify all internal links resolve (to deploy/README.md, quickstart, architecture-overview, Docker Compose guide)
   - [ ] 3.5 Run markdownlint on the new files to ensure CI compliance
+  - [ ] 3.6 Note: Validation tasks 3.1-3.4 are documentation review only in environments without a K8s cluster. The dev agent should note in completion notes which validations were performed and which are deferred to manual operator testing
 
 ## Dev Notes
 
@@ -75,11 +109,11 @@ so that I can run the system in a production environment.
 ### DAPR on Kubernetes Specifics
 
 - **Sidecar injection**: DAPR operator watches for `dapr.io/enabled: "true"` annotation and injects sidecar container automatically. Pods show `2/2` containers when sidecar is running.
-- **Component scoping**: DAPR K8s CRDs support namespace scoping. Components in a namespace are available to all DAPR-enabled pods in that namespace.
-- **Access control with mTLS**: Production uses deny-by-default with SPIFFE-based mTLS identity. Requires `DAPR_TRUST_DOMAIN` and `DAPR_NAMESPACE` environment variables in `deploy/dapr/accesscontrol.yaml`.
-- **Secret management**: Use K8s Secrets referenced by env vars in Deployment manifests. DAPR also supports its own secret store component with K8s Secrets backend.
+- **Component scoping**: DAPR K8s CRDs support namespace scoping. Components in a namespace are available to all DAPR-enabled pods in that namespace. **Add `scopes: [commandapi]` to state store, pub/sub, and config store CRDs** to restrict access to commandapi only — domain services must have zero infrastructure access (D4).
+- **Access control with mTLS**: Production uses deny-by-default with SPIFFE-based mTLS identity. Requires `DAPR_TRUST_DOMAIN` and `DAPR_NAMESPACE` environment variables in `deploy/dapr/accesscontrol.yaml`. Verify mTLS is active: `dapr mtls check -k`. The accesscontrol config is evaluated by the RECEIVING service's sidecar — the `commandapi` policy entry allows commandapi to invoke any service; no additional policy is needed for `sample` to receive calls.
+- **Secret management — CRITICAL**: The `{env:VAR}` syntax in production DAPR component YAMLs does NOT work with K8s auto-injected sidecars — the sidecar container does NOT inherit app container env vars. Use DAPR's `secretKeyRef` with a `secretstores.kubernetes` secret store component instead, OR use `dapr.io/env` annotation to inject env vars into the sidecar.
 - **DAPR system pods**: After `dapr init -k`, expect: `dapr-operator`, `dapr-sidecar-injector`, `dapr-placement`, `dapr-sentry` (mTLS CA) in `dapr-system` namespace.
-- **DAPR SDK compatibility**: The project uses DAPR SDK 1.17.0. Ensure the DAPR runtime version in K8s is compatible (DAPR 1.14+ recommended).
+- **DAPR SDK compatibility**: Verify the actual DAPR SDK version in `Directory.Packages.props` (listed as 1.17.0 in CLAUDE.md — confirm against the actual file). Recommend matching DAPR runtime version. Pin with `dapr init -k --runtime-version <version>`. Link to DAPR release policy: https://docs.dapr.io/operations/support/support-release-policy/
 
 ### Health Check Endpoints
 
@@ -90,17 +124,22 @@ Already implemented in `ServiceDefaults/Extensions.cs`:
 
 Map these to K8s probe definitions:
 ```yaml
+startupProbe:
+  httpGet:
+    path: /alive
+    port: 8080
+  failureThreshold: 30
+  periodSeconds: 2
 livenessProbe:
   httpGet:
     path: /alive
     port: 8080
-  initialDelaySeconds: 10
 readinessProbe:
   httpGet:
     path: /ready
     port: 8080
-  initialDelaySeconds: 15
 ```
+Note: `startupProbe` is recommended for DAPR-enabled pods because sidecar initialization (connecting to placement, loading components) can take 10-30 seconds on cold starts. Without it, liveness checks may kill the pod before the sidecar is ready.
 
 DAPR health checks in `CommandApi/HealthChecks/`:
 - `dapr-sidecar` → Unhealthy failure status
@@ -120,12 +159,22 @@ Production components in `deploy/dapr/`:
 - `accesscontrol.yaml` — Deny-by-default with mTLS (envs: `DAPR_TRUST_DOMAIN`, `DAPR_NAMESPACE`)
 - `subscription-sample-counter.yaml` — Sample subscription with dead-letter routing
 
+### Container Image Strategy
+
+Unlike Docker Compose (where images can be built locally), Kubernetes requires images in a container registry accessible to the cluster. The guide must cover:
+- Building images: `docker build` or `dotnet publish` with container image support
+- Pushing to a registry: `docker push <registry>/hexalith-commandapi:<tag>`
+- Local cluster alternatives: `minikube image load` or `kind load docker-image`
+- Updating Helm `values.yaml` with the correct image references
+- The Aspire publisher generates image references in the Helm chart that must match actual pushed images
+
 ### Configuration Patterns
 
 CommandApi configuration (`src/Hexalith.EventStore.CommandApi/appsettings.json`):
 - `EventStore:DomainServices:Registrations` — Domain service routing
 - `Authentication:JwtBearer` — JWT auth config
 - External OIDC env vars: `Authentication__JwtBearer__Authority`, `Authentication__JwtBearer__Issuer`, `Authentication__JwtBearer__Audience`, `Authentication__JwtBearer__RequireHttpsMetadata`
+- **CRITICAL**: If `Authentication__JwtBearer__SigningKey` is present (in appsettings or env vars), the app uses symmetric key validation and ignores OIDC Authority. For external OIDC, this MUST be cleared or omitted
 
 ### Key Differences from Story 14-1 (Docker Compose)
 
@@ -181,14 +230,26 @@ Follow the established documentation page structure:
 - `deploy/` directory already exists with production DAPR components and README.
 - Documentation filename must follow NFR26: descriptive, unabbreviated, hyphen-separated (`deployment-kubernetes.md`).
 
+### Security Considerations (for Story 14-6 depth, surface-level here)
+
+The guide should note these topics exist and link to Story 14-6 (Security Model Documentation) for full coverage:
+- **mTLS**: DAPR Sentry issues certificates for service-to-service mTLS. Default rotation: 24h. Verify: `dapr mtls check -k`
+- **RBAC**: Application pods need ServiceAccounts; DAPR operator needs ClusterRoles. Document minimum-privilege setup
+- **NetworkPolicy**: Restrict pod-to-pod communication; allow only DAPR system namespace egress
+- **DAPR API token auth**: `dapr.io/api-token-secret` annotation prevents unauthorized sidecar API access
+- **Container security**: Recommend running as non-root, PodSecurity admission (restricted profile)
+- **Trust domain**: `DAPR_TRUST_DOMAIN` must be explicitly set — `hexalith.io` default is a real domain, not safe for production
+
 ### References
 
 - [Source: _bmad-output/planning-artifacts/epics.md#Epic 7, Story 7.2]
 - [Source: _bmad-output/planning-artifacts/prd-documentation.md#FR23, FR26, FR57, FR58, FR59, FR60, FR63, NFR7, NFR22, NFR26]
 - [Source: _bmad-output/planning-artifacts/architecture-documentation.md#Deployment sections, K8s publisher]
+- [Source: _bmad-output/planning-artifacts/architecture.md#D4, D9, D10, D11]
 - [Source: src/Hexalith.EventStore.AppHost/Program.cs — Aspire K8s publisher, lines 74, 80-81]
 - [Source: src/Hexalith.EventStore.ServiceDefaults/Extensions.cs — Health check endpoints]
 - [Source: src/Hexalith.EventStore.CommandApi/HealthChecks/ — DAPR health check implementations]
+- [Source: src/Hexalith.EventStore.CommandApi/appsettings.json — Configuration patterns]
 - [Source: deploy/README.md — Production DAPR components, K8s deployment steps, Aspire publisher docs]
 - [Source: deploy/dapr/ — Production DAPR component YAML files]
 - [Source: _bmad-output/implementation-artifacts/14-1-docker-compose-deployment-guide-and-configuration.md — Previous story patterns]
