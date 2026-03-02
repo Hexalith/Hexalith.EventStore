@@ -195,7 +195,7 @@ development_status:
   # Epic 14: Deployment & Operations Guides (Phase 2)
   epic-14: in-progress
   14-1-docker-compose-deployment-guide-and-configuration: done
-  14-2-kubernetes-deployment-guide-and-configuration: ready-for-dev
+  14-2-kubernetes-deployment-guide-and-configuration: done
   14-3-azure-container-apps-deployment-guide-and-configuration: backlog
   14-4-deployment-progression-guide: backlog
   14-5-dapr-component-configuration-reference: backlog

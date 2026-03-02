@@ -1,0 +1,89 @@
+# Hexalith.EventStore — DAPR Annotations and Kubernetes Probes Reference
+# ========================================================================
+# This file is a REFERENCE SNIPPET showing the exact DAPR annotations and
+# Kubernetes probes to add to the Aspire-generated Deployment templates.
+# It is NOT a standalone manifest — copy the relevant sections into your
+# Aspire-generated Helm chart templates.
+#
+# Supplementary to the Aspire publisher output.
+# See docs/guides/deployment-kubernetes.md for the full deployment guide.
+
+# --- commandapi Deployment annotations and probes ---
+# Add these to templates/commandapi.yaml at the indicated locations.
+#
+# Location: spec.template.metadata.annotations
+commandapi_annotations:
+  dapr.io/enabled: "true"
+  dapr.io/app-id: "commandapi"
+  dapr.io/app-port: "8080"
+  dapr.io/config: "accesscontrol"
+  dapr.io/sidecar-cpu-request: "100m"
+  dapr.io/sidecar-memory-request: "128Mi"
+  dapr.io/sidecar-cpu-limit: "300m"
+  dapr.io/sidecar-memory-limit: "256Mi"
+
+# Location: spec.template.spec.containers[0].resources
+commandapi_resources:
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "512Mi"
+
+# Location: spec.template.spec.containers[0] (add these probe blocks)
+commandapi_probes:
+  startupProbe:
+    httpGet:
+      path: /alive
+      port: 8080
+    failureThreshold: 30
+    periodSeconds: 2
+  livenessProbe:
+    httpGet:
+      path: /alive
+      port: 8080
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8080
+
+# --- sample Deployment annotations and probes ---
+# Add these to templates/sample.yaml at the indicated locations.
+#
+# Location: spec.template.metadata.annotations
+sample_annotations:
+  dapr.io/enabled: "true"
+  dapr.io/app-id: "sample"
+  dapr.io/app-port: "8080"
+  dapr.io/config: "accesscontrol"
+  dapr.io/sidecar-cpu-request: "100m"
+  dapr.io/sidecar-memory-request: "128Mi"
+  dapr.io/sidecar-cpu-limit: "300m"
+  dapr.io/sidecar-memory-limit: "256Mi"
+
+# Location: spec.template.spec.containers[0].resources
+sample_resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+
+# Location: spec.template.spec.containers[0] (add these probe blocks)
+sample_probes:
+  startupProbe:
+    httpGet:
+      path: /alive
+      port: 8080
+    failureThreshold: 30
+    periodSeconds: 2
+  livenessProbe:
+    httpGet:
+      path: /alive
+      port: 8080
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8080

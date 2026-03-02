@@ -1,0 +1,10 @@
+# Hexalith.EventStore — Target Namespace
+# ========================================
+# Supplementary to the Aspire publisher output.
+# See docs/guides/deployment-kubernetes.md for the full deployment guide.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hexalith
+  labels:
+    app.kubernetes.io/part-of: hexalith-eventstore

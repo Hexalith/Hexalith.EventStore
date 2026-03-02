@@ -637,7 +637,7 @@ Common causes:
 
 ## Next Steps
 
-- **Next:** Kubernetes Deployment Guide (Story 14-2, coming soon) — deploy to a Kubernetes cluster with DAPR operator and Helm charts
+- **Next:** [Kubernetes Deployment Guide](deployment-kubernetes.md) — deploy to a Kubernetes cluster with DAPR operator and Helm charts
 - **Related:** [Deployment Configuration Reference](../../deploy/README.md) — full backend compatibility matrix and per-backend environment variables
 - **Related:** [Architecture Overview](../concepts/architecture-overview.md) — understand the system topology and DAPR building blocks
 - **Related:** [Quickstart Guide](../getting-started/quickstart.md) — run the system locally with Aspire (no Docker Compose)
