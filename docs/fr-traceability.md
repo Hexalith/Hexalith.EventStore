@@ -18,11 +18,11 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | Metric           | Count                                             |
 | ---------------- | ------------------------------------------------- |
 | Total FRs        | 63                                                |
-| Covered          | 42                                                |
+| Covered          | 43                                                |
 | Partial          | 2                                                 |
-| Gap              | 18                                                |
+| Gap              | 17                                                |
 | Self-referential | 1 (FR62)                                          |
-| Phase 1 coverage | 71% (45/63 covered, partial, or self-referential) |
+| Phase 1 coverage | 73% (46/63 covered, partial, or self-referential) |
 
 ## Traceability Matrix
 
@@ -65,7 +65,7 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR18 | A developer can determine which NuGet package to install for their use case    | `COVERED` | [nuget-packages.md](reference/nuget-packages.md) | NuGet package guide per use case                       |
 | FR19 | A developer can browse auto-generated API documentation for all public types   | `GAP`     | —                                                | Epic 15, Phase 2 (story 15-2)                          |
 | FR20 | A developer can view the dependency relationships between NuGet packages       | `COVERED` | [nuget-packages.md](reference/nuget-packages.md) | NuGet dependency graph                                 |
-| FR21 | A developer can access a complete configuration reference for all system knobs | `GAP`     | —                                                | Epic 15, Phase 2 (story 15-1)                          |
+| FR21 | A developer can access a complete configuration reference for all system knobs | `COVERED` | [configuration-reference.md](guides/configuration-reference.md) | Configuration reference with all system knobs |
 
 ### Deployment and Operations
 
@@ -164,12 +164,11 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR60 | Event data storage per backend              | 14-5              |
 | FR63 | Resource sizing guidance                    | 14-1 through 14-3 |
 
-### Phase 2 — Epic 15: Configuration, Versioning and Lifecycle (5 gaps)
+### Phase 2 — Epic 15: Configuration, Versioning and Lifecycle (4 gaps)
 
 | FR   | Description                           | Target Story |
 | ---- | ------------------------------------- | ------------ |
 | FR19 | Auto-generated API documentation      | 15-2         |
-| FR21 | Configuration reference               | 15-1         |
 | FR33 | Public product roadmap                | 15-5         |
 | FR51 | Event versioning and schema evolution | 15-3         |
 | FR52 | Upgrade path documentation            | 15-4         |
