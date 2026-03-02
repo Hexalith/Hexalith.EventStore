@@ -22,29 +22,29 @@ so that I can verify my changes pass CI before submitting a PR.
 
 The dev agent must create or modify exactly these files:
 
-| Action | File | Purpose |
-| ------ | ---- | ------- |
-| CREATE | `scripts/validate-docs.sh` | Bash validation script (Linux/macOS/Git Bash on Windows) |
-| CREATE | `scripts/validate-docs.ps1` | PowerShell validation script (Windows native) |
-| MODIFY | `CONTRIBUTING.md` | Update "Run Docs Validation Locally" section to reference scripts |
+| Action | File                        | Purpose                                                           |
+| ------ | --------------------------- | ----------------------------------------------------------------- |
+| CREATE | `scripts/validate-docs.sh`  | Bash validation script (Linux/macOS/Git Bash on Windows)          |
+| CREATE | `scripts/validate-docs.ps1` | PowerShell validation script (Windows native)                     |
+| MODIFY | `CONTRIBUTING.md`           | Update "Run Docs Validation Locally" section to reference scripts |
 
 No other source/configuration files. Do NOT modify CI workflows, markdownlint config, lychee config, solution files, or any files in `src/`, `tests/`, `samples/`, `docs/`, or `deploy/`.
 
 ## Tasks / Subtasks
 
 - [x] Task 1: Create `scripts/validate-docs.sh` (AC: #1, #2, #3, #4)
-  - [x] 1.1 Create `scripts/` directory
-  - [x] 1.2 Write bash script with three validation stages (see Dev Notes for exact content)
-  - [x] 1.3 Ensure script has `#!/usr/bin/env bash` shebang and `set -e` for fail-fast
-  - [x] 1.4 Ensure script is executable (`chmod +x` or git filemode)
+    - [x] 1.1 Create `scripts/` directory
+    - [x] 1.2 Write bash script with three validation stages (see Dev Notes for exact content)
+    - [x] 1.3 Ensure script has `#!/usr/bin/env bash` shebang and `set -e` for fail-fast
+    - [x] 1.4 Ensure script is executable (`chmod +x` or git filemode)
 - [x] Task 2: Create `scripts/validate-docs.ps1` (AC: #1, #2, #3, #4)
-  - [x] 2.1 Write PowerShell script mirroring all three validation stages
-  - [x] 2.2 Ensure script uses `$ErrorActionPreference = 'Stop'` for fail-fast
-  - [x] 2.3 Ensure script works on PowerShell 7+ (cross-platform) and Windows PowerShell 5.1
+    - [x] 2.1 Write PowerShell script mirroring all three validation stages
+    - [x] 2.2 Ensure script uses `$ErrorActionPreference = 'Stop'` for fail-fast
+    - [x] 2.3 Ensure script works on PowerShell 7+ (cross-platform) and Windows PowerShell 5.1
 - [x] Task 3: Update CONTRIBUTING.md (AC: #5)
-  - [x] 3.1 Replace the "Run Docs Validation Locally" section with references to both scripts
-  - [x] 3.2 Keep the section under "Documentation Contributions" heading
-  - [x] 3.3 Show both bash and PowerShell invocations
+    - [x] 3.1 Replace the "Run Docs Validation Locally" section with references to both scripts
+    - [x] 3.2 Keep the section under "Documentation Contributions" heading
+    - [x] 3.3 Show both bash and PowerShell invocations
 
 ## Dev Notes
 
@@ -75,10 +75,10 @@ dotnet test samples/Hexalith.EventStore.Sample.Tests/ --configuration Release --
 
 Each script runs these three stages in order. If a stage fails, the script MUST still report which stage failed (not just silently exit):
 
-| Stage | Tool | Files/Projects | Exit behavior |
-| ----- | ---- | -------------- | ------------- |
-| 1. Markdown Lint | `npx markdownlint-cli2` | `"docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "CODE_OF_CONDUCT.md"` | Non-zero on lint errors |
-| 2. Link Check | `lychee` (CLI) | Same file glob as stage 1 | Non-zero on broken links |
+| Stage                  | Tool                           | Files/Projects                                                                            | Exit behavior                  |
+| ---------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------ |
+| 1. Markdown Lint       | `npx markdownlint-cli2`        | `"docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "CODE_OF_CONDUCT.md"`        | Non-zero on lint errors        |
+| 2. Link Check          | `lychee` (CLI)                 | Same file glob as stage 1                                                                 | Non-zero on broken links       |
 | 3. Sample Build & Test | `dotnet build` + `dotnet test` | `samples/Hexalith.EventStore.Sample.Tests/` and `tests/Hexalith.EventStore.Sample.Tests/` | Non-zero on build/test failure |
 
 ### CRITICAL: Lychee CLI vs GitHub Action
@@ -128,6 +128,7 @@ Use **fail-fast**: stop at the first failed stage. Rationale: linting errors are
 ### CRITICAL: Prerequisites Not Installed
 
 The scripts should check for required tools at the start and give a clear error if missing:
+
 - `node`/`npx` (for markdownlint-cli2)
 - `lychee` (link checker CLI)
 - `dotnet` (.NET SDK)
@@ -241,7 +242,7 @@ Write-Host "`n=== All validations passed ===" -ForegroundColor Green
 
 Replace the current "Run Docs Validation Locally" section (lines 94-100) with:
 
-```markdown
+````markdown
 ### Run Docs Validation Locally
 
 Before opening a PR for documentation changes, run the full validation suite
@@ -252,6 +253,7 @@ that mirrors the CI pipeline:
 ```bash
 ./scripts/validate-docs.sh
 ```
+````
 
 **PowerShell (Windows):**
 
@@ -262,6 +264,7 @@ that mirrors the CI pipeline:
 The scripts run three stages in order: markdown linting, link checking, and
 sample build/test. Prerequisites: Node.js (for markdownlint-cli2), [lychee](https://lychee.cli.rs/)
 (link checker), and .NET SDK.
+
 ```
 
 ### Project Structure Notes
@@ -379,3 +382,4 @@ Re-validation Result:
 - `scripts/validate-docs.sh` (CREATED) — Bash validation script
 - `scripts/validate-docs.ps1` (CREATED) — PowerShell validation script
 - `CONTRIBUTING.md` (MODIFIED) — Updated "Run Docs Validation Locally" section
+```
