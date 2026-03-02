@@ -292,7 +292,7 @@ REDIS_HOST=redis:6379
 REDIS_PASSWORD=
 
 # Keycloak (if enabled)
-AUTH_AUTHORITY=http://keycloak:8180/realms/hexalith
+AUTH_AUTHORITY=http://keycloak:8080/realms/hexalith
 ```
 
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
@@ -395,7 +395,7 @@ Once the containers are running, verify the system is healthy using the built-in
 ### Full Health Check
 
 ```bash
-$ curl -s http://localhost:8080/health | jq .
+$ curl -s http://localhost:8080/health
 ```
 
 > **PowerShell:**
@@ -419,7 +419,7 @@ Returns `200` if the application process is responsive. Use this for Docker heal
 ### Readiness Probe
 
 ```bash
-$ curl -s http://localhost:8080/ready | jq .
+$ curl -s http://localhost:8080/ready
 ```
 
 Returns `200` when the application is ready to accept traffic (all `"ready"`-tagged health checks pass). Returns `503` if any readiness check fails. Use this for load balancer health checks.
@@ -632,7 +632,7 @@ Common causes:
 **Fix:**
 
 - Verify Keycloak is running: `curl -s http://localhost:8180/realms/hexalith/.well-known/openid-configuration | jq .issuer`
-- Ensure the `Authentication__JwtBearer__Authority` environment variable on `commandapi` points to `http://keycloak:8180/realms/hexalith` (Docker service name, not `localhost`)
+- Ensure the `Authentication__JwtBearer__Authority` environment variable on `commandapi` points to `http://keycloak:8080/realms/hexalith` (Docker service name, not `localhost`)
 - Check token expiry — Keycloak tokens expire after 5 minutes by default. Request a fresh token.
 
 ## Next Steps

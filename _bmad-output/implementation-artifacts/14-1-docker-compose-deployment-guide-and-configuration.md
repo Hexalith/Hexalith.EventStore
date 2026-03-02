@@ -1,6 +1,6 @@
 # Story 14.1: Docker Compose Deployment Guide & Configuration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,7 +42,7 @@ so that I can run the system on my development machine with a production-like to
     - [x] 2.1 Document the Aspire publisher approach: `PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker`
     - [x] 2.2 Show the expected generated docker-compose.yaml structure with annotations
     - [x] 2.3 Document how to customize the generated compose file for production use (external auth, production state store)
-    - [x] 2.4 If Aspire publisher is insufficient for a standalone demo, create a minimal `samples/deploy/docker-compose.yml` as a reference template
+    - [x] 2.4 If Aspire publisher is insufficient for a standalone demo, create a minimal `samples/deploy/docker-compose.yml` as a reference template _(N/A: Aspire publisher approach is sufficient for this story and fully documented)_
 - [x] Task 3: Validation (AC: #6)
     - [x] 3.1 Follow the guide on a clean machine (or fresh Docker environment) to verify it produces a running system
     - [x] 3.2 Verify health endpoints return expected responses
@@ -197,28 +197,16 @@ Claude Opus 4.6
 - Task 3.4: Markdownlint passes with 0 errors
 - Fixed PowerShell snippets in guide (`$env:PUBLISH_TARGET`, `$token`, `$body`) to ensure Windows commands are copy/paste runnable.
 - Replaced broken Next Steps link to non-existent `deployment-kubernetes.md` with explicit "coming soon" text tied to Story 14-2.
-- Validation findings addressed in guide updates:
-  - Added .NET SDK container publishing instructions (no Dockerfiles exist)
-  - Documented DAPR component `redisHost` override for Docker networking
-  - Added Keycloak `start-dev` requirement for HTTP-only local deployment
-  - Added domain service registration via environment variables for Production mode
-  - Updated health endpoint expected response to match actual output
-  - Added port conflict note for `dapr init` Redis container
-  - Updated Redis key inspection commands to use `docker compose exec`
+- Validation findings addressed in guide updates: - Added .NET SDK container publishing instructions (no Dockerfiles exist) - Documented DAPR component `redisHost` override for Docker networking - Added Keycloak `start-dev` requirement for HTTP-only local deployment - Added domain service registration via environment variables for Production mode - Updated health endpoint expected response to match actual output - Added port conflict note for `dapr init` Redis container - Updated Redis key inspection commands to use `docker compose exec`
 - Fixed Keycloak realm: added "counter" to admin-user's domains for sample compatibility
-- Validation evidence:
-  - 8 containers running (commandapi, commandapi-dapr, sample, sample-dapr, placement, redis, keycloak, dashboard)
-  - `/health` → HTTP 200 "Healthy"
-  - `/alive` → HTTP 200
-  - `/ready` → HTTP 200 "Healthy"
-  - Command POST → HTTP 202 with correlationId
-  - Redis keys confirm event persistence (event stream, idempotency, metadata)
+- Validation evidence: - 8 containers running (commandapi, commandapi-dapr, sample, sample-dapr, placement, redis, keycloak, dashboard) - `/health` → HTTP 200 "Healthy" - `/alive` → HTTP 200 - `/ready` → HTTP 200 "Healthy" - Command POST → HTTP 202 with correlationId - Redis keys confirm event persistence (event stream, idempotency, metadata)
 
 ### Change Log
 
 - 2026-03-02: Created Docker Compose deployment guide (Story 14-1)
 - 2026-03-02: Senior code review follow-up — corrected PowerShell command syntax, removed broken next-step link, and aligned validation tasks with actual execution evidence.
 - 2026-03-02: End-to-end Docker Compose validation — updated guide with 6 fixes found during validation, added counter domain to Keycloak realm, completed all validation tasks.
+- 2026-03-02: AI code review fix pass — corrected in-container Keycloak authority port (`keycloak:8080`), fixed health/readiness verification commands, normalized conditional Task 2.4 as N/A-complete, and synced story/sprint status to done.
 
 ### File List
 
@@ -230,8 +218,8 @@ Claude Opus 4.6
 
 #### Outcome
 
-- **Result:** Changes requested and partially fixed.
-- **Current story status:** `review` (all tasks complete, validation passed).
+- **Result:** Approved after fixes.
+- **Current story status:** `done`.
 
 #### Findings addressed
 
