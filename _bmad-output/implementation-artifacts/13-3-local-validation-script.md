@@ -1,6 +1,6 @@
 # Story 13.3: Local Validation Script
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,19 +32,19 @@ No other source/configuration files. Do NOT modify CI workflows, markdownlint co
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `scripts/validate-docs.sh` (AC: #1, #2, #3, #4)
-  - [ ] 1.1 Create `scripts/` directory
-  - [ ] 1.2 Write bash script with three validation stages (see Dev Notes for exact content)
-  - [ ] 1.3 Ensure script has `#!/usr/bin/env bash` shebang and `set -e` for fail-fast
-  - [ ] 1.4 Ensure script is executable (`chmod +x` or git filemode)
-- [ ] Task 2: Create `scripts/validate-docs.ps1` (AC: #1, #2, #3, #4)
-  - [ ] 2.1 Write PowerShell script mirroring all three validation stages
-  - [ ] 2.2 Ensure script uses `$ErrorActionPreference = 'Stop'` for fail-fast
-  - [ ] 2.3 Ensure script works on PowerShell 7+ (cross-platform) and Windows PowerShell 5.1
-- [ ] Task 3: Update CONTRIBUTING.md (AC: #5)
-  - [ ] 3.1 Replace the "Run Docs Validation Locally" section with references to both scripts
-  - [ ] 3.2 Keep the section under "Documentation Contributions" heading
-  - [ ] 3.3 Show both bash and PowerShell invocations
+- [x] Task 1: Create `scripts/validate-docs.sh` (AC: #1, #2, #3, #4)
+  - [x] 1.1 Create `scripts/` directory
+  - [x] 1.2 Write bash script with three validation stages (see Dev Notes for exact content)
+  - [x] 1.3 Ensure script has `#!/usr/bin/env bash` shebang and `set -e` for fail-fast
+  - [x] 1.4 Ensure script is executable (`chmod +x` or git filemode)
+- [x] Task 2: Create `scripts/validate-docs.ps1` (AC: #1, #2, #3, #4)
+  - [x] 2.1 Write PowerShell script mirroring all three validation stages
+  - [x] 2.2 Ensure script uses `$ErrorActionPreference = 'Stop'` for fail-fast
+  - [x] 2.3 Ensure script works on PowerShell 7+ (cross-platform) and Windows PowerShell 5.1
+- [x] Task 3: Update CONTRIBUTING.md (AC: #5)
+  - [x] 3.1 Replace the "Run Docs Validation Locally" section with references to both scripts
+  - [x] 3.2 Keep the section under "Documentation Contributions" heading
+  - [x] 3.3 Show both bash and PowerShell invocations
 
 ## Dev Notes
 
@@ -312,14 +312,70 @@ sample build/test. Prerequisites: Node.js (for markdownlint-cli2), [lychee](http
 5. **Missing tool detection:** Remove `lychee` from PATH and verify the script reports the missing tool before running any stage
 6. **CONTRIBUTING.md updated:** The "Run Docs Validation Locally" section shows both script invocations and lists prerequisites
 
+## Change Log
+
+- 2026-03-02: Implemented story 13-3 — created bash and PowerShell local validation scripts mirroring CI pipeline, updated CONTRIBUTING.md with script references
+- 2026-03-02: Senior Developer Review (AI) — fixed CI parity gaps and failure reporting gaps in validation scripts
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (claude-opus-4-6)
 
 ### Debug Log References
 
+- CI parity verified against `.github/workflows/docs-validation.yml` — file globs, tool flags, and project paths match
+- Sample tests pass: 29 (domain unit) + 4 (quickstart smoke) = 33 tests, 0 failures
+- CONTRIBUTING.md passes markdownlint-cli2 with 0 errors
+- Executable bit set on bash script via `git update-index --chmod=+x`
+
 ### Completion Notes List
 
+- Created `scripts/validate-docs.sh` with 3 validation stages (markdownlint, lychee, dotnet build+test), prerequisite checks, fail-fast behavior, and clear stage headers
+- Created `scripts/validate-docs.ps1` mirroring the bash script for PowerShell 5.1+ with explicit `$LASTEXITCODE` checks per command
+- Updated CONTRIBUTING.md "Run Docs Validation Locally" section to reference both scripts with prerequisites listed
+- All 5 ACs satisfied: scripts exist and are executable (AC1), run 3 stages in order (AC2), exit non-zero on failure (AC3), clear stage headers with pass/fail (AC4), CONTRIBUTING.md updated (AC5)
+- No files modified outside the exact file manifest (3 files only)
+
+### Senior Developer Review (AI)
+
+Review Date: 2026-03-02
+Reviewer: Jerome (AI-assisted)
+Outcome: Changes Requested → Fixed in-session
+
+Findings Summary:
+
+1. **HIGH** — Bash script did not print explicit stage failure status before exiting
+  - Evidence: `scripts/validate-docs.sh` relied on `set -euo pipefail` with no `FAILED:` output path
+  - Impact: AC #4 (clear failed stage output) was only partially met on bash path
+  - Fix Applied: Added `ERR` trap with `CURRENT_STAGE` tracking and explicit `FAILED:` + guidance output
+
+2. **HIGH** — Script flow did not fully mirror CI restore/build sequence
+  - Evidence: `.github/workflows/docs-validation.yml` runs explicit `dotnet restore` then `dotnet build --no-restore`
+  - Impact: Local validation parity with CI was weaker than specified in Dev Notes
+  - Fix Applied: Added explicit restore steps and `--no-restore` builds to both scripts
+
+3. **MEDIUM** — Prerequisite checks omitted direct `node` validation
+  - Evidence: Scripts checked `npx`, `lychee`, `dotnet` but not `node`
+  - Impact: Tooling error clarity degraded in environments where `node` isn’t available directly
+  - Fix Applied: Added `node` prerequisite checks to bash and PowerShell scripts
+
+4. **MEDIUM** — Git/story discrepancy during review state
+  - Evidence: Additional workflow-tracking file changes present in git during review (`_bmad-output/implementation-artifacts/...`)
+  - Impact: Temporary documentation-vs-working-tree drift while review is in progress
+  - Resolution: Accepted as workflow artifact updates; no source-code manifest violation in implementation files
+
+Re-validation Result:
+
+- AC #1: Met (scripts exist; bash tracked as executable)
+- AC #2: Met (three-stage order preserved)
+- AC #3: Met (non-zero on any failing stage)
+- AC #4: Met (clear stage headers + explicit pass/fail reporting)
+- AC #5: Met (CONTRIBUTING section updated)
+
 ### File List
+
+- `scripts/validate-docs.sh` (CREATED) — Bash validation script
+- `scripts/validate-docs.ps1` (CREATED) — PowerShell validation script
+- `CONTRIBUTING.md` (MODIFIED) — Updated "Run Docs Validation Locally" section

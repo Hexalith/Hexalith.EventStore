@@ -1,6 +1,6 @@
 # Story 13.4: FR Traceability Check
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -28,14 +28,14 @@ No other source/configuration files. Do NOT modify CI workflows, solution files,
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `docs/fr-traceability.md` (AC: #1, #2, #3)
-  - [ ] 1.1 Create the markdown document with page template header (title, description, last-reviewed date)
-  - [ ] 1.2 Build the complete FR traceability table with all 63 FRs
-  - [ ] 1.3 For each FR, identify the documentation page(s) that address it by scanning existing `docs/`, root `.md` files, `.github/` templates, CI workflows, and `samples/` assets
-  - [ ] 1.4 Flag FRs without documentation pages as `GAP` with the epic/phase that will deliver them
-  - [ ] 1.5 Add a summary section with coverage statistics (covered/partial/gap counts)
-  - [ ] 1.6 Add a "How to Use This Document" section explaining the traceability check process
-  - [ ] 1.7 Verify the document passes markdownlint (consistent with `.markdownlint-cli2.jsonc`)
+- [x] Task 1: Create `docs/fr-traceability.md` (AC: #1, #2, #3)
+  - [x] 1.1 Create the markdown document with page template header (title, description, last-reviewed date)
+  - [x] 1.2 Build the complete FR traceability table with all 63 FRs
+  - [x] 1.3 For each FR, identify the documentation page(s) that address it by scanning existing `docs/`, root `.md` files, `.github/` templates, CI workflows, and `samples/` assets
+  - [x] 1.4 Flag FRs without documentation pages as `GAP` with the epic/phase that will deliver them
+  - [x] 1.5 Add a summary section with coverage statistics (covered/partial/gap counts)
+  - [x] 1.6 Add a "How to Use This Document" section explaining the traceability check process
+  - [x] 1.7 Verify the document passes markdownlint (consistent with `.markdownlint-cli2.jsonc`)
 
 ## Dev Notes
 
@@ -303,10 +303,29 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+None — clean implementation, no issues encountered.
+
 ### Completion Notes List
 
+- Created `docs/fr-traceability.md` with complete FR1–FR63 traceability matrix
+- Verified all 63 FR descriptions match exact text from PRD (`_bmad-output/planning-artifacts/prd-documentation.md`)
+- Corrected FR29 from PARTIAL to COVERED — `CONTRIBUTING.md` has "Good First Issues" section (line 157) documenting the `good first issue` label strategy
+- Corrected FR61 from PARTIAL to COVERED — `CONTRIBUTING.md` has "Run Docs Validation Locally" section (line 94) and `scripts/validate-docs.sh`/`scripts/validate-docs.ps1` exist
+- Final coverage: 39 COVERED, 2 PARTIAL (FR37, FR46), 21 GAP (all Phase 2 scope), 1 self-referential (FR62)
+- Document follows page template pattern (back-link, H1 title, description, content sections, Next Steps)
+- markdownlint passes with 0 errors
+- All relative links verified as valid
+
+### Change Log
+
+- 2026-03-02: Created FR traceability matrix document (`docs/fr-traceability.md`) mapping all 63 functional requirements to documentation pages with gap analysis by phase
+
 ### File List
+
+| Action | File |
+| ------ | ---- |
+| CREATE | `docs/fr-traceability.md` |

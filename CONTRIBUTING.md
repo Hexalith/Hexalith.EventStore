@@ -93,11 +93,24 @@ The solution file is `Hexalith.EventStore.slnx`.
 
 ### Run Docs Validation Locally
 
-Before opening a PR for documentation changes, run:
+Before opening a PR for documentation changes, run the full validation suite
+that mirrors the CI pipeline:
+
+**Bash (Linux / macOS / Git Bash on Windows):**
 
 ```bash
-npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "CODE_OF_CONDUCT.md"
+./scripts/validate-docs.sh
 ```
+
+**PowerShell (Windows):**
+
+```powershell
+.\scripts\validate-docs.ps1
+```
+
+The scripts run three stages in order: markdown linting, link checking, and
+sample build/test. Prerequisites: Node.js (for markdownlint-cli2), [lychee](https://lychee.cli.rs/)
+(link checker), and .NET SDK.
 
 ### Triaging Documentation CI Failures
 
