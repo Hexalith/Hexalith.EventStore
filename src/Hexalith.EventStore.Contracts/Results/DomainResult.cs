@@ -53,6 +53,9 @@ public record DomainResult {
     /// <summary>Gets a value indicating whether the result is a no-op (empty events list — command acknowledged, no state change).</summary>
     public bool IsNoOp => Events.Count == 0;
 
+    /// <summary>Gets an optional serialized payload for enriched command results (e.g., composite operation summaries).</summary>
+    public virtual string? ResultPayload => null;
+
     /// <summary>Creates a success result from regular event payloads.</summary>
     /// <param name="events">One or more regular event payloads.</param>
     /// <returns>A <see cref="DomainResult"/> with IsSuccess = true.</returns>

@@ -28,7 +28,8 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// Verifies checkpointed stage transitions, crash recovery, advisory status writes,
 /// and pipeline state cleanup during command processing.
 /// </summary>
-public class StateMachineIntegrationTests {
+public class StateMachineIntegrationTests
+{
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -43,7 +44,8 @@ public class StateMachineIntegrationTests {
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor() {
+    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor()
+    {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -87,7 +89,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.1: Happy path transitions ---
 
     [Fact]
-    public async Task ProcessCommand_Success_CheckpointsProcessingThenEventsStoredThenCleanup() {
+    public async Task ProcessCommand_Success_CheckpointsProcessingThenEventsStoredThenCleanup()
+    {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -125,7 +128,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.2: Rejection path ---
 
     [Fact]
-    public async Task ProcessCommand_Rejection_TransitionsProcessingEventsStoredCompleted() {
+    public async Task ProcessCommand_Rejection_TransitionsProcessingEventsStoredCompleted()
+    {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
@@ -155,7 +159,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.3: No-op path ---
 
     [Fact]
-    public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted() {
+    public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted()
+    {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
@@ -192,7 +197,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.4: Crash recovery from EventsStored (NFR25) ---
 
     [Fact]
-    public async Task ProcessCommand_CrashAtEventsStored_Resume_DoesNotRePersistEvents() {
+    public async Task ProcessCommand_CrashAtEventsStored_Resume_DoesNotRePersistEvents()
+    {
         // Arrange -- simulate existing EventsStored pipeline state (crash scenario)
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
 
@@ -282,10 +288,89 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task ProcessCommand_CrashAtEventsStored_Resume_PreservesResultPayload()
+    {
+        // Arrange -- resume must preserve enriched payloads for composite command responses
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+
+        const string resultPayload = "{\"result\":{\"applied\":[\"Updated person details\"]},\"party\":{\"id\":\"agg-001\"}}";
+        var existingPipeline = new PipelineState(
+            "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null, ResultPayload: resultPayload);
+
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+
+        var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata",
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:1",
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(
+                true,
+                new EventEnvelope(
+                    "agg-001",
+                    "test-tenant",
+                    "test-domain",
+                    1,
+                    DateTimeOffset.UtcNow,
+                    "corr-sm-test",
+                    "cause-1",
+                    "system",
+                    "1.0.0",
+                    "TestEvent",
+                    "json",
+                    [1],
+                    null)));
+
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:2",
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(
+                true,
+                new EventEnvelope(
+                    "agg-001",
+                    "test-tenant",
+                    "test-domain",
+                    2,
+                    DateTimeOffset.UtcNow,
+                    "corr-sm-test",
+                    "cause-2",
+                    "system",
+                    "1.0.0",
+                    "TestEvent",
+                    "json",
+                    [2],
+                    null)));
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeTrue();
+        result.ResultPayload.ShouldBe(resultPayload);
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2),
+            "corr-sm-test",
+            Arg.Any<CancellationToken>());
+    }
+
     // --- Task 8.5: Crash recovery from Processing ---
 
     [Fact]
-    public async Task ProcessCommand_CrashAtProcessing_Resume_ReprocessesFromScratch() {
+    public async Task ProcessCommand_CrashAtProcessing_Resume_ReprocessesFromScratch()
+    {
         // Arrange -- simulate existing Processing pipeline state (crash before event persistence)
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
 
@@ -320,7 +405,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.6: Advisory status write failure ---
 
     [Fact]
-    public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline() {
+    public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline()
+    {
         // Arrange -- status store throws on every call
         (AggregateActor actor, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, _) = CreateActor();
         _ = statusStore.WriteStatusAsync(
@@ -346,7 +432,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.7: Pipeline state cleaned up on completion ---
 
     [Fact]
-    public async Task ProcessCommand_PipelineStateCleanedUp_OnCompletion() {
+    public async Task ProcessCommand_PipelineStateCleanedUp_OnCompletion()
+    {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -365,7 +452,8 @@ public class StateMachineIntegrationTests {
     // --- Task 8.8: Pipeline state cleaned up on rejection ---
 
     [Fact]
-    public async Task ProcessCommand_PipelineStateCleanedUp_OnRejection() {
+    public async Task ProcessCommand_PipelineStateCleanedUp_OnRejection()
+    {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });

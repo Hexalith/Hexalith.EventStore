@@ -12,10 +12,12 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="StartedAt">When pipeline processing began.</param>
 /// <param name="EventCount">Number of events persisted (populated at EventsStored stage).</param>
 /// <param name="RejectionEventType">Rejection event type name (populated for rejections).</param>
+/// <param name="ResultPayload">Optional serialized result payload preserved for crash recovery resume.</param>
 public record PipelineState(
     string CorrelationId,
     CommandStatus CurrentStage,
     string CommandType,
     DateTimeOffset StartedAt,
     int? EventCount,
-    string? RejectionEventType);
+    string? RejectionEventType,
+    string? ResultPayload = null);
