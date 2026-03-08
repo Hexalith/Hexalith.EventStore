@@ -70,7 +70,7 @@ From Architecture D4, the required sections and their content:
 - Clone: `git clone https://github.com/Hexalith/Hexalith.EventStore.git`
 - Build: `dotnet restore && dotnet build`
 - Test: `dotnet test`
-- Solution file: `Hexalith.EventStore.sln`
+- Solution file: `Hexalith.EventStore.slnx`
 
 **Section 3 — Documentation Contributions:**
 - Documentation lives in `docs/` folder organized by: `getting-started/`, `concepts/`, `guides/`, `reference/`, `community/`
