@@ -287,7 +287,7 @@ Hexalith.EventStore/
 │   ├── Hexalith.EventStore.Contracts.Tests/ # Unit tests (pure functions, no DAPR)
 │   ├── Hexalith.EventStore.Server.Tests/    # Integration tests (DAPR test containers)
 │   └── Hexalith.EventStore.IntegrationTests/# Contract tests (full Aspire topology)
-└── Hexalith.EventStore.sln
+└── Hexalith.EventStore.slnx
 ```
 
 **Key NuGet Dependencies:**
@@ -706,7 +706,7 @@ Hexalith.EventStore/
 ├── Directory.Packages.props                    # Central package management
 ├── nuget.config
 ├── global.json                                 # .NET SDK version pinning (10.0.103)
-├── Hexalith.EventStore.sln
+├── Hexalith.EventStore.slnx
 │
 ├── src/
 │   ├── Hexalith.EventStore.Contracts/          # NuGet: Event envelope, types, identity
