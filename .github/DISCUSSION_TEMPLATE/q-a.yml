@@ -42,7 +42,7 @@ body:
     attributes:
       label: ".NET SDK Version"
       description: "Run `dotnet --version`"
-      placeholder: "e.g. 10.0.102"
+      placeholder: "e.g. 10.0.103"
     validations:
       required: false
 

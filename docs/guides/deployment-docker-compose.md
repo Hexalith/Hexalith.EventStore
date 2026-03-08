@@ -62,7 +62,7 @@ All containers run within the Docker Compose network boundary.
 Before starting, ensure you have the following installed:
 
 - **Docker Desktop** — running with at least 4 GB of memory allocated
-- **.NET 10 SDK** — version 10.0.102 or later (`dotnet --version` to check)
+- **.NET 10 SDK** — version 10.0.103 or later (`dotnet --version` to check)
 - **DAPR CLI** — version 1.14 or later (`dapr --version` to check)
 - **Aspire CLI** — install as a global tool if not already present:
 

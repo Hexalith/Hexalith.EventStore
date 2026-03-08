@@ -215,7 +215,7 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 
 | Technology | Version | Notes |
 |-----------|---------|-------|
-| .NET SDK | 10.0.102 | LTS, supported until November 2028 |
+| .NET SDK | 10.0.103 | LTS, supported until November 2028 |
 | C# | 14 | Ships with .NET 10 |
 | DAPR Runtime | 1.16.6 | Latest stable (updated from PRD's 1.14+ minimum) |
 | DAPR .NET SDK | Dapr.Client 1.16.0, Dapr.AspNetCore 1.16.1 | Requires .NET 8+ |
@@ -705,7 +705,7 @@ Hexalith.EventStore/
 ├── Directory.Build.props                       # Shared build properties, MinVer, net10.0
 ├── Directory.Packages.props                    # Central package management
 ├── nuget.config
-├── global.json                                 # .NET SDK version pinning (10.0.102)
+├── global.json                                 # .NET SDK version pinning (10.0.103)
 ├── Hexalith.EventStore.sln
 │
 ├── src/
