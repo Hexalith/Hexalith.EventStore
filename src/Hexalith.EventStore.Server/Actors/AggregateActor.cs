@@ -6,6 +6,7 @@ using Dapr.Actors.Runtime;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -35,6 +36,7 @@ public partial class AggregateActor(
     ILogger<AggregateActor> logger,
     IDomainServiceInvoker domainServiceInvoker,
     ISnapshotManager snapshotManager,
+    IEventPayloadProtectionService payloadProtectionService,
     ICommandStatusStore commandStatusStore,
     IEventPublisher eventPublisher,
     IOptions<EventDrainOptions> drainOptions,
@@ -328,7 +330,8 @@ public partial class AggregateActor(
                 {
                     var eventPersister = new EventPersister(
                         StateManager,
-                        Host.LoggerFactory.CreateLogger<EventPersister>());
+                        Host.LoggerFactory.CreateLogger<EventPersister>(),
+                        payloadProtectionService);
 
                     persistResult = await eventPersister
                         .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
