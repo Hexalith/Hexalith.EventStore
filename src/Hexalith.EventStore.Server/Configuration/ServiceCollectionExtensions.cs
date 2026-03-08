@@ -3,6 +3,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Contracts.Security;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,19 +13,22 @@ namespace Hexalith.EventStore.Server.Configuration;
 /// <summary>
 /// DI registration extension methods for the EventStore Server components.
 /// </summary>
-public static class EventStoreServerServiceCollectionExtensions {
+public static class EventStoreServerServiceCollectionExtensions
+{
     /// <summary>
     /// Registers EventStore Server services including command routing and DAPR actor infrastructure.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for fluent chaining.</returns>
-    public static IServiceCollection AddEventStoreServer(this IServiceCollection services, IConfiguration configuration) {
+    public static IServiceCollection AddEventStoreServer(this IServiceCollection services, IConfiguration configuration)
+    {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
+        services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
@@ -38,9 +42,11 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
             .ValidateOnStart();
-        services.AddActors(options => {
+        services.AddActors(options =>
+        {
             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
-            if (!string.IsNullOrEmpty(daprHttpPort)) {
+            if (!string.IsNullOrEmpty(daprHttpPort))
+            {
                 options.HttpEndpoint = $"http://127.0.0.1:{daprHttpPort}";
             }
 
