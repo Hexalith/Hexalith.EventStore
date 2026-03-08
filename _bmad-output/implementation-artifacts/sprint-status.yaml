@@ -207,7 +207,7 @@ development_status:
   # Epic 15: Configuration, Versioning & Lifecycle (Phase 2)
   epic-15: in-progress
   15-1-configuration-reference: done
-  15-2-auto-generated-api-reference-and-ci-workflow: backlog
+  15-2-auto-generated-api-reference-and-ci-workflow: ready-for-dev
   15-3-event-versioning-and-schema-evolution-guide: backlog
   15-4-upgrade-path-documentation: backlog
   15-5-public-product-roadmap: backlog
