@@ -45,7 +45,7 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 
 ### Required Tools
 
-- **.NET 10 SDK** (10.0.102 or later)
+- **.NET 10 SDK** (10.0.103 or later)
 - **Docker Desktop** (for local DAPR infrastructure)
 - **DAPR CLI** (1.16.x or later)
 

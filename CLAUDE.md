@@ -6,7 +6,7 @@ DAPR-native event sourcing server for .NET. Built on CQRS, DDD, and event sourci
 
 - **Repository:** https://github.com/Hexalith/Hexalith.EventStore
 - **License:** MIT
-- **Framework:** .NET 10 (SDK 10.0.102, pinned in `global.json`)
+- **Framework:** .NET 10 (SDK 10.0.103, pinned in `global.json`)
 
 ## Solution File
 

@@ -6,7 +6,7 @@ Before you start the quickstart, you need three tools installed: the .NET 10 SDK
 
 ## .NET 10 SDK
 
-Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.102 or later) to build and run the project.
+Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.103 or later) to build and run the project.
 
 **Install:** Use the official installation guidance for your platform:
 
@@ -20,7 +20,7 @@ Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.102 
 $ dotnet --version
 ```
 
-Expected output: `10.0.102` or later (any 10.0.x patch version works).
+Expected output: `10.0.103` or later (any 10.0.x patch version works).
 
 ## Docker Desktop
 
@@ -134,7 +134,7 @@ You should see `dapr_placement`, `dapr_redis`, and `dapr_zipkin` listed as runni
 Run these commands to confirm everything is set up correctly:
 
 ```bash
-$ dotnet --version    # 10.0.102 or later
+$ dotnet --version    # 10.0.103 or later
 $ docker --version    # Output starts with "Docker version"
 $ docker info         # Returns Docker server information (daemon running)
 $ dapr --version      # CLI version 1.16.x, Runtime version 1.16.x
@@ -155,7 +155,7 @@ If `docker info` returns an error, start Docker Desktop from your applications m
 
 ### .NET SDK version mismatch
 
-If `dotnet --version` shows a version earlier than 10.0.102, download the latest .NET 10 SDK from the [.NET 10 download page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0). Multiple SDK versions can coexist on the same machine.
+If `dotnet --version` shows a version earlier than 10.0.103, download the latest .NET 10 SDK from the [.NET 10 download page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0). Multiple SDK versions can coexist on the same machine.
 
 ### Windows: WSL 2 not enabled
 
