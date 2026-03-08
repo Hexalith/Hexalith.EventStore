@@ -213,3 +213,22 @@ development_status:
   15-5-public-product-roadmap: backlog
   15-6-dapr-faq-deep-dive: backlog
   epic-15-retrospective: optional
+
+  # ============================================================================
+  # ACTOR-BASED AUTHORIZATION & QUERY API (from sprint-change-proposal-2026-03-08-auth-query.md)
+  # ============================================================================
+
+  # Epic 17: Actor-Based Authorization & Query API
+  # DEPENDENCY: Epics 1-3, 5 (done). Complete before Epic 15 remaining stories.
+  # SOURCE: sprint-change-proposal-2026-03-08-auth-query.md
+  epic-17: backlog
+  17-1-authorization-options-and-validator-abstractions: backlog
+  17-2-actor-based-validator-implementations: backlog
+  17-3-refactor-authorization-behavior: backlog
+  17-4-query-contracts: backlog
+  17-5-queries-controller-and-query-router: backlog
+  17-6-projection-actor-contract: backlog
+  17-7-command-validation-endpoint: backlog
+  17-8-query-validation-endpoint: backlog
+  17-9-integration-and-e2e-tests: backlog
+  epic-17-retrospective: optional
