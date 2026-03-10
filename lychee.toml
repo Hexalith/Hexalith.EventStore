@@ -66,10 +66,10 @@ exclude = [
     '^https?://github\.com/Hexalith/Hexalith\.EventStore/fork$',
     '^https?://github\.com/Hexalith/Hexalith\.EventStore/stargazers$',
     '^https?://github\.com/Hexalith/Hexalith\.EventStore/actions/workflows/ci\.yml$',
+    '^https?://github\.com/Hexalith/Hexalith\.EventStore/actions/workflows/docs-validation\.yml$',
     '^https?://www\.nuget\.org/packages/Hexalith\.EventStore\.Contracts$',
     # Not-yet-created documentation targets (remove when Stories 12-5/12-6 create these files)
     'first-domain-service',
-    'guides/dapr-faq',
 ]
 
 # Exclude source paths with known non-functional links (template file)

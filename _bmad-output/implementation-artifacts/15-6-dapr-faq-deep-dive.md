@@ -1,6 +1,6 @@
 # Story 15.6: DAPR FAQ Deep Dive
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,34 +23,35 @@ so that I can make an informed decision about adopting Hexalith.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `docs/guides/dapr-faq.md` (AC: #1, #2, #3, #4)
-  - [ ] 1.1 Write page following standard template: back-link `[← Back to Hexalith.EventStore](../../README.md)`, H1 "DAPR FAQ Deep Dive", summary paragraph explaining this is the deepest level of DAPR coverage. The summary must work for a cold Google landing — include one sentence: "Hexalith.EventStore is a DAPR-native event sourcing server for .NET — this page answers the hard questions about what that DAPR dependency means for you."
-  - [ ] 1.2 Add prerequisites blockquote linking to [Choose the Right Tool](../concepts/choose-the-right-tool.md) and [Architecture Overview](../concepts/architecture-overview.md)
-  - [ ] 1.3 Section: "What Is DAPR and Why Does Hexalith Use It?" — brief recap (1 paragraph) with link to architecture-overview for full explanation. Do NOT repeat what's already in choose-the-right-tool — reference and deepen
-  - [ ] 1.4 Section: "What if DAPR Is Deprecated?" — deep analysis. Cover: CNCF graduated status (Feb 2024), governance independence from Microsoft, what graduation means, Hexalith's architectural isolation (Server package is the only DAPR-dependent package), domain code portability (Handle/Apply pure functions have zero DAPR imports), migration effort estimate (Server package replacement scope), comparison with similar CNCF project lifecycle. Acknowledge the competitive context: alternatives like Marten and EventStoreDB do not carry this risk — be upfront about that, then explain why the trade-off is worth it for the right use case
-  - [ ] 1.5 Section: "How Does DAPR Versioning Affect Hexalith?" — deep analysis. Cover: DAPR SemVer policy, v1.x stability since Feb 2021 (5+ years), current pinned version (1.17.0 in Directory.Packages.props), Hexalith CI verification, upgrade strategy (bump in feature branch, run test suite), major version upgrade cadence and migration guidance. Note that DAPR continues adding new building blocks (e.g., Workflow in v1.14) but Hexalith currently uses only State Store, Pub/Sub, and Actors — new DAPR features do not affect Hexalith unless explicitly adopted. Include a "Last verified" date for all DAPR version claims so readers know when the content was last reviewed
-  - [ ] 1.6 Section: "What Is the Performance Overhead of DAPR Sidecars?" — deep analysis with quantitative context. Cover: localhost gRPC hop (microseconds-to-low-milliseconds), no network hop (same-host communication), batch operation amortization, comparison with direct DB access, sidecar resource consumption (CPU/memory baseline), when this overhead matters vs when it doesn't, reference to DAPR's own benchmark documentation
-  - [ ] 1.7 Section: "Can I Use Hexalith Without DAPR?" — honest answer. Cover: no — DAPR is a core runtime dependency, NOT optional. Explain the architectural reasoning (Hexalith would need to rebuild state store abstraction, pub/sub, actors, service discovery). Explain the isolation guarantee (domain code is DAPR-free, only Server package depends on DAPR). Explain what "without DAPR" would mean practically (fork and replace Server package). Acknowledge the competitive context: if DAPR is a dealbreaker, Marten (in-process, PostgreSQL only) and EventStoreDB (dedicated server, no sidecar) are viable alternatives with no DAPR dependency — link to choose-the-right-tool for the full comparison
-  - [ ] 1.8 Section: "What Are the Operational Costs of Running DAPR?" — deep analysis. Cover: sidecar per-instance overhead (CPU, memory), DAPR placement service (required for actors), component YAML management, version coordination across services, monitoring/debugging (DAPR dashboard, OpenTelemetry integration), container orchestration requirement (Docker/K8s/ACA), comparison with alternatives (in-process library like Marten = zero, dedicated server like EventStoreDB = server cluster). Reference DAPR's production deployment guidance for sidecar resource limits and include pod sizing implications for Kubernetes deployments
-  - [ ] 1.9 Section: "What Are the Backend-Specific Consistency Differences?" — cover the caveat mentioned in choose-the-right-tool. Not all DAPR state store backends support identical consistency guarantees. Infrastructure portability means portable code, not portable behavior. Focus on the three backends used in Hexalith's sample and deployment guides: Redis, PostgreSQL, and Cosmos DB — mention that DAPR supports other backends but these three cover the most common deployment scenarios. Do not attempt to document consistency for all DAPR state stores. Reference DAPR component specification pages for backend-specific consistency guarantees — do not state guarantees without a verifiable source
-  - [ ] 1.10 Section: "What If a Better Abstraction Emerges?" — deeper expansion of what's in choose-the-right-tool. Contracts/Client packages are DAPR-free, Server package contains all DAPR integration (actor lifecycle, event persistence, snapshot, pub/sub, idempotency). Replacing Server is significant but scoped. Domain code survives any runtime change
-  - [ ] 1.11 Section: "How Does Hexalith Handle DAPR Sidecar Failures?" — cover: sidecar health checks, retry policies, circuit breakers, what happens when sidecar crashes mid-operation, Aspire auto-restart in development, Kubernetes liveness/readiness probes in production, dead-letter routing for failed event delivery. Specifically cover the persist-then-publish atomicity gap: what happens when the sidecar fails after persisting events but before publishing them? Answer: events are already persisted safely, pub/sub delivery retries on sidecar recovery, and consumer idempotency (causation ID check) handles any duplicate deliveries. Include a subsection on debugging the DAPR sidecar chain: where to find sidecar logs, how errors propagate (app → sidecar → backend → sidecar → app), DAPR dashboard for component-level visibility, and the OpenTelemetry trace correlation that Hexalith provides. Link to troubleshooting.md for specific error resolutions
-  - [ ] 1.12 Next Steps footer: links to [Choose the Right Tool](../concepts/choose-the-right-tool.md), [Architecture Overview](../concepts/architecture-overview.md), [DAPR Component Configuration Reference](dapr-component-reference.md), [Troubleshooting Guide](troubleshooting.md)
-- [ ] Task 2: Update cross-references in `docs/concepts/choose-the-right-tool.md` (AC: #5)
-  - [ ] 2.1 Find all instances of "future [DAPR FAQ Deep Dive]" or "future DAPR FAQ Deep Dive" and remove the word "future"
-  - [ ] 2.2 Verify all `../guides/dapr-faq.md` links are correct (they already exist, just need "future" removed from surrounding text)
-  - [ ] 2.3 Update the note at line ~219: remove "future" qualifier from the sentence
-  - [ ] 2.4 Verify the DAPR SDK version mentioned in choose-the-right-tool.md (currently says 1.16.1 at line ~193) matches the actual version in `Directory.Packages.props` — update if stale
-- [ ] Task 3: Update link exclusion files (AC: #6)
-  - [ ] 3.1 In `.lycheeignore`: remove lines 26-27 (`^\.\./guides/dapr-faq\.md$` and `^docs/guides/dapr-faq\.md$`)
-  - [ ] 3.2 In `lychee.toml`: remove `'guides/dapr-faq'` from the exclusion list (line ~72)
-- [ ] Task 4: Update README.md (AC: #7)
-  - [ ] 4.1 Add `[DAPR FAQ Deep Dive](docs/guides/dapr-faq.md) — honest answers about DAPR dependency, risks, and operational costs` to the Guides section
-- [ ] Task 5: Validate with markdownlint-cli2 (AC: #8)
-  - [ ] 5.1 Run `npx markdownlint-cli2 docs/guides/dapr-faq.md` — 0 errors
-  - [ ] 5.2 Run `npx markdownlint-cli2 docs/concepts/choose-the-right-tool.md` — 0 errors (after edits)
-  - [ ] 5.3 Verify all internal links resolve to existing files
-  - [ ] 5.4 Run `npx lychee --config lychee.toml docs/` to verify zero broken links across the entire docs folder after all edits (not just the new file)
+- [x] Task 1: Create `docs/guides/dapr-faq.md` (AC: #1, #2, #3, #4)
+    - [x] 1.1 Write page following standard template: back-link `[← Back to Hexalith.EventStore](../../README.md)`, H1 "DAPR FAQ Deep Dive", summary paragraph explaining this is the deepest level of DAPR coverage. The summary must work for a cold Google landing — include one sentence: "Hexalith.EventStore is a DAPR-native event sourcing server for .NET — this page answers the hard questions about what that DAPR dependency means for you."
+    - [x] 1.2 Add prerequisites blockquote linking to [Choose the Right Tool](../concepts/choose-the-right-tool.md) and [Architecture Overview](../concepts/architecture-overview.md)
+    - [x] 1.3 Section: "What Is DAPR and Why Does Hexalith Use It?" — brief recap (1 paragraph) with link to architecture-overview for full explanation. Do NOT repeat what's already in choose-the-right-tool — reference and deepen
+    - [x] 1.4 Section: "What if DAPR Is Deprecated?" — deep analysis. Cover: CNCF graduated status (Feb 2024), governance independence from Microsoft, what graduation means, Hexalith's architectural isolation (runtime replacement concentrated in the Server package while domain code remains DAPR-free), domain code portability (Handle/Apply pure functions have zero DAPR imports), migration effort estimate (Server package replacement scope), comparison with similar CNCF project lifecycle. Acknowledge the competitive context: alternatives like Marten and EventStoreDB do not carry this risk — be upfront about that, then explain why the trade-off is worth it for the right use case
+    - [x] 1.5 Section: "How Does DAPR Versioning Affect Hexalith?" — deep analysis. Cover: DAPR SemVer policy, v1.x stability since Feb 2021 (5+ years), current pinned version (1.16.1 in Directory.Packages.props), Hexalith CI verification, upgrade strategy (bump in feature branch, run test suite), major version upgrade cadence and migration guidance. Note that DAPR continues adding new building blocks (e.g., Workflow in v1.14) but Hexalith currently uses State Store, Pub/Sub, Actors, Service Invocation, and Configuration Store — new DAPR features do not affect Hexalith unless explicitly adopted. Include a "Last verified" date for all DAPR version claims so readers know when the content was last reviewed
+    - [x] 1.6 Section: "What Is the Performance Overhead of DAPR Sidecars?" — deep analysis with quantitative context. Cover: localhost gRPC hop (microseconds-to-low-milliseconds), no network hop (same-host communication), batch operation amortization, comparison with direct DB access, sidecar resource consumption (CPU/memory baseline), when this overhead matters vs when it doesn't, reference to DAPR's own benchmark documentation
+    - [x] 1.7 Section: "Can I Use Hexalith Without DAPR?" — honest answer. Cover: no — DAPR is a core runtime dependency, NOT optional. Explain the architectural reasoning (Hexalith would need to rebuild state store abstraction, pub/sub, actors, service discovery). Explain the isolation guarantee (domain code is DAPR-free even though some supporting packages include DAPR-facing integration helpers). Explain what "without DAPR" would mean practically (replace the Server package first, then update the DAPR-facing seams in hosting/integration helpers). Acknowledge the competitive context: if DAPR is a dealbreaker, Marten (in-process, PostgreSQL only) and EventStoreDB (dedicated server, no sidecar) are viable alternatives with no DAPR dependency — link to choose-the-right-tool for the full comparison
+    - [x] 1.8 Section: "What Are the Operational Costs of Running DAPR?" — deep analysis. Cover: sidecar per-instance overhead (CPU, memory), DAPR placement service (required for actors), component YAML management, version coordination across services, monitoring/debugging (DAPR dashboard, OpenTelemetry integration), documented deployment path (Docker/K8s/ACA) plus local slim-mode caveats, comparison with alternatives (in-process library like Marten = zero, dedicated server like EventStoreDB = server cluster). Reference DAPR's production deployment guidance for sidecar resource limits and include pod sizing implications for Kubernetes deployments
+    - [x] 1.9 Section: "What Are the Backend-Specific Consistency Differences?" — cover the caveat mentioned in choose-the-right-tool. Not all DAPR state store backends support identical consistency guarantees. Infrastructure portability means portable code, not portable behavior. Focus on the three backends used in Hexalith's sample and deployment guides: Redis, PostgreSQL, and Cosmos DB — mention that DAPR supports other backends but these three cover the most common deployment scenarios. Do not attempt to document consistency for all DAPR state stores. Reference DAPR component specification pages for backend-specific consistency guarantees — do not state guarantees without a verifiable source
+    - [x] 1.10 Section: "What If a Better Abstraction Emerges?" — deeper expansion of what's in choose-the-right-tool. Contracts and domain code are DAPR-free; the Server package contains most DAPR integration (actor lifecycle, event persistence, snapshot, pub/sub, idempotency), while smaller DAPR-facing seams also exist in hosting/integration helpers. Replacing Server is significant but scoped. Domain code survives any runtime change
+    - [x] 1.11 Section: "How Does Hexalith Handle DAPR Sidecar Failures?" — cover: sidecar health checks, retry policies, circuit breakers, what happens when sidecar crashes mid-operation, Aspire auto-restart in development, Kubernetes liveness/readiness probes in production, dead-letter routing for failed event delivery. Specifically cover the persist-then-publish atomicity gap: what happens when the sidecar fails after persisting events but before publishing them? Answer: events are already persisted safely, pub/sub delivery retries on sidecar recovery, and consumer idempotency (causation ID check) handles any duplicate deliveries. Include a subsection on debugging the DAPR sidecar chain: where to find sidecar logs, how errors propagate (app → sidecar → backend → sidecar → app), DAPR dashboard for component-level visibility, and the OpenTelemetry trace correlation that Hexalith provides. Link to troubleshooting.md for specific error resolutions
+    - [x] 1.12 Next Steps footer: links to [Choose the Right Tool](../concepts/choose-the-right-tool.md), [Architecture Overview](../concepts/architecture-overview.md), [DAPR Component Configuration Reference](dapr-component-reference.md), [Troubleshooting Guide](troubleshooting.md)
+- [x] Task 2: Update cross-references in `docs/concepts/choose-the-right-tool.md` (AC: #5)
+    - [x] 2.1 Find all instances of "future [DAPR FAQ Deep Dive]" or "future DAPR FAQ Deep Dive" and remove the word "future"
+    - [x] 2.2 Verify all `../guides/dapr-faq.md` links are correct (they already exist, just need "future" removed from surrounding text)
+    - [x] 2.3 Update the note at line ~219: remove "future" qualifier from the sentence
+    - [x] 2.4 Verify the DAPR SDK version mentioned in choose-the-right-tool.md (currently says 1.16.1 at line ~193) matches the actual version in `Directory.Packages.props` — update if stale
+- [x] Task 3: Update link exclusion files (AC: #6)
+    - [x] 3.1 In `.lycheeignore`: remove lines 26-27 (`^\.\./guides/dapr-faq\.md$` and `^docs/guides/dapr-faq\.md$`)
+    - [x] 3.2 In `lychee.toml`: remove `'guides/dapr-faq'` from the exclusion list (line ~72)
+- [x] Task 4: Update README.md (AC: #7)
+    - [x] 4.1 Add `[DAPR FAQ Deep Dive](docs/guides/dapr-faq.md) — honest answers about DAPR dependency, risks, and operational costs` to the Guides section
+- [x] Task 5: Validate documentation changes (AC: #8)
+    - [x] 5.1 Run `npx markdownlint-cli2 docs/guides/dapr-faq.md` — 0 errors
+    - [x] 5.2 Run `npx markdownlint-cli2 docs/concepts/choose-the-right-tool.md` — 0 errors (after edits)
+    - [x] 5.3 Verify all internal links resolve to existing files
+        - [ ] 5.4 Run `lychee --config lychee.toml docs/` to verify zero broken links across the entire docs folder after all edits (not just the new file) — blocked by pre-existing unrelated failures in `docs/reference/api/`, `docs/community/`, and `docs/guides/troubleshooting.md`
+        - [x] 5.5 Run `lychee --config lychee.toml docs/guides/dapr-faq.md docs/concepts/choose-the-right-tool.md README.md` after review fixes — 0 story-scoped errors
 
 ## Dev Notes
 
@@ -58,13 +59,13 @@ so that I can make an informed decision about adopting Hexalith.
 
 This story creates the **deepest level** of the progressive DAPR explanation pattern established across the documentation:
 
-| Level | Page | DAPR Depth |
-|-------|------|------------|
-| 1 | README.md | One sentence |
-| 2 | Quickstart | Functional (just works) |
-| 3 | Architecture Overview | Architectural (topology, building blocks) |
-| 4 | Choose the Right Tool | Architectural + trade-offs |
-| 5 | **DAPR FAQ Deep Dive (this story)** | **Deep — risk assessment, benchmarks, what-if scenarios** |
+| Level | Page                                | DAPR Depth                                                |
+| ----- | ----------------------------------- | --------------------------------------------------------- |
+| 1     | README.md                           | One sentence                                              |
+| 2     | Quickstart                          | Functional (just works)                                   |
+| 3     | Architecture Overview               | Architectural (topology, building blocks)                 |
+| 4     | Choose the Right Tool               | Architectural + trade-offs                                |
+| 5     | **DAPR FAQ Deep Dive (this story)** | **Deep — risk assessment, benchmarks, what-if scenarios** |
 
 The FAQ page is NOT a repeat of choose-the-right-tool — it goes deeper on risk, operations, and migration scenarios. Reference choose-the-right-tool for the intro, then deepen. Use a question-answer format that feels like a real FAQ a developer would ask before adopting.
 
@@ -82,32 +83,32 @@ Each FAQ section MUST follow this pattern for scannability:
 2. **TL;DR answer in a blockquote** — 1-2 sentences, the direct answer. Developers skim; give them the answer first
 3. **Deep analysis** — the full explanation with evidence, trade-offs, and nuance
 4. **Risk-payoff pairing** — every honest admission of a DAPR risk must close with the value proposition of accepting that risk (e.g., "Yes, DAPR is a hard dependency — and that dependency is what gives you infrastructure portability across every cloud provider")
-5. **See also** — 1-liner at the end pointing to 1-2 related sections on this page or other docs (e.g., "For how Hexalith isolates your domain code from DAPR, see [What If DAPR Is Deprecated?](#what-if-dapr-is-deprecated) above")
+5. **See also** — 1-liner at the end pointing to 1-2 related sections on this page or other docs (e.g., "For how Hexalith isolates your domain code from DAPR, see the 'What If DAPR Is Deprecated?' section above")
 
 ### Content Duplication Anti-Pattern
 
-**ANTI-PATTERN:** If any paragraph in `dapr-faq.md` could be copy-pasted from `choose-the-right-tool.md`, the implementation has failed. Every section must reference the existing page for background and then provide NEW content not found elsewhere. Pattern: *"For background on [topic], see [Choose the Right Tool](...). Here, we go deeper:"* followed by operational detail, quantitative context, or migration scenarios that choose-the-right-tool does not cover.
+**ANTI-PATTERN:** If any paragraph in `dapr-faq.md` could be copy-pasted from `choose-the-right-tool.md`, the implementation has failed. Every section must reference the existing page for background and then provide NEW content not found elsewhere. Pattern: _"For background on [topic], see [Choose the Right Tool](...). Here, we go deeper:"_ followed by operational detail, quantitative context, or migration scenarios that choose-the-right-tool does not cover.
 
 ### Honest Voice: Good vs Bad Examples
 
 Developers come to this page to find gotchas. If the page hedges or sounds like marketing, it fails.
 
-**BAD:** *"While DAPR is currently required, Hexalith's architecture minimizes the impact and provides a smooth path forward..."*
+**BAD:** _"While DAPR is currently required, Hexalith's architecture minimizes the impact and provides a smooth path forward..."_
 
-**GOOD:** *"No. DAPR is a hard runtime dependency. Without it, Hexalith does not function. Here's why we made that choice and what it costs you:"*
+**GOOD:** _"No. DAPR is a hard runtime dependency. Without it, Hexalith does not function. Here's why we made that choice and what it costs you:"_
 
 ### Quantitative Claims Policy
 
-Every quantitative claim MUST include a citation or be explicitly marked as an estimate. Use phrasing like *"DAPR's localhost gRPC hop typically adds microseconds to low single-digit milliseconds (see [DAPR performance docs](...))"* — never state a specific number without a verifiable source.
+Every quantitative claim MUST include a citation or be explicitly marked as an estimate. Use phrasing like _"DAPR's localhost gRPC hop typically adds microseconds to low single-digit milliseconds (see [DAPR performance docs](...))"_ — never state a specific number without a verifiable source.
 
 ### Risk Assessment Summary Table
 
 Consider including a summary risk assessment table at the top or bottom of the page:
 
-| Risk | Likelihood | Impact | Mitigation | Residual Risk |
-|------|-----------|--------|------------|---------------|
-| DAPR deprecated | Low | High | Architectural isolation; Server-only dependency | Medium (Server replacement effort) |
-| ... | ... | ... | ... | ... |
+| Risk            | Likelihood | Impact | Mitigation                                      | Residual Risk                      |
+| --------------- | ---------- | ------ | ----------------------------------------------- | ---------------------------------- |
+| DAPR deprecated | Low        | High   | Architectural isolation; Server-only dependency | Medium (Server replacement effort) |
+| ...             | ...        | ...    | ...                                             | ...                                |
 
 This serves the evaluating architect who needs a scannable risk profile for their architecture decision record.
 
@@ -129,22 +130,22 @@ Do NOT invent benchmark numbers or resource figures. Instead:
 
 ### Key File Locations
 
-| File | Purpose |
-|------|---------|
-| `docs/guides/dapr-faq.md` | **NEW** — target file |
-| `docs/concepts/choose-the-right-tool.md` | Update: remove "future" qualifier from DAPR FAQ references |
-| `docs/concepts/architecture-overview.md` | Reference only — link target for prerequisites |
-| `docs/guides/dapr-component-reference.md` | Reference only — link target for Next Steps |
-| `docs/guides/troubleshooting.md` | Reference only — link target for Next Steps |
-| `.lycheeignore` | Update: remove dapr-faq exclusion lines (26-27) |
-| `lychee.toml` | Update: remove dapr-faq from exclusion list (~line 72) |
-| `README.md` | Update: add DAPR FAQ link to Guides section |
-| `.markdownlint-cli2.jsonc` | Linting config to validate against |
-| `Directory.Packages.props` | Reference: DAPR SDK version (currently 1.17.0) |
+| File                                      | Purpose                                                    |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| `docs/guides/dapr-faq.md`                 | **NEW** — target file                                      |
+| `docs/concepts/choose-the-right-tool.md`  | Update: remove "future" qualifier from DAPR FAQ references |
+| `docs/concepts/architecture-overview.md`  | Reference only — link target for prerequisites             |
+| `docs/guides/dapr-component-reference.md` | Reference only — link target for Next Steps                |
+| `docs/guides/troubleshooting.md`          | Reference only — link target for Next Steps                |
+| `.lycheeignore`                           | Update: remove dapr-faq exclusion lines (26-27)            |
+| `lychee.toml`                             | Update: remove dapr-faq from exclusion list (~line 72)     |
+| `README.md`                               | Update: add DAPR FAQ link to Guides section                |
+| `.markdownlint-cli2.jsonc`                | Linting config to validate against                         |
+| `Directory.Packages.props`                | Reference: DAPR SDK version (currently 1.16.1)             |
 
 ### DAPR SDK Version
 
-The current pinned DAPR SDK version is **1.17.0** (check `Directory.Packages.props` at implementation time for any updates). References to the DAPR version in the FAQ page should match whatever is in `Directory.Packages.props` when the story is implemented.
+The current pinned DAPR SDK version is **1.16.1** (check `Directory.Packages.props` at implementation time for any updates). References to the DAPR version in the FAQ page should match whatever is in `Directory.Packages.props` when the story is implemented.
 
 ### Existing DAPR Content to Reference (Not Repeat)
 
@@ -174,19 +175,22 @@ The following phrases need "future" removed:
 Once `docs/guides/dapr-faq.md` exists, the dead-link exclusions must be removed:
 
 **`.lycheeignore` lines to remove:**
-```
+
+```text
 ^\.\./guides/dapr-faq\.md$
 ^docs/guides/dapr-faq\.md$
 ```
 
 **`lychee.toml` exclusion to remove:**
-```
+
+```text
 'guides/dapr-faq',
 ```
 
 ### README.md Guides Section Update
 
 Current Guides section:
+
 ```markdown
 ### Guides
 
@@ -195,6 +199,7 @@ Current Guides section:
 ```
 
 Add:
+
 ```markdown
 - [DAPR FAQ Deep Dive](docs/guides/dapr-faq.md) — honest answers about DAPR dependency, risks, and operational costs
 ```
@@ -250,6 +255,71 @@ Claude Opus 4.6
 
 ### Debug Log References
 
+- `npx markdownlint-cli2 docs/guides/dapr-faq.md` — passes (0 errors)
+- `npx markdownlint-cli2 docs/concepts/choose-the-right-tool.md` — passes (0 errors)
+- `lychee --config lychee.toml docs/guides/dapr-faq.md docs/concepts/choose-the-right-tool.md README.md` — passes after review fixes (0 errors)
+- `lychee --config lychee.toml docs/` — still reports pre-existing unrelated failures in `docs/reference/api/`, `docs/community/`, and one stale external Dapr docs URL in `docs/guides/troubleshooting.md`; not caused by Story 15-6
+
 ### Completion Notes List
 
+- Created `docs/guides/dapr-faq.md` — comprehensive FAQ with 9 deep-dive sections, risk assessment summary table, TL;DR blockquotes per section, honest developer-to-developer voice, and risk-payoff pairings per the progressive explanation pattern
+- Updated `docs/concepts/choose-the-right-tool.md` — removed 4 "future" qualifiers from DAPR FAQ references, updated present tense, and aligned DAPR version/runtime wording with the actual repository state
+- Cleaned up `.lycheeignore` — removed 2 dapr-faq dead-link exclusion lines
+- Cleaned up `lychee.toml` — removed `guides/dapr-faq` from exclusion list and added a targeted exclusion for the README docs-validation workflow badge false positive
+- Updated `README.md` — added DAPR FAQ Deep Dive link to Guides section
+- All markdownlint-cli2 checks pass with 0 errors
+- Story-scoped lychee validation passes with 0 errors for `docs/guides/dapr-faq.md`, `docs/concepts/choose-the-right-tool.md`, and `README.md`
+- Senior review fixes corrected DAPR version drift, package-boundary wording, and container-runtime overstatement in the DAPR docs
+
+### Implementation Plan
+
+Documentation-only story following the progressive DAPR explanation pattern. Created the deepest-level FAQ page with question-answer format, TL;DR blockquotes, deep analysis sections, and honest competitive context. Every section references existing docs (choose-the-right-tool.md, architecture-overview.md) for background then provides new operational/risk/quantitative content. No paragraphs duplicated from existing pages.
+
+### Change Log
+
+- 2026-03-10: Created DAPR FAQ Deep Dive page, updated cross-references, cleaned up link exclusions, updated README
+- 2026-03-10: Senior Developer Review (AI) found 1 CRITICAL, 2 HIGH, and 1 MEDIUM documentation issues; status kept at `review` pending remediation.
+- 2026-03-10: Addressed review findings — corrected DAPR version/package-boundary wording, clarified container-runtime guidance, added focused lychee validation evidence, and moved story status to `done`.
+
 ### File List
+
+- `docs/guides/dapr-faq.md` — NEW: DAPR FAQ Deep Dive page (9 FAQ sections + risk assessment table)
+- `docs/concepts/choose-the-right-tool.md` — MODIFIED: removed "future" qualifiers and corrected DAPR version/runtime-boundary wording
+- `.lycheeignore` — MODIFIED: removed dapr-faq dead-link exclusion lines
+- `lychee.toml` — MODIFIED: removed dapr-faq from exclusion list and excluded unauthenticated GitHub workflow badge false positives used by README validation
+- `README.md` — MODIFIED: added DAPR FAQ Deep Dive link to Guides section
+- `_bmad-output/implementation-artifacts/15-6-dapr-faq-deep-dive.md` — MODIFIED: review remediation notes, corrected validation evidence, and status sync
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED: story status synced to `done`
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+GitHub Copilot (GPT-5.4)
+
+### Date
+
+2026-03-10
+
+### Outcome
+
+Approved
+
+### Summary
+
+- Corrected conflicting DAPR SDK version claims to match `Directory.Packages.props` (`1.16.1`).
+- Rewrote the package-isolation wording to distinguish DAPR-free domain code from DAPR-aware runtime/hosting helpers.
+- Clarified that the documented deployment path is container-first while acknowledging Dapr slim mode for local development.
+- Replaced the non-working `npx lychee` validation claim with reproducible native CLI evidence and documented that repo-wide docs checks still fail outside this story's scope.
+
+### Findings
+
+1. **[RESOLVED] Validation command mismatch** — `npx lychee --config lychee.toml docs/` was not a runnable command in this environment; validation now uses the installed `lychee.exe` CLI with recorded results.
+2. **[RESOLVED] DAPR version drift** — the FAQ and comparison guide now consistently report the pinned SDK version as `1.16.1`.
+3. **[RESOLVED] Package-boundary overstatement** — docs now describe the true boundary: domain code is DAPR-free, while supporting runtime/hosting helpers still contain DAPR-facing references.
+4. **[RESOLVED] Container-runtime overstatement** — docs now describe the container-first documented path while acknowledging local Dapr slim mode.
+
+### Follow-up Notes
+
+- `lychee --config lychee.toml docs/` still reports pre-existing failures outside Story 15-6 scope, mainly in `docs/reference/api/`, `docs/community/`, and one stale external Dapr docs URL in `docs/guides/troubleshooting.md`.
+- Story acceptance criteria are satisfied, markdownlint passes, and story-scoped link validation passes.
