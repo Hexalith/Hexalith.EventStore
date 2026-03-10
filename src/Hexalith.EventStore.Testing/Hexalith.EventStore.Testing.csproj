@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>Testing utilities for the Hexalith event store — in-memory fakes, builders, and assertions for .NET event sourcing and CQRS test scenarios</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />

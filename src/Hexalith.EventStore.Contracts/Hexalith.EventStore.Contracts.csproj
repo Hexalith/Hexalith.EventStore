@@ -1,3 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>CQRS and DDD contract types for the Hexalith event store — commands, events, results, and aggregate identities for .NET event sourcing</Description>
+  </PropertyGroup>
+
 </Project>

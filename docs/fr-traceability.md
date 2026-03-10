@@ -18,11 +18,11 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | Metric           | Count                                             |
 | ---------------- | ------------------------------------------------- |
 | Total FRs        | 63                                                |
-| Covered          | 43                                                |
+| Covered          | 44                                                |
 | Partial          | 2                                                 |
-| Gap              | 17                                                |
+| Gap              | 16                                                |
 | Self-referential | 1 (FR62)                                          |
-| Phase 1 coverage | 73% (46/63 covered, partial, or self-referential) |
+| Phase 1 coverage | 75% (47/63 covered, partial, or self-referential) |
 
 ## Traceability Matrix
 
@@ -137,7 +137,7 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR   | Description                                                                                                                                                                                                    | Status    | Documentation Page(s)                                | Notes                                               |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | --------------------------------------------------- |
 | FR50 | A developer can view a changelog of breaking changes and migration steps between releases                                                                                                                      | `COVERED` | [CHANGELOG.md](../CHANGELOG.md)                      | Changelog with breaking changes and migration steps |
-| FR51 | A developer can understand how event versioning and schema evolution are handled                                                                                                                               | `GAP`     | —                                                    | Epic 15, Phase 2 (story 15-3)                       |
+| FR51 | A developer can understand how event versioning and schema evolution are handled                                                                                                                               | `COVERED` | [event-versioning.md](concepts/event-versioning.md)  | Event versioning guide with schema evolution strategies |
 | FR52 | A developer can follow a documented upgrade path when moving between major versions                                                                                                                            | `GAP`     | —                                                    | Epic 15, Phase 2 (story 15-4)                       |
 | FR53 | A developer can set up a local development environment matching the documented configuration                                                                                                                   | `COVERED` | [prerequisites.md](getting-started/prerequisites.md) | Local dev environment setup                         |
 | FR54 | A developer can identify the library version documented by a documentation page via a version reference in the README linking to the corresponding release tag                                                 | `COVERED` | [README.md](../README.md)                            | Version reference linking to release tag            |
@@ -164,13 +164,12 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR60 | Event data storage per backend              | 14-5              |
 | FR63 | Resource sizing guidance                    | 14-1 through 14-3 |
 
-### Phase 2 — Epic 15: Configuration, Versioning and Lifecycle (4 gaps)
+### Phase 2 — Epic 15: Configuration, Versioning and Lifecycle (3 gaps)
 
 | FR   | Description                           | Target Story |
 | ---- | ------------------------------------- | ------------ |
 | FR19 | Auto-generated API documentation      | 15-2         |
 | FR33 | Public product roadmap                | 15-5         |
-| FR51 | Event versioning and schema evolution | 15-3         |
 | FR52 | Upgrade path documentation            | 15-4         |
 
 ### Partial Coverage (2 items)

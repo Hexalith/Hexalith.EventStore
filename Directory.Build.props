@@ -32,6 +32,17 @@
     <PackageReference Include="MinVer" PrivateAssets="All" />
   </ItemGroup>
 
+  <!-- XML documentation is generated only for explicit API reference builds on packable projects. -->
+  <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(ApiReferenceBuild)' == 'true'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- Suppress CS1591 only for API reference generation so normal builds keep their usual warning
+  behavior. -->
+  <PropertyGroup Condition="'$(ApiReferenceBuild)' == 'true'">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(IsPackable)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
   </ItemGroup>

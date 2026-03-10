@@ -6,9 +6,6 @@ namespace Hexalith.EventStore.Contracts.Identity;
 /// Canonical identity tuple for an aggregate, providing all key derivation properties
 /// used by DAPR actors, state store, pub/sub, and queue sessions.
 /// </summary>
-/// <param name="TenantId">Tenant identifier (lowercase alphanumeric + hyphens, max 64 chars).</param>
-/// <param name="Domain">Domain name (lowercase alphanumeric + hyphens, max 64 chars).</param>
-/// <param name="AggregateId">Aggregate identifier (alphanumeric + dots/hyphens/underscores, max 256 chars, case-sensitive).</param>
 public record AggregateIdentity {
     private static readonly Regex _tenantDomainRegex = new(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled);
     private static readonly Regex _aggregateIdRegex = new(@"^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$", RegexOptions.Compiled);

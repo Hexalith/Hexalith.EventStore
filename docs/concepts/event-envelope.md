@@ -63,7 +63,7 @@ The 11 metadata fields fall into three logical groups:
 | `correlationId` | string | Request-level tracing — same for all events from one command | `"550e8400-e29b-41d4-a716-446655440000"` |
 | `causationId` | string | ID of the command that caused this event | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"` |
 | `userId` | string | Authenticated user identity (from JWT `sub` claim) | `"user@example.com"` |
-| `domainServiceVersion` | string | Version of the domain service that produced the event | `"1.0.0"` |
+| `domainServiceVersion` | string | Version of the domain service that produced the event | `"v1"` |
 | `eventTypeName` | string | Fully qualified event type for deserialization | `"CounterIncremented"` |
 | `serializationFormat` | string | Payload encoding format | `"json"` |
 
@@ -135,7 +135,7 @@ In this scenario, a user sent an `IncrementCounter` command to the Counter sampl
   "correlationId": "550e8400-e29b-41d4-a716-446655440000",
   "causationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "userId": "user@example.com",
-  "domainServiceVersion": "1.0.0",
+  "domainServiceVersion": "v1",
   "eventTypeName": "CounterIncremented",
   "serializationFormat": "json",
   "payload": "eyJhbW91bnQiOjF9",
@@ -226,7 +226,7 @@ Here is where each metadata field comes from:
 | `correlationId` | From the incoming command's correlation ID |
 | `causationId` | From the incoming command's causation ID |
 | `userId` | From the incoming command's user ID (JWT `sub` claim) |
-| `domainServiceVersion` | From domain service registration configuration — derived from the assembly version or overridden via `EventStoreDomainOptions` |
+| `domainServiceVersion` | Extracted from the command envelope's `domain-service-version` extension key; defaults to `"v1"` if absent (format: `v{number}`, regex: `^v[0-9]+$`) |
 | `eventTypeName` | From the .NET type name of the event |
 | `serializationFormat` | Defaults to `"json"` (System.Text.Json) |
 
@@ -234,7 +234,7 @@ This design ensures metadata consistency — no domain service can produce event
 
 The `sequenceNumber` deserves special attention: it is auto-incremented from `AggregateMetadata.CurrentSequence`, which is a watermark stored alongside the event stream in the DAPR state store. The `AggregateMetadata` record tracks the current sequence watermark, the last modification time, and an optional ETag for optimistic concurrency. The AggregateActor reads the current watermark, increments it for each new event, and persists the updated watermark atomically with the events. This is how EventStore guarantees gapless, strictly ordered sequence numbers even under concurrent command processing.
 
-Note that the `domainServiceVersion` comes from the service's registration configuration, not from the event itself. In the fluent API, this is typically derived from the assembly version of your domain service, but you can override it explicitly via `EventStoreDomainOptions` if your versioning strategy differs from assembly versioning.
+Note that the `domainServiceVersion` is extracted from the incoming command envelope's `domain-service-version` extension key. If the extension is absent or empty, it defaults to `"v1"`. The version format is `v{number}` (regex: `^v[0-9]+$`) — for example, `"v1"`, `"v2"`, `"v10"`. This design makes versioning a deployment and routing concern: clients specify which domain service version should handle each command, and EventStore records which version actually processed it.
 
 The `eventTypeName` is resolved from the .NET type name of the event object at serialization time. For example, if your `Handle` method returns a `CounterIncremented` instance, the `eventTypeName` will be `"CounterIncremented"`. This type name is essential for deserialization — when EventStore or a consumer reads an event from the store, it uses the `eventTypeName` to determine which .NET type to deserialize the payload bytes into.
 
@@ -290,7 +290,7 @@ Together, these four principles mean that as a domain service developer, you foc
 
 Understanding the envelope structure is fundamental to working effectively with Hexalith.EventStore. Whether you are building projections, debugging production issues, writing integration tests, or designing new domain services, the envelope is the common language that connects all parts of the system.
 
-When your event schema evolves over time, the `eventTypeName` and `domainServiceVersion` fields enable version-aware deserialization — consumers can detect which version of an event they are reading and apply appropriate upcasting or migration logic. A future guide on event versioning will cover the full strategy.
+When your event schema evolves over time, the `eventTypeName` and `domainServiceVersion` fields enable version-aware deserialization — consumers can detect which version of an event they are reading and apply appropriate upcasting or migration logic. See [Event Versioning & Schema Evolution](event-versioning.md) for the full versioning strategy, safe/unsafe change classifications, and upcasting patterns.
 
 ## Next Steps
 

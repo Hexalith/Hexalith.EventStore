@@ -19,6 +19,7 @@ public static class EventStoreServerServiceCollectionExtensions
     /// Registers EventStore Server services including command routing and DAPR actor infrastructure.
     /// </summary>
     /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The application configuration.</param>
     /// <returns>The service collection for fluent chaining.</returns>
     public static IServiceCollection AddEventStoreServer(this IServiceCollection services, IConfiguration configuration)
     {

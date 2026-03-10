@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>Distributed event sourcing server for .NET — DAPR actor-based command processing, event persistence, and pub/sub for the Hexalith event store</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
   </ItemGroup>
