@@ -219,4 +219,4 @@ Browse all published packages on [NuGet.org](https://www.nuget.org/packages?q=He
 
 **Next:** [Command API Reference](command-api.md) — look up REST endpoints with request/response examples
 
-**Related:** [Architecture Overview](../concepts/architecture-overview.md), [First Domain Service](../getting-started/first-domain-service.md), [Quickstart](../getting-started/quickstart.md)
+**Related:** [API Reference](api/index.md) — auto-generated type documentation for all public APIs | [Architecture Overview](../concepts/architecture-overview.md) | [First Domain Service](../getting-started/first-domain-service.md) | [Quickstart](../getting-started/quickstart.md)

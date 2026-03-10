@@ -161,7 +161,7 @@ Configuration section: `EventStore:CommandStatus`
 
 ### Domain Services
 
-Domain services are the aggregate processors that handle commands and produce events. They can be registered statically in configuration or discovered dynamically via DAPR configuration store.
+Domain services are the aggregate processors that handle commands and produce events. They can be registered statically in configuration or discovered dynamically via DAPR configuration store. The version field in registrations enables running multiple versions of the same domain service simultaneously — see [Event Versioning — Domain Service Version Routing](../concepts/event-versioning.md#domain-service-version-routing) for deployment patterns and rollback strategy.
 
 Configuration section: `EventStore:DomainServices`
 

@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>Multi-tenant client SDK for the Hexalith event store — domain processor registration, assembly scanning, and fluent configuration for .NET event sourcing with DAPR</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.Client.Tests" />
   </ItemGroup>

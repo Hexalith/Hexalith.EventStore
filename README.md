@@ -108,6 +108,7 @@ The system follows a command-event architecture: Client applications send comman
 
 - [Architecture Overview](docs/concepts/architecture-overview.md) — system topology and design decisions
 - [Choose the Right Tool](docs/concepts/choose-the-right-tool.md) — when Hexalith is (and isn't) the right fit
+- [Event Versioning & Schema Evolution](docs/concepts/event-versioning.md) — safely evolving event schemas over time
 
 ### Guides
 
