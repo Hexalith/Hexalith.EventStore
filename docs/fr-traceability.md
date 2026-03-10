@@ -4,7 +4,7 @@
 
 Every functional requirement (FR1–FR63) from the [product requirements document](../_bmad-output/planning-artifacts/prd-documentation.md) mapped to the documentation page(s) that address it. Use this document to identify coverage gaps and prioritize documentation work.
 
-**Last reviewed:** 2026-03-02
+**Last reviewed:** 2026-03-10
 
 ## How to Use This Document
 
@@ -18,11 +18,11 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | Metric           | Count                                             |
 | ---------------- | ------------------------------------------------- |
 | Total FRs        | 63                                                |
-| Covered          | 44                                                |
+| Covered          | 46                                                |
 | Partial          | 2                                                 |
-| Gap              | 16                                                |
+| Gap              | 14                                                |
 | Self-referential | 1 (FR62)                                          |
-| Phase 1 coverage | 75% (47/63 covered, partial, or self-referential) |
+| Phase 1 coverage | 78% (49/63 covered, partial, or self-referential) |
 
 ## Traceability Matrix
 
@@ -59,13 +59,13 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 
 ### API and Technical Reference
 
-| FR   | Description                                                                    | Status    | Documentation Page(s)                            | Notes                                                  |
-| ---- | ------------------------------------------------------------------------------ | --------- | ------------------------------------------------ | ------------------------------------------------------ |
-| FR17 | A developer can look up any REST endpoint with request/response examples       | `COVERED` | [command-api.md](reference/command-api.md)       | REST endpoint reference with request/response examples |
-| FR18 | A developer can determine which NuGet package to install for their use case    | `COVERED` | [nuget-packages.md](reference/nuget-packages.md) | NuGet package guide per use case                       |
-| FR19 | A developer can browse auto-generated API documentation for all public types   | `GAP`     | —                                                | Epic 15, Phase 2 (story 15-2)                          |
-| FR20 | A developer can view the dependency relationships between NuGet packages       | `COVERED` | [nuget-packages.md](reference/nuget-packages.md) | NuGet dependency graph                                 |
-| FR21 | A developer can access a complete configuration reference for all system knobs | `COVERED` | [configuration-reference.md](guides/configuration-reference.md) | Configuration reference with all system knobs |
+| FR   | Description                                                                    | Status    | Documentation Page(s)                                           | Notes                                                  |
+| ---- | ------------------------------------------------------------------------------ | --------- | --------------------------------------------------------------- | ------------------------------------------------------ |
+| FR17 | A developer can look up any REST endpoint with request/response examples       | `COVERED` | [command-api.md](reference/command-api.md)                      | REST endpoint reference with request/response examples |
+| FR18 | A developer can determine which NuGet package to install for their use case    | `COVERED` | [nuget-packages.md](reference/nuget-packages.md)                | NuGet package guide per use case                       |
+| FR19 | A developer can browse auto-generated API documentation for all public types   | `GAP`     | —                                                               | Epic 15, Phase 2 (story 15-2)                          |
+| FR20 | A developer can view the dependency relationships between NuGet packages       | `COVERED` | [nuget-packages.md](reference/nuget-packages.md)                | NuGet dependency graph                                 |
+| FR21 | A developer can access a complete configuration reference for all system knobs | `COVERED` | [configuration-reference.md](guides/configuration-reference.md) | Configuration reference with all system knobs          |
 
 ### Deployment and Operations
 
@@ -92,7 +92,7 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR30 | A developer can file structured bug reports, feature requests, and documentation improvements      | `COVERED` | [01-bug-report.yml](../.github/ISSUE_TEMPLATE/01-bug-report.yml), [02-feature-request.yml](../.github/ISSUE_TEMPLATE/02-feature-request.yml), [03-docs-improvement.yml](../.github/ISSUE_TEMPLATE/03-docs-improvement.yml) | Three structured issue templates                  |
 | FR31 | A developer can submit pull requests following a documented template and checklist                 | `COVERED` | [PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md)                                                                                                                                                            | PR template with checklist                        |
 | FR32 | A developer can participate in community discussions organized by category                         | `COVERED` | [ideas.yml](../.github/DISCUSSION_TEMPLATE/ideas.yml), [q-a.yml](../.github/DISCUSSION_TEMPLATE/q-a.yml)                                                                                                                   | GitHub Discussions with Ideas and Q&A categories  |
-| FR33 | A developer can view the public product roadmap                                                    | `GAP`     | —                                                                                                                                                                                                                          | Epic 15, Phase 2 (story 15-5)                     |
+| FR33 | A developer can view the public product roadmap                                                    | `COVERED` | [roadmap.md](community/roadmap.md)                                                                                                                                                                                         | Public product roadmap                            |
 
 ### Content Quality and Maintenance
 
@@ -126,27 +126,27 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 
 ### Troubleshooting and Error Handling
 
-| FR   | Description                                                                                                                                                                                                                       | Status | Documentation Page(s) | Notes                         |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | --------------------- | ----------------------------- |
-| FR47 | A developer can find troubleshooting guidance for quickstart errors including: Docker not running, port conflicts, DAPR sidecar timeout, .NET SDK version mismatch, and sample build failure                                      | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | Quickstart Errors section |
-| FR48 | A developer can find documented solutions for DAPR integration issues including: sidecar injection failure, state store connection timeout, pub/sub message loss, actor activation conflict, and component configuration mismatch | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | DAPR Integration Issues section |
+| FR   | Description                                                                                                                                                                                                                       | Status    | Documentation Page(s)                           | Notes                                                         |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------------------------- | ------------------------------------------------------------- |
+| FR47 | A developer can find troubleshooting guidance for quickstart errors including: Docker not running, port conflicts, DAPR sidecar timeout, .NET SDK version mismatch, and sample build failure                                      | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | Quickstart Errors section                                     |
+| FR48 | A developer can find documented solutions for DAPR integration issues including: sidecar injection failure, state store connection timeout, pub/sub message loss, actor activation conflict, and component configuration mismatch | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | DAPR Integration Issues section                               |
 | FR49 | A developer can access troubleshooting information for deployment failures per target environment                                                                                                                                 | `COVERED` | [troubleshooting.md](guides/troubleshooting.md) | Docker Compose, Kubernetes, and Azure Container Apps sections |
 
 ### Lifecycle and Versioning
 
-| FR   | Description                                                                                                                                                                                                    | Status    | Documentation Page(s)                                | Notes                                               |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | --------------------------------------------------- |
-| FR50 | A developer can view a changelog of breaking changes and migration steps between releases                                                                                                                      | `COVERED` | [CHANGELOG.md](../CHANGELOG.md)                      | Changelog with breaking changes and migration steps |
-| FR51 | A developer can understand how event versioning and schema evolution are handled                                                                                                                               | `COVERED` | [event-versioning.md](concepts/event-versioning.md)  | Event versioning guide with schema evolution strategies |
-| FR52 | A developer can follow a documented upgrade path when moving between major versions                                                                                                                            | `GAP`     | —                                                    | Epic 15, Phase 2 (story 15-4)                       |
-| FR53 | A developer can set up a local development environment matching the documented configuration                                                                                                                   | `COVERED` | [prerequisites.md](getting-started/prerequisites.md) | Local dev environment setup                         |
-| FR54 | A developer can identify the library version documented by a documentation page via a version reference in the README linking to the corresponding release tag                                                 | `COVERED` | [README.md](../README.md)                            | Version reference linking to release tag            |
-| FR55 | An operator can follow a documented disaster recovery procedure for the event store                                                                                                                            | `COVERED` | [disaster-recovery.md](guides/disaster-recovery.md)  | Epic 14, Phase 2 (story 14-8)                       |
-| FR56 | A developer can follow a documented progression from the local Docker sample to on-premise Kubernetes to Azure cloud deployment using the same application code with only infrastructure configuration changes | `GAP`     | —                                                    | Epic 14, Phase 2 (story 14-4)                       |
+| FR   | Description                                                                                                                                                                                                    | Status    | Documentation Page(s)                                | Notes                                                                        |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| FR50 | A developer can view a changelog of breaking changes and migration steps between releases                                                                                                                      | `COVERED` | [CHANGELOG.md](../CHANGELOG.md)                      | Changelog with breaking changes and migration steps                          |
+| FR51 | A developer can understand how event versioning and schema evolution are handled                                                                                                                               | `COVERED` | [event-versioning.md](concepts/event-versioning.md)  | Event versioning guide with schema evolution strategies                      |
+| FR52 | A developer can follow a documented upgrade path when moving between major versions                                                                                                                            | `COVERED` | [upgrade-path.md](guides/upgrade-path.md)            | General upgrade procedure with links to CHANGELOG for version-specific steps |
+| FR53 | A developer can set up a local development environment matching the documented configuration                                                                                                                   | `COVERED` | [prerequisites.md](getting-started/prerequisites.md) | Local dev environment setup                                                  |
+| FR54 | A developer can identify the library version documented by a documentation page via a version reference in the README linking to the corresponding release tag                                                 | `GAP`     | —                                                    | README links the changelog, but does not yet include a release-tag reference |
+| FR55 | An operator can follow a documented disaster recovery procedure for the event store                                                                                                                            | `COVERED` | [disaster-recovery.md](guides/disaster-recovery.md)  | Epic 14, Phase 2 (story 14-8)                                                |
+| FR56 | A developer can follow a documented progression from the local Docker sample to on-premise Kubernetes to Azure cloud deployment using the same application code with only infrastructure configuration changes | `GAP`     | —                                                    | Epic 14, Phase 2 (story 14-4)                                                |
 
 ## Gap Analysis by Phase
 
-### Phase 2 — Epic 14: Deployment and Operations (13 gaps)
+### Phase 2 — Epic 14: Deployment and Operations (12 gaps)
 
 | FR   | Description                                 | Target Story      |
 | ---- | ------------------------------------------- | ----------------- |
@@ -156,7 +156,6 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR25 | DAPR component configuration reference      | 14-5              |
 | FR26 | Health/readiness endpoint documentation     | 14-6              |
 | FR27 | Security model documentation                | 14-6              |
-| FR55 | Disaster recovery procedure                 | 14-8              |
 | FR56 | Deployment progression guide                | 14-4              |
 | FR57 | DAPR runtime setup per environment          | 14-1 through 14-3 |
 | FR58 | Infrastructure differences documentation    | 14-4              |
@@ -164,13 +163,12 @@ Every functional requirement (FR1–FR63) from the [product requirements documen
 | FR60 | Event data storage per backend              | 14-5              |
 | FR63 | Resource sizing guidance                    | 14-1 through 14-3 |
 
-### Phase 2 — Epic 15: Configuration, Versioning and Lifecycle (3 gaps)
+### Phase 2 — Epic 15: Configuration, Versioning and Lifecycle (2 gaps)
 
-| FR   | Description                           | Target Story |
-| ---- | ------------------------------------- | ------------ |
-| FR19 | Auto-generated API documentation      | 15-2         |
-| FR33 | Public product roadmap                | 15-5         |
-| FR52 | Upgrade path documentation            | 15-4         |
+| FR   | Description                             | Target Story |
+| ---- | --------------------------------------- | ------------ |
+| FR19 | Auto-generated API documentation        | 15-2         |
+| FR54 | README version reference to release tag | TBD          |
 
 ### Partial Coverage (2 items)
 

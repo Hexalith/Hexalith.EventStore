@@ -48,13 +48,13 @@ public sealed class CounterState
 
 ## Why Hexalith?
 
-| Feature | Hexalith | Marten | EventStoreDB | Custom |
-| --------- | ---------- | -------- | -------------- | -------- |
-| Infrastructure portability | Any store/broker, zero-code swap | PostgreSQL only | Dedicated server | You build it |
-| Multi-tenant isolation | Built-in: data, topics, access | Manual | Manual | You build it |
-| CQRS/ES framework | Complete, infra-agnostic | Complete, PG-coupled | Storage only, BYO framework | You build it |
-| Deployment | DAPR sidecar: Docker, K8s, ACA | App library | Server + clients | You build it |
-| Database lock-in | None (Redis, PG, Cosmos, etc.) | PostgreSQL | EventStoreDB | Chosen DB |
+| Feature                    | Hexalith                         | Marten               | EventStoreDB                | Custom       |
+| -------------------------- | -------------------------------- | -------------------- | --------------------------- | ------------ |
+| Infrastructure portability | Any store/broker, zero-code swap | PostgreSQL only      | Dedicated server            | You build it |
+| Multi-tenant isolation     | Built-in: data, topics, access   | Manual               | Manual                      | You build it |
+| CQRS/ES framework          | Complete, infra-agnostic         | Complete, PG-coupled | Storage only, BYO framework | You build it |
+| Deployment                 | DAPR sidecar: Docker, K8s, ACA   | App library          | Server + clients            | You build it |
+| Database lock-in           | None (Redis, PG, Cosmos, etc.)   | PostgreSQL           | EventStoreDB                | Chosen DB    |
 
 > **Note:** Hexalith is not the right tool for every scenario. If you need raw event stream performance or already run PostgreSQL everywhere, see the [decision aid](docs/concepts/choose-the-right-tool.md).
 
@@ -76,7 +76,7 @@ Prerequisites: [.NET SDK](https://dotnet.microsoft.com/download), [Docker Deskto
 
 ```mermaid
 flowchart TB
-    Client([Client Application]) -->|REST/gRPC| CommandAPI[Command API Gateway]
+    Client([Client Application]) -->|REST| CommandAPI[Command API Gateway]
     CommandAPI -->|Route| Actor[Aggregate Actor]
     Actor -->|Invoke| Domain[Domain Service<br/>IDomainProcessor]
     Domain -->|Return events| Actor
@@ -93,7 +93,7 @@ flowchart TB
 <details>
 <summary>Architecture diagram text description</summary>
 
-The system follows a command-event architecture: Client applications send commands via REST/gRPC to the Command API Gateway, which routes them to Aggregate Actors. Each actor invokes the domain service (your IDomainProcessor implementation) and persists resulting events to a state store. Events are published to a pub/sub system for downstream consumers. DAPR provides the infrastructure abstraction layer, allowing you to swap state stores (Redis, PostgreSQL, Cosmos DB) and message brokers (RabbitMQ, Kafka, Azure Service Bus) without changing application code.
+The system follows a command-event architecture: Client applications send commands via REST to the Command API Gateway, which routes them to Aggregate Actors. Each actor invokes the domain service (your IDomainProcessor implementation) and persists resulting events to a state store. Events are published to a pub/sub system for downstream consumers. DAPR provides the infrastructure abstraction layer, allowing you to swap state stores (Redis, PostgreSQL, Cosmos DB) and message brokers (RabbitMQ, Kafka, Azure Service Bus) without changing application code.
 
 </details>
 
@@ -112,6 +112,7 @@ The system follows a command-event architecture: Client applications send comman
 
 ### Guides
 
+- [Upgrade Path](docs/guides/upgrade-path.md) — migrating between versions
 - [Deployment Guides](docs/guides/) — Docker Compose, Kubernetes, Azure Container Apps
 
 ### Reference
@@ -121,6 +122,7 @@ The system follows a command-event architecture: Client applications send comman
 
 ### Community
 
+- [Product Roadmap](docs/community/roadmap.md) — planned features and project direction
 - [Awesome Event Sourcing](docs/community/awesome-event-sourcing.md) — curated ecosystem resources
 - [GitHub Discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions) — questions, ideas, and community support
 - [Issue Tracker](https://github.com/Hexalith/Hexalith.EventStore/issues) — bug reports and feature requests

@@ -20,7 +20,7 @@ This guide explains Hexalith.EventStore's approach to event versioning, the meta
 
 ## Why Error-First?
 
-Before learning how to evolve events, you need to understand *why* Hexalith takes such a strict approach.
+Before learning how to evolve events, you need to understand _why_ Hexalith takes such a strict approach.
 
 When `EventStreamReader` replays events to rehydrate aggregate state, it processes every event in the stream in strict sequence order. If an event's `eventTypeName` cannot be deserialized — because the class was renamed, deleted, or moved to a different namespace — Hexalith throws an `UnknownEventException`:
 
@@ -52,21 +52,21 @@ Three of the 11 event envelope metadata fields form the versioning foundation. E
 
 The following table classifies common event schema changes as safe or unsafe. These classifications assume the default `System.Text.Json` serializer — custom serializers via `ISerializedEventPayload` may behave differently.
 
-| Change | Safety | Explanation | Recommended Approach |
-|--------|--------|-------------|----------------------|
-| Add optional/nullable field | **SAFE** | `System.Text.Json` maps missing JSON properties to `default(T)` for value types, `null` for reference types | Use nullable types or provide sensible defaults |
-| Add required field without default | **UNSAFE** | Old events lack the property; deserialization produces unexpected defaults that may break domain invariants | Always use default parameter values for new fields |
-| Remove a field | **SAFE** | `System.Text.Json` ignores extra JSON properties by default | Old events with the removed field deserialize without error |
-| Rename a .NET event class | **UNSAFE** | The persisted `eventTypeName` stores the fully qualified type name — old events become `UnknownEventException` | Keep old class as alias, or use `ISerializedEventPayload.EventTypeName` to decouple type name from class name |
-| Move event to different namespace | **UNSAFE** | `eventTypeName` includes the full namespace — same breakage as a class rename | Same as rename: keep old class or decouple via `ISerializedEventPayload.EventTypeName` |
-| Delete an event class | **UNSAFE** | **Never do this.** The class must exist as long as events of that type exist in any stream | Mark `[Obsolete]` instead; move to a `Events/Legacy/` folder to keep active code clean |
-| Rename a field | **UNSAFE** | Old JSON key will not map to the new property name | Use `[JsonPropertyName("oldName")]` attribute to preserve backward compatibility |
-| Change field type (widening) | **SAFE** | `int` → `long` is a silent, safe conversion | Widening conversions are handled automatically |
-| Change field type (narrowing) | **UNSAFE** | `long` → `int` risks overflow | Avoid narrowing; use widening only |
-| Change field type (cross-type) | **UNSAFE** | `int` → `string` or vice versa throws `JsonException` | Treat as a new field; keep old field with `[Obsolete]` |
-| Add new enum member | **SAFE** (caution) | Old events are fine, but new events with the unknown member may confuse older consumers depending on `System.Text.Json` enum handling config | Ensure consumers handle unknown enum values gracefully |
-| Split one event into two | **UNSAFE** | Old single events need upcasting logic to produce two new events | Requires explicit upcasting in your domain service |
-| Merge two events into one | **UNSAFE** | Two old events need upcasting logic to merge | Requires explicit upcasting in your domain service |
+| Change                             | Safety             | Explanation                                                                                                                                  | Recommended Approach                                                                                          |
+| ---------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Add optional/nullable field        | **SAFE**           | `System.Text.Json` maps missing JSON properties to `default(T)` for value types, `null` for reference types                                  | Use nullable types or provide sensible defaults                                                               |
+| Add required field without default | **UNSAFE**         | Old events lack the property; deserialization produces unexpected defaults that may break domain invariants                                  | Always use default parameter values for new fields                                                            |
+| Remove a field                     | **SAFE**           | `System.Text.Json` ignores extra JSON properties by default                                                                                  | Old events with the removed field deserialize without error                                                   |
+| Rename a .NET event class          | **UNSAFE**         | The persisted `eventTypeName` stores the fully qualified type name — old events become `UnknownEventException`                               | Keep old class as alias, or use `ISerializedEventPayload.EventTypeName` to decouple type name from class name |
+| Move event to different namespace  | **UNSAFE**         | `eventTypeName` includes the full namespace — same breakage as a class rename                                                                | Same as rename: keep old class or decouple via `ISerializedEventPayload.EventTypeName`                        |
+| Delete an event class              | **UNSAFE**         | **Never do this.** The class must exist as long as events of that type exist in any stream                                                   | Mark `[Obsolete]` instead; move to a `Events/Legacy/` folder to keep active code clean                        |
+| Rename a field                     | **UNSAFE**         | Old JSON key will not map to the new property name                                                                                           | Use `[JsonPropertyName("oldName")]` attribute to preserve backward compatibility                              |
+| Change field type (widening)       | **SAFE**           | `int` → `long` is a silent, safe conversion                                                                                                  | Widening conversions are handled automatically                                                                |
+| Change field type (narrowing)      | **UNSAFE**         | `long` → `int` risks overflow                                                                                                                | Avoid narrowing; use widening only                                                                            |
+| Change field type (cross-type)     | **UNSAFE**         | `int` → `string` or vice versa throws `JsonException`                                                                                        | Treat as a new field; keep old field with `[Obsolete]`                                                        |
+| Add new enum member                | **SAFE** (caution) | Old events are fine, but new events with the unknown member may confuse older consumers depending on `System.Text.Json` enum handling config | Ensure consumers handle unknown enum values gracefully                                                        |
+| Split one event into two           | **UNSAFE**         | Old single events need upcasting logic to produce two new events                                                                             | Requires explicit upcasting in your domain service                                                            |
+| Merge two events into one          | **UNSAFE**         | Two old events need upcasting logic to merge                                                                                                 | Requires explicit upcasting in your domain service                                                            |
 
 **C# records caveat:** Records with constructor parameters require special attention. If a new field has no default value and no `[JsonConstructor]`-annotated parameterless path, deserialization of old events (which lack that JSON property) may throw. Best practice: **always use default parameter values for new record fields**.
 
@@ -183,6 +183,29 @@ sequenceDiagram
 
 **The backward compatibility contract applies to all event consumers** — not just domain service rehydration, but also projections, read models, and integration subscribers. Every consumer that deserializes events must handle every event type it may encounter in the stream.
 
+## Downcasting Considerations
+
+Downcasting is the mirror image of upcasting: an **older** consumer receives a **newer** event shape and tries to keep working. Hexalith does not provide a formal downcasting pipeline today. You must decide compatibility at each consumer boundary.
+
+For **correctness-critical consumers** — aggregate rehydration, projections that drive user-visible state, and compliance-sensitive read models — the recommendation is the same error-first stance used elsewhere in the platform: if the older consumer cannot interpret the newer event semantics correctly, it should fail fast, dead-letter the event, and alert an operator rather than silently guess.
+
+The Counter example shows why. Suppose v2 evolves the event to:
+
+```csharp
+public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
+```
+
+An older v1 consumer that assumes every `CounterIncremented` means `+1` can still deserialize the JSON, but it becomes **semantically wrong** as soon as v2 starts emitting `IncrementedBy = 5`. The issue is not deserialization — it is business meaning. Ignoring the extra field would under-count and corrupt the projection.
+
+Practical downcasting strategies today:
+
+- **Prefer coordinated upgrades** — upgrade projections and subscribers before routing commands to the new domain service version.
+- **Keep old semantics stable** — additive fields are only safe for older consumers when the old interpretation remains true. A diagnostic field like `Reason` may be safe to ignore; a behavioral field like `IncrementedBy` is not.
+- **Use compatibility shims at the consumer edge** — if an older downstream system must remain online, translate the new event into the old contract in a dedicated subscriber or adapter service.
+- **Fail loudly on incompatible event types** — renamed, moved, split, or merged events should be treated as incompatible until the consumer is explicitly updated.
+
+For integration subscribers where eventual consistency is acceptable, you can be slightly more tolerant: record the incompatible event, skip processing only when that is an explicit business decision, and emit telemetry so the gap is visible. Silent best-effort processing is the dangerous option — it looks healthy while producing wrong data.
+
 ## Domain Service Version Routing
 
 The `domainServiceVersion` metadata field enables running multiple versions of the same domain service simultaneously. This is how you deploy a new version of your domain logic without downtime and with instant rollback capability.
@@ -239,12 +262,12 @@ Existing events in the store look like:
 
 ```json
 {
-  "metadata": {
-    "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
-    "domainServiceVersion": "v1",
-    "serializationFormat": "json"
-  },
-  "payload": {}
+    "metadata": {
+        "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
+        "domainServiceVersion": "v1",
+        "serializationFormat": "json"
+    },
+    "payload": {}
 }
 ```
 
