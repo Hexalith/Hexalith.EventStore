@@ -113,6 +113,7 @@ The system follows a command-event architecture: Client applications send comman
 ### Guides
 
 - [Upgrade Path](docs/guides/upgrade-path.md) — migrating between versions
+- [DAPR FAQ Deep Dive](docs/guides/dapr-faq.md) — honest answers about DAPR dependency, risks, and operational costs
 - [Deployment Guides](docs/guides/) — Docker Compose, Kubernetes, Azure Container Apps
 
 ### Reference

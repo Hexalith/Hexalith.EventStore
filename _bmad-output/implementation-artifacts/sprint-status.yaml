@@ -210,7 +210,7 @@ development_status:
   15-3-event-versioning-and-schema-evolution-guide: done
   15-4-upgrade-path-documentation: done
   15-5-public-product-roadmap: done
-  15-6-dapr-faq-deep-dive: ready-for-dev
+  15-6-dapr-faq-deep-dive: done
   epic-15-retrospective: optional
 
   # ============================================================================

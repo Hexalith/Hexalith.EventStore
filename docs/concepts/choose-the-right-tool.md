@@ -104,7 +104,7 @@ Hexalith is not the right tool for every project. Here are specific scenarios wh
 
 **Sub-millisecond latency requirements.** DAPR introduces a sidecar network hop between your application and the infrastructure backend. If you need the absolute lowest latency for event reads and writes, [EventStoreDB/KurrentDB](https://docs.kurrent.io/) communicates directly with its purpose-built storage engine. Hexalith trades raw latency for infrastructure portability — the sidecar hop is the cost of being able to swap backends.
 
-**No container orchestration available.** Hexalith requires DAPR, which requires a container runtime (Docker, Kubernetes, or Azure Container Apps). If you cannot run containers in your environment, [Marten](https://martendb.io/) is an in-process library that only needs PostgreSQL. Hexalith trades deployment simplicity for infrastructure portability — containers enable the DAPR sidecar that makes backend-swapping possible.
+**No container orchestration available.** Hexalith's documented quickstart and deployment path assumes a container runtime (Docker, Kubernetes, or Azure Container Apps), even though Dapr also offers a slimmer local-dev mode outside those topologies. If you cannot run containers in your environment, [Marten](https://martendb.io/) is an in-process library that only needs PostgreSQL. Hexalith trades deployment simplicity for infrastructure portability — containers are the easiest path to the sidecar model that makes backend-swapping possible.
 
 **Already all-in on PostgreSQL.** If your team runs PostgreSQL everywhere and wants zero new infrastructure, [Marten](https://martendb.io/) gives you event sourcing, document storage, and LINQ querying on top of a database you already operate. Hexalith trades single-database simplicity for the ability to use any DAPR-supported store.
 
@@ -182,7 +182,7 @@ DAPR must run as a sidecar alongside every application instance. In production, 
 
 #### Sidecar latency
 
-Every state store read/write and pub/sub publish passes through a localhost gRPC call to the DAPR sidecar, adding microseconds-to-low-milliseconds per operation. For most business applications this is negligible, but for sub-millisecond event stream performance, direct database access (EventStoreDB) is faster. The latency is localhost-only — there is no network hop — and is amortized over batch operations. The future [DAPR FAQ Deep Dive](../guides/dapr-faq.md) will cover quantitative benchmarks.
+Every state store read/write and pub/sub publish passes through a localhost gRPC call to the DAPR sidecar, adding microseconds-to-low-milliseconds per operation. For most business applications this is negligible, but for sub-millisecond event stream performance, direct database access (EventStoreDB) is faster. The latency is localhost-only — there is no network hop — and is amortized over batch operations. The [DAPR FAQ Deep Dive](../guides/dapr-faq.md) covers quantitative benchmarks.
 
 #### Learning curve and debugging complexity
 
@@ -190,7 +190,7 @@ Your team needs to understand DAPR component YAML configuration, sidecar debuggi
 
 #### Version coupling
 
-Hexalith depends on a specific DAPR SDK version (currently 1.16.1, as pinned in `Directory.Packages.props`). DAPR follows semantic versioning and maintains backward compatibility within major versions. Coordinated upgrades are required when Hexalith bumps its DAPR dependency, but minor version upgrades are safe. Hexalith's CI pipeline tests against the pinned DAPR SDK version on every commit — you can verify compatibility with a newer DAPR release by bumping the version in a feature branch and running the test suite.
+Hexalith depends on a specific DAPR SDK version (currently 1.16.1, as pinned in `Directory.Packages.props`, last verified March 2026). DAPR follows semantic versioning and maintains backward compatibility within major versions. Coordinated upgrades are required when Hexalith bumps its DAPR dependency, but minor version upgrades are safe. Hexalith's CI pipeline tests against the pinned DAPR SDK version on every commit — you can verify compatibility with a newer DAPR release by bumping the version in a feature branch and running the test suite.
 
 Every trade-off above is the price of infrastructure portability — the ability to swap storage and messaging backends without touching application code. You trade one form of coupling (database vendor lock-in) for another (DAPR runtime coupling). The difference is that DAPR coupling is isolated to a single infrastructure package, while direct database coupling would pervade your entire codebase.
 
@@ -202,21 +202,21 @@ Understanding the trade-offs leads to a natural question: what happens if DAPR i
 
 **DAPR introduces breaking changes.** DAPR follows SemVer. Breaking changes only occur in major versions, which are rare — DAPR has been on v1.x since February 2021, over five years of backward-compatible releases. Hexalith pins to a specific DAPR SDK version and tests against it. Major version upgrades would be handled as a Hexalith release with migration guidance.
 
-**A better abstraction emerges.** Hexalith's architecture separates the domain processing model (`Hexalith.EventStore.Contracts` and `Hexalith.EventStore.Client`, zero DAPR dependency) from the infrastructure runtime (`Hexalith.EventStore.Server`, DAPR-dependent). If a superior runtime appeared, only the Server package would need replacement — the same pure function contract (`Handle(Command, State?) → DomainResult`) would continue to work. The Server package contains all actor lifecycle, event persistence, snapshot, pub/sub, and idempotency logic — replacing it is a significant engineering effort, not a trivial swap. The architectural boundary protects _domain code_, not _infrastructure code_.
+**A better abstraction emerges.** Hexalith's architecture separates the DAPR-free domain model from the DAPR-backed runtime implementation. Your pure function contract (`Handle(Command, State?) → DomainResult`) would continue to work, but the runtime replacement would center on `Hexalith.EventStore.Server` and would likely require follow-on updates in hosting and integration helpers that currently reference DAPR packages. The Server package still contains the overwhelming majority of actor lifecycle, event persistence, snapshot, pub/sub, and idempotency logic — replacing it is significant engineering work, not a trivial swap. The architectural boundary protects _domain code_ first; it does not magically make every support package runtime-agnostic.
 
-The deepest risk assessment — including DAPR performance benchmarks, operational cost analysis, and detailed migration scenarios — will be covered in a future [DAPR FAQ Deep Dive](../guides/dapr-faq.md).
+The deepest risk assessment — including DAPR performance benchmarks, operational cost analysis, and detailed migration scenarios — is covered in the [DAPR FAQ Deep Dive](../guides/dapr-faq.md).
 
 These risks are real — here is how Hexalith's architecture limits your exposure.
 
 ### The Hexalith isolation guarantee
 
-Hexalith's five NuGet packages split into two tiers: **DAPR-free** (`Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, `Hexalith.EventStore.Testing`, `Hexalith.EventStore.Aspire`) and **DAPR-dependent** (`Hexalith.EventStore.Server` only). Domain service developers reference only the Client package — they never import DAPR SDKs. Your business logic (`Handle`/`Apply` methods) is portable regardless of what happens to DAPR.
+Hexalith's most important isolation boundary is at the code you write: your business logic (`Handle`/`Apply` methods), commands, events, and state types are portable regardless of what happens to DAPR. Some supporting packages in the repo still reference DAPR packages today, so the safer and more honest claim is: **your domain code is isolated from DAPR**, while runtime and hosting layers are not.
 
-One caveat: not all DAPR state store backends support identical consistency guarantees — infrastructure portability means portable _code_, not portable _behavior_. The future [DAPR FAQ Deep Dive](../guides/dapr-faq.md) will cover backend-specific consistency differences.
+One caveat: not all DAPR state store backends support identical consistency guarantees — infrastructure portability means portable _code_, not portable _behavior_. The [DAPR FAQ Deep Dive](../guides/dapr-faq.md) covers backend-specific consistency differences.
 
 This isolation is by design — it is the same principle that keeps your domain services free of database imports, as described in the [Architecture Overview](architecture-overview.md).
 
-> **Note:** This section covers DAPR trade-offs at architectural depth — why DAPR was chosen, what it costs, and what the risk profile looks like. For operational-depth content including performance benchmarks, operational cost analysis, sidecar resource consumption, and detailed migration scenarios, see the future [DAPR FAQ Deep Dive](../guides/dapr-faq.md).
+> **Note:** This section covers DAPR trade-offs at architectural depth — why DAPR was chosen, what it costs, and what the risk profile looks like. For operational-depth content including performance benchmarks, operational cost analysis, sidecar resource consumption, and detailed migration scenarios, see the [DAPR FAQ Deep Dive](../guides/dapr-faq.md).
 
 ## Next Steps
 

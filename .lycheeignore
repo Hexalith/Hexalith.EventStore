@@ -21,7 +21,3 @@
 
 ^https://aka\.ms/dapr-discord$
 
-# Dead links to future documentation pages (Phase 2)
-
-^\.\./guides/dapr-faq\.md$
-^docs/guides/dapr-faq\.md$
