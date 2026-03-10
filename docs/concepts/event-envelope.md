@@ -53,21 +53,21 @@ The 11 metadata fields fall into three logical groups:
 
 - **Tracing and provenance fields** — `correlationId`, `causationId`, `userId`, `domainServiceVersion`, `eventTypeName`, `serializationFormat`: trace the event back to the request, command, user, and service version that produced it. These fields power distributed tracing, audit logging, and version-aware deserialization.
 
-| Field | Type | Description | Example |
-|-------|------|-------------|---------|
-| `aggregateId` | string | Full canonical identity (`{tenant}:{domain}:{id}`) | `"demo:counter:counter-1"` |
-| `tenantId` | string | Tenant isolation key (lowercase, validated) | `"demo"` |
-| `domain` | string | Domain service namespace (lowercase, validated) | `"counter"` |
-| `sequenceNumber` | long | Strictly ordered per aggregate stream, starts at 1, gapless | `1` |
-| `timestamp` | DateTimeOffset | Server-clock event creation time | `"2026-03-01T10:30:00Z"` |
-| `correlationId` | string | Request-level tracing — same for all events from one command | `"550e8400-e29b-41d4-a716-446655440000"` |
-| `causationId` | string | ID of the command that caused this event | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"` |
-| `userId` | string | Authenticated user identity (from JWT `sub` claim) | `"user@example.com"` |
-| `domainServiceVersion` | string | Version of the domain service that produced the event | `"v1"` |
-| `eventTypeName` | string | Fully qualified event type for deserialization | `"CounterIncremented"` |
-| `serializationFormat` | string | Payload encoding format | `"json"` |
+| Field                  | Type           | Description                                                  | Example                                                          |
+| ---------------------- | -------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `aggregateId`          | string         | Aggregate identifier within its tenant/domain scope          | `"counter-1"`                                                    |
+| `tenantId`             | string         | Tenant isolation key (lowercase, validated)                  | `"demo"`                                                         |
+| `domain`               | string         | Domain service namespace (lowercase, validated)              | `"counter"`                                                      |
+| `sequenceNumber`       | long           | Strictly ordered per aggregate stream, starts at 1, gapless  | `1`                                                              |
+| `timestamp`            | DateTimeOffset | Server-clock event creation time                             | `"2026-03-01T10:30:00Z"`                                         |
+| `correlationId`        | string         | Request-level tracing — same for all events from one command | `"550e8400-e29b-41d4-a716-446655440000"`                         |
+| `causationId`          | string         | ID of the command that caused this event                     | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`                         |
+| `userId`               | string         | Authenticated user identity (from JWT `sub` claim)           | `"user@example.com"`                                             |
+| `domainServiceVersion` | string         | Version of the domain service that produced the event        | `"v1"`                                                           |
+| `eventTypeName`        | string         | Fully qualified event type for deserialization               | `"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented"` |
+| `serializationFormat`  | string         | Payload encoding format                                      | `"json"`                                                         |
 
-You'll notice `aggregateId` contains the full composite identity `{tenant}:{domain}:{id}` — not just the local aggregate ID. This is by design: the canonical form enables single-field state store key derivation, while the separate `tenantId` and `domain` fields exist for efficient filtering and querying without string parsing. See [Identity Scheme](identity-scheme.md) for the complete identity mapping.
+You'll notice `aggregateId` is the local aggregate identifier (`counter-1`), while `tenantId` and `domain` are stored separately. Together, those three fields identify the aggregate instance that produced the event. The canonical composite identity still exists in the system — for example, `AggregateIdentity.ActorId` is `tenant:domain:aggregateId` — but the persisted envelope keeps the parts separate for filtering, routing, and key derivation. See [Identity Scheme](identity-scheme.md) for the complete identity mapping.
 
 The `sequenceNumber` is validated at construction time — it must be >= 1, and the system throws an `ArgumentOutOfRangeException` if that constraint is violated. This guarantees that every event stream starts at 1 and contains no gaps. When you replay an aggregate's event stream to reconstruct state, the gapless sequence lets you detect missing or out-of-order events immediately. If your state reconstruction reads events 1, 2, 4 (skipping 3), you know something is wrong — the gapless guarantee means event 3 must exist, and its absence indicates a data integrity issue rather than a normal gap.
 
@@ -127,25 +127,25 @@ In this scenario, a user sent an `IncrementCounter` command to the Counter sampl
 
 ```json
 {
-  "aggregateId": "demo:counter:counter-1",
-  "tenantId": "demo",
-  "domain": "counter",
-  "sequenceNumber": 1,
-  "timestamp": "2026-03-01T10:30:00+00:00",
-  "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-  "causationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "userId": "user@example.com",
-  "domainServiceVersion": "v1",
-  "eventTypeName": "CounterIncremented",
-  "serializationFormat": "json",
-  "payload": "eyJhbW91bnQiOjF9",
-  "extensions": {
-    "x-priority": "normal"
-  }
+    "aggregateId": "counter-1",
+    "tenantId": "demo",
+    "domain": "counter",
+    "sequenceNumber": 1,
+    "timestamp": "2026-03-01T10:30:00+00:00",
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "causationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "userId": "user@example.com",
+    "domainServiceVersion": "v1",
+    "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
+    "serializationFormat": "json",
+    "payload": "e30=",
+    "extensions": {
+        "x-priority": "normal"
+    }
 }
 ```
 
-The `payload` is a base64-encoded byte array. Decoded, this payload contains: `{"amount": 1}` — the serialized `CounterIncremented` event. The base64 encoding is the standard JSON representation of the underlying `byte[]` field — this is what you see when inspecting events in the DAPR state store or when consuming events from pub/sub.
+The `payload` is a base64-encoded byte array. Decoded, this payload contains: `{}` — the serialized `CounterIncremented` marker event from the current Counter sample. The base64 encoding is the standard JSON representation of the underlying `byte[]` field — this is what you see when inspecting events in the DAPR state store or when consuming events from pub/sub.
 
 Note three things in this example:
 
@@ -216,19 +216,19 @@ All of this happens atomically within the actor's turn-based concurrency model, 
 
 Here is where each metadata field comes from:
 
-| Field | Source |
-|-------|--------|
-| `aggregateId` | From AggregateIdentity (canonical form `{tenant}:{domain}:{id}`) |
-| `tenantId` | From the incoming command's tenant |
-| `domain` | From the incoming command's domain |
-| `sequenceNumber` | Auto-incremented from AggregateMetadata.CurrentSequence |
-| `timestamp` | Server clock at persistence time |
-| `correlationId` | From the incoming command's correlation ID |
-| `causationId` | From the incoming command's causation ID |
-| `userId` | From the incoming command's user ID (JWT `sub` claim) |
+| Field                  | Source                                                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aggregateId`          | From `AggregateIdentity.AggregateId` (the local aggregate identifier)                                                                                |
+| `tenantId`             | From the incoming command's tenant                                                                                                                   |
+| `domain`               | From the incoming command's domain                                                                                                                   |
+| `sequenceNumber`       | Auto-incremented from AggregateMetadata.CurrentSequence                                                                                              |
+| `timestamp`            | Server clock at persistence time                                                                                                                     |
+| `correlationId`        | From the incoming command's correlation ID                                                                                                           |
+| `causationId`          | From the incoming command's causation ID                                                                                                             |
+| `userId`               | From the incoming command's user ID (JWT `sub` claim)                                                                                                |
 | `domainServiceVersion` | Extracted from the command envelope's `domain-service-version` extension key; defaults to `"v1"` if absent (format: `v{number}`, regex: `^v[0-9]+$`) |
-| `eventTypeName` | From the .NET type name of the event |
-| `serializationFormat` | Defaults to `"json"` (System.Text.Json) |
+| `eventTypeName`        | From the .NET type name of the event                                                                                                                 |
+| `serializationFormat`  | Defaults to `"json"` (System.Text.Json)                                                                                                              |
 
 This design ensures metadata consistency — no domain service can produce events with incorrect sequence numbers, missing tenants, or forged user identities. The metadata is authoritative because EventStore controls it end-to-end.
 
@@ -236,7 +236,7 @@ The `sequenceNumber` deserves special attention: it is auto-incremented from `Ag
 
 Note that the `domainServiceVersion` is extracted from the incoming command envelope's `domain-service-version` extension key. If the extension is absent or empty, it defaults to `"v1"`. The version format is `v{number}` (regex: `^v[0-9]+$`) — for example, `"v1"`, `"v2"`, `"v10"`. This design makes versioning a deployment and routing concern: clients specify which domain service version should handle each command, and EventStore records which version actually processed it.
 
-The `eventTypeName` is resolved from the .NET type name of the event object at serialization time. For example, if your `Handle` method returns a `CounterIncremented` instance, the `eventTypeName` will be `"CounterIncremented"`. This type name is essential for deserialization — when EventStore or a consumer reads an event from the store, it uses the `eventTypeName` to determine which .NET type to deserialize the payload bytes into.
+The `eventTypeName` is resolved from the event object's fully qualified .NET type name at serialization time (unless a payload implements `ISerializedEventPayload` and overrides it explicitly). For example, if your `Handle` method returns a `Hexalith.EventStore.Sample.Counter.Events.CounterIncremented` instance, the persisted `eventTypeName` will be `"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented"`. This type name is essential for deserialization — when EventStore or a consumer reads an event from the store, it uses the `eventTypeName` to determine which .NET type to deserialize the payload bytes into.
 
 The `serializationFormat` currently defaults to `"json"` for all events serialized with the built-in `System.Text.Json` serializer. If you use `ISerializedEventPayload` to provide pre-serialized bytes in a different format, the serialization format field reflects whatever format you specify.
 
@@ -246,7 +246,7 @@ This field is critical for forward compatibility — if a future version of Even
 
 When events are published to DAPR pub/sub, they are wrapped in CloudEvents 1.0 format. DAPR handles the CloudEvents wrapping natively — you do not need to construct CloudEvents yourself. Hexalith adds three CloudEvents metadata attributes that enable subscribers to filter and route events efficiently:
 
-- **`cloudevent.type`** — the event type name (e.g., `CounterIncremented`). Subscribers can filter on this attribute to receive only specific event types. For example, a projection that builds a counter summary read model might subscribe only to `CounterIncremented` and `CounterDecremented` events, ignoring everything else.
+- **`cloudevent.type`** — the persisted event type name (for example, `Hexalith.EventStore.Sample.Counter.Events.CounterIncremented`). Subscribers can filter on this attribute to receive only specific event types. For example, a projection that builds a counter summary read model might subscribe only to the Counter event types, ignoring everything else.
 
 - **`cloudevent.source`** — `hexalith-eventstore/{tenantId}/{domain}` (e.g., `hexalith-eventstore/demo/counter`). This identifies which tenant and domain produced the event, enabling topic-level and source-level filtering. In a multi-tenant system, subscribers can use the source to process events from specific tenants independently.
 

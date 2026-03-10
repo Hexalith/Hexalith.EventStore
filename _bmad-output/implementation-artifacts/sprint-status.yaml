@@ -83,7 +83,6 @@ development_status:
   4-1-event-publisher-with-cloudevents-1-0: done
   4-2-per-tenant-per-domain-topic-isolation: done
   4-3-at-least-once-delivery-and-dapr-retry-policies: done
-  4-4-persist-then-publish-resilience: done
   4-5-dead-letter-routing-with-full-context: done
   epic-4-retrospective: optional
 
@@ -208,10 +207,10 @@ development_status:
   epic-15: in-progress
   15-1-configuration-reference: done
   15-2-auto-generated-api-reference-and-ci-workflow: done
-  15-3-event-versioning-and-schema-evolution-guide: in-progress
-  15-4-upgrade-path-documentation: review
-  15-5-public-product-roadmap: backlog
-  15-6-dapr-faq-deep-dive: backlog
+  15-3-event-versioning-and-schema-evolution-guide: done
+  15-4-upgrade-path-documentation: done
+  15-5-public-product-roadmap: done
+  15-6-dapr-faq-deep-dive: ready-for-dev
   epic-15-retrospective: optional
 
   # ============================================================================
@@ -221,8 +220,8 @@ development_status:
   # Epic 17: Actor-Based Authorization & Query API
   # DEPENDENCY: Epics 1-3, 5 (done). Complete before Epic 15 remaining stories.
   # SOURCE: sprint-change-proposal-2026-03-08-auth-query.md
-  epic-17: backlog
-  17-1-authorization-options-and-validator-abstractions: backlog
+  epic-17: in-progress
+  17-1-authorization-options-and-validator-abstractions: ready-for-dev
   17-2-actor-based-validator-implementations: backlog
   17-3-refactor-authorization-behavior: backlog
   17-4-query-contracts: backlog

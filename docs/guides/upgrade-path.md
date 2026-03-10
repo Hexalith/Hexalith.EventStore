@@ -14,7 +14,10 @@ This guide documents the general procedure for upgrading between Hexalith.EventS
 
 For most upgrades, follow these five steps:
 
-1. **Check your current version:** `dotnet list package --include-transitive | grep Hexalith`
+1. **Check your current Hexalith package versions:**
+    - PowerShell: `dotnet list package --include-transitive | Select-String '^\s*>\s+Hexalith\.EventStore\.'`
+    - Bash: `dotnet list package --include-transitive | grep -E '^\s*>\s+Hexalith\.EventStore\.'`
+
 2. **Read the CHANGELOG** for your target version's breaking changes (if any)
 3. **Update all 5 packages together** in `Directory.Packages.props` — never mix versions
 4. **Check `global.json`** SDK pin matches the [dependency compatibility matrix](#dependency-compatibility-matrix)
@@ -31,7 +34,12 @@ Run through this checklist before changing any package versions:
     ```bash
     dotnet --version
     dapr --version
-    dotnet list package --include-transitive | grep Hexalith
+
+    # PowerShell
+    dotnet list package --include-transitive | Select-String '^\s*>\s+Hexalith\.EventStore\.'
+
+    # Bash
+    dotnet list package --include-transitive | grep -E '^\s*>\s+Hexalith\.EventStore\.'
     ```
 
 - [ ] **Read the CHANGELOG** for your target version's breaking changes and migration steps
@@ -111,13 +119,13 @@ For major upgrades, review these areas of your codebase for compatibility:
 
 Hexalith.EventStore publishes 5 NuGet packages, all versioned as a single unit via [MinVer](https://github.com/adamralph/minver) git tags (prefix `v`):
 
-| Package | Purpose |
-|---------|---------|
+| Package                         | Purpose                                             |
+| ------------------------------- | --------------------------------------------------- |
 | `Hexalith.EventStore.Contracts` | Domain types: commands, events, results, identities |
-| `Hexalith.EventStore.Client` | Client abstractions and DI registration |
-| `Hexalith.EventStore.Server` | Server-side domain processors, DAPR integration |
-| `Hexalith.EventStore.Testing` | Testing utilities and helpers |
-| `Hexalith.EventStore.Aspire` | .NET Aspire hosting extensions |
+| `Hexalith.EventStore.Client`    | Client abstractions and DI registration             |
+| `Hexalith.EventStore.Server`    | Server-side domain processors, DAPR integration     |
+| `Hexalith.EventStore.Testing`   | Testing utilities and helpers                       |
+| `Hexalith.EventStore.Aspire`    | .NET Aspire hosting extensions                      |
 
 All packages use centralized version management via [`Directory.Packages.props`](../../Directory.Packages.props). To update, change the version in that single file.
 
@@ -128,8 +136,8 @@ All packages use centralized version management via [`Directory.Packages.props`]
 The following table shows which dependency versions are required for each Hexalith major version. For the authoritative version pins for any release, check [`Directory.Packages.props`](../../Directory.Packages.props) at the corresponding git tag.
 
 | Hexalith Version | .NET SDK | DAPR SDK | .NET Aspire | MediatR | FluentValidation |
-|------------------|----------|----------|-------------|---------|------------------|
-| v1 (current) | 10.0.x | 1.16.x+ | 13.1.x+ | 14.x | 12.x |
+| ---------------- | -------- | -------- | ----------- | ------- | ---------------- |
+| v1 (current)     | 10.0.x   | 1.16.x+  | 13.1.x+     | 14.x    | 12.x             |
 
 > **Note:** This table currently has one row (v1) and is forward-looking — it will grow with each major release.
 
@@ -143,11 +151,11 @@ When upgrading Hexalith, check whether the DAPR SDK version changed. If so, upda
 
 ## Event Envelope Schema Changes
 
-Hexalith guarantees backward-compatible reading of all previously persisted event envelopes. Envelope schema changes between Hexalith major versions are treated as **major version bumps** — this is Architecture Decision D3.
+Hexalith guarantees backward-compatible reading of all previously persisted event envelopes. Envelope schema changes between Hexalith major versions are treated as **major version bumps**.
 
 > **Upgrading Hexalith does NOT require migrating existing event streams.** Old events are always readable by newer versions. Event sourcing is append-only: the existing stream is never modified.
 
-For event *payload* schema evolution (adding fields, renaming types, upcasting), see [Event Versioning & Schema Evolution](../concepts/event-versioning.md). This page covers the Hexalith *framework* upgrade, not individual event schema changes within your domain.
+For event _payload_ schema evolution (adding fields, renaming types, upcasting), see [Event Versioning & Schema Evolution](../concepts/event-versioning.md). This page covers the Hexalith _framework_ upgrade, not individual event schema changes within your domain.
 
 ### Snapshot Compatibility
 
@@ -186,12 +194,12 @@ dotnet test tests/Hexalith.EventStore.IntegrationTests/
 
 ### What Test Failures Signal
 
-| Failure Type | Likely Cause | Action |
-|-------------|-------------|--------|
-| Compilation errors | API breaking change | Check CHANGELOG migration steps, update calling code |
-| Tier 1 failures | Logic or behavioral change | Review CHANGELOG behavioral changes, update assertions or logic |
-| Tier 2 failures | DAPR or integration change | Check DAPR SDK/runtime compatibility, review component configs |
-| Tier 3 failures | Topology or orchestration change | Check Aspire hosting version, review AppHost configuration |
+| Failure Type       | Likely Cause                     | Action                                                          |
+| ------------------ | -------------------------------- | --------------------------------------------------------------- |
+| Compilation errors | API breaking change              | Check CHANGELOG migration steps, update calling code            |
+| Tier 1 failures    | Logic or behavioral change       | Review CHANGELOG behavioral changes, update assertions or logic |
+| Tier 2 failures    | DAPR or integration change       | Check DAPR SDK/runtime compatibility, review component configs  |
+| Tier 3 failures    | Topology or orchestration change | Check Aspire hosting version, review AppHost configuration      |
 
 ## Rollback Strategy
 
