@@ -5,928 +5,1446 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
-  - prd-documentation.md
-  - architecture-documentation.md
+  - prd.md
+  - architecture.md
+  - ux-design-specification.md
 ---
 
-# Hexalith.EventStore Documentation - Epic Breakdown
+# Hexalith.EventStore - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for Hexalith.EventStore Documentation & Developer Experience, decomposing the requirements from the PRD and Architecture into implementable stories.
+This document provides the complete epic and story breakdown for Hexalith.EventStore, decomposing the requirements from the PRD, UX Design, and Architecture into implementable stories.
 
 ## Requirements Inventory
 
 ### Functional Requirements
 
-FR1: A .NET developer can understand what Hexalith.EventStore does within 30 seconds of landing on the README
-FR2: A developer can see the core programming model (pure function contract) within the first screen scroll
-FR3: A developer can self-assess whether Hexalith fits their needs through a structured decision aid
-FR4: A developer can compare Hexalith's trade-offs against Marten, EventStoreDB, and custom implementations
-FR5: A developer can see a visual demonstration of the system running before installing anything
-FR6: A developer can identify all prerequisites needed before attempting the quickstart
-FR7: A developer can clone the repository and have the sample application running with events flowing on a local Docker environment within 10 minutes
-FR8: A developer can follow step-by-step instructions to build and register a custom domain service
-FR9: A developer can experience an infrastructure backend swap (e.g., Redis to PostgreSQL) with zero code changes
-FR10: A developer can send a test command and observe the resulting event in the event stream
-FR11: A developer can learn the architecture topology without prior DAPR knowledge
-FR12: A developer can understand the event envelope metadata structure
-FR13: A developer can understand the identity scheme and how it maps to actors, streams, and topics
-FR14: A developer can trace the end-to-end lifecycle of a command through the system
-FR15: A developer can understand why DAPR was chosen and what trade-offs it introduces
-FR16: A developer can understand when Hexalith is NOT the right choice for their project
-FR17: A developer can look up any REST endpoint with request/response examples
-FR18: A developer can determine which NuGet package to install for their use case
-FR19: A developer can browse auto-generated API documentation for all public types
-FR20: A developer can view the dependency relationships between NuGet packages
-FR21: A developer can access a complete configuration reference for all system knobs
-FR22: An operator can deploy the sample application to Docker Compose on a local development machine using a documented walkthrough
-FR23: An operator can deploy the sample application to an on-premise Kubernetes cluster using a documented walkthrough
-FR24: An operator can deploy the sample application to Azure Container Apps using a documented walkthrough
-FR25: An operator can configure each DAPR component (State Store, Pub/Sub, Actors, Configuration, Resiliency) for their target infrastructure with documented examples per backend
-FR26: An operator can verify system health through documented health/readiness endpoints
-FR27: An operator can understand the security model and configure authentication
-FR28: A developer can find and follow a contribution workflow with documented fork, branch, and PR steps
-FR29: A developer can identify beginner-friendly contribution opportunities
-FR30: A developer can file structured bug reports, feature requests, and documentation improvements
-FR31: A developer can submit pull requests following a documented template and checklist
-FR32: A developer can participate in community discussions organized by category
-FR33: A developer can view the public product roadmap
-FR34: A CI pipeline can validate that all code examples in documentation compile and run
-FR35: A CI pipeline can detect broken links across all documentation pages
-FR36: A CI pipeline can enforce markdown formatting standards
-FR37: Documentation maintainers can identify stale content through automated checks
-FR38: A documentation reviewer can verify changes through the same PR process as code
-FR39: The README can be discovered through GitHub search for key terms (event sourcing, .NET, DAPR, multi-tenant)
-FR40: Documentation pages can be indexed by search engines with descriptive URLs and structured headings
-FR41: A developer browsing event sourcing resources can discover Hexalith through the curated ecosystem page
-FR42: A developer can navigate between related documentation pages through cross-linking
-FR43: A developer can enter the documentation at any page and orient themselves without reading prerequisite pages
-FR44: A developer can navigate a progressive complexity path from simple concepts to advanced patterns
-FR45: A developer can access architecture documentation directly from the README as a parallel entry point
-FR46: A developer can identify their current position in the documentation structure
-FR47: A developer can find troubleshooting guidance for quickstart errors including: Docker not running, port conflicts, DAPR sidecar timeout, .NET SDK version mismatch, and sample build failure
-FR48: A developer can find documented solutions for DAPR integration issues including: sidecar injection failure, state store connection timeout, pub/sub message loss, actor activation conflict, and component configuration mismatch
-FR49: A developer can access troubleshooting information for deployment failures per target environment
-FR50: A developer can view a changelog of breaking changes and migration steps between releases
-FR51: A developer can understand how event versioning and schema evolution are handled
-FR52: A developer can follow a documented upgrade path when moving between major versions
-FR53: A developer can set up a local development environment matching the documented configuration
-FR54: A developer can identify the library version documented by a documentation page via a version reference in the README linking to the corresponding release tag
-FR55: An operator can follow a documented disaster recovery procedure for the event store
-FR56: A developer can follow a documented progression from the local Docker sample to on-premise Kubernetes to Azure cloud deployment using the same application code with only infrastructure configuration changes
-FR57: A developer can understand and set up the DAPR runtime for each target environment (local Docker, Kubernetes, Azure) as a prerequisite to deploying the sample application
-FR58: A developer can understand what infrastructure differences exist between local Docker, on-premise Kubernetes, and Azure cloud deployments and why each configuration differs
-FR59: A developer who completed the local Docker quickstart can transition to a Kubernetes or Azure deployment guide with explicit references to what they already know and what's new
-FR60: An operator can understand where event data is physically stored based on their DAPR state store configuration and what persistence guarantees each backend provides
-FR61: A documentation contributor can run the full validation suite (code compilation, link checking, markdown linting) locally with a single command
-FR62: A maintainer can verify that every functional requirement has at least one corresponding documentation page through a traceability check
-FR63: An operator can determine resource requirements (CPU, memory, storage) and pod sizing guidance for production deployment per target environment (Docker Compose, Kubernetes, Azure Container Apps)
+**Command Processing (9 FRs):**
+
+- FR1: An API consumer can submit a command to the EventStore via a REST endpoint with tenant, domain, aggregate ID, command type, and payload
+- FR2: The system can validate a submitted command for structural completeness (required fields: tenantId, domain, aggregateId, commandType, payload; well-formed JSON structure) before routing it for processing
+- FR3: The system can route a command to the correct aggregate actor based on the identity scheme (`tenant:domain:aggregate-id`)
+- FR4: An API consumer can receive a correlation ID upon command submission for tracking the command lifecycle
+- FR5: An API consumer can query the processing status of a previously submitted command using its correlation ID
+- FR6: An operator can replay a previously failed command via the Command API after root cause is fixed
+- FR7: The system can reject duplicate commands targeting an aggregate that has an optimistic concurrency conflict, returning an appropriate error
+- FR8: The system can route failed commands to a dead-letter topic with full command payload, error details, and correlation context
+- FR49: The system can detect and reject duplicate commands by tracking processed command IDs per aggregate, returning an idempotent success response for already-processed commands
+
+**Event Management (8 FRs):**
+
+- FR9: The system can persist events in an append-only, immutable event store where events are never modified or deleted after persistence
+- FR10: The system can assign strictly ordered, gapless sequence numbers to events within a single aggregate stream. Cross-aggregate event ordering is explicitly not guaranteed
+- FR11: The system can wrap each event in an 11-field metadata envelope (aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type, serialization format) plus opaque payload and extension metadata bag
+- FR12: The system can reconstruct aggregate state by replaying all events in an aggregate's stream from sequence 1 to current
+- FR13: The system can create snapshots of aggregate state at administrator-configured event count intervals (default: every 100 events, configurable per tenant-domain pair)
+- FR14: The system can reconstruct aggregate state from the latest snapshot plus subsequent events, producing identical state to full replay
+- FR15: The system can store events using a composite key strategy that includes tenant, domain, and aggregate identity for isolation
+- FR16: The system can enforce atomic event writes -- a command produces 0 or N events as a single transaction, never a partial subset
+
+**Event Distribution (4 FRs):**
+
+- FR17: The system can publish persisted events to subscribers via a pub/sub mechanism using CloudEvents 1.0 envelope format
+- FR18: The system can deliver events to subscribers with at-least-once delivery guarantee
+- FR19: The system can publish events to per-tenant-per-domain topics, ensuring subscribers only receive events for their authorized scope
+- FR20: The system can continue persisting events when the pub/sub system is temporarily unavailable, draining the backlog on recovery
+
+**Domain Service Integration (5 FRs):**
+
+- FR21: A domain service developer can implement a domain processor as a pure function with the contract `(Command, CurrentState?) -> List<DomainEvent>`
+- FR22: A domain service developer can register their domain service with EventStore by tenant and domain via explicit DAPR configuration entry or automatically via convention-based assembly scanning
+- FR23: The system can invoke a registered domain service when processing a command, passing the command and current aggregate state
+- FR24: The system can process commands for at least 2 independent domains within the same EventStore instance
+- FR25: The system can process commands for at least 2 tenants within the same domain, each with isolated event streams
+
+**Identity & Multi-Tenancy (4 FRs):**
+
+- FR26: The system can derive actor IDs, event stream keys, pub/sub topics, and queue sessions from a single canonical identity tuple (`tenant:domain:aggregate-id`)
+- FR27: The system can enforce data path isolation so that commands for one tenant are never routed to another tenant's domain service
+- FR28: The system can enforce storage key isolation so that event streams for different tenants are inaccessible to each other even at the state store level
+- FR29: The system can enforce pub/sub topic isolation so that event subscribers only receive events from tenants they are authorized to access
+
+**Security & Authorization (5 FRs):**
+
+- FR30: An API consumer can authenticate with the Command API using a JWT token
+- FR31: The system can authorize command submissions based on JWT claims for tenant, domain, and command type
+- FR32: The system can reject unauthorized commands at the API gateway before they enter the processing pipeline
+- FR33: The system can validate that a command's tenant matches the authenticated user's authorized tenants at the actor level
+- FR34: The system can enforce service-to-service access control between EventStore components via DAPR policies
+
+**Observability & Operations (5 FRs):**
+
+- FR35: The system can emit OpenTelemetry traces spanning the full command lifecycle (received, processing, events stored, events published, completed)
+- FR36: The system can emit structured logs with correlation and causation IDs at each stage of the command processing pipeline
+- FR37: An operator can trace a failed command from the dead-letter topic back to its originating request via correlation ID
+- FR38: The system can expose health check endpoints indicating DAPR sidecar, state store, and pub/sub connectivity status
+- FR39: The system can expose readiness check endpoints indicating all dependencies are healthy and the system is accepting commands
+
+**Developer Experience & Deployment (10 FRs):**
+
+- FR40: A developer can start the complete EventStore system (server, sample domain service, state store, message broker, OpenTelemetry) with a single Aspire command
+- FR41: A developer can reference a sample domain service implementation as a working example of the pure function programming model
+- FR42: A developer can install EventStore client packages via NuGet to build and register domain services, with zero-configuration quickstart via convention-based `AddEventStore()` registration
+- FR43: A DevOps engineer can deploy EventStore to different environments by changing only DAPR component configuration files with zero application code changes
+- FR44: A DevOps engineer can generate deployment manifests for Docker Compose, Kubernetes, or Azure Container Apps via Aspire publishers
+- FR45: A developer can run unit tests against domain service pure functions without any DAPR runtime dependency
+- FR46: A developer can run integration tests against the actor processing pipeline using DAPR test containers
+- FR47: A developer can run end-to-end contract tests validating the full command lifecycle across the complete Aspire topology
+- FR48: A domain service developer can implement a domain aggregate by inheriting from EventStoreAggregate with typed Apply methods, as a higher-level alternative to implementing IDomainProcessor directly
+
+**Query Pipeline & Projection Caching -- v2 (11 FRs):**
+
+- FR50: The system can route incoming query messages to query actors using a 3-tier routing model
+- FR51: The system can maintain one ETag actor per `{ProjectionType}-{TenantId}` storing a GUID representing the current projection version
+- FR52: A domain service developer can notify EventStore of a projection change by calling `NotifyProjectionChanged(projectionType, tenantId, entityId?)`
+- FR53: The query REST endpoint can perform an ETag pre-check by calling the ETag actor before routing to the query actor -- returning HTTP 304 on match
+- FR54: A query actor can serve as an in-memory page cache comparing its cached ETag against the current ETag actor value
+- FR55: The system can broadcast a signal-only "changed" message to connected SignalR clients when a projection's ETag is regenerated
+- FR56: The system can host a SignalR hub inside the EventStore server using DAPR pub/sub as the backplane
+- FR57: A query contract library (NuGet) can define mandatory query metadata fields as typed static members
+- FR58: The system can invalidate all cached query results for a projection+tenant pair on any projection change notification (coarse invalidation)
+- FR59: The SignalR client helper (NuGet) can automatically rejoin SignalR groups on connection recovery
+- FR60: The EventStore documentation and sample application can provide at least 3 reference patterns for handling the SignalR "changed" signal in Blazor UI components
 
 ### NonFunctional Requirements
 
-NFR1: The quickstart guide results in a running system within 10 minutes on a clean development machine with prerequisites installed (validated by CI timing)
-NFR2: Any documentation page renders fully on GitHub (all markdown content and Mermaid diagrams visible) within 2 seconds on a 25 Mbps connection, validated by page file size staying under 200KB
-NFR3: The animated README GIF is under 5MB in file size (validated by CI file size check)
-NFR4: Mermaid diagrams produce visible, non-error diagrams when viewed on GitHub.com in Chrome, Firefox, and Edge latest versions, without requiring external tooling or browser extensions
-NFR5: The "Build Your First Domain Service" tutorial completes within 1 hour for a developer familiar with .NET and DDD concepts, validated by a timed walkthrough during authoring and by tutorial CI job completion time
-NFR6: All documentation pages use structured heading hierarchy (H1-H4) with no skipped levels, enabling screen reader navigation
-NFR7: All architecture diagrams and Mermaid visuals include descriptive alt text that conveys the same information as the visual
-NFR8: Color is never the sole indicator of meaning in any diagram, table, or callout — shape, label, or pattern must also distinguish elements
-NFR9: Code examples include language-specific syntax highlighting tags for assistive technology compatibility
-NFR10: No documentation page requires more than 2 prerequisite pages to understand (maximum depth of dependency)
-NFR11: Documentation pages are self-contained markdown files with no cross-file build dependencies, enabling any single page to be updated and validated within one CI cycle
-NFR12: No code examples in documentation are manually maintained in markdown files — all are extracted from or validated against runnable source projects
-NFR13: Documentation changes follow the same PR review process as code changes, with no separate publishing workflow
-NFR14: Stale content is detectable within 1 CI cycle after a breaking code change
-NFR15: The animated README GIF can be regenerated via a single script or CI job, not manual screen recording
-NFR16: Adding a new documentation page requires no changes to build configuration or CI pipeline — drop a markdown file in the correct folder
-NFR17: Documentation structure supports a quarterly review cadence — each page has a clear owner (Jerome for MVP) and last-reviewed date is trackable via git history
-NFR18: 100% of code examples in documentation compile and run successfully against the current release (validated by CI on every commit)
-NFR19: Zero broken links across all documentation pages (validated by CI link checker on every commit)
-NFR20: Markdown formatting passes linting rules consistently (validated by a markdown linting tool in CI)
-NFR21: The quickstart produces identical results on macOS, Windows, and Linux development machines with Docker Desktop installed
-NFR22: All three deployment walkthroughs (Docker Compose, Kubernetes, Azure) produce a verifiably running system when followed step-by-step
-NFR23: CI validation pipeline completes in under 5 minutes to avoid blocking PR merges
-NFR24: README contains all primary search keywords (event sourcing, .NET, DAPR, distributed, multi-tenant, event store, CQRS, DDD) within the first 200 words
-NFR25: Every documentation page starts with a clear H1 title and a one-paragraph summary optimized for search engine snippets
-NFR26: Documentation filenames use descriptive, unabbreviated words separated by hyphens (e.g., deployment-kubernetes.md not deploy-k8s.md)
-NFR27: Cross-links between related documentation pages ensure no page is more than 2 clicks from the README
-NFR28: NuGet package descriptions contain at least 3 keywords from the NFR24 keyword list and use terminology consistent with the documentation
+**Performance (8 NFRs):**
+
+- NFR1: Command submission via REST API must complete (202 Accepted) within 50ms at p99
+- NFR2: End-to-end command lifecycle (API receipt to event published) must complete within 200ms at p99
+- NFR3: Event append latency (actor persist to state store confirmation) must be under 10ms at p99
+- NFR4: Actor cold activation with state rehydration (snapshot + events) must complete within 50ms at p99
+- NFR5: Pub/sub delivery (event persistence to subscriber delivery) must complete within 50ms at p99
+- NFR6: Full aggregate state reconstruction from 1,000 events must complete within 100ms
+- NFR7: The system must support at least 100 concurrent command submissions per second per instance
+- NFR8: DAPR sidecar overhead per building block call must not exceed 2ms at p99
+
+**Security (7 NFRs):**
+
+- NFR9: All communication between API consumers and the Command API must be encrypted via TLS 1.2+
+- NFR10: JWT tokens must be validated for signature, expiry, and issuer on every request
+- NFR11: Failed authentication/authorization attempts must be logged with request metadata without logging the JWT token
+- NFR12: Event payload data must never appear in log output; only event metadata may be logged
+- NFR13: Multi-tenant data isolation must be enforced at all three layers (actor identity, DAPR policies, command metadata)
+- NFR14: Secrets must never be stored in application code or configuration files committed to source control
+- NFR15: Service-to-service communication between EventStore components must be authenticated via DAPR access control policies
+
+**Scalability (5 NFRs):**
+
+- NFR16: Horizontal scaling via adding EventStore server replicas with DAPR actor placement distribution
+- NFR17: Support at least 10,000 active aggregates per EventStore instance
+- NFR18: Support at least 10 tenants per instance with full isolation
+- NFR19: Event stream growth bounded by snapshot strategy -- constant rehydration time
+- NFR20: Adding new tenant or domain must not require system restart -- dynamic config via DAPR config store
+
+**Reliability (6 NFRs):**
+
+- NFR21: 99.9%+ availability with HA DAPR control plane and multi-replica deployment
+- NFR22: Zero events lost under any tested failure scenario
+- NFR23: After state store recovery, resume processing from last checkpoint with deterministic replay
+- NFR24: After pub/sub recovery, all events persisted during outage delivered to subscribers
+- NFR25: Actor crash after event persistence but before pub/sub delivery must not result in duplicate event persistence
+- NFR26: Optimistic concurrency conflicts must be detected and reported (409 Conflict)
+
+**Integration (6 NFRs):**
+
+- NFR27: Function correctly with any DAPR-compatible state store supporting key-value ops and ETag optimistic concurrency
+- NFR28: Function correctly with any DAPR-compatible pub/sub supporting CloudEvents 1.0 and at-least-once delivery
+- NFR29: Backend switch requires only DAPR component YAML changes -- zero application code changes
+- NFR30: Domain services invocable via DAPR service invocation over HTTP
+- NFR31: OpenTelemetry exportable to any OTLP-compatible collector
+- NFR32: Deployable via Aspire publishers to Docker Compose, Kubernetes, and Azure Container Apps
+
+**Rate Limiting (2 NFRs):**
+
+- NFR33: Per-tenant rate limiting with configurable threshold (default: 1,000 commands/min/tenant), returning 429 with Retry-After
+- NFR34: Per-consumer rate limiting with configurable threshold (default: 100 commands/sec/consumer), returning 429 with Retry-After
+
+**Query Pipeline Performance -- v2 (5 NFRs):**
+
+- NFR35: ETag pre-check at query endpoint must complete within 5ms at p99 for warm actors
+- NFR36: Query actor cache hit must complete within 10ms at p99
+- NFR37: Query actor cache miss must complete within 200ms at p99
+- NFR38: SignalR "changed" signal delivery must complete within 100ms at p99
+- NFR39: Query pipeline must support at least 1,000 concurrent query requests per second per instance
 
 ### Additional Requirements
 
-- Architecture specifies no starter template — this is a brownfield product with greenfield documentation
-- D1: Content folder structure follows specific hierarchy (docs/getting-started/, docs/concepts/, docs/guides/, docs/reference/, docs/community/, docs/assets/)
-- D2: Sample project architecture extends existing Counter domain in samples/Hexalith.EventStore.Sample/ — do not create new sample domains
-- D2: New integration test project samples/Hexalith.EventStore.Sample.Tests/ needed for quickstart CI validation
-- D2: DAPR component YAML variants needed in samples/dapr-components/ for Redis (default) and PostgreSQL (backend swap demo)
-- D2: Deployment configurations needed in samples/deploy/ for Docker Compose, Kubernetes, and Azure
-- D3: Two GitHub Actions workflows — docs-validation.yml (Phase 1a, PR+push triggers) and docs-api-reference.yml (Phase 2, release tag trigger)
-- D3: CI pipeline uses markdownlint-cli2 for linting, lychee for link checking, dotnet build+test for sample validation
-- D3: Cross-platform matrix (ubuntu, windows, macos) only for sample build/test; linting runs on ubuntu-latest only
-- D3: CI budget must stay under 300s (NFR23) — Phase 1a estimated at ~125s
-- D4: Community infrastructure includes GitHub Discussions (4 categories), issue templates (bug, feature, docs-improvement), PR template, CONTRIBUTING.md, CODE_OF_CONDUCT.md
-- D5: Mermaid diagrams are hand-authored inline in markdown — no separate .mmd files, no automated browser testing
-- D5: Every Mermaid diagram must include a `<details>` block with text description for accessibility (NFR7)
-- D6: README follows specific progressive disclosure order: GIF demo, one-liner+badges, hook paragraph, pure function contract, comparison table, quickstart link, architecture diagram, doc links, contributing, license
-- D7: Every docs page must include back-link to README, H1+summary, optional prerequisites (max 2), content, Next Steps footer
-- D7: All internal links are relative paths; 2-click maximum depth from README (NFR27)
-- Implementation patterns: second person voice, professional-casual tone, developer-to-developer perspective
-- Code examples must use Counter domain names (IncrementCounter, CounterProcessor, CounterState) — never invent new domain names
-- DAPR explanation depth follows progressive pattern: README (one sentence) > Quickstart (functional) > Concepts (architectural) > Guides (operational) > FAQ (deep)
-- Phase 1a deliverables: README rewrite, prerequisites, quickstart, choose-the-right-tool, GIF, CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates, PR template, CHANGELOG.md, docs-validation CI
-- Phase 1b deliverables: first-domain-service tutorial, architecture-overview, command-api, event-envelope, identity-scheme, command-lifecycle, nuget-packages, awesome-event-sourcing, sample integration tests
-- Phase 2 deliverables: 3 deployment guides, deployment-progression, security-model, configuration-reference, dapr-faq, troubleshooting, API auto-generation, roadmap, GitHub Discussions setup, deployment configs, DAPR component variants, resource sizing
-- .markdownlint-cli2.jsonc ruleset needs to be defined during first CI story
-- .lycheeignore needs seeding with common exclusions (localhost, example.com, GitHub edit links)
-- CODE_OF_CONDUCT.md uses Contributor Covenant v2.1
-- Local validation script (scripts/validate-docs.sh) needed for FR61 in Phase 1b
+**From Architecture:**
+
+- D1: Event storage uses single-key-per-event pattern with actor-level ACID writes (`{tenant}:{domain}:{aggId}:events:{seq}`)
+- D2: Command status stored in dedicated state store key `{tenant}:{correlationId}:status` with 24h TTL
+- D3: Domain errors expressed as events (IRejectionEvent marker interface), not exceptions. Backward-compatible deserialization mandatory
+- D4: DAPR access control via per-app-id allow list
+- D5: API errors use RFC 7807 Problem Details with correlationId/tenantId extensions
+- D6: Pub/sub topic naming: `{tenant}.{domain}.events`
+- D7: Domain service invocation via `DaprClient.InvokeMethodAsync` with DAPR resiliency policies
+- D8: Rate limiting via ASP.NET Core built-in `RateLimiting` middleware with sliding window
+- D9: Package versioning via MinVer (Git tag-based SemVer)
+- D10: CI/CD via GitHub Actions (build+test on PR, pack+publish on release tag)
+- D11: E2E security testing infrastructure -- Keycloak in Aspire with realm-as-code for runtime OIDC validation
+- No starter template -- greenfield project with pre-validated architecture
+- Implementation sequence: Contracts -> Testing -> Server -> CommandApi -> Client -> Sample -> Aspire/AppHost -> Deploy -> CI/CD
+- AggregateActor as thin orchestrator: 5-step delegation (idempotency check, tenant validation, state rehydration, domain invocation, state machine execution)
+- MediatR pipeline order: LoggingBehavior -> ValidationBehavior -> AuthorizationBehavior -> CommandHandler
+- Convention engine for DAPR resource naming derived from aggregate type names
+- 5-layer convention override priority: Convention defaults -> Global code options -> Domain self-config -> External config -> Explicit override
+- Feature folders over type folders in project organization
+- Structured logging minimum fields defined per pipeline stage (GAP-5 resolved)
+- OpenTelemetry activity naming: `EventStore.{Component}.{Operation}`
+
+**From UX Design:**
+
+- Four distinct interaction surfaces: Developer SDK (v1), REST API (v1), CLI/Operator (v1), Blazor Dashboard (v2)
+- REST API is the primary product interface (highest UX investment for v1)
+- Blazor Dashboard uses Fluent UI V4 components with design token-based theming (light/dark/high-contrast)
+- Desktop-first responsive strategy: Full (1920px+), Standard (1280-1919px), Compact (960-1279px)
+- WCAG 2.1 AA compliance target for Blazor Dashboard
+- Accessibility: All custom components require ARIA labels, keyboard navigation, focus management, reduced motion support
+- `aria-live` debouncing strategy for real-time data updates
+- Custom components: StatusBadge, CommandPipeline, IssueBanner, StatCard, PatternGroup, EmptyState, ActivityChart
+- Transition durations: 150ms micro-interactions, 300ms layout changes
+- Master-detail pattern uses URL-driven state at compact tier
+- ARIA tree snapshot tests for custom components (block merge on ARIA changes)
+- Axe-core automated WCAG testing blocks merge on violations
 
 ### FR Coverage Map
 
-| FR | Epic | Brief Description |
-|----|------|-------------------|
-| FR1 | Epic 1 | 30-second README understanding |
-| FR2 | Epic 1 | Pure function contract visible |
-| FR3 | Epic 1 | Structured decision aid (choose-the-right-tool) |
-| FR4 | Epic 1 | Comparison vs Marten/EventStoreDB/custom |
-| FR5 | Epic 1 | Animated GIF demo |
-| FR6 | Epic 1 | Prerequisites identification |
-| FR7 | Epic 2 | 10-minute quickstart |
-| FR8 | Epic 5 | First domain service tutorial |
-| FR9 | Epic 5 | Backend swap demo (Redis to PostgreSQL) |
-| FR10 | Epic 2 | Send command, observe event |
-| FR11 | Epic 5 | Architecture topology without DAPR knowledge |
-| FR12 | Epic 5 | Event envelope metadata |
-| FR13 | Epic 5 | Identity scheme |
-| FR14 | Epic 5 | Command lifecycle |
-| FR15 | Epic 5 | DAPR trade-offs |
-| FR16 | Epic 5 | When NOT to use Hexalith |
-| FR17 | Epic 5 | REST endpoint reference |
-| FR18 | Epic 5 | NuGet package guide |
-| FR19 | Epic 8 | Auto-generated API docs |
-| FR20 | Epic 5 | NuGet package dependencies |
-| FR21 | Epic 8 | Configuration reference |
-| FR22 | Epic 7 | Docker Compose deployment |
-| FR23 | Epic 7 | Kubernetes deployment |
-| FR24 | Epic 7 | Azure Container Apps deployment |
-| FR25 | Epic 7 | DAPR component configuration per backend |
-| FR26 | Epic 7 | Health/readiness endpoints |
-| FR27 | Epic 7 | Security model |
-| FR28 | Epic 3 | Contribution workflow |
-| FR29 | Epic 3 | Beginner-friendly issues |
-| FR30 | Epic 3 | Structured issue templates |
-| FR31 | Epic 3 | PR template & checklist |
-| FR32 | Epic 3 | GitHub Discussions |
-| FR33 | Epic 8 | Public roadmap |
-| FR34 | Epic 4 | CI code example validation |
-| FR35 | Epic 4 | CI broken link detection |
-| FR36 | Epic 4 | CI markdown linting |
-| FR37 | Epic 4 | Stale content detection |
-| FR38 | Epic 3 | PR review process for docs |
-| FR39 | Epic 1 | GitHub search discoverability |
-| FR40 | Epic 1 | Search engine indexing |
-| FR41 | Epic 5 | Awesome event sourcing ecosystem page |
-| FR42 | Epic 2 | Cross-linking between pages |
-| FR43 | Epic 1 | Self-contained page entry |
-| FR44 | Epic 1 | Progressive complexity path |
-| FR45 | Epic 1 | Architecture as parallel README entry |
-| FR46 | Epic 1 | Position identification in docs |
-| FR47 | Epic 7 | Quickstart troubleshooting |
-| FR48 | Epic 7 | DAPR integration troubleshooting |
-| FR49 | Epic 7 | Deployment failure troubleshooting |
-| FR50 | Epic 1 | CHANGELOG |
-| FR51 | Epic 8 | Event versioning & schema evolution |
-| FR52 | Epic 8 | Upgrade path documentation |
-| FR53 | Epic 1 | Local dev environment setup |
-| FR54 | Epic 1 | Version reference in README |
-| FR55 | Epic 7 | Disaster recovery procedure |
-| FR56 | Epic 7 | Deployment progression path |
-| FR57 | Epic 7 | DAPR runtime setup per environment |
-| FR58 | Epic 7 | Infrastructure differences documentation |
-| FR59 | Epic 7 | Quickstart-to-deployment transition |
-| FR60 | Epic 7 | Event data storage per backend |
-| FR61 | Epic 6 | Local validation suite |
-| FR62 | Epic 6 | FR traceability check |
-| FR63 | Epic 7 | Resource sizing guidance |
+- FR1: Epic 3 - Command submission REST endpoint
+- FR2: Epic 3 - Command structural validation
+- FR3: Epic 2 - Command routing to aggregate actor
+- FR4: Epic 3 - Correlation ID generation and return
+- FR5: Epic 3 - Command status query endpoint
+- FR6: Epic 3 - Failed command replay endpoint
+- FR7: Epic 2 - Optimistic concurrency conflict rejection
+- FR8: Epic 4 - Dead-letter topic routing for failed commands
+- FR9: Epic 2 - Append-only immutable event persistence
+- FR10: Epic 2 - Strictly ordered gapless sequence numbers
+- FR11: Epic 1 - 11-field event metadata envelope
+- FR12: Epic 2 - Aggregate state reconstruction via event replay
+- FR13: Epic 2 - Configurable snapshot creation
+- FR14: Epic 2 - State reconstruction from snapshot + subsequent events
+- FR15: Epic 2 - Composite key strategy with tenant/domain/aggregate isolation
+- FR16: Epic 2 - Atomic event writes (0 or N, never partial)
+- FR17: Epic 4 - CloudEvents 1.0 pub/sub publishing
+- FR18: Epic 4 - At-least-once delivery guarantee
+- FR19: Epic 4 - Per-tenant-per-domain topic publishing
+- FR20: Epic 4 - Event persistence during pub/sub unavailability
+- FR21: Epic 1 - Pure function domain processor contract
+- FR22: Epic 7 - Domain service registration (config + convention)
+- FR23: Epic 2 - Domain service invocation during command processing
+- FR24: Epic 5 - Multi-domain processing within single instance
+- FR25: Epic 5 - Multi-tenant processing with isolated event streams
+- FR26: Epic 1 - Canonical identity tuple derivation
+- FR27: Epic 5 - Data path isolation enforcement
+- FR28: Epic 5 - Storage key isolation enforcement
+- FR29: Epic 5 - Pub/sub topic isolation enforcement
+- FR30: Epic 5 - JWT authentication
+- FR31: Epic 5 - Claims-based authorization (tenant + domain + command type)
+- FR32: Epic 5 - Gateway-level unauthorized command rejection
+- FR33: Epic 5 - Actor-level tenant validation
+- FR34: Epic 5 - DAPR service-to-service access control
+- FR35: Epic 6 - OpenTelemetry full lifecycle traces
+- FR36: Epic 6 - Structured logs with correlation/causation IDs
+- FR37: Epic 6 - Dead-letter to originating request tracing
+- FR38: Epic 6 - Health check endpoints (DAPR, state store, pub/sub)
+- FR39: Epic 6 - Readiness check endpoints
+- FR40: Epic 8 - Single Aspire command startup
+- FR41: Epic 7 - Sample domain service reference implementation
+- FR42: Epic 7 - NuGet client packages with convention-based registration
+- FR43: Epic 8 - Environment deployment via DAPR component config only
+- FR44: Epic 8 - Aspire publisher deployment manifests
+- FR45: Epic 1 - Unit testing without DAPR dependency
+- FR46: Epic 8 - Integration testing with DAPR test containers
+- FR47: Epic 8 - End-to-end contract tests across Aspire topology
+- FR48: Epic 1 - EventStoreAggregate base class with typed Apply methods
+- FR49: Epic 2 - Command idempotency detection
+- FR50: Epic 9 - 3-tier query actor routing model
+- FR51: Epic 9 - ETag actor per projection+tenant
+- FR52: Epic 9 - NotifyProjectionChanged API
+- FR53: Epic 9 - ETag pre-check with HTTP 304
+- FR54: Epic 9 - Query actor in-memory page cache
+- FR55: Epic 9 - SignalR "changed" broadcast
+- FR56: Epic 9 - SignalR hub with DAPR pub/sub backplane
+- FR57: Epic 9 - Query contract library (NuGet)
+- FR58: Epic 9 - Coarse invalidation per projection+tenant
+- FR59: Epic 9 - SignalR client auto-rejoin on reconnect
+- FR60: Epic 9 - 3 sample Blazor UI refresh patterns
 
 ## Epic List
 
-### Epic 1: Foundation & First Impression (Phase 1a)
-Developers landing on the repo can immediately understand what Hexalith.EventStore does, decide if it fits their needs, and find the quickstart. The repo has a professional, complete README with CI quality gates protecting all content.
-**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR39, FR40, FR43, FR44, FR45, FR46, FR50, FR53, FR54
+### Epic 1: Domain Contracts & Testing Foundation
+A developer can define event-sourced domain types (event envelope, commands, identity scheme, domain results), implement pure function processors, and unit test them without any infrastructure dependency.
+**FRs covered:** FR11, FR21, FR26, FR45, FR48
+**Key NFRs:** Foundation for all performance and reliability targets
+**Architectural decisions:** D1 (key patterns), D3 (IRejectionEvent)
 
-### Epic 2: Quickstart & Onboarding (Phase 1a)
-Developers can clone the repo and have the sample running within 10 minutes, send a command, and see events flowing. The getting-started path is complete end-to-end.
-**FRs covered:** FR7, FR10, FR42
+### Epic 2: Actor-Based Command Processing
+Commands are processed through DAPR actors with event persistence, state replay, snapshots, optimistic concurrency, and idempotency -- the complete command-to-event pipeline core.
+**FRs covered:** FR3, FR7, FR9, FR10, FR12, FR13, FR14, FR15, FR16, FR23, FR49
+**Key NFRs:** NFR3, NFR4, NFR6, NFR22, NFR25, NFR26
+**Architectural decisions:** D1 (storage strategy), D7 (domain invocation), thin orchestrator pattern
 
-### Epic 3: Community Infrastructure (Phase 1a)
-Contributors can find contribution guidelines, file structured issues, submit PRs, and participate in discussions. The open-source community scaffolding is complete.
-**FRs covered:** FR28, FR29, FR30, FR31, FR32, FR38
+### Epic 3: Command API Gateway
+API consumers submit commands via REST, receive correlation IDs, track command status, and replay failed commands -- with structural validation and rate limiting.
+**FRs covered:** FR1, FR2, FR4, FR5, FR6
+**Key NFRs:** NFR1, NFR2, NFR7, NFR33, NFR34
+**Architectural decisions:** D2 (status storage), D5 (RFC 7807), D8 (rate limiting), MediatR pipeline
 
-### Epic 4: Documentation CI Pipeline (Phase 1a)
-Every documentation PR is automatically validated for markdown formatting, broken links, and sample code compilation across platforms. Quality gates prevent documentation debt.
-**FRs covered:** FR34, FR35, FR36, FR37
+### Epic 4: Event Distribution
+Persisted events flow to subscribers via CloudEvents pub/sub with at-least-once delivery, per-tenant-per-domain topics, and dead-letter routing for failures.
+**FRs covered:** FR8, FR17, FR18, FR19, FR20
+**Key NFRs:** NFR5, NFR22, NFR24, NFR28
+**Architectural decisions:** D6 (topic naming)
 
-### Epic 5: Concept Deep Dives & Technical Reference (Phase 1b)
-Developers who tried the quickstart can now understand the architecture, trace command lifecycles, learn the identity scheme, and look up API endpoints and NuGet packages.
-**FRs covered:** FR8, FR9, FR11, FR12, FR13, FR14, FR15, FR16, FR17, FR18, FR20, FR41
+### Epic 5: Security & Multi-Tenant Isolation
+JWT authentication, claims-based authorization at every layer, and triple-layer multi-tenant isolation are enforced -- multiple tenants and domains coexist safely.
+**FRs covered:** FR24, FR25, FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34
+**Key NFRs:** NFR9-NFR15, NFR13, NFR18
+**Architectural decisions:** D4 (DAPR access control), D11 (Keycloak E2E testing)
 
-### Epic 6: Sample Integration Tests & Local Validation (Phase 1b)
-The quickstart is validated by CI through integration tests, and documentation contributors can run the full validation suite locally with a single command.
-**FRs covered:** FR61, FR62
+### Epic 6: Observability & Operational Readiness
+Full command lifecycle traceable via OpenTelemetry, structured logs with correlation IDs enable fast diagnosis, health/readiness endpoints confirm system status.
+**FRs covered:** FR35, FR36, FR37, FR38, FR39
+**Key NFRs:** NFR11, NFR12, NFR21, NFR31
+**Architectural decisions:** Structured logging pattern, OpenTelemetry activity naming
 
-### Epic 7: Deployment & Operations Guides (Phase 2)
-Operators can deploy the sample to Docker Compose, Kubernetes, and Azure Container Apps with documented walkthroughs, configure DAPR components per backend, and understand the security model.
-**FRs covered:** FR22, FR23, FR24, FR25, FR26, FR27, FR47, FR48, FR49, FR55, FR56, FR57, FR58, FR59, FR60, FR63
+### Epic 7: Developer SDK & Sample Application
+A developer installs NuGet packages, registers domain services via convention or DAPR config, and follows a working Counter sample as reference implementation.
+**FRs covered:** FR22, FR41, FR42
+**Key NFRs:** NFR20, NFR27, NFR29, NFR30
+**Architectural decisions:** Convention engine, assembly scanning, 5-layer override priority
 
-### Epic 8: Configuration, Versioning & Lifecycle (Phase 2)
-Developers can access a complete configuration reference, understand event versioning, follow upgrade paths between versions, and view the product roadmap.
-**FRs covered:** FR19, FR21, FR33, FR51, FR52
+### Epic 8: Aspire Orchestration, Deployment & CI/CD
+Developers start the full system with `dotnet aspire run`, DevOps deploys via Aspire publishers with zero code changes, CI/CD automates build/test/release, and integration + contract tests validate the full topology.
+**FRs covered:** FR40, FR43, FR44, FR46, FR47
+**Key NFRs:** NFR16, NFR17, NFR27-NFR32
+**Architectural decisions:** D9 (MinVer), D10 (GitHub Actions)
 
-## Epic 1: Foundation & First Impression
+### Epic 9: Query Pipeline & Projection Caching (v2)
+A developer wires up projection caching with one `NotifyProjectionChanged` call, achieving ETag-based cache invalidation, HTTP 304 support, query actor routing, and real-time SignalR push notifications.
+**FRs covered:** FR50, FR51, FR52, FR53, FR54, FR55, FR56, FR57, FR58, FR59, FR60
+**Key NFRs:** NFR35-NFR39
+**Architectural decisions:** 3-tier query routing, ETag actor pattern, coarse invalidation model
 
-Developers landing on the repo can immediately understand what Hexalith.EventStore does, decide if it fits their needs, and find the quickstart. The repo has a professional, complete README with CI quality gates protecting all content.
+---
 
-### Story 1.1: Documentation Folder Structure & Page Conventions
+## Epic 1: Domain Contracts & Testing Foundation
 
-As a documentation contributor,
-I want a well-organized docs folder structure with naming conventions in place,
-So that I know exactly where to create new pages and all future content has a consistent home.
+A developer can define event-sourced domain types (event envelope, commands, identity scheme, domain results), implement pure function processors, and unit test them without any infrastructure dependency.
 
-**Acceptance Criteria:**
+### Story 1.1: Event Envelope & Core Domain Types
 
-**Given** the repository has no `docs/` folder
-**When** this story is complete
-**Then** the following folder structure exists: `docs/getting-started/`, `docs/concepts/`, `docs/guides/`, `docs/reference/`, `docs/community/`, `docs/assets/`, `docs/assets/images/`
-**And** all folder names use lowercase, hyphen-separated, descriptive names per NFR26
-**And** a placeholder `.gitkeep` file exists in each empty folder so Git tracks the structure
-
-### Story 1.2: README Rewrite with Progressive Disclosure
-
-As a .NET developer evaluating event sourcing solutions,
-I want to land on the README and immediately understand what Hexalith.EventStore does, see the programming model, and compare it to alternatives,
-So that I can decide within 30 seconds whether to invest more time.
-
-**Acceptance Criteria:**
-
-**Given** a developer navigates to the repository root
-**When** they view the README
-**Then** the first viewport contains: placeholder for animated GIF demo, one-liner description with badge row (stars, NuGet, build status, license), hook paragraph ("If you've spent weeks wiring up an event store..."), pure function contract code block (`(Command, CurrentState?) -> List<DomainEvent>`), comparison table vs Marten/EventStoreDB/custom, and prominent quickstart link
-**And** below the fold: inline Mermaid architecture diagram with `<details>` text description for accessibility (NFR7), documentation links organized by funnel stage, contributing link, and MIT license
-**And** the first 200 words contain all primary SEO keywords: event sourcing, .NET, DAPR, distributed, multi-tenant, event store, CQRS, DDD (NFR24)
-**And** the README uses structured heading hierarchy H1-H4 with no skipped levels (NFR6)
-**And** all code blocks specify language tags (NFR9)
-
-### Story 1.3: Prerequisites & Local Dev Environment Page
-
-As a developer ready to try Hexalith,
-I want a clear prerequisites page listing everything I need installed,
-So that I can set up my local environment before starting the quickstart.
+As a domain service developer,
+I want a complete set of domain types (event envelope with 11-field metadata, command envelope, domain result, and marker interfaces),
+So that I have a shared contract for all command and event processing.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/getting-started/prerequisites.md`
-**When** they read the page
-**Then** the page follows the standard page template: back-link to README, H1 title, one-paragraph summary, content, Next Steps footer
-**And** the page lists all prerequisites: .NET 10 SDK, Docker Desktop, DAPR CLI with version numbers
-**And** each prerequisite includes a verification command (e.g., `$ dotnet --version`)
-**And** the page links to the quickstart as the Next Step
-**And** the page is self-contained (FR43) — a developer arriving from search understands it without reading other pages
-**And** all internal links use relative paths
+**Given** a developer references the Contracts NuGet package
+**When** they create an EventEnvelope
+**Then** it contains all 11 metadata fields (aggregateId, tenantId, domain, sequence, timestamp, correlationId, causationId, userId, domainServiceVersion, eventTypeName, serializationFormat) plus opaque JSON payload and extension metadata bag
+**And** the EventEnvelope is an immutable record type
 
-### Story 1.4: Choose the Right Tool Decision Aid
+**Given** a domain service returns a rejection
+**When** the event implements IRejectionEvent marker interface
+**Then** it is programmatically identifiable as a domain rejection (D3)
 
-As a developer evaluating event sourcing solutions,
-I want a structured decision aid that helps me assess whether Hexalith fits my project,
-So that I can make an informed technology choice before investing time.
+**Given** a CommandEnvelope is created
+**When** it includes tenantId, domain, aggregateId, commandType, and payload
+**Then** it passes structural completeness validation
 
-**Acceptance Criteria:**
+**Given** a DomainResult is returned from a domain processor
+**When** it contains events
+**Then** all events are typed as IEventPayload implementations
 
-**Given** a developer navigates to `docs/concepts/choose-the-right-tool.md`
-**When** they read the page
-**Then** the page includes a detailed comparison of Hexalith vs Marten, EventStoreDB, and custom implementations (FR4)
-**And** the page includes a structured self-assessment (e.g., decision matrix or checklist) for whether Hexalith fits their needs (FR3)
-**And** the page honestly describes when Hexalith is NOT the right choice (FR16) — including scenarios like non-.NET stacks, sub-millisecond latency requirements, or no container orchestration
-**And** the page follows the standard page template with back-link, H1, summary, content, Next Steps
-**And** the page is self-contained (FR43)
+**Given** a CommandStatus record
+**When** tracking command lifecycle
+**Then** it supports all 8 states: Received, Processing, EventsStored, EventsPublished, Completed, Rejected, PublishFailed, TimedOut (D2)
 
-### Story 1.5: Animated GIF Demo Capture
+**Given** any domain type (EventEnvelope, CommandEnvelope, DomainResult)
+**When** serialized to JSON and deserialized back
+**Then** the round-trip produces an identical object with no data loss
+**And** JSON property naming uses camelCase convention per architecture patterns
 
-As a developer evaluating Hexalith,
-I want to see the system running visually before installing anything,
-So that I get a concrete sense of what the experience looks like.
+### Story 1.2: Identity Scheme & Key Derivation
 
-**Acceptance Criteria:**
-
-**Given** the quickstart sample application is running
-**When** the GIF is captured
-**Then** `docs/assets/quickstart-demo.gif` shows the Aspire dashboard with services running, a command being sent, and an event appearing in the stream
-**And** the GIF file size is under 5MB (NFR3)
-**And** the README references the GIF via relative path `docs/assets/quickstart-demo.gif`
-**And** a documented regeneration procedure (checklist of steps to reproduce) exists in the repo
-
-### Story 1.6: CHANGELOG Initialization
-
-As a developer tracking Hexalith releases,
-I want a CHANGELOG documenting breaking changes and migration steps,
-So that I can understand what changed between versions and how to upgrade.
+As a domain service developer,
+I want a canonical identity scheme that derives all system identifiers from a single `tenant:domain:aggregate-id` tuple,
+So that actor IDs, event stream keys, pub/sub topics, and state store keys are consistent and predictable.
 
 **Acceptance Criteria:**
 
-**Given** the repository has no CHANGELOG.md
-**When** this story is complete
-**Then** `CHANGELOG.md` exists at the repository root
-**And** it follows the "Keep a Changelog" format with sections for Added, Changed, Deprecated, Removed, Fixed, Security
-**And** it contains at minimum the current release entry
-**And** the README links to CHANGELOG.md
-**And** the version reference in the README links to the corresponding release tag (FR54)
+**Given** an AggregateIdentity with tenantId="acme", domain="payments", aggregateId="order-123"
+**When** deriving an actor ID
+**Then** it produces a deterministic, unique actor identity string
 
-## Epic 2: Quickstart & Onboarding
+**Given** an AggregateIdentity
+**When** deriving event stream keys
+**Then** it produces `{tenant}:{domain}:{aggId}:events:{seq}` pattern (D1)
+**And** metadata key is `{tenant}:{domain}:{aggId}:metadata`
+**And** snapshot key is `{tenant}:{domain}:{aggId}:snapshot`
 
-Developers can clone the repo and have the sample running within 10 minutes, send a command, and see events flowing. The getting-started path is complete end-to-end.
+**Given** an AggregateIdentity
+**When** deriving a pub/sub topic
+**Then** it produces `{tenant}.{domain}.events` pattern (D6)
 
-### Story 2.1: Quickstart Guide
+**Given** a raw identity string in `tenant:domain:aggregate-id` format
+**When** parsing it via IdentityParser
+**Then** it produces a valid AggregateIdentity with all three components
+**And** invalid formats throw a descriptive exception
 
-As a .NET developer,
-I want step-by-step instructions to clone the repo and run the sample application with events flowing locally,
-So that I can experience the system working within 10 minutes.
+### Story 1.3: Domain Processor Contract & Aggregate Base Class
 
-**Acceptance Criteria:**
-
-**Given** a developer has completed all prerequisites (Docker Desktop, .NET 10 SDK, DAPR CLI)
-**When** they follow `docs/getting-started/quickstart.md`
-**Then** the guide walks them through: clone the repo, run the sample via `dotnet aspire run` (or equivalent), send a test command to the Counter domain, and observe the resulting event in the event stream
-**And** the guide completes in under 10 minutes on a clean machine with prerequisites installed (NFR1)
-**And** the guide works identically on macOS, Windows, and Linux with Docker Desktop (NFR21)
-**And** DAPR is explained at functional depth ("DAPR handles message delivery and state storage — you don't write infrastructure code") per the progressive explanation pattern
-**And** the page follows the standard page template: back-link to README, H1, summary, prerequisites link to `prerequisites.md`, content, Next Steps footer
-**And** inline code examples use the Counter domain names (`IncrementCounter`, `CounterProcessor`, `CounterState`)
-**And** cross-links to related pages (prerequisites, architecture overview, choose-the-right-tool) use relative paths (FR42)
-**And** the page is self-contained (FR43) — a developer arriving from search can orient themselves
-
-## Epic 3: Community Infrastructure
-
-Contributors can find contribution guidelines, file structured issues, submit PRs, and participate in discussions. The open-source community scaffolding is complete.
-
-### Story 3.1: CONTRIBUTING.md & CODE_OF_CONDUCT.md
-
-As a developer who wants to contribute to Hexalith,
-I want clear contribution guidelines and a code of conduct,
-So that I know the expected workflow (fork, branch, PR) and community standards.
+As a domain service developer,
+I want a pure function contract `(Command, CurrentState?) -> List<DomainEvent>` and a higher-level EventStoreAggregate base class with typed Apply methods,
+So that I can implement domain logic without infrastructure code.
 
 **Acceptance Criteria:**
 
-**Given** the repository has no contribution documentation
-**When** this story is complete
-**Then** `CONTRIBUTING.md` exists at the repository root with sections: How to contribute (fork, branch, PR), Development setup (prerequisites, clone, build), Documentation contributions (edit markdown, run lint locally), Code contributions (coding standards, test requirements), Good first issues label explained, Community guidelines (link to CODE_OF_CONDUCT.md)
-**And** `CODE_OF_CONDUCT.md` exists at the repository root using Contributor Covenant v2.1
-**And** the README links to CONTRIBUTING.md
-**And** both files follow markdown formatting standards (NFR6, NFR9)
+**Given** a developer implements IDomainProcessor
+**When** they define a Handle method with signature `(Command, State?) -> List<DomainEvent>`
+**Then** the framework discovers it via reflection-based convention (fluent convention engine)
 
-### Story 3.2: GitHub Issue Templates
+**Given** a developer inherits from EventStoreAggregate
+**When** they define typed `Apply(EventType)` methods
+**Then** the framework discovers and invokes them during state rehydration
 
-As a developer who found a bug or wants to request a feature,
-I want structured issue templates that guide me through filing a useful report,
-So that maintainers have the information they need to act on my feedback.
+**Given** a domain processor receives a command for a new aggregate
+**When** CurrentState is null
+**Then** the processor can create new aggregate state by returning initial events
 
-**Acceptance Criteria:**
+**Given** a domain processor receives a command it wants to reject
+**When** the processor returns a rejection event implementing IRejectionEvent
+**Then** the rejection is a normal event (D3) -- no exceptions thrown for domain logic
 
-**Given** the repository has no issue templates
-**When** this story is complete
-**Then** `.github/ISSUE_TEMPLATE/bug-report.yml` exists with fields: steps to reproduce, expected/actual behavior, environment (OS, .NET version, DAPR version)
-**And** `.github/ISSUE_TEMPLATE/feature-request.yml` exists with fields: problem description, proposed solution, alternatives considered
-**And** `.github/ISSUE_TEMPLATE/docs-improvement.yml` exists with fields: page/section, what's wrong or missing, suggested fix
-**And** issues created from each template include the correct labels (e.g., `bug`, `enhancement`, `documentation`)
-**And** the `good first issue` label is defined for beginner-friendly contributions (FR29)
+**Given** a domain processor receives a command with no state change needed
+**When** the processor returns an empty event list
+**Then** the command is acknowledged with no state change (valid per D3)
 
-### Story 3.3: PR Template & Review Process
+### Story 1.4: Testing Utilities & Unit Test Infrastructure
 
-As a contributor submitting a pull request,
-I want a PR template with a checklist so I know what's expected,
-So that my PR meets quality standards and gets reviewed efficiently.
+As a domain service developer,
+I want test builders, in-memory fakes, and assertion helpers,
+So that I can unit test my domain logic without any DAPR runtime dependency.
 
 **Acceptance Criteria:**
 
-**Given** the repository has no PR template
-**When** this story is complete
-**Then** `.github/PULL_REQUEST_TEMPLATE.md` exists with checklist items: description of changes, related issue (if any), markdown lint passes locally, links not broken, `dotnet build` passes, `dotnet test` passes
-**And** documentation changes follow the same PR review process as code changes (NFR13, FR38)
+**Given** a developer uses CommandEnvelopeBuilder
+**When** building a test command
+**Then** it provides a fluent API with sensible defaults for all fields
+**And** any field can be overridden
 
-### Story 3.4: GitHub Discussions Setup
+**Given** a developer uses EventEnvelopeBuilder
+**When** building a test event
+**Then** it provides a fluent API with sensible defaults for all 11 metadata fields
 
-As a developer with questions about Hexalith,
-I want organized community discussion categories,
-So that I can ask questions, propose ideas, and share my work in the right place.
+**Given** a developer uses InMemoryStateManager
+**When** testing actor state operations
+**Then** it behaves like IActorStateManager (set, get, save, remove) without DAPR
 
-**Acceptance Criteria:**
+**Given** a developer uses FakeDomainServiceInvoker
+**When** testing command processing
+**Then** it accepts a configurable response (events or exceptions) for each command
 
-**Given** the repository has no GitHub Discussions enabled
-**When** this story is complete
-**Then** GitHub Discussions is enabled with 4 categories: Announcements (release announcements, breaking changes), Q&A (technical questions with mark-answer enabled), Ideas (feature proposals, RFCs), Show & Tell (community projects, integrations, blog posts)
-**And** the CONTRIBUTING.md references Discussions as a community channel
-**And** the README links to Discussions
+**Given** a developer uses EventAssertions
+**When** verifying event streams
+**Then** they can assert event count, types, sequence ordering, and specific metadata values using Shouldly-style fluent assertions
 
-## Epic 4: Documentation CI Pipeline
+**Given** all Epic 1 types (envelope, identity, processor, aggregate base)
+**When** running Tier 1 unit tests
+**Then** all tests pass without DAPR runtime, Docker, or external dependencies
 
-Every documentation PR is automatically validated for markdown formatting, broken links, and sample code compilation across platforms. Quality gates prevent documentation debt.
+---
 
-### Story 4.1: Markdown Linting Configuration
+## Epic 2: Actor-Based Command Processing
 
-As a documentation contributor,
-I want automated markdown formatting validation on every PR,
-So that all documentation pages maintain consistent formatting standards.
+Commands are processed through DAPR actors with event persistence, state replay, snapshots, optimistic concurrency, and idempotency -- the complete command-to-event pipeline core.
 
-**Acceptance Criteria:**
+### Story 2.1: Aggregate Actor & Command Routing
 
-**Given** the repository has no markdown linting configuration
-**When** this story is complete
-**Then** `.markdownlint-cli2.jsonc` exists at the repository root with rules configured for: heading hierarchy enforcement (no skipped levels, NFR6), code block language tag requirement (NFR9), no hard line wrapping, allowance for inline HTML (`<details>` blocks for Mermaid accessibility)
-**And** the existing `.markdownlintignore` is updated to exclude non-documentation files as needed
-**And** `markdownlint-cli2` can be run locally with `npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md"`
-**And** the linting rules align with the markdown formatting patterns in the architecture document (D3)
-
-### Story 4.2: Link Checking Configuration
-
-As a documentation maintainer,
-I want automated broken link detection on every PR,
-So that zero broken links exist across all documentation pages.
+As a platform operator,
+I want commands routed to the correct aggregate actor based on the identity scheme,
+So that each aggregate has single-threaded, turn-based command processing.
 
 **Acceptance Criteria:**
 
-**Given** the repository has no link checking configuration
-**When** this story is complete
-**Then** `.lycheeignore` exists at the repository root with common exclusions: localhost URLs, example.com, GitHub edit links, and any known false positives
-**And** `lychee` can be run locally to check all markdown files
-**And** `.lycheecache` is added to `.gitignore` for caching across local runs
-**And** the configuration supports both relative links (internal docs) and external URLs
+**Given** a command with tenantId="acme", domain="payments", aggregateId="order-123"
+**When** the command is routed
+**Then** it activates the actor with the identity derived from the canonical tuple (FR3)
 
-### Story 4.3: Documentation Validation GitHub Actions Workflow
+**Given** the AggregateActor receives a command
+**When** processing it
+**Then** it delegates via the 5-step thin orchestrator pattern: (1) idempotency check, (2) tenant validation, (3) state rehydration, (4) domain service invocation, (5) state machine execution
 
-As a documentation maintainer,
-I want a CI pipeline that validates markdown linting, link integrity, and sample code compilation on every PR and push to main,
-So that quality gates prevent documentation debt automatically.
+**Given** a DAPR actor runtime
+**When** two commands target the same aggregate concurrently
+**Then** they are serialized by DAPR's turn-based concurrency -- never processed in parallel
 
-**Acceptance Criteria:**
+### Story 2.2: Event Persistence & Atomic Writes
 
-**Given** the markdown linting and link checking configurations exist (Stories 4.1, 4.2)
-**When** this story is complete
-**Then** `.github/workflows/docs-validation.yml` exists and triggers on PR and push to main
-**And** the workflow has two jobs: `lint-and-links` (ubuntu-latest, ~35s) running markdownlint-cli2 and lychee on docs, README, CONTRIBUTING, CHANGELOG; and `sample-build` (matrix: ubuntu-latest, windows-latest, macos-latest, ~90s) running `dotnet build` and `dotnet test` on `samples/`
-**And** both jobs are blocking — any failure prevents merge
-**And** the workflow uses caching: lychee cache (`.lycheecache`), NuGet package cache, dotnet restore cache
-**And** total CI pipeline completes in under 5 minutes (NFR23) — target ~125s for Phase 1a
-**And** the README build status badge references this workflow
-
-### Story 4.4: Stale Content Detection
-
-As a documentation maintainer,
-I want to identify stale documentation content within one CI cycle after a breaking code change,
-So that I can update affected pages before users encounter outdated information.
+As a platform operator,
+I want events persisted atomically in an append-only store with strictly ordered sequence numbers,
+So that event streams are immutable, gapless, and never partially written.
 
 **Acceptance Criteria:**
 
-**Given** the CI pipeline validates sample code compilation (Story 4.3)
-**When** a code change in `samples/` breaks the build
-**Then** the CI pipeline fails, signaling that documentation-referenced code has changed (NFR14)
-**And** the sample build failure identifies which project or test failed, making it clear which documentation pages may need updates
-**And** stale content is detectable within one CI cycle (FR37)
+**Given** a domain processor returns 3 events for an aggregate
+**When** the actor persists them
+**Then** all 3 events are written atomically via `IActorStateManager.SaveStateAsync` (D1, FR16)
+**And** each event is stored at key `{tenant}:{domain}:{aggId}:events:{seq}` (FR15)
+**And** sequence numbers are strictly ordered and gapless starting from the current sequence + 1 (FR10)
 
-## Epic 5: Concept Deep Dives & Technical Reference
+**Given** events have been persisted
+**When** attempting to modify or delete them
+**Then** the operation is rejected -- events are append-only and immutable (FR9)
 
-Developers who tried the quickstart can now understand the architecture, trace command lifecycles, learn the identity scheme, and look up API endpoints and NuGet packages.
+**Given** a concurrent command causes an ETag mismatch on the aggregate metadata key
+**When** the actor attempts to save
+**Then** the write fails with an optimistic concurrency conflict (FR7, NFR26)
+**And** the conflict is reported as a 409 Conflict
 
-### Story 5.1: Architecture Overview with Mermaid Topology
+**Given** the actor persists events and updates metadata
+**When** using `IActorStateManager`
+**Then** all state changes (event keys + metadata key) are committed in a single `SaveStateAsync` call -- actor-level ACID (D1)
 
-As a developer who completed the quickstart,
-I want to understand the system architecture without needing prior DAPR knowledge,
-So that I can reason about how components interact before building my own services.
+### Story 2.3: State Rehydration & Event Replay
 
-**Acceptance Criteria:**
-
-**Given** a developer navigates to `docs/concepts/architecture-overview.md`
-**When** they read the page
-**Then** the page explains the architecture topology (services, DAPR sidecars, state stores, pub/sub) using an inline Mermaid diagram (C4 Context or flowchart)
-**And** every Mermaid diagram has a `<details>` block with text description for accessibility (NFR7)
-**And** color is never the sole indicator of meaning — shape, label, or pattern also distinguish elements (NFR8)
-**And** DAPR is explained at architectural depth: which building blocks are used and why, with links to DAPR docs for depth
-**And** the page follows the standard page template with back-link, H1, summary, max 2 prerequisites, content, Next Steps
-**And** the page is self-contained (FR43)
-**And** the Mermaid diagram renders natively on GitHub without external tooling (NFR4)
-
-### Story 5.2: Command Lifecycle Deep Dive
-
-As a developer building on Hexalith,
-I want to trace the end-to-end lifecycle of a command through the system,
-So that I understand the complete flow from API call to persisted event.
+As a platform operator,
+I want aggregate state reconstructed by replaying events from the stream,
+So that actors can resume processing with correct state after activation.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/concepts/command-lifecycle.md`
-**When** they read the page
-**Then** the page traces a command from REST API receipt through routing, actor activation, domain processing, event emission, and state persistence using a Mermaid sequence diagram
-**And** every Mermaid diagram has a `<details>` text description (NFR7)
-**And** code examples use Counter domain names (`IncrementCounter`, `CounterProcessor`, `CounterState`)
-**And** the page follows the standard page template
-**And** the page is self-contained with max 2 prerequisites (NFR10)
+**Given** an aggregate with events at sequences 1 through 10
+**When** the actor cold-activates and rehydrates state
+**Then** it replays all 10 events in sequence order, applying each to reconstruct current state (FR12)
 
-### Story 5.3: Event Envelope Metadata Structure
+**Given** an aggregate with a snapshot at sequence 50 and events 51-55
+**When** the actor rehydrates
+**Then** it loads the snapshot first, then replays only events 51-55 (FR14)
+**And** the resulting state is identical to replaying all 55 events from scratch
 
-As a developer working with Hexalith events,
-I want to understand the event envelope metadata structure,
-So that I know what metadata accompanies every event and how to use it.
+**Given** 1,000 events in an aggregate stream with no snapshot
+**When** replaying all events
+**Then** state reconstruction completes within 100ms (NFR6)
 
-**Acceptance Criteria:**
+**Given** an actor cold-activates
+**When** rehydrating from snapshot + subsequent events
+**Then** activation completes within 50ms at p99 (NFR4)
 
-**Given** a developer navigates to `docs/concepts/event-envelope.md`
-**When** they read the page
-**Then** the page explains the complete metadata structure of an event envelope with field descriptions
-**And** includes a JSON or C# example of a real event envelope from the Counter domain
-**And** the page follows the standard page template
-**And** the page is self-contained (FR43)
+### Story 2.4: Snapshot Creation & Management
 
-### Story 5.4: Identity Scheme Documentation
-
-As a developer configuring aggregates and streams,
-I want to understand the identity scheme and how it maps to actors, streams, and topics,
-So that I can correctly structure my domain identifiers.
+As a platform operator,
+I want snapshots created at configurable intervals to optimize state rehydration,
+So that actor activation time remains constant regardless of total event count.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/concepts/identity-scheme.md`
-**When** they read the page
-**Then** the page explains the `tenant:domain:aggregate-id` identity pattern and how it maps to DAPR actors, event streams, and pub/sub topics
-**And** includes an inline Mermaid flowchart showing the mapping with `<details>` text description (NFR7)
-**And** uses Counter domain examples for concrete identity values
-**And** the page follows the standard page template
-**And** the page is self-contained (FR43)
+**Given** a snapshot interval configured at 100 events (default)
+**When** an aggregate reaches sequence 100 after command processing
+**Then** the EventStore signals the domain service to produce a snapshot
+**And** the snapshot is stored at key `{tenant}:{domain}:{aggId}:snapshot` (FR13)
 
-### Story 5.5: DAPR Trade-offs & FAQ Intro
+**Given** a snapshot at sequence N and events N+1 through M
+**When** reconstructing state
+**Then** the result is identical to replaying events 1 through M (FR14, snapshot consistency invariant)
 
-As a developer evaluating Hexalith's technology choices,
-I want to understand why DAPR was chosen and what trade-offs it introduces,
-So that I can assess the risk and benefits for my project.
+**Given** a tenant-domain pair with a custom snapshot interval of 50
+**When** the aggregate reaches sequence 50
+**Then** the snapshot threshold is triggered at 50, not the default 100
 
-**Acceptance Criteria:**
+**Given** every domain registration
+**When** configuring EventStore
+**Then** a snapshot interval is mandatory -- no "never snapshot" option (enforcement guideline #15)
 
-**Given** a developer navigates to `docs/concepts/choose-the-right-tool.md` (DAPR section) or follows a link from the architecture overview
-**When** they read the DAPR-specific content
-**Then** the content explains: why DAPR was chosen (infrastructure portability, building blocks), what trade-offs it introduces (runtime dependency, learning curve, version coupling), and what happens if DAPR changes direction
-**And** this content is integrated into the existing choose-the-right-tool page (FR15, FR16) or linked from it
-**And** DAPR is explained at architectural depth per the progressive explanation pattern
+**Given** the snapshot consistency invariant
+**When** an automated verification test runs
+**Then** it confirms: for every aggregate with snapshot at sequence N and events N+1..M, the state produced equals full replay from 1..M across all registered domain types
+**And** this verification is included in the Tier 1 unit test suite as a mandatory regression test
 
-### Story 5.6: First Domain Service Tutorial
+### Story 2.5: Domain Service Invocation
 
-As a developer who completed the quickstart,
-I want step-by-step instructions to build and register my own domain service,
-So that I can extend the system with my business logic.
-
-**Acceptance Criteria:**
-
-**Given** a developer has completed the quickstart (Story 2.1)
-**When** they follow `docs/getting-started/first-domain-service.md`
-**Then** the tutorial walks them through creating a new domain service: defining commands, events, state, and a processor — following the same pattern as the Counter domain
-**And** the tutorial includes a backend swap demonstration (FR9): switching from Redis to PostgreSQL with zero code changes by changing DAPR component YAML
-**And** the tutorial completes within 1 hour for a .NET/DDD-familiar developer (NFR5)
-**And** all code examples use inline code fences with language tags and are aligned with the sample project
-**And** the page follows the standard page template with prerequisites linking to quickstart
-**And** the tutorial references the DAPR component YAML variants in `samples/dapr-components/` (D2)
-
-### Story 5.7: Command API Reference
-
-As a developer integrating with Hexalith's REST API,
-I want to look up any REST endpoint with request/response examples,
-So that I can build clients or test integrations.
+As a platform operator,
+I want the actor to invoke registered domain services via DAPR service invocation,
+So that pure function processors are called with the command and current state.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/reference/command-api.md`
-**When** they read the page
-**Then** the page documents all REST endpoints with: HTTP method, URL path, request body schema, response body schema, example `curl` commands, and expected responses
-**And** examples use Counter domain commands (`IncrementCounter`, `DecrementCounter`, `ResetCounter`)
-**And** the page follows the standard page template
-**And** the page is self-contained (FR43)
+**Given** a command for domain="payments" and tenant="acme"
+**When** the actor invokes the domain service
+**Then** it uses `DaprClient.InvokeMethodAsync` to call the registered endpoint (D7, FR23)
+**And** passes the command and current aggregate state (or null for new aggregates)
+**And** domain service resolution uses IDomainServiceInvoker abstraction -- tested with FakeDomainServiceInvoker (from Story 1.4) until real registration is available in Epic 7
 
-### Story 5.8: NuGet Packages Guide & Dependency Graph
+**Given** a domain service returns events
+**When** the actor receives them
+**Then** the events are passed to the state machine for persistence and publishing
 
-As a developer adding Hexalith packages to their project,
-I want to know which NuGet package to install for my use case and see the dependency relationships,
-So that I install only what I need.
+**Given** a domain service is unreachable
+**When** the invocation fails
+**Then** DAPR resiliency policies (retry with backoff, circuit breaker, timeout) handle the transient failure
+**And** no custom retry logic exists in application code (enforcement guideline #4)
 
-**Acceptance Criteria:**
+**Given** all DAPR sidecar calls
+**When** invoking the domain service
+**Then** the call completes within the 5-second sidecar timeout (enforcement guideline #14)
 
-**Given** a developer navigates to `docs/reference/nuget-packages.md`
-**When** they read the page
-**Then** the page lists all public NuGet packages with: package name, description, primary use case, and when to install it
-**And** the page includes an inline Mermaid flowchart showing package dependency relationships (FR20) with `<details>` text description (NFR7)
-**And** package descriptions use terminology consistent with the documentation (NFR28)
-**And** the page follows the standard page template
+### Story 2.6: Checkpointed State Machine & Idempotency
 
-### Story 5.9: Awesome Event Sourcing Ecosystem Page
-
-As a developer exploring event sourcing resources,
-I want a curated ecosystem page linking to related tools, libraries, and learning resources,
-So that I can discover the broader ecosystem and evaluate Hexalith in context.
+As a platform operator,
+I want a checkpointed state machine that tracks processing stages and detects duplicate commands,
+So that crash recovery is deterministic and duplicate submissions are safely handled.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/community/awesome-event-sourcing.md`
-**When** they read the page
-**Then** the page lists curated resources organized by category: event sourcing frameworks (.NET and other), learning resources (articles, talks, books), related DAPR projects, and complementary tools
-**And** the page includes Hexalith's positioning among the listed resources
-**And** the page follows the standard page template
-**And** all external links use descriptive text (not "click here")
+**Given** an actor persists events (stage: EventsStored) then crashes before publishing
+**When** the actor reactivates and resumes
+**Then** it continues from the EventsStored checkpoint -- publishes events without re-persisting them (NFR25)
+**And** no duplicate events are written to the store
 
-## Epic 6: Sample Integration Tests & Local Validation
+**Given** the state machine tracks stages
+**When** processing a command
+**Then** it transitions through: Processing -> EventsStored -> EventsPublished -> Completed (or Rejected/PublishFailed/TimedOut)
 
-The quickstart is validated by CI through integration tests, and documentation contributors can run the full validation suite locally with a single command.
+**Given** a command with a correlationId that has already been processed by this aggregate
+**When** the same command is submitted again
+**Then** the idempotency checker returns AlreadyProcessed (FR49)
+**And** no domain service invocation or state changes occur
 
-### Story 6.1: Sample Integration Test Project
+**Given** an actor crash after event persistence but before pub/sub delivery
+**When** recovery occurs
+**Then** deterministic replay produces the same events -- zero data loss (NFR22, NFR23)
 
-As a documentation maintainer,
-I want an integration test project that validates the quickstart scenario in CI,
-So that I know the documented quickstart produces a working system on every commit.
+---
 
-**Acceptance Criteria:**
+## Epic 3: Command API Gateway
 
-**Given** the sample project exists at `samples/Hexalith.EventStore.Sample/`
-**When** this story is complete
-**Then** `samples/Hexalith.EventStore.Sample.Tests/` exists with a project file (`Hexalith.EventStore.Sample.Tests.csproj`)
-**And** `QuickstartSmokeTest.cs` exists and validates the core quickstart scenario: send an `IncrementCounter` command, assert the resulting event appears in the event stream
-**And** `dotnet test samples/Hexalith.EventStore.Sample.Tests/` passes on all three platforms (ubuntu, windows, macos)
-**And** the test project is automatically picked up by the existing CI `sample-build` job (Story 4.3) with no CI configuration changes needed (NFR16)
-**And** 100% of documented code examples are validated by this test or by sample build success (NFR18)
+API consumers submit commands via REST, receive correlation IDs, track command status, and replay failed commands -- with structural validation and rate limiting.
 
-### Story 6.2: DAPR Component Variants for Backend Swap Demo
+### Story 3.1: Command Submission Endpoint
 
-As a developer following the first domain service tutorial,
-I want pre-configured DAPR component YAML files for Redis and PostgreSQL,
-So that I can experience a backend swap with zero code changes.
+As an API consumer,
+I want to submit commands via a REST POST endpoint with tenant, domain, aggregate ID, command type, and payload,
+So that I can trigger domain processing through a standard HTTP interface.
 
 **Acceptance Criteria:**
 
-**Given** the sample project uses DAPR for infrastructure
-**When** this story is complete
-**Then** `samples/dapr-components/redis/` contains DAPR component YAML files configured for Redis (default local dev backend)
-**And** `samples/dapr-components/postgresql/` contains DAPR component YAML files configured for PostgreSQL
-**And** the backend swap is achievable by pointing DAPR to a different component directory — no application code changes
-**And** each YAML file includes inline comments explaining every field per the code example patterns in the architecture document
+**Given** a valid command payload with tenantId, domain, aggregateId, commandType, and JSON payload
+**When** POSTing to `POST /api/v1/commands`
+**Then** the system returns `202 Accepted` with a correlation ID in the response body and headers (FR1, FR4)
 
-### Story 6.3: Local Validation Script
+**Given** the command is accepted
+**When** it enters the MediatR pipeline
+**Then** it flows through LoggingBehavior -> ValidationBehavior -> AuthorizationBehavior -> CommandHandler (pipeline order)
 
-As a documentation contributor,
-I want to run the full validation suite locally with a single command,
-So that I can verify my changes pass CI before submitting a PR.
+**Given** command submission at p99 under normal load
+**When** measuring response time
+**Then** the `202 Accepted` response returns within 50ms (NFR1)
 
-**Acceptance Criteria:**
+**Given** the API receives a command
+**When** a correlation ID is not provided by the caller
+**Then** the system generates a unique correlation ID and returns it
 
-**Given** the CI pipeline validates markdown linting, link checking, and sample compilation
-**When** this story is complete
-**Then** `scripts/validate-docs.sh` (and `scripts/validate-docs.ps1` for Windows) exists and runs: markdownlint-cli2 on all documentation files, lychee link checking, and `dotnet build` + `dotnet test` on the samples
-**And** the script exits with a non-zero code if any validation fails
-**And** the script output clearly indicates which validation step failed
-**And** CONTRIBUTING.md references the validation script in the "Documentation contributions" section
+### Story 3.2: Command Validation & Error Responses
 
-### Story 6.4: FR Traceability Check
-
-As a documentation maintainer,
-I want to verify that every functional requirement has at least one corresponding documentation page,
-So that I can identify coverage gaps before they reach users.
+As an API consumer,
+I want submitted commands validated for structural completeness with clear error responses,
+So that malformed requests are rejected before entering the processing pipeline.
 
 **Acceptance Criteria:**
 
-**Given** the epics document maps all 63 FRs to documentation pages
-**When** this story is complete
-**Then** a traceability mapping document or script exists that lists each FR number alongside the documentation page(s) that address it
-**And** any FR without a corresponding documentation page is flagged as a gap
-**And** the check can be run manually (a markdown table or script output) — automated CI enforcement is not required for MVP
+**Given** a command missing required fields (tenantId, domain, aggregateId, commandType, or payload)
+**When** submitting it
+**Then** the system returns `400 Bad Request` with RFC 7807 ProblemDetails (D5) including `validationErrors` array (FR2)
 
-## Epic 7: Deployment & Operations Guides
+**Given** a command with malformed JSON payload
+**When** submitting it
+**Then** the system returns `400 Bad Request` with a descriptive ProblemDetails error
 
-Operators can deploy the sample to Docker Compose, Kubernetes, and Azure Container Apps with documented walkthroughs, configure DAPR components per backend, and understand the security model.
+**Given** any API error response
+**When** the response is generated
+**Then** it includes `correlationId` and `tenantId` extensions in ProblemDetails (D5)
+**And** no stack traces are exposed to clients (enforcement guideline #13)
 
-### Story 7.1: Docker Compose Deployment Guide & Configuration
+**Given** FluentValidation rules on CommandEnvelope
+**When** the ValidationBehavior runs in the MediatR pipeline
+**Then** structural validation occurs before any actor activation or domain processing
 
-As an operator deploying Hexalith locally,
-I want a step-by-step walkthrough for deploying the sample application to Docker Compose,
-So that I can run the system on my development machine with a production-like topology.
+### Story 3.3: Command Status Tracking
 
-**Acceptance Criteria:**
-
-**Given** the sample project exists and the quickstart is documented
-**When** this story is complete
-**Then** `docs/guides/deployment-docker-compose.md` exists with a complete walkthrough: prerequisites, DAPR runtime setup for local Docker (FR57), step-by-step deployment instructions, verification of system health via health/readiness endpoints (FR26)
-**And** `samples/deploy/docker-compose.yml` exists with a working Docker Compose configuration
-**And** the guide includes an inline Mermaid deployment topology diagram with `<details>` text description (NFR7)
-**And** the guide explains where event data is physically stored based on the DAPR state store configuration (FR60)
-**And** the guide includes resource requirements (CPU, memory, storage) for local deployment (FR63)
-**And** the walkthrough produces a verifiably running system when followed step-by-step (NFR22)
-**And** the page follows the standard page template with DAPR explained at operational depth
-
-### Story 7.2: Kubernetes Deployment Guide & Configuration
-
-As an operator deploying Hexalith to an on-premise cluster,
-I want a step-by-step walkthrough for deploying the sample application to Kubernetes,
-So that I can run the system in a production environment.
+As an API consumer,
+I want to query the processing status of a submitted command using its correlation ID,
+So that I can track command lifecycle without polling the event stream.
 
 **Acceptance Criteria:**
 
-**Given** a developer has completed the local Docker quickstart
-**When** they follow `docs/guides/deployment-kubernetes.md`
-**Then** the guide includes: DAPR runtime setup for Kubernetes (FR57), step-by-step deployment instructions, Kubernetes YAML manifests, DAPR component configuration for Kubernetes, and health/readiness verification (FR26)
-**And** `samples/deploy/kubernetes/` contains all necessary Kubernetes manifests and DAPR component configs
-**And** the guide explicitly references what the reader already knows from the Docker quickstart and what's new (FR59)
-**And** the guide explains infrastructure differences between local Docker and Kubernetes (FR58)
-**And** the guide includes resource requirements and pod sizing guidance (FR63)
-**And** event data storage location is documented per backend (FR60)
-**And** the walkthrough produces a verifiably running system (NFR22)
-**And** the page follows the standard page template
+**Given** a command was submitted with correlationId="abc-123"
+**When** querying `GET /api/v1/commands/abc-123/status`
+**Then** the system returns the current status (Received, Processing, EventsStored, EventsPublished, Completed, Rejected, PublishFailed, or TimedOut) (FR5)
 
-### Story 7.3: Azure Container Apps Deployment Guide & Configuration
+**Given** the status record is stored at `{tenant}:{correlationId}:status` in the DAPR state store (D2)
+**When** querying status
+**Then** the query reads directly from state store -- no actor activation required
 
-As an operator deploying Hexalith to Azure,
-I want a step-by-step walkthrough for deploying the sample application to Azure Container Apps,
-So that I can run the system in a cloud-managed environment.
+**Given** a completed command
+**When** querying its status
+**Then** the response includes: current stage, timestamp, aggregate ID, and for terminal states: event count (Completed), rejection event type (Rejected), failure reason (PublishFailed), or timeout duration (TimedOut)
 
-**Acceptance Criteria:**
+**Given** a status record
+**When** 24 hours have elapsed (default TTL)
+**Then** the record is automatically cleaned up via DAPR state store `ttlInSeconds` metadata (D2)
 
-**Given** a developer has completed the local Docker quickstart
-**When** they follow `docs/guides/deployment-azure-container-apps.md`
-**Then** the guide includes: DAPR runtime setup for Azure (FR57), step-by-step deployment instructions, Azure resource provisioning (Container Apps Environment, managed DAPR), DAPR component configuration for Azure services, and health/readiness verification (FR26)
-**And** `samples/deploy/azure/` contains deployment scripts or Bicep/ARM templates and DAPR component configs
-**And** the guide explicitly references what the reader already knows and what's new (FR59)
-**And** the guide explains infrastructure differences between local Docker, Kubernetes, and Azure (FR58)
-**And** the guide includes resource requirements and scaling guidance (FR63)
-**And** event data storage location is documented per backend (FR60)
-**And** the walkthrough produces a verifiably running system (NFR22)
-**And** the page follows the standard page template
+**Given** a status write fails
+**When** processing a command
+**Then** the command processing pipeline is NOT blocked -- status writes are advisory (enforcement guideline #12)
 
-### Story 7.4: Deployment Progression Guide
+### Story 3.4: Command Replay Endpoint
 
-As a developer who started with the local Docker quickstart,
-I want a guide showing the progression from local to Kubernetes to Azure,
-So that I understand how the same application code runs across all environments with only infrastructure changes.
+As an operator,
+I want to replay a previously failed command via the Command API,
+So that I can reprocess commands after root cause is fixed.
 
 **Acceptance Criteria:**
 
-**Given** all three deployment guides exist (Stories 7.1-7.3)
-**When** a developer navigates to `docs/guides/deployment-progression.md`
-**Then** the page shows a clear progression path: local Docker Compose -> on-premise Kubernetes -> Azure Container Apps using the same Counter application code
-**And** the page highlights what changes between environments (DAPR components, infrastructure config) and what stays the same (application code)
-**And** the page includes a comparison table of environment differences (FR58)
-**And** the page links to each deployment guide as the detailed walkthrough
-**And** the page follows the standard page template
+**Given** a failed command with correlationId="abc-123"
+**When** POSTing to `POST /api/v1/commands/abc-123/replay` with the original command payload in the request body
+**Then** the command is resubmitted to the processing pipeline with a new correlation ID (FR6)
+**And** the response includes the new correlation ID for tracking
+**And** the caller provides the command payload (sourced from dead-letter topic inspection or their own records -- the replay endpoint does not store original payloads)
 
-### Story 7.5: DAPR Component Configuration Reference
+**Given** a command that completed successfully
+**When** attempting to replay it
+**Then** the system returns an appropriate error indicating the command is not in a replayable state
 
-As an operator configuring Hexalith for their infrastructure,
-I want documented examples for configuring each DAPR component per backend,
-So that I can set up State Store, Pub/Sub, Actors, Configuration, and Resiliency for my target environment.
+**Given** a replayed command
+**When** tracking its status
+**Then** the new correlation ID tracks the replay attempt independently from the original
 
-**Acceptance Criteria:**
+### Story 3.5: Rate Limiting
 
-**Given** the deployment guides reference DAPR component configuration
-**When** this story is complete
-**Then** the deployment guides or a dedicated section document all five DAPR building blocks (State Store, Pub/Sub, Actors, Configuration, Resiliency) with configuration examples per backend
-**And** each YAML example includes inline comments explaining every field
-**And** examples cover at minimum: Redis (local dev), PostgreSQL (alternative), and Azure-managed services
-**And** the content explains what persistence guarantees each backend provides (FR60)
-
-### Story 7.6: Security Model Documentation
-
-As an operator responsible for securing Hexalith,
-I want to understand the security model and configure authentication,
-So that I can protect the system in production.
+As a platform operator,
+I want per-tenant and per-consumer rate limiting on the Command API,
+So that one tenant's command storm cannot affect others.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/guides/security-model.md`
-**When** they read the page
-**Then** the page explains: the authentication model (Keycloak integration in the sample), how to configure authentication for production, authorization model, and security boundaries between services
-**And** the page follows the standard page template with DAPR explained at operational depth
-**And** the page is self-contained (FR43)
+**Given** a per-tenant rate limit of 1,000 commands per minute (default)
+**When** tenant "acme" exceeds 1,000 commands in a sliding window
+**Then** subsequent requests return `429 Too Many Requests` with `Retry-After` header (NFR33)
 
-### Story 7.7: Troubleshooting Guide
+**Given** a per-consumer rate limit of 100 commands per second (default)
+**When** a single authenticated consumer exceeds 100 commands/sec
+**Then** subsequent requests return `429 Too Many Requests` with `Retry-After` header (NFR34)
 
-As a developer encountering errors,
-I want a troubleshooting guide covering quickstart, DAPR integration, and deployment issues,
-So that I can resolve problems without filing an issue.
+**Given** the rate limiting middleware (D8)
+**When** extracting tenant identity
+**Then** it reads the `tenant_id` claim from the JWT token
 
-**Acceptance Criteria:**
+**Given** rate limit thresholds
+**When** configured per tenant via DAPR config store
+**Then** changes take effect dynamically without system restart (NFR20)
 
-**Given** a developer encounters an error during quickstart, DAPR integration, or deployment
-**When** they navigate to `docs/guides/troubleshooting.md`
-**Then** the page covers quickstart errors: Docker not running, port conflicts, DAPR sidecar timeout, .NET SDK version mismatch, sample build failure (FR47)
-**And** the page covers DAPR integration issues: sidecar injection failure, state store connection timeout, pub/sub message loss, actor activation conflict, component configuration mismatch (FR48)
-**And** the page covers deployment failures per target environment: Docker Compose, Kubernetes, Azure (FR49)
-**And** each issue includes: symptom description, probable cause, and step-by-step resolution
-**And** the page follows the standard page template
+---
 
-### Story 7.8: Disaster Recovery Procedure
+## Epic 4: Event Distribution
 
-As an operator responsible for data integrity,
-I want a documented disaster recovery procedure for the event store,
-So that I can recover from data loss scenarios.
+Persisted events flow to subscribers via CloudEvents pub/sub with at-least-once delivery, per-tenant-per-domain topics, and dead-letter routing for failures.
 
-**Acceptance Criteria:**
+### Story 4.1: CloudEvents Publishing & Topic Routing
 
-**Given** an operator navigates to a disaster recovery section (in `docs/guides/troubleshooting.md` or a dedicated page)
-**When** they read the content
-**Then** the content documents: backup strategies per DAPR state store backend, recovery steps, data verification procedures, and RTO/RPO considerations
-**And** the content is specific to the DAPR state store backends documented (Redis, PostgreSQL, Azure services)
-
-## Epic 8: Configuration, Versioning & Lifecycle
-
-Developers can access a complete configuration reference, understand event versioning, follow upgrade paths between versions, and view the product roadmap.
-
-### Story 8.1: Configuration Reference
-
-As a developer tuning Hexalith for their environment,
-I want a complete configuration reference for all system knobs,
-So that I can understand and adjust every configurable setting.
+As a domain event subscriber,
+I want persisted events published to per-tenant-per-domain topics using CloudEvents 1.0 format,
+So that I receive only events for my authorized scope in a standard envelope.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/guides/configuration-reference.md`
-**When** they read the page
-**Then** the page documents every configurable setting: environment variables, DAPR component fields, Aspire configuration, application settings
-**And** each setting includes: name, description, default value, valid values, and an example
-**And** settings are organized by category (application, DAPR, infrastructure)
-**And** the page follows the standard page template
-**And** the page is self-contained (FR43)
+**Given** events persisted for tenant="acme", domain="payments"
+**When** the actor's state machine reaches the EventsPublished stage
+**Then** events are published to topic `acme.payments.events` (D6, FR19)
+**And** each event is wrapped in a CloudEvents 1.0 envelope (FR17)
 
-### Story 8.2: Auto-Generated API Reference & CI Workflow
+**Given** events for tenant="acme" and tenant="globex" in the same domain
+**When** publishing
+**Then** events are published to separate topics (`acme.payments.events`, `globex.payments.events`)
+**And** a subscriber to `acme.payments.events` never receives `globex` events (FR19)
 
-As a developer browsing the public API,
-I want auto-generated API documentation for all public types,
-So that I can look up type signatures, method parameters, and XML doc comments.
+**Given** event publication
+**When** delivering to subscribers
+**Then** at-least-once delivery is guaranteed via DAPR pub/sub semantics (FR18)
 
-**Acceptance Criteria:**
+**Given** pub/sub delivery latency
+**When** measuring from event persistence to subscriber delivery confirmation
+**Then** it completes within 50ms at p99 (NFR5)
 
-**Given** the source code has XML documentation comments on public types
-**When** this story is complete
-**Then** `docs/reference/api/` contains auto-generated API documentation produced by DefaultDocumentation
-**And** a curated `docs/reference/api/index.md` provides navigable entry points (not just a raw file tree)
-**And** `.github/workflows/docs-api-reference.yml` exists and triggers on release tags only
-**And** the workflow builds the solution with DefaultDocumentation, commits generated files to `docs/reference/api/`, and creates a PR with the changes
-**And** the generated docs render correctly on GitHub
-**And** NuGet package descriptions contain at least 3 keywords from the SEO keyword list (NFR28)
+### Story 4.2: Pub/Sub Resilience & Backlog Drain
 
-### Story 8.3: Event Versioning & Schema Evolution Guide
-
-As a developer evolving their domain model,
-I want to understand how event versioning and schema evolution are handled,
-So that I can safely change event structures without breaking existing data.
+As a platform operator,
+I want events persisted even when pub/sub is unavailable, with automatic backlog drain on recovery,
+So that no events are lost during infrastructure outages.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to a versioning section (in concepts or guides)
-**When** they read the content
-**Then** the content explains: how Hexalith handles event schema changes, strategies for upcasting/downcasting events, backward compatibility guarantees, and what happens when event structures change
-**And** examples use the Counter domain to show a concrete versioning scenario
-**And** the page follows the standard page template
+**Given** the pub/sub system is temporarily unavailable
+**When** the actor persists events
+**Then** events are safely stored in the state store (FR20)
+**And** the state machine records PublishFailed status
 
-### Story 8.4: Upgrade Path Documentation
+**Given** pub/sub recovers after an outage
+**When** DAPR retry policies activate
+**Then** all events persisted during the outage are delivered to subscribers (NFR24)
+**And** no events are silently dropped
 
-As a developer upgrading between Hexalith versions,
-I want a documented upgrade path with migration steps,
-So that I can move between major versions safely.
+**Given** DAPR resiliency policies
+**When** handling pub/sub transient failures
+**Then** retry with backoff is applied at the sidecar level -- no custom retry logic in application code (enforcement guideline #4)
 
-**Acceptance Criteria:**
+### Story 4.3: Dead-Letter Routing
 
-**Given** a developer needs to upgrade from one version to another
-**When** they consult the upgrade documentation
-**Then** the CHANGELOG (Story 1.6) documents breaking changes per release with migration steps
-**And** a dedicated section or page explains the general upgrade procedure: check CHANGELOG, update NuGet packages, run tests, handle breaking changes
-**And** the content links to the CHANGELOG for version-specific details
-
-### Story 8.5: Public Product Roadmap
-
-As a developer evaluating Hexalith's future direction,
-I want to view the public product roadmap,
-So that I can understand what's planned and assess the project's trajectory.
+As an operator,
+I want failed commands routed to a dead-letter topic with full context,
+So that I can inspect and diagnose failures without database queries.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/community/roadmap.md`
-**When** they read the page
-**Then** the page shows planned features and milestones organized by timeframe or priority
-**And** the page includes a link to GitHub Issues/Milestones for real-time tracking
-**And** the page follows the standard page template
-**And** the README links to the roadmap
+**Given** a command that fails due to infrastructure error (after DAPR retry exhaustion)
+**When** the failure is permanent
+**Then** the command is routed to a dead-letter topic with full command payload, error details, and correlation context (FR8)
 
-### Story 8.6: DAPR FAQ Deep Dive
+**Given** a dead-letter event
+**When** inspecting it
+**Then** it contains: original command payload, error message, stack trace (server-side only), correlation ID, tenant ID, domain, and aggregate ID
 
-As a developer with concerns about the DAPR dependency,
-I want a comprehensive FAQ addressing DAPR-specific questions and risks,
-So that I can make an informed decision about adopting Hexalith.
+**Given** a domain rejection (e.g., `OrderRejected`)
+**When** the domain service returns a rejection event
+**Then** it is NOT routed to dead-letter -- domain rejections are normal events persisted to the event stream (D3)
+
+**Given** dead-letter events
+**When** an operator queries them
+**Then** they can trace back to the originating request via correlation ID (FR37)
+
+---
+
+## Epic 5: Security & Multi-Tenant Isolation
+
+JWT authentication, claims-based authorization at every layer, and triple-layer multi-tenant isolation are enforced -- multiple tenants and domains coexist safely.
+
+### Story 5.1: JWT Authentication & Claims Transformation
+
+As an API consumer,
+I want to authenticate with the Command API using a JWT token,
+So that my identity and authorized scopes are verified on every request.
 
 **Acceptance Criteria:**
 
-**Given** a developer navigates to `docs/guides/dapr-faq.md`
-**When** they read the page
-**Then** the page provides deep, honest answers to: What if DAPR is deprecated? How does DAPR versioning affect Hexalith? What's the performance overhead of DAPR sidecars? Can I use Hexalith without DAPR? What are the operational costs of running DAPR?
-**And** DAPR is explained at deep depth per the progressive explanation pattern — honest trade-off analysis, risk assessment, what-if scenarios
-**And** the page follows the standard page template
-**And** the page is self-contained (FR43)
+**Given** a request with a valid JWT token
+**When** the token is validated
+**Then** signature, expiry, and issuer are verified before any processing (NFR10, FR30)
+
+**Given** a request without a JWT token or with an expired/invalid token
+**When** it reaches the Command API
+**Then** the system returns `401 Unauthorized` with ProblemDetails
+
+**Given** a valid JWT with custom claims (tenants, domains, permissions as JSON arrays)
+**When** claims transformation runs (`EventStoreClaimsTransformation`)
+**Then** the claims are mapped to the authorization model for tenant + domain + command type checks (FR31)
+
+**Given** a failed authentication attempt
+**When** logging the failure
+**Then** request metadata (source IP, attempted tenant, attempted command type) is logged WITHOUT the JWT token itself (NFR11)
+
+**Given** API consumer communication
+**When** any request is made
+**Then** it is encrypted via TLS 1.2+ (NFR9)
+
+### Story 5.2: Claims-Based Authorization & Gateway Rejection
+
+As a platform operator,
+I want commands authorized based on JWT claims at the API gateway before entering the pipeline,
+So that unauthorized commands never reach actors or domain services.
+
+**Acceptance Criteria:**
+
+**Given** a JWT with `tenants: ["tenant-a"]` and `domains: ["orders"]`
+**When** submitting a command for tenant="tenant-a", domain="orders"
+**Then** the command is authorized and enters the processing pipeline (FR31)
+
+**Given** a JWT with `tenants: ["tenant-a"]`
+**When** submitting a command for tenant="tenant-b"
+**Then** the system returns `403 Forbidden` at the API gateway (FR32)
+**And** the command never reaches any actor or domain service
+
+**Given** a JWT with `permissions: ["command:submit"]`
+**When** submitting a command
+**Then** the permission is verified against the command type
+**And** a user with only `command:query` permission cannot submit commands
+
+**Given** the AuthorizationBehavior in the MediatR pipeline
+**When** it runs (position #3 after logging and validation)
+**Then** tenant x domain x command type authorization is enforced before the CommandHandler
+
+### Story 5.3: Actor-Level Tenant Validation
+
+As a platform operator,
+I want tenant validation enforced at the actor level as a second defense layer,
+So that even if gateway authorization is bypassed, cross-tenant access is prevented.
+
+**Acceptance Criteria:**
+
+**Given** a command reaches the AggregateActor
+**When** the thin orchestrator runs step 2 (tenant validation)
+**Then** the command's tenantId is validated against the actor's identity-derived tenant (FR33)
+
+**Given** a command with tenantId="tenant-a" targeting an actor for tenant="tenant-b"
+**When** tenant validation runs
+**Then** the command is rejected with a security error before any state access
+
+**Given** multi-tenant processing
+**When** 2+ tenants submit commands to the same domain
+**Then** each tenant's commands are processed in isolated actors with isolated event streams (FR25)
+
+**Given** multi-domain processing
+**When** 2+ domains operate within the same EventStore instance
+**Then** each domain's commands are routed to domain-specific actors (FR24)
+
+### Story 5.4: Triple-Layer Data Isolation
+
+As a platform operator,
+I want data path, storage key, and pub/sub topic isolation enforced for every tenant,
+So that cross-tenant data access is impossible even under infrastructure failures.
+
+**Acceptance Criteria:**
+
+**Given** commands for tenant="acme" and tenant="globex"
+**When** routed through the system
+**Then** they are processed by different actor instances -- data path isolation (FR27)
+
+**Given** events stored for tenant="acme"
+**When** querying the state store
+**Then** event stream keys include tenant ID in the composite key (`acme:payments:order-123:events:1`) -- storage key isolation (FR28)
+**And** tenant="globex" keys are in a separate namespace, inaccessible even with direct state store queries
+
+**Given** events published for tenant="acme"
+**When** subscribing to pub/sub
+**Then** events go to `acme.payments.events` only -- pub/sub topic isolation (FR29)
+**And** a subscriber to `globex.payments.events` never receives `acme` events
+
+**Given** all three isolation layers
+**When** one layer has a misconfiguration
+**Then** the remaining two layers still prevent cross-tenant access (NFR13)
+
+### Story 5.5: DAPR Access Control Policies
+
+As a platform operator,
+I want DAPR access control policies restricting service-to-service communication,
+So that only authorized components can invoke each other.
+
+**Acceptance Criteria:**
+
+**Given** DAPR access control policies (D4)
+**When** configured per-app-id
+**Then** CommandApi can invoke actor services and domain services
+**And** domain services cannot invoke anything directly -- they are called, never call out (FR34)
+
+**Given** a service without an allow-list entry
+**When** attempting to invoke another service
+**Then** DAPR rejects the call at the sidecar level (NFR15)
+
+**Given** secrets (connection strings, JWT signing keys, DAPR credentials)
+**When** the system is deployed
+**Then** no secrets are stored in application code or committed configuration files (NFR14)
+
+**Given** Epic 5 security stories (5.1-5.5)
+**When** tested at Tier 1 and Tier 2
+**Then** all tests use TestJwtTokenGenerator (HS256 symmetric key) for fast validation
+**And** full Keycloak E2E runtime proof is deferred to Epic 8 (Story 8.6) where Aspire AppHost infrastructure is available
+
+---
+
+## Epic 6: Observability & Operational Readiness
+
+Full command lifecycle traceable via OpenTelemetry, structured logs with correlation IDs enable fast diagnosis, health/readiness endpoints confirm system status.
+
+### Story 6.1: OpenTelemetry Distributed Tracing
+
+As an operator,
+I want the full command lifecycle traced via OpenTelemetry spans,
+So that I can visualize the entire pipeline in any OTLP-compatible collector.
+
+**Acceptance Criteria:**
+
+**Given** a command submitted to the API
+**When** it flows through the pipeline
+**Then** OpenTelemetry activities span: `EventStore.CommandApi.Submit`, `EventStore.Actor.ProcessCommand`, `EventStore.DomainService.Invoke`, `EventStore.Events.Persist`, `EventStore.Events.Publish` (FR35)
+
+**Given** each activity
+**When** created
+**Then** it includes correlationId as a tag/attribute on every span
+
+**Given** a command that flows through multiple components
+**When** tracing it
+**Then** all activities are linked in a single distributed trace with parent-child relationships
+
+**Given** OpenTelemetry export
+**When** configured
+**Then** traces are exportable to any OTLP-compatible collector (Aspire dashboard, Jaeger, Grafana/Tempo) (NFR31)
+
+### Story 6.2: Structured Logging Pipeline
+
+As an operator,
+I want structured logs with correlation and causation IDs at every pipeline stage,
+So that I can diagnose issues by filtering on any context field.
+
+**Acceptance Criteria:**
+
+**Given** a command at each processing stage
+**When** a structured log entry is emitted
+**Then** it includes the minimum fields per stage (FR36):
+- Command received: correlationId, tenantId, domain, aggregateId, commandType (Information)
+- Actor activated: correlationId, tenantId, aggregateId, currentSequence (Debug)
+- Domain service invoked: correlationId, tenantId, domain, domainServiceVersion (Information)
+- Events persisted: correlationId, tenantId, aggregateId, eventCount, newSequence (Information)
+- Events published: correlationId, tenantId, topic, eventCount (Information)
+- Command completed: correlationId, tenantId, aggregateId, status, durationMs (Information)
+- Domain rejection: correlationId, tenantId, aggregateId, rejectionEventType (Warning)
+- Infrastructure failure: correlationId, tenantId, aggregateId, exceptionType, message (Error)
+
+**Given** any log entry
+**When** it contains event data
+**Then** event payload data is NEVER logged -- only envelope metadata fields (NFR12)
+
+**Given** a failed command on the dead-letter topic
+**When** an operator searches structured logs by correlationId
+**Then** the full processing history is visible from API receipt to failure point (FR37)
+
+### Story 6.3: Health & Readiness Endpoints
+
+As a platform operator,
+I want health and readiness check endpoints,
+So that load balancers and orchestrators can determine system availability.
+
+**Acceptance Criteria:**
+
+**Given** the CommandApi is running
+**When** querying the health endpoint
+**Then** it reports connectivity status for: DAPR sidecar, state store, and pub/sub (FR38)
+
+**Given** the CommandApi is running
+**When** querying the readiness endpoint
+**Then** it reports whether all dependencies are healthy and the system is accepting commands (FR39)
+**And** readiness includes DAPR config store availability
+
+**Given** the DAPR sidecar is not reachable
+**When** the health check runs
+**Then** the health endpoint returns unhealthy status
+**And** the readiness endpoint returns not-ready
+
+**Given** a Kubernetes or container orchestrator
+**When** it probes health/readiness
+**Then** the endpoints return standard health check response format compatible with ASP.NET Core health checks
+
+---
+
+## Epic 7: Developer SDK & Sample Application
+
+A developer installs NuGet packages, registers domain services via convention or DAPR config, and follows a working Counter sample as reference implementation.
+
+### Story 7.1: Convention Engine & Domain Service Registration
+
+As a domain service developer,
+I want to register my domain service with EventStore via convention-based assembly scanning or explicit DAPR configuration,
+So that my service is discoverable without boilerplate wiring code.
+
+**Acceptance Criteria:**
+
+**Given** a developer calls `AddEventStore()` in their service registration
+**When** the application starts
+**Then** assembly scanning discovers all types inheriting from EventStoreAggregate or implementing IDomainProcessor (FR42)
+**And** DAPR resource names are derived from aggregate type names via the convention engine
+
+**Given** a type named `OrderAggregate`
+**When** the convention engine processes it
+**Then** it derives: domain name = `order`, state store = `order-eventstore`, pub/sub topic pattern = `{tenant}.order.events`, command endpoint = `order-commands`
+
+**Given** a developer applies `[EventStoreDomain("billing")]` to an aggregate
+**When** the convention engine processes it
+**Then** the attribute override replaces the derived name (`billing` instead of derived)
+
+**Given** the 5-layer convention override priority
+**When** multiple layers configure the same setting
+**Then** lower layers override higher: Convention defaults -> Global code options -> Domain self-config -> External config -> Explicit override
+
+**Given** a developer uses explicit DAPR configuration entry
+**When** registering a domain service by tenant + domain
+**Then** the registration specifies tenant ID, domain name, and service invocation endpoint (FR22)
+
+**Given** a new tenant or domain added via DAPR config store
+**When** the configuration changes
+**Then** it takes effect dynamically without system restart (NFR20)
+
+### Story 7.2: Client NuGet Package & DI Registration
+
+As a domain service developer,
+I want to install a single NuGet package and call `AddEventStore()` for zero-configuration quickstart,
+So that I can build domain services with minimal setup.
+
+**Acceptance Criteria:**
+
+**Given** a developer installs `Hexalith.EventStore.Client` via NuGet
+**When** they call `builder.Services.AddEventStore()` in their service
+**Then** all required services are registered: domain processor discovery, convention engine, DAPR client integration (FR42)
+
+**Given** the zero-configuration quickstart
+**When** the developer has aggregates in the same assembly
+**Then** auto-discovery finds and registers them without explicit configuration
+
+**Given** a developer wants to customize behavior
+**When** they call `AddEventStore(options => { ... })`
+**Then** they can configure: custom serializer, per-domain state store component, snapshot intervals, and other cross-cutting options
+
+**Given** the Client package references
+**When** inspecting its dependencies
+**Then** it depends on Contracts (for types) but NOT on Server (separation of concerns)
+
+### Story 7.3: Counter Sample Domain Service
+
+As a developer evaluating EventStore,
+I want a complete working sample domain service (Counter) demonstrating the pure function programming model,
+So that I have a reference implementation to learn from and copy.
+
+**Acceptance Criteria:**
+
+**Given** the Counter sample project
+**When** a developer inspects it
+**Then** it demonstrates:
+- `IncrementCounter` command definition
+- `CounterIncremented` state-change event (past tense naming)
+- `CounterLimitExceeded` rejection event implementing IRejectionEvent (D3)
+- `CounterState` aggregate state
+- `CounterProcessor` pure function handler: `(IncrementCounter, CounterState?) -> List<DomainEvent>` (FR41)
+
+**Given** the Counter sample
+**When** a developer reads it
+**Then** it contains zero infrastructure code -- no event store wiring, no pub/sub configuration, no actor management
+
+**Given** the Counter sample project
+**When** built and registered with EventStore
+**Then** it demonstrates the full programming model: command handling, state-change events, rejection events, and snapshot production
+
+**Given** a developer following the sample pattern
+**When** they create their own domain service
+**Then** the sample serves as a copy-paste template for the pure function approach
+
+---
+
+## Epic 8: Aspire Orchestration, Deployment & CI/CD
+
+Developers start the full system with `dotnet aspire run`, DevOps deploys via Aspire publishers with zero code changes, CI/CD automates build/test/release, and integration + contract tests validate the full topology.
+
+### Story 8.1: Aspire AppHost & Local Dev Topology
+
+As a developer,
+I want to start the complete EventStore system with a single `dotnet aspire run` command,
+So that I have the full topology running locally in under 10 minutes.
+
+**Acceptance Criteria:**
+
+**Given** the Aspire AppHost project
+**When** running `dotnet aspire run`
+**Then** the full topology starts: EventStore CommandApi, sample Counter domain service, Redis state store, Redis pub/sub, OpenTelemetry collector, Aspire dashboard (FR40)
+
+**Given** the AppHost project
+**When** defining DAPR sidecars
+**Then** local DAPR component configs are included: `statestore.yaml` (Redis), `pubsub.yaml` (Redis), `resiliency.yaml`, `accesscontrol.yaml` (D4)
+
+**Given** the Keycloak integration (D11)
+**When** the AppHost starts
+**Then** Keycloak runs on port 8180 with the `hexalith-realm.json` realm import
+**And** CommandApi receives environment variable overrides pointing Authority to Keycloak
+
+**Given** the Aspire dashboard
+**When** a developer opens it
+**Then** they see all resources, OpenTelemetry traces, structured logs, and metrics
+
+### Story 8.2: Infrastructure Portability & Deployment Manifests
+
+As a DevOps engineer,
+I want to deploy EventStore to different environments by changing only DAPR component configs and generate deployment manifests via Aspire publishers,
+So that the same application code runs across dev, staging, and production.
+
+**Acceptance Criteria:**
+
+**Given** a production deployment target
+**When** changing from Redis to PostgreSQL state store
+**Then** only the DAPR component YAML is changed -- zero application code, zero recompilation (FR43, NFR29)
+
+**Given** an Aspire publisher
+**When** running `aspire publish --publisher docker-compose`
+**Then** a complete Docker Compose deployment manifest is generated (FR44)
+
+**Given** an Aspire publisher
+**When** running `aspire publish --publisher kubernetes` or `--publisher azure-container-apps`
+**Then** appropriate deployment manifests are generated for each target (FR44, NFR32)
+
+**Given** production DAPR component configurations
+**When** deploying
+**Then** configs for PostgreSQL state store, RabbitMQ/Kafka pub/sub, and production resiliency policies are provided in `deploy/dapr/` directory
+
+**Given** the same EventStore application containers
+**When** deployed with different DAPR component YAMLs
+**Then** the system functions correctly with any validated backend (NFR27, NFR28)
+
+### Story 8.3: Integration Testing with DAPR
+
+As a developer,
+I want to run integration tests against the actor processing pipeline using DAPR,
+So that I can verify the full actor lifecycle with real DAPR runtime behavior.
+
+**Acceptance Criteria:**
+
+**Given** DAPR slim init has been run
+**When** running Tier 2 integration tests (`dotnet test tests/Hexalith.EventStore.Server.Tests/`)
+**Then** tests execute against real DAPR actors with in-process state management (FR46)
+
+**Given** the integration tests
+**When** testing the actor processing pipeline
+**Then** they verify: command routing, event persistence, state rehydration, optimistic concurrency, and snapshot behavior
+
+**Given** the integration test infrastructure
+**When** tests complete
+**Then** no external Docker containers or cloud services are required -- DAPR slim mode is sufficient
+
+### Story 8.4: End-to-End Contract Tests
+
+As a developer,
+I want end-to-end contract tests validating the full command lifecycle across the complete Aspire topology,
+So that I can verify the entire system works as an integrated whole.
+
+**Acceptance Criteria:**
+
+**Given** DAPR full init and Docker are available
+**When** running Tier 3 contract tests (`dotnet test tests/Hexalith.EventStore.IntegrationTests/`)
+**Then** tests execute across the complete Aspire topology: CommandApi, actors, domain services, state store, pub/sub (FR47)
+
+**Given** the contract tests
+**When** validating the command lifecycle
+**Then** they verify end-to-end: command submission via REST -> actor processing -> event persistence -> pub/sub delivery -> status tracking
+
+**Given** the E2E security tests (D11)
+**When** running with `[Trait("Category", "E2E")]`
+**Then** they use real Keycloak OIDC tokens and validate the full six-layer auth pipeline
+
+### Story 8.5: CI/CD Pipeline & NuGet Publishing
+
+As a project maintainer,
+I want GitHub Actions automating build, test, and NuGet package publishing,
+So that every PR is validated and releases are automated from Git tags.
+
+**Acceptance Criteria:**
+
+**Given** a push or PR to main
+**When** the CI pipeline runs
+**Then** it executes: restore, build (Release), Tier 1 unit tests, Tier 2 integration tests (with DAPR slim) (D10)
+
+**Given** a Git tag matching `v*` pattern (e.g., `v1.0.0`)
+**When** the release pipeline runs
+**Then** it executes: all tests, `dotnet pack`, validates 5 expected NuGet packages (Contracts, Client, Server, Testing, Aspire), and pushes to NuGet.org
+
+**Given** package versioning via MinVer (D9)
+**When** a Git tag `v1.0.0` exists
+**Then** all packages receive version `1.0.0`
+**And** pre-release versions are auto-calculated from tag + commit height
+
+**Given** the CI pipeline
+**When** Tier 3 contract tests are configured
+**Then** they run as an optional step (requires full DAPR init + Docker)
+
+### Story 8.6: Platform Validation & E2E Security Proof
+
+As a platform architect,
+I want chaos scenario testing, performance benchmarking, infrastructure portability validation, and Keycloak-based E2E security proof,
+So that the platform meets all success criteria before v1 GA (Journey 6).
+
+**Acceptance Criteria:**
+
+**Given** the Keycloak instance in Aspire AppHost (D11)
+**When** running E2E security tests with `[Trait("Category", "E2E")]`
+**Then** real OIDC tokens are acquired via Resource Owner Password Grant from Keycloak
+**And** tests validate through the full six-layer auth pipeline with real IdP-issued tokens
+
+**Given** test users defined in `hexalith-realm.json` (admin-user, tenant-a-user, tenant-b-user, readonly-user, no-tenant-user)
+**When** each user authenticates
+**Then** cross-tenant isolation, permission enforcement, and tenant validation rejection are proven at runtime
+
+**Given** the chaos scenario suite
+**When** testing state store crash mid-command
+**Then** the actor's checkpointed state machine resumes from the correct stage with deterministic replay and zero data loss (NFR22, NFR23)
+
+**Given** the chaos scenario suite
+**When** testing pub/sub unavailability during command processing
+**Then** events persist safely in the state store and DAPR retry policies drain the backlog on recovery (NFR24)
+
+**Given** performance benchmarking under sustained load (100 cmd/sec for 10 minutes)
+**When** measuring p99 latencies
+**Then** command submission < 50ms, end-to-end lifecycle < 200ms, event append < 10ms (NFR1, NFR2, NFR3)
+
+**Given** the full test suite
+**When** switching the entire topology from Redis to PostgreSQL state store
+**Then** all tests pass with zero application code changes (NFR29)
+
+**Given** horizontal scaling validation
+**When** adding EventStore server replicas
+**Then** DAPR actor placement distributes aggregates across replicas (NFR16)
+**And** the system supports at least 10,000 active aggregates without exceeding latency targets (NFR17)
+
+---
+
+## Epic 9: Query Pipeline & Projection Caching (v2)
+
+A developer wires up projection caching with one `NotifyProjectionChanged` call, achieving ETag-based cache invalidation, HTTP 304 support, query actor routing, and real-time SignalR push notifications.
+
+### Story 9.1: ETag Actor & Projection Change Notification
+
+As a domain service developer,
+I want to notify EventStore of projection changes via a single API call, with an ETag actor tracking the current projection version,
+So that cache invalidation happens automatically without writing caching infrastructure code.
+
+**Acceptance Criteria:**
+
+**Given** a domain service updates a projection for tenant="acme", projectionType="OrderList"
+**When** calling `NotifyProjectionChanged("OrderList", "acme")`
+**Then** the ETag actor for `OrderList-acme` regenerates its GUID (base64-22 encoded) (FR51, FR52)
+
+**Given** the NotifyProjectionChanged API
+**When** the transport is not explicitly configured
+**Then** it uses DAPR pub/sub by default, with direct service invocation available via configuration (FR52)
+
+**Given** an optional entityId parameter
+**When** calling `NotifyProjectionChanged("OrderList", "acme", "order-123")`
+**Then** the entityId is forwarded for future fine-grained invalidation but the current model invalidates the entire projection+tenant pair (FR58)
+
+**Given** a projection change notification
+**When** the ETag actor regenerates
+**Then** all cached query results for that projection+tenant are invalidated -- coarse invalidation model (FR58)
+
+### Story 9.2: 3-Tier Query Actor Routing
+
+As a platform operator,
+I want queries routed to query actors using a 3-tier model based on query parameters,
+So that cached results are correctly scoped to the query's specificity.
+
+**Acceptance Criteria:**
+
+**Given** a query with EntityId="order-123"
+**When** routing
+**Then** it routes to actor `{QueryType}-{TenantId}-{EntityId}` (tier 1) (FR50)
+
+**Given** a query without EntityId but with non-empty serialized payload
+**When** routing
+**Then** it routes to actor `{QueryType}-{TenantId}-{Checksum}` where Checksum is 11-char truncated SHA256 base64url of the serialized payload (tier 2) (FR50)
+
+**Given** a query without EntityId and with empty payload
+**When** routing
+**Then** it routes to actor `{QueryType}-{TenantId}` (tier 3) (FR50)
+
+**Given** two semantically identical queries with different JSON key ordering
+**When** computing checksums
+**Then** they produce different checksums and route to separate cache actors -- accepted trade-off documented in FR50
+
+### Story 9.3: Query Endpoint with ETag Pre-Check & Cache
+
+As an API consumer,
+I want the query endpoint to return HTTP 304 when data hasn't changed and serve cached results from query actors,
+So that read-heavy workloads avoid unnecessary database queries.
+
+**Acceptance Criteria:**
+
+**Given** a query request with `If-None-Match` header matching the current ETag
+**When** the endpoint performs the ETag pre-check (first gate)
+**Then** it calls the ETag actor, finds a match, and returns HTTP 304 without activating the query actor (FR53)
+**And** the pre-check completes within 5ms at p99 for warm actors (NFR35)
+
+**Given** a query request with a stale or missing ETag
+**When** the query actor is activated (second gate)
+**Then** it compares its cached ETag against the current ETag actor value (FR54)
+**And** on match: returns cached data within 10ms at p99 (NFR36)
+**And** on mismatch: re-queries the projection via domain service, caches the result, and returns it within 200ms at p99 (NFR37)
+
+**Given** a query actor
+**When** caching results
+**Then** it uses in-memory storage only -- no state store persistence (FR54)
+**And** DAPR idle timeout garbage-collects inactive query actors
+
+**Given** the query pipeline under load
+**When** handling concurrent requests
+**Then** it supports at least 1,000 concurrent query requests per second per instance (NFR39)
+
+### Story 9.4: Query Contract Library
+
+As a domain service developer,
+I want a query contract library defining mandatory query metadata fields as typed static members,
+So that query routing is type-safe and consistent across all domain services.
+
+**Acceptance Criteria:**
+
+**Given** the query contract NuGet package
+**When** a developer defines a query
+**Then** mandatory fields (Domain, QueryType, TenantId, ProjectionType) are enforced as typed static members (FR57)
+**And** optional fields (EntityId) are available
+
+**Given** the query contract
+**When** used for routing
+**Then** it serves as the single source of truth for query actor ID derivation
+
+**Given** a developer building a new query
+**When** referencing the contract library
+**Then** they get compile-time safety for query metadata -- no string-based routing errors
+
+### Story 9.5: SignalR Real-Time Notifications
+
+As a Blazor/browser client developer,
+I want real-time "changed" signals via SignalR when projections update,
+So that my UI refreshes without polling.
+
+**Acceptance Criteria:**
+
+**Given** a projection's ETag is regenerated
+**When** the ETag actor broadcasts
+**Then** a signal-only "changed" message is sent to all connected SignalR clients in the group `{ProjectionType}-{TenantId}` (FR55)
+**And** delivery completes within 100ms at p99 (NFR38)
+
+**Given** the EventStore server
+**When** hosting the SignalR hub
+**Then** it uses DAPR pub/sub as the backplane for multi-instance SignalR message distribution (FR56)
+
+**Given** a Blazor Server circuit reconnects after a disconnect
+**When** the SignalR client helper detects recovery
+**Then** it automatically rejoins all SignalR groups -- no manual intervention by the developer (FR59)
+
+**Given** a WebSocket drop or network interruption
+**When** the connection is restored
+**Then** the client helper auto-rejoins and the developer's code receives subsequent "changed" signals normally (FR59)
+
+### Story 9.6: Sample UI Refresh Patterns
+
+As a Blazor developer,
+I want at least 3 documented reference patterns for handling the SignalR "changed" signal,
+So that I can choose the right UI update strategy for my use case.
+
+**Acceptance Criteria:**
+
+**Given** the EventStore documentation and sample application
+**When** a developer looks for SignalR integration patterns
+**Then** they find at least 3 reference implementations (FR60):
+1. Toast notification prompting manual refresh
+2. Automatic silent data reload
+3. Selective component refresh targeting only the affected projection
+
+**Given** each sample pattern
+**When** implemented in a Blazor component
+**Then** it demonstrates: subscribing to the SignalR group, handling the "changed" signal, and triggering the appropriate UI update
+
+**Given** the sample patterns
+**When** a developer evaluates them
+**Then** trade-offs are documented: toast = least disruptive but requires user action, silent reload = seamless but may cause layout shifts, selective refresh = best UX but most implementation effort

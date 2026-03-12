@@ -43,6 +43,8 @@ classification:
 lastEdited: '2026-03-12'
 editHistory:
   - date: '2026-03-12'
+    changes: 'Integrate brainstorming session (2026-03-12): added Query Pipeline & Projection Caching (FR50-FR60, NFR35-NFR39), Journey 7 (Marco Builds a Read Model), Innovation #5 (ETag Actor pattern), expanded Phase 2 roadmap with query pipeline/SignalR/contract library. Party mode review fixes: Query API endpoint spec, query success criteria, FR50 checksum pinned to 11-char + serialization risk note, FR52 default transport, FR53/FR54 two-tier clarification, FR58 coarse invalidation rationale, NFR35 warm-actor qualifier, NFR reordering, test tier updates. Post-validation fixes: FR59 (SignalR auto-rejoin on circuit reconnect), FR60 (3 sample UI refresh patterns)'
+  - date: '2026-03-12'
     changes: 'Fix all validation report findings: added Journey 6 (Platform Validation), FR49 (command idempotency), NFR33-34 (rate limiting), refined FR10/FR13, added Data Schema patterns, added causation depth guardrail to Phase 2 roadmap'
 ---
 
@@ -62,7 +64,7 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 - **DevOps engineers** -- Deploy and configure EventStore across environments using Aspire publishers and DAPR component YAML files
 - **Support engineers** (v2) -- Monitor and resolve operational issues via the Blazor Fluent UI admin dashboard
 
-**Development Strategy:** Deliberate phasing -- v1 delivers the complete command-to-event pipeline using DAPR actors with a workflow-ready state machine design, v2 migrates to DAPR Workflow orchestration and adds the Blazor operational dashboard.
+**Development Strategy:** Deliberate phasing -- v1 delivers the complete command-to-event pipeline using DAPR actors with a workflow-ready state machine design, v2 adds the query/projection caching pipeline (ETag-based cache invalidation, query actor routing, SignalR real-time notification), DAPR Workflow orchestration, and the Blazor operational dashboard.
 
 **Technology Stack:** .NET 10 LTS, DAPR 1.14+, Aspire 13, C# 14
 
@@ -91,6 +93,13 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 
 - **Mean time to diagnosis**: Support engineer identifies the failure point for a stuck command in under 2 minutes using the Blazor dashboard
 - **Self-service resolution**: Common operational tasks (tenant suspension, domain version rollback, dead-letter inspection/replay) completable entirely through the UI without developer involvement
+
+**Query Pipeline Experience (v2):**
+
+- **Time to first cached query**: A developer wires up projection change notification and a query contract, achieving ETag-based caching with HTTP 304 support, in under 30 minutes following documentation
+- **Zero-infrastructure caching**: A developer adds query caching to an existing projection without writing any caching infrastructure code -- one `NotifyProjectionChanged` call and one query contract definition
+- **Cache effectiveness**: Under steady-state read-heavy workloads, 80%+ of query requests resolve as HTTP 304 at the ETag pre-check gate (single actor call, no query actor activation, no database query)
+- **Real-time UI update**: A connected Blazor/browser client receives a SignalR "changed" signal within 1 second of a projection update, triggering a UI refresh without polling
 
 ### Business Success
 
@@ -305,6 +314,22 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 ---
 
+### Journey 7: Marco Builds a Read Model (Query / Projection Caching -- v2)
+
+**Persona:** Same Marco, six months in. His payment processing service is running on EventStore v2. His team needs a paginated order history UI with 1M+ orders across multiple tenants. The Blazor Server frontend needs real-time updates when new orders are processed.
+
+**Opening Scene:** Marco's current implementation queries the SQL projection directly on every page request. Under load, the database is hammered by redundant queries for data that hasn't changed. His team lead asks: "Can EventStore cache this?"
+
+**Rising Action:** Marco reads the query pipeline docs and discovers the 3-tier query actor routing model. For the paginated order list, he defines a query contract in the NuGet package with `ProjectionType = "OrderList"`, `QueryType = "GetOrders"`, and serializable filter/paging parameters. He adds one line to his domain service's event handler: `eventStore.NotifyProjectionChanged("OrderList", tenantId)` -- called after the SQL projection is updated. He sends a query through the REST endpoint and watches the trace: query received, ETag actor checked, query actor activated, projection queried, result cached, ETag returned in response header.
+
+**Climax:** Marco sends the same query again with the ETag in `If-None-Match`. The trace shows: query received, ETag actor checked -- match -- HTTP 304 returned. The query actor was never activated. The database was never touched. Under steady state, 90%+ of his requests are 304s resolved by a single sub-millisecond ETag actor call. He wires up the Blazor SignalR client helper: when a new order is processed, the ETag actor regenerates its GUID and broadcasts "changed" to the SignalR group. His Blazor component receives the signal and triggers a refresh -- the user sees the new order appear within seconds, no polling.
+
+**Resolution:** Marco's order history page handles 1M+ orders across tenants with sub-10ms cache hits, zero database load on unchanged data, and real-time UI updates via SignalR. He wrote zero caching infrastructure code -- one `NotifyProjectionChanged` call and one query contract definition. The ETag actor handles invalidation, the query actor handles caching, SignalR handles browser notification. When he accidentally deploys a domain service version that changes JSON serialization order, the checksum-based query actor IDs create duplicate cache entries -- but DAPR's idle timeout garbage-collects the orphans within an hour, and the ETag invalidation ensures fresh data is always served. The footgun stings but doesn't bite.
+
+**Capabilities Revealed:** 3-tier query actor routing, ETag actor cache invalidation (GUID-based), HTTP 304 pre-check at endpoint, query actor as in-memory page cache, SignalR real-time notification, `NotifyProjectionChanged` one-line integration, query contract library, coarse invalidation model, DAPR idle timeout as garbage collection.
+
+---
+
 ### Journey Requirements Summary
 
 | Journey | Primary Capabilities Required |
@@ -315,6 +340,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 | Priya's Deployment (Infrastructure) | Aspire publishers, DAPR component configuration, OpenTelemetry export, infrastructure portability, zero-code environment switching |
 | Sanjay's Integration (API Consumer) | Command API Gateway, JWT + claims authorization, command status tracking, correlation IDs, clean REST abstraction, HTTP error responses |
 | Jerome's Platform Validation (Quality Gate) | Event envelope validation, snapshot consistency, chaos scenario testing, performance benchmarking, infrastructure swap, health/readiness endpoints, concurrency testing, composite key isolation |
+| Marco's Read Model (Query/Projection v2) | 3-tier query actor routing, ETag actor cache invalidation, HTTP 304 pre-check, query actor page cache, SignalR real-time notification, NotifyProjectionChanged API, query contract library |
 
 **Cross-Journey Insights:**
 
@@ -323,6 +349,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 - **DAPR abstraction is the core value proposition** -- Marco, Priya, and Sanjay all benefit from never touching infrastructure code
 - **v1 operational model (logs + traces + dead letters) is sufficient** -- Marco's edge case journey proves the v1 approach works, while Alex's journey shows why v2 dashboard is a natural evolution, not a v1 blocker
 - **The pure function programming model is the "aha!" moment** -- Marco's climax and resolution both center on the surprise that event sourcing can be this simple
+- **The query pipeline extends the zero-infrastructure philosophy to reads** -- Marco's read model journey mirrors his first day: one integration point, zero caching infrastructure code, EventStore owns the full pipeline
 
 ## Domain-Specific Requirements
 
@@ -380,6 +407,10 @@ Existing event sourcing solutions require applications to own the event store cl
 **4. Actor-as-Aggregate with Deliberate Migration Path (Design Innovation)**
 
 Using DAPR virtual actors as 1:1 aggregate proxies is not new in concept, but the deliberate v1-to-v2 migration design is novel: building actors with a checkpointed state machine that maps directly to future DAPR Workflow activities. This "workflow-ready actor" pattern means v1 gets the simplicity of actors while v2 gets workflow orchestration without rewriting the core processing logic.
+
+**5. ETag Actor as Dual-Purpose Cache Invalidation Gateway (Design Innovation)**
+
+Projection cache invalidation in distributed systems typically requires complex pub/sub fanout, distributed cache coherence protocols, or application-level polling. Hexalith.EventStore introduces the ETag actor pattern: a single DAPR virtual actor per `{ProjectionType}-{TenantId}` that serves as both the staleness detection point (GUID-based ETag regenerated on every projection change) and the SignalR broadcast point (notifying connected clients of changes). The innovation is dual: (1) failure is safe by construction -- any actor state loss generates a new GUID, causing refresh rather than serving stale data; (2) the REST endpoint performs an ETag pre-check before activating the query actor, enabling HTTP 304 responses that skip the entire query pipeline for warm clients. This transforms the hot path from two actor calls to one lightweight ETag comparison, bringing standard HTTP caching semantics into an actor-based system.
 
 ### Market Context & Competitive Landscape
 
@@ -463,6 +494,16 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 | POST | `/api/v1/commands/{correlationId}/replay` | Replay a failed command | JWT (tenant + domain + admin) |
 | GET | `/api/v1/health` | Health check (DAPR sidecar + state store + pub/sub) | None |
 | GET | `/api/v1/ready` | Readiness check (all dependencies healthy) | None |
+
+**Query API Endpoints (v2):**
+
+| Method | Path | Purpose | Auth |
+|--------|------|---------|------|
+| POST | `/api/v2/queries` | Submit a query for processing (payload contains query type, filters, paging) | JWT (tenant + domain) |
+| GET | `/api/v2/queries/{queryType}/{tenantId}` | Singleton query (no parameters) | JWT (tenant + domain) |
+| GET | `/api/v2/queries/{queryType}/{tenantId}/{entityId}` | Entity-specific query | JWT (tenant + domain) |
+
+Query responses include `ETag` header. Clients pass `If-None-Match` with cached ETag to receive HTTP 304 when data is unchanged. Authorization uses the same JWT claims model as the Command API, scoped to tenant + domain (no command-type dimension for queries).
 
 **Command Payload Schema:**
 
@@ -559,8 +600,8 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 | Tier | Scope | DAPR Dependency | Speed |
 |------|-------|-----------------|-------|
 | Unit | Domain service pure functions, event envelope validation | None (in-process) | < 1s |
-| Integration | Actor processing pipeline, state store operations | DAPR test container | < 30s |
-| Contract | End-to-end command lifecycle, multi-tenant isolation | Full Aspire topology | < 2min |
+| Integration | Actor processing pipeline, state store operations, ETag actor logic, query actor caching | DAPR test container | < 30s |
+| Contract | End-to-end command lifecycle, multi-tenant isolation, query pipeline with ETag 304 flow, SignalR notification delivery | Full Aspire topology | < 2min |
 
 **Aspire Integration Points:**
 - `AppHost` project defines complete local topology (EventStore server, sample domain service, DAPR sidecars, state store, message broker)
@@ -598,6 +639,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | Priya's Deployment (Infrastructure) | Full | Aspire publishers, DAPR component config, OpenTelemetry |
 | Sanjay's Integration (API Consumer) | Full | Command API Gateway, JWT auth, correlation IDs |
 | Alex's Monday Morning (Operations) | Deferred to v2 | Requires Blazor dashboard |
+| Marco's Read Model (Query/Projection) | Deferred to v2 | Requires query pipeline, ETag actors, SignalR |
 
 **Must-Have Analysis:**
 
@@ -619,6 +661,8 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | Blazor Dashboard | No UI for operations | Logs + traces (v1 operational model) | DEFER TO v2 |
 | DAPR Workflows | No workflow orchestration | Actors with state machine (v1 design) | DEFER TO v2 |
 | Saga Support | No multi-aggregate coordination | Manual compensation via domain services | DEFER TO v2 |
+| Query Pipeline / Projection Caching | No server-side query caching or cache invalidation | Direct database queries from domain services | DEFER TO v2 |
+| SignalR Real-Time Notification | No push notification to UI clients | Client polling or manual refresh | DEFER TO v2 |
 
 ### Post-MVP Features
 
@@ -633,6 +677,9 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | Domain Service Version Management | Blazor Dashboard + DAPR config | Instant rollback via UI |
 | External Authorization Engine | v1 JWT model stable | OpenFGA/OPA extending claims-based model |
 | Max Causation Depth Guardrail | Saga/Process Manager | Saga loop prevention via configurable causation chain depth limit |
+| Query Pipeline & Projection Caching | v1 stable event distribution | ETag actor-based cache invalidation, 3-tier query actor routing, page cache actors, HTTP 304 pre-check |
+| SignalR Real-Time Notification | Query Pipeline | Push-to-browser projection change signals via SignalR hub inside EventStore, DAPR pub/sub as backplane |
+| Query Contract Library (NuGet) | Query Pipeline | Typed query metadata (Domain, QueryType, TenantId, ProjectionType, optional EntityId) as single source of routing truth |
 
 **Phase 3: Enterprise Readiness (v3)**
 
@@ -756,6 +803,20 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - FR47: A developer can run end-to-end contract tests validating the full command lifecycle across the complete Aspire topology
 - FR48: A domain service developer can implement a domain aggregate by inheriting from EventStoreAggregate with typed Apply methods, as a higher-level alternative to implementing IDomainProcessor directly, with convention-based DAPR resource naming derived from the aggregate type name
 
+### Query Pipeline & Projection Caching (v2)
+
+- FR50: The system can route incoming query messages to query actors using a 3-tier routing model: (1) queries with EntityId route to `{QueryType}-{TenantId}-{EntityId}`, (2) queries without EntityId but with non-empty payload route to `{QueryType}-{TenantId}-{Checksum}` where Checksum is a truncated SHA256 base64url hash (11 characters) of the serialized payload, (3) queries without EntityId and with empty payload route to `{QueryType}-{TenantId}`. Note: serialization non-determinism (e.g., JSON key ordering differences) produces different checksums for semantically identical queries, resulting in separate cache actors -- this is an accepted trade-off; callers are responsible for consistent serialization
+- FR51: The system can maintain one ETag actor per `{ProjectionType}-{TenantId}` that stores a GUID (base64-22 encoded) representing the current projection version, regenerated on every projection change notification
+- FR52: A domain service developer can notify EventStore of a projection change by calling `NotifyProjectionChanged(projectionType, tenantId, entityId?)` via NuGet helper, with the underlying transport (DAPR pub/sub by default, or direct service invocation) selected by configuration
+- FR53: The query REST endpoint can perform an ETag pre-check (first gate) by calling the ETag actor before routing to the query actor -- if the client's `If-None-Match` header matches the current ETag, the endpoint returns HTTP 304 without activating the query actor
+- FR54: A query actor can serve as an in-memory page cache (second gate) with no state store persistence, comparing its cached ETag against the current ETag actor value on each request and re-querying the projection on mismatch. FR53 is the hot-path optimization; FR54 operates independently when the query actor is activated (e.g., client has no ETag or ETag is stale)
+- FR55: The system can broadcast a signal-only "changed" message to connected SignalR clients when a projection's ETag is regenerated, with clients grouped by ETag actor ID (`{ProjectionType}-{TenantId}`)
+- FR56: The system can host a SignalR hub inside the EventStore server, using DAPR pub/sub as the backplane for multi-instance SignalR message distribution
+- FR57: A query contract library (NuGet) can define mandatory query metadata fields (Domain, QueryType, TenantId, ProjectionType) and optional fields (EntityId) as typed static members, serving as the single source of truth for query routing
+- FR58: The system can invalidate all cached query results for a projection+tenant pair on any projection change notification (coarse invalidation model -- all filters invalidated per projection per tenant). Rationale: coarse invalidation trades unnecessary cache refreshes for design simplicity -- fine-grained filter-aware invalidation would require the EventStore to understand projection schemas, violating the platform's opacity principle
+- FR59: The SignalR client helper (NuGet) can automatically rejoin SignalR groups on connection recovery, restoring real-time push notification after Blazor Server circuit reconnection, WebSocket drops, or network interruption -- without requiring manual intervention by the developer
+- FR60: The EventStore documentation and sample application can provide at least 3 reference patterns for handling the SignalR "changed" signal in Blazor UI components: (1) toast notification prompting manual refresh, (2) automatic silent data reload, (3) selective component refresh targeting only the affected projection
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -809,3 +870,11 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 - NFR33: The Command API must enforce per-tenant rate limiting with a configurable threshold (default: 1,000 commands per minute per tenant), returning 429 Too Many Requests with Retry-After header when exceeded
 - NFR34: The Command API must enforce per-consumer rate limiting with a configurable threshold (default: 100 commands per second per authenticated consumer), returning 429 Too Many Requests with Retry-After header when exceeded
+
+### Query Pipeline Performance (v2)
+
+- NFR35: ETag pre-check at the query endpoint (ETag actor call + comparison) must complete within 5ms at p99 for warm ETag actors, enabling HTTP 304 responses without activating the query actor. Cold ETag actor activation (first call after idle timeout) may exceed this target due to DAPR actor placement
+- NFR36: Query actor cache hit (ETag match, return cached data) must complete within 10ms at p99
+- NFR37: Query actor cache miss (ETag mismatch, re-query projection via domain service, cache result) must complete within 200ms at p99
+- NFR38: SignalR "changed" signal delivery from ETag regeneration to connected client receipt must complete within 100ms at p99
+- NFR39: The query pipeline must support at least 1,000 concurrent query requests per second per EventStore instance without exceeding latency targets
