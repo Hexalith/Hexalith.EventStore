@@ -1,7 +1,9 @@
 
+using Hexalith.EventStore.CommandApi.Authorization;
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Pipeline.Queries;
 
 using MediatR;
 
@@ -9,6 +11,8 @@ namespace Hexalith.EventStore.CommandApi.Pipeline;
 
 public partial class AuthorizationBehavior<TRequest, TResponse>(
     IHttpContextAccessor httpContextAccessor,
+    ITenantValidator tenantValidator,
+    IRbacValidator rbacValidator,
     ILogger<AuthorizationBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull {
@@ -16,7 +20,14 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
-        if (request is not SubmitCommand command) {
+        string? tenant, domain, messageType, messageCategory;
+        if (request is SubmitCommand command) {
+            (tenant, domain, messageType, messageCategory) = (command.Tenant, command.Domain, command.CommandType, "command");
+        }
+        else if (request is SubmitQuery query) {
+            (tenant, domain, messageType, messageCategory) = (query.Tenant, query.Domain, query.QueryType, "query");
+        }
+        else {
             return await next().ConfigureAwait(false);
         }
 
@@ -27,7 +38,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
 
         if (user.Identity?.IsAuthenticated != true) {
             throw new CommandAuthorizationException(
-                command.Tenant,
+                tenant,
                 null,
                 null,
                 "User is not authenticated.");
@@ -36,60 +47,50 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? "unknown";
         string causationId = correlationId; // For original submissions, CausationId = CorrelationId
-
-        var tenantClaims = user.FindAll("eventstore:tenant")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
-
-        // Domain authorization: only enforce if user has domain claims
-        var domainClaims = user.FindAll("eventstore:domain")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
-
         string? sourceIp = httpContext.Connection.RemoteIpAddress?.ToString();
 
-        if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, command.Domain, StringComparison.OrdinalIgnoreCase))) {
-            string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
-            Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv, command.Tenant, command.Domain, command.CommandType, $"Not authorized for domain '{command.Domain}'.", sourceIp);
-
+        // Tenant validation (moved from controller — Layer 4 consolidation)
+        TenantValidationResult tenantResult = await tenantValidator
+            .ValidateAsync(user, tenant, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
+                "ITenantValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
+        if (!tenantResult.IsAuthorized) {
+            Log.AuthorizationFailed(logger, correlationId, causationId, "N/A",
+                tenant, domain, messageType,
+                tenantResult.Reason ?? "Tenant access denied.", sourceIp);
             throw new CommandAuthorizationException(
-                command.Tenant,
-                command.Domain,
-                command.CommandType,
-                $"Not authorized for domain '{command.Domain}'.");
+                tenant, domain, messageType,
+                tenantResult.Reason ?? "Tenant access denied.");
         }
 
-        // Permission authorization: only enforce if user has permission claims
-        var permissionClaims = user.FindAll("eventstore:permission")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
-
-        if (permissionClaims.Count > 0) {
-            bool hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.WildcardPermission, StringComparison.OrdinalIgnoreCase));
-            bool hasSubmit = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.SubmitPermission, StringComparison.OrdinalIgnoreCase));
-            bool hasSpecific = permissionClaims.Any(p => string.Equals(p, command.CommandType, StringComparison.OrdinalIgnoreCase));
-            if (!hasWildcard && !hasSubmit && !hasSpecific) {
-                string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
-                Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv, command.Tenant, command.Domain, command.CommandType, $"Not authorized for command type '{command.CommandType}'.", sourceIp);
-
-                throw new CommandAuthorizationException(
-                    command.Tenant,
-                    command.Domain,
-                    command.CommandType,
-                    $"Not authorized for command type '{command.CommandType}'.");
-            }
+        // RBAC validation (was inline domain + permission checks)
+        RbacValidationResult rbacResult = await rbacValidator
+            .ValidateAsync(user, tenant, domain,
+                messageType, messageCategory, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
+                "IRbacValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
+        if (!rbacResult.IsAuthorized) {
+            // Collect tenant claims for logging context only
+            var tenantClaims = user.FindAll("eventstore:tenant")
+                .Select(c => c.Value)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToList();
+            string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
+            Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv,
+                tenant, domain, messageType,
+                rbacResult.Reason ?? "RBAC check failed.", sourceIp);
+            throw new CommandAuthorizationException(
+                tenant, domain, messageType,
+                rbacResult.Reason ?? "RBAC check failed.");
         }
 
         Log.AuthorizationPassed(
             logger,
             correlationId,
             causationId,
-            command.Tenant,
-            command.Domain,
-            command.CommandType);
+            tenant,
+            domain,
+            messageType);
 
         return await next().ConfigureAwait(false);
     }
@@ -98,19 +99,19 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         [LoggerMessage(
             EventId = 1020,
             Level = LogLevel.Debug,
-            Message = "Authorization succeeded: CorrelationId={CorrelationId}, CausationId={CausationId}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Stage=AuthorizationPassed")]
+            Message = "Authorization succeeded: CorrelationId={CorrelationId}, CausationId={CausationId}, Tenant={Tenant}, Domain={Domain}, MessageType={MessageType}, Stage=AuthorizationPassed")]
         public static partial void AuthorizationPassed(
             ILogger logger,
             string correlationId,
             string causationId,
             string tenant,
             string domain,
-            string commandType);
+            string messageType);
 
         [LoggerMessage(
             EventId = 1021,
             Level = LogLevel.Warning,
-            Message = "Authorization failed: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, CausationId={CausationId}, TenantClaims={TenantClaims}, Tenant={Tenant}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}, FailureLayer={FailureLayer}, Stage=AuthorizationFailed")]
+            Message = "Authorization failed: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, CausationId={CausationId}, TenantClaims={TenantClaims}, Tenant={Tenant}, Domain={Domain}, MessageType={MessageType}, Reason={Reason}, SourceIp={SourceIp}, FailureLayer={FailureLayer}, Stage=AuthorizationFailed")]
         public static partial void AuthorizationFailed(
             ILogger logger,
             string correlationId,
@@ -118,7 +119,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             string tenantClaims,
             string tenant,
             string domain,
-            string commandType,
+            string messageType,
             string reason,
             string? sourceIp,
             string failureLayer = "MediatR.AuthorizationBehavior",

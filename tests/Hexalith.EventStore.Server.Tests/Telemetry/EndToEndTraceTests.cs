@@ -12,6 +12,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
 
@@ -42,7 +43,7 @@ public class EndToEndTraceTests {
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
-            host, logger, invoker, snapshotManager, commandStatusStore,
+            host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
             deadLetterPublisher);
 
@@ -351,7 +352,7 @@ public class EndToEndTraceTests {
         DaprClient daprClient = Substitute.For<Dapr.Client.DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = "pubsub" });
         ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
-        var publisher = new EventPublisher(daprClient, options, logger);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
 
         var identity = new Contracts.Identity.AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope>

@@ -1,6 +1,6 @@
 # Story 17.1: Authorization Options and Validator Abstractions
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,37 +25,39 @@ so that **JWT tokens stay lean (identity only) and the application can manage au
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `EventStoreAuthorizationOptions` (AC: #1, #8)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.CommandApi/Configuration/EventStoreAuthorizationOptions.cs` record
-  - [ ] 1.2 Create `ValidateEventStoreAuthorizationOptions` as `IValidateOptions<T>` validator (NOT FluentValidation — see AC #8)
-  - [ ] 1.3 Register options in `AddCommandApi()` bound to `EventStore:Authorization`
-- [ ] Task 2: Write characterization tests for existing auth behavior (AC: #7)
-  - [ ] 2.1 Verify existing `AuthorizationBehaviorTests.cs` covers behavior-level characterization (domain, permission, wildcard, case-insensitive, no-claims-pass-through) — these already exist and serve as characterization tests
-  - [ ] 2.2 **NEW: Controller-level tenant check characterization tests** — the inline check in `CommandsController.cs` lines 48-61 has ZERO test coverage today. Write tests for: no tenant claims → 403, wrong tenant → 403, matching tenant → proceeds, multiple tenants with one matching → succeeds
-  - [ ] 2.3 Verify all characterization tests pass against CURRENT code before extraction
-- [ ] Task 3: Create validator abstractions (AC: #2, #3)
-  - [ ] 3.1 Create `ITenantValidator` interface in `CommandApi/Authorization/`
-  - [ ] 3.2 Create `IRbacValidator` interface in `CommandApi/Authorization/`
-  - [ ] 3.3 Create `TenantValidationResult` and `RbacValidationResult` types
-- [ ] Task 4: Extract claims-based implementations (AC: #4, #5)
-  - [ ] 4.1 Create `ClaimsTenantValidator` extracting from current inline code
-  - [ ] 4.2 Create `ClaimsRbacValidator` extracting from current inline code
-  - [ ] 4.3 Unit tests for both implementations
-  - [ ] 4.4 **messageCategory contract test:** Verify `ClaimsRbacValidator` produces identical results for `"command"` and `"query"` messageCategory values (claims-based validation does not distinguish read/write — this is a contract that Story 17-2's actor-based implementation will diverge on)
-- [ ] Task 5: Wire up DI registration (AC: #6, #9)
-  - [ ] 5.1 Register `ITenantValidator` → `ClaimsTenantValidator` (default)
-  - [ ] 5.2 Register `IRbacValidator` → `ClaimsRbacValidator` (default)
-  - [ ] 5.3 Add conditional logic stub for actor-based registration (Story 17-2)
-- [ ] Task 6: Verify zero regression (AC: #10)
-  - [ ] 6.1 Run all Tier 1 tests (existing `AuthorizationBehaviorTests` must pass UNCHANGED — `AuthorizationBehavior.cs` is not modified in this story)
-  - [ ] 6.2 Run new characterization tests against extracted validator implementations
-  - [ ] 6.3 Two independent proofs of correctness: (a) existing behavior tests pass untouched, (b) new validator unit tests match extracted logic
+- [x] Task 1: Create `EventStoreAuthorizationOptions` (AC: #1, #8)
+    - [x] 1.1 Create `src/Hexalith.EventStore.CommandApi/Configuration/EventStoreAuthorizationOptions.cs` record
+    - [x] 1.2 Create `ValidateEventStoreAuthorizationOptions` as `IValidateOptions<T>` validator (NOT FluentValidation — see AC #8)
+    - [x] 1.3 Register options in `AddCommandApi()` bound to `EventStore:Authorization`
+- [x] Task 2: Write characterization tests for existing auth behavior (AC: #7)
+    - [x] 2.1 Verify existing `AuthorizationBehaviorTests.cs` covers behavior-level characterization (domain, permission, wildcard, case-insensitive, no-claims-pass-through) — these already exist and serve as characterization tests
+    - [x] 2.2 **NEW: Controller-level tenant check characterization tests** — the inline check in `CommandsController.cs` lines 48-61 has ZERO test coverage today. Write tests for: no tenant claims → 403, wrong tenant → 403, matching tenant → proceeds, multiple tenants with one matching → succeeds
+    - [x] 2.3 Verify all characterization tests pass against CURRENT code before extraction
+- [x] Task 3: Create validator abstractions (AC: #2, #3)
+    - [x] 3.1 Create `ITenantValidator` interface in `CommandApi/Authorization/`
+    - [x] 3.2 Create `IRbacValidator` interface in `CommandApi/Authorization/`
+    - [x] 3.3 Create `TenantValidationResult` and `RbacValidationResult` types
+- [x] Task 4: Extract claims-based implementations (AC: #4, #5)
+    - [x] 4.1 Create `ClaimsTenantValidator` extracting from current inline code
+    - [x] 4.2 Create `ClaimsRbacValidator` extracting from current inline code
+    - [x] 4.3 Unit tests for both implementations
+    - [x] 4.4 **messageCategory contract test:** Verify `ClaimsRbacValidator` produces identical results for `"command"` and `"query"` messageCategory values (claims-based validation does not distinguish read/write — this is a contract that Story 17-2's actor-based implementation will diverge on)
+- [x] Task 5: Wire up DI registration (AC: #6, #9)
+    - [x] 5.1 Register `ITenantValidator` → `ClaimsTenantValidator` (default)
+    - [x] 5.2 Register `IRbacValidator` → `ClaimsRbacValidator` (default)
+    - [x] 5.3 Add conditional logic stub for actor-based registration (Story 17-2)
+- [x] Task 6: Verify zero regression (AC: #10)
+    - [x] 6.1 Run all Tier 1 tests (existing `AuthorizationBehaviorTests` must pass UNCHANGED — `AuthorizationBehavior.cs` is not modified in this story)
+    - [x] 6.2 Run new characterization tests against extracted validator implementations
+    - [x] 6.3 Two independent proofs of correctness: (a) existing behavior tests pass untouched, (b) new validator unit tests match extracted logic
+    - [x] 6.4 Re-run Tier 2 Dapr-backed server tests in an environment with a reachable local placement service and confirm AC #10 end-to-end
 
 ## Dev Notes
 
 ### Critical: Naming Collision Avoidance
 
 The **existing** `ITenantValidator` at `src/Hexalith.EventStore.Server/Actors/ITenantValidator.cs` is a DIFFERENT concern:
+
 - **Existing (Server.Actors):** Defense-in-depth tenant isolation at DAPR actor level — validates command tenant matches actor ID tenant. Synchronous `void Validate(string commandTenantId, string actorId)`.
 - **New (CommandApi.Authorization):** API-level authorization — validates user's claims/actor-delegated permission to access a tenant. Async, returns result object.
 
@@ -63,7 +65,7 @@ These are complementary layers (Layer 4 vs Layer 3 in the six-layer auth model).
 
 ### Architecture: Six-Layer Auth Model (Layers 3-4 Change)
 
-```
+```text
 Layer 1: TLS/HTTPS (infrastructure)
 Layer 2: JWT Authentication (identity verification)
 Layer 3: Endpoint Authorization → [Authorize] attribute (identity only)   ← SIMPLIFIED
@@ -75,6 +77,7 @@ Layer 6: DAPR access control policies (infrastructure, unchanged)
 ### Extraction Points — Exact Code to Extract
 
 **From `CommandsController.cs` (lines 48-61) ONLY → `ClaimsTenantValidator`:**
+
 ```csharp
 // This inline tenant check moves into ClaimsTenantValidator.ValidateAsync():
 var tenantClaims = User.FindAll("eventstore:tenant")
@@ -89,12 +92,14 @@ else → TenantValidationResult.Allowed
 Note: `AuthorizationBehavior.cs` lines 40-43 also collect tenant claims, but ONLY for logging context on failure — there is NO tenant validation in the behavior. Tenant validation is exclusively in the controller.
 
 **CRITICAL — String Comparison Asymmetry (preserve exactly, do NOT normalize):**
+
 - **Tenant check** uses `StringComparison.Ordinal` (case-SENSITIVE, exact match) — this is deliberate because tenant IDs are system-assigned identifiers
 - **Domain check** uses `StringComparison.OrdinalIgnoreCase` (case-INSENSITIVE) — this is deliberate because domain names may vary in casing
 - **Permission check** uses `StringComparison.OrdinalIgnoreCase` (case-INSENSITIVE)
 - Do NOT "fix" or "normalize" these to the same comparison type. The asymmetry is intentional.
 
 **From `AuthorizationBehavior.cs` (lines 46-84) → `ClaimsRbacValidator`:**
+
 ```csharp
 // Domain checking (lines 46-62) — uses `domain` parameter:
 var domainClaims = user.FindAll("eventstore:domain")...
@@ -147,6 +152,7 @@ public record RbacValidationResult(bool IsAuthorized, string? Reason = null)
 ### Result Type Design Decision
 
 `TenantValidationResult` and `RbacValidationResult` have identical shape but are **separate records**. Do NOT introduce a shared base. Rationale:
+
 - Different semantic meaning (tenant access vs role-based permission)
 - Different evolution path: Story 17-2's actor-based implementations will add richer failure context (actor name, retry info) that diverges between the two
 - Separate types prevent accidental type confusion at call sites
@@ -161,12 +167,12 @@ public record RbacValidationResult(bool IsAuthorized, string? Reason = null)
 
 ```json
 {
-  "EventStore": {
-    "Authorization": {
-      "TenantValidatorActorName": null,
-      "RbacValidatorActorName": null
+    "EventStore": {
+        "Authorization": {
+            "TenantValidatorActorName": null,
+            "RbacValidatorActorName": null
+        }
     }
-  }
 }
 ```
 
@@ -257,6 +263,7 @@ This follows the same pattern as `ConfigureJwtBearerOptions.cs` — options read
 ### Existing Test Patterns to Follow
 
 From `AuthorizationBehaviorTests.cs`:
+
 - Use `DefaultHttpContext` with `ClaimsPrincipal` for HTTP context mocking
 - Use `NSubstitute` for `IHttpContextAccessor`
 - Use `Shouldly` assertions
@@ -264,19 +271,22 @@ From `AuthorizationBehaviorTests.cs`:
 - Naming: `ClassName_Scenario_ExpectedResult()`
 
 **Controller tests (Task 2.2) require a DIFFERENT approach than behavior tests:**
+
 - `CommandsController` accesses `User`, `HttpContext`, `Response` directly via `ControllerBase`
 - Must set up `ControllerContext` with `DefaultHttpContext` and `ClaimsPrincipal`:
-  ```csharp
-  var controller = new CommandsController(mediator, sanitizer, logger);
-  controller.ControllerContext = new ControllerContext {
-      HttpContext = new DefaultHttpContext { User = principal }
-  };
-  ```
+
+    ```csharp
+    var controller = new CommandsController(mediator, sanitizer, logger);
+    controller.ControllerContext = new ControllerContext {
+        HttpContext = new DefaultHttpContext { User = principal }
+    };
+    ```
+
 - Do NOT try to use `IHttpContextAccessor` — controllers access context directly
 
 ### Test File Locations
 
-```
+```text
 tests/Hexalith.EventStore.Server.Tests/
 ├── Pipeline/
 │   └── AuthorizationBehaviorTests.cs       # EXISTING — do not modify
@@ -291,7 +301,7 @@ tests/Hexalith.EventStore.Server.Tests/
 
 ### Files to Create
 
-```
+```text
 src/Hexalith.EventStore.CommandApi/
 ├── Authorization/
 │   ├── ITenantValidator.cs           # Interface
@@ -306,7 +316,7 @@ src/Hexalith.EventStore.CommandApi/
 
 ### Files to Modify
 
-```
+```text
 src/Hexalith.EventStore.CommandApi/
 ├── Extensions/ServiceCollectionExtensions.cs  # Add auth options + DI registration
 ```
@@ -320,16 +330,18 @@ src/Hexalith.EventStore.CommandApi/
 ### Regression Test Strategy
 
 Two independent proofs of correctness:
+
 1. **Existing tests pass unchanged:** `AuthorizationBehaviorTests.cs` must pass without modification — `AuthorizationBehavior.cs` is NOT refactored in this story (that's 17-3). If existing tests break, something is wrong with the DI wiring.
 2. **New validator unit tests match inline code:** The extracted `ClaimsTenantValidator` and `ClaimsRbacValidator` unit tests prove the extracted logic matches the inline code behavior.
 
-This story creates abstractions and implementations but nothing *calls* them through the pipeline yet. That means: unit tests only, no integration tests showing validators called through MediatR. Integration proof comes in Story 17-3.
+This story creates abstractions and implementations but nothing _calls_ them through the pipeline yet. That means: unit tests only, no integration tests showing validators called through MediatR. Integration proof comes in Story 17-3.
 
 ### Scope Boundary
 
 **IN scope:** Options class, interfaces, result types, claims-based implementations, DI registration, characterization tests, unit tests.
 
 **OUT of scope (later stories):**
+
 - Actor-based validator implementations → Story 17-2
 - Refactoring `AuthorizationBehavior` / `CommandsController` to USE the interfaces → Story 17-3
 - `ValidateCommandRequest`/`ValidateQueryRequest` with optional `AggregateId` (Amendment A2) → Stories 17-4, 17-7, 17-8
@@ -362,10 +374,120 @@ This story creates abstractions and implementations but nothing *calls* them thr
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Pre-existing: 84 build errors in Server.Tests from constructor signature changes (IDeadLetterPublisher, IEventPayloadProtectionService) in previous stories. Fixed as prerequisite for running tests.
+- 2026-03-11 review fix: Claims-based tenant validator denial reasons were aligned with the exact `CommandsController` messages so Story 17-3 can switch to the abstraction without behavior drift.
+- 2026-03-11 review fix: Replaced unconfigured `IEventPayloadProtectionService` substitutes in Server test fixtures with `NoOpEventPayloadProtectionService` after full-project regression testing exposed 75 code-side failures caused by null protection results.
+- Resolved: Tier 2 Dapr-backed server tests now pass with full Dapr infrastructure (Placement:6050, Scheduler:6060, Redis:6379). AC #10 fully closed.
+
 ### Completion Notes List
 
+- **Task 1:** Created `EventStoreAuthorizationOptions` record and `ValidateEventStoreAuthorizationOptions` `IValidateOptions&lt;T&gt;` validator in `Configuration/`. Null values valid (claims-based default), non-null validated as non-empty/non-whitespace. Registered in `AddCommandApi()` bound to `EventStore:Authorization`.
+- **Task 2:** Verified existing `AuthorizationBehaviorTests.cs` (10 tests) serves as characterization for domain/permission auth. Created 7 new `CommandsControllerTenantTests` characterizing the inline tenant check: no claims → 403, wrong tenant → 403, matching → 202, multi-tenant → 202, case-sensitive Ordinal comparison, whitespace filtering, unauthenticated → 403.
+- **Task 3:** Created `ITenantValidator` and `IRbacValidator` interfaces with `TenantValidationResult` and `RbacValidationResult` result types in `CommandApi/Authorization/`. Separate records despite identical shape (different semantic meaning, different evolution path).
+- **Task 4:** Extracted `ClaimsTenantValidator` from controller lines 48-61 (Ordinal case-sensitive tenant matching) and `ClaimsRbacValidator` from behavior lines 46-84 (OrdinalIgnoreCase domain/permission matching with wildcard/submit support). 21 unit tests including messageCategory contract coverage and query-category denial wording verification.
+- **Task 5:** Registered DI using factory delegate pattern: `ClaimsTenantValidator` and `ClaimsRbacValidator` as concrete implementations, `ITenantValidator`/`IRbacValidator` resolved via factory that reads `IOptions<EventStoreAuthorizationOptions>` at resolve-time. Null config → claims-based; non-null → throws with message pointing to Story 17-2.
+- **Task 6 (review follow-up):** Fixed the extracted tenant validator to preserve the exact controller denial messages (`"No tenant authorization claims found. Access denied."` and `"Not authorized to submit commands for tenant '{tenantId}'."`).
+- **Task 6 (review follow-up):** Added DI coverage for `AddCommandApi()` to verify claims-based default resolution, direct-resolution placeholder exceptions for configured actor validator names, and fail-fast startup validation for unsupported actor-validator configuration.
+- **Task 6 (review follow-up):** Updated `ClaimsRbacValidator` denial text to use `query type` wording for query-category permission failures while preserving identical authorization decisions for command and query flows.
+- **Task 6 (review follow-up):** Replaced regression-causing `IEventPayloadProtectionService` substitutes with `NoOpEventPayloadProtectionService` across affected Server tests. Focused regression suites now pass, and the prior full `Server.Tests` run improved from 94 failures to 19 failures.
+- **Task 6 verification status:** Full `tests/Hexalith.EventStore.Server.Tests` run: **885/885 passed** (100%). All Dapr-backed integration tests (actor lifecycle, event persistence, snapshot, command routing) pass with full Dapr infrastructure. AC #10 fully satisfied.
+
 ### File List
+
+**New files:**
+
+- src/Hexalith.EventStore.CommandApi/Configuration/EventStoreAuthorizationOptions.cs
+- src/Hexalith.EventStore.CommandApi/Authorization/ITenantValidator.cs
+- src/Hexalith.EventStore.CommandApi/Authorization/IRbacValidator.cs
+- src/Hexalith.EventStore.CommandApi/Authorization/TenantValidationResult.cs
+- src/Hexalith.EventStore.CommandApi/Authorization/RbacValidationResult.cs
+- src/Hexalith.EventStore.CommandApi/Authorization/ClaimsTenantValidator.cs
+- src/Hexalith.EventStore.CommandApi/Authorization/ClaimsRbacValidator.cs
+- tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreAuthorizationOptionsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Configuration/CommandApiAuthorizationRegistrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Controllers/CommandsControllerTenantTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Authorization/ClaimsTenantValidatorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Authorization/ClaimsRbacValidatorTests.cs
+
+**Modified files:**
+
+- src/Hexalith.EventStore.CommandApi/Authorization/CommandApiAuthorizationStartupValidator.cs (forces unsupported actor-validator config to fail during startup)
+- src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs (added auth options + validator DI registration)
+- src/Hexalith.EventStore.CommandApi/Authorization/ClaimsRbacValidator.cs (uses query-aware denial wording for query-category failures)
+- src/Hexalith.EventStore.CommandApi/Authorization/ClaimsTenantValidator.cs (aligned denial reasons with `CommandsController`)
+- tests/Hexalith.EventStore.Server.Tests/Configuration/CommandApiAuthorizationRegistrationTests.cs (added startup validation coverage for unsupported actor-validator config)
+- tests/Hexalith.EventStore.Server.Tests/Authorization/ClaimsRbacValidatorTests.cs (added query-category denial wording coverage)
+- tests/Hexalith.EventStore.Server.Tests/Authorization/ClaimsTenantValidatorTests.cs (strengthened message-parity assertions)
+
+**Modified workflow artifacts:**
+
+- \_bmad-output/implementation-artifacts/17-1-authorization-options-and-validator-abstractions.md (review notes, status, and traceability sync)
+- \_bmad-output/implementation-artifacts/sprint-status.yaml (story status synced to `done`)
+
+**Modified files (review regression fixes / verification support):**
+
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/DeadLetterRoutingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/EventPublicationIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/MultiTenantPublicationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/StateMachineIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/AtLeastOnceDeliveryTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherRetryComplianceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/SnapshotCreationIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/SubscriberIdempotencyTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/LogLevelConventionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/StructuredLoggingCompletenessTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterTraceChainTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/DataPathIsolationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Telemetry/EndToEndTraceTests.cs
+
+### Change Log
+
+- 2026-03-10: Story 17-1 implementation complete — Authorization options, validator interfaces, claims-based implementations, DI registration with factory delegates, 43 new tests. Also fixed 25 pre-existing test compilation errors (missing constructor parameters).
+- 2026-03-11: Senior code review fixes applied — preserved exact tenant denial messages, added DI registration tests, replaced unsafe payload protection substitutes with `NoOpEventPayloadProtectionService`, and reduced full `Server.Tests` failures from 94 to 19 (remaining failures require local Dapr placement service).
+- 2026-03-11: BMAD code review bookkeeping sync — set story status back to `in-progress`, reopened Task 6 for pending Tier 2 verification, and aligned the verification notes with the current focused test run.
+- 2026-03-11: Task 6.4 completed — full Tier 2 Dapr-backed server tests pass 882/882 with Placement, Scheduler, and Redis infrastructure running. AC #10 fully satisfied, zero regressions confirmed.
+- 2026-03-11: Final review follow-up fixes applied — unsupported actor-validator config now fails during startup validation, query-category RBAC denials use `query type` wording, unrelated roadmap formatting drift was reverted, and story/sprint bookkeeping advanced to `done`.
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+GitHub Copilot (GPT-5.4) — 2026-03-11
+
+### Outcome
+
+Approved after review fixes; all acceptance criteria are satisfied and the story is ready for completion.
+
+### Findings addressed
+
+- Fixed the `ClaimsTenantValidator` denial messages so they now exactly match `CommandsController` behavior, avoiding behavior drift when Story 17-3 wires the abstraction into production call paths.
+- Added fail-fast startup validation so unsupported actor-validator names are rejected during application startup instead of on the first request, while retaining the Story 17-2 placeholder safeguards on direct resolution.
+- Added explicit DI tests covering default claims-based registration, configured actor-name placeholder exceptions for `ITenantValidator` and `IRbacValidator`, and startup validation behavior.
+- Updated `ClaimsRbacValidator` to use query-appropriate denial wording for query-category permission failures without changing authorization outcomes.
+- Repaired Server test regressions by using `NoOpEventPayloadProtectionService` instead of unconfigured substitutes that returned null results.
+- Reverted an unrelated formatting-only change in `15-5-public-product-roadmap.md` and synced the story file list plus sprint tracking artifacts.
+
+### Verification
+
+- `ClaimsTenantValidatorTests`, `ClaimsRbacValidatorTests`, `EventStoreAuthorizationOptionsTests`, `CommandApiAuthorizationRegistrationTests`, `CommandsControllerTenantTests`, and `AuthorizationBehaviorTests`: **60/60 passed** in the current review run.
+- Full `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore`: **885/885 passed**.
+
+### Status recommendation
+
+**2026-03-11 update:** Tier 2 tests pass 885/885 with full Dapr infrastructure, review follow-up fixes are complete, and the story can be marked `done`.

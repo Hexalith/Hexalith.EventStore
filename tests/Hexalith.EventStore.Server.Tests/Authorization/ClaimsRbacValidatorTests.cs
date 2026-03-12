@@ -1,0 +1,262 @@
+
+using System.Security.Claims;
+
+using Hexalith.EventStore.CommandApi.Authorization;
+
+using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Authorization;
+
+/// <summary>
+/// Unit tests for <see cref="ClaimsRbacValidator"/>.
+/// These tests prove the extracted logic matches the inline code in AuthorizationBehavior (lines 46-84).
+/// </summary>
+public class ClaimsRbacValidatorTests {
+    private readonly ClaimsRbacValidator _validator = new();
+
+    private static ClaimsPrincipal CreatePrincipal(
+        string[]? domains = null,
+        string[]? permissions = null) {
+        var claims = new List<Claim>();
+        if (domains is not null) {
+            foreach (string d in domains) {
+                claims.Add(new Claim("eventstore:domain", d));
+            }
+        }
+
+        if (permissions is not null) {
+            foreach (string p in permissions) {
+                claims.Add(new Claim("eventstore:permission", p));
+            }
+        }
+
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+    }
+
+    // --- Domain authorization tests ---
+
+    [Fact]
+    public async Task ValidateAsync_MatchingDomain_ReturnsAllowed() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["test-domain"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_NoDomainClaims_ReturnsAllowed() {
+        // Arrange — no domain claims means all domains authorized
+        ClaimsPrincipal principal = CreatePrincipal();
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WrongDomain_ReturnsDenied() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["other-domain"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason!.ShouldContain("domain");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DomainComparison_IsCaseInsensitive() {
+        // Arrange — domain comparison is OrdinalIgnoreCase
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["TEST-DOMAIN"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    // --- Permission authorization tests ---
+
+    [Fact]
+    public async Task ValidateAsync_MatchingPermission_ReturnsAllowed() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["CreateOrder"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_NoPermissionClaims_ReturnsAllowed() {
+        // Arrange — no permission claims means all commands authorized
+        ClaimsPrincipal principal = CreatePrincipal();
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WrongPermission_ReturnsDenied() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["OtherCommand"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason!.ShouldContain("command type");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WrongPermissionForQuery_ReturnsDeniedWithQueryTypeReason() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["OtherQuery"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "GetOrder", "query", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for query type 'GetOrder'.");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WildcardPermission_ReturnsAllowed() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["commands:*"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "AnyCommandType", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_SubmitPermission_ReturnsAllowed() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["command:submit"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_PermissionComparison_IsCaseInsensitive() {
+        // Arrange — permission comparison is OrdinalIgnoreCase
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["CREATEORDER"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    // --- messageCategory contract test (Subtask 4.4) ---
+
+    [Theory]
+    [InlineData("command")]
+    [InlineData("query")]
+    public async Task ValidateAsync_MessageCategory_ProducesIdenticalResults_ForBothValues(string messageCategory) {
+        // Arrange — claims-based validation does NOT distinguish command vs query
+        ClaimsPrincipal principal = CreatePrincipal(
+            domains: ["test-domain"],
+            permissions: ["CreateOrder"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", messageCategory, CancellationToken.None);
+
+        // Assert — both categories produce the same result
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("command")]
+    [InlineData("query")]
+    public async Task ValidateAsync_MessageCategory_DenialIdentical_ForBothValues(string messageCategory) {
+        // Arrange — verify denial is also identical for both categories
+        ClaimsPrincipal principal = CreatePrincipal(
+            domains: ["other-domain"],
+            permissions: ["CreateOrder"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", messageCategory, CancellationToken.None);
+
+        // Assert — both categories produce the same denial
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason!.ShouldContain("domain");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_NullUser_ThrowsArgumentNullException() {
+        // Act & Assert
+        _ = await Should.ThrowAsync<ArgumentNullException>(
+            () => _validator.ValidateAsync(null!, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None));
+    }
+
+    // --- Combined domain + permission tests ---
+
+    [Fact]
+    public async Task ValidateAsync_MatchingDomainAndPermission_ReturnsAllowed() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(
+            domains: ["test-domain"],
+            permissions: ["CreateOrder"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_MatchingDomainButWrongPermission_ReturnsDenied() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(
+            domains: ["test-domain"],
+            permissions: ["OtherCommand"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason!.ShouldContain("command type");
+    }
+}

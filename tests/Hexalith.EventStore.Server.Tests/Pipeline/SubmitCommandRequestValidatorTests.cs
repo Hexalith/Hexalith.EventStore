@@ -74,9 +74,9 @@ public class SubmitCommandRequestValidatorTests {
 
     [Fact]
     public void SubmitCommandRequestValidator_FieldLengthLimits_ReturnsValidationError() {
-        // Arrange - tenant exceeds 128 chars
+        // Arrange - tenant exceeds canonical AggregateIdentity max length (64 chars)
         var request = new SubmitCommandRequest(
-            Tenant: new string('a', 129),
+            Tenant: new string('a', 65),
             Domain: "test-domain",
             AggregateId: "agg-001",
             CommandType: "CreateOrder",
@@ -87,7 +87,7 @@ public class SubmitCommandRequestValidatorTests {
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.PropertyName == "Tenant" && e.ErrorMessage.Contains("128"));
+        result.Errors.ShouldContain(e => e.PropertyName == "Tenant" && e.ErrorMessage.Contains("64"));
     }
 
     [Fact]
@@ -178,5 +178,25 @@ public class SubmitCommandRequestValidatorTests {
         // Assert
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldContain(e => e.PropertyName == "CommandType" && e.ErrorMessage.Contains("dangerous characters"));
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("onclick=alert(1)")]
+    public void SubmitCommandRequestValidator_ScriptPatternInCommandType_ReturnsValidationError(string commandType) {
+        // Arrange
+        var request = new SubmitCommandRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: commandType,
+            Payload: JsonDocument.Parse("{}").RootElement);
+
+        // Act
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "CommandType" && e.ErrorMessage.Contains("script injection patterns"));
     }
 }

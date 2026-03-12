@@ -11,6 +11,7 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -77,15 +78,15 @@ public class StructuredLoggingCompletenessTests : IDisposable {
     /// <summary>
     /// Verifies DaprDomainServiceInvoker logs using LoggerMessage.
     /// Note: We still cannot mock DaprClient extension methods easily, but we can verify
-    /// that the INVOKER class emits the log if we can trigger it. 
-    /// However, since DaprClient is sealed/non-virtual for extension methods, we must fallback to 
-    /// testing that the Log partial class is generated correctly by inspecting the type or 
+    /// that the INVOKER class emits the log if we can trigger it.
+    /// However, since DaprClient is sealed/non-virtual for extension methods, we must fallback to
+    /// testing that the Log partial class is generated correctly by inspecting the type or
     /// trusting the source generator if we can't invoke it.
     /// ALTHOUGH: The code uses daprClient.InvokeMethodAsync<TRequest, TResponse> which IS an extension method.
     /// BUT the underlying method is InvokeMethodAsync on the client.
     /// A better approach here, given the constraints, might be to stick to verifying the TEMPLATE constant
     /// if it's public, or rely on the fact that we changed the code to use source gen.
-    /// 
+    ///
     /// actually, we can test the ValidationBehavior since it doesn't depend on DaprClient.
     /// </summary>
     [Fact]
@@ -160,7 +161,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-        var persister = new EventPersister(stateManager, logger);
+        var persister = new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         CommandEnvelope command = CreateCommandEnvelope();
         var domainResult = new DomainResult([new TestEvent()]);
@@ -186,7 +187,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
         var logger = new TestLogger<EventPublisher>(_logEntries);
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
-        var publisher = new EventPublisher(daprClient, options, logger);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 
@@ -214,7 +215,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("pub/sub failure"));
         IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
-        var publisher = new EventPublisher(daprClient, options, logger);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 

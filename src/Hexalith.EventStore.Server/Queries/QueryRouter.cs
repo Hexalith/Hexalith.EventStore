@@ -1,0 +1,153 @@
+
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Pipeline.Queries;
+
+using Microsoft.Extensions.Logging;
+
+namespace Hexalith.EventStore.Server.Queries;
+/// <summary>
+/// Routes queries to the correct projection actor based on canonical identity derivation.
+/// </summary>
+public partial class QueryRouter(
+    IActorProxyFactory actorProxyFactory,
+    ILogger<QueryRouter> logger) : IQueryRouter {
+    /// <summary>
+    /// The DAPR actor type name for projection actors. Application developers register
+    /// their concrete implementation with this name.
+    /// </summary>
+    public const string ProjectionActorTypeName = "ProjectionActor";
+
+    /// <inheritdoc/>
+    public async Task<QueryRouterResult> RouteQueryAsync(
+        SubmitQuery query,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var identity = new AggregateIdentity(query.Tenant, query.Domain, query.AggregateId);
+        string actorId = identity.ActorId;
+
+        Log.QueryRouting(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+
+        var envelope = new QueryEnvelope(
+            query.Tenant,
+            query.Domain,
+            query.AggregateId,
+            query.QueryType,
+            query.Payload,
+            query.CorrelationId,
+            query.UserId);
+
+        try {
+            IProjectionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionActor>(
+                new ActorId(actorId),
+                ProjectionActorTypeName);
+
+            QueryResult result = await proxy.QueryAsync(envelope).ConfigureAwait(false);
+
+            if (!result.Success) {
+                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, result.ErrorMessage);
+                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage);
+            }
+
+            Log.QueryRouted(logger, query.CorrelationId, actorId);
+
+            return new QueryRouterResult(Success: true, Payload: result.Payload, NotFound: false);
+        }
+        catch (ActorMethodInvocationException ex) when (IsProjectionActorNotFound(ex)) {
+            Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
+        }
+        catch (ActorMethodInvocationException ex) {
+            Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+            throw;
+        }
+        catch (Exception ex) {
+            Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+            throw;
+        }
+    }
+
+    private static bool IsProjectionActorNotFound(ActorMethodInvocationException exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return ContainsNotFoundMarker(exception.Message)
+            || ContainsNotFoundMarker(exception.InnerException?.Message);
+
+        static bool ContainsNotFoundMarker(string? message)
+            => !string.IsNullOrWhiteSpace(message)
+                && (message.Contains("actor type not registered", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("did not find address for actor", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("could not find address for actor", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("no address found for actor", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("actor not found", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static partial class Log {
+        [LoggerMessage(
+            EventId = 1200,
+            Level = LogLevel.Debug,
+            Message = "Routing query to projection actor: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, QueryType={QueryType}, ActorId={ActorId}, Stage=QueryRouting")]
+        public static partial void QueryRouting(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string queryType,
+            string actorId);
+
+        [LoggerMessage(
+            EventId = 1201,
+            Level = LogLevel.Debug,
+            Message = "Query routed to projection actor: CorrelationId={CorrelationId}, ActorId={ActorId}, Stage=QueryRouted")]
+        public static partial void QueryRouted(
+            ILogger logger,
+            string correlationId,
+            string actorId);
+
+        [LoggerMessage(
+            EventId = 1204,
+            Level = LogLevel.Warning,
+            Message = "Projection actor returned an unsuccessful query result: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, QueryType={QueryType}, ActorId={ActorId}, ErrorMessage={ErrorMessage}, Stage=QueryExecutionFailed")]
+        public static partial void QueryExecutionFailed(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string queryType,
+            string actorId,
+            string? errorMessage);
+
+        [LoggerMessage(
+            EventId = 1202,
+            Level = LogLevel.Error,
+            Message = "Projection actor invocation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, QueryType={QueryType}, ActorId={ActorId}, Stage=ActorInvocationFailed")]
+        public static partial void ActorInvocationFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string queryType,
+            string actorId);
+
+        [LoggerMessage(
+            EventId = 1203,
+            Level = LogLevel.Warning,
+            Message = "Projection actor not found: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ActorId={ActorId}, Stage=ProjectionActorNotFound")]
+        public static partial void ProjectionActorNotFound(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string actorId);
+    }
+}

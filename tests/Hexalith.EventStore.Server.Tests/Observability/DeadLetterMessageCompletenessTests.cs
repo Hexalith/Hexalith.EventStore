@@ -11,6 +11,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -63,7 +64,7 @@ public class DeadLetterMessageCompletenessTests {
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
-            host, logger, invoker, snapshotManager, commandStatusStore,
+            host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
             fakeDeadLetter);
 

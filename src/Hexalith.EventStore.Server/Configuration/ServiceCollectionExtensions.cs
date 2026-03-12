@@ -3,6 +3,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Contracts.Security;
 
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,7 @@ public static class EventStoreServerServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
+        services.TryAddScoped<IQueryRouter, QueryRouter>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();

@@ -5,6 +5,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -41,7 +42,7 @@ public class EventPersisterTests {
     private static (EventPersister Persister, IActorStateManager StateManager) CreatePersister() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<EventPersister> logger = Substitute.For<ILogger<EventPersister>>();
-        return (new EventPersister(stateManager, logger), stateManager);
+        return (new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService()), stateManager);
     }
 
     private static void ConfigureNoMetadata(IActorStateManager stateManager) => stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())

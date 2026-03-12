@@ -13,26 +13,35 @@ public class EventStoreClaimsTransformation(ILogger<EventStoreClaimsTransformati
     internal const string TenantClaimType = "eventstore:tenant";
     internal const string DomainClaimType = "eventstore:domain";
     internal const string PermissionClaimType = "eventstore:permission";
+    internal const string SubjectClaimType = "sub";
 
     public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal) {
         ArgumentNullException.ThrowIfNull(principal);
 
-        // Idempotency: if any eventstore:* claims already exist, skip transformation
-        if (principal.HasClaim(c => c.Type is TenantClaimType or DomainClaimType or PermissionClaimType)) {
+        bool hasEventStoreClaims = principal.HasClaim(c => c.Type is TenantClaimType or DomainClaimType or PermissionClaimType);
+        bool hasSubjectClaim = principal.HasClaim(c => c.Type == SubjectClaimType);
+        bool hasNameIdentifierClaim = principal.HasClaim(c => c.Type == ClaimTypes.NameIdentifier);
+
+        // Idempotency: if the principal is already normalized for downstream authorization, skip transformation.
+        if (hasEventStoreClaims && (!hasSubjectClaim || hasNameIdentifierClaim)) {
             return Task.FromResult(principal);
         }
 
         var identity = new ClaimsIdentity();
 
-        AddTenantClaims(principal, identity);
-        AddClaimsFromJwt(principal, identity, "domains", DomainClaimType);
-        AddClaimsFromJwt(principal, identity, "permissions", PermissionClaimType);
+        AddNameIdentifierClaim(principal, identity);
+
+        if (!hasEventStoreClaims) {
+            AddTenantClaims(principal, identity);
+            AddClaimsFromJwt(principal, identity, "domains", DomainClaimType);
+            AddClaimsFromJwt(principal, identity, "permissions", PermissionClaimType);
+        }
 
         if (identity.Claims.Any()) {
             principal.AddIdentity(identity);
         }
 
-        string subject = principal.FindFirst("sub")?.Value ?? "unknown";
+        string subject = principal.FindFirst(SubjectClaimType)?.Value ?? "unknown";
         int tenantCount = identity.Claims.Count(c => c.Type == TenantClaimType);
         int domainCount = identity.Claims.Count(c => c.Type == DomainClaimType);
 
@@ -43,6 +52,17 @@ public class EventStoreClaimsTransformation(ILogger<EventStoreClaimsTransformati
             domainCount);
 
         return Task.FromResult(principal);
+    }
+
+    private static void AddNameIdentifierClaim(ClaimsPrincipal principal, ClaimsIdentity identity) {
+        if (principal.HasClaim(c => c.Type == ClaimTypes.NameIdentifier)) {
+            return;
+        }
+
+        string? subject = principal.FindFirst(SubjectClaimType)?.Value;
+        if (!string.IsNullOrWhiteSpace(subject)) {
+            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subject));
+        }
     }
 
     private void AddTenantClaims(ClaimsPrincipal principal, ClaimsIdentity identity) {

@@ -3,6 +3,7 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -26,7 +27,7 @@ public class SnapshotCreationIntegrationTests {
         IOptions<SnapshotOptions> options = Options.Create(new SnapshotOptions { DefaultInterval = defaultInterval });
         ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
         var stateManager = new InMemoryStateManager();
-        return (new SnapshotManager(options, logger), stateManager);
+        return (new SnapshotManager(options, logger, new NoOpEventPayloadProtectionService()), stateManager);
     }
 
     /// <summary>

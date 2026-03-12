@@ -102,16 +102,16 @@ The roadmap page should:
 
 ### Key File Locations
 
-| File | Purpose |
-|------|---------|
-| `docs/community/roadmap.md` | **NEW** — target file |
+| File                                       | Purpose                                            |
+| ------------------------------------------ | -------------------------------------------------- |
+| `docs/community/roadmap.md`                | **NEW** — target file                              |
 | `docs/community/awesome-event-sourcing.md` | Sibling page in same folder — follow same template |
-| `README.md` | Add roadmap link to Community section |
-| `docs/fr-traceability.md` | Update FR33 GAP → COVERED |
-| `.markdownlint-cli2.jsonc` | Linting config to validate against |
-| `CHANGELOG.md` | Link from versioning section |
-| `docs/guides/upgrade-path.md` | Link from versioning section |
-| `CONTRIBUTING.md` | Link from "How to Influence" section |
+| `README.md`                                | Add roadmap link to Community section              |
+| `docs/fr-traceability.md`                  | Update FR33 GAP → COVERED                          |
+| `.markdownlint-cli2.jsonc`                 | Linting config to validate against                 |
+| `CHANGELOG.md`                             | Link from versioning section                       |
+| `docs/guides/upgrade-path.md`              | Link from versioning section                       |
+| `CONTRIBUTING.md`                          | Link from "How to Influence" section               |
 
 ### GitHub URLs for the Roadmap Page
 

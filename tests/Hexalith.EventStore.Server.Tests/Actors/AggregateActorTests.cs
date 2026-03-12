@@ -10,6 +10,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -55,7 +56,7 @@ public class AggregateActorTests {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -834,7 +835,7 @@ public class AggregateActorTests {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);

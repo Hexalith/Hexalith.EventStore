@@ -25,50 +25,26 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     public async Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? Guid.NewGuid().ToString();
 
-        // Store tenant in HttpContext for error handlers to include in ProblemDetails extensions
+        // Store tenant in HttpContext for error handlers and rate limiter OnRejected callback
         if (!string.IsNullOrEmpty(request.Tenant)) {
             HttpContext.Items["RequestTenantId"] = request.Tenant;
         }
 
-        // Layer 3: Pre-pipeline tenant authorization (before MediatR pipeline)
-        if (HttpContext?.User is null) {
-            return CreateForbiddenProblemDetails("Authentication context unavailable.", correlationId, request.Tenant);
-        }
-
-        if (User.Identity?.IsAuthenticated != true) {
-            return CreateForbiddenProblemDetails("User is not authenticated.", correlationId, request.Tenant);
-        }
-
-        var tenantClaims = User.FindAll("eventstore:tenant")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
-
-        if (tenantClaims.Count == 0) {
-            LogTenantAuthorizationFailure(correlationId, request.Tenant, request.CommandType, request.Domain, "No tenant claims");
-            return CreateForbiddenProblemDetails("No tenant authorization claims found. Access denied.", correlationId, request.Tenant);
-        }
-
-        if (!tenantClaims.Any(t => string.Equals(t, request.Tenant, StringComparison.Ordinal))) {
-            LogTenantAuthorizationFailure(correlationId, request.Tenant, request.CommandType, request.Domain, "Tenant not authorized");
-            return CreateForbiddenProblemDetails($"Not authorized to submit commands for tenant '{request.Tenant}'.", correlationId, request.Tenant);
-        }
-
-        // Store authorized tenant for downstream use
-        HttpContext.Items["AuthorizedTenant"] = request.Tenant;
-
         // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
-        string userId = User.FindFirst("sub")?.Value ?? "unknown";
-        if (userId == "unknown") {
+        string? userId = User.FindFirst("sub")?.Value;
+        if (string.IsNullOrWhiteSpace(userId)) {
             logger.LogWarning(
-                "JWT 'sub' claim missing for command submission. Using 'unknown' as UserId. CorrelationId={CorrelationId}. Check identity provider configuration.",
+                "JWT 'sub' claim missing for command submission. Rejecting request as unauthorized. CorrelationId={CorrelationId}.",
                 correlationId);
+
+            return Unauthorized();
         }
 
         // SEC-4: Extension metadata sanitization at API gateway
@@ -116,36 +92,4 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         return Accepted(new SubmitCommandResponse(result.CorrelationId));
     }
 
-    private ObjectResult CreateForbiddenProblemDetails(string detail, string correlationId, string tenantId) {
-        var problemDetails = new ProblemDetails {
-            Status = StatusCodes.Status403Forbidden,
-            Title = "Forbidden",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
-            Detail = detail,
-            Instance = HttpContext?.Request.Path,
-            Extensions =
-            {
-                ["correlationId"] = correlationId,
-                ["tenantId"] = tenantId,
-            },
-        };
-
-        Response.ContentType = "application/problem+json";
-        return new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status403Forbidden };
-    }
-
-    private void LogTenantAuthorizationFailure(string correlationId, string tenantId, string commandType, string domain, string reason) {
-        string? sourceIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
-        string causationId = correlationId; // For original submissions, CausationId = CorrelationId
-        logger.LogWarning(
-            "Authorization failed: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, CausationId={CausationId}, Tenant={TenantId}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}, SourceIp={SourceIp}",
-            "AuthorizationDenied",
-            correlationId,
-            causationId,
-            tenantId,
-            domain,
-            commandType,
-            reason,
-            sourceIp);
-    }
 }

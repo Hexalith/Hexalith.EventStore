@@ -3,6 +3,7 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -41,7 +42,7 @@ public class SubscriberIdempotencyTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions());
         ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
-        var publisher = new EventPublisher(daprClient, options, logger);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
         return (publisher, daprClient);
     }
 

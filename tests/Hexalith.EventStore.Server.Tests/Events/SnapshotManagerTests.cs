@@ -3,6 +3,7 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,7 @@ public class SnapshotManagerTests {
         IOptions<SnapshotOptions> optionsWrapper = Options.Create(options);
         ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        return (new SnapshotManager(optionsWrapper, logger), stateManager);
+        return (new SnapshotManager(optionsWrapper, logger, new NoOpEventPayloadProtectionService()), stateManager);
     }
 
     // === 8.2: ShouldCreateSnapshot at default interval ===

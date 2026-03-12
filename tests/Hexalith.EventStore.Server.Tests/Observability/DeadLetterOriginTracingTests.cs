@@ -11,6 +11,7 @@ using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -72,7 +73,7 @@ public class DeadLetterOriginTracingTests {
             new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
-            host, logger, invoker, snapshotManager, commandStatusStore,
+            host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
             fakeDeadLetter);
 

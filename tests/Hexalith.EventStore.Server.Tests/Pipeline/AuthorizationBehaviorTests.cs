@@ -1,9 +1,11 @@
 
 using System.Security.Claims;
 
+using Hexalith.EventStore.CommandApi.Authorization;
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Pipeline.Queries;
 
 using MediatR;
 
@@ -43,7 +45,9 @@ public class AuthorizationBehaviorTests {
         httpContext.Items["CorrelationId"] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
-        return new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, _logger);
+        var tenantValidator = new ClaimsTenantValidator();
+        var rbacValidator = new ClaimsRbacValidator();
+        return new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
     }
 
     private static ClaimsPrincipal CreatePrincipal(
@@ -181,7 +185,9 @@ public class AuthorizationBehaviorTests {
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
         var otherLogger = new TestLogger<AuthorizationBehavior<PingRequest, PingResponse>>([]);
-        var behavior = new AuthorizationBehavior<PingRequest, PingResponse>(accessor, otherLogger);
+        var tenantValidator = new ClaimsTenantValidator();
+        var rbacValidator = new ClaimsRbacValidator();
+        var behavior = new AuthorizationBehavior<PingRequest, PingResponse>(accessor, tenantValidator, rbacValidator, otherLogger);
         var next = new RequestHandlerDelegate<PingResponse>((_) => Task.FromResult(new PingResponse()));
 
         // Act
@@ -227,6 +233,231 @@ public class AuthorizationBehaviorTests {
             entry.Message.ShouldNotContain("Bearer");
             entry.Message.ShouldNotContain("eyJ"); // JWT prefix
         }
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_UserWithNoTenantClaims_ThrowsAuthorizationException() {
+        // Arrange — authenticated user with no tenant claims (now caught by behavior via ITenantValidator)
+        ClaimsPrincipal principal = CreatePrincipal(tenants: null);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand();
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        ex.Reason.ShouldContain("No tenant authorization claims");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_UserWithWrongTenant_ThrowsAuthorizationException() {
+        // Arrange — tenant mismatch (case-SENSITIVE comparison)
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["other-tenant"]);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant");
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        ex.Reason.ShouldContain("Not authorized to submit commands for tenant");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_UserWithMatchingTenant_Succeeds() {
+        // Arrange — matching tenant claim
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant");
+
+        // Act
+        SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.CorrelationId.ShouldBe("test-correlation-id");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_TenantPasses_RbacFails_ThrowsAuthorizationException() {
+        // Arrange — tenant matches, but domain does not (sequential tenant-then-RBAC flow)
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["other-domain"]);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant", domain: "test-domain");
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        // Should fail on RBAC (domain), not tenant
+        ex.Reason.ShouldContain("domain");
+        ex.Reason.ShouldNotContain("tenant");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_CallsTenantValidatorWithCorrectParameters() {
+        // Arrange — use NSubstitute mocks to verify delegation parameters
+        var httpContext = new DefaultHttpContext {
+            User = CreatePrincipal(tenants: ["test-tenant"]),
+        };
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TenantValidationResult.Allowed);
+
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(RbacValidationResult.Allowed);
+
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant", domain: "test-domain", commandType: "CreateOrder");
+
+        // Act
+        _ = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+
+        // Assert — verify tenant validator called with correct parameters
+        await tenantValidator.Received(1).ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            "test-tenant",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_CallsRbacValidatorWithCorrectParameters() {
+        // Arrange — use NSubstitute mocks to verify delegation parameters
+        var httpContext = new DefaultHttpContext {
+            User = CreatePrincipal(tenants: ["test-tenant"]),
+        };
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TenantValidationResult.Allowed);
+
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(RbacValidationResult.Allowed);
+
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant", domain: "test-domain", commandType: "CreateOrder");
+
+        // Act
+        _ = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+
+        // Assert — verify RBAC validator called with correct parameters (including "command" category)
+        await rbacValidator.Received(1).ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            "test-tenant",
+            "test-domain",
+            "CreateOrder",
+            "command",
+            Arg.Any<CancellationToken>());
+    }
+
+    // ── Query authorization tests (Story 17-5) ──
+
+    private static SubmitQuery CreateTestQuery(
+        string tenant = "test-tenant",
+        string domain = "test-domain",
+        string queryType = "GetOrderStatus") =>
+        new(
+            Tenant: tenant,
+            Domain: domain,
+            AggregateId: "agg-001",
+            QueryType: queryType,
+            Payload: [],
+            CorrelationId: "test-correlation-id",
+            UserId: "test-user");
+
+    private AuthorizationBehavior<SubmitQuery, SubmitQueryResult> CreateQueryBehavior(ClaimsPrincipal principal) {
+        var httpContext = new DefaultHttpContext { User = principal };
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+        var tenantValidator = new ClaimsTenantValidator();
+        var rbacValidator = new ClaimsRbacValidator();
+        var queryLogger = new TestLogger<AuthorizationBehavior<SubmitQuery, SubmitQueryResult>>(_logEntries);
+        return new AuthorizationBehavior<SubmitQuery, SubmitQueryResult>(accessor, tenantValidator, rbacValidator, queryLogger);
+    }
+
+    private static RequestHandlerDelegate<SubmitQueryResult> CreateQuerySuccessDelegate() {
+        System.Text.Json.JsonElement payload = System.Text.Json.JsonDocument.Parse("{}").RootElement;
+        return new((_) => Task.FromResult(new SubmitQueryResult("test-correlation-id", payload)));
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_SubmitQuery_ValidUser_PassesThrough() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);
+        AuthorizationBehavior<SubmitQuery, SubmitQueryResult> behavior = CreateQueryBehavior(principal);
+
+        // Act
+        SubmitQueryResult result = await behavior.Handle(CreateTestQuery(), CreateQuerySuccessDelegate(), CancellationToken.None);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.CorrelationId.ShouldBe("test-correlation-id");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_SubmitQuery_UnauthorizedTenant_ThrowsAuthorizationException() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["other-tenant"]);
+        AuthorizationBehavior<SubmitQuery, SubmitQueryResult> behavior = CreateQueryBehavior(principal);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(CreateTestQuery(), CreateQuerySuccessDelegate(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_SubmitQuery_UnauthorizedRbac_ThrowsAuthorizationException() {
+        // Arrange — tenant matches, domain does not
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["other-domain"]);
+        AuthorizationBehavior<SubmitQuery, SubmitQueryResult> behavior = CreateQueryBehavior(principal);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(CreateTestQuery(), CreateQuerySuccessDelegate(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_SubmitQuery_RbacValidatorCalledWithQueryCategory() {
+        // Arrange — use NSubstitute mocks to verify messageCategory is "query"
+        var httpContext = new DefaultHttpContext {
+            User = CreatePrincipal(tenants: ["test-tenant"]),
+        };
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TenantValidationResult.Allowed);
+
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(RbacValidationResult.Allowed);
+
+        var queryLogger = new TestLogger<AuthorizationBehavior<SubmitQuery, SubmitQueryResult>>(_logEntries);
+        var behavior = new AuthorizationBehavior<SubmitQuery, SubmitQueryResult>(accessor, tenantValidator, rbacValidator, queryLogger);
+
+        // Act
+        _ = await behavior.Handle(CreateTestQuery(), CreateQuerySuccessDelegate(), CancellationToken.None);
+
+        // Assert — verify RBAC validator called with "query" category (NOT "command")
+        await rbacValidator.Received(1).ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            "test-tenant",
+            "test-domain",
+            "GetOrderStatus",
+            "query",
+            Arg.Any<CancellationToken>());
     }
 
     // Helper types for non-SubmitCommand test

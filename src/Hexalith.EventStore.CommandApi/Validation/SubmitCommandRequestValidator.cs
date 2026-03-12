@@ -8,6 +8,7 @@ using Hexalith.EventStore.CommandApi.Models;
 namespace Hexalith.EventStore.CommandApi.Validation;
 
 public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCommandRequest> {
+    private const int MaxTenantDomainLength = 64;
     private const int MaxExtensionEntries = 50;
     private const int MaxExtensionKeyLength = 100;
     private const int MaxExtensionValueLength = 1000;
@@ -26,14 +27,14 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
         _ = RuleFor(x => x.Tenant)
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")
-            .MaximumLength(128).WithMessage("Tenant cannot exceed 128 characters")
+            .MaximumLength(MaxTenantDomainLength).WithMessage($"Tenant cannot exceed {MaxTenantDomainLength} characters")
             .Matches(_tenantDomainRegex).WithMessage("Tenant must contain only lowercase alphanumeric characters and hyphens")
             .When(x => !string.IsNullOrEmpty(x.Tenant), ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Domain)
             .NotNull().WithMessage("Domain is required")
             .NotEmpty().WithMessage("Domain cannot be empty")
-            .MaximumLength(128).WithMessage("Domain cannot exceed 128 characters")
+            .MaximumLength(MaxTenantDomainLength).WithMessage($"Domain cannot exceed {MaxTenantDomainLength} characters")
             .Matches(_tenantDomainRegex).WithMessage("Domain must contain only lowercase alphanumeric characters and hyphens")
             .When(x => !string.IsNullOrEmpty(x.Domain), ApplyConditionTo.CurrentValidator);
 
@@ -48,8 +49,8 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .NotNull().WithMessage("CommandType is required")
             .NotEmpty().WithMessage("CommandType cannot be empty")
             .MaximumLength(256).WithMessage("CommandType cannot exceed 256 characters")
-            .Must(ct => !ContainsDangerousCharacters(ct))
-            .WithMessage("CommandType cannot contain dangerous characters (<, >, &, ', \")")
+            .Must(ct => !ContainsDangerousCharacters(ct) && !_injectionPattern.IsMatch(ct))
+            .WithMessage("CommandType cannot contain dangerous characters or script injection patterns")
             .When(x => !string.IsNullOrEmpty(x.CommandType), ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Payload)

@@ -6,6 +6,7 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.CommandApi.Authorization;
 using Hexalith.EventStore.CommandApi.Configuration;
 using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.CommandApi.ErrorHandling;
@@ -17,6 +18,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
@@ -44,13 +46,13 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        ClaimsPrincipal principal = CreatePrincipal(domains: ["other-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["other-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "test-corr-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
-        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, new ClaimsTenantValidator(), new ClaimsRbacValidator(), testLogger);
         SubmitCommand command = CreateTestCommand(domain: "billing");
 
         _ = await Should.ThrowAsync<CommandAuthorizationException>(
@@ -66,19 +68,19 @@ public class SecurityAuditLoggingTests {
 
     [Fact]
     public async Task AuthorizationBehavior_UnauthorizedTenant_LogsSecurityEvent() {
-        // Note: Tenant authorization happens in the controller layer (not AuthorizationBehavior).
-        // AuthorizationBehavior handles domain and permission checks.
-        // This test verifies domain denial produces SecurityEvent.
+        // Legacy test name retained for compatibility with existing references.
+        // After Story 17-3, tenant authorization also runs in AuthorizationBehavior;
+        // this specific arrangement exercises the RBAC/domain denial path after tenant authorization succeeds.
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        ClaimsPrincipal principal = CreatePrincipal(domains: ["only-this-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["only-this-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "corr-456";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
-        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, new ClaimsTenantValidator(), new ClaimsRbacValidator(), testLogger);
         SubmitCommand command = CreateTestCommand(domain: "unauthorized-domain");
 
         _ = await Should.ThrowAsync<CommandAuthorizationException>(
@@ -95,14 +97,14 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        ClaimsPrincipal principal = CreatePrincipal(domains: ["other-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["other-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "corr-jwt-test";
         // Simulate request context only; test verifies logs never contain JWT-like token markers.
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
-        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, new ClaimsTenantValidator(), new ClaimsRbacValidator(), testLogger);
         SubmitCommand command = CreateTestCommand(domain: "forbidden-domain");
 
         _ = await Should.ThrowAsync<CommandAuthorizationException>(
@@ -134,7 +136,7 @@ public class SecurityAuditLoggingTests {
             new ActorTestOptions { ActorId = new ActorId("tenant-a:billing:agg-1") });
 
         var actor = new AggregateActor(
-            actorHost, actorLogger, domainInvoker, snapshotManager,
+            actorHost, actorLogger, domainInvoker, snapshotManager, new NoOpEventPayloadProtectionService(),
             statusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         // Inject mock state manager via public property (established pattern from DataPathIsolationTests)
@@ -169,13 +171,13 @@ public class SecurityAuditLoggingTests {
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
 
-        ClaimsPrincipal principal = CreatePrincipal(domains: ["wrong-domain"]);
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["wrong-domain"]);
         var httpContext = new DefaultHttpContext { User = principal };
         httpContext.Items["CorrelationId"] = "consistent-format-test";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
-        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, testLogger);
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, new ClaimsTenantValidator(), new ClaimsRbacValidator(), testLogger);
         SubmitCommand command = CreateTestCommand(domain: "target-domain");
 
         _ = await Should.ThrowAsync<CommandAuthorizationException>(

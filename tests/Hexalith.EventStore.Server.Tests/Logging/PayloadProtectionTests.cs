@@ -10,6 +10,7 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -84,7 +85,7 @@ public class PayloadProtectionTests : IDisposable {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-        var persister = new EventPersister(stateManager, logger);
+        var persister = new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var command = new CommandEnvelope(
             TenantId: "test-tenant",

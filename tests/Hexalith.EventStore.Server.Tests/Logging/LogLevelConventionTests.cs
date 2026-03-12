@@ -12,6 +12,7 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -135,7 +136,7 @@ public class LogLevelConventionTests : IDisposable {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-        var persister = new EventPersister(stateManager, logger);
+        var persister = new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         CommandEnvelope command = CreateCommandEnvelope();
         var domainResult = new DomainResult([new TestEvent()]);
@@ -154,7 +155,7 @@ public class LogLevelConventionTests : IDisposable {
         var logger = new TestLogger<EventPublisher>(_logEntries);
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
-        var publisher = new EventPublisher(daprClient, options, logger);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 
@@ -176,7 +177,7 @@ public class LogLevelConventionTests : IDisposable {
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("pub/sub failure"));
         IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
-        var publisher = new EventPublisher(daprClient, options, logger);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 

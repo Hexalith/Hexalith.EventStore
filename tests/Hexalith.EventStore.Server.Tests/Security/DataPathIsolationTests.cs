@@ -12,6 +12,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
@@ -139,7 +140,7 @@ public class DataPathIsolationTests {
         IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggId}") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -198,7 +199,7 @@ public class DataPathIsolationTests {
 
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggId}") });
-        var actor = new AggregateActor(host, actorLogger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, actorLogger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -249,7 +250,7 @@ public class DataPathIsolationTests {
         IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);

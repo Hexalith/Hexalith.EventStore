@@ -60,6 +60,37 @@ public class EventStoreClaimsTransformationTests {
     }
 
     [Fact]
+    public async Task TransformAsync_SubClaimWithoutNameIdentifier_AddsNameIdentifierClaim() {
+        // Arrange
+        var identity = new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+        ], "Bearer");
+        var principal = new ClaimsPrincipal(identity);
+
+        // Act
+        ClaimsPrincipal result = await _sut.TransformAsync(principal);
+
+        // Assert
+        result.FindFirst(ClaimTypes.NameIdentifier)?.Value.ShouldBe("user-1");
+    }
+
+    [Fact]
+    public async Task TransformAsync_ExistingNameIdentifier_DoesNotDuplicateClaim() {
+        // Arrange
+        var identity = new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim(ClaimTypes.NameIdentifier, "user-1"),
+        ], "Bearer");
+        var principal = new ClaimsPrincipal(identity);
+
+        // Act
+        ClaimsPrincipal result = await _sut.TransformAsync(principal);
+
+        // Assert
+        result.FindAll(ClaimTypes.NameIdentifier).Count().ShouldBe(1);
+    }
+
+    [Fact]
     public async Task TransformAsync_JwtWithDomainsAndPermissions_AddsNormalizedClaims() {
         // Arrange
         string domainsJson = JsonSerializer.Serialize(new[] { "orders", "inventory" });
@@ -116,6 +147,7 @@ public class EventStoreClaimsTransformationTests {
 
         // Assert - should still have exactly one tenant claim, not duplicated
         result.FindAll(TenantClaimType).Count().ShouldBe(1);
+        result.FindFirst(ClaimTypes.NameIdentifier)?.Value.ShouldBe("user-1");
     }
 
     [Fact]
@@ -137,6 +169,7 @@ public class EventStoreClaimsTransformationTests {
 
         // Assert - should still have exactly one domain claim, not duplicated
         result.FindAll(DomainClaimType).Count().ShouldBe(1);
+        result.FindFirst(ClaimTypes.NameIdentifier)?.Value.ShouldBe("user-1");
     }
 
     [Fact]

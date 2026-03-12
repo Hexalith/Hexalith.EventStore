@@ -12,6 +12,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -60,7 +61,7 @@ public class PersistThenPublishResilienceTests {
         ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001"), TimerManager = timerManager });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);

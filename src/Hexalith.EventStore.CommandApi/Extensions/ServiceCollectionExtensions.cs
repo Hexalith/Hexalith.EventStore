@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using FluentValidation;
 
 using Hexalith.EventStore.CommandApi.Authentication;
+using Hexalith.EventStore.CommandApi.Authorization;
 using Hexalith.EventStore.CommandApi.Configuration;
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Filters;
@@ -13,9 +14,11 @@ using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Validation;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
@@ -29,8 +32,10 @@ public static class CommandApiServiceCollectionExtensions {
 
         _ = services.AddProblemDetails();
         _ = services.AddExceptionHandler<ValidationExceptionHandler>();
-        _ = services.AddExceptionHandler<AuthorizationExceptionHandler>();
+        _ = services.AddExceptionHandler<AuthorizationServiceUnavailableHandler>();  // 503 — BEFORE 403
+        _ = services.AddExceptionHandler<AuthorizationExceptionHandler>();           // 403
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
+        _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
         _ = services.AddExceptionHandler<GlobalExceptionHandler>();
 
         _ = services.AddHttpContextAccessor();
@@ -48,6 +53,42 @@ public static class CommandApiServiceCollectionExtensions {
             .AddJwtBearer();
 
         _ = services.AddAuthorization();
+
+        // Authorization options (Story 17-1) — claims-based default, actor-based when configured
+        _ = services.AddOptions<EventStoreAuthorizationOptions>()
+            .BindConfiguration("EventStore:Authorization")
+            .ValidateOnStart();
+
+        _ = services.AddSingleton<IValidateOptions<EventStoreAuthorizationOptions>, ValidateEventStoreAuthorizationOptions>();
+
+        // Register concrete claims-based implementations (always available)
+        _ = services.AddScoped<ClaimsTenantValidator>();
+        _ = services.AddScoped<ClaimsRbacValidator>();
+
+        // Register concrete actor-based implementations (always available for DI)
+        _ = services.AddScoped<ActorTenantValidator>();
+        _ = services.AddScoped<ActorRbacValidator>();
+
+        // Factory delegate selects implementation at resolve-time based on configuration
+        _ = services.AddScoped<ITenantValidator>(sp => {
+            EventStoreAuthorizationOptions opts = sp.GetRequiredService<IOptions<EventStoreAuthorizationOptions>>().Value;
+            if (opts.TenantValidatorActorName is null) {
+                return sp.GetRequiredService<ClaimsTenantValidator>();
+            }
+
+            return sp.GetRequiredService<ActorTenantValidator>();
+        });
+
+        _ = services.AddScoped<IRbacValidator>(sp => {
+            EventStoreAuthorizationOptions opts = sp.GetRequiredService<IOptions<EventStoreAuthorizationOptions>>().Value;
+            if (opts.RbacValidatorActorName is null) {
+                return sp.GetRequiredService<ClaimsRbacValidator>();
+            }
+
+            return sp.GetRequiredService<ActorRbacValidator>();
+        });
+
+        _ = services.AddHostedService<CommandApiAuthorizationStartupValidator>();
 
         // Claims transformation
         _ = services.AddTransient<IClaimsTransformation, EventStoreClaimsTransformation>();

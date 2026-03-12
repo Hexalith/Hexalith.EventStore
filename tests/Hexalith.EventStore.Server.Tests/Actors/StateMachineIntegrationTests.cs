@@ -10,6 +10,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -28,8 +29,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// Verifies checkpointed stage transitions, crash recovery, advisory status writes,
 /// and pipeline state cleanup during command processing.
 /// </summary>
-public class StateMachineIntegrationTests
-{
+public class StateMachineIntegrationTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -44,8 +44,7 @@ public class StateMachineIntegrationTests
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor()
-    {
+    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, ISnapshotManager SnapshotManager, ICommandStatusStore StatusStore, IEventPublisher EventPublisher) CreateActor() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -54,7 +53,7 @@ public class StateMachineIntegrationTests
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -89,8 +88,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.1: Happy path transitions ---
 
     [Fact]
-    public async Task ProcessCommand_Success_CheckpointsProcessingThenEventsStoredThenCleanup()
-    {
+    public async Task ProcessCommand_Success_CheckpointsProcessingThenEventsStoredThenCleanup() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -128,8 +126,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.2: Rejection path ---
 
     [Fact]
-    public async Task ProcessCommand_Rejection_TransitionsProcessingEventsStoredCompleted()
-    {
+    public async Task ProcessCommand_Rejection_TransitionsProcessingEventsStoredCompleted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
@@ -159,8 +156,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.3: No-op path ---
 
     [Fact]
-    public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted()
-    {
+    public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
@@ -197,8 +193,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.4: Crash recovery from EventsStored (NFR25) ---
 
     [Fact]
-    public async Task ProcessCommand_CrashAtEventsStored_Resume_DoesNotRePersistEvents()
-    {
+    public async Task ProcessCommand_CrashAtEventsStored_Resume_DoesNotRePersistEvents() {
         // Arrange -- simulate existing EventsStored pipeline state (crash scenario)
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
 
@@ -289,8 +284,7 @@ public class StateMachineIntegrationTests
     }
 
     [Fact]
-    public async Task ProcessCommand_CrashAtEventsStored_Resume_PreservesResultPayload()
-    {
+    public async Task ProcessCommand_CrashAtEventsStored_Resume_PreservesResultPayload() {
         // Arrange -- resume must preserve enriched payloads for composite command responses
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
 
@@ -369,8 +363,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.5: Crash recovery from Processing ---
 
     [Fact]
-    public async Task ProcessCommand_CrashAtProcessing_Resume_ReprocessesFromScratch()
-    {
+    public async Task ProcessCommand_CrashAtProcessing_Resume_ReprocessesFromScratch() {
         // Arrange -- simulate existing Processing pipeline state (crash before event persistence)
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
 
@@ -405,8 +398,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.6: Advisory status write failure ---
 
     [Fact]
-    public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline()
-    {
+    public async Task ProcessCommand_StatusWriteFailure_DoesNotBlockPipeline() {
         // Arrange -- status store throws on every call
         (AggregateActor actor, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, _) = CreateActor();
         _ = statusStore.WriteStatusAsync(
@@ -432,8 +424,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.7: Pipeline state cleaned up on completion ---
 
     [Fact]
-    public async Task ProcessCommand_PipelineStateCleanedUp_OnCompletion()
-    {
+    public async Task ProcessCommand_PipelineStateCleanedUp_OnCompletion() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -452,8 +443,7 @@ public class StateMachineIntegrationTests
     // --- Task 8.8: Pipeline state cleaned up on rejection ---
 
     [Fact]
-    public async Task ProcessCommand_PipelineStateCleanedUp_OnRejection()
-    {
+    public async Task ProcessCommand_PipelineStateCleanedUp_OnRejection() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new Hexalith.EventStore.Contracts.Events.IRejectionEvent[] { new TestRejectionEvent() });
