@@ -16,4 +16,5 @@ public record RbacValidationRequest(
     string TenantId,
     string Domain,
     string MessageType,
-    string MessageCategory);
+    string MessageCategory,
+    string? AggregateId = null);

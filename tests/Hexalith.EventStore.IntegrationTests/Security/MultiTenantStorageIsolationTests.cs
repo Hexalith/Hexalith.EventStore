@@ -52,7 +52,7 @@ public class MultiTenantStorageIsolationTests {
         ILogger<EventPersister> persisterLogger = Substitute.For<ILogger<EventPersister>>();
         ILogger<EventStreamReader> readerLogger = Substitute.For<ILogger<EventStreamReader>>();
         return (
-            new EventPersister(stateManager, persisterLogger),
+            new EventPersister(stateManager, persisterLogger, new NoOpEventPayloadProtectionService()),
             new EventStreamReader(stateManager, readerLogger),
             stateManager);
     }

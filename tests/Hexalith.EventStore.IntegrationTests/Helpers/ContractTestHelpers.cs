@@ -186,4 +186,87 @@ internal static class ContractTestHelpers {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return request;
     }
+
+    public static HttpRequestMessage CreateQueryRequest(
+        string tenant,
+        string domain,
+        string aggregateId,
+        string queryType,
+        object? payload = null) {
+        string token = TestJwtTokenGenerator.GenerateToken(
+            tenants: [tenant],
+            domains: [domain],
+            permissions: ["query:read"]);
+
+        var body = new {
+            Tenant = tenant,
+            Domain = domain,
+            AggregateId = aggregateId,
+            QueryType = queryType,
+            Payload = payload ?? new { id = Guid.NewGuid().ToString() },
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/queries") {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body),
+                Encoding.UTF8,
+                "application/json"),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    public static HttpRequestMessage CreateCommandValidationRequest(
+        string tenant,
+        string domain,
+        string commandType,
+        string? aggregateId = null) {
+        string token = TestJwtTokenGenerator.GenerateToken(
+            tenants: [tenant],
+            domains: [domain],
+            permissions: ["command:submit"]);
+
+        var body = new {
+            Tenant = tenant,
+            Domain = domain,
+            CommandType = commandType,
+            AggregateId = aggregateId,
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands/validate") {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body),
+                Encoding.UTF8,
+                "application/json"),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    public static HttpRequestMessage CreateQueryValidationRequest(
+        string tenant,
+        string domain,
+        string queryType,
+        string? aggregateId = null) {
+        string token = TestJwtTokenGenerator.GenerateToken(
+            tenants: [tenant],
+            domains: [domain],
+            permissions: ["query:read"]);
+
+        var body = new {
+            Tenant = tenant,
+            Domain = domain,
+            QueryType = queryType,
+            AggregateId = aggregateId,
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/queries/validate") {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body),
+                Encoding.UTF8,
+                "application/json"),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
 }

@@ -11,10 +11,10 @@ namespace Hexalith.EventStore.CommandApi.Authorization;
 /// Used as the default when <c>EventStoreAuthorizationOptions.RbacValidatorActorName</c> is null.
 /// </summary>
 /// <remarks>
-/// The <paramref name="messageCategory"/> parameter is accepted but does NOT influence
-/// claims-based validation results. Claims-based authorization does not distinguish
-/// read vs write operations. This parameter exists for Story 17-2's actor-based
-/// implementation which CAN discriminate by category.
+/// The <paramref name="messageCategory"/> parameter determines which permission set is checked.
+/// For "command" category: accepts <c>commands:*</c> (wildcard) or <c>command:submit</c>.
+/// For "query" category: accepts <c>queries:*</c> (wildcard) or <c>query:read</c>.
+/// Both categories accept an exact <c>messageType</c> match.
 /// </remarks>
 public class ClaimsRbacValidator : IRbacValidator {
     /// <inheritdoc/>
@@ -24,7 +24,8 @@ public class ClaimsRbacValidator : IRbacValidator {
         string domain,
         string messageType,
         string messageCategory,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
         // Domain authorization: only enforce if user has domain claims
@@ -44,14 +45,22 @@ public class ClaimsRbacValidator : IRbacValidator {
             .ToList();
 
         if (permissionClaims.Count > 0) {
-            bool hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.WildcardPermission, StringComparison.OrdinalIgnoreCase));
-            bool hasSubmit = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.SubmitPermission, StringComparison.OrdinalIgnoreCase));
-            bool hasSpecific = permissionClaims.Any(p => string.Equals(p, messageType, StringComparison.OrdinalIgnoreCase));
-            string typeLabel = string.Equals(messageCategory, "query", StringComparison.OrdinalIgnoreCase)
-                ? "query type"
-                : "command type";
+            bool isQuery = string.Equals(messageCategory, "query", StringComparison.OrdinalIgnoreCase);
+            bool hasWildcard;
+            bool hasCategoryPermission;
 
-            if (!hasWildcard && !hasSubmit && !hasSpecific) {
+            if (isQuery) {
+                hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.QueryWildcardPermission, StringComparison.OrdinalIgnoreCase));
+                hasCategoryPermission = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.ReadPermission, StringComparison.OrdinalIgnoreCase));
+            } else {
+                hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.WildcardPermission, StringComparison.OrdinalIgnoreCase));
+                hasCategoryPermission = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.SubmitPermission, StringComparison.OrdinalIgnoreCase));
+            }
+
+            bool hasSpecific = permissionClaims.Any(p => string.Equals(p, messageType, StringComparison.OrdinalIgnoreCase));
+            string typeLabel = isQuery ? "query type" : "command type";
+
+            if (!hasWildcard && !hasCategoryPermission && !hasSpecific) {
                 return Task.FromResult(RbacValidationResult.Denied($"Not authorized for {typeLabel} '{messageType}'."));
             }
         }

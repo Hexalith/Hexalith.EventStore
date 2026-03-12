@@ -1,6 +1,6 @@
 ---
 validationTarget: '_bmad-output/planning-artifacts/prd.md'
-validationDate: '2026-02-12'
+validationDate: '2026-03-12'
 inputDocuments:
   - product-brief-Hexalith.EventStore-2026-02-11.md
   - market-event-sourcing-event-store-solutions-research-2026-02-11.md
@@ -9,8 +9,8 @@ inputDocuments:
   - technical-dapr-workflow-pubsub-actors-research-2026-02-11.md
   - technical-dotnet-10-aspire-13-research-2026-02-11.md
   - brainstorming-session-2026-02-11.md
+  - brainstorming-session-2026-03-12-1.md
 validationStepsCompleted:
-  - step-v-01-discovery
   - step-v-02-format-detection
   - step-v-03-density-validation
   - step-v-04-brief-coverage-validation
@@ -31,127 +31,21 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 # PRD Validation Report
 
 **PRD Being Validated:** _bmad-output/planning-artifacts/prd.md
-**Validation Date:** 2026-02-12
+**Validation Date:** 2026-03-12
 
 ## Input Documents
 
+- PRD: prd.md
 - Product Brief: product-brief-Hexalith.EventStore-2026-02-11.md
-- Research: market-event-sourcing-event-store-solutions-research-2026-02-11.md
-- Research: technical-aspnet-core-command-api-authorization-research-2026-02-11.md
-- Research: technical-blazor-fluent-ui-v4-research-2026-02-11.md
-- Research: technical-dapr-workflow-pubsub-actors-research-2026-02-11.md
-- Research: technical-dotnet-10-aspire-13-research-2026-02-11.md
-- Brainstorming: brainstorming-session-2026-02-11.md
+- Market Research: market-event-sourcing-event-store-solutions-research-2026-02-11.md
+- Technical Research (ASP.NET Core Auth): technical-aspnet-core-command-api-authorization-research-2026-02-11.md
+- Technical Research (Blazor Fluent UI): technical-blazor-fluent-ui-v4-research-2026-02-11.md
+- Technical Research (DAPR): technical-dapr-workflow-pubsub-actors-research-2026-02-11.md
+- Technical Research (.NET 10/Aspire 13): technical-dotnet-10-aspire-13-research-2026-02-11.md
+- Brainstorming Session 1: brainstorming-session-2026-02-11.md
+- Brainstorming Session 2: brainstorming-session-2026-03-12-1.md
 
 ## Validation Findings
-
-### Advanced Elicitation: Self-Consistency Validation
-
-**Consistent (well-aligned):**
-- Performance KPIs in Success Criteria match NFR1-NFR8 targets exactly
-- Event envelope "11-field metadata + payload + extensions" count consistent across Executive Summary, FR11, and Data Schemas
-- User Journey capability summaries all map to corresponding FRs (verified all 5 journeys)
-- v1/v2 phasing consistent -- Blazor, DAPR Workflows, Sagas deferred to v2 everywhere
-- "3+ domain service implementations" validation gate referenced consistently across 4 sections
-- Actor checkpointed state machine / workflow-ready design consistent across Feature 4, Innovation, NFR25
-
-**Inconsistencies:**
-
-| # | Finding | Severity |
-|---|---------|----------|
-| SC-1 | NFR1 introduces a 50ms command submission target (REST API returns 202) not listed in Success Criteria KPI table | Minor |
-| SC-2 | NFR7 throughput target (100 cmd/sec/instance) has no corresponding Success Criteria KPI | Minor |
-| SC-3 | Command status storage mechanism missing from Data Schemas. FR5 and API spec define `GET /commands/{correlationId}/status` but Composite Key Strategy has no key pattern for command status | Medium |
-| SC-4 | Pub/sub topic naming convention undefined. FR19 says "per-tenant-per-domain topics" but Data Schemas has no topic name pattern | Minor |
-| SC-5 | Blazor Fluent UI version mismatch. Phase 2 roadmap references "Blazor Fluent UI V4" but brainstorming input document references "Blazor Fluent UI 5" | Low |
-| SC-6 | MVP Go/No-Go says "At least 1" app, Business Success (6 months) says "At least 2." Different timeframes but could confuse readers without explicit linkage | Low |
-
----
-
-### Advanced Elicitation: Pre-mortem Analysis
-
-*Scenario: 18 months from now, Hexalith.EventStore has stalled at 30 stars and 80 NuGet downloads.*
-
-| # | Failure Scenario | PRD Gap | Severity |
-|---|-----------------|---------|----------|
-| PM-1 | Event envelope lacks `schemaVersion` field; extensions bag is escape valve but no FR defines how extensions interact with serialization, querying, or CloudEvents mapping | Envelope extensibility validation is behavioral, not structural | Medium |
-| PM-2 | "10 minute" clone-to-running promise fails because preconditions (Docker, .NET 10 SDK, DAPR CLI, Aspire tooling) aren't defined in Success Criteria measurement | FR40 doesn't specify prerequisite installation | Medium |
-| PM-3 | FR16 requires atomic event writes but Redis doesn't support multi-key transactions (noted in Implementation Considerations). Infrastructure-portability promise has undocumented caveat | No FR/NFR defines backend compatibility matrix with feature-level granularity | Medium |
-| PM-4 | v1 operational model depends on structured logs but no FR specifies minimum structured log fields beyond correlation/causation IDs | FR36 log schema too loose for reliable operational guides | Medium |
-| PM-5 | Solo developer bus factor. No FR for architecture documentation or ADRs enabling external contributors | Resource risk acknowledged but no mitigation requirement | Low-Medium |
-
----
-
-### Advanced Elicitation: Stakeholder Round Table
-
-**Marco (Domain Service Developer):**
-
-| # | Finding | Severity |
-|---|---------|----------|
-| SRT-1 | No error/rejection contract for domain services. FR21 defines happy path `(Command, CurrentState?) -> List<DomainEvent>` but not how services signal command rejection (exception? empty list? rejection event?) | Medium |
-| SRT-2 | No FR for command schema versioning. How does EventStore handle in-flight commands when domain service changes command schema? | Low-Medium |
-| SRT-3 | No FR for local domain service debugging (replay specific command against local service) | Low |
-
-**Alex (Support Engineer):**
-
-| # | Finding | Severity |
-|---|---------|----------|
-| SRT-4 | No FR for aggregate state inspection in v1. Without Blazor dashboard, operators have no defined way to view aggregate current state | Low-Medium |
-
-**Priya (DevOps Engineer):**
-
-| # | Finding | Severity |
-|---|---------|----------|
-| SRT-5 | No FR for DAPR version compatibility testing/matrix | Low |
-| SRT-6 | No FR/NFR for scaling triggers or auto-scaling guidance | Low |
-| SRT-7 | No FR/NFR for backup, restore, or disaster recovery of event data -- event streams are sole source of truth | Medium |
-
-**Sanjay (API Consumer):**
-
-| # | Finding | Severity |
-|---|---------|----------|
-| SRT-8 | No NFR for API rate limiting per tenant/consumer. Journey 2 describes saga command storm scenario but no requirement prevents it at the gateway | Medium |
-
----
-
-### Advanced Elicitation: Red Team vs Blue Team
-
-| # | Attack Vector | Finding | Severity |
-|---|--------------|---------|----------|
-| RT-1 | Tenant escape via actor rebalancing | No explicit requirement that tenant validation occurs BEFORE state rehydration, or that commands are rejected if actor state is unavailable during rebalancing | Medium |
-| RT-2 | Event stream poisoning via malicious domain service | PRD implies EventStore controls envelope metadata but no explicit FR states that domain services return payloads only and EventStore populates all 11 metadata fields. Security-critical gap. | Medium |
-| RT-3 | Correlation ID collision across tenants | FR5 status endpoint doesn't explicitly state tenant-scoped queries. JWT auth should filter, but not specified. | Low-Medium |
-| RT-4 | Extension metadata bag as injection vector | No NFR for extension metadata validation (max size, allowed characters, sanitization) | Low |
-
----
-
-### Advanced Elicitation: Critique and Refine (BMAD Standards)
-
-**Strengths:**
-- Information density excellent -- nearly every sentence carries weight
-- Traceability strong -- Vision -> Success Criteria -> Journeys -> FRs chain well-established
-- Journey Requirements Summary table provides clear cross-reference
-- FRs use "can" verb consistently (capability-focused)
-- NFRs have specific p99 targets, percentages, measurable thresholds
-- Domain-Specific Requirements thorough with event sourcing invariants
-- Five user journeys including edge-case/failure journey (above average)
-- No subjective adjectives or vague quantifiers detected
-
-**Weaknesses Against BMAD Standards:**
-
-| # | Finding | BMAD Standard | Severity |
-|---|---------|--------------|----------|
-| CR-1 | Missing FR for domain service error/rejection contract | FRs must be testable | Medium |
-| CR-2 | No FR for backup/restore or disaster recovery | Missing critical operational requirement | Medium |
-| CR-3 | No FR/NFR for API rate limiting | Identified risk without corresponding mitigation requirement | Medium |
-| CR-4 | No FR for aggregate state inspection (v1) | Operational gap in v1 model | Low-Medium |
-| CR-5 | Backend compatibility matrix not captured as requirement | Vague quantifier ("any DAPR-compatible") without specifics | Medium |
-| CR-6 | FR21 pure function signature is C# implementation detail, not capability statement | Implementation leakage in FR | Low |
-| CR-7 | Several NFRs (NFR9, NFR11, NFR12, NFR14) lack measurement method specification | NFR template requires measurement method | Low |
-
----
-
----
 
 ### Format Detection & Structure Analysis
 
@@ -183,8 +77,7 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 **Frontmatter Metadata:**
 - classification.domain: Event Sourcing Infrastructure
 - classification.projectType: Event Sourcing Server Platform (primary) + Developer Tooling (secondary)
-
----
+- classification.complexity: High (Technical)
 
 ---
 
@@ -212,37 +105,37 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 
 #### Coverage Map
 
-**Vision Statement:** Fully Covered -- DAPR-native event sourcing, infrastructure portability, multi-tenancy, open-source .NET-native all present in Executive Summary and Innovation section.
+**Vision Statement:** Fully Covered -- DAPR-native event sourcing, infrastructure portability, multi-tenancy, open-source .NET-native all present in Executive Summary and Innovation section. PRD adds additional context on platform model paradigm innovation.
 
-**Target Users:** Fully Covered -- Jerome persona mapped to Marco (Journey 1), Alex preserved (Journey 3), plus 2 additional personas added (Priya, Sanjay).
+**Target Users/Personas:** Fully Covered -- Brief's "Jerome" persona mapped to PRD's "Marco" (Journey 1) with expanded detail. Brief's "Alex" persona preserved as Journey 3. PRD adds 2 additional personas: Priya (DevOps) and Sanjay (API Consumer), broadening coverage.
 
-**Problem Statement:** Fully Covered -- Market gap and pain points addressed through competitive differentiation and Innovation section.
+**Problem Statement:** Fully Covered -- Market gap, infrastructure lock-in, operational gap, assembly tax, and multi-tenancy-as-afterthought all addressed through Executive Summary, competitive landscape (Innovation section), and Domain-Specific Requirements.
 
-**Key Features (10 MVP):** Fully Covered -- All 10 features mapped to FRs. v2 features (Blazor, Workflows) explicitly deferred with rationale.
+**Key Features (10 MVP):** Fully Covered -- All 10 features (Event Envelope, Identity Scheme, Command API, Actor Processing, Domain Service Integration, Event Persistence, Event Distribution, Snapshot Support, Aspire Orchestration, Sample Domain Service) mapped to corresponding FRs. v2 features (Blazor, Workflows) explicitly deferred with rationale.
 
-**Goals/Objectives:** Fully Covered -- All success metrics preserved with exact targets. PRD adds adoption funnel metrics beyond brief.
+**Goals/Objectives:** Fully Covered -- All success metrics preserved with exact targets. PRD adds adoption funnel metrics, developer experience scorecard, and measurable outcomes table beyond what the brief specified.
 
-**Differentiators (7 items):** Fully Covered -- 6/7 in v1, operational control plane explicitly deferred to v2.
+**Differentiators (7 items):** Fully Covered -- 6/7 in v1. "Operational control plane included" (#6) explicitly deferred to v2. All others present in Innovation & Novel Patterns section with expanded competitive analysis.
 
-**Constraints:** Partially Covered -- 3 moderate gaps identified (see below).
+**Constraints:** Partially Covered -- 3 moderate gaps identified below.
 
 #### Gaps Identified
 
 | # | Gap | Severity | Detail |
 |---|-----|----------|--------|
-| BC-1 | Command idempotency mechanism not in FRs | Moderate | Brief states "actor tracks processed command IDs" but no FR specifies this. Recommend adding FR48. |
-| BC-2 | No cross-aggregate event ordering constraint | Moderate | Brief explicitly states no cross-aggregate ordering guarantee. FR10 specifies within-aggregate ordering but doesn't clarify the cross-aggregate non-guarantee. Developers may incorrectly assume global ordering. |
-| BC-3 | Snapshot production responsibility unclear | Moderate | Brief says "domain service produces snapshot content inline when threshold signaled." FR13 says "system can create snapshots" without clarifying domain service's role. |
-| BC-4 | Max causation depth guardrail missing from roadmap | Informational | Brief lists "saga loop prevention" as v2+ feature but not in PRD Phase 3/4 roadmap. |
+| BC-1 | Command idempotency mechanism not in FRs | Moderate | Brief states "actor tracks processed command IDs" (Feature 4) but no FR specifies this mechanism. FR7 covers concurrency conflicts but not duplicate detection. |
+| BC-2 | Cross-aggregate event ordering non-guarantee not explicit | Moderate | Brief explicitly states "No cross-aggregate event ordering guaranteed" (Feature 7). PRD FR10 specifies within-aggregate ordering but does not explicitly clarify the cross-aggregate non-guarantee. Developers may incorrectly assume global ordering. |
+| BC-3 | Snapshot production responsibility unclear | Moderate | Brief says "domain service produces snapshot content inline when threshold signaled" (Feature 8). PRD FR13 says "system can create snapshots" without clarifying the domain service's role in producing snapshot content. |
+| BC-4 | Max causation depth guardrail missing from roadmap | Informational | Brief lists "Max causation depth guardrail (saga loop prevention)" as v2+ deferred feature but it doesn't appear in PRD's Phase 2/3/4 roadmap tables. |
 
 #### Coverage Summary
 
 **Overall Coverage:** 94%
 **Critical Gaps:** 0
-**Moderate Gaps:** 3 (implementation details not fully specified)
+**Moderate Gaps:** 3 (specification holes in idempotency, ordering constraint, snapshot responsibility)
 **Informational Gaps:** 1 (minor future feature not in roadmap)
 
-**Recommendation:** PRD provides excellent coverage of Product Brief. The 3 moderate gaps are specification holes that should be addressed -- add FR for command idempotency, clarify cross-aggregate ordering constraint in FR10, and clarify snapshot production responsibility in FR13.
+**Recommendation:** PRD provides excellent coverage of Product Brief. The 3 moderate gaps are specification holes that should be addressed: add FR for command idempotency, clarify cross-aggregate ordering non-guarantee in FR10, and clarify snapshot production responsibility in FR13.
 
 ---
 
@@ -250,17 +143,17 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 
 #### Functional Requirements
 
-**Total FRs Analyzed:** 47
+**Total FRs Analyzed:** 48
 
 **Format Violations:** 0 -- All FRs follow "[Actor] can [capability]" pattern correctly.
 
 **Subjective Adjectives Found:** 0
 
 **Vague Quantifiers Found:** 2
-- FR24 (line 687): "multiple independent domains" -- replace with "at least 2"
-- FR25 (line 688): "multiple tenants" -- replace with "at least 2"
+- FR24 (line 690): "multiple independent domains" -- replace with "at least 2 independent domains"
+- FR25 (line 691): "multiple tenants" -- replace with "at least 2 tenants"
 
-**Implementation Leakage:** 0 -- All technology references (DAPR, JWT, REST, CloudEvents, OpenTelemetry, Aspire, NuGet) are capability-relevant.
+**Implementation Leakage:** 0 -- All technology references (DAPR, JWT, REST, CloudEvents, OpenTelemetry, Aspire, NuGet) are capability-relevant to this platform product.
 
 **FR Violations Total:** 2
 
@@ -270,7 +163,7 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 
 **Missing Metrics:** 0 -- All NFRs include specific, measurable criteria.
 
-**Incomplete Template:** 0 -- All NFRs include criterion + metric + measurement method + context.
+**Incomplete Template:** 0 -- All NFRs include criterion + metric + measurement context.
 
 **Missing Context:** 0
 
@@ -278,7 +171,7 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 
 #### Overall Assessment
 
-**Total Requirements:** 79 (47 FRs + 32 NFRs)
+**Total Requirements:** 80 (48 FRs + 32 NFRs)
 **Total Violations:** 2 (2.5% violation rate)
 
 **Severity:** PASS
@@ -291,52 +184,57 @@ overallStatus: PASS_WITH_RECOMMENDATIONS
 
 #### Chain Validation
 
-**Executive Summary -> Success Criteria:** INTACT -- All vision elements (DAPR-native, pure function model, infrastructure-agnostic, target users, open-source, v1/v2 phasing) covered by quantifiable success criteria.
+**Executive Summary → Success Criteria:** INTACT -- All vision elements (DAPR-native, pure function model, infrastructure-agnostic, target users, open-source, v1/v2 phasing) covered by quantifiable success criteria across Developer Experience, Operational Experience, Business Success, and Technical Success.
 
-**Success Criteria -> User Journeys:** GAPS -- 7 success criteria lack supporting journeys:
+**Success Criteria → User Journeys:** GAPS -- 7 success criteria lack direct supporting journeys:
 - Performance KPIs (all 6 latency targets) -- no journey demonstrates performance validation
-- Zero data-loss validation -- testing activity not shown
-- 3+ domain service validations -- validation process not shown
-- Resilience chaos scenarios (5 of 6 untested in journeys) -- only saga storm shown
+- Zero data-loss validation -- testing activity not shown in journeys
+- 3+ domain service implementation validation -- validation process not shown
+- Resilience chaos scenarios (5 of 6 untested in journeys) -- only saga storm partially shown in Journey 2
 - Event envelope validation process -- critical gate without journey
-- Long-term business metrics (18-month recognition) -- not journey-appropriate
-- GitHub/NuGet adoption funnel -- outcomes, not user experiences
+- Long-term business metrics (18-month recognition) -- outcome metrics, not user experiences
+- Adoption funnel metrics (GitHub stars, NuGet downloads) -- community outcomes, not journeys
 
-**User Journeys -> Functional Requirements:** PARTIAL GAPS -- v2 Blazor capabilities unsupported by design; technical foundations not visible in journeys.
+**User Journeys → Functional Requirements:** PARTIAL GAPS
+- Journey 1 (Marco's First Day): FR1, FR4, FR21, FR22, FR23, FR35, FR40, FR41, FR43 -- well supported
+- Journey 2 (Marco's Bad Day): FR6, FR8, FR27-29, FR35, FR36, FR37 -- well supported
+- Journey 3 (Alex v2): Deferred to v2 Blazor -- no v1 FRs by design
+- Journey 4 (Priya): FR35, FR43, FR44 -- supported
+- Journey 5 (Sanjay): FR1, FR2, FR4, FR5, FR30, FR31, FR32 -- well supported
 
-**Scope -> FR Alignment:** INTACT -- Perfect alignment. All 10 MVP features have corresponding FRs, and all 47 FRs map to MVP scope.
+**Scope → FR Alignment:** INTACT -- All 10 MVP features have corresponding FRs. Perfect alignment confirmed.
 
 #### Orphan Elements
 
-**Orphan Functional Requirements:** 12 (26% of total)
+**Orphan Functional Requirements:** 15 (31% of 48)
 
-Technical Foundations (8): FR7 (concurrency conflicts), FR10 (sequence ordering), FR11 (event envelope), FR15 (composite keys), FR16 (atomic writes), FR18 (at-least-once delivery), FR20 (pub/sub outage persistence), FR26 (identity scheme derivation)
+Technical Foundations (9): FR7 (concurrency conflicts), FR10 (sequence ordering), FR11 (event envelope), FR15 (composite keys), FR16 (atomic writes), FR18 (at-least-once delivery), FR20 (pub/sub outage persistence), FR26 (identity scheme derivation), FR34 (DAPR policies)
 
 Infrastructure Operations (2): FR38 (health checks), FR39 (readiness checks)
 
 Developer Tooling (3): FR45 (unit tests), FR46 (integration tests), FR47 (contract tests)
 
-Platform (1): FR24 (multiple domains), FR34 (DAPR policies)
+Platform (1): FR24 (multiple domains)
 
-**Note:** All orphan FRs are justified as technical enablers for user-facing capabilities. No scope creep detected.
+**Note:** All 15 orphan FRs are justified as technical enablers for user-facing capabilities. No scope creep detected -- these are infrastructure primitives required by the event sourcing platform.
 
-**Unsupported Success Criteria:** 7 (performance validation, resilience testing, long-term metrics -- mostly testing/validation activities not typical user journeys)
+**Unsupported Success Criteria:** 7 (performance validation, resilience testing, long-term metrics -- mostly testing/validation activities or outcomes not typical in user journeys)
 
-**User Journeys Without FRs:** 5 (all v2 Blazor capabilities -- intentionally deferred)
+**User Journeys Without FRs:** 5 v2 Blazor capabilities in Journey 3 (intentionally deferred)
 
 #### Traceability Summary
 
 | Traceability Strength | Count | Percentage |
 |-----------------------|-------|------------|
-| Strong (direct journey link) | 25 | 53% |
-| Weak (implied/indirect) | 10 | 21% |
-| Orphan (no journey) | 12 | 26% |
+| Strong (direct journey link) | 26 | 54% |
+| Weak (implied/indirect) | 7 | 15% |
+| Orphan (no journey) | 15 | 31% |
 
-**Total Traceability Issues:** 19 (12 orphan FRs + 7 unsupported success criteria)
+**Total Traceability Issues:** 22 (15 orphan FRs + 7 unsupported success criteria)
 
 **Severity:** WARNING
 
-**Recommendation:** Traceability is strong for core user-facing capabilities but has expected gaps in technical foundations and validation activities. To achieve PASS: (1) Add a "Platform Validation Journey" showing performance benchmarking, chaos testing, and envelope validation. (2) Add explicit references to orphan technical FRs in existing journeys (e.g., optimistic concurrency in Marco's rehydration scene, health checks in Priya's deployment). (3) Clarify v2 scope with stub FRs for deferred Blazor capabilities.
+**Recommendation:** Traceability is strong for core user-facing capabilities but has expected gaps in technical foundations and validation activities. To strengthen: (1) Add a "Platform Validation Journey" showing performance benchmarking, chaos testing, and envelope validation -- this would cover 7 unsupported success criteria. (2) Reference orphan technical FRs in existing journeys where natural (e.g., optimistic concurrency in Marco's rehydration, health checks in Priya's deployment). (3) Orphan FRs as technical enablers are acceptable for an infrastructure platform PRD.
 
 ---
 
@@ -350,8 +248,8 @@ Platform (1): FR24 (multiple domains), FR34 (DAPR policies)
 **Cloud Platforms:** 0 violations -- Azure Container Apps in FR44/NFR32 is a deployment target capability
 **Infrastructure:** 0 violations -- Docker Compose, Kubernetes in FR44/NFR32 are deployment target capabilities
 **Libraries:** 0 violations
-**Other Implementation Details:** 1 borderline violation
-- FR21 (line 684): C# function signature `(Command, CurrentState?) -> List<DomainEvent>` is a language-specific implementation detail. A pure capability statement would read: "A domain service developer can implement domain logic as a stateless pure function without managing state, concurrency, or infrastructure." However, this signature IS the product's core programming model and its inclusion aids comprehension significantly.
+**Other Implementation Details:** 1 borderline
+- FR21 (line 687): C# function signature `(Command, CurrentState?) -> List<DomainEvent>` is a language-specific implementation detail. A pure capability statement would read: "A domain service developer can implement domain logic as a stateless pure function." However, this signature IS the product's core programming model and its inclusion aids comprehension significantly.
 
 #### Summary
 
@@ -359,7 +257,7 @@ Platform (1): FR24 (multiple domains), FR34 (DAPR policies)
 
 **Severity:** PASS
 
-**Recommendation:** No significant implementation leakage found. Requirements properly specify WHAT without HOW. Technology references (DAPR, JWT, REST, CloudEvents, OpenTelemetry, Aspire, NuGet) are all capability-relevant to this platform product. The NFR "(validated: ...)" pattern appropriately provides testable scope without mandating implementation. FR21's C# signature is borderline but functionally essential as the product's defining contract -- consider adding a capability-first statement alongside the technical specification.
+**Recommendation:** No significant implementation leakage found. Requirements properly specify WHAT without HOW. Technology references (DAPR, JWT, REST, CloudEvents, OpenTelemetry, Aspire, NuGet) are all capability-relevant to this platform product. The NFR "(validated: ...)" pattern appropriately provides testable scope without mandating implementation. FR21's C# signature is borderline but functionally essential as the product's defining contract.
 
 ---
 
@@ -369,7 +267,7 @@ Platform (1): FR24 (multiple domains), FR34 (DAPR policies)
 **Complexity:** Low (general/standard -- not a regulated industry)
 **Assessment:** N/A -- No special domain compliance requirements (Healthcare, Fintech, GovTech, etc.)
 
-**Note:** The PRD includes a self-identified "Domain-Specific Requirements" section covering event sourcing invariants, data integrity constraints, and multi-tenant isolation. These are architectural domain requirements, not regulatory compliance requirements. The section is thorough and well-structured.
+**Note:** The PRD includes a self-identified "Domain-Specific Requirements" section covering event sourcing invariants, data integrity constraints, multi-tenant isolation requirements, and operational domain patterns. These are architectural domain requirements, not regulatory compliance requirements. The section is thorough and well-structured with risk mitigation table.
 
 ---
 
@@ -382,22 +280,22 @@ Platform (1): FR24 (multiple domains), FR34 (DAPR policies)
 
 | Section | Status | PRD Location |
 |---------|--------|-------------|
-| Endpoint Specs | Present | Command API Specification (lines 431-468) |
-| Auth Model | Present | Authentication & Authorization Model (lines 469-488) |
-| Data Schemas | Present | Data Schemas (lines 489-516) |
-| Error Codes | Present | Response Codes table (lines 458-467) |
-| Rate Limits | Missing | No rate limiting specification (flagged in Advanced Elicitation SRT-8) |
-| API Docs | Incomplete | API spec exists but no FR for external API documentation |
+| Endpoint Specs | Present | Command API Specification (lines 434-471) |
+| Auth Model | Present | Authentication & Authorization Model (lines 472-491) |
+| Data Schemas | Present | Data Schemas (lines 492-519) |
+| Error Codes | Present | Response Codes table (lines 461-471) |
+| Rate Limits | Missing | No rate limiting specification |
+| API Docs | Incomplete | API spec exists but no FR for external API documentation generation |
 
 #### Required Sections (developer_tool)
 
 | Section | Status | PRD Location |
 |---------|--------|-------------|
 | Language Matrix | N/A | .NET-only platform (not a multi-language SDK) |
-| Installation Methods | Present | NuGet Package Architecture (lines 413-429) |
+| Installation Methods | Present | NuGet Package Architecture (lines 415-432) |
 | API Surface | Present | NuGet packages + Command API spec |
-| Code Examples | Partial | Sample Domain Service (FR41) but no inline code examples |
-| Migration Guide | N/A | Not applicable for v1 (no prior version to migrate from) |
+| Code Examples | Partial | Sample Domain Service (FR41) but no inline code examples in PRD |
+| Migration Guide | N/A | Not applicable for v1 (no prior version) |
 
 #### Excluded Sections
 
@@ -415,29 +313,29 @@ Platform (1): FR24 (multiple domains), FR34 (DAPR policies)
 
 **Severity:** WARNING (rate limiting missing)
 
-**Recommendation:** PRD covers most project-type required sections well. Add rate limiting specification (NFR for API rate limits per tenant/consumer) and consider adding an FR for external API documentation generation.
+**Recommendation:** PRD covers most project-type required sections well. Add rate limiting specification (NFR for API rate limits per tenant/consumer) and consider adding an FR for external API documentation generation (OpenAPI spec).
 
 ---
 
 ### SMART Requirements Validation
 
-**Total Functional Requirements:** 47
+**Total Functional Requirements:** 48
 
 #### Scoring Summary
 
-**All scores >= 3:** 100% (47/47)
-**All scores >= 4:** 93.6% (44/47)
-**Overall Average Score:** 4.96/5.0
+**All scores >= 3:** 100% (48/48)
+**All scores >= 4:** 94% (45/48)
+**Overall Average Score:** 4.95/5.0
 
-#### Flagged FRs (scores < optimal)
+#### Flagged FRs (below optimal -- scores < 5 in any dimension)
 
 | FR# | S | M | A | R | T | Avg | Issue |
 |-----|---|---|---|---|---|-----|-------|
-| FR2 | 4 | 4 | 5 | 5 | 5 | 4.6 | "Structural completeness" needs precise definition |
-| FR13 | 4 | 3 | 5 | 5 | 5 | 4.4 | "Configurable intervals" vague -- configurable by whom? per what scope? |
-| FR22 | 4 | 4 | 5 | 5 | 5 | 4.6 | Registration mechanism implied but not explicit |
+| FR2 | 4 | 4 | 5 | 5 | 5 | 4.6 | "Structural completeness" needs precise definition of what constitutes complete |
+| FR13 | 4 | 3 | 5 | 5 | 5 | 4.4 | "Configurable intervals (every N events)" -- configurable by whom? per what scope? |
+| FR22 | 4 | 4 | 5 | 5 | 5 | 4.6 | Registration mechanism via "explicit configuration or automatically" -- could be more specific on the explicit path |
 
-All remaining 44 FRs scored 5/5 across all SMART dimensions.
+All remaining 45 FRs scored 5/5 across all SMART dimensions.
 
 #### Improvement Suggestions
 
@@ -449,7 +347,7 @@ All remaining 44 FRs scored 5/5 across all SMART dimensions.
 
 **Severity:** PASS
 
-**Recommendation:** FRs demonstrate exceptional SMART quality (4.96/5.0 average). Only 3 FRs have minor specificity/measurability gaps that can be addressed as refinements. Attainability, Relevance, and Traceability are perfect across all 47 FRs.
+**Recommendation:** FRs demonstrate exceptional SMART quality (4.95/5.0 average). Only 3 FRs have minor specificity/measurability gaps that can be addressed as refinements. Attainability, Relevance, and Traceability are perfect across all 48 FRs.
 
 ---
 
@@ -463,26 +361,27 @@ All remaining 44 FRs scored 5/5 across all SMART dimensions.
 - Logical narrative arc: Vision -> Metrics -> Scope -> Journeys -> Domain -> Innovation -> Architecture -> Phasing -> Requirements
 - Each section builds on the previous; no orphan sections or circular references
 - User journeys are compelling narratives (not dry descriptions) that make abstract architecture concrete
-- Risk analysis is integrated throughout (domain risks, market risks, resource risks, innovation risks) rather than isolated
-- The "Must-Have Analysis" table is an exceptionally effective scoping tool
+- Risk analysis is integrated throughout (domain risks, market risks, resource risks, innovation risks) rather than isolated in one section
+- The "Must-Have Analysis" table (Product Scope) is an exceptionally effective scoping tool
+- Cross-Journey Insights section synthesizes patterns across all 5 journeys
 
 **Areas for Improvement:**
-- "Innovation & Novel Patterns" section placement between Domain Requirements and Project-Type Requirements breaks the requirements-focused flow slightly -- could follow Executive Summary or Product Scope for better narrative arc
+- "Innovation & Novel Patterns" placement between Domain Requirements and Project-Type Requirements breaks the requirements-focused flow slightly -- could follow Executive Summary or Product Scope for better narrative arc
 - "Project Scoping & Phased Development" duplicates some content from Product Scope (MVP features listed in both)
 
 #### Dual Audience Effectiveness
 
 **For Humans:**
-- Executive-friendly: Excellent. Executive Summary is concise with clear differentiator statement. Success Criteria are SMART. User Journeys read like product stories.
-- Developer clarity: Excellent. 47 well-formed FRs, detailed API spec with endpoint table, NuGet package architecture, data schemas, testing strategy.
-- Designer clarity: N/A for v1 (no UI). Alex's Journey provides strong v2 UX requirements.
-- Stakeholder decision-making: Excellent. Risk matrices, phased roadmap with dependency analysis, go/no-go gates enable informed resource allocation decisions.
+- Executive-friendly: Excellent. Executive Summary is concise with clear differentiator. Success Criteria are SMART. User Journeys read as compelling product stories.
+- Developer clarity: Excellent. 48 well-formed FRs, detailed API spec with endpoint table, NuGet package architecture, data schemas, testing strategy.
+- Designer clarity: N/A for v1 (no UI). Alex's Journey provides strong v2 UX requirements seed.
+- Stakeholder decision-making: Excellent. Risk matrices, phased roadmap with dependency analysis, go/no-go gates enable informed resource allocation.
 
 **For LLMs:**
 - Machine-readable structure: Excellent. Clean H2 headers, consistent formatting, YAML frontmatter with classification metadata, structured tables throughout.
 - Architecture readiness: Excellent. Technology stack, DAPR building block dependency table, NuGet package architecture, data schemas, composite key strategy, six-layer auth model -- an architect LLM has everything needed.
-- Epic/Story readiness: Good. 47 FRs map cleanly to user stories. Cross-journey summary table provides feature prioritization. Must-Have Analysis table enables sprint planning.
-- UX readiness: N/A for v1. Alex's journey seeds v2 UX requirements but lacks wireframes or interaction flows (appropriate for v1 PRD).
+- Epic/Story readiness: Good. 48 FRs map cleanly to user stories. Cross-journey summary table provides feature prioritization. Must-Have Analysis enables sprint planning.
+- UX readiness: N/A for v1. Alex's journey seeds v2 UX requirements.
 
 **Dual Audience Score:** 5/5
 
@@ -491,8 +390,8 @@ All remaining 44 FRs scored 5/5 across all SMART dimensions.
 | Principle | Status | Notes |
 |-----------|--------|-------|
 | Information Density | Met | Zero violations across all 3 anti-pattern categories |
-| Measurability | Met | 97.5% pass rate (2 vague quantifiers out of 79 requirements) |
-| Traceability | Partial | 53% strong, 21% implied, 26% orphan -- orphans justified as technical enablers |
+| Measurability | Met | 97.5% pass rate (2 vague quantifiers out of 80 requirements) |
+| Traceability | Partial | 54% strong, 15% implied, 31% orphan -- orphans justified as technical enablers for infrastructure platform |
 | Domain Awareness | Met | Self-identified event sourcing invariants, data integrity, multi-tenant isolation |
 | Zero Anti-Patterns | Met | Zero filler, zero wordy phrases, zero redundancy |
 | Dual Audience | Met | Excellent for both human stakeholders and LLM downstream consumption |
@@ -515,17 +414,17 @@ All remaining 44 FRs scored 5/5 across all SMART dimensions.
 #### Top 3 Improvements
 
 1. **Add 3-5 missing Functional Requirements to close specification gaps**
-   The PRD has 8 medium-severity gaps identified across Advanced Elicitation, Brief Coverage, and Project-Type checks. The highest-impact additions: FR for command idempotency mechanism, FR for domain service error/rejection contract, NFR for API rate limiting per tenant, FR clarifying EventStore owns envelope metadata (not domain services), and explicit cross-aggregate ordering non-guarantee.
+   The PRD has moderate-severity gaps identified across Brief Coverage and Project-Type checks. Highest-impact additions: FR for command idempotency mechanism, NFR for API rate limiting per tenant, explicit cross-aggregate ordering non-guarantee, and clarification of snapshot production responsibility (domain service role).
 
 2. **Add command status storage key pattern and pub/sub topic naming convention to Data Schemas**
-   FR5 defines command status queries and FR19 defines per-tenant-per-domain topics, but the Data Schemas section has no key patterns for these. Adding `{tenant}:{domain}:{correlationId}:status` and `{tenant}:{domain}:events` patterns would close the self-consistency gaps (SC-3, SC-4).
+   FR5 defines command status queries and FR19 defines per-tenant-per-domain topics, but the Data Schemas section has no key patterns for these. Adding `{tenant}:{domain}:{correlationId}:status` and `{tenant}:{domain}:events` patterns would close self-consistency gaps.
 
 3. **Add a "Platform Validation Journey" to strengthen traceability**
-   12 orphan FRs and 7 unsupported success criteria could be addressed with a single journey showing performance benchmarking, chaos scenario testing, and event envelope validation through 3+ domain implementations. This would elevate traceability from WARNING to PASS.
+   15 orphan FRs and 7 unsupported success criteria could be partially addressed with a single journey showing performance benchmarking, chaos scenario testing, and event envelope validation through 3+ domain implementations. This would elevate traceability from WARNING to PASS.
 
 #### Summary
 
-**This PRD is:** A professional-grade, information-dense requirements document that demonstrates exceptional mastery of event sourcing architecture and BMAD standards, with targeted gaps in specification completeness that are readily addressable.
+**This PRD is:** A professional-grade, information-dense requirements document demonstrating exceptional mastery of event sourcing architecture and BMAD standards, with targeted specification gaps that are readily addressable.
 
 **To make it great:** Add the 3-5 missing requirements, complete the Data Schemas section, and add one more user journey for platform validation.
 
@@ -548,23 +447,23 @@ No template variables remaining. All `{variable}` patterns are actual content (R
 | User Journeys | Complete | 5 journeys covering all personas + edge case |
 | Domain-Specific Requirements | Complete | Invariants, data integrity, multi-tenant, operational patterns, risks |
 | Innovation & Novel Patterns | Complete | 4 innovation areas, market context, validation approach, risk mitigation |
-| Project-Type Requirements | Complete | Architecture, NuGet packages, API spec, auth model, data schemas, testing strategy |
+| Project-Type Requirements | Complete | Architecture, NuGet packages, API spec, auth model, data schemas, testing |
 | Project Scoping & Phased Development | Complete | MVP strategy, feature set, post-MVP roadmap, risk mitigation |
-| Functional Requirements | Complete | 47 FRs across 8 categories |
+| Functional Requirements | Complete | 48 FRs across 8 categories |
 | Non-Functional Requirements | Complete | 32 NFRs across 6 categories |
 
 #### Section-Specific Completeness
 
 **Success Criteria Measurability:** All measurable -- SMART targets with specific metrics, timelines, and measurement methods
 **User Journeys Coverage:** Yes -- developers, operators (v1+v2), DevOps engineers, API consumers
-**FRs Cover MVP Scope:** Yes -- all 10 MVP features mapped to FRs (100% alignment confirmed in traceability validation)
+**FRs Cover MVP Scope:** Yes -- all 10 MVP features mapped to FRs (100% alignment)
 **NFRs Have Specific Criteria:** All -- p99 latency targets, availability percentages, concurrent throughput, isolation guarantees
 
 #### Frontmatter Completeness
 
-**stepsCompleted:** Present (11 steps)
+**stepsCompleted:** Present (12 steps)
 **classification:** Present (domain, projectType, complexity, complexityDrivers, projectContext, scopeStrategy)
-**inputDocuments:** Present (7 documents)
+**inputDocuments:** Present (8 documents)
 **date:** Present (2026-02-11)
 
 **Frontmatter Completeness:** 4/4
@@ -584,9 +483,22 @@ No template variables remaining. All `{variable}` patterns are actual content (R
 
 ### Consolidated Findings Summary
 
-| Priority | Count | Key Themes |
-|----------|-------|------------|
-| Medium | 8 | Command status storage, domain service error contract, backend compatibility matrix, rate limiting, backup/DR, envelope metadata ownership, setup preconditions, structured log schema |
-| Low-Medium | 5 | Aggregate state inspection (v1), FR5 tenant scoping, command schema versioning, solo developer bus factor, correlation ID collision |
-| Low | 6 | Version mismatches, measurement methods, FR21 implementation leakage, extension validation, KPI table gaps, DAPR version compatibility |
-| Minor | 3 | Pub/sub topic naming, MVP vs 6-month app count linkage, scaling guidance |
+| Check | Result |
+|-------|--------|
+| Format | BMAD Standard (6/6 core sections) |
+| Information Density | PASS (0 violations) |
+| Product Brief Coverage | 94% (3 moderate gaps) |
+| Measurability | PASS (2 vague quantifiers out of 80 requirements) |
+| Traceability | WARNING (15 orphan FRs -- justified as technical enablers) |
+| Implementation Leakage | PASS (1 borderline) |
+| Domain Compliance | N/A (low complexity domain) |
+| Project-Type Compliance | 88% WARNING (rate limiting missing) |
+| SMART Quality | PASS (4.95/5.0 average, 100% >= 3, 94% >= 4) |
+| Holistic Quality | 4.5/5 -- Good to Excellent |
+| Completeness | 100% PASS |
+
+**Critical Issues:** 0
+**Warnings:** 2 (traceability orphan FRs, missing rate limiting)
+**Moderate Gaps:** 3 (command idempotency FR, cross-aggregate ordering non-guarantee, snapshot responsibility)
+
+**Overall Status:** PASS WITH RECOMMENDATIONS

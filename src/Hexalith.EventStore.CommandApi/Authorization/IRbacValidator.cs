@@ -16,6 +16,7 @@ public interface IRbacValidator {
     /// <param name="domain">The domain name for domain claim checking.</param>
     /// <param name="messageType">The command type or query type name.</param>
     /// <param name="messageCategory">The message category: "command" or "query".</param>
+    /// <param name="aggregateId">Optional aggregate identifier for fine-grained authorization checks.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A <see cref="RbacValidationResult"/> indicating whether access is authorized.</returns>
     Task<RbacValidationResult> ValidateAsync(
@@ -24,5 +25,6 @@ public interface IRbacValidator {
         string domain,
         string messageType,
         string messageCategory,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? aggregateId = null);
 }

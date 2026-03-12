@@ -260,7 +260,7 @@ public class AuthorizationBehaviorTests {
         CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
-        ex.Reason.ShouldContain("Not authorized to submit commands for tenant");
+        ex.Reason.ShouldContain("Not authorized for tenant");
     }
 
     [Fact]
@@ -305,11 +305,11 @@ public class AuthorizationBehaviorTests {
         _ = accessor.HttpContext.Returns(httpContext);
 
         ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
-        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(TenantValidationResult.Allowed);
 
         IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
-        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(RbacValidationResult.Allowed);
 
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
@@ -322,7 +322,8 @@ public class AuthorizationBehaviorTests {
         await tenantValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "test-tenant",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            "agg-001");
     }
 
     [Fact]
@@ -336,11 +337,11 @@ public class AuthorizationBehaviorTests {
         _ = accessor.HttpContext.Returns(httpContext);
 
         ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
-        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(TenantValidationResult.Allowed);
 
         IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
-        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(RbacValidationResult.Allowed);
 
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
@@ -356,7 +357,8 @@ public class AuthorizationBehaviorTests {
             "test-domain",
             "CreateOrder",
             "command",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            "agg-001");
     }
 
     // ── Query authorization tests (Story 17-5) ──
@@ -437,11 +439,11 @@ public class AuthorizationBehaviorTests {
         _ = accessor.HttpContext.Returns(httpContext);
 
         ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
-        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(TenantValidationResult.Allowed);
 
         IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
-        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(RbacValidationResult.Allowed);
 
         var queryLogger = new TestLogger<AuthorizationBehavior<SubmitQuery, SubmitQueryResult>>(_logEntries);
@@ -457,7 +459,14 @@ public class AuthorizationBehaviorTests {
             "test-domain",
             "GetOrderStatus",
             "query",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            "agg-001");
+
+        await tenantValidator.Received(1).ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            "test-tenant",
+            Arg.Any<CancellationToken>(),
+            "agg-001");
     }
 
     // Helper types for non-SubmitCommand test

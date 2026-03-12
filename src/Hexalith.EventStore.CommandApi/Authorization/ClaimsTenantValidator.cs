@@ -13,7 +13,8 @@ public class ClaimsTenantValidator : ITenantValidator {
     public Task<TenantValidationResult> ValidateAsync(
         ClaimsPrincipal user,
         string tenantId,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
         var tenantClaims = user.FindAll("eventstore:tenant")
@@ -27,7 +28,7 @@ public class ClaimsTenantValidator : ITenantValidator {
 
         // Case-SENSITIVE comparison (StringComparison.Ordinal) — tenant IDs are system-assigned
         if (!tenantClaims.Any(t => string.Equals(t, tenantId, StringComparison.Ordinal))) {
-            return Task.FromResult(TenantValidationResult.Denied($"Not authorized to submit commands for tenant '{tenantId}'."));
+            return Task.FromResult(TenantValidationResult.Denied($"Not authorized for tenant '{tenantId}'."));
         }
 
         return Task.FromResult(TenantValidationResult.Allowed);

@@ -183,13 +183,13 @@ public class ClaimsRbacValidatorTests {
         result.IsAuthorized.ShouldBeTrue();
     }
 
-    // --- messageCategory contract test (Subtask 4.4) ---
+    // --- messageCategory contract tests ---
 
     [Theory]
     [InlineData("command")]
     [InlineData("query")]
-    public async Task ValidateAsync_MessageCategory_ProducesIdenticalResults_ForBothValues(string messageCategory) {
-        // Arrange — claims-based validation does NOT distinguish command vs query
+    public async Task ValidateAsync_ExactMessageType_AllowsForBothCategories(string messageCategory) {
+        // Arrange — exact messageType match works for both categories
         ClaimsPrincipal principal = CreatePrincipal(
             domains: ["test-domain"],
             permissions: ["CreateOrder"]);
@@ -198,15 +198,15 @@ public class ClaimsRbacValidatorTests {
         RbacValidationResult result = await _validator.ValidateAsync(
             principal, "test-tenant", "test-domain", "CreateOrder", messageCategory, CancellationToken.None);
 
-        // Assert — both categories produce the same result
+        // Assert — both categories accept exact messageType match
         result.IsAuthorized.ShouldBeTrue();
     }
 
     [Theory]
     [InlineData("command")]
     [InlineData("query")]
-    public async Task ValidateAsync_MessageCategory_DenialIdentical_ForBothValues(string messageCategory) {
-        // Arrange — verify denial is also identical for both categories
+    public async Task ValidateAsync_DomainDenial_IdenticalForBothCategories(string messageCategory) {
+        // Arrange — domain denial is independent of category
         ClaimsPrincipal principal = CreatePrincipal(
             domains: ["other-domain"],
             permissions: ["CreateOrder"]);
@@ -215,9 +215,79 @@ public class ClaimsRbacValidatorTests {
         RbacValidationResult result = await _validator.ValidateAsync(
             principal, "test-tenant", "test-domain", "CreateOrder", messageCategory, CancellationToken.None);
 
-        // Assert — both categories produce the same denial
+        // Assert — both categories produce the same domain denial
         result.IsAuthorized.ShouldBeFalse();
         result.Reason!.ShouldContain("domain");
+    }
+
+    // --- Query-specific permission tests ---
+
+    [Fact]
+    public async Task ValidateAsync_QueryWildcardPermission_AllowsQueryAccess() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["queries:*"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "GetOrder", "query", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_QueryReadPermission_AllowsQueryAccess() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["query:read"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "GetOrder", "query", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_CommandWildcard_DoesNotAllowQueryAccess() {
+        // Arrange — commands:* should NOT grant query access
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["commands:*"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "GetOrder", "query", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for query type 'GetOrder'.");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_CommandSubmit_DoesNotAllowQueryAccess() {
+        // Arrange — command:submit should NOT grant query access
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["command:submit"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "GetOrder", "query", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for query type 'GetOrder'.");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_QueryWildcard_DoesNotAllowCommandAccess() {
+        // Arrange — queries:* should NOT grant command access
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["queries:*"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for command type 'CreateOrder'.");
     }
 
     [Fact]

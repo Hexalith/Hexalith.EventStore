@@ -8,4 +8,4 @@ namespace Hexalith.EventStore.Server.Actors.Authorization;
 /// </summary>
 /// <param name="UserId">The unique user identifier (from NameIdentifier/sub claim).</param>
 /// <param name="TenantId">The tenant ID to validate access for.</param>
-public record TenantValidationRequest(string UserId, string TenantId);
+public record TenantValidationRequest(string UserId, string TenantId, string? AggregateId = null);

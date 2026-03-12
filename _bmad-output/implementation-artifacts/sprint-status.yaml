@@ -227,7 +227,7 @@ development_status:
   17-4-query-contracts: done
   17-5-queries-controller-and-query-router: done
   17-6-projection-actor-contract: done
-  17-7-command-validation-endpoint: ready-for-dev
-  17-8-query-validation-endpoint: ready-for-dev
-  17-9-integration-and-e2e-tests: backlog
+  17-7-command-validation-endpoint: done
+  17-8-query-validation-endpoint: done
+  17-9-integration-and-e2e-tests: done
   epic-17-retrospective: optional

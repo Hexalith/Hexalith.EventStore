@@ -154,6 +154,26 @@ public class ActorRbacValidatorTests {
     }
 
     [Fact]
+    public async Task ValidateAsync_ForwardsAggregateIdToActorRequest() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        RbacValidationRequest? capturedRequest = null;
+        actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None, "order-123");
+
+        // Assert
+        capturedRequest.ShouldNotBeNull();
+        capturedRequest.AggregateId.ShouldBe("order-123");
+    }
+
+    [Fact]
     public async Task ValidateAsync_NoNameIdentifierClaim_ThrowsInvalidOperation() {
         // Arrange
         (ActorRbacValidator validator, _) = CreateValidator();

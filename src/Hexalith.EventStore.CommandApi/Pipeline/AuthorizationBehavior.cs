@@ -20,12 +20,12 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
 
-        string? tenant, domain, messageType, messageCategory;
+        string? tenant, domain, messageType, messageCategory, aggregateId;
         if (request is SubmitCommand command) {
-            (tenant, domain, messageType, messageCategory) = (command.Tenant, command.Domain, command.CommandType, "command");
+            (tenant, domain, messageType, messageCategory, aggregateId) = (command.Tenant, command.Domain, command.CommandType, "command", command.AggregateId);
         }
         else if (request is SubmitQuery query) {
-            (tenant, domain, messageType, messageCategory) = (query.Tenant, query.Domain, query.QueryType, "query");
+            (tenant, domain, messageType, messageCategory, aggregateId) = (query.Tenant, query.Domain, query.QueryType, "query", query.AggregateId);
         }
         else {
             return await next().ConfigureAwait(false);
@@ -51,7 +51,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
 
         // Tenant validation (moved from controller — Layer 4 consolidation)
         TenantValidationResult tenantResult = await tenantValidator
-            .ValidateAsync(user, tenant, cancellationToken).ConfigureAwait(false)
+            .ValidateAsync(user, tenant, cancellationToken, aggregateId).ConfigureAwait(false)
             ?? throw new InvalidOperationException(
                 "ITenantValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
         if (!tenantResult.IsAuthorized) {
@@ -66,7 +66,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         // RBAC validation (was inline domain + permission checks)
         RbacValidationResult rbacResult = await rbacValidator
             .ValidateAsync(user, tenant, domain,
-                messageType, messageCategory, cancellationToken).ConfigureAwait(false)
+                messageType, messageCategory, cancellationToken, aggregateId).ConfigureAwait(false)
             ?? throw new InvalidOperationException(
                 "IRbacValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
         if (!rbacResult.IsAuthorized) {

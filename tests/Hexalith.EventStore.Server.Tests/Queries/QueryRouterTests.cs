@@ -99,6 +99,28 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_GenericExceptionWithActorNotFoundPattern_ReturnsNotFound() {
+        // Arrange
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
+            .ThrowsAsync(new InvalidOperationException("did not find address for actor 'ProjectionActor/test-tenant:orders:order-1'"));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        // Act
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+        result.Payload.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_ActorMethodInvocationExceptionWithoutNotFoundPattern_Propagates() {
         // Arrange
         IProjectionActor actor = Substitute.For<IProjectionActor>();

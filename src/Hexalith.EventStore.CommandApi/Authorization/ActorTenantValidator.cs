@@ -24,7 +24,8 @@ public partial class ActorTenantValidator(
     public async Task<TenantValidationResult> ValidateAsync(
         ClaimsPrincipal user,
         string tenantId,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -44,7 +45,7 @@ public partial class ActorTenantValidator(
                 actorType);
 
             response = await proxy.ValidateTenantAccessAsync(
-                new TenantValidationRequest(userId, tenantId)).ConfigureAwait(false);
+                new TenantValidationRequest(userId, tenantId, aggregateId)).ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.ActorTenantValidationFailed(logger, ex, userId, tenantId, actorType,

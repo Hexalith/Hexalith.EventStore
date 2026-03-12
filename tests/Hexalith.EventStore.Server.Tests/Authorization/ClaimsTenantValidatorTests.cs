@@ -59,7 +59,7 @@ public class ClaimsTenantValidatorTests {
 
         // Assert
         result.IsAuthorized.ShouldBeFalse();
-        result.Reason.ShouldBe("Not authorized to submit commands for tenant 'test-tenant'.");
+        result.Reason.ShouldBe("Not authorized for tenant 'test-tenant'.");
     }
 
     [Fact]

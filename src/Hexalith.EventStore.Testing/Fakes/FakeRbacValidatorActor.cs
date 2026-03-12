@@ -21,6 +21,13 @@ public class FakeRbacValidatorActor : IRbacValidatorActor {
     /// <summary>Gets or sets the exception to throw from ValidatePermissionAsync.</summary>
     public Exception? ConfiguredException { get; set; }
 
+    /// <summary>Clears recorded requests and restores default behavior.</summary>
+    public void Reset() {
+        _receivedRequests.Clear();
+        ConfiguredResult = null;
+        ConfiguredException = null;
+    }
+
     /// <inheritdoc/>
     public Task<ActorValidationResponse> ValidatePermissionAsync(RbacValidationRequest request) {
         ArgumentNullException.ThrowIfNull(request);

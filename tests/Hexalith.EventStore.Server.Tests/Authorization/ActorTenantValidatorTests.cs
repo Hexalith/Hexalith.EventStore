@@ -154,6 +154,26 @@ public class ActorTenantValidatorTests {
     }
 
     [Fact]
+    public async Task ValidateAsync_ForwardsAggregateIdToActorRequest() {
+        // Arrange
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
+        TenantValidationRequest? capturedRequest = null;
+        actor.ValidateTenantAccessAsync(Arg.Do<TenantValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, CancellationToken.None, "order-123");
+
+        // Assert
+        capturedRequest.ShouldNotBeNull();
+        capturedRequest.AggregateId.ShouldBe("order-123");
+    }
+
+    [Fact]
     public async Task ValidateAsync_NoNameIdentifierClaim_ThrowsInvalidOperation() {
         // Arrange
         (ActorTenantValidator validator, _) = CreateValidator();

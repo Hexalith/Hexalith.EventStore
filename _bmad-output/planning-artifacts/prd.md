@@ -11,6 +11,8 @@ stepsCompleted:
   - step-09-functional
   - step-10-nonfunctional
   - step-11-polish
+  - step-01b-continue
+  - step-12-complete
 inputDocuments:
   - product-brief-Hexalith.EventStore-2026-02-11.md
   - market-event-sourcing-event-store-solutions-research-2026-02-11.md
@@ -19,11 +21,12 @@ inputDocuments:
   - technical-dapr-workflow-pubsub-actors-research-2026-02-11.md
   - technical-dotnet-10-aspire-13-research-2026-02-11.md
   - brainstorming-session-2026-02-11.md
+  - brainstorming-session-2026-03-12-1.md
 workflowType: 'prd'
 documentCounts:
   briefs: 1
   research: 5
-  brainstorming: 1
+  brainstorming: 2
   projectDocs: 0
 classification:
   projectType: 'Event Sourcing Server Platform (primary) + Developer Tooling (secondary)'
@@ -37,6 +40,10 @@ classification:
     - DAPR runtime dependency adding operational surface area
   projectContext: 'Greenfield codebase, pre-validated architecture'
   scopeStrategy: 'Deliberate phasing - v1 actors with workflow-ready design, v2 workflow migration'
+lastEdited: '2026-03-12'
+editHistory:
+  - date: '2026-03-12'
+    changes: 'Fix all validation report findings: added Journey 6 (Platform Validation), FR49 (command idempotency), NFR33-34 (rate limiting), refined FR10/FR13, added Data Schema patterns, added causation depth guardrail to Phase 2 roadmap'
 ---
 
 # Product Requirements Document - Hexalith.EventStore
@@ -282,6 +289,22 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 ---
 
+### Journey 6: Jerome's Platform Validation Sprint (Platform Quality Gate)
+
+**Persona:** Jerome is the primary developer and architect of Hexalith.EventStore. Before declaring v1 GA, he must validate the platform's performance, resilience, and event envelope design across multiple domain service implementations.
+
+**Opening Scene:** Jerome has three domain services running on EventStore -- the Counter sample, a payment processing service, and an inventory management service. The core pipeline works. Now he needs to prove the platform meets its success criteria before public release. He opens the Aspire AppHost and prepares his validation suite.
+
+**Rising Action:** Jerome starts with event envelope validation. He reviews the 11-field metadata across all three domain services: Counter uses basic fields, Payments uses correlation + causation chains for saga flows, Inventory uses the extension metadata bag for warehouse-specific context. All three work without envelope changes -- the extension bag absorbed domain-specific needs without schema modification. He runs the automated snapshot verification: snapshot at sequence N plus events N+1..M produces identical state to full replay from sequence 1..M across all three domains.
+
+**Climax:** Jerome executes the chaos scenario suite. He kills the state store mid-command -- the actor's checkpointed state machine resumes from the correct stage, deterministic replay produces the same events, zero data loss. He crashes the pub/sub while commands are processing -- events persist safely in the state store, DAPR retry policies drain the backlog on recovery. He simulates actor rebalancing during load -- consistent hashing and the checkpoint design ensure no commands are lost. He runs 100 concurrent command submissions per second for 10 minutes, monitoring p99 latencies: command submission < 50ms, end-to-end lifecycle < 200ms, event append < 10ms. All targets met. He switches the entire test suite from Redis to PostgreSQL -- all tests pass with zero code changes.
+
+**Resolution:** Jerome's validation spreadsheet is complete: event envelope validated across 3 domain implementations, all 6 chaos scenarios pass with zero data loss, performance KPIs met under sustained load, infrastructure swap confirmed between Redis and PostgreSQL. He tags the repository `v1.0.0-rc1` and publishes the NuGet packages. The platform is proven.
+
+**Capabilities Revealed:** Event envelope validation across multiple domains, snapshot consistency verification, chaos scenario testing (state store crash, pub/sub outage, actor rebalancing), performance benchmarking (p99 latency targets), infrastructure portability validation (Redis to PostgreSQL swap), health and readiness endpoint verification, optimistic concurrency under concurrent load, atomic event write verification, composite key isolation testing, identity scheme derivation validation.
+
+---
+
 ### Journey Requirements Summary
 
 | Journey | Primary Capabilities Required |
@@ -291,6 +314,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 | Alex's Monday Morning (Operations v2) | Blazor dashboard, dead-letter management UI, domain service version rollback, tenant management, event stream explorer |
 | Priya's Deployment (Infrastructure) | Aspire publishers, DAPR component configuration, OpenTelemetry export, infrastructure portability, zero-code environment switching |
 | Sanjay's Integration (API Consumer) | Command API Gateway, JWT + claims authorization, command status tracking, correlation IDs, clean REST abstraction, HTTP error responses |
+| Jerome's Platform Validation (Quality Gate) | Event envelope validation, snapshot consistency, chaos scenario testing, performance benchmarking, infrastructure swap, health/readiness endpoints, concurrency testing, composite key isolation |
 
 **Cross-Journey Insights:**
 
@@ -513,6 +537,14 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 | `{tenant}:{domain}:{aggregateId}:events:{sequence}` | Individual event storage |
 | `{tenant}:{domain}:{aggregateId}:snapshot` | Latest snapshot |
 | `{tenant}:{domain}:{aggregateId}:metadata` | Aggregate metadata (version, last sequence) |
+| `{tenant}:{domain}:{correlationId}:status` | Command processing status tracking |
+
+**Pub/Sub Topic Naming Convention:**
+
+| Topic Pattern | Purpose |
+|---------------|---------|
+| `{tenant}:{domain}:events` | Per-tenant-per-domain event distribution topic |
+| `{tenant}:{domain}:deadletter` | Per-tenant-per-domain dead-letter topic |
 
 ### Implementation Considerations
 
@@ -600,6 +632,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | Dead-Letter Management UI | Blazor Dashboard | Visual inspect/fix/replay replacing topic + log approach |
 | Domain Service Version Management | Blazor Dashboard + DAPR config | Instant rollback via UI |
 | External Authorization Engine | v1 JWT model stable | OpenFGA/OPA extending claims-based model |
+| Max Causation Depth Guardrail | Saga/Process Manager | Saga loop prevention via configurable causation chain depth limit |
 
 **Phase 3: Enterprise Readiness (v3)**
 
@@ -653,21 +686,22 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 ### Command Processing
 
 - FR1: An API consumer can submit a command to the EventStore via a REST endpoint with tenant, domain, aggregate ID, command type, and payload
-- FR2: The system can validate a submitted command for structural completeness before routing it for processing
+- FR2: The system can validate a submitted command for structural completeness (required fields: tenantId, domain, aggregateId, commandType, payload; well-formed JSON structure) before routing it for processing
 - FR3: The system can route a command to the correct aggregate actor based on the identity scheme (`tenant:domain:aggregate-id`)
 - FR4: An API consumer can receive a correlation ID upon command submission for tracking the command lifecycle
 - FR5: An API consumer can query the processing status of a previously submitted command using its correlation ID
 - FR6: An operator can replay a previously failed command via the Command API after root cause is fixed
 - FR7: The system can reject duplicate commands targeting an aggregate that has an optimistic concurrency conflict, returning an appropriate error
 - FR8: The system can route failed commands to a dead-letter topic with full command payload, error details, and correlation context
+- FR49: The system can detect and reject duplicate commands by tracking processed command IDs per aggregate, returning an idempotent success response for already-processed commands
 
 ### Event Management
 
 - FR9: The system can persist events in an append-only, immutable event store where events are never modified or deleted after persistence
-- FR10: The system can assign strictly ordered, gapless sequence numbers to events within a single aggregate stream
+- FR10: The system can assign strictly ordered, gapless sequence numbers to events within a single aggregate stream. Cross-aggregate event ordering is explicitly not guaranteed and must not be relied upon by consumers
 - FR11: The system can wrap each event in an 11-field metadata envelope (aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type, serialization format) plus opaque payload and extension metadata bag
 - FR12: The system can reconstruct aggregate state by replaying all events in an aggregate's stream from sequence 1 to current
-- FR13: The system can create snapshots of aggregate state at configurable intervals (every N events) to optimize state rehydration
+- FR13: The system can create snapshots of aggregate state at administrator-configured event count intervals (default: every 100 events, configurable per tenant-domain pair) to optimize state rehydration. The EventStore signals the domain service when a snapshot threshold is reached; the domain service produces the snapshot content inline as part of command processing
 - FR14: The system can reconstruct aggregate state from the latest snapshot plus subsequent events, producing identical state to full replay
 - FR15: The system can store events using a composite key strategy that includes tenant, domain, and aggregate identity for isolation
 - FR16: The system can enforce atomic event writes -- a command produces 0 or N events as a single transaction, never a partial subset
@@ -682,10 +716,10 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 ### Domain Service Integration
 
 - FR21: A domain service developer can implement a domain processor as a pure function with the contract `(Command, CurrentState?) -> List<DomainEvent>`
-- FR22: A domain service developer can register their domain service with EventStore by tenant and domain via explicit configuration or automatically via convention-based assembly scanning
+- FR22: A domain service developer can register their domain service with EventStore by tenant and domain via explicit DAPR configuration entry (specifying tenant ID, domain name, and service invocation endpoint) or automatically via convention-based assembly scanning
 - FR23: The system can invoke a registered domain service when processing a command, passing the command and current aggregate state
-- FR24: The system can process commands for multiple independent domains within the same EventStore instance
-- FR25: The system can process commands for multiple tenants within the same domain, each with isolated event streams
+- FR24: The system can process commands for at least 2 independent domains within the same EventStore instance
+- FR25: The system can process commands for at least 2 tenants within the same domain, each with isolated event streams
 
 ### Identity & Multi-Tenancy
 
@@ -770,3 +804,8 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - NFR30: Domain services must be invocable via DAPR service invocation over HTTP -- the EventStore must not impose language or framework constraints on domain service implementations beyond the pure function contract
 - NFR31: OpenTelemetry telemetry must be exportable to any OTLP-compatible collector (validated: Aspire dashboard, Jaeger, Grafana/Tempo)
 - NFR32: The system must be deployable via Aspire publishers to Docker Compose, Kubernetes, and Azure Container Apps without custom deployment scripts
+
+### Rate Limiting
+
+- NFR33: The Command API must enforce per-tenant rate limiting with a configurable threshold (default: 1,000 commands per minute per tenant), returning 429 Too Many Requests with Retry-After header when exceeded
+- NFR34: The Command API must enforce per-consumer rate limiting with a configurable threshold (default: 100 commands per second per authenticated consumer), returning 429 Too Many Requests with Retry-After header when exceeded

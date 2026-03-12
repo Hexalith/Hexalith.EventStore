@@ -62,6 +62,10 @@ public partial class QueryRouter(
             Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
             return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
         }
+        catch (Exception ex) when (IsProjectionActorNotFound(ex)) {
+            Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
+        }
         catch (ActorMethodInvocationException ex) {
             Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
             throw;
@@ -72,7 +76,7 @@ public partial class QueryRouter(
         }
     }
 
-    private static bool IsProjectionActorNotFound(ActorMethodInvocationException exception) {
+    private static bool IsProjectionActorNotFound(Exception exception) {
         ArgumentNullException.ThrowIfNull(exception);
 
         return ContainsNotFoundMarker(exception.Message)

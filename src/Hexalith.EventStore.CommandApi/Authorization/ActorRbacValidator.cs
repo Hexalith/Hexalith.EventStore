@@ -28,7 +28,8 @@ public partial class ActorRbacValidator(
         string domain,
         string messageType,
         string messageCategory,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -48,7 +49,7 @@ public partial class ActorRbacValidator(
                 actorType);
 
             response = await proxy.ValidatePermissionAsync(
-                new RbacValidationRequest(userId, tenantId, domain, messageType, messageCategory)).ConfigureAwait(false);
+                new RbacValidationRequest(userId, tenantId, domain, messageType, messageCategory, aggregateId)).ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.ActorRbacValidationFailed(logger, ex, userId, tenantId, actorType,

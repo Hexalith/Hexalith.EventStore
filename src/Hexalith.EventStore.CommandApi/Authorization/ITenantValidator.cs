@@ -17,7 +17,8 @@ public interface ITenantValidator {
     /// </summary>
     /// <param name="user">The authenticated user's claims principal.</param>
     /// <param name="tenantId">The tenant ID to validate access for.</param>
+    /// <param name="aggregateId">Optional aggregate identifier for fine-grained authorization checks.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A <see cref="TenantValidationResult"/> indicating whether access is authorized.</returns>
-    Task<TenantValidationResult> ValidateAsync(ClaimsPrincipal user, string tenantId, CancellationToken cancellationToken);
+    Task<TenantValidationResult> ValidateAsync(ClaimsPrincipal user, string tenantId, CancellationToken cancellationToken, string? aggregateId = null);
 }
