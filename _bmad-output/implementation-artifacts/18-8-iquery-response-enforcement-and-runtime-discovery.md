@@ -136,11 +136,13 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
     - [x] 4.3 On second call after discovery, `_discoveredProjectionType` is already set → ETag lookup uses correct projection type → cache works normally.
 
 - [x] Task 5: [ENDPOINT] QueriesController uses runtime ProjectionType (AC: #6)
-    - [x] 5.1 Modify the post-query ETag fetch block in `QueriesController.Submit()` (currently lines 122-131). Change from `request.Domain` to `result.ProjectionType ?? request.Domain`:
+    - [x] 5.1 Modify the post-query ETag fetch block in `QueriesController.Submit()` (currently lines 122-131). Change from `request.Domain` to non-empty `result.ProjectionType`, otherwise fall back to `request.Domain`:
         ```csharp
         if (currentETag is null)
         {
-            string projectionTypeForETag = result.ProjectionType ?? request.Domain;
+            string projectionTypeForETag = string.IsNullOrWhiteSpace(result.ProjectionType)
+                ? request.Domain
+                : result.ProjectionType;
             try
             {
                 currentETag = await eTagService
@@ -161,7 +163,9 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
         // Use runtime-discovered projection type for ETag response header
         if (currentETag is null)
         {
-            string projectionTypeForETag = result.ProjectionType ?? request.Domain;
+            string projectionTypeForETag = string.IsNullOrWhiteSpace(result.ProjectionType)
+                ? request.Domain
+                : result.ProjectionType;
             // ... rest of fetch
         }
         ```
@@ -240,7 +244,7 @@ public record QueryResult(
 
 **QueriesController** (`src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs`):
 
-- Lines 122-131: Post-query ETag fetch uses `request.Domain` — **CHANGE to use `result.ProjectionType ?? request.Domain`**
+- Lines 122-131: Post-query ETag fetch uses `request.Domain` — **CHANGE to use non-empty `result.ProjectionType`, otherwise fall back to `request.Domain`**
 - The `result` variable is `SubmitQueryResult` (from mediator.Send)
 
 **QueryRouter** (`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`):
@@ -310,7 +314,7 @@ Recent commits show:
 | `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`                        | Pass `result.ProjectionType` through to `QueryRouterResult`                    |
 | `src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs`               | Add `string? ProjectionType = null` to `SubmitQueryResult`                     |
 | `src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`                | Pass `routerResult.ProjectionType` through to `SubmitQueryResult`              |
-| `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs`          | Use `result.ProjectionType ?? request.Domain` for ETag response fetch          |
+| `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs`          | Use non-empty `result.ProjectionType`, otherwise fall back to `request.Domain` |
 | `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` | Update `TestCachingProjectionActor`, add runtime discovery tests               |
 | `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` | Add tests for ProjectionType passthrough to ETag response                      |
 
@@ -390,7 +394,7 @@ Code review follow-up fixes applied: warm-cache projection type propagation, emp
 - `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs` — passes `result.ProjectionType` to `QueryRouterResult`
 - `src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs` — added `string? ProjectionType = null` to `SubmitQueryResult`
 - `src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs` — passes `routerResult.ProjectionType` to `SubmitQueryResult`
-- `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs` — uses `result.ProjectionType ?? request.Domain` for ETag response fetch
+- `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs` — uses non-empty `result.ProjectionType`, otherwise falls back to `request.Domain` for ETag response fetch
 - `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` — runtime discovery, mismatch, warm-cache ProjectionType propagation, fallbacks, validation, flip-flopping, backward compat
 - `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` — 2 new tests (ProjectionType ETag routing, null fallback)
 - `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs` — 2 new tests (ProjectionType passthrough)
