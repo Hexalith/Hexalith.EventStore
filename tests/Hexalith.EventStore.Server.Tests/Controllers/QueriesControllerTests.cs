@@ -673,6 +673,29 @@ public class QueriesControllerTests {
         await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Submit_EmptyProjectionType_ETagFetchUsesRequestDomain() {
+        // Arrange — empty ProjectionType should fall back to request.Domain
+        string ordersETag = GenerateTestETag();
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload, string.Empty));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(ordersETag);
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        // Assert
+        actionResult.ShouldBeOfType<OkObjectResult>();
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{ordersETag}\"");
+        await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+    }
+
     private sealed class ConstantETagService(string etag) : IETagService {
         public Task<string?> GetCurrentETagAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(etag);

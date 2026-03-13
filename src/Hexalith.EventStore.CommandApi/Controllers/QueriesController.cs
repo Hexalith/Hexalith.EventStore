@@ -120,7 +120,9 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
         // Set ETag response header — fetch from ETag actor if not already known
         // Uses runtime-discovered projection type (FR63), falls back to request.Domain
         if (currentETag is null) {
-            string projectionTypeForETag = result.ProjectionType ?? request.Domain;
+            string projectionTypeForETag = string.IsNullOrWhiteSpace(result.ProjectionType)
+                ? request.Domain
+                : result.ProjectionType;
             try {
                 currentETag = await eTagService
                     .GetCurrentETagAsync(projectionTypeForETag, request.Tenant, cancellationToken)

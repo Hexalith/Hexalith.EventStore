@@ -1,5 +1,7 @@
 
+using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Xml.Linq;
 
 using Dapr.Actors.Runtime;
 
@@ -257,6 +259,34 @@ public class CachingProjectionActorTests {
     }
 
     [Fact]
+    public async Task QueryAsync_CacheHit_ReturnsDiscoveredProjectionType() {
+        // Arrange — first call discovers, second caches, third is a warm cache hit.
+        string ordersETag = GenerateTestETag("orders");
+        string orderListETag = GenerateTestETag("order-list");
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(ordersETag);
+        _ = eTagService.GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(orderListETag, orderListETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var result1 = new QueryResult(true, payload, ProjectionType: "order-list");
+        var result2 = new QueryResult(true, payload, ProjectionType: "order-list");
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "orders"));
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "orders"));
+        QueryResult cached = await actor.QueryAsync(CreateEnvelope(domain: "orders"));
+
+        // Assert
+        cached.ProjectionType.ShouldBe("order-list");
+        actor.ExecuteCallCount.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task QueryAsync_DiscoveryMismatch_FirstCallSkipsCache() {
         // Arrange — domain="orders", projection returns "order-list" (different)
         // First call uses envelope.Domain for ETag → potentially wrong projection.
@@ -431,13 +461,29 @@ public class CachingProjectionActorTests {
     }
 
     [Fact]
-    public void QueryResult_DataContractBackwardCompat_NullProjectionTypeDefault() {
-        // Arrange — simulate old actor binary without ProjectionType
-        var oldResult = new QueryResult(true, JsonDocument.Parse("{}").RootElement, null);
+    public void QueryResult_DataContractBackwardCompat_OldFormatWithoutProjectionType_DeserializesWithNullProjectionType() {
+        // Arrange — simulate an old serialized QueryResult without ProjectionType.
+        QueryResult original = new(true, default, null, "order-list");
 
-        // Assert — ProjectionType defaults to null (not throw)
-        oldResult.ProjectionType.ShouldBeNull();
-        oldResult.Success.ShouldBeTrue();
+        var serializer = new DataContractSerializer(typeof(QueryResult));
+        using var ms = new MemoryStream();
+        serializer.WriteObject(ms, original);
+
+        ms.Position = 0;
+        string xml = new StreamReader(ms).ReadToEnd();
+        XDocument document = XDocument.Parse(xml);
+        document.Descendants().Where(e => e.Name.LocalName == "ProjectionType").Remove();
+        string oldFormatXml = document.ToString(SaveOptions.DisableFormatting);
+
+        oldFormatXml.ShouldNotContain("ProjectionType");
+
+        using var ms2 = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(oldFormatXml));
+        var deserialized = (QueryResult?)serializer.ReadObject(ms2);
+
+        // Assert — deserialization succeeds and ProjectionType defaults to null.
+        deserialized.ShouldNotBeNull();
+        deserialized.Success.ShouldBeTrue();
+        deserialized.ProjectionType.ShouldBeNull();
     }
 
     /// <summary>

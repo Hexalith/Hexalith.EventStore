@@ -21,15 +21,13 @@ public abstract partial class CachingProjectionActor(
     ActorHost host,
     IETagService eTagService,
     ILogger logger)
-    : Actor(host), IProjectionActor
-{
+    : Actor(host), IProjectionActor {
     private string? _cachedETag;
     private JsonElement? _cachedPayload;
     private string? _discoveredProjectionType;
 
     /// <inheritdoc/>
-    public async Task<QueryResult> QueryAsync(QueryEnvelope envelope)
-    {
+    public async Task<QueryResult> QueryAsync(QueryEnvelope envelope) {
         ArgumentNullException.ThrowIfNull(envelope);
 
         // IETagService handles actor ID derivation, proxy timeout, and fail-open (returns null on error)
@@ -38,38 +36,39 @@ public abstract partial class CachingProjectionActor(
             .ConfigureAwait(false);
 
         // Cache hit: ETag is non-null, matches cached, and payload exists
-        if (currentETag is not null && currentETag == _cachedETag && _cachedPayload is not null)
-        {
+        if (currentETag is not null && currentETag == _cachedETag && _cachedPayload is not null) {
             Log.CacheHit(logger, envelope.CorrelationId, Id.GetId(), _cachedETag[..Math.Min(8, _cachedETag.Length)]);
-            return new QueryResult(true, _cachedPayload.Value);
+            return new QueryResult(true, _cachedPayload.Value, ProjectionType: _discoveredProjectionType);
         }
 
         // Cache miss: execute the actual query
         QueryResult result = await ExecuteQueryAsync(envelope).ConfigureAwait(false);
 
-        if (result.Success && currentETag is not null)
-        {
+        if (result.Success) {
+            string? projectionType = ValidateProjectionTypeOrNull(envelope.CorrelationId, Id.GetId(), result.ProjectionType);
+            if (!string.Equals(projectionType, result.ProjectionType, StringComparison.Ordinal)) {
+                result = result with { ProjectionType = projectionType };
+            }
+        }
+
+        if (result.Success && currentETag is not null) {
             // Runtime projection type discovery (FR63)
             if (!string.IsNullOrWhiteSpace(result.ProjectionType)
-                && IsValidProjectionType(result.ProjectionType))
-            {
-                if (_discoveredProjectionType is null)
-                {
+                && IsValidProjectionType(result.ProjectionType)) {
+                if (_discoveredProjectionType is null) {
                     bool projectionTypeDiffersFromDomain =
                         !string.Equals(result.ProjectionType, envelope.Domain, StringComparison.Ordinal);
 
                     _discoveredProjectionType = result.ProjectionType;
                     Log.ProjectionTypeDiscovered(logger, envelope.CorrelationId, Id.GetId(), result.ProjectionType);
 
-                    if (projectionTypeDiffersFromDomain)
-                    {
+                    if (projectionTypeDiffersFromDomain) {
                         // ETag was fetched using envelope.Domain — may be wrong projection.
                         // Don't cache. Next request will use correct _discoveredProjectionType.
                         return result;
                     }
                 }
-                else if (!string.Equals(_discoveredProjectionType, result.ProjectionType, StringComparison.Ordinal))
-                {
+                else if (!string.Equals(_discoveredProjectionType, result.ProjectionType, StringComparison.Ordinal)) {
                     Log.ProjectionTypeMismatch(logger, envelope.CorrelationId, Id.GetId(),
                         _discoveredProjectionType, result.ProjectionType);
                     // DO NOT update — first discovery wins until actor deactivation
@@ -82,14 +81,12 @@ public abstract partial class CachingProjectionActor(
             _cachedETag = currentETag;
             Log.CacheMiss(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
         }
-        else if (currentETag is null)
-        {
+        else if (currentETag is null) {
             // Still discover projection type even when ETag is null
             if (result.Success
                 && !string.IsNullOrWhiteSpace(result.ProjectionType)
                 && IsValidProjectionType(result.ProjectionType)
-                && _discoveredProjectionType is null)
-            {
+                && _discoveredProjectionType is null) {
                 _discoveredProjectionType = result.ProjectionType;
                 Log.ProjectionTypeDiscovered(logger, envelope.CorrelationId, Id.GetId(), result.ProjectionType);
             }
@@ -117,11 +114,32 @@ public abstract partial class CachingProjectionActor(
     private string GetEffectiveProjectionType(string fallbackDomain)
         => _discoveredProjectionType ?? fallbackDomain;
 
+    private string? ValidateProjectionTypeOrNull(string correlationId, string actorId, string? projectionType) {
+        if (projectionType is null) {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(projectionType)) {
+            Log.InvalidProjectionType(logger, correlationId, actorId, projectionType, "empty or whitespace");
+            return null;
+        }
+
+        if (!IsValidProjectionType(projectionType)) {
+            string reason = projectionType.Contains(':', StringComparison.Ordinal)
+                ? "contains ':'"
+                : "exceeds 100 characters";
+
+            Log.InvalidProjectionType(logger, correlationId, actorId, projectionType, reason);
+            return null;
+        }
+
+        return projectionType;
+    }
+
     private static bool IsValidProjectionType(string projectionType)
         => projectionType.Length <= 100 && !projectionType.Contains(':');
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1070,
             Level = LogLevel.Debug,
@@ -151,5 +169,11 @@ public abstract partial class CachingProjectionActor(
             Level = LogLevel.Warning,
             Message = "Projection type mismatch: CorrelationId={CorrelationId}, ActorId={ActorId}, CachedProjectionType={CachedProjectionType}, NewProjectionType={NewProjectionType}, Stage=ProjectionTypeMismatch")]
         public static partial void ProjectionTypeMismatch(ILogger logger, string correlationId, string actorId, string cachedProjectionType, string newProjectionType);
+
+        [LoggerMessage(
+            EventId = 1076,
+            Level = LogLevel.Warning,
+            Message = "Projection type rejected. Falling back to envelope domain: CorrelationId={CorrelationId}, ActorId={ActorId}, ProjectionType={ProjectionType}, Reason={Reason}, Stage=ProjectionTypeRejected")]
+        public static partial void InvalidProjectionType(ILogger logger, string correlationId, string actorId, string? projectionType, string reason);
     }
 }

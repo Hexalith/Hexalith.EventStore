@@ -1,6 +1,6 @@
 # Story 18.8: IQueryResponse Enforcement and Runtime Discovery
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -73,6 +73,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
             => projectionType.Length <= 100 && !projectionType.Contains(':');
         ```
     - [x] 3.4 After `ExecuteQueryAsync()` returns successfully, store `ProjectionType` ONLY on first discovery (when `_discoveredProjectionType` is still null). If a subsequent call returns a different value, log a warning but do NOT change the cached value — this prevents flip-flopping microservices from destabilizing the cache:
+
         ```csharp
         if (result.Success && currentETag is not null)
         {
@@ -97,6 +98,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
             Log.CacheMiss(logger, ...);
         }
         ```
+
     - [x] 3.5 Add log message for projection type discovery: `Log.ProjectionTypeDiscovered(logger, correlationId, actorId, projectionType)` — LogLevel.Debug, EventId 1074.
     - [x] 3.6 Add log message for projection type mismatch: `Log.ProjectionTypeMismatch(logger, correlationId, actorId, cachedProjectionType, newProjectionType)` — LogLevel.Warning, EventId 1075. This fires if a microservice returns a different ProjectionType on a subsequent call — indicates a bug in the microservice, not in EventStore.
     - [x] 3.7 **NO OnDeactivateAsync override needed.** DAPR creates a fresh actor instance on re-activation after idle timeout — fields reset to default (null) automatically.
@@ -105,6 +107,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
 - [x] Task 4: [CORE] Handle ProjectionType re-discovery after ETag fetch (AC: #3)
     - [x] 4.1 IMPORTANT EDGE CASE: On the very first cold call, `_discoveredProjectionType` is null, so the ETag lookup uses `envelope.Domain`. After `ExecuteQueryAsync` returns, we learn the real `ProjectionType`. If it differs from `envelope.Domain`, the ETag we just fetched may be for the wrong projection. In this case, the actor should NOT cache the result — the next request will use the correct projection type for the ETag lookup.
     - [x] 4.2 Implement the edge case handling. The key insight: on first cold call when `_discoveredProjectionType` is null, the ETag was fetched using `envelope.Domain`. If the microservice returns a DIFFERENT projection type, that ETag may be wrong — so skip caching this once. The `_discoveredProjectionType` is set BEFORE the early return so the second call uses the correct projection type:
+
         ```csharp
         // After ExecuteQueryAsync, before normal caching...
         if (result.Success && !string.IsNullOrWhiteSpace(result.ProjectionType)
@@ -129,6 +132,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
 
         // Normal caching logic follows (ETag was fetched with correct projection type)...
         ```
+
     - [x] 4.3 On second call after discovery, `_discoveredProjectionType` is already set → ETag lookup uses correct projection type → cache works normally.
 
 - [x] Task 5: [ENDPOINT] QueriesController uses runtime ProjectionType (AC: #6)
@@ -150,6 +154,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
         }
         ```
     - [x] 5.2 The `result` variable comes from `SubmitQueryResult`. Extract it from the mediator response:
+
         ```csharp
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
@@ -160,6 +165,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
             // ... rest of fetch
         }
         ```
+
     - [x] 5.3 Update the inline comment from "Uses request.Domain as projection type" to "Uses runtime-discovered projection type (FR63), falls back to request.Domain".
 
 - [x] Task 6: [SAMPLE] Verify sample compatibility (AC: #8)
@@ -184,7 +190,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
     - [x] 7.14 Add test: **ProjectionType with colon rejected** — `QueryResult.ProjectionType="evil:type"`, verify `CachingProjectionActor` falls back to `envelope.Domain` for ETag lookup (colon is actor ID separator, must be rejected).
     - [x] 7.15 Add test: **ProjectionType exceeding 100 chars rejected** — verify fallback to `envelope.Domain`.
     - [x] 7.16 Add test: **Flip-flopping ProjectionType** — first call returns `ProjectionType="order-list"`, second call returns `ProjectionType="order-summary"`. Verify `_discoveredProjectionType` stays `"order-list"` (first discovery wins) and a warning is logged.
-    - [x] 7.17 Add **Tier 2 integration test** (if feasible within existing DAPR slim init infrastructure): end-to-end domain≠projectionType scenario — submit a query where `Domain="orders"` but the projection actor returns `ProjectionType="order-list"`. Verify the ETag response header encodes `order-list` (not `orders`) in its self-routing prefix. This validates the full pipeline: CachingProjectionActor → QueryRouter → SubmitQueryHandler → QueriesController.
+    - [ ] 7.17 Add **Tier 2 integration test** (if feasible within existing DAPR slim init infrastructure): end-to-end domain≠projectionType scenario — submit a query where `Domain="orders"` but the projection actor returns `ProjectionType="order-list"`. Verify the ETag response header encodes `order-list` (not `orders`) in its self-routing prefix. This validates the full pipeline: CachingProjectionActor → QueryRouter → SubmitQueryHandler → QueriesController.
 
 - [x] Task 8: [VERIFICATION] Build and regression verification (AC: #7, #8)
     - [x] 8.1 Full solution build: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
@@ -215,6 +221,7 @@ So that **ETag cache lookups use the correct projection type (not `request.Domai
 ### Current Code State (Must Understand Before Changing)
 
 **QueryResult** (`src/Hexalith.EventStore.Server/Actors/QueryResult.cs`):
+
 ```csharp
 [DataContract]
 public record QueryResult(
@@ -225,28 +232,34 @@ public record QueryResult(
 ```
 
 **CachingProjectionActor** (`src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs`):
+
 - Line 35-37: `eTagService.GetCurrentETagAsync(envelope.Domain, envelope.TenantId)` — **THIS IS THE KEY CHANGE**: use `GetEffectiveProjectionType(envelope.Domain)` instead
 - Line 47: `ExecuteQueryAsync(envelope)` returns `QueryResult` — after this, extract `ProjectionType`
 - Line 49-55: Caching block — add `_discoveredProjectionType` storage here
 - Fields: `_cachedETag`, `_cachedPayload` — add `_discoveredProjectionType`
 
 **QueriesController** (`src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs`):
+
 - Lines 122-131: Post-query ETag fetch uses `request.Domain` — **CHANGE to use `result.ProjectionType ?? request.Domain`**
 - The `result` variable is `SubmitQueryResult` (from mediator.Send)
 
 **QueryRouter** (`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`):
+
 - Line 62: Returns `new QueryRouterResult(Success: true, Payload: result.Payload, ...)` — add `ProjectionType: result.ProjectionType`
 
 **SubmitQueryHandler** (`src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`):
+
 - Line 40: Returns `new SubmitQueryResult(request.CorrelationId, routerResult.Payload.Value)` — add `routerResult.ProjectionType`
 
 **QueryRouterResult** (`src/Hexalith.EventStore.Server/Queries/QueryRouterResult.cs`):
+
 ```csharp
 public record QueryRouterResult(bool Success, JsonElement? Payload, bool NotFound, string? ErrorMessage = null);
 // → ADD: string? ProjectionType = null
 ```
 
 **SubmitQueryResult** (`src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs`):
+
 ```csharp
 public record SubmitQueryResult(string CorrelationId, JsonElement Payload);
 // → ADD: string? ProjectionType = null
@@ -281,6 +294,7 @@ public record SubmitQueryResult(string CorrelationId, JsonElement Payload);
 ### Git Intelligence
 
 Recent commits show:
+
 - Story 18-7 delivered self-routing ETags (ETagActor, QueriesController, SelfRoutingETag utility)
 - Stories 18-5 and 18-6 delivered SignalR + Blazor UI patterns
 - All work follows: actor-based architecture, DAPR state, fail-open error handling, DataContract serialization
@@ -288,22 +302,22 @@ Recent commits show:
 
 ### Existing Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/Hexalith.EventStore.Server/Actors/QueryResult.cs` | Add `string? ProjectionType = null` DataMember field |
-| `src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs` | Add `_discoveredProjectionType` field, use for ETag lookup, store on cold call |
-| `src/Hexalith.EventStore.Server/Queries/QueryRouterResult.cs` | Add `string? ProjectionType = null` field |
-| `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs` | Pass `result.ProjectionType` through to `QueryRouterResult` |
-| `src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs` | Add `string? ProjectionType = null` to `SubmitQueryResult` |
-| `src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs` | Pass `routerResult.ProjectionType` through to `SubmitQueryResult` |
-| `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs` | Use `result.ProjectionType ?? request.Domain` for ETag response fetch |
-| `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` | Update `TestCachingProjectionActor`, add runtime discovery tests |
-| `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` | Add tests for ProjectionType passthrough to ETag response |
+| File                                                                           | Change                                                                         |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `src/Hexalith.EventStore.Server/Actors/QueryResult.cs`                         | Add `string? ProjectionType = null` DataMember field                           |
+| `src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs`              | Add `_discoveredProjectionType` field, use for ETag lookup, store on cold call |
+| `src/Hexalith.EventStore.Server/Queries/QueryRouterResult.cs`                  | Add `string? ProjectionType = null` field                                      |
+| `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`                        | Pass `result.ProjectionType` through to `QueryRouterResult`                    |
+| `src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs`               | Add `string? ProjectionType = null` to `SubmitQueryResult`                     |
+| `src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`                | Pass `routerResult.ProjectionType` through to `SubmitQueryResult`              |
+| `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs`          | Use `result.ProjectionType ?? request.Domain` for ETag response fetch          |
+| `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` | Update `TestCachingProjectionActor`, add runtime discovery tests               |
+| `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` | Add tests for ProjectionType passthrough to ETag response                      |
 
 ### New Files to Create
 
-| File | Purpose |
-|------|---------|
+| File                                                          | Purpose                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------- |
 | `src/Hexalith.EventStore.Contracts/Queries/IQueryResponse.cs` | `IQueryResponse<T>` compile-time enforcement interface (FR62) |
 
 ### Project Structure Notes
@@ -339,7 +353,7 @@ Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
-No issues encountered. Clean implementation.
+Code review follow-up fixes applied: warm-cache projection type propagation, empty/invalid ProjectionType fallback, real DataContract backward-compat regression test, and story/task tracking correction.
 
 ### Completion Notes List
 
@@ -348,24 +362,28 @@ No issues encountered. Clean implementation.
 - Implemented runtime projection type discovery in `CachingProjectionActor`: first-discovery-wins pattern with `_discoveredProjectionType` field
 - Handled cold-call edge case (Task 4): when discovered projection type differs from `envelope.Domain`, first call skips caching to avoid storing ETag from wrong projection
 - Added validation: reject `ProjectionType` containing `:` (colon) or exceeding 100 characters
-- Updated `QueriesController` to use `result.ProjectionType ?? request.Domain` for ETag response header fetch (FR63)
+- Updated `QueriesController` to use runtime-discovered projection type only when non-empty, otherwise fall back to `request.Domain` (FR63)
 - Added 2 log messages: `ProjectionTypeDiscovered` (EventId 1074, Debug) and `ProjectionTypeMismatch` (EventId 1075, Warning)
+- Added warning logging for rejected projection types and preserved discovered projection type on warm cache hits
 - Threaded `ProjectionType` through full pipeline: `QueryRouter` and `SubmitQueryHandler` passthrough
 - Sample compatibility verified: no changes needed (wire format unchanged)
-- 15 new tests added, 1,847 total tests pass (0 regressions)
+- Added regression coverage for warm-cache ProjectionType propagation, empty ProjectionType endpoint fallback, and real DataContract backward compatibility
 - No Tier 2 integration test added for domain!=projectionType (would need a custom test projection actor registered with DAPR — deferred to manual verification)
 
 ### Change Log
 
 - 2026-03-13: Story 18-8 implementation complete — IQueryResponse<T> compile-time enforcement, runtime projection type discovery, pipeline passthrough, QueriesController ETag response update
+- 2026-03-13: Code review fixes — preserved ProjectionType on cache hits, corrected empty ProjectionType fallback, added real backward-compat test, and corrected deferred Tier 2 task tracking
 
 ### File List
 
 #### New Files
+
 - `src/Hexalith.EventStore.Contracts/Queries/IQueryResponse.cs` — `IQueryResponse<T>` interface (FR62)
 - `tests/Hexalith.EventStore.Contracts.Tests/Queries/IQueryResponseTests.cs` — compile-time enforcement and covariance tests
 
 #### Modified Files
+
 - `src/Hexalith.EventStore.Server/Actors/QueryResult.cs` — added `string? ProjectionType = null` DataMember field
 - `src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs` — runtime projection type discovery, `_discoveredProjectionType` field, `GetEffectiveProjectionType()`, `IsValidProjectionType()`, new log messages
 - `src/Hexalith.EventStore.Server/Queries/QueryRouterResult.cs` — added `string? ProjectionType = null`
@@ -373,7 +391,7 @@ No issues encountered. Clean implementation.
 - `src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs` — added `string? ProjectionType = null` to `SubmitQueryResult`
 - `src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs` — passes `routerResult.ProjectionType` to `SubmitQueryResult`
 - `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs` — uses `result.ProjectionType ?? request.Domain` for ETag response fetch
-- `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` — 9 new tests (runtime discovery, mismatch, fallbacks, validation, flip-flopping, backward compat)
+- `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` — runtime discovery, mismatch, warm-cache ProjectionType propagation, fallbacks, validation, flip-flopping, backward compat
 - `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` — 2 new tests (ProjectionType ETag routing, null fallback)
 - `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs` — 2 new tests (ProjectionType passthrough)
 - `tests/Hexalith.EventStore.Server.Tests/Pipeline/Queries/SubmitQueryHandlerTests.cs` — 2 new tests (ProjectionType passthrough)
