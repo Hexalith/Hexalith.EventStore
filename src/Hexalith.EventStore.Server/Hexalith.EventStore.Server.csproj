@@ -5,6 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.EventStore.CommandApi" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Testing" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Testing.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
   </ItemGroup>

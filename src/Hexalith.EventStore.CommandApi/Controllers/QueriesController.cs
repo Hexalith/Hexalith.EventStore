@@ -20,6 +20,8 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 public partial class QueriesController(IMediator mediator, IETagService eTagService, ILogger<QueriesController> logger) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
+    private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
+
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitQueryResponse), StatusCodes.Status200OK)]
@@ -54,25 +56,50 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             return Unauthorized();
         }
 
-        // Gate 1: ETag pre-check — fetch current ETag for this projection+tenant
-        string? currentETag;
-        try {
-            currentETag = await eTagService
-                .GetCurrentETagAsync(request.Domain, request.Tenant, cancellationToken)
-                .ConfigureAwait(false);
+        // Gate 1: ETag pre-check — decode projection type from self-routing ETag
+        string? currentETag = null;
+        bool gate1Skipped = false;
+
+        if (!string.IsNullOrWhiteSpace(ifNoneMatch) && ifNoneMatch.AsSpan().Trim().SequenceEqual("*".AsSpan())) {
+            // Wildcard If-None-Match: skip Gate 1 entirely (no projection type to decode)
+            gate1Skipped = true;
+            Log.ETagPreCheckMiss(logger, correlationId, false, true);
         }
-        catch (Exception ex) {
-            Log.ETagPreCheckFailed(logger, correlationId, ex.GetType().Name);
-            currentETag = null;
+        else if (!string.IsNullOrWhiteSpace(ifNoneMatch)) {
+            // Decode self-routing ETag to determine projection type for ETag actor lookup.
+            // If the header contains decodable ETags for multiple projection types, skip Gate 1
+            // to avoid returning 304 based on a validator for a different projection.
+            HeaderProjectionTypeAnalysis analysis = AnalyzeHeaderProjectionTypes(ifNoneMatch);
+
+            if (analysis.HasMixedProjectionTypes) {
+                Log.MixedProjectionTypesSkipped(logger, correlationId);
+            }
+            else if (analysis.ProjectionType is not null) {
+                try {
+                    currentETag = await eTagService
+                        .GetCurrentETagAsync(analysis.ProjectionType, request.Tenant, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) {
+                    Log.ETagPreCheckFailed(logger, correlationId, ex.GetType().Name);
+                    currentETag = null;
+                }
+            }
+            else {
+                // No ETag decoded (malformed, old-format, etc.) — cache miss
+                Log.ETagDecodeSkipped(logger, correlationId);
+            }
         }
 
-        if (currentETag is not null && ETagMatches(ifNoneMatch, currentETag)) {
+        if (!gate1Skipped && currentETag is not null && ETagMatches(ifNoneMatch, currentETag)) {
             Response.Headers.ETag = $"\"{currentETag}\"";
             Log.ETagPreCheckMatch(logger, correlationId, currentETag[..Math.Min(8, currentETag.Length)]);
             return StatusCode(StatusCodes.Status304NotModified);
         }
 
-        Log.ETagPreCheckMiss(logger, correlationId, currentETag is not null, !string.IsNullOrWhiteSpace(ifNoneMatch));
+        if (!gate1Skipped) {
+            Log.ETagPreCheckMiss(logger, correlationId, currentETag is not null, !string.IsNullOrWhiteSpace(ifNoneMatch));
+        }
 
         byte[] payloadBytes = request.Payload.HasValue
             ? JsonSerializer.SerializeToUtf8Bytes(request.Payload.Value)
@@ -90,12 +117,59 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
-        // Set ETag response header before returning body (must be before response body starts)
+        // Set ETag response header — fetch from ETag actor if not already known
+        // Uses request.Domain as projection type (ETag actor returns self-routing format)
+        if (currentETag is null) {
+            try {
+                currentETag = await eTagService
+                    .GetCurrentETagAsync(request.Domain, request.Tenant, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception) {
+                // Fail-open: no ETag header on response is acceptable
+            }
+        }
+
         if (currentETag is not null) {
             Response.Headers.ETag = $"\"{currentETag}\"";
         }
 
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload));
+    }
+
+    /// <summary>
+    /// Analyzes the If-None-Match header for self-routing ETags.
+    /// Returns the first decoded projection type when all decodable ETags agree on the same projection type.
+    /// If multiple decodable projection types are present, Gate 1 should be skipped for safety.
+    /// </summary>
+    private static HeaderProjectionTypeAnalysis AnalyzeHeaderProjectionTypes(string ifNoneMatch) {
+        ReadOnlySpan<char> header = ifNoneMatch.AsSpan().Trim();
+        int start = 0;
+        string? firstProjectionType = null;
+
+        for (int i = 0; i <= header.Length; i++) {
+            if (i < header.Length && header[i] != ',') {
+                continue;
+            }
+
+            ReadOnlySpan<char> candidate = header[start..i].Trim();
+            if (candidate.Length >= 2 && candidate[0] == '"' && candidate[^1] == '"') {
+                candidate = candidate[1..^1];
+            }
+
+            if (SelfRoutingETag.TryDecode(candidate.ToString(), out string? projectionType, out _)) {
+                if (firstProjectionType is null) {
+                    firstProjectionType = projectionType;
+                }
+                else if (!string.Equals(firstProjectionType, projectionType, StringComparison.Ordinal)) {
+                    return new HeaderProjectionTypeAnalysis(null, true);
+                }
+            }
+
+            start = i + 1;
+        }
+
+        return new HeaderProjectionTypeAnalysis(firstProjectionType, false);
     }
 
     private bool ETagMatches(string? ifNoneMatch, string currentETag) {
@@ -164,5 +238,17 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             Level = LogLevel.Warning,
             Message = "ETag pre-check failed. Proceeding without ETag optimization: CorrelationId={CorrelationId}, ExceptionType={ExceptionType}.")]
         public static partial void ETagPreCheckFailed(ILogger logger, string correlationId, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1066,
+            Level = LogLevel.Debug,
+            Message = "Self-routing ETag decode skipped (malformed or old-format). Proceeding to query: CorrelationId={CorrelationId}.")]
+        public static partial void ETagDecodeSkipped(ILogger logger, string correlationId);
+
+        [LoggerMessage(
+            EventId = 1067,
+            Level = LogLevel.Debug,
+            Message = "Gate 1 skipped because If-None-Match contains decodable ETags for multiple projection types. CorrelationId={CorrelationId}.")]
+        public static partial void MixedProjectionTypesSkipped(ILogger logger, string correlationId);
     }
 }

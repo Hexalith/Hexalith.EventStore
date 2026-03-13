@@ -1,4 +1,5 @@
 
+using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Testing.Fakes;
 
 namespace Hexalith.EventStore.Testing.Tests.Fakes;
@@ -45,15 +46,32 @@ public class FakeETagActorTests {
     }
 
     [Fact]
-    public async Task RegenerateAsync_ReturnsBase64UrlETag() {
+    public async Task RegenerateAsync_ReturnsSelfRoutingETag() {
         var sut = new FakeETagActor();
 
         string etag = await sut.RegenerateAsync();
 
-        Assert.Equal(22, etag.Length);
+        // Self-routing format: {base64url(projectionType)}.{base64url-guid}
+        Assert.Contains(".", etag);
         Assert.DoesNotContain("+", etag);
         Assert.DoesNotContain("/", etag);
         Assert.DoesNotContain("=", etag);
+
+        // Decode should return the default projection type
+        bool decoded = SelfRoutingETag.TryDecode(etag, out string? projectionType, out _);
+        Assert.True(decoded);
+        Assert.Equal("test-projection", projectionType);
+    }
+
+    [Fact]
+    public async Task RegenerateAsync_UsesConfiguredProjectionType() {
+        var sut = new FakeETagActor { ProjectionType = "counter" };
+
+        string etag = await sut.RegenerateAsync();
+
+        bool decoded = SelfRoutingETag.TryDecode(etag, out string? projectionType, out _);
+        Assert.True(decoded);
+        Assert.Equal("counter", projectionType);
     }
 
     [Fact]

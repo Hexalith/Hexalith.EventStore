@@ -1,6 +1,8 @@
 
 using System.Security.Claims;
+using System.Diagnostics;
 using System.Text.Json;
+using System.Reflection;
 
 using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.Contracts.Queries;
@@ -21,6 +23,12 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
 public class QueriesControllerTests {
+    /// <summary>
+    /// Generates a self-routing ETag for the "orders" projection type (matches CreateTestRequest).
+    /// </summary>
+    private static string GenerateTestETag(string projectionType = "orders") =>
+        SelfRoutingETag.GenerateNew(projectionType);
+
     private static SubmitQueryRequest CreateTestRequest(JsonElement? payload = null) =>
         new(
             Tenant: "test-tenant",
@@ -43,6 +51,22 @@ public class QueriesControllerTests {
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         return controller;
     }
+
+    private static HeaderProjectionTypeAnalysis AnalyzeHeader(string ifNoneMatch) {
+        MethodInfo method = typeof(QueriesController).GetMethod(
+            "AnalyzeHeaderProjectionTypes",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        object result = method.Invoke(null, [ifNoneMatch])!;
+        PropertyInfo projectionTypeProperty = result.GetType().GetProperty("ProjectionType")!;
+        PropertyInfo mixedProperty = result.GetType().GetProperty("HasMixedProjectionTypes")!;
+
+        return new HeaderProjectionTypeAnalysis(
+            (string?)projectionTypeProperty.GetValue(result),
+            (bool)mixedProperty.GetValue(result)!);
+    }
+
+    private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
 
     [Fact]
     public async Task Submit_ValidRequest_Returns200WithPayload() {
@@ -227,56 +251,60 @@ public class QueriesControllerTests {
 
     [Fact]
     public async Task Submit_IfNoneMatchMatches_Returns304() {
-        // Arrange
+        // Arrange — use self-routing ETag so decode succeeds
+        string testETag = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("abc123etag");
+            .Returns(testETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Act
-        IActionResult actionResult = await controller.Submit(CreateTestRequest(), "\"abc123etag\"", CancellationToken.None);
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{testETag}\"", CancellationToken.None);
 
         // Assert
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
         statusResult.StatusCode.ShouldBe(304);
-        controller.Response.Headers.ETag.ToString().ShouldBe("\"abc123etag\"");
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{testETag}\"");
         await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Submit_IfNoneMatchDoesNotMatch_Returns200WithETagHeader() {
-        // Arrange
+        // Arrange — client sends old self-routing ETag, server has newer one
+        string clientETag = GenerateTestETag();
+        string serverETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("new-etag");
+            .Returns(serverETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Act
-        IActionResult actionResult = await controller.Submit(CreateTestRequest(), "\"old-etag\"", CancellationToken.None);
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{clientETag}\"", CancellationToken.None);
 
         // Assert
         OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
         okResult.StatusCode.ShouldBe(200);
-        controller.Response.Headers.ETag.ToString().ShouldBe("\"new-etag\"");
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{serverETag}\"");
     }
 
     [Fact]
     public async Task Submit_NoIfNoneMatchHeader_Returns200WithETagHeader() {
         // Arrange
+        string serverETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("current-etag");
+            .Returns(serverETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
@@ -285,7 +313,7 @@ public class QueriesControllerTests {
 
         // Assert
         actionResult.ShouldBeOfType<OkObjectResult>();
-        controller.Response.Headers.ETag.ToString().ShouldBe("\"current-etag\"");
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{serverETag}\"");
     }
 
     [Fact]
@@ -311,17 +339,20 @@ public class QueriesControllerTests {
 
     [Fact]
     public async Task Submit_MultipleETagsOneMatches_Returns304() {
-        // Arrange
+        // Arrange — self-routing ETags in comma-separated list
+        string matchingETag = GenerateTestETag();
+        string otherETag1 = GenerateTestETag();
+        string otherETag2 = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("etag-b");
+            .Returns(matchingETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Act
         IActionResult actionResult = await controller.Submit(
-            CreateTestRequest(), "\"etag-a\", \"etag-b\", \"etag-c\"", CancellationToken.None);
+            CreateTestRequest(), $"\"{otherETag1}\", \"{matchingETag}\", \"{otherETag2}\"", CancellationToken.None);
 
         // Assert
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
@@ -329,30 +360,64 @@ public class QueriesControllerTests {
     }
 
     [Fact]
+    public async Task Submit_MultiValueHeaderWithMixedProjectionTypes_SkipsGate1Returns200() {
+        // Arrange — mixed projections in a multi-value header must fail open to avoid false 304s
+        string ordersETag = GenerateTestETag("orders");
+        string countersETag = GenerateTestETag("counter");
+        string responseETag = GenerateTestETag("orders");
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(responseETag);
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act
+        IActionResult actionResult = await controller.Submit(
+            CreateTestRequest(),
+            $"\"{ordersETag}\", \"{countersETag}\"",
+            CancellationToken.None);
+
+        // Assert
+        actionResult.ShouldBeOfType<OkObjectResult>();
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{responseETag}\"");
+        await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Submit_MultipleETagsNoneMatch_Returns200() {
         // Arrange
+        string serverETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("etag-x");
+            .Returns(serverETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
+        string etagA = GenerateTestETag();
+        string etagB = GenerateTestETag();
 
         // Act
         IActionResult actionResult = await controller.Submit(
-            CreateTestRequest(), "\"etag-a\", \"etag-b\"", CancellationToken.None);
+            CreateTestRequest(), $"\"{etagA}\", \"{etagB}\"", CancellationToken.None);
 
         // Assert
         actionResult.ShouldBeOfType<OkObjectResult>();
     }
 
     [Fact]
-    public async Task Submit_WildcardIfNoneMatch_Returns304() {
-        // Arrange
+    public async Task Submit_WildcardIfNoneMatch_SkipsGate1AndReturns200() {
+        // Arrange — AC #3: wildcard skips Gate 1 entirely (no decode, no actor call)
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns("some-etag");
@@ -362,14 +427,15 @@ public class QueriesControllerTests {
         // Act
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), "*", CancellationToken.None);
 
-        // Assert
-        StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
-        statusResult.StatusCode.ShouldBe(304);
+        // Assert — wildcard skips Gate 1, proceeds to query, returns 200
+        actionResult.ShouldBeOfType<OkObjectResult>();
+        await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Submit_ETagServiceReturnsNull_ColdStartProceeds200() {
         // Arrange — ETag service returns null (cold start or failure)
+        string selfRoutingETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
@@ -381,7 +447,7 @@ public class QueriesControllerTests {
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Act — even with If-None-Match, null ETag means no 304
-        IActionResult actionResult = await controller.Submit(CreateTestRequest(), "\"some-etag\"", CancellationToken.None);
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{selfRoutingETag}\"", CancellationToken.None);
 
         // Assert
         actionResult.ShouldBeOfType<OkObjectResult>();
@@ -390,7 +456,8 @@ public class QueriesControllerTests {
 
     [Fact]
     public async Task Submit_ETagServiceThrows_FailsOpenAndReturns200() {
-        // Arrange
+        // Arrange — service throws on both Gate 1 decode path and 200 response path
+        string selfRoutingETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
@@ -402,7 +469,7 @@ public class QueriesControllerTests {
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Act
-        IActionResult actionResult = await controller.Submit(CreateTestRequest(), "\"some-etag\"", CancellationToken.None);
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{selfRoutingETag}\"", CancellationToken.None);
 
         // Assert
         actionResult.ShouldBeOfType<OkObjectResult>();
@@ -413,13 +480,14 @@ public class QueriesControllerTests {
     [Fact]
     public async Task Submit_ETagHeaderFormat_DoubleQuoted() {
         // Arrange
+        string serverETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("abc123");
+            .Returns(serverETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
@@ -430,28 +498,134 @@ public class QueriesControllerTests {
         string eTagHeader = controller.Response.Headers.ETag.ToString();
         eTagHeader.ShouldStartWith("\"");
         eTagHeader.ShouldEndWith("\"");
-        eTagHeader.ShouldBe("\"abc123\"");
+        eTagHeader.ShouldBe($"\"{serverETag}\"");
     }
 
     [Fact]
     public async Task Submit_MoreThan10ETagValues_SkipsGate1Returns200() {
-        // Arrange — 11 ETags, one matching — Gate 1 should skip (PM-10)
+        // Arrange — 11 self-routing ETags, one matching — ETagMatches skips after >10 values
+        string serverETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns("etag-5");
+            .Returns(serverETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
-        string manyETags = string.Join(", ", Enumerable.Range(1, 11).Select(i => $"\"etag-{i}\""));
+        // Generate 10 random ETags and insert the server ETag at position 5
+        List<string> etags = Enumerable.Range(1, 11).Select(_ => GenerateTestETag()).ToList();
+        etags[4] = serverETag;
+        string manyETags = string.Join(", ", etags.Select(e => $"\"{e}\""));
 
         // Act
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), manyETags, CancellationToken.None);
 
-        // Assert — should proceed to full query despite containing a match
+        // Assert — should proceed to full query despite containing a match (>10 limit)
         actionResult.ShouldBeOfType<OkObjectResult>();
+    }
+
+    // ===== Backward compatibility and self-routing decode tests =====
+
+    [Fact]
+    public async Task Submit_OldFormatETag_CacheMissAndReturnsNewFormatETag() {
+        // Arrange — old-format ETag (plain GUID, no dot) → decode fails → cache miss
+        string oldFormatETag = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        string serverETag = GenerateTestETag();
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(serverETag);
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{oldFormatETag}\"", CancellationToken.None);
+
+        // Assert — old format → cache miss → 200, response has new self-routing ETag
+        actionResult.ShouldBeOfType<OkObjectResult>();
+        string responseETag = controller.Response.Headers.ETag.ToString();
+        responseETag.ShouldContain(".");  // New self-routing format
+    }
+
+    [Fact]
+    public async Task Submit_WildcardETag_NoDecodeAttemptProceedsToGate2() {
+        // Arrange — AC #3: wildcard contains no projection type to decode
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), "*", CancellationToken.None);
+
+        // Assert — wildcard skips Gate 1 entirely, no ETag service call for decode
+        actionResult.ShouldBeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public void AnalyzeHeaderProjectionTypes_MixedProjectionTypes_ReturnsSkipSignal() {
+        string ordersETag = GenerateTestETag("orders");
+        string countersETag = GenerateTestETag("counter");
+
+        HeaderProjectionTypeAnalysis result = AnalyzeHeader($"\"{ordersETag}\", \"{countersETag}\"");
+
+        result.HasMixedProjectionTypes.ShouldBeTrue();
+        result.ProjectionType.ShouldBeNull();
+    }
+
+    [Fact]
+    public void AnalyzeHeaderProjectionTypes_SameProjectionTypes_ReturnsProjectionType() {
+        string etag1 = GenerateTestETag("orders");
+        string etag2 = GenerateTestETag("orders");
+
+        HeaderProjectionTypeAnalysis result = AnalyzeHeader($"\"{etag1}\", \"{etag2}\"");
+
+        result.HasMixedProjectionTypes.ShouldBeFalse();
+        result.ProjectionType.ShouldBe("orders");
+    }
+
+    [Fact]
+    public async Task Submit_ETagPreCheckPerformance_P99UnderFiveMilliseconds() {
+        // Arrange — in-memory warm actor equivalent: matching self-routing ETag with constant service response
+        string testETag = GenerateTestETag();
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService eTagService = new ConstantETagService(testETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+        SubmitQueryRequest request = CreateTestRequest();
+        string header = $"\"{testETag}\"";
+
+        // Warm-up
+        for (int i = 0; i < 25; i++) {
+            _ = await controller.Submit(request, header, CancellationToken.None);
+        }
+
+        List<double> durationsMs = [];
+
+        // Act
+        for (int i = 0; i < 200; i++) {
+            long started = Stopwatch.GetTimestamp();
+            IActionResult result = await controller.Submit(request, header, CancellationToken.None);
+            result.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(304);
+            durationsMs.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        }
+
+        // Assert
+        double p99 = durationsMs.OrderBy(x => x).ElementAt((int)Math.Ceiling(durationsMs.Count * 0.99) - 1);
+        p99.ShouldBeLessThan(5d);
+    }
+
+    private sealed class ConstantETagService(string etag) : IETagService {
+        public Task<string?> GetCurrentETagAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(etag);
     }
 }

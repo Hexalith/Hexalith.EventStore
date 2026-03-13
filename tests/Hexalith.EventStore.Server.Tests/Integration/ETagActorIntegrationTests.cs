@@ -11,6 +11,7 @@ using Dapr.Actors.Runtime;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
@@ -186,7 +187,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         // Assert
         currentETag.ShouldNotBeNull();
         currentETag.ShouldBe(newETag);
-        newETag.Length.ShouldBe(22); // AC #17: base64url, 22 chars
+        newETag.ShouldContain("."); // Self-routing format: {base64url(projectionType)}.{guid}
     }
 
     [Fact]
@@ -244,6 +245,51 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
             .Returns(_ => throw new InvalidOperationException("save failed"));
 
         await Should.ThrowAsync<InvalidOperationException>(() => actor.RegenerateAsync());
+
+        (await actor.GetCurrentETagAsync()).ShouldBeNull();
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task ETagActor_OnActivateAsync_OldFormatETag_MigratesToSelfRoutingFormat() {
+        string oldFormat = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+
+        (ETagActor actor, IActorStateManager stateManager) = CreateEtagActor();
+        _ = stateManager.TryGetStateAsync<string>("etag", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<string>(true, oldFormat));
+
+        await InvokeActivateAsync(actor);
+
+        string? migrated = await actor.GetCurrentETagAsync();
+
+        migrated.ShouldNotBeNull();
+        migrated.ShouldContain('.');
+        SelfRoutingETag.TryDecode(migrated, out string? projectionType, out _).ShouldBeTrue();
+        projectionType.ShouldBe("order-list");
+        await stateManager.Received(1).SetStateAsync("etag", Arg.Is<string>(value => value.Contains('.')), Arg.Any<CancellationToken>());
+        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task ETagActor_OnActivateAsync_OldFormatMigrationFailure_LeavesCacheNull() {
+        string oldFormat = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+
+        (ETagActor actor, IActorStateManager stateManager) = CreateEtagActor();
+        _ = stateManager.TryGetStateAsync<string>("etag", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<string>(true, oldFormat));
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("migration failed"));
+
+        await InvokeActivateAsync(actor);
 
         (await actor.GetCurrentETagAsync()).ShouldBeNull();
     }

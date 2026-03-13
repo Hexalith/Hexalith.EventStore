@@ -18,9 +18,10 @@ public class DaprETagServiceTests {
     [Fact]
     public async Task GetCurrentETagAsync_ReturnsETag_WhenActorReturnsValue() {
         // Arrange
+        string selfRoutingETag = SelfRoutingETag.GenerateNew("counter");
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
-        _ = actor.GetCurrentETagAsync().Returns("abc123");
+        _ = actor.GetCurrentETagAsync().Returns(selfRoutingETag);
         _ = factory.CreateActorProxy<IETagActor>(
             Arg.Is<ActorId>(id => id.GetId() == "counter:tenant1"),
             ETagActor.ETagActorTypeName,
@@ -32,7 +33,9 @@ public class DaprETagServiceTests {
         string? result = await service.GetCurrentETagAsync("counter", "tenant1");
 
         // Assert
-        result.ShouldBe("abc123");
+        result.ShouldBe(selfRoutingETag);
+        result.ShouldNotBeNull();
+        result.ShouldContain('.');
 
         _ = factory.Received(1).CreateActorProxy<IETagActor>(
             Arg.Any<ActorId>(),
@@ -83,9 +86,10 @@ public class DaprETagServiceTests {
     [Fact]
     public async Task GetCurrentETagAsync_DerivesActorId_WithColonSeparator() {
         // Arrange
+        string selfRoutingETag = SelfRoutingETag.GenerateNew("my-domain");
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
-        _ = actor.GetCurrentETagAsync().Returns("etag-val");
+        _ = actor.GetCurrentETagAsync().Returns(selfRoutingETag);
         _ = factory.CreateActorProxy<IETagActor>(
             Arg.Any<ActorId>(),
             Arg.Any<string>(),
@@ -101,6 +105,29 @@ public class DaprETagServiceTests {
             Arg.Is<ActorId>(id => id.GetId() == "my-domain:my-tenant"),
             ETagActor.ETagActorTypeName,
             Arg.Any<ActorProxyOptions>());
+    }
+
+    [Fact]
+    public async Task GetCurrentETagAsync_ReturnedValue_UsesSelfRoutingFormat() {
+        // Arrange
+        string selfRoutingETag = SelfRoutingETag.GenerateNew("counter");
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().Returns(selfRoutingETag);
+        _ = factory.CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            Arg.Any<string>(),
+            Arg.Any<ActorProxyOptions>()).Returns(actor);
+
+        var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
+
+        // Act
+        string? result = await service.GetCurrentETagAsync("counter", "tenant1");
+
+        // Assert
+        result.ShouldNotBeNull();
+        SelfRoutingETag.TryDecode(result, out string? projectionType, out _).ShouldBeTrue();
+        projectionType.ShouldBe("counter");
     }
 
     [Theory]

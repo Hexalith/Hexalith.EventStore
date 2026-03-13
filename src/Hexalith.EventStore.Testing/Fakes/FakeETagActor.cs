@@ -2,17 +2,21 @@
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Queries;
 
 namespace Hexalith.EventStore.Testing.Fakes;
 
 /// <summary>
 /// Test double for <see cref="IETagActor"/>.
 /// Records invocations and returns configurable results.
-/// Follows the same pattern as <see cref="FakeProjectionActor"/>.
+/// Produces self-routing ETags using the configured projection type.
 /// </summary>
 public class FakeETagActor : IETagActor {
     private readonly ConcurrentQueue<string> _regeneratedETags = new();
     private readonly ConcurrentQueue<DateTimeOffset> _receivedNotifications = new();
+
+    /// <summary>Gets or sets the projection type used for self-routing ETag generation.</summary>
+    public string ProjectionType { get; set; } = "test-projection";
 
     /// <summary>Gets or sets the ETag value returned by <see cref="GetCurrentETagAsync"/>.</summary>
     public string? ConfiguredETag { get; set; }
@@ -38,10 +42,7 @@ public class FakeETagActor : IETagActor {
             throw ConfiguredException;
         }
 
-        string newETag = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
-            .Replace('+', '-')
-            .Replace('/', '_')
-            .TrimEnd('=');
+        string newETag = SelfRoutingETag.GenerateNew(ProjectionType);
         _receivedNotifications.Enqueue(DateTimeOffset.UtcNow);
         _regeneratedETags.Enqueue(newETag);
         ConfiguredETag = newETag;

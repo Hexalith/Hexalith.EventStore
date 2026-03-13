@@ -14,8 +14,10 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
-public class CachingProjectionActorTests
-{
+public class CachingProjectionActorTests {
+    private static string GenerateTestETag(string projectionType = "counter") =>
+        SelfRoutingETag.GenerateNew(projectionType);
+
     private static QueryEnvelope CreateEnvelope(string domain = "counter", string tenant = "tenant1") =>
         new(
             tenantId: tenant,
@@ -27,12 +29,12 @@ public class CachingProjectionActorTests
             userId: "user-1");
 
     [Fact]
-    public async Task QueryAsync_CacheMiss_CallsExecuteQueryAsync()
-    {
+    public async Task QueryAsync_CacheMiss_CallsExecuteQueryAsync() {
         // Arrange
+        string currentETag = GenerateTestETag();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
-            .Returns("etag-1");
+            .Returns(currentETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
         var expected = new QueryResult(true, payload);
@@ -50,12 +52,12 @@ public class CachingProjectionActorTests
     }
 
     [Fact]
-    public async Task QueryAsync_CacheHit_DoesNotCallExecuteQueryAsync()
-    {
+    public async Task QueryAsync_CacheHit_DoesNotCallExecuteQueryAsync() {
         // Arrange
+        string currentETag = GenerateTestETag();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
-            .Returns("etag-1");
+            .Returns(currentETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
         var expected = new QueryResult(true, payload);
@@ -76,12 +78,13 @@ public class CachingProjectionActorTests
     }
 
     [Fact]
-    public async Task QueryAsync_ETagChanges_RefreshesCache()
-    {
+    public async Task QueryAsync_ETagChanges_RefreshesCache() {
         // Arrange
+        string initialETag = GenerateTestETag();
+        string refreshedETag = GenerateTestETag();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
-            .Returns("etag-1", "etag-2"); // Different ETag on second call
+            .Returns(initialETag, refreshedETag); // Different ETag on second call
 
         JsonElement payload1 = JsonDocument.Parse("{\"count\":1}").RootElement;
         JsonElement payload2 = JsonDocument.Parse("{\"count\":2}").RootElement;
@@ -102,8 +105,7 @@ public class CachingProjectionActorTests
     }
 
     [Fact]
-    public async Task QueryAsync_NullETag_AlwaysExecutesQuery()
-    {
+    public async Task QueryAsync_NullETag_AlwaysExecutesQuery() {
         // Arrange — cold start, no ETag
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
@@ -126,8 +128,7 @@ public class CachingProjectionActorTests
     }
 
     [Fact]
-    public async Task QueryAsync_ETagServiceFailsReturnsNull_ExecutesQueryWithoutCaching()
-    {
+    public async Task QueryAsync_ETagServiceFailsReturnsNull_ExecutesQueryWithoutCaching() {
         // Arrange — ETag service returns null (fail-open)
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
@@ -152,12 +153,12 @@ public class CachingProjectionActorTests
     }
 
     [Fact]
-    public async Task QueryAsync_CacheStoresCorrectPayloadAndETag()
-    {
+    public async Task QueryAsync_CacheStoresCorrectPayloadAndETag() {
         // Arrange
+        string stableETag = GenerateTestETag();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
-            .Returns("stable-etag");
+            .Returns(stableETag);
 
         JsonElement payload = JsonDocument.Parse("{\"value\":99}").RootElement;
         var expected = new QueryResult(true, payload);
@@ -178,12 +179,12 @@ public class CachingProjectionActorTests
     }
 
     [Fact]
-    public async Task QueryAsync_ExecuteQueryFails_DoesNotUpdateCache()
-    {
+    public async Task QueryAsync_ExecuteQueryFails_DoesNotUpdateCache() {
         // Arrange
+        string currentETag = GenerateTestETag();
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
-            .Returns("etag-1");
+            .Returns(currentETag);
 
         var failedResult = new QueryResult(false, default, "Not found");
 
@@ -201,12 +202,36 @@ public class CachingProjectionActorTests
         actor.ExecuteCallCount.ShouldBe(2);
     }
 
+    [Fact]
+    public async Task QueryAsync_SelfRoutingETag_CacheHitUsesSameFullValue() {
+        // Arrange
+        string currentETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(currentETag, currentETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":7}").RootElement;
+        var expected = new QueryResult(true, payload);
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        QueryResult second = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert
+        second.Success.ShouldBeTrue();
+        SelfRoutingETag.TryDecode(currentETag, out string? projectionType, out _).ShouldBeTrue();
+        projectionType.ShouldBe("counter");
+        actor.ExecuteCallCount.ShouldBe(1);
+    }
+
     /// <summary>
     /// Concrete test implementation of <see cref="CachingProjectionActor"/>.
     /// Returns preconfigured results in sequence.
     /// </summary>
-    private sealed class TestCachingProjectionActor : CachingProjectionActor
-    {
+    private sealed class TestCachingProjectionActor : CachingProjectionActor {
         private readonly QueryResult[] _results;
         private int _callIndex;
 
@@ -214,15 +239,13 @@ public class CachingProjectionActorTests
             ActorHost host,
             IETagService eTagService,
             params QueryResult[] results)
-            : base(host, eTagService, NullLogger<TestCachingProjectionActor>.Instance)
-        {
+            : base(host, eTagService, NullLogger<TestCachingProjectionActor>.Instance) {
             _results = results;
         }
 
         public int ExecuteCallCount => _callIndex;
 
-        protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope)
-        {
+        protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope) {
             int index = Math.Min(_callIndex, _results.Length - 1);
             _callIndex++;
             return Task.FromResult(_results[index]);

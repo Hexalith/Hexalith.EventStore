@@ -20,19 +20,22 @@ files:
 
 ## Document Inventory
 
-| Document Type | Canonical File | Status |
-|---|---|---|
-| PRD | `prd.md` | Found |
-| Architecture | `architecture.md` | Found |
-| Epics & Stories | `epics.md` | Found |
-| UX Design | `ux-design-specification.md` | Found |
+| Document Type | Canonical File | Size | Last Modified | Status |
+|---|---|---|---|---|
+| PRD | `prd.md` | 99KB | 2026-03-13 | Found |
+| Architecture | `architecture.md` | 78KB | 2026-03-08 | Found |
+| Epics & Stories | `epics.md` | 96KB | 2026-03-13 | Found |
+| UX Design | `ux-design-specification.md` | 127KB | 2026-02-12 | Found |
 
 ### Additional Files Found (Non-Canonical)
-- `prd-documentation.md` — alternate PRD version
-- `prd-validation-report.md` — PRD validation report
-- `prd-documentation-validation-report.md` — alternate validation report
-- `architecture-documentation.md` — alternate architecture version
-- `epics-documentation.md` — alternate epics version
+- `prd-documentation.md` (54KB, 2026-02-24) — older PRD version
+- `prd-validation-report.md` (8KB, 2026-03-13) — PRD validation report
+- `prd-documentation-validation-report.md` (7KB, 2026-02-24) — older validation report
+- `architecture-documentation.md` (53KB, 2026-02-24) — older architecture version
+- `epics-documentation.md` (60KB, 2026-03-12) — older epics version
+
+### Duplicate Resolution
+Latest files selected over `-documentation` variants. No sharded documents found.
 
 ## PRD Analysis
 
@@ -90,18 +93,22 @@ files:
 | FR47 | Developer Experience | End-to-end contract tests across Aspire topology |
 | FR48 | Developer Experience | EventStoreAggregate base class with typed Apply methods |
 | FR50 | Query Pipeline (v2) | 3-tier query actor routing model |
-| FR51 | Query Pipeline (v2) | ETag actor per ProjectionType-TenantId |
+| FR51 | Query Pipeline (v2) | ETag actor per ProjectionType-TenantId with self-routing ETag |
 | FR52 | Query Pipeline (v2) | NotifyProjectionChanged API |
-| FR53 | Query Pipeline (v2) | ETag pre-check gate (HTTP 304) |
-| FR54 | Query Pipeline (v2) | Query actor in-memory page cache (second gate) |
+| FR53 | Query Pipeline (v2) | ETag pre-check gate (HTTP 304) with projection type decoded from ETag |
+| FR54 | Query Pipeline (v2) | Query actor in-memory page cache with runtime projection discovery |
 | FR55 | Query Pipeline (v2) | SignalR "changed" broadcast |
-| FR56 | Query Pipeline (v2) | SignalR hub with DAPR pub/sub backplane |
-| FR57 | Query Pipeline (v2) | Query contract library (NuGet) |
-| FR58 | Query Pipeline (v2) | Coarse invalidation model |
+| FR56 | Query Pipeline (v2) | SignalR hub with Redis backplane |
+| FR57 | Query Pipeline (v2) | Query contract library (NuGet) — no client-side ProjectionType |
+| FR58 | Query Pipeline (v2) | Coarse invalidation model per projection+tenant |
 | FR59 | Query Pipeline (v2) | SignalR auto-rejoin on reconnection |
 | FR60 | Query Pipeline (v2) | 3 reference patterns for SignalR "changed" handling |
+| FR61 | Query Pipeline (v2) | Self-routing ETag encoding/decoding (`{base64url(projType)}.{guid}`) with RFC 7232 quoting |
+| FR62 | Query Pipeline (v2) | `IQueryResponse<T>` compile-time contract enforcing non-empty ProjectionType |
+| FR63 | Query Pipeline (v2) | Runtime projection type discovery by query actor from microservice response |
+| FR64 | Query Pipeline (v2) | Documentation: short projection type names for compact ETags |
 
-**Total FRs: 60** (v1: FR1-FR49, v2: FR50-FR60)
+**Total FRs: 64** (v1: FR1-FR49, v2: FR50-FR64)
 
 ### Non-Functional Requirements
 
@@ -157,7 +164,7 @@ files:
 
 ### PRD Completeness Assessment
 
-The PRD is comprehensive and well-structured. All 60 FRs and 39 NFRs are explicitly numbered and categorized. Success criteria, user journeys (7), domain invariants, innovation areas, phased roadmap, and risk mitigation are all present. The PRD clearly distinguishes v1 (MVP) from v2+ scope. No gaps detected in requirements extraction.
+The PRD is comprehensive and well-structured. All 64 FRs and 39 NFRs are explicitly numbered and categorized. The PRD was updated on 2026-03-13 to include FR61-FR64 (self-routing ETag encoding, IQueryResponse compile-time contract, runtime projection discovery, projection type naming guidance). Success criteria, 7 user journeys, domain invariants, 5 innovation areas, phased roadmap, and risk mitigation are all present. The PRD clearly distinguishes v1 (MVP: FR1-FR49) from v2+ scope (FR50-FR64). No gaps detected in requirements extraction.
 
 ## Epic Coverage Validation
 
@@ -165,126 +172,132 @@ The PRD is comprehensive and well-structured. All 60 FRs and 39 NFRs are explici
 
 | FR | Requirement | Epic | Status |
 |---|---|---|---|
-| FR1 | Command submission REST endpoint | Epic 3 | Covered |
-| FR2 | Command structural validation | Epic 3 | Covered |
-| FR3 | Command routing to aggregate actor | Epic 2 | Covered |
-| FR4 | Correlation ID generation and return | Epic 3 | Covered |
-| FR5 | Command status query endpoint | Epic 3 | Covered |
-| FR6 | Failed command replay endpoint | Epic 3 | Covered |
-| FR7 | Optimistic concurrency conflict rejection | Epic 2 | Covered |
-| FR8 | Dead-letter topic routing | Epic 4 | Covered |
-| FR9 | Append-only immutable event persistence | Epic 2 | Covered |
-| FR10 | Strictly ordered gapless sequence numbers | Epic 2 | Covered |
+| FR1 | Command submission REST endpoint | Epic 1 | Covered |
+| FR2 | Command structural validation | Epic 1 | Covered |
+| FR3 | Command routing to aggregate actor | Epic 1 | Covered |
+| FR4 | Correlation ID generation and return | Epic 1 | Covered |
+| FR5 | Command status query endpoint | Epic 1 | Covered |
+| FR6 | Failed command replay endpoint | Epic 5 | Covered |
+| FR7 | Optimistic concurrency conflict rejection | Epic 5 | Covered |
+| FR8 | Dead-letter topic routing | Epic 3 | Covered |
+| FR9 | Append-only immutable event persistence | Epic 1 | Covered |
+| FR10 | Strictly ordered gapless sequence numbers | Epic 1 | Covered |
 | FR11 | 11-field event metadata envelope | Epic 1 | Covered |
-| FR12 | Aggregate state reconstruction via replay | Epic 2 | Covered |
-| FR13 | Configurable snapshot creation | Epic 2 | Covered |
-| FR14 | State from snapshot + events = full replay | Epic 2 | Covered |
-| FR15 | Composite key with tenant/domain/aggregate | Epic 2 | Covered |
-| FR16 | Atomic event writes | Epic 2 | Covered |
-| FR17 | CloudEvents 1.0 pub/sub publishing | Epic 4 | Covered |
-| FR18 | At-least-once delivery guarantee | Epic 4 | Covered |
-| FR19 | Per-tenant-per-domain topic publishing | Epic 4 | Covered |
-| FR20 | Event persistence during pub/sub outage | Epic 4 | Covered |
+| FR12 | Aggregate state reconstruction via replay | Epic 1 | Covered |
+| FR13 | Configurable snapshot creation | Epic 5 | Covered |
+| FR14 | State from snapshot + events = full replay | Epic 5 | Covered |
+| FR15 | Composite key with tenant/domain/aggregate | Epic 1 | Covered |
+| FR16 | Atomic event writes | Epic 1 | Covered |
+| FR17 | CloudEvents 1.0 pub/sub publishing | Epic 3 | Covered |
+| FR18 | At-least-once delivery guarantee | Epic 3 | Covered |
+| FR19 | Per-tenant-per-domain topic publishing | Epic 3 | Covered |
+| FR20 | Event persistence during pub/sub outage | Epic 3 | Covered |
 | FR21 | Pure function domain processor contract | Epic 1 | Covered |
-| FR22 | Domain service registration (config + convention) | Epic 7 | Covered |
-| FR23 | Domain service invocation with command + state | Epic 2 | Covered |
-| FR24 | Multi-domain processing | Epic 5 | Covered |
-| FR25 | Multi-tenant processing with isolation | Epic 5 | Covered |
+| FR22 | Domain service registration (config + convention) | Epic 2 | Covered |
+| FR23 | Domain service invocation with command + state | Epic 1 | Covered |
+| FR24 | Multi-domain processing | Epic 4 | Covered |
+| FR25 | Multi-tenant processing with isolation | Epic 4 | Covered |
 | FR26 | Canonical identity tuple derivation | Epic 1 | Covered |
-| FR27 | Data path isolation | Epic 5 | Covered |
-| FR28 | Storage key isolation | Epic 5 | Covered |
-| FR29 | Pub/sub topic isolation | Epic 5 | Covered |
-| FR30 | JWT authentication | Epic 5 | Covered |
-| FR31 | Claims-based authorization | Epic 5 | Covered |
-| FR32 | Gateway unauthorized rejection | Epic 5 | Covered |
-| FR33 | Actor-level tenant validation | Epic 5 | Covered |
-| FR34 | DAPR service-to-service access control | Epic 5 | Covered |
+| FR27 | Data path isolation | Epic 4 | Covered |
+| FR28 | Storage key isolation | Epic 4 | Covered |
+| FR29 | Pub/sub topic isolation | Epic 4 | Covered |
+| FR30 | JWT authentication | Epic 4 | Covered |
+| FR31 | Claims-based authorization | Epic 4 | Covered |
+| FR32 | Gateway unauthorized rejection | Epic 4 | Covered |
+| FR33 | Actor-level tenant validation | Epic 4 | Covered |
+| FR34 | DAPR service-to-service access control | Epic 4 | Covered |
 | FR35 | OpenTelemetry full lifecycle traces | Epic 6 | Covered |
 | FR36 | Structured logs with correlation/causation IDs | Epic 6 | Covered |
 | FR37 | Dead-letter to originating request tracing | Epic 6 | Covered |
 | FR38 | Health check endpoints | Epic 6 | Covered |
 | FR39 | Readiness check endpoints | Epic 6 | Covered |
-| FR40 | Single Aspire command startup | Epic 8 | Covered |
-| FR41 | Sample domain service reference | Epic 7 | Covered |
-| FR42 | NuGet client with convention-based registration | Epic 7 | Covered |
-| FR43 | Environment deployment via DAPR config only | Epic 8 | Covered |
-| FR44 | Aspire publisher deployment manifests | Epic 8 | Covered |
-| FR45 | Unit testing without DAPR dependency | Epic 1 | Covered |
-| FR46 | Integration testing with DAPR containers | Epic 8 | Covered |
-| FR47 | E2E contract tests across Aspire topology | Epic 8 | Covered |
-| FR48 | EventStoreAggregate base class | Epic 1 | Covered |
-| FR49 | Command idempotency detection | Epic 2 | Covered |
-| FR50 | 3-tier query actor routing model | Epic 9 | Covered |
-| FR51 | ETag actor per projection+tenant | Epic 9 | Covered |
-| FR52 | NotifyProjectionChanged API | Epic 9 | Covered |
-| FR53 | ETag pre-check with HTTP 304 | Epic 9 | Covered |
-| FR54 | Query actor in-memory page cache | Epic 9 | Covered |
-| FR55 | SignalR "changed" broadcast | Epic 9 | Covered |
-| FR56 | SignalR hub with DAPR pub/sub backplane | Epic 9 | Covered |
-| FR57 | Query contract library (NuGet) | Epic 9 | Covered |
-| FR58 | Coarse invalidation per projection+tenant | Epic 9 | Covered |
-| FR59 | SignalR auto-rejoin on reconnect | Epic 9 | Covered |
-| FR60 | 3 sample Blazor UI refresh patterns | Epic 9 | Covered |
+| FR40 | Single Aspire command startup | Epic 2 | Covered |
+| FR41 | Sample domain service reference | Epic 2 | Covered |
+| FR42 | NuGet client with convention-based registration | Epic 2 | Covered |
+| FR43 | Environment deployment via DAPR config only | Epic 7 | Covered |
+| FR44 | Aspire publisher deployment manifests | Epic 7 | Covered |
+| FR45 | Unit testing without DAPR dependency | Epic 2 | Covered |
+| FR46 | Integration testing with DAPR containers | Epic 7 | Covered |
+| FR47 | E2E contract tests across Aspire topology | Epic 7 | Covered |
+| FR48 | EventStoreAggregate base class | Epic 2 | Covered |
+| FR49 | Command idempotency detection | Epic 5 | Covered |
+| FR50 | 3-tier query actor routing model | Epic 8 | Covered |
+| FR51 | ETag actor per projection+tenant | Epic 8 | Covered |
+| FR52 | NotifyProjectionChanged API | Epic 8 | Covered |
+| FR53 | ETag pre-check with HTTP 304 | Epic 8 | Covered |
+| FR54 | Query actor in-memory page cache | Epic 8 | Covered |
+| FR55 | SignalR "changed" broadcast | Epic 8 | Covered |
+| FR56 | SignalR hub with Redis backplane | Epic 8 | Covered |
+| FR57 | Query contract library (NuGet) | Epic 8 | Covered |
+| FR58 | Coarse invalidation per projection+tenant | Epic 8 | Covered |
+| FR59 | SignalR auto-rejoin on reconnect | Epic 8 | Covered |
+| FR60 | 3 sample Blazor UI refresh patterns | Epic 8 | Covered |
+| FR61 | Self-routing ETag encoding/decoding | Epic 8 | Covered |
+| FR62 | IQueryResponse compile-time enforcement | Epic 8 | Covered |
+| FR63 | Runtime projection type discovery | Epic 8 | Covered |
+| FR64 | Short projection type name guidance | Epic 8 | Covered |
 
 ### Missing Requirements
 
-None. All 60 FRs have traceable epic assignments.
+None. All 64 FRs have traceable epic assignments.
 
 ### Coverage Statistics
 
-- Total PRD FRs: 60
-- FRs covered in epics: 60
+- Total PRD FRs: 64
+- FRs covered in epics: 64
 - Coverage percentage: **100%**
 
 ## UX Alignment Assessment
 
 ### UX Document Status
 
-Found: `ux-design-specification.md` (comprehensive, 600+ lines, covers all 4 interaction surfaces)
+Found: `ux-design-specification.md` (127KB, 2026-02-12, 1700+ lines, covers all 4 interaction surfaces)
 
 ### UX ↔ PRD Alignment
 
 | Aspect | PRD | UX Spec | Status |
 |---|---|---|---|
-| User personas | 5 personas (Marco, Jerome, Priya, Sanjay, Alex) | Same 5 personas with emotional journey mapping | Aligned |
-| v1/v2 phasing | v1: Pipeline + API + SDK; v2: Blazor Dashboard + Query | Same phasing with UX investment priority ranking | Aligned |
-| Command lifecycle states | 8 states (Received → Completed/Rejected/Failed/TimedOut) | Same 8 states with color/icon rendering spec per surface | Aligned |
-| Event envelope | 11-field metadata | Referenced consistently, monospace rendering convention | Aligned |
+| User personas | 5 personas (Marco, Jerome, Priya, Sanjay, Alex) | Same 5 personas with emotional journey mapping and defining moments | Aligned |
+| v1/v2 phasing | v1: Pipeline + API + SDK; v2: Blazor Dashboard + Query | Same phasing with UX investment priority ranking (REST > SDK > CLI > Dashboard) | Aligned |
+| Command lifecycle states | 8 states (Received → Completed/Rejected/Failed/TimedOut) | Same 8 states with rendering spec per interaction surface | Aligned |
+| Event envelope | 11-field metadata | Referenced consistently | Aligned |
 | Success criteria | 10min onboarding, 3 docs pages, 1hr first service | Same targets with measurement methods defined | Aligned |
-| Error responses | RFC 7807 ProblemDetails | RFC 7807 with correlationId/tenantId extensions, reader-first messaging | Aligned |
+| Error responses | RFC 7807 ProblemDetails | RFC 7807 with correlationId/tenantId extensions, reader-first messaging (Stripe principle) | Aligned |
 | REST API priority | Primary entry point for v1 | Highest UX investment surface for v1, Swagger UI at `/swagger` | Aligned |
+| Async 202 model | 202 Accepted + correlation ID + Retry-After | Full mental model design for async-first pattern across all surfaces | Aligned |
 
 ### UX ↔ Architecture Alignment
 
 | Aspect | Architecture | UX Spec | Status |
 |---|---|---|---|
-| Blazor Fluent UI V4 | Selected for v2 dashboard | Design tokens, component strategy, responsive breakpoints defined | Aligned |
+| Blazor Fluent UI V4 | Selected for v2 dashboard | Design tokens, component strategy, responsive breakpoints, master-detail patterns defined | Aligned |
 | SignalR real-time | Blazor Server rendering | Real-time status updates, live data feeds in v2 | Aligned |
 | DAPR integration | State store, pub/sub, config, actors | UX invisible for developers, visible for operators | Aligned |
 | OpenTelemetry | Full lifecycle tracing | Act 3 "Watch" experience via Aspire dashboard | Aligned |
 | JWT + claims auth | 6-layer defense in depth | One-click Swagger UI authorize, transparent auth UX | Aligned |
-| WCAG 2.1 AA | Not in architecture (UX concern) | Comprehensive accessibility spec with design tokens | UX-owned |
+| WCAG 2.1 AA | Not in architecture (UX concern) | Comprehensive accessibility spec with design tokens, forced-colors media queries | UX-owned |
 
 ### Alignment Issues
 
-None identified. The UX specification was built from the PRD and architecture documents as inputs, and maintains strong traceability.
+None identified for v1 scope. The UX specification was built from the PRD and architecture documents as inputs and maintains strong traceability.
 
 ### Warnings
 
-- The UX spec was created on 2026-02-12, before the 2026-03-12 PRD update that added FR50-FR60 (Query Pipeline) and Journey 7 (Marco Builds a Read Model). The UX spec does not cover query pipeline-specific UX patterns (ETag pre-check flow, query contract developer experience). This is acceptable since query pipeline is v2 scope, but the UX spec should be updated before Epic 9 implementation.
-- No architecture document coverage of WCAG 2.1 AA or accessibility requirements -- these live exclusively in the UX spec. Epic stories should reference UX spec for accessibility acceptance criteria.
+1. **UX spec predates Query Pipeline (FR50-FR64).** The UX spec was created on 2026-02-12, before the 2026-03-13 PRD update that added FR50-FR64 (Query Pipeline) and Journey 7 (Marco Builds a Read Model). The UX spec does not cover query pipeline-specific UX patterns (ETag pre-check flow, query contract developer experience, SignalR "changed" handling patterns). This is acceptable since query pipeline is v2 scope, but **the UX spec should be updated before Epic 8 implementation**.
+
+2. **WCAG 2.1 AA lives exclusively in UX spec.** No architecture document coverage of accessibility requirements. Epic stories should reference UX spec for accessibility acceptance criteria when implementing v2 Blazor dashboard.
 
 ## Epic Quality Review
 
 ### Best Practices Compliance
 
-| Check | E1 | E2 | E3 | E4 | E5 | E6 | E7 | E8 | E9 |
-|---|---|---|---|---|---|---|---|---|---|
-| User value | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
-| Independent (no forward deps) | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
-| Stories appropriately sized | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Minor | Pass |
-| Clear acceptance criteria (GWT) | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
-| FR traceability maintained | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| Check | E1 | E2 | E3 | E4 | E5 | E6 | E7 | E8 |
+|---|---|---|---|---|---|---|---|---|
+| User value focus | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| Independent (no forward deps) | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| Stories appropriately sized | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| Clear acceptance criteria (GWT) | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
+| FR traceability maintained | Pass | Pass | Pass | Pass | Pass | Pass | Pass | Pass |
 
 ### Critical Violations
 
@@ -296,59 +309,64 @@ None found.
 
 ### Minor Concerns
 
-1. **Story 8.6 oversized** — "Platform Validation & E2E Security Proof" covers chaos scenario testing, performance benchmarking, E2E security proof (Keycloak), infrastructure portability validation, and horizontal scaling validation across 7 acceptance criteria blocks. This could be split into 2-3 stories (e.g., Security E2E Proof, Chaos & Performance Validation, Infrastructure Portability Validation) for better sprint planning granularity.
-   - **Remediation:** Split Story 8.6 into focused validation stories before sprint planning.
+1. **Epic 2 stories duplicated in document.** Stories 2.1-2.5 appear twice — first as brief outlines (lines 562-609) then as full detailed versions (lines 616-760). The full versions are authoritative, but the duplicate outlines should be removed to prevent confusion.
+   - **Remediation:** Remove the brief outline versions of Stories 2.1-2.5 (lines 560-610) and keep only the full detailed versions.
 
-2. **Story 2.5 forward reference** — References "FakeDomainServiceInvoker (from Story 1.4) until real registration is available in Epic 7." While correctly handled via abstraction (not a blocking dependency), the wording implies incompleteness. The story IS completable with the fake, but the AC wording could be clearer.
-   - **Remediation:** Rephrase to emphasize the fake IS the implementation target for this story, with Epic 7 providing the production implementation as a separate concern.
+2. **Story 2.5 wording implies forward dependency on Epic 7.** References "FakeDomainServiceInvoker (from Story 1.4) until real registration is available in Epic 7." The fake IS the correct implementation target for this story — the wording should clarify this is not a dependency.
+   - **Remediation:** Rephrase to: "Uses FakeDomainServiceInvoker (from Story 1.2) as the test implementation; Epic 7 provides production implementations as a separate concern."
+
+3. **FR count discrepancy.** The epics document header says "Query Pipeline & Projection Caching -- v2 (15 FRs)" but lists FR50-FR64 which is 15 FRs. However, the FR Coverage Map lists FR50-FR64 = 15 entries. Meanwhile the PRD has 64 total FRs (FR1-FR49 = 49, FR50-FR64 = 15). The epics Requirements Inventory counts "Developer Experience & Deployment (10 FRs)" and includes FR60 in that section rather than in Query Pipeline. This is a categorization inconsistency but all FRs are still covered.
+   - **Remediation:** Move FR60 listing from "Developer Experience" to "Query Pipeline" in the Requirements Inventory section header for consistency.
 
 ### Epic Independence Verification
 
-All 9 epics depend only on preceding epics. No forward dependencies. No circular dependencies. Implementation sequence (Contracts → Testing → Server → CommandApi → Client → Sample → Aspire → CI/CD) aligns with epic ordering.
+All 8 epics depend only on preceding epics. No forward dependencies. No circular dependencies. Implementation sequence (Contracts → SDK → Pub/Sub → Security → Resilience → Observability → Deployment → Query Pipeline) aligns with epic ordering.
 
 ### Acceptance Criteria Quality
 
-- All 36 stories use Given/When/Then BDD format
+- All 40 stories use Given/When/Then BDD format
 - All stories reference specific FR and NFR numbers for traceability
 - Error/failure scenarios are covered alongside happy paths
 - Architecture decisions (D1-D11) are referenced where applicable
 - Performance NFRs are cited with specific p99 targets in relevant ACs
+- Security enforcement rules (SEC-1 through SEC-5) referenced in security stories
 
 ### Overall Epic Quality Assessment
 
-**Rating: Strong** — The epics and stories are well-structured, user-value-focused, properly ordered, and thoroughly specified with BDD acceptance criteria. The only actionable finding is splitting Story 8.6 for better sprint planning.
+**Rating: Strong** — The epics and stories are well-structured, user-value-focused, properly ordered, and thoroughly specified with BDD acceptance criteria. The 3 minor findings are documentation cleanup items, not blocking issues.
 
 ## Summary and Recommendations
 
 ### Overall Readiness Status
 
-**READY** — with 2 minor recommendations
+**READY** — with minor documentation cleanup recommended
 
 ### Assessment Summary
 
 | Area | Finding | Status |
 |---|---|---|
-| PRD Completeness | 60 FRs + 39 NFRs fully specified, numbered, categorized | Pass |
-| Epic FR Coverage | 60/60 FRs mapped to epics (100%) | Pass |
-| UX Alignment | UX spec aligned with PRD and Architecture across all dimensions | Pass |
-| Epic Quality | All 9 epics user-value-focused, properly ordered, no forward deps | Pass |
-| Story Quality | 36 stories with BDD acceptance criteria, FR/NFR traceability | Pass |
+| PRD Completeness | 64 FRs + 39 NFRs fully specified, numbered, categorized (updated 2026-03-13 with FR61-FR64) | Pass |
+| Epic FR Coverage | 64/64 FRs mapped to epics (100%) | Pass |
+| UX Alignment | UX spec aligned with PRD and Architecture across all v1 dimensions | Pass |
+| Epic Quality | All 8 epics user-value-focused, properly ordered, no forward dependencies | Pass |
+| Story Quality | 40 stories with BDD acceptance criteria, FR/NFR traceability | Pass |
 | Architecture Alignment | Epics reference D1-D11 decisions; implementation sequence matches | Pass |
 
 ### Issues Found
 
 | # | Severity | Issue | Area |
 |---|---|---|---|
-| 1 | Minor | Story 8.6 oversized — covers 5 validation concerns across 7 AC blocks | Epic Quality |
+| 1 | Minor | Epic 2 stories duplicated (brief outlines + full versions) — remove outlines | Epic Quality |
 | 2 | Minor | Story 2.5 wording implies forward dependency on Epic 7 (handled via abstraction) | Epic Quality |
-| 3 | Info | UX spec predates FR50-FR60 (Query Pipeline) — needs update before Epic 9 | UX Alignment |
-| 4 | Info | WCAG 2.1 AA requirements live only in UX spec, not cross-referenced in architecture | UX Alignment |
+| 3 | Minor | FR60 categorized under "Developer Experience" in epics header but belongs in "Query Pipeline" | Epic Quality |
+| 4 | Info | UX spec predates FR50-FR64 (Query Pipeline) — needs update before Epic 8 | UX Alignment |
+| 5 | Info | WCAG 2.1 AA requirements live only in UX spec, not cross-referenced in architecture | UX Alignment |
 
 ### Recommended Next Steps
 
-1. **Split Story 8.6** into 2-3 focused validation stories (Security E2E, Chaos/Performance, Infrastructure Portability) before sprint planning
-2. **Update UX spec** to cover Query Pipeline UX patterns (FR50-FR60) before starting Epic 9 (v2 scope — not blocking v1)
-3. **Proceed to implementation** starting with Epic 1 (Domain Contracts & Testing Foundation) — all prerequisites are met
+1. **Clean up epics document** — Remove duplicate Story 2.1-2.5 outlines, fix FR60 categorization, rephrase Story 2.5 dependency wording (15 min effort)
+2. **Proceed to implementation** starting with Epic 1 (Core Command-to-Event Pipeline) — all prerequisites are met
+3. **Update UX spec** to cover Query Pipeline UX patterns (FR50-FR64) before starting Epic 8 (v2 scope — not blocking v1)
 
 ### Critical Issues Requiring Immediate Action
 
@@ -356,7 +374,7 @@ None. All planning artifacts are complete and aligned. Implementation can begin.
 
 ### Final Note
 
-This assessment identified **2 minor issues and 2 informational notes** across 4 assessment categories (PRD analysis, epic coverage, UX alignment, epic quality). The project demonstrates exceptional planning maturity with 100% FR coverage, consistent cross-document alignment, and well-structured BDD acceptance criteria across all 36 stories. The minor findings are improvements for sprint planning efficiency, not blockers.
+This assessment identified **3 minor issues and 2 informational notes** across 3 assessment categories (PRD analysis, epic coverage, UX alignment, epic quality). The project demonstrates exceptional planning maturity with 100% FR coverage (64/64), consistent cross-document alignment, and well-structured BDD acceptance criteria across all 40 stories. The minor findings are documentation cleanup items that can be addressed during sprint planning.
 
 **Assessor:** Implementation Readiness Workflow
 **Date:** 2026-03-13
