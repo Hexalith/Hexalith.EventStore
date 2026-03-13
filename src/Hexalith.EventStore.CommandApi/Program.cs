@@ -26,6 +26,7 @@ app.MapDefaultEndpoints();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
+app.UseCloudEvents();
 
 // OpenAPI/Swagger UI (gated by configuration, H13)
 if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
@@ -37,6 +38,7 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 }
 
 app.MapControllers();
+app.MapSubscribeHandler();
 app.MapActorsHandlers();
 
 // Configure global request body size limit (1MB)

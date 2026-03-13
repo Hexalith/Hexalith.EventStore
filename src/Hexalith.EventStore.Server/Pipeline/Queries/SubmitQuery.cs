@@ -14,7 +14,8 @@ public record SubmitQuery(
     string QueryType,
     byte[] Payload,
     string CorrelationId,
-    string UserId) : IRequest<SubmitQueryResult>;
+    string UserId,
+    string? EntityId = null) : IRequest<SubmitQueryResult>;
 
 /// <summary>
 /// Result of processing a <see cref="SubmitQuery"/>.

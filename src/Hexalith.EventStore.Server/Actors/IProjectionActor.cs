@@ -7,9 +7,12 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Application developers implement this interface to serve aggregate projections.
 /// </summary>
 /// <remarks>
-/// The QueryRouter (Story 17-5) creates a proxy to this actor via
+/// The QueryRouter creates a proxy to this actor via
 /// IActorProxyFactory.CreateActorProxy&lt;IProjectionActor&gt;(actorId, actorTypeName).
-/// The actor ID is derived from AggregateIdentity.ActorId (format: "{tenant}:{domain}:{aggregateId}").
+/// The actor ID uses a 3-tier routing model (format: "{QueryType}:{TenantId}[:{EntityId|Checksum}]"):
+/// Tier 1 (EntityId-scoped): "{QueryType}:{TenantId}:{EntityId}",
+/// Tier 2 (Payload-checksum): "{QueryType}:{TenantId}:{Checksum}",
+/// Tier 3 (Tenant-wide): "{QueryType}:{TenantId}".
 /// </remarks>
 public interface IProjectionActor : IActor {
     /// <summary>

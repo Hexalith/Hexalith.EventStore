@@ -6,10 +6,12 @@ using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Tests.Discovery;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Client.Tests.Registration;
@@ -205,11 +207,27 @@ public class AddEventStoreTests : IDisposable {
         // Projections should be in DiscoveryResult
         Assert.Contains(result.Projections, p => p.Type == typeof(SmokeTestProjection));
 
-        // Projections should NOT be registered as services — only aggregates are registered
+        // Projections should NOT be registered as IDomainProcessor — only aggregates are registered that way.
         int projectionRegistrations = services.Count(s =>
             s.ServiceType == typeof(IDomainProcessor) &&
             s.ImplementationType == typeof(SmokeTestProjection));
         Assert.Equal(0, projectionRegistrations);
+    }
+
+    [Fact]
+    public void AddEventStore_ProjectionResolvesAsSelf_AndGetsOptionalInfrastructureServices() {
+        var services = new ServiceCollection();
+        _ = services.AddLogging();
+        _ = services.AddSingleton<IProjectionChangeNotifier, TestProjectionChangeNotifier>();
+        _ = services.AddEventStore(typeof(SmokeTestProjection).Assembly);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        SmokeTestProjection projection = scope.ServiceProvider.GetRequiredService<SmokeTestProjection>();
+
+        Assert.NotNull(projection.Notifier);
+        Assert.NotNull(projection.Logger);
     }
 
     // --- Story 16-8: DiscoveryResult singleton resolution from ServiceProvider (AC#7: 7.1) ---
@@ -279,4 +297,9 @@ public class AddEventStoreTests : IDisposable {
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static IServiceCollection AddEventStoreViaNoInlineHelper(IServiceCollection services) => services.AddEventStore();
+
+    private sealed class TestProjectionChangeNotifier : IProjectionChangeNotifier {
+        public Task NotifyProjectionChangedAsync(string projectionType, string tenantId, string? entityId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
 }

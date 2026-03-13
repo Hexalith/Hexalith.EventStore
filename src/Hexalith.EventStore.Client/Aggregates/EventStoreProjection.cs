@@ -5,6 +5,10 @@ using System.Reflection;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Configuration;
+using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Projections;
+
+using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Client.Aggregates;
 /// <summary>
@@ -14,9 +18,27 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// which are automatically discovered and invoked during event replay.
 /// </summary>
 /// <typeparam name="TReadModel">The read model type that this projection builds.</typeparam>
-public abstract class EventStoreProjection<TReadModel>
+public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
     where TReadModel : class, new() {
     private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> _applyCache = new();
+    private string? _domainName;
+
+    /// <summary>
+    /// Gets or sets the projection change notifier. Set post-construction by DI registration.
+    /// When set, <see cref="Project"/> auto-calls <see cref="IProjectionChangeNotifier.NotifyProjectionChangedAsync"/>
+    /// after successful projection. When null, a warning is logged (FM-5).
+    /// </summary>
+    public IProjectionChangeNotifier? Notifier { get; set; }
+
+    /// <summary>
+    /// Gets or sets the logger. Set post-construction by DI registration.
+    /// </summary>
+    public ILogger? Logger { get; set; }
+
+    /// <summary>
+    /// Gets or sets the tenant identifier for auto-notify. Set by the caller before projection.
+    /// </summary>
+    public string? TenantId { get; set; }
 
     /// <summary>
     /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
@@ -57,6 +79,8 @@ public abstract class EventStoreProjection<TReadModel>
                 applyMethod.Invoke(model, [evt]);
             }
         }
+
+        FireProjectionChangeNotification();
 
         return model;
     }
@@ -105,6 +129,8 @@ public abstract class EventStoreProjection<TReadModel>
 
             ApplyEventByName(model, eventTypeName, eventElement, applyMethods);
         }
+
+        FireProjectionChangeNotification();
 
         return model;
     }
@@ -197,6 +223,39 @@ public abstract class EventStoreProjection<TReadModel>
                     eventTypeName,
                     eventType.Name),
                 ex);
+        }
+    }
+
+    private string GetDomainName() =>
+        _domainName ??= NamingConventionEngine.GetDomainName(GetType());
+
+    private void FireProjectionChangeNotification() {
+        if (Notifier is null) {
+            Logger?.LogWarning(
+                "IProjectionChangeNotifier is not registered for projection '{ProjectionType}'. " +
+                "Cache invalidation will not occur. Register via AddEventStoreServer().",
+                GetDomainName());
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(TenantId)) {
+            return;
+        }
+
+        _ = NotifyAsync(GetDomainName(), TenantId);
+    }
+
+    private async Task NotifyAsync(string projectionType, string tenantId) {
+        try {
+            await Notifier!.NotifyProjectionChangedAsync(projectionType, tenantId).ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Logger?.LogWarning(
+                ex,
+                "Projection change notification failed for projection '{ProjectionType}', tenant '{TenantId}'. " +
+                "Cache invalidation may be delayed.",
+                projectionType,
+                tenantId);
         }
     }
 }

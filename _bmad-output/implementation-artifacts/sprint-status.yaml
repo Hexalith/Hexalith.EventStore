@@ -238,11 +238,11 @@ development_status:
 
   # Epic 18: Query Pipeline & Projection Caching (v2)
   # SOURCE: epics.md Epic 9
-  epic-18: backlog
-  18-1-etag-actor-and-projection-change-notification: backlog
-  18-2-3-tier-query-actor-routing: backlog
-  18-3-query-endpoint-with-etag-pre-check-and-cache: backlog
-  18-4-query-contract-library: backlog
+  epic-18: in-progress
+  18-1-etag-actor-and-projection-change-notification: done
+  18-2-3-tier-query-actor-routing: done
+  18-3-query-endpoint-with-etag-pre-check-and-cache: review
+  18-4-query-contract-library: ready-for-dev
   18-5-signalr-real-time-notifications: backlog
   18-6-sample-ui-refresh-patterns: backlog
   epic-18-retrospective: optional

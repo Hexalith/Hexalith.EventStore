@@ -45,9 +45,22 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .NotNull().WithMessage("QueryType is required")
             .NotEmpty().WithMessage("QueryType cannot be empty")
             .MaximumLength(256).WithMessage("QueryType cannot exceed 256 characters")
+            .Must(qt => !qt.Contains(':'))
+            .WithMessage("QueryType cannot contain colons (reserved as actor ID separator)")
+            .When(x => !string.IsNullOrEmpty(x.QueryType), ApplyConditionTo.CurrentValidator)
             .Must(qt => !ContainsDangerousCharacters(qt) && !_injectionPattern.IsMatch(qt))
             .WithMessage("QueryType cannot contain dangerous characters or script injection patterns")
             .When(x => !string.IsNullOrEmpty(x.QueryType), ApplyConditionTo.CurrentValidator);
+
+        _ = RuleFor(x => x.EntityId)
+            .Cascade(CascadeMode.Stop)
+            .Must(eid => eid is null || !string.IsNullOrWhiteSpace(eid))
+            .WithMessage("EntityId cannot be empty or whitespace when provided")
+            .Must(eid => eid == null || !eid.Contains(':'))
+            .WithMessage("EntityId cannot contain colons (reserved as actor ID separator)")
+            .MaximumLength(256).WithMessage("EntityId cannot exceed 256 characters")
+            .Matches(_aggregateIdRegex).WithMessage("EntityId must contain only alphanumeric characters, dots, hyphens, and underscores")
+            .When(x => x.EntityId is not null, ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Payload)
             .Must(p => p == null || p.Value.ValueKind != System.Text.Json.JsonValueKind.Undefined)

@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
   </ItemGroup>
 

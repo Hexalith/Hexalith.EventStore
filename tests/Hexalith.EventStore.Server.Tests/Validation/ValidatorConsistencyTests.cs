@@ -49,7 +49,8 @@ public class ValidatorConsistencyTests {
             Tenant: tenant,
             Domain: domain,
             AggregateId: aggregateId,
-            QueryType: "ValidType");
+            QueryType: "ValidType",
+            EntityId: null);
         bool submitQueryValid = !_submitQueryValidator.Validate(submitQuery).Errors
             .Any(e => e.PropertyName is "Tenant" or "Domain" or "AggregateId");
 
@@ -117,7 +118,8 @@ public class ValidatorConsistencyTests {
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
-            QueryType: typeValue);
+            QueryType: typeValue,
+            EntityId: null);
         bool submitQueryValid = !_submitQueryValidator.Validate(submitQuery).Errors
             .Any(e => e.PropertyName == "QueryType");
 
@@ -162,7 +164,8 @@ public class ValidatorConsistencyTests {
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
-            QueryType: longType);
+            QueryType: longType,
+            EntityId: null);
 
         var validateCommand = new ValidateCommandRequest(
             Tenant: "test-tenant",

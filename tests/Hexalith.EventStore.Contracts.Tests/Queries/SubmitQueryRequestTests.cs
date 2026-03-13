@@ -16,7 +16,8 @@ public class SubmitQueryRequestTests
             Domain: "orders",
             AggregateId: "order-123",
             QueryType: "GetCurrentState",
-            Payload: payload);
+            Payload: payload,
+            EntityId: "entity-1");
 
         Assert.Equal("acme", request.Tenant);
         Assert.Equal("orders", request.Domain);
@@ -24,10 +25,11 @@ public class SubmitQueryRequestTests
         Assert.Equal("GetCurrentState", request.QueryType);
         Assert.NotNull(request.Payload);
         Assert.Equal(JsonValueKind.Object, request.Payload.Value.ValueKind);
+        Assert.Equal("entity-1", request.EntityId);
     }
 
     [Fact]
-    public void Constructor_WithoutPayload_DefaultsToNull()
+    public void Constructor_WithoutPayloadOrEntityId_DefaultsToNull()
     {
         var request = new SubmitQueryRequest(
             Tenant: "acme",
@@ -36,6 +38,7 @@ public class SubmitQueryRequestTests
             QueryType: "GetCurrentState");
 
         Assert.Null(request.Payload);
+        Assert.Null(request.EntityId);
     }
 
     [Fact]

@@ -8,4 +8,5 @@ public record SubmitQueryRequest(
     string Domain,
     string AggregateId,
     string QueryType,
-    JsonElement? Payload = null);
+    JsonElement? Payload = null,
+    string? EntityId = null);

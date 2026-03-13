@@ -374,7 +374,8 @@ public class AuthorizationBehaviorTests {
             QueryType: queryType,
             Payload: [],
             CorrelationId: "test-correlation-id",
-            UserId: "test-user");
+            UserId: "test-user",
+            EntityId: null);
 
     private AuthorizationBehavior<SubmitQuery, SubmitQueryResult> CreateQueryBehavior(ClaimsPrincipal principal) {
         var httpContext = new DefaultHttpContext { User = principal };

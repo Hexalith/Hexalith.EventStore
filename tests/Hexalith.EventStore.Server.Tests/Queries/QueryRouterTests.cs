@@ -18,15 +18,16 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Queries;
 
 public class QueryRouterTests {
-    private static SubmitQuery CreateTestQuery() =>
+    private static SubmitQuery CreateTestQuery(string? entityId = null, byte[]? payload = null) =>
         new(
             Tenant: "test-tenant",
             Domain: "orders",
             AggregateId: "order-1",
             QueryType: "GetOrderStatus",
-            Payload: [],
+            Payload: payload ?? [],
             CorrelationId: "corr-1",
-            UserId: "user-1");
+            UserId: "user-1",
+            EntityId: entityId);
 
     [Fact]
     public async Task RouteQueryAsync_SuccessfulQuery_ReturnsResultWithPayload() {
@@ -70,9 +71,9 @@ public class QueryRouterTests {
         // Act
         _ = await router.RouteQueryAsync(query);
 
-        // Assert — verify actor proxy created with correct identity-derived actor ID and type name
+        // Assert — verify actor proxy created with correct 3-tier-derived actor ID (Tier 3: no EntityId, empty payload)
         factory.Received(1).CreateActorProxy<IProjectionActor>(
-            Arg.Is<ActorId>(id => id.ToString() == "test-tenant:orders:order-1"),
+            Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant"),
             QueryRouter.ProjectionActorTypeName);
     }
 
@@ -103,7 +104,7 @@ public class QueryRouterTests {
         // Arrange
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
-            .ThrowsAsync(new InvalidOperationException("did not find address for actor 'ProjectionActor/test-tenant:orders:order-1'"));
+            .ThrowsAsync(new InvalidOperationException("did not find address for actor 'ProjectionActor/GetOrderStatus:test-tenant'"));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
@@ -180,6 +181,73 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_WithEntityId_RoutesToTier1ActorId() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        // Act
+        _ = await router.RouteQueryAsync(CreateTestQuery(entityId: "order-123"));
+
+        // Assert — Tier 1: {QueryType}:{TenantId}:{EntityId}
+        factory.Received(1).CreateActorProxy<IProjectionActor>(
+            Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant:order-123"),
+            QueryRouter.ProjectionActorTypeName);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_WithNonEmptyPayloadAndNoEntityId_RoutesToTier2ActorId() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+        byte[] payload = [0x01, 0x02, 0x03];
+
+        // Act
+        _ = await router.RouteQueryAsync(CreateTestQuery(payload: payload));
+
+        // Assert — Tier 2: {QueryType}:{TenantId}:{Checksum} (11-char checksum)
+        factory.Received(1).CreateActorProxy<IProjectionActor>(
+            Arg.Is<ActorId>(id => id.ToString().StartsWith("GetOrderStatus:test-tenant:") && id.ToString().Split(':')[2].Length == 11),
+            QueryRouter.ProjectionActorTypeName);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_WithEmptyPayloadAndNoEntityId_RoutesToTier3ActorId() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        // Act
+        _ = await router.RouteQueryAsync(CreateTestQuery());
+
+        // Assert — Tier 3: {QueryType}:{TenantId}
+        factory.Received(1).CreateActorProxy<IProjectionActor>(
+            Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant"),
+            QueryRouter.ProjectionActorTypeName);
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_ConstructsCorrectQueryEnvelope() {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
@@ -203,6 +271,7 @@ public class QueryRouterTests {
             e.AggregateId == "order-1" &&
             e.QueryType == "GetOrderStatus" &&
             e.CorrelationId == "corr-1" &&
-            e.UserId == "user-1"));
+            e.UserId == "user-1" &&
+            e.EntityId == null));
     }
 }

@@ -140,6 +140,19 @@ public class ValidateQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void ValidateQueryRequestValidator_QueryTypeWithColon_FailsValidation() {
+        var request = new ValidateQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            QueryType: "Get:Order");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "QueryType" && e.ErrorMessage.Contains("colons"));
+    }
+
+    [Fact]
     public void ValidateQueryRequestValidator_DangerousQueryType_FailsValidation() {
         var request = new ValidateQueryRequest(
             Tenant: "test-tenant",

@@ -18,7 +18,8 @@ public class SubmitQueryTests {
             QueryType: "GetOrderStatus",
             Payload: payload,
             CorrelationId: "corr-1",
-            UserId: "user-1");
+            UserId: "user-1",
+            EntityId: "entity-1");
 
         sut.Tenant.ShouldBe("test-tenant");
         sut.Domain.ShouldBe("orders");
@@ -27,6 +28,7 @@ public class SubmitQueryTests {
         sut.Payload.ShouldBe(payload);
         sut.CorrelationId.ShouldBe("corr-1");
         sut.UserId.ShouldBe("user-1");
+        sut.EntityId.ShouldBe("entity-1");
     }
 
     [Fact]

@@ -38,6 +38,9 @@ public partial class ValidateQueryRequestValidator : AbstractValidator<ValidateQ
             .NotNull().WithMessage("QueryType is required")
             .NotEmpty().WithMessage("QueryType cannot be empty")
             .MaximumLength(256).WithMessage("QueryType cannot exceed 256 characters")
+            .Must(qt => !qt.Contains(':'))
+            .WithMessage("QueryType cannot contain colons (reserved as actor ID separator)")
+            .When(x => !string.IsNullOrEmpty(x.QueryType), ApplyConditionTo.CurrentValidator)
             .Must(qt => !ContainsDangerousCharacters(qt) && !_injectionPattern.IsMatch(qt))
             .WithMessage("QueryType cannot contain dangerous characters or script injection patterns")
             .When(x => !string.IsNullOrEmpty(x.QueryType), ApplyConditionTo.CurrentValidator);

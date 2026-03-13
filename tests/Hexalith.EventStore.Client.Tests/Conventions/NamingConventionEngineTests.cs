@@ -397,4 +397,48 @@ public class NamingConventionEngineTests : IDisposable {
 
         Assert.Equal("tenant1.order-2.events", result);
     }
+
+    // --- Story 18-1: GetProjectionChangedTopic tests (Task 11.3) ---
+
+    [Fact]
+    public void GetProjectionChangedTopic_ValidInputs_ReturnsExpectedFormat() {
+        string result = NamingConventionEngine.GetProjectionChangedTopic("order-list", "acme");
+
+        Assert.Equal("acme.order-list.projection-changed", result);
+    }
+
+    [Fact]
+    public void GetProjectionChangedTopic_HyphenatedInputs_ReturnsExpectedFormat() {
+        string result = NamingConventionEngine.GetProjectionChangedTopic("shopping-cart", "tenant-123");
+
+        Assert.Equal("tenant-123.shopping-cart.projection-changed", result);
+    }
+
+    [Theory]
+    [InlineData("", "acme")]
+    [InlineData("  ", "acme")]
+    [InlineData("OrderList", "acme")]
+    [InlineData("-order-list", "acme")]
+    [InlineData("order-list-", "acme")]
+    [InlineData("order-list", "")]
+    [InlineData("order-list", "  ")]
+    [InlineData("order-list", "Acme")]
+    [InlineData("order-list", "-acme")]
+    [InlineData("order-list", "acme-")]
+    public void GetProjectionChangedTopic_InvalidInputs_ThrowsArgumentException(string projectionType, string tenantId) {
+        _ = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetProjectionChangedTopic(projectionType, tenantId));
+    }
+
+    [Fact]
+    public void GetProjectionChangedTopic_NullProjectionType_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(
+            () => NamingConventionEngine.GetProjectionChangedTopic(null!, "acme"));
+    }
+
+    [Fact]
+    public void GetProjectionChangedTopic_NullTenantId_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(
+            () => NamingConventionEngine.GetProjectionChangedTopic("order-list", null!));
+    }
 }

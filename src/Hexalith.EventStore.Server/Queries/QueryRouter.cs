@@ -2,7 +2,6 @@
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 
@@ -28,10 +27,13 @@ public partial class QueryRouter(
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var identity = new AggregateIdentity(query.Tenant, query.Domain, query.AggregateId);
-        string actorId = identity.ActorId;
+        string actorId = QueryActorIdHelper.DeriveActorId(query.QueryType, query.Tenant, query.EntityId, query.Payload);
+        int tier = query.EntityId is not null && query.EntityId.Length > 0 ? 1
+            : query.Payload.Length > 0 ? 2
+            : 3;
 
         Log.QueryRouting(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+        Log.QueryRoutingTierSelected(logger, query.CorrelationId, tier, actorId);
 
         var envelope = new QueryEnvelope(
             query.Tenant,
@@ -40,7 +42,8 @@ public partial class QueryRouter(
             query.QueryType,
             query.Payload,
             query.CorrelationId,
-            query.UserId);
+            query.UserId,
+            query.EntityId);
 
         try {
             IProjectionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionActor>(
@@ -127,6 +130,16 @@ public partial class QueryRouter(
             string queryType,
             string actorId,
             string? errorMessage);
+
+        [LoggerMessage(
+            EventId = 1205,
+            Level = LogLevel.Debug,
+            Message = "Query routing tier selected: CorrelationId={CorrelationId}, Tier={Tier}, ActorId={ActorId}, Stage=TierSelected")]
+        public static partial void QueryRoutingTierSelected(
+            ILogger logger,
+            string correlationId,
+            int tier,
+            string actorId);
 
         [LoggerMessage(
             EventId = 1202,

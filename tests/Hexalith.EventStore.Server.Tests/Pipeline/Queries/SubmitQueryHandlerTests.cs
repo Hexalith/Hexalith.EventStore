@@ -23,7 +23,8 @@ public class SubmitQueryHandlerTests {
             QueryType: "GetOrderStatus",
             Payload: [],
             CorrelationId: "corr-1",
-            UserId: "user-1");
+            UserId: "user-1",
+            EntityId: null);
 
     [Fact]
     public async Task Handle_SuccessfulQuery_ReturnsSubmitQueryResult() {

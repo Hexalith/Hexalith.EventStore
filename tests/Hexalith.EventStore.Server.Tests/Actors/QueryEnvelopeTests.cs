@@ -1,5 +1,7 @@
 
+using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Xml.Linq;
 
 using Hexalith.EventStore.Server.Actors;
 
@@ -15,13 +17,14 @@ public class QueryEnvelopeTests {
         string queryType = "GetOrderStatus",
         byte[]? payload = null,
         string correlationId = "corr-1",
-        string userId = "user-1") =>
-        new(tenantId, domain, aggregateId, queryType, payload ?? [], correlationId, userId);
+        string userId = "user-1",
+        string? entityId = null) =>
+        new(tenantId, domain, aggregateId, queryType, payload ?? [], correlationId, userId, entityId);
 
     [Fact]
     public void Constructor_ValidFields_SetsAllProperties() {
         byte[] payload = [0x01, 0x02];
-        QueryEnvelope sut = CreateValid(payload: payload);
+        QueryEnvelope sut = CreateValid(payload: payload, entityId: "entity-1");
 
         sut.TenantId.ShouldBe("test-tenant");
         sut.Domain.ShouldBe("orders");
@@ -30,6 +33,7 @@ public class QueryEnvelopeTests {
         sut.Payload.ShouldBe(payload);
         sut.CorrelationId.ShouldBe("corr-1");
         sut.UserId.ShouldBe("user-1");
+        sut.EntityId.ShouldBe("entity-1");
     }
 
     [Theory]
@@ -108,7 +112,7 @@ public class QueryEnvelopeTests {
     [Fact]
     public void JsonRoundTrip_PreservesAllProperties() {
         byte[] payload = [0x01, 0x02, 0x03];
-        QueryEnvelope original = CreateValid(payload: payload);
+        QueryEnvelope original = CreateValid(payload: payload, entityId: "entity-99");
 
         string json = JsonSerializer.Serialize(original);
         QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
@@ -121,5 +125,65 @@ public class QueryEnvelopeTests {
         deserialized.Payload.ShouldBe(original.Payload);
         deserialized.CorrelationId.ShouldBe(original.CorrelationId);
         deserialized.UserId.ShouldBe(original.UserId);
+        deserialized.EntityId.ShouldBe(original.EntityId);
+    }
+
+    [Fact]
+    public void Constructor_NullEntityId_AcceptedWithoutException() {
+        QueryEnvelope sut = CreateValid(entityId: null);
+        sut.EntityId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void JsonRoundTrip_NonNullEntityId_PreservedThroughSerialization() {
+        QueryEnvelope original = CreateValid(entityId: "order-42");
+
+        string json = JsonSerializer.Serialize(original);
+        QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
+
+        deserialized.ShouldNotBeNull();
+        deserialized.EntityId.ShouldBe("order-42");
+    }
+
+    [Fact]
+    public void ToString_WithEntityId_IncludesEntityId() {
+        QueryEnvelope sut = CreateValid(entityId: "order-42");
+        string result = sut.ToString();
+
+        result.ShouldContain("EntityId = order-42");
+    }
+
+    [Fact]
+    public void ToString_WithoutEntityId_OmitsEntityId() {
+        QueryEnvelope sut = CreateValid(entityId: null);
+        string result = sut.ToString();
+
+        result.ShouldNotContain("EntityId");
+    }
+
+    [Fact]
+    public void DataContractSerializer_OldFormatWithoutEntityId_DeserializesWithNullEntityId() {
+        // Simulate an old serialized QueryEnvelope without EntityId field
+        QueryEnvelope original = CreateValid();
+
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+        using var ms = new MemoryStream();
+        serializer.WriteObject(ms, original);
+
+        // Manually remove EntityId from serialized XML to simulate old format
+        ms.Position = 0;
+        string xml = new StreamReader(ms).ReadToEnd();
+        XDocument document = XDocument.Parse(xml);
+        document.Descendants().Where(e => e.Name.LocalName == "EntityId").Remove();
+        string oldFormatXml = document.ToString(SaveOptions.DisableFormatting);
+
+        oldFormatXml.ShouldNotContain("EntityId");
+
+        using var ms2 = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(oldFormatXml));
+        var deserialized = (QueryEnvelope?)serializer.ReadObject(ms2);
+
+        deserialized.ShouldNotBeNull();
+        deserialized.EntityId.ShouldBeNull();
+        deserialized.TenantId.ShouldBe(original.TenantId);
     }
 }

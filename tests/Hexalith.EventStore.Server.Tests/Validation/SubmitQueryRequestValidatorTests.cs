@@ -197,6 +197,110 @@ public class SubmitQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitQueryRequestValidator_EntityIdWithColon_FailsValidation() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            EntityId: "entity:bad");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "EntityId" && e.ErrorMessage.Contains("colon"));
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_EntityIdExceedsMaxLength_FailsValidation() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            EntityId: new string('a', 257));
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "EntityId" && e.ErrorMessage.Contains("256"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SubmitQueryRequestValidator_EmptyOrWhitespaceEntityId_FailsValidation(string entityId) {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            EntityId: entityId);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "EntityId" && e.ErrorMessage.Contains("empty or whitespace"));
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_EntityIdWithInvalidChars_FailsValidation() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            EntityId: "entity@bad!");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "EntityId");
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_NullEntityId_Passes() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            EntityId: null);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_ValidEntityId_Passes() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            EntityId: "order-123");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_QueryTypeWithColon_FailsValidation() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "Get:Order");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "QueryType" && e.ErrorMessage.Contains("colon"));
+    }
+
+    [Fact]
     public void SubmitQueryRequestValidator_InvalidAggregateIdCharacters_FailsValidation() {
         var request = new SubmitQueryRequest(
             Tenant: "test-tenant",

@@ -79,6 +79,18 @@ public static class NamingConventionEngine {
     }
 
     /// <summary>
+    /// Gets the DAPR pub/sub topic for projection change notifications.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier (kebab-case).</param>
+    /// <returns>The pub/sub topic in the format "{tenantId}.{projectionType}.projection-changed".</returns>
+    public static string GetProjectionChangedTopic(string projectionType, string tenantId) {
+        ValidateDomainArgument(projectionType, nameof(projectionType));
+        ValidateDomainArgument(tenantId, nameof(tenantId));
+        return $"{tenantId}.{projectionType}.projection-changed";
+    }
+
+    /// <summary>
     /// Clears the domain name resolution cache. Intended for test isolation.
     /// </summary>
     internal static void ClearCache() => _cache.Clear();

@@ -25,7 +25,8 @@ public record QueryEnvelope {
         string queryType,
         byte[] payload,
         string correlationId,
-        string userId) {
+        string userId,
+        string? entityId = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
@@ -41,6 +42,7 @@ public record QueryEnvelope {
         Payload = payload;
         CorrelationId = correlationId;
         UserId = userId;
+        EntityId = entityId;
     }
 
     [DataMember]
@@ -64,9 +66,12 @@ public record QueryEnvelope {
     [DataMember]
     public string UserId { get; init; }
 
+    [DataMember]
+    public string? EntityId { get; init; }
+
     public AggregateIdentity AggregateIdentity
         => new(TenantId, Domain, AggregateId);
 
     public override string ToString()
-        => $"QueryEnvelope {{ TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, QueryType = {QueryType}, CorrelationId = {CorrelationId}, UserId = {UserId}, Payload = [REDACTED {Payload.Length} bytes] }}";
+        => $"QueryEnvelope {{ TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, QueryType = {QueryType}, CorrelationId = {CorrelationId}, UserId = {UserId}{(EntityId is not null ? $", EntityId = {EntityId}" : "")}, Payload = [REDACTED {Payload.Length} bytes] }}";
 }

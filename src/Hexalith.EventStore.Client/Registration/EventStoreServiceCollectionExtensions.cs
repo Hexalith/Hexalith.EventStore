@@ -2,12 +2,15 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Projections;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Client.Registration;
 
@@ -123,6 +126,21 @@ public static class EventStoreServiceCollectionExtensions {
 
             // Keyed: domain-specific resolution (forward-looking for actor pipeline)
             _ = services.AddKeyedScoped(typeof(IDomainProcessor), aggregate.DomainName, aggregate.Type);
+        }
+
+        // Register projections as themselves and initialize optional post-construction services.
+        foreach (DiscoveredDomain projection in discoveryResult.Projections) {
+            _ = services.AddScoped(projection.Type, serviceProvider => {
+                object instance = ActivatorUtilities.CreateInstance(serviceProvider, projection.Type);
+
+                if (instance is IEventStoreProjection eventStoreProjection) {
+                    eventStoreProjection.Notifier = serviceProvider.GetService<IProjectionChangeNotifier>();
+                    ILoggerFactory? loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+                    eventStoreProjection.Logger = loggerFactory?.CreateLogger(projection.Type);
+                }
+
+                return instance;
+            });
         }
 
         return services;
