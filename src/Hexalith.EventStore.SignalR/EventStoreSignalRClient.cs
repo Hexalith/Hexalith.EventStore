@@ -11,8 +11,12 @@ namespace Hexalith.EventStore.SignalR;
 /// Implements <see cref="IAsyncDisposable"/> — callers MUST dispose when done.
 /// </summary>
 public sealed class EventStoreSignalRClient : IAsyncDisposable {
+    private sealed class GroupSubscription {
+        public ConcurrentDictionary<Guid, Action> Callbacks { get; } = new();
+    }
+
     private readonly HubConnection _connection;
-    private readonly ConcurrentDictionary<string, Action> _subscribedGroups = new();
+    private readonly ConcurrentDictionary<string, GroupSubscription> _subscribedGroups = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly ILogger<EventStoreSignalRClient>? _logger;
 
@@ -31,7 +35,11 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         _logger = logger;
 
         HubConnectionBuilder builder = new();
-        builder.WithUrl(options.HubUrl);
+        builder.WithUrl(options.HubUrl, connectionOptions => {
+            if (options.AccessTokenProvider is not null) {
+                connectionOptions.AccessTokenProvider = options.AccessTokenProvider;
+            }
+        });
         builder.WithAutomaticReconnect();
 
         _connection = builder.Build();
@@ -53,10 +61,43 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         ArgumentNullException.ThrowIfNull(onChanged);
 
         string groupName = $"{projectionType}:{tenantId}";
-        _subscribedGroups[groupName] = onChanged;
+        GroupSubscription subscription = _subscribedGroups.GetOrAdd(groupName, static _ => new GroupSubscription());
+        _ = subscription.Callbacks.TryAdd(Guid.NewGuid(), onChanged);
 
         if (_connection.State == HubConnectionState.Connected) {
             await _connection.InvokeAsync("JoinGroup", projectionType, tenantId).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Unsubscribes a specific callback from projection change signals for the given projection type and tenant.
+    /// Leaves the SignalR group only when no callbacks remain for the group.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="onChanged">The callback previously registered via <see cref="SubscribeAsync"/>.</param>
+    public async Task UnsubscribeAsync(string projectionType, string tenantId, Action onChanged) {
+        ValidateGroupPart(projectionType, nameof(projectionType));
+        ValidateGroupPart(tenantId, nameof(tenantId));
+        ArgumentNullException.ThrowIfNull(onChanged);
+
+        string groupName = $"{projectionType}:{tenantId}";
+        if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+            return;
+        }
+
+        foreach ((Guid key, Action callback) in subscription.Callbacks.ToArray()) {
+            if (callback == onChanged) {
+                _ = subscription.Callbacks.TryRemove(key, out _);
+            }
+        }
+
+        if (subscription.Callbacks.IsEmpty) {
+            _ = _subscribedGroups.TryRemove(groupName, out _);
+
+            if (_connection.State == HubConnectionState.Connected) {
+                await _connection.InvokeAsync("LeaveGroup", projectionType, tenantId).ConfigureAwait(false);
+            }
         }
     }
 
@@ -140,8 +181,10 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
 
     private void OnProjectionChanged(string projectionType, string tenantId) {
         string groupName = $"{projectionType}:{tenantId}";
-        if (_subscribedGroups.TryGetValue(groupName, out Action? callback)) {
-            callback();
+        if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+            foreach (Action callback in subscription.Callbacks.Values) {
+                callback();
+            }
         }
     }
 

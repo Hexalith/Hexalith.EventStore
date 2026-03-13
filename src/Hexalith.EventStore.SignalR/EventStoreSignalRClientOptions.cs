@@ -10,4 +10,9 @@ public class EventStoreSignalRClientOptions {
     /// or Aspire service reference: <c>https+http://commandapi/hubs/projection-changes</c>.
     /// </summary>
     public required string HubUrl { get; init; }
+
+    /// <summary>
+    /// Gets an optional access token provider used when the SignalR hub requires bearer authentication.
+    /// </summary>
+    public Func<Task<string?>>? AccessTokenProvider { get; init; }
 }

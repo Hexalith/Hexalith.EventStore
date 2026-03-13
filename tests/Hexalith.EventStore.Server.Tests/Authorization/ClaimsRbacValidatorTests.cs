@@ -249,6 +249,19 @@ public class ClaimsRbacValidatorTests {
     }
 
     [Fact]
+    public async Task ValidateAsync_LegacyCommandQueryPermission_AllowsQueryAccess() {
+        // Arrange — local Keycloak realm currently emits command:query for query access.
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["command:query"]);
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "GetOrder", "query", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task ValidateAsync_CommandWildcard_DoesNotAllowQueryAccess() {
         // Arrange — commands:* should NOT grant query access
         ClaimsPrincipal principal = CreatePrincipal(permissions: ["commands:*"]);

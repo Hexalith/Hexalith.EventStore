@@ -52,6 +52,12 @@
             configures this automatically.
         </li>
         <li>
+            <strong>Authentication is handled automatically by the sample UI.</strong>
+            In local dev without Keycloak it generates a development JWT for
+            <code>tenant-a</code>. When Keycloak is enabled, it requests a demo token
+            using the Aspire-wired realm configuration.
+        </li>
+        <li>
             <strong>Open the Blazor UI URL</strong> from the Aspire dashboard
             (look for "sample-blazor-ui" resource).
         </li>

@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Hexalith.EventStore.SignalR;
 
 using Shouldly;
@@ -143,5 +145,62 @@ public class EventStoreSignalRClientTests {
         await sut.DisposeAsync();
 
         // No exception — disposal completed successfully
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_MultipleCallbacksForSameGroup_AllCallbacksAreInvoked() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callback1Count = 0;
+            int callback2Count = 0;
+
+            Action callback1 = () => callback1Count++;
+            Action callback2 = () => callback2Count++;
+
+            await sut.SubscribeAsync("counter", "acme", callback1);
+            await sut.SubscribeAsync("counter", "acme", callback2);
+
+            InvokeProjectionChanged(sut, "counter", "acme");
+
+            callback1Count.ShouldBe(1);
+            callback2Count.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UnsubscribeAsync_CallbackOverload_RemovesOnlySpecifiedCallback() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callback1Count = 0;
+            int callback2Count = 0;
+
+            Action callback1 = () => callback1Count++;
+            Action callback2 = () => callback2Count++;
+
+            await sut.SubscribeAsync("counter", "acme", callback1);
+            await sut.SubscribeAsync("counter", "acme", callback2);
+            await sut.UnsubscribeAsync("counter", "acme", callback1);
+
+            InvokeProjectionChanged(sut, "counter", "acme");
+
+            callback1Count.ShouldBe(0);
+            callback2Count.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    private static void InvokeProjectionChanged(EventStoreSignalRClient client, string projectionType, string tenantId) {
+        MethodInfo method = typeof(EventStoreSignalRClient)
+            .GetMethod("OnProjectionChanged", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OnProjectionChanged method not found.");
+
+        _ = method.Invoke(client, [projectionType, tenantId]);
     }
 }

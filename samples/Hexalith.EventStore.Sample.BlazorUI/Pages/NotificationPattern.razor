@@ -24,14 +24,9 @@
 
 @if (_hasChanges)
 {
-    <FluentMessageBar Title="Data Changed"
-                      Intent="MessageIntent.Warning"
-                      AllowDismiss="false"
-                      Style="margin-bottom: 16px;">
+    <FluentMessageBar Title="Data Changed" Intent="MessageIntent.Warning" AllowDismiss="false" Style="margin-bottom: 16px;">
         Counter data has changed.
-        <FluentButton Appearance="Appearance.Accent"
-                      OnClick="RefreshDataAsync"
-                      Style="margin-left: 12px;">
+        <FluentButton Appearance="Appearance.Accent" OnClick="RefreshDataAsync" Style="margin-left: 12px;">
             Refresh Now
         </FluentButton>
     </FluentMessageBar>
@@ -65,7 +60,7 @@
 </FluentCard>
 
 @code {
-    private string _tenantId = "sample-tenant";
+    private string _tenantId = "tenant-a";
     private string _projectionType = "counter";
     private CounterStatusResult? _result;
     private DateTime? _lastRefreshed;
@@ -115,6 +110,6 @@
 
     public async ValueTask DisposeAsync()
     {
-        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId);
+        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
     }
 }

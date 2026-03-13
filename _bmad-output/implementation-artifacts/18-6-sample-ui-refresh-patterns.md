@@ -1,6 +1,6 @@
 # Story 18.6: Sample UI Refresh Patterns
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -270,13 +270,14 @@ Response:
 
 ### Agent Model Used
 
-Claude Opus 4.6
+GPT-5.4
 
 ### Debug Log References
 
 - Initial build errors from App.razor `InteractiveServer` — needed `RenderMode.InteractiveServer` with explicit `@using Microsoft.AspNetCore.Components.Web`
 - Icons in MainLayout caused build errors — simplified to text-only navigation links (FluentUI v4 Icon classes require specific imports)
 - CounterCommandForm `[Inject]` property inside `@code` block caused Razor parser errors — moved to `@inject` directive
+- Review remediation surfaced three follow-up build blockers: Razor markup placement in `CounterHistoryGrid.razor`, nullable delegate mismatch in `Program.cs`, and analyzer warnings in the new bearer-token handler; all were corrected before final validation
 
 ### Completion Notes List
 
@@ -290,11 +291,17 @@ Claude Opus 4.6
 - Aspire AppHost wired with service discovery and SignalR auto-enable
 - All 1,780 existing tests pass with zero regression
 - Full solution build: 0 errors, 0 warnings
+- Review fixes completed: sample UI now authenticates to protected CommandApi and SignalR endpoints in both dev-token and Keycloak-backed Aspire runs
+- `EventStoreSignalRClient` now supports multiple independent callbacks per projection group, enabling Pattern 3 component isolation as intended
+- Query authorization now accepts legacy `command:query` claims in addition to the newer query permissions so the sample works with the current local auth setup
+- `CounterHistoryGrid` now surfaces refresh failures in the UI instead of swallowing them silently
+- Final remediation validation for this review pass: `dotnet build Hexalith.EventStore.slnx --configuration Release`, `Hexalith.EventStore.SignalR.Tests` (14 passed), and `ClaimsRbacValidatorTests` filter in `Hexalith.EventStore.Server.Tests` (24 passed)
 
 ### Change Log
 
 - 2026-03-13: Story 18-6 implementation complete — 3 Blazor UI refresh patterns with Aspire integration
 - 2026-03-13: Review fixes applied — aligned persistent notification wording, added `FluentDesignTheme`, and corrected JSON payload contracts for sample command/query requests
+- 2026-03-13: Review remediation completed — added sample auth/token plumbing, multi-subscriber SignalR callback support, callback-specific unsubscribe, legacy query-claim compatibility, and visible history refresh errors
 
 ### File List
 
@@ -317,6 +324,8 @@ New files:
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SelectiveRefreshPattern.razor`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterQueryService.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/EventStoreApiAccessTokenProvider.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/EventStoreApiAuthorizationHandler.cs`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Services/SignalRClientStartup.cs`
 
 Modified files:
@@ -325,3 +334,17 @@ Modified files:
 - `Directory.Packages.props` — added Blazor ItemGroup with FluentUI v4.13.2 packages
 - `src/Hexalith.EventStore.AppHost/Program.cs` — added BlazorUI resource with service discovery + SignalR enable
 - `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` — added BlazorUI project reference
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Program.cs` — registered API auth/token services and SignalR access token provider
+- `samples/Hexalith.EventStore.Sample.BlazorUI/appsettings.json` — aligned tenant/auth defaults for local Aspire runs
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/Index.razor` — clarified automatic authentication behavior in run instructions
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/NotificationPattern.razor` — aligned tenant defaults and callback-specific unsubscribe
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor` — aligned tenant defaults and callback-specific unsubscribe
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SelectiveRefreshPattern.razor` — aligned tenant defaults for pattern demo consistency
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor` — aligned tenant defaults and callback-specific unsubscribe
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor` — added visible refresh error handling and callback-specific unsubscribe
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterCommandForm.razor` — aligned tenant defaults for authenticated sample flows
+- `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs` — added multi-subscriber dispatch and callback-aware unsubscribe
+- `src/Hexalith.EventStore.SignalR/EventStoreSignalRClientOptions.cs` — added optional SignalR access token provider
+- `src/Hexalith.EventStore.CommandApi/Authorization/ClaimsRbacValidator.cs` — accepted legacy query permission for local auth compatibility
+- `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs` — added regression coverage for multi-callback and callback-specific unsubscribe behavior
+- `tests/Hexalith.EventStore.Server.Tests/Authorization/ClaimsRbacValidatorTests.cs` — added regression coverage for legacy query permission handling

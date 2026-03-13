@@ -10,18 +10,15 @@
     </p>
 
     <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px; margin-top: 16px;">
-        <FluentButton Appearance="Appearance.Accent"
-                      OnClick="@(() => SendCommandAsync(IncrementCommandType))"
+        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => SendCommandAsync(IncrementCommandType))"
                       Disabled="@_isSending">
             Increment
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline"
-                      OnClick="@(() => SendCommandAsync(DecrementCommandType))"
+        <FluentButton Appearance="Appearance.Outline" OnClick="@(() => SendCommandAsync(DecrementCommandType))"
                       Disabled="@_isSending">
             Decrement
         </FluentButton>
-        <FluentButton Appearance="Appearance.Stealth"
-                      OnClick="@(() => SendCommandAsync(ResetCommandType))"
+        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => SendCommandAsync(ResetCommandType))"
                       Disabled="@_isSending">
             Reset
         </FluentButton>
@@ -42,7 +39,7 @@
 </FluentCard>
 
 @code {
-    [Parameter] public string TenantId { get; set; } = "sample-tenant";
+    [Parameter] public string TenantId { get; set; } = "tenant-a";
 
     private static readonly JsonElement EmptyPayload = JsonDocument.Parse("{}").RootElement.Clone();
     private const string IncrementCommandType = "IncrementCounter";

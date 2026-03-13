@@ -13,10 +13,13 @@ namespace Hexalith.EventStore.CommandApi.Authorization;
 /// <remarks>
 /// The <paramref name="messageCategory"/> parameter determines which permission set is checked.
 /// For "command" category: accepts <c>commands:*</c> (wildcard) or <c>command:submit</c>.
-/// For "query" category: accepts <c>queries:*</c> (wildcard) or <c>query:read</c>.
+/// For "query" category: accepts <c>queries:*</c> (wildcard), <c>query:read</c>,
+/// or the legacy <c>command:query</c> permission still used by the local Keycloak realm.
 /// Both categories accept an exact <c>messageType</c> match.
 /// </remarks>
 public class ClaimsRbacValidator : IRbacValidator {
+    private const string LegacyQueryPermission = "command:query";
+
     /// <inheritdoc/>
     public Task<RbacValidationResult> ValidateAsync(
         ClaimsPrincipal user,
@@ -51,8 +54,11 @@ public class ClaimsRbacValidator : IRbacValidator {
 
             if (isQuery) {
                 hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.QueryWildcardPermission, StringComparison.OrdinalIgnoreCase));
-                hasCategoryPermission = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.ReadPermission, StringComparison.OrdinalIgnoreCase));
-            } else {
+                hasCategoryPermission = permissionClaims.Any(p =>
+                    string.Equals(p, AuthorizationConstants.ReadPermission, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(p, LegacyQueryPermission, StringComparison.OrdinalIgnoreCase));
+            }
+            else {
                 hasWildcard = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.WildcardPermission, StringComparison.OrdinalIgnoreCase));
                 hasCategoryPermission = permissionClaims.Any(p => string.Equals(p, AuthorizationConstants.SubmitPermission, StringComparison.OrdinalIgnoreCase));
             }

@@ -25,7 +25,7 @@
 </FluentCard>
 
 @code {
-    [Parameter] public string TenantId { get; set; } = "sample-tenant";
+    [Parameter] public string TenantId { get; set; } = "tenant-a";
     [Parameter] public string ProjectionType { get; set; } = "counter";
 
     private CounterStatusResult? _result;
@@ -70,6 +70,6 @@
 
     public async ValueTask DisposeAsync()
     {
-        await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId);
+        await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
     }
 }

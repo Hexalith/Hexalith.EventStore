@@ -28,17 +28,19 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
+IResourceBuilder<KeycloakResource>? keycloak = null;
+ReferenceExpression? realmUrl = null;
 if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase)) {
     // Realm-as-code: hexalith-realm.json auto-imported on container start.
     // Port 8180 avoids conflict with commandapi on 8080.
-    IResourceBuilder<KeycloakResource> keycloak = builder.AddKeycloak("keycloak", 8180)
+    keycloak = builder.AddKeycloak("keycloak", 8180)
         .WithRealmImport("./KeycloakRealms");
 
     // Wire Keycloak OIDC auth (D11, Story 5.1 Task 8).
     // The existing ConfigureJwtBearerOptions.cs OIDC discovery path handles everything
     // when Authentication:JwtBearer:Authority is set to the Keycloak realm URL.
     EndpointReference keycloakEndpoint = keycloak.GetEndpoint("http");
-    var realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
+    realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
     _ = commandApi
         .WithReference(keycloak)
         .WaitFor(keycloak)
@@ -73,6 +75,16 @@ _ = commandApi.WithEnvironment("EventStore__SignalR__Enabled", "true");
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
     .WithReference(commandApi)
     .WithExternalHttpEndpoints();
+
+if (keycloak is not null && realmUrl is not null) {
+    _ = blazorUi
+        .WithReference(keycloak)
+        .WaitFor(keycloak)
+        .WithEnvironment("EventStore__Authentication__Authority", realmUrl)
+        .WithEnvironment("EventStore__Authentication__ClientId", "hexalith-eventstore")
+        .WithEnvironment("EventStore__Authentication__Username", "admin-user")
+        .WithEnvironment("EventStore__Authentication__Password", "admin-pass");
+}
 
 // --- Publisher environments (only activate during `aspire publish`) ---
 // Aspire requires exactly one compute environment per resource at publish time.

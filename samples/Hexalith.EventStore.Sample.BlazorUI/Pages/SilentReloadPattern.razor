@@ -56,7 +56,7 @@
     // 200ms balances responsiveness vs. query coalescing — increase for high-frequency projections
     private const int DebounceDelayMs = 200;
 
-    private string _tenantId = "sample-tenant";
+    private string _tenantId = "tenant-a";
     private string _projectionType = "counter";
     private CounterStatusResult? _result;
     private DateTime? _lastRefreshed;
@@ -122,6 +122,6 @@
     {
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
-        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId);
+        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
     }
 }

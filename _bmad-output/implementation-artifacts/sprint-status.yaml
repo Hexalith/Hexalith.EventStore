@@ -244,5 +244,5 @@ development_status:
   18-3-query-endpoint-with-etag-pre-check-and-cache: done
   18-4-query-contract-library: done
   18-5-signalr-real-time-notifications: done
-  18-6-sample-ui-refresh-patterns: review
+  18-6-sample-ui-refresh-patterns: done
   epic-18-retrospective: optional
