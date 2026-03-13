@@ -118,11 +118,12 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
         // Set ETag response header — fetch from ETag actor if not already known
-        // Uses request.Domain as projection type (ETag actor returns self-routing format)
+        // Uses runtime-discovered projection type (FR63), falls back to request.Domain
         if (currentETag is null) {
+            string projectionTypeForETag = result.ProjectionType ?? request.Domain;
             try {
                 currentETag = await eTagService
-                    .GetCurrentETagAsync(request.Domain, request.Tenant, cancellationToken)
+                    .GetCurrentETagAsync(projectionTypeForETag, request.Tenant, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception) {

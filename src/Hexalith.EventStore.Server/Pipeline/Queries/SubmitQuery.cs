@@ -20,4 +20,4 @@ public record SubmitQuery(
 /// <summary>
 /// Result of processing a <see cref="SubmitQuery"/>.
 /// </summary>
-public record SubmitQueryResult(string CorrelationId, JsonElement Payload);
+public record SubmitQueryResult(string CorrelationId, JsonElement Payload, string? ProjectionType = null);

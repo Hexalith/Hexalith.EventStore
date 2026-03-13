@@ -227,6 +227,219 @@ public class CachingProjectionActorTests {
         actor.ExecuteCallCount.ShouldBe(1);
     }
 
+    // ===== Runtime projection type discovery tests (Story 18-8) =====
+
+    [Fact]
+    public async Task QueryAsync_RuntimeDiscovery_SecondCallUsesDiscoveredProjectionType() {
+        // Arrange — domain="orders", projection returns "order-list"
+        string ordersETag = GenerateTestETag("orders");
+        string orderListETag = GenerateTestETag("order-list");
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(ordersETag);
+        _ = eTagService.GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(orderListETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var result1 = new QueryResult(true, payload, ProjectionType: "order-list");
+        var result2 = new QueryResult(true, payload, ProjectionType: "order-list");
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
+
+        // Act — first call discovers, second call uses discovered type
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "orders"));
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "orders"));
+
+        // Assert — second call should use "order-list" for ETag lookup
+        await eTagService.Received(1).GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>());
+        await eTagService.Received(1).GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QueryAsync_DiscoveryMismatch_FirstCallSkipsCache() {
+        // Arrange — domain="orders", projection returns "order-list" (different)
+        // First call uses envelope.Domain for ETag → potentially wrong projection.
+        // Should NOT cache on first call.
+        string ordersETag = GenerateTestETag("orders");
+        string orderListETag = GenerateTestETag("order-list");
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(ordersETag);
+        _ = eTagService.GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(orderListETag);
+
+        JsonElement payload1 = JsonDocument.Parse("{\"count\":1}").RootElement;
+        JsonElement payload2 = JsonDocument.Parse("{\"count\":2}").RootElement;
+        var result1 = new QueryResult(true, payload1, ProjectionType: "order-list");
+        var result2 = new QueryResult(true, payload2, ProjectionType: "order-list");
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "orders")); // cold call, discovers
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "orders")); // second call, correct ETag
+
+        // Assert — both calls execute (first skipped cache due to mismatch)
+        actor.ExecuteCallCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task QueryAsync_NullProjectionType_FallsBackToEnvelopeDomain() {
+        // Arrange — no ProjectionType in result → use envelope.Domain
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: null);
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — uses "counter" (envelope.Domain), cache hit on second call
+        await eTagService.Received(2).GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(1); // Cached (no projection type mismatch)
+    }
+
+    [Fact]
+    public async Task QueryAsync_EmptyProjectionType_FallsBackToEnvelopeDomain() {
+        // Arrange — empty ProjectionType treated same as null
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: "");
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — fallback to envelope.Domain, caching works
+        await eTagService.Received(2).GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task QueryAsync_ProjectionTypeWithColon_FallsBackToEnvelopeDomain() {
+        // Arrange — colon in ProjectionType is invalid (actor ID separator)
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: "evil:type");
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — rejected, falls back to "counter", caching works normally
+        await eTagService.Received(2).GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task QueryAsync_ProjectionTypeExceeding100Chars_FallsBackToEnvelopeDomain() {
+        // Arrange — too-long ProjectionType is rejected
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        string longProjectionType = new('x', 101);
+        var expected = new QueryResult(true, payload, ProjectionType: longProjectionType);
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — rejected, falls back to "counter"
+        await eTagService.Received(2).GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task QueryAsync_FlipFloppingProjectionType_FirstDiscoveryWins() {
+        // Arrange — first call returns "order-list", second returns "order-summary"
+        // First discovery wins; second value is ignored (logged as warning).
+        string orderListETag = GenerateTestETag("order-list");
+        IETagService eTagService = Substitute.For<IETagService>();
+        // First call uses "counter" (fallback), second+ uses "order-list" (discovered)
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(GenerateTestETag());
+        _ = eTagService.GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(orderListETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var result1 = new QueryResult(true, payload, ProjectionType: "order-list");
+        var result2 = new QueryResult(true, payload, ProjectionType: "order-summary"); // different!
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
+
+        // Act — first call discovers "order-list" (domain=counter, so first call skips cache)
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "counter"));
+        // Second call uses "order-list" for ETag (discovered), returns "order-summary" (flip-flop)
+        _ = await actor.QueryAsync(CreateEnvelope(domain: "counter"));
+
+        // Assert — second call uses "order-list" (first discovery), NOT "order-summary"
+        await eTagService.Received(1).GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>());
+        // Should NOT have called with "order-summary"
+        await eTagService.DidNotReceive().GetCurrentETagAsync("order-summary", "tenant1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QueryAsync_SameProjectionTypeAsDomain_CachesNormally() {
+        // Arrange — domain="counter", projection returns "counter" (same)
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: "counter");
+
+        ActorHost host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — projection type matches domain, no mismatch, caches normally
+        actor.ExecuteCallCount.ShouldBe(1); // Cached on first call
+    }
+
+    [Fact]
+    public void QueryResult_DataContractBackwardCompat_NullProjectionTypeDefault() {
+        // Arrange — simulate old actor binary without ProjectionType
+        var oldResult = new QueryResult(true, JsonDocument.Parse("{}").RootElement, null);
+
+        // Assert — ProjectionType defaults to null (not throw)
+        oldResult.ProjectionType.ShouldBeNull();
+        oldResult.Success.ShouldBeTrue();
+    }
+
     /// <summary>
     /// Concrete test implementation of <see cref="CachingProjectionActor"/>.
     /// Returns preconfigured results in sequence.

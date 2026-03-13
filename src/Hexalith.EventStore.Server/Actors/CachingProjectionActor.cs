@@ -25,6 +25,7 @@ public abstract partial class CachingProjectionActor(
 {
     private string? _cachedETag;
     private JsonElement? _cachedPayload;
+    private string? _discoveredProjectionType;
 
     /// <inheritdoc/>
     public async Task<QueryResult> QueryAsync(QueryEnvelope envelope)
@@ -33,7 +34,7 @@ public abstract partial class CachingProjectionActor(
 
         // IETagService handles actor ID derivation, proxy timeout, and fail-open (returns null on error)
         string? currentETag = await eTagService
-            .GetCurrentETagAsync(envelope.Domain, envelope.TenantId)
+            .GetCurrentETagAsync(GetEffectiveProjectionType(envelope.Domain), envelope.TenantId)
             .ConfigureAwait(false);
 
         // Cache hit: ETag is non-null, matches cached, and payload exists
@@ -48,6 +49,33 @@ public abstract partial class CachingProjectionActor(
 
         if (result.Success && currentETag is not null)
         {
+            // Runtime projection type discovery (FR63)
+            if (!string.IsNullOrWhiteSpace(result.ProjectionType)
+                && IsValidProjectionType(result.ProjectionType))
+            {
+                if (_discoveredProjectionType is null)
+                {
+                    bool projectionTypeDiffersFromDomain =
+                        !string.Equals(result.ProjectionType, envelope.Domain, StringComparison.Ordinal);
+
+                    _discoveredProjectionType = result.ProjectionType;
+                    Log.ProjectionTypeDiscovered(logger, envelope.CorrelationId, Id.GetId(), result.ProjectionType);
+
+                    if (projectionTypeDiffersFromDomain)
+                    {
+                        // ETag was fetched using envelope.Domain — may be wrong projection.
+                        // Don't cache. Next request will use correct _discoveredProjectionType.
+                        return result;
+                    }
+                }
+                else if (!string.Equals(_discoveredProjectionType, result.ProjectionType, StringComparison.Ordinal))
+                {
+                    Log.ProjectionTypeMismatch(logger, envelope.CorrelationId, Id.GetId(),
+                        _discoveredProjectionType, result.ProjectionType);
+                    // DO NOT update — first discovery wins until actor deactivation
+                }
+            }
+
             // CRITICAL: Clone() creates an independent copy safe for long-lived caching.
             // Without it, the JsonElement becomes a dangling reference when the original JsonDocument is disposed.
             _cachedPayload = result.Payload.Clone();
@@ -56,6 +84,16 @@ public abstract partial class CachingProjectionActor(
         }
         else if (currentETag is null)
         {
+            // Still discover projection type even when ETag is null
+            if (result.Success
+                && !string.IsNullOrWhiteSpace(result.ProjectionType)
+                && IsValidProjectionType(result.ProjectionType)
+                && _discoveredProjectionType is null)
+            {
+                _discoveredProjectionType = result.ProjectionType;
+                Log.ProjectionTypeDiscovered(logger, envelope.CorrelationId, Id.GetId(), result.ProjectionType);
+            }
+
             Log.CacheSkipped(logger, envelope.CorrelationId, Id.GetId());
         }
 
@@ -68,7 +106,19 @@ public abstract partial class CachingProjectionActor(
     /// </summary>
     /// <param name="envelope">The query envelope containing routing and payload data.</param>
     /// <returns>The query result from the domain service.</returns>
+    /// <remarks>
+    /// Set <see cref="QueryResult.ProjectionType"/> on the returned <see cref="QueryResult"/> for optimal ETag caching.
+    /// If <c>ProjectionType</c> is null, the actor falls back to <c>envelope.Domain</c> for ETag lookups —
+    /// which is correct only when domain name equals projection type. Use the same short kebab-case name
+    /// as your <c>IQueryContract.ProjectionType</c>.
+    /// </remarks>
     protected abstract Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope);
+
+    private string GetEffectiveProjectionType(string fallbackDomain)
+        => _discoveredProjectionType ?? fallbackDomain;
+
+    private static bool IsValidProjectionType(string projectionType)
+        => projectionType.Length <= 100 && !projectionType.Contains(':');
 
     private static partial class Log
     {
@@ -89,5 +139,17 @@ public abstract partial class CachingProjectionActor(
             Level = LogLevel.Debug,
             Message = "Cache skipped (null ETag): CorrelationId={CorrelationId}, ActorId={ActorId}, Stage=CacheSkipped")]
         public static partial void CacheSkipped(ILogger logger, string correlationId, string actorId);
+
+        [LoggerMessage(
+            EventId = 1074,
+            Level = LogLevel.Debug,
+            Message = "Projection type discovered: CorrelationId={CorrelationId}, ActorId={ActorId}, ProjectionType={ProjectionType}, Stage=ProjectionTypeDiscovered")]
+        public static partial void ProjectionTypeDiscovered(ILogger logger, string correlationId, string actorId, string projectionType);
+
+        [LoggerMessage(
+            EventId = 1075,
+            Level = LogLevel.Warning,
+            Message = "Projection type mismatch: CorrelationId={CorrelationId}, ActorId={ActorId}, CachedProjectionType={CachedProjectionType}, NewProjectionType={NewProjectionType}, Stage=ProjectionTypeMismatch")]
+        public static partial void ProjectionTypeMismatch(ILogger logger, string correlationId, string actorId, string cachedProjectionType, string newProjectionType);
     }
 }

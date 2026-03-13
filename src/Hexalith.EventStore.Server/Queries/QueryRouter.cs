@@ -59,7 +59,7 @@ public partial class QueryRouter(
 
             Log.QueryRouted(logger, query.CorrelationId, actorId);
 
-            return new QueryRouterResult(Success: true, Payload: result.Payload, NotFound: false);
+            return new QueryRouterResult(Success: true, Payload: result.Payload, NotFound: false, ProjectionType: result.ProjectionType);
         }
         catch (ActorMethodInvocationException ex) when (IsProjectionActorNotFound(ex)) {
             Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);

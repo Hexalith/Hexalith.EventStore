@@ -46,6 +46,40 @@ public class SubmitQueryHandlerTests {
     }
 
     [Fact]
+    public async Task Handle_SuccessfulQuery_PassesThroughProjectionType() {
+        // Arrange
+        JsonElement payload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: true, Payload: payload, NotFound: false, ProjectionType: "order-list"));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act
+        SubmitQueryResult result = await handler.Handle(CreateTestQuery(), CancellationToken.None);
+
+        // Assert
+        result.ProjectionType.ShouldBe("order-list");
+    }
+
+    [Fact]
+    public async Task Handle_NullProjectionType_PassesThroughNull() {
+        // Arrange
+        JsonElement payload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: true, Payload: payload, NotFound: false, ProjectionType: null));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act
+        SubmitQueryResult result = await handler.Handle(CreateTestQuery(), CancellationToken.None);
+
+        // Assert
+        result.ProjectionType.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Handle_NotFound_ThrowsQueryNotFoundException() {
         // Arrange
         IQueryRouter router = Substitute.For<IQueryRouter>();

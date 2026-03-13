@@ -15,4 +15,5 @@ namespace Hexalith.EventStore.Server.Actors;
 public record QueryResult(
     [property: DataMember] bool Success,
     [property: DataMember] JsonElement Payload,
-    [property: DataMember] string? ErrorMessage = null);
+    [property: DataMember] string? ErrorMessage = null,
+    [property: DataMember] string? ProjectionType = null);

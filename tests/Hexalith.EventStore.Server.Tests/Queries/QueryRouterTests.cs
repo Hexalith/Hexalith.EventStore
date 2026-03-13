@@ -248,6 +248,51 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_ProjectionType_PassesThroughFromQueryResult() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
+        var queryResult = new QueryResult(true, resultPayload, ProjectionType: "order-list");
+
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(queryResult);
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        // Act
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        // Assert — ProjectionType passes through
+        result.Success.ShouldBeTrue();
+        result.ProjectionType.ShouldBe("order-list");
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_NullProjectionType_PassesThroughNull() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        var queryResult = new QueryResult(true, resultPayload, ProjectionType: null);
+
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(queryResult);
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        // Act
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        // Assert
+        result.ProjectionType.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_ConstructsCorrectQueryEnvelope() {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;

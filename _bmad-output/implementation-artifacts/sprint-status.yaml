@@ -247,5 +247,5 @@ development_status:
   18-5-signalr-real-time-notifications: done
   18-6-sample-ui-refresh-patterns: done
   18-7-self-routing-etag-format-and-endpoint-decode: done
-  18-8-iquery-response-enforcement-and-runtime-discovery: ready-for-dev
+  18-8-iquery-response-enforcement-and-runtime-discovery: review
   epic-18-retrospective: optional
