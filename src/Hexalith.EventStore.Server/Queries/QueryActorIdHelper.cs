@@ -1,6 +1,8 @@
 
 using System.Security.Cryptography;
 
+using Hexalith.EventStore.Contracts.Queries;
+
 namespace Hexalith.EventStore.Server.Queries;
 
 /// <summary>
@@ -42,6 +44,27 @@ public static class QueryActorIdHelper {
         }
 
         return $"{queryType}:{tenantId}";
+    }
+
+    /// <summary>
+    /// Type-safe overload using query contract metadata for compile-time QueryType safety.
+    /// Delegates to <see cref="DeriveActorId(string, string, string?, byte[])"/> using
+    /// the query type from the contract's static abstract member.
+    /// </summary>
+    /// <typeparam name="TQuery">The query type implementing <see cref="IQueryContract"/>.</typeparam>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="entityId">Optional entity identifier for Tier 1 routing.</param>
+    /// <param name="payload">Serialized query payload. Use empty array for Tier 3.</param>
+    /// <returns>The colon-separated actor ID appropriate for the query's tier.</returns>
+    /// <remarks>
+    /// This method reads TQuery.QueryType directly without format validation.
+    /// Call <c>QueryContractResolver.Resolve&lt;TQuery&gt;()</c> at least once
+    /// (e.g., during application startup) to validate contract metadata before
+    /// using this method in hot paths.
+    /// </remarks>
+    public static string DeriveActorId<TQuery>(string tenantId, string? entityId, byte[] payload)
+        where TQuery : IQueryContract {
+        return DeriveActorId(TQuery.QueryType, tenantId, entityId, payload);
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj" />
+    <Project Path="samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj" />
     <Project Path="samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -10,6 +11,7 @@
     <Project Path="src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj" />
     <Project Path="src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
     <Project Path="src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
+    <Project Path="src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />
     <Project Path="src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
     <Project Path="src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj" />
   </Folder>
@@ -18,6 +20,7 @@
     <Project Path="tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj" />
   </Folder>

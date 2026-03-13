@@ -2,6 +2,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Client;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
@@ -20,8 +21,9 @@ public class DaprProjectionChangeNotifierTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
+        IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
         IOptions<ProjectionChangeNotifierOptions> options = Options.Create(new ProjectionChangeNotifierOptions());
-        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, options, logger);
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
 
         await sut.NotifyProjectionChangedAsync("order-list", "acme", "order-123");
 
@@ -43,9 +45,10 @@ public class DaprProjectionChangeNotifierTests {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
         ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
+        IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
         IOptions<ProjectionChangeNotifierOptions> options = Options.Create(
             new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
-        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, options, logger);
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
 
         actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
             .Returns(actor);

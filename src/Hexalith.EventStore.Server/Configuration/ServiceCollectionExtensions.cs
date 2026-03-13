@@ -11,6 +11,7 @@ using Hexalith.EventStore.Contracts.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Configuration;
 /// <summary>
@@ -38,9 +39,12 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
+        services.TryAddSingleton<IProjectionChangedBroadcaster, NoOpProjectionChangedBroadcaster>();
+        services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
         _ = services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
         _ = services.AddOptions<ProjectionChangeNotifierOptions>()
-            .Bind(configuration.GetSection("EventStore:ProjectionChanges"));
+            .Bind(configuration.GetSection("EventStore:ProjectionChanges"))
+            .ValidateOnStart();
         _ = services.AddOptions<EventPublisherOptions>()
             .Bind(configuration.GetSection("EventStore:Publisher"));
         _ = services.AddOptions<EventDrainOptions>()

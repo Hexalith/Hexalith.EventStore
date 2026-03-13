@@ -1,11 +1,19 @@
 
 using System.Text;
 
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Queries;
 
 using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Queries;
+
+// --- Test stub query contract for generic overload tests ---
+internal class TestQueryContract : IQueryContract {
+    public static string QueryType => "get-test-data";
+    public static string Domain => "test";
+    public static string ProjectionType => "test";
+}
 
 public class QueryActorIdHelperTests {
     [Fact]
@@ -142,5 +150,39 @@ public class QueryActorIdHelperTests {
     public void DeriveActorId_EntityIdWithColon_ThrowsArgumentException() {
         Should.Throw<ArgumentException>(() =>
             QueryActorIdHelper.DeriveActorId("GetOrder", "tenant1", "order:123", []));
+    }
+
+    // ============================================================================
+    // Story 18-4: Generic DeriveActorId<TQuery> overload tests (Task 10)
+    // ============================================================================
+
+    [Fact]
+    public void DeriveActorId_Generic_Tier1_MatchesStringOverload() {
+        string generic = QueryActorIdHelper.DeriveActorId<TestQueryContract>("tenant1", "entity-1", []);
+        string stringBased = QueryActorIdHelper.DeriveActorId("get-test-data", "tenant1", "entity-1", []);
+
+        generic.ShouldBe(stringBased);
+        generic.ShouldBe("get-test-data:tenant1:entity-1");
+    }
+
+    [Fact]
+    public void DeriveActorId_Generic_Tier2_MatchesStringOverload() {
+        byte[] payload = Encoding.UTF8.GetBytes("{\"filter\":\"active\"}");
+
+        string generic = QueryActorIdHelper.DeriveActorId<TestQueryContract>("tenant1", null, payload);
+        string stringBased = QueryActorIdHelper.DeriveActorId("get-test-data", "tenant1", null, payload);
+
+        generic.ShouldBe(stringBased);
+        generic.ShouldStartWith("get-test-data:tenant1:");
+        generic.Split(':').Length.ShouldBe(3);
+    }
+
+    [Fact]
+    public void DeriveActorId_Generic_Tier3_MatchesStringOverload() {
+        string generic = QueryActorIdHelper.DeriveActorId<TestQueryContract>("tenant1", null, []);
+        string stringBased = QueryActorIdHelper.DeriveActorId("get-test-data", "tenant1", null, []);
+
+        generic.ShouldBe(stringBased);
+        generic.ShouldBe("get-test-data:tenant1");
     }
 }

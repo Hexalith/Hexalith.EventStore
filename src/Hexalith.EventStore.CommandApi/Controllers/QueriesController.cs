@@ -55,11 +55,19 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
         }
 
         // Gate 1: ETag pre-check — fetch current ETag for this projection+tenant
-        string? currentETag = await eTagService
-            .GetCurrentETagAsync(request.Domain, request.Tenant, cancellationToken)
-            .ConfigureAwait(false);
+        string? currentETag;
+        try {
+            currentETag = await eTagService
+                .GetCurrentETagAsync(request.Domain, request.Tenant, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.ETagPreCheckFailed(logger, correlationId, ex.GetType().Name);
+            currentETag = null;
+        }
 
         if (currentETag is not null && ETagMatches(ifNoneMatch, currentETag)) {
+            Response.Headers.ETag = $"\"{currentETag}\"";
             Log.ETagPreCheckMatch(logger, correlationId, currentETag[..Math.Min(8, currentETag.Length)]);
             return StatusCode(StatusCodes.Status304NotModified);
         }
@@ -90,32 +98,49 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload));
     }
 
-    private static bool ETagMatches(string? ifNoneMatch, string currentETag) {
+    private bool ETagMatches(string? ifNoneMatch, string currentETag) {
         if (string.IsNullOrWhiteSpace(ifNoneMatch)) {
             return false;
         }
 
-        if (ifNoneMatch.Trim() == "*") {
+        ReadOnlySpan<char> header = ifNoneMatch.AsSpan().Trim();
+        if (header.SequenceEqual("*".AsSpan())) {
             return true;
         }
 
-        string[] parts = ifNoneMatch.Split(',');
-        if (parts.Length > MaxIfNoneMatchValues) {
-            return false; // Skip Gate 1 if too many values (PM-10)
+        int valueCount = 1;
+        for (int i = 0; i < header.Length; i++) {
+            if (header[i] == ',') {
+                valueCount++;
+                if (valueCount > MaxIfNoneMatchValues) {
+                    Log.TooManyIfNoneMatchValues(logger, valueCount, MaxIfNoneMatchValues);
+                    return false;
+                }
+            }
         }
 
-        foreach (string part in parts) {
-            string trimmed = part.Trim().Trim('"');
-            if (trimmed == currentETag) {
+        int start = 0;
+        for (int i = 0; i <= header.Length; i++) {
+            if (i < header.Length && header[i] != ',') {
+                continue;
+            }
+
+            ReadOnlySpan<char> candidate = header[start..i].Trim();
+            if (candidate.Length >= 2 && candidate[0] == '"' && candidate[^1] == '"') {
+                candidate = candidate[1..^1];
+            }
+
+            if (candidate.SequenceEqual(currentETag.AsSpan())) {
                 return true;
             }
+
+            start = i + 1;
         }
 
         return false;
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1062,
             Level = LogLevel.Debug,
@@ -127,5 +152,17 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             Level = LogLevel.Debug,
             Message = "ETag pre-check miss. Proceeding to query routing: CorrelationId={CorrelationId}, HasCurrentETag={HasCurrentETag}, HasIfNoneMatch={HasIfNoneMatch}, Stage=ETagPreCheckMiss")]
         public static partial void ETagPreCheckMiss(ILogger logger, string correlationId, bool hasCurrentETag, bool hasIfNoneMatch);
+
+        [LoggerMessage(
+            EventId = 1064,
+            Level = LogLevel.Warning,
+            Message = "If-None-Match contained too many values. ParsedValueCount={ParsedValueCount}, MaximumAllowed={MaximumAllowed}. Skipping Gate 1 pre-check.")]
+        public static partial void TooManyIfNoneMatchValues(ILogger logger, int parsedValueCount, int maximumAllowed);
+
+        [LoggerMessage(
+            EventId = 1065,
+            Level = LogLevel.Warning,
+            Message = "ETag pre-check failed. Proceeding without ETag optimization: CorrelationId={CorrelationId}, ExceptionType={ExceptionType}.")]
+        public static partial void ETagPreCheckFailed(ILogger logger, string correlationId, string exceptionType);
     }
 }

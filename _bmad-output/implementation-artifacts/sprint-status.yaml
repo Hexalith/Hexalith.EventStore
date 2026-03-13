@@ -241,8 +241,8 @@ development_status:
   epic-18: in-progress
   18-1-etag-actor-and-projection-change-notification: done
   18-2-3-tier-query-actor-routing: done
-  18-3-query-endpoint-with-etag-pre-check-and-cache: review
-  18-4-query-contract-library: ready-for-dev
-  18-5-signalr-real-time-notifications: backlog
-  18-6-sample-ui-refresh-patterns: backlog
+  18-3-query-endpoint-with-etag-pre-check-and-cache: done
+  18-4-query-contract-library: done
+  18-5-signalr-real-time-notifications: done
+  18-6-sample-ui-refresh-patterns: review
   epic-18-retrospective: optional

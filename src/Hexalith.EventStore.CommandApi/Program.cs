@@ -1,6 +1,7 @@
 using Hexalith.EventStore.CommandApi.Extensions;
 using Hexalith.EventStore.CommandApi.HealthChecks;
 using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.CommandApi.SignalR;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.ServiceDefaults;
 
@@ -16,6 +17,7 @@ builder.Services.AddHealthChecks()
     .AddEventStoreDaprHealthChecks();
 builder.Services.AddCommandApi();
 builder.Services.AddEventStoreServer(builder.Configuration);
+builder.Services.AddEventStoreSignalR(builder.Configuration);
 
 WebApplication app = builder.Build();
 
@@ -40,6 +42,15 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 app.MapControllers();
 app.MapSubscribeHandler();
 app.MapActorsHandlers();
+
+// SignalR hub for real-time projection change notifications (conditional)
+SignalROptions? signalROptions = app.Configuration
+    .GetSection("EventStore:SignalR")
+    .Get<SignalROptions>();
+
+if (signalROptions?.Enabled == true) {
+    _ = app.MapHub<ProjectionChangedHub>(ProjectionChangedHub.HubPath);
+}
 
 // Configure global request body size limit (1MB)
 app.Lifetime.ApplicationStarted.Register(() => {

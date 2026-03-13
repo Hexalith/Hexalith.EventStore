@@ -4,13 +4,13 @@ inputDocuments: []
 session_topic: 'Projection refresh notification — ETag actor pattern for cache invalidation inside EventStore'
 session_goals: 'Design projection lifecycle management inside Hexalith.EventStore: ETag tracking, page-cache staleness, client notification (SignalR), transparent to downstream microservices'
 selected_approach: 'AI-Recommended Techniques'
-techniques_used: ['First Principles Thinking', 'Morphological Analysis', 'Chaos Engineering', 'Reverse Brainstorming', 'Role Playing', 'SCAMPER']
-ideas_generated: [59]
+techniques_used: ['First Principles Thinking', 'Morphological Analysis', 'Chaos Engineering', 'Reverse Brainstorming', 'Role Playing', 'SCAMPER', 'First Principles Rebuild (scoped)', 'Chaos Engineering (scoped)', 'Reverse Brainstorming (scoped)', 'Role Playing (scoped)']
+ideas_generated: [77]
 context_file: ''
 session_active: false
 workflow_completed: true
 session_continued: true
-continuation_date: '2026-03-12'
+continuation_date: '2026-03-13'
 ---
 
 # Brainstorming Session Results
@@ -368,19 +368,194 @@ Every SCAMPER challenge either confirmed the original design or produced a genui
 2. Provide Blazor SignalR helper handling circuit reconnection + group rejoin
 3. Ship sample "on changed" patterns (toast, reload, selective refresh)
 
+## Extension Session 2 — Self-Routing ETag (2026-03-13)
+
+**Date:** 2026-03-13
+**Purpose:** Eliminate client-side ProjectionType requirement. Make ETags self-routing so the server can resolve projection mapping without client knowledge.
+
+### Design Challenge
+
+**Problem:** The original design required the client to send `ProjectionType` as mandatory query metadata. This leaks server-side concerns (projection topology) into the client contract and adds developer friction.
+
+**Goal:** Client sends only `QueryType + params + If-None-Match`. Zero projection knowledge.
+
+### Phase 7: First Principles Rebuild (scoped)
+
+**Interactive Focus:** Strip the ETag flow and rebuild without the ProjectionType assumption on the client side.
+
+**Approaches Evaluated:**
+
+| # | Approach | Mechanism | Outcome |
+|---|---|---|---|
+| A | Server-side resolution | Contract library registers QueryType → ProjectionType at startup | Explored but superseded |
+| B | Self-routing ETag | ETag encodes projection type opaquely; server decodes on If-None-Match | **Selected — combines with runtime discovery** |
+| C | Query-scoped ETags | Each query actor owns its own ETag | Rejected — too many invalidation targets |
+
+**Key Insight:** The microservice already knows which projection backs a query. Instead of duplicating that knowledge at compile time (attributes, conventions), let the microservice declare it at runtime in the query response. The query actor learns the mapping on first call.
+
+**Design Decision: Self-Routing ETag with Runtime Discovery**
+
+**ETag Format:** `{base64url(projectionType)}.{guid}`
+
+- Dot separator — easy to split
+- ProjectionType base64url-encoded — handles any characters
+- GUID portion stays as-is (base64url-22 from original design)
+- Human-readable enough for debugging
+- Undecodable or missing ETag → cache miss → fresh query (safe by construction)
+
+**Example:**
+```
+OrderListProjection → T3JkZXJMaXN0UHJvamVjdGlvbg.k7Hs9fQ2mXpL1vN3bR8wYa
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^
+                       base64url(projectionType)        guid (22 chars)
+```
+
+**Revised Data Flow:**
+
+```
+First call (cold — no If-None-Match):
+  Client → endpoint
+    → query actor (no cache, no mapping)
+    → forwards to microservice
+    → microservice returns { data, projectionType, etag }
+    → query actor caches: data + projectionType mapping
+    → endpoint returns data + ETag: encode(projectionType, guid)
+
+Subsequent calls (warm client — has If-None-Match):
+  Client → endpoint + If-None-Match: "opaque-token"
+    → endpoint decodes → extracts projectionType
+    → endpoint calls ETag actor({ProjectionType}-{TenantId}) directly
+      → guid matches: 304 (query actor never wakes)
+      → guid differs: route to query actor → fresh data → new ETag → 200
+
+After query actor deactivation (DAPR idle timeout):
+  Client → endpoint + If-None-Match: "opaque-token"
+    → endpoint decodes → ETag actor check
+      → guid matches: 304 (still no query actor needed)
+      → guid differs: query actor → microservice → re-learns mapping → 200
+```
+
+**Architecture Changes from Original Design:**
+
+| Element | Original | Updated |
+|---|---|---|
+| Client sends ProjectionType | Mandatory metadata | **Eliminated** |
+| ETag format | GUID base64-22 | `{base64url(projectionType)}.{guid}` |
+| ETag pre-check | Required client-supplied ProjectionType | **Self-routing from ETag token** |
+| Mapping source | Compile-time (contract library attributes) | **Runtime (microservice response)** |
+| Query actor first call | Stateless | Learns ProjectionType from microservice response |
+| Query actor state model | Pure in-memory, no state store | Same — deactivation = cold call to microservice |
+| Mandatory query metadata | Domain, QueryType, TenantId, ProjectionType, EntityId? | Domain, QueryType, TenantId, EntityId? |
+
+### Phase 8: Chaos Engineering (scoped)
+
+**Interactive Focus:** Stress-test the self-routing ETag design against failure scenarios.
+
+| # | Scenario | Result | Reasoning |
+|---|---|---|---|
+| 1 | Client sends garbage If-None-Match | **Safe** | Decode fails → treated as cache miss → fresh query |
+| 2 | Client sends valid ETag with renamed ProjectionType (after refactor) | **Safe** | ETag actor ID no longer exists → treated as new → fresh query + new ETag |
+| 3 | Query actor deactivated, client has warm ETag | **Safe** | Endpoint decodes ETag → checks ETag actor directly. If fresh → 304 without waking query actor. If stale → query actor reactivates, re-learns mapping. |
+| 4 | ETag actor state loss (DAPR failover) | **Safe** | New GUID generated. Client's ETag won't match → fresh query. Same as original design. |
+| 5 | Microservice changes which projection backs a query (version update) | **Safe** | Next cold call returns new projectionType → query actor updates mapping → new ETag with new projection prefix. Old client ETags fail gracefully (projection mismatch at ETag actor → treated as stale). |
+| 6 | Man-in-the-middle decodes ETag, sees projection type name | **Accepted** | Projection type names are not secret. No data in ETag. Same risk profile as exposing URL paths. |
+| 7 | Two query types backed by same projection | **Safe** | Both ETags encode same projectionType → same ETag actor. Invalidation works correctly for both. |
+| 8 | Thundering herd after invalidation, all clients decode and hit ETag actor | **Safe** | ETag actor is sub-millisecond (compare GUID). Same as original design. |
+
+**Resilience Verdict:** All 8 scenarios pass. The self-routing ETag inherits the original design's "failure = refresh, never stale" property. The encoding adds no new failure modes — undecodable tokens degrade to cache miss.
+
+### Phase 9: Reverse Brainstorming (scoped)
+
+**Interactive Focus:** How could developers break, misuse, or be confused by the self-routing ETag system?
+
+| # | Footgun | Severity | Description | Outcome |
+|---|---|---|---|---|
+| 33 | Client caches ETag locally and reuses after projection rename | Low | Old ETag decodes to non-existent projection → cache miss → fresh query | **Safe by design** |
+| 34 | Developer inspects ETag, decodes base64, starts depending on projection name | Medium | Coupling to an internal format. ETag is documented as opaque — but devs read base64. | **Accepted** — document as opaque, accept the risk |
+| 35 | Microservice returns empty/null projectionType in response | High | Query actor has no mapping → can't build self-routing ETag. Silent degradation — caching disabled. | **Killed** — `IQueryResponse<T>` requires ProjectionType at compile time (C) |
+| 36 | Microservice returns different projectionType for same query across calls | Medium | Query actor mapping flips. Clients with old ETag decode to wrong projection → ETag actor mismatch → cache miss. | **Safe** — wasteful but correct |
+| 37 | Load balancer or CDN strips/rewrites ETag header | Medium | Standard HTTP problem. Dot in format could confuse weak ETag parsers. | **Mitigated** — always wrap in quotes per HTTP spec |
+| 38 | Two microservices return same projectionType for different queries | Low | Shared projection — correct behavior. Invalidation of one invalidates both. | **Safe** — same as original design |
+
+**Critical Design Decision:** Footgun #35 (missing projectionType) killed at compile time via required response contract:
+
+```csharp
+public interface IQueryResponse<TData>
+{
+    TData Data { get; }
+    string ProjectionType { get; }  // Required — no caching without it
+}
+```
+
+### Phase 10: Role Playing (scoped)
+
+**Interactive Focus:** How do different personas experience the self-routing ETag change?
+
+| # | Persona | Experience | Friction vs Original |
+|---|---|---|---|
+| 39 | **Microservice dev** | Returns `IQueryResponse<T>` with ProjectionType. One field added to response. Never thinks about ETags, actors, or SignalR. | Low — one required field, clear purpose |
+| 40 | **Blazor dev** | Sends query, gets data + opaque ETag header. Passes ETag back via `If-None-Match`. Gets 304 or fresh data. Standard HTTP. | **None** — doesn't know projections exist |
+| 41 | **Ops engineer (2am)** | Sees ETag actor calls in DAPR dashboard. Can decode base64 prefix in ETag to identify which projection is hot. Actor IDs still `{ProjectionType}-{TenantId}`. | **Improved** — ETag is now debuggable, can correlate HTTP headers to actor IDs |
+| 42 | **Junior dev onboarding** | Reads docs: "return IQueryResponse, include ProjectionType." Doesn't need to understand ETag actors, routing, or SignalR. Cache just works. | **Improved** — one fewer metadata field to learn |
+
+**Verdict:** Every persona's experience is equal or better than the original design.
+
+### Extension 2 Design Decisions Summary
+
+| # | Decision | Rationale |
+|---|---|---|
+| 30 | Self-routing ETag format: `{base64url(projectionType)}.{guid}` | Client sends opaque token, server decodes routing. Zero projection knowledge on client. |
+| 31 | Runtime projection discovery from microservice response | No compile-time mapping needed. Self-configuring system. |
+| 32 | Endpoint-level pre-check preserved | ETag token tells endpoint which ETag actor to check. Query actors stay cold. |
+| 33 | Coarse invalidation kept (no entity in ETag) | Simpler, consistent, already validated by original chaos engineering. |
+| 34 | ProjectionType required in response contract (`IQueryResponse<T>`) | Compile-time enforcement kills silent degradation footgun. |
+| 35 | ETag always quoted in HTTP headers | Prevents weak parser confusion from dot separator. |
+
+### Extension 2 Breakthrough Concepts
+
+- **Self-routing ETag (#30)** — The ETag token carries its own routing information. Server decodes it to find the right ETag actor without any client metadata. Standard HTTP semantics preserved.
+- **Runtime projection discovery (#31)** — The microservice declares which projection backs a query in the response. No compile-time mapping, no attributes, no conventions. Self-configuring system.
+- **Preserved hot path (#32)** — Endpoint-level 304 still works. The ETag token tells the endpoint which ETag actor to check. Query actors stay cold under steady state. Best of both worlds.
+- **Compile-time contract enforcement (#34)** — `IQueryResponse<T>` with required ProjectionType eliminates the only silent degradation footgun at the type system level.
+
+### Extension 2 Prioritization
+
+**Priority 1 — Self-Routing ETag Format**
+1. Define ETag encoding/decoding utility: `{base64url(projectionType)}.{guid}`
+2. Update ETag actor to generate composite ETag (not just GUID)
+3. REST endpoint decodes If-None-Match → extracts projectionType → calls ETag actor
+4. Fallback: undecodable ETag → treat as cache miss
+5. Always quote ETag in HTTP response headers
+
+**Priority 2 — Runtime Projection Discovery**
+1. Define `IQueryResponse<T>` contract with required `ProjectionType` field
+2. Microservice query endpoints return `IQueryResponse<T>`
+3. Query actor stores projectionType mapping on first call
+4. Query actor uses stored mapping for subsequent ETag actor lookups
+5. Deactivation resets mapping (pure in-memory — re-learned on next cold call)
+
+**Priority 3 — Remove ProjectionType from Client Contract**
+1. Remove `ProjectionType` from mandatory query metadata
+2. Update contract library to reflect reduced client requirements
+3. Update documentation and sample code
+
 ## Combined Session Summary
 
-**Total Ideas:** 59 across 6 techniques (30 original + 29 extension)
-**Techniques Used:** First Principles Thinking, Morphological Analysis, Chaos Engineering, Reverse Brainstorming, Role Playing, SCAMPER
+**Total Ideas:** 77 across 10 techniques (30 original + 29 extension 1 + 18 extension 2)
+**Techniques Used:** First Principles Thinking, Morphological Analysis, Chaos Engineering, Reverse Brainstorming, Role Playing, SCAMPER, First Principles Rebuild (scoped), Chaos Engineering (scoped), Reverse Brainstorming (scoped), Role Playing (scoped)
 
 **Combined Design Philosophy:**
 - Minimal code in the microservice (one line: `NotifyProjectionChanged`)
 - EventStore owns the full pipeline: ETag tracking, actor caching, SignalR notification
 - Safe by construction: every failure mode = refresh, never stale data
 - Leverage DAPR: actors, pub/sub, lifecycle, observability — no reinvented wheels
-- Contract library as single source of routing truth — metadata in the type system
-- HTTP-native caching: ETag pre-check at endpoint, 304 for warm clients
+- **Self-routing ETags: client sends opaque token, server decodes routing — zero projection knowledge on client**
+- **Runtime projection discovery: microservice declares mapping in response, not compile-time attributes**
+- HTTP-native caching: ETag pre-check at endpoint, 304 for warm clients — preserved with self-routing ETags
 - SignalR is UI-only acceleration, not a core mechanism
 
-**Extension Session Reflections:**
+**Extension 1 Reflections:**
 The Reverse Brainstorming phase revealed that the mandatory metadata fields and contract library eliminate most critical footguns by construction. The surviving risks (serialization non-determinism, version mismatch) are deployment and documentation concerns, not architectural flaws. Role Playing surfaced that the system is correct but could guide Blazor developers more at the SignalR consumer layer. SCAMPER was decisive — systematically challenging every design decision confirmed the architecture's robustness while producing the session's biggest breakthrough: the ETag pre-check at the REST endpoint, which transforms the hot path from two actor calls to one and brings standard HTTP caching semantics (304) into an actor-based system.
+
+**Extension 2 Reflections:**
+The self-routing ETag design emerged from a simple ergonomic question ("why does the client need to know ProjectionType?") and produced an architecturally cleaner system. By encoding the projection type into the ETag token and letting the microservice declare the mapping at runtime, we eliminated compile-time coupling, removed a mandatory metadata field, and preserved the endpoint-level 304 optimization. Chaos engineering confirmed all 8 failure scenarios are safe — the encoding adds zero new failure modes. Reverse Brainstorming surfaced one critical footgun (missing ProjectionType in response) which was killed at compile time via `IQueryResponse<T>`. Role Playing confirmed every persona's experience is equal or better than the original design. The key insight: the ETag was already an opaque token to the client; making it self-routing to the server costs nothing and gains everything.

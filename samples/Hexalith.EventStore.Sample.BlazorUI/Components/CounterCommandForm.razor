@@ -1,0 +1,92 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject IHttpClientFactory HttpClientFactory
+
+<FluentCard Style="padding: 24px; margin-top: 16px;">
+    <h3>Send Commands</h3>
+    <p style="color: var(--neutral-foreground-hint); font-size: 14px;">
+        This component does NOT subscribe to projection changes — it only submits commands.
+    </p>
+
+    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px; margin-top: 16px;">
+        <FluentButton Appearance="Appearance.Accent"
+                      OnClick="@(() => SendCommandAsync(IncrementCommandType))"
+                      Disabled="@_isSending">
+            Increment
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline"
+                      OnClick="@(() => SendCommandAsync(DecrementCommandType))"
+                      Disabled="@_isSending">
+            Decrement
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Stealth"
+                      OnClick="@(() => SendCommandAsync(ResetCommandType))"
+                      Disabled="@_isSending">
+            Reset
+        </FluentButton>
+    </FluentStack>
+
+    @if (_lastCommand is not null)
+    {
+        <p style="color: var(--neutral-foreground-hint); margin-top: 12px; font-size: 12px;">
+            Last command: @_lastCommand at @_lastCommandTime?.ToString("HH:mm:ss")
+        </p>
+    }
+    @if (_error is not null)
+    {
+        <FluentMessageBar Title="Command Failed" Intent="MessageIntent.Error" Style="margin-top: 8px;">
+            @_error
+        </FluentMessageBar>
+    }
+</FluentCard>
+
+@code {
+    [Parameter] public string TenantId { get; set; } = "sample-tenant";
+
+    private static readonly JsonElement EmptyPayload = JsonDocument.Parse("{}").RootElement.Clone();
+    private const string IncrementCommandType = "IncrementCounter";
+    private const string DecrementCommandType = "DecrementCounter";
+    private const string ResetCommandType = "ResetCounter";
+
+    private bool _isSending;
+    private string? _lastCommand;
+    private DateTime? _lastCommandTime;
+    private string? _error;
+
+    private async Task SendCommandAsync(string commandType)
+    {
+        _isSending = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            HttpClient client = HttpClientFactory.CreateClient("EventStoreApi");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands");
+            request.Content = JsonContent.Create(new
+            {
+                domain = "counter",
+                tenant = TenantId,
+                aggregateId = "counter-1",
+                commandType,
+                payload = EmptyPayload,
+            });
+
+            using HttpResponseMessage response = await client.SendAsync(request);
+            _ = response.EnsureSuccessStatusCode();
+
+            _lastCommand = commandType;
+            _lastCommandTime = DateTime.Now;
+        }
+        catch (Exception ex)
+        {
+            _error = $"{commandType} failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSending = false;
+            StateHasChanged();
+        }
+    }
+}

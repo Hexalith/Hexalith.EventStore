@@ -1,13 +1,13 @@
 ---
 stepsCompleted:
-  - step-01-validate-prerequisites
-  - step-02-design-epics
-  - step-03-create-stories
-  - step-04-final-validation
+    - step-01-validate-prerequisites
+    - step-02-design-epics
+    - step-03-create-stories
+    - step-04-final-validation
 inputDocuments:
-  - prd.md
-  - architecture.md
-  - ux-design-specification.md
+    - prd.md
+    - architecture.md
+    - ux-design-specification.md
 ---
 
 # Hexalith.EventStore - Epic Breakdown
@@ -101,7 +101,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - FR53: The query REST endpoint can perform an ETag pre-check by calling the ETag actor before routing to the query actor -- returning HTTP 304 on match
 - FR54: A query actor can serve as an in-memory page cache comparing its cached ETag against the current ETag actor value
 - FR55: The system can broadcast a signal-only "changed" message to connected SignalR clients when a projection's ETag is regenerated
-- FR56: The system can host a SignalR hub inside the EventStore server using DAPR pub/sub as the backplane
+- FR56: The system can host a SignalR hub inside the EventStore server using a Redis backplane
 - FR57: A query contract library (NuGet) can define mandatory query metadata fields as typed static members
 - FR58: The system can invalidate all cached query results for a projection+tenant pair on any projection change notification (coarse invalidation)
 - FR59: The SignalR client helper (NuGet) can automatically rejoin SignalR groups on connection recovery
@@ -275,54 +275,63 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 ## Epic List
 
 ### Epic 1: Domain Contracts & Testing Foundation
+
 A developer can define event-sourced domain types (event envelope, commands, identity scheme, domain results), implement pure function processors, and unit test them without any infrastructure dependency.
 **FRs covered:** FR11, FR21, FR26, FR45, FR48
 **Key NFRs:** Foundation for all performance and reliability targets
 **Architectural decisions:** D1 (key patterns), D3 (IRejectionEvent)
 
 ### Epic 2: Actor-Based Command Processing
+
 Commands are processed through DAPR actors with event persistence, state replay, snapshots, optimistic concurrency, and idempotency -- the complete command-to-event pipeline core.
 **FRs covered:** FR3, FR7, FR9, FR10, FR12, FR13, FR14, FR15, FR16, FR23, FR49
 **Key NFRs:** NFR3, NFR4, NFR6, NFR22, NFR25, NFR26
 **Architectural decisions:** D1 (storage strategy), D7 (domain invocation), thin orchestrator pattern
 
 ### Epic 3: Command API Gateway
+
 API consumers submit commands via REST, receive correlation IDs, track command status, and replay failed commands -- with structural validation and rate limiting.
 **FRs covered:** FR1, FR2, FR4, FR5, FR6
 **Key NFRs:** NFR1, NFR2, NFR7, NFR33, NFR34
 **Architectural decisions:** D2 (status storage), D5 (RFC 7807), D8 (rate limiting), MediatR pipeline
 
 ### Epic 4: Event Distribution
+
 Persisted events flow to subscribers via CloudEvents pub/sub with at-least-once delivery, per-tenant-per-domain topics, and dead-letter routing for failures.
 **FRs covered:** FR8, FR17, FR18, FR19, FR20
 **Key NFRs:** NFR5, NFR22, NFR24, NFR28
 **Architectural decisions:** D6 (topic naming)
 
 ### Epic 5: Security & Multi-Tenant Isolation
+
 JWT authentication, claims-based authorization at every layer, and triple-layer multi-tenant isolation are enforced -- multiple tenants and domains coexist safely.
 **FRs covered:** FR24, FR25, FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34
 **Key NFRs:** NFR9-NFR15, NFR13, NFR18
 **Architectural decisions:** D4 (DAPR access control), D11 (Keycloak E2E testing)
 
 ### Epic 6: Observability & Operational Readiness
+
 Full command lifecycle traceable via OpenTelemetry, structured logs with correlation IDs enable fast diagnosis, health/readiness endpoints confirm system status.
 **FRs covered:** FR35, FR36, FR37, FR38, FR39
 **Key NFRs:** NFR11, NFR12, NFR21, NFR31
 **Architectural decisions:** Structured logging pattern, OpenTelemetry activity naming
 
 ### Epic 7: Developer SDK & Sample Application
+
 A developer installs NuGet packages, registers domain services via convention or DAPR config, and follows a working Counter sample as reference implementation.
 **FRs covered:** FR22, FR41, FR42
 **Key NFRs:** NFR20, NFR27, NFR29, NFR30
 **Architectural decisions:** Convention engine, assembly scanning, 5-layer override priority
 
 ### Epic 8: Aspire Orchestration, Deployment & CI/CD
+
 Developers start the full system with `dotnet aspire run`, DevOps deploys via Aspire publishers with zero code changes, CI/CD automates build/test/release, and integration + contract tests validate the full topology.
 **FRs covered:** FR40, FR43, FR44, FR46, FR47
 **Key NFRs:** NFR16, NFR17, NFR27-NFR32
 **Architectural decisions:** D9 (MinVer), D10 (GitHub Actions)
 
 ### Epic 9: Query Pipeline & Projection Caching (v2)
+
 A developer wires up projection caching with one `NotifyProjectionChanged` call, achieving ETag-based cache invalidation, HTTP 304 support, query actor routing, and real-time SignalR push notifications.
 **FRs covered:** FR50, FR51, FR52, FR53, FR54, FR55, FR56, FR57, FR58, FR59, FR60
 **Key NFRs:** NFR35-NFR39
@@ -1001,6 +1010,7 @@ So that I can diagnose issues by filtering on any context field.
 **Given** a command at each processing stage
 **When** a structured log entry is emitted
 **Then** it includes the minimum fields per stage (FR36):
+
 - Command received: correlationId, tenantId, domain, aggregateId, commandType (Information)
 - Actor activated: correlationId, tenantId, aggregateId, currentSequence (Debug)
 - Domain service invoked: correlationId, tenantId, domain, domainServiceVersion (Information)
@@ -1118,6 +1128,7 @@ So that I have a reference implementation to learn from and copy.
 **Given** the Counter sample project
 **When** a developer inspects it
 **Then** it demonstrates:
+
 - `IncrementCounter` command definition
 - `CounterIncremented` state-change event (past tense naming)
 - `CounterLimitExceeded` rejection event implementing IRejectionEvent (D3)
@@ -1411,12 +1422,12 @@ So that my UI refreshes without polling.
 
 **Given** a projection's ETag is regenerated
 **When** the ETag actor broadcasts
-**Then** a signal-only "changed" message is sent to all connected SignalR clients in the group `{ProjectionType}-{TenantId}` (FR55)
+**Then** a signal-only "changed" message is sent to all connected SignalR clients in the group `{ProjectionType}:{TenantId}` (FR55)
 **And** delivery completes within 100ms at p99 (NFR38)
 
 **Given** the EventStore server
 **When** hosting the SignalR hub
-**Then** it uses DAPR pub/sub as the backplane for multi-instance SignalR message distribution (FR56)
+**Then** it uses a Redis backplane for multi-instance SignalR message distribution (FR56)
 
 **Given** a Blazor Server circuit reconnects after a disconnect
 **When** the SignalR client helper detects recovery
@@ -1437,6 +1448,7 @@ So that I can choose the right UI update strategy for my use case.
 **Given** the EventStore documentation and sample application
 **When** a developer looks for SignalR integration patterns
 **Then** they find at least 3 reference implementations (FR60):
+
 1. Toast notification prompting manual refresh
 2. Automatic silent data reload
 3. Selective component refresh targeting only the affected projection

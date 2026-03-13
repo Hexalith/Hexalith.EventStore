@@ -1,6 +1,6 @@
 # Story 18.4: Query Contract Library
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,102 +25,104 @@ So that **query routing is type-safe and consistent across all domain services**
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `IQueryContract` interface (AC: #1, #9)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.Contracts/Queries/IQueryContract.cs`
-  - [ ] 1.2 Three `static abstract string` properties: `QueryType`, `Domain`, `ProjectionType`
-  - [ ] 1.3 XML doc: QueryType = routing key (kebab-case, no colons), Domain = owning domain, ProjectionType = ETag scope
-  - [ ] 1.4 Zero dependencies — pure interface contract
+- [x] Task 1: Create `IQueryContract` interface (AC: #1, #9)
+    - [x] 1.1 Create `src/Hexalith.EventStore.Contracts/Queries/IQueryContract.cs`
+    - [x] 1.2 Three `static abstract string` properties: `QueryType`, `Domain`, `ProjectionType`
+    - [x] 1.3 XML doc: QueryType = routing key (kebab-case, no colons), Domain = owning domain, ProjectionType = ETag scope
+    - [x] 1.4 Zero dependencies — pure interface contract
 
-- [ ] Task 2: Create `QueryContractMetadata` record (AC: #4, #9)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Contracts/Queries/QueryContractMetadata.cs`
-  - [ ] 2.2 Record: `QueryContractMetadata(string QueryType, string Domain, string ProjectionType)`
-  - [ ] 2.3 XML doc: immutable container for resolved query contract metadata
+- [x] Task 2: Create `QueryContractMetadata` record (AC: #4, #9)
+    - [x] 2.1 Create `src/Hexalith.EventStore.Contracts/Queries/QueryContractMetadata.cs`
+    - [x] 2.2 Record: `QueryContractMetadata(string QueryType, string Domain, string ProjectionType)`
+    - [x] 2.3 XML doc: immutable container for resolved query contract metadata
 
-- [ ] Task 3: Create `EventStoreQueryTypeAttribute` (AC: #3)
-  - [ ] 3.1 Create `src/Hexalith.EventStore.Contracts/Queries/EventStoreQueryTypeAttribute.cs`
-  - [ ] 3.2 Constructor: `EventStoreQueryTypeAttribute(string queryType)` — validates non-null/whitespace, no colons
-  - [ ] 3.3 Property: `string QueryType { get; }`
-  - [ ] 3.4 `[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]`
-  - [ ] 3.5 Follow exact `EventStoreDomainAttribute` constructor validation pattern (in Client package)
+- [x] Task 3: Create `EventStoreQueryTypeAttribute` (AC: #3)
+    - [x] 3.1 Create `src/Hexalith.EventStore.Contracts/Queries/EventStoreQueryTypeAttribute.cs`
+    - [x] 3.2 Constructor: `EventStoreQueryTypeAttribute(string queryType)` — validates non-null/whitespace, no colons
+    - [x] 3.3 Property: `string QueryType { get; }`
+    - [x] 3.4 `[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]`
+    - [x] 3.5 Follow exact `EventStoreDomainAttribute` constructor validation pattern (in Client package)
 
-- [ ] Task 4: Extend NamingConventionEngine for query types (AC: #2, #3, #8)
-  - [ ] 4.0 Refactor: extract existing private `ValidateDomainArgument` into `public static void ValidateKebabCase(string value, string parameterName)` — needed by `QueryContractResolver`. Update all internal callers (`GetStateStoreName`, `GetPubSubTopic`, `GetCommandEndpoint`, `GetProjectionChangedTopic`) to use the new public method. Keep `ValidateDomainArgument` as a private alias or remove it entirely.
-  - [ ] 4.1 Modify `src/Hexalith.EventStore.Client/Conventions/NamingConventionEngine.cs`
-  - [ ] 4.2 Add `GetQueryTypeName(Type type)` method — convention-based query type derivation:
-    - Check for `EventStoreQueryTypeAttribute` → return attribute value if present
-    - Strip "Query" suffix from type name (add to `_knownQuerySuffixes` array)
-    - Convert PascalCase → kebab-case (reuse existing `_wordBoundaryRegex`)
-    - Validate against existing `_domainNameRegex`
-    - Validate no colons (AC #8)
-  - [ ] 4.3 Add `GetQueryTypeName<T>()` generic overload
-  - [ ] 4.4 Add separate `ConcurrentDictionary<Type, string>` cache for query types (don't mix with domain name cache)
-  - [ ] 4.5 Update `ClearCache()` to also clear query type cache
+- [x] Task 4: Extend NamingConventionEngine for query types (AC: #2, #3, #8)
+    - [x] 4.0 Refactor: extract existing private `ValidateDomainArgument` into `public static void ValidateKebabCase(string value, string parameterName)` — needed by `QueryContractResolver`. Update all internal callers (`GetStateStoreName`, `GetPubSubTopic`, `GetCommandEndpoint`, `GetProjectionChangedTopic`) to use the new public method. Keep `ValidateDomainArgument` as a private alias or remove it entirely.
+    - [x] 4.1 Modify `src/Hexalith.EventStore.Client/Conventions/NamingConventionEngine.cs`
+    - [x] 4.2 Add `GetQueryTypeName(Type type)` method — convention-based query type derivation:
+        - Check for `EventStoreQueryTypeAttribute` → return attribute value if present
+        - Strip "Query" suffix from type name (add to `_knownQuerySuffixes` array)
+        - Convert PascalCase → kebab-case (reuse existing `_wordBoundaryRegex`)
+        - Validate against existing `_domainNameRegex`
+        - Validate no colons (AC #8)
+    - [x] 4.3 Add `GetQueryTypeName<T>()` generic overload
+    - [x] 4.4 Add separate `ConcurrentDictionary<Type, string>` cache for query types (don't mix with domain name cache)
+    - [x] 4.5 Update `ClearCache()` to also clear query type cache
 
-- [ ] Task 5: Create `QueryContractResolver` (AC: #5, #7)
-  - [ ] 5.1 Create `src/Hexalith.EventStore.Client/Queries/QueryContractResolver.cs`
-  - [ ] 5.2 Static method: `QueryContractMetadata Resolve<TQuery>() where TQuery : IQueryContract`
-    - Read `TQuery.QueryType`, `TQuery.Domain`, `TQuery.ProjectionType`
-    - Validate all three against kebab-case regex (reuse `NamingConventionEngine` validation)
-    - Validate QueryType has no colons
-    - Return `new QueryContractMetadata(queryType, domain, projectionType)`
-  - [ ] 5.3 `ConcurrentDictionary<Type, QueryContractMetadata>` cache (thread-safe)
-  - [ ] 5.4 Static method: `string GetETagActorId<TQuery>(string tenantId) where TQuery : IQueryContract`
-    - Returns `$"{TQuery.ProjectionType}:{tenantId}"` — uses ProjectionType, not Domain (AC #7)
-    - Validates tenantId non-null/whitespace
+- [x] Task 5: Create `QueryContractResolver` (AC: #5, #7)
+    - [x] 5.1 Create `src/Hexalith.EventStore.Client/Queries/QueryContractResolver.cs`
+    - [x] 5.2 Static method: `QueryContractMetadata Resolve<TQuery>() where TQuery : IQueryContract`
+        - Read `TQuery.QueryType`, `TQuery.Domain`, `TQuery.ProjectionType`
+        - Validate all three against kebab-case regex (reuse `NamingConventionEngine` validation)
+        - Validate QueryType has no colons
+        - Return `new QueryContractMetadata(queryType, domain, projectionType)`
+    - [x] 5.3 `ConcurrentDictionary<Type, QueryContractMetadata>` cache (thread-safe)
+    - [x] 5.4 Static method: `string GetETagActorId<TQuery>(string tenantId) where TQuery : IQueryContract`
+        - Returns `$"{TQuery.ProjectionType}:{tenantId}"` — uses ProjectionType, not Domain (AC #7)
+        - Validates tenantId non-null/whitespace
 
-- [ ] Task 6: Add generic overload to QueryActorIdHelper (AC: #6)
-  - [ ] 6.1 Modify `src/Hexalith.EventStore.Server/Queries/QueryActorIdHelper.cs`
-  - [ ] 6.2 Add `static string DeriveActorId<TQuery>(string tenantId, string? entityId, byte[] payload) where TQuery : IQueryContract`
-    - Delegates to existing `DeriveActorId(TQuery.QueryType, tenantId, entityId, payload)`
-  - [ ] 6.3 XML doc: type-safe overload using query contract metadata. Include warning: "This method reads TQuery.QueryType directly without format validation. Call QueryContractResolver.Resolve&lt;TQuery&gt;() at least once (e.g., during application startup) to validate contract metadata before using this method in hot paths."
+- [x] Task 6: Add generic overload to QueryActorIdHelper (AC: #6)
+    - [x] 6.1 Modify `src/Hexalith.EventStore.Server/Queries/QueryActorIdHelper.cs`
+    - [x] 6.2 Add `static string DeriveActorId<TQuery>(string tenantId, string? entityId, byte[] payload) where TQuery : IQueryContract`
+        - Delegates to existing `DeriveActorId(TQuery.QueryType, tenantId, entityId, payload)`
+    - [x] 6.3 XML doc: type-safe overload using query contract metadata. Include warning: "This method reads TQuery.QueryType directly without format validation. Call QueryContractResolver.Resolve&lt;TQuery&gt;() at least once (e.g., during application startup) to validate contract metadata before using this method in hot paths."
 
-- [ ] Task 7: Unit tests — Tier 1: IQueryContract and metadata (AC: #1, #4, #8, #9)
-  - [ ] 7.1 Create `tests/Hexalith.EventStore.Contracts.Tests/Queries/IQueryContractTests.cs`
-    - Define test query class implementing `IQueryContract` with valid metadata
-    - Verify static abstract members are accessible
-    - Verify QueryContractMetadata record equality/immutability
-  - [ ] 7.2 Create `tests/Hexalith.EventStore.Contracts.Tests/Queries/EventStoreQueryTypeAttributeTests.cs`
-    - Test valid construction
-    - Test null/whitespace rejection
-    - Test colon rejection in query type name
+- [x] Task 7: Unit tests — Tier 1: IQueryContract and metadata (AC: #1, #4, #8, #9)
+    - [x] 7.1 Create `tests/Hexalith.EventStore.Contracts.Tests/Queries/IQueryContractTests.cs`
+        - Define test query class implementing `IQueryContract` with valid metadata
+        - Verify static abstract members are accessible
+        - Verify QueryContractMetadata record equality/immutability
+    - [x] 7.2 Create `tests/Hexalith.EventStore.Contracts.Tests/Queries/EventStoreQueryTypeAttributeTests.cs`
+        - Test valid construction
+        - Test null/whitespace rejection
+        - Test colon rejection in query type name
 
-- [ ] Task 8: Unit tests — Tier 1: NamingConventionEngine query type derivation (AC: #2, #3, #8)
-  - [ ] 8.1 Update `tests/Hexalith.EventStore.Client.Tests/Conventions/NamingConventionEngineTests.cs`
-    - Test `GetQueryTypeName()` with standard name: `GetCounterStatusQuery` → `"get-counter-status"`
-    - Test `GetQueryTypeName()` with no "Query" suffix: `OrderSummary` → `"order-summary"`
-    - Test `GetQueryTypeName()` with attribute override: `[EventStoreQueryType("custom")]` → `"custom"`
-    - Test colon rejection: attribute value with colon → `ArgumentException`
-    - Test invalid characters: uppercase, special chars → `ArgumentException`
-    - Test max length (64 chars)
-    - Test cache behavior (second call returns same value)
-    - Test `ClearCache()` also clears query type cache (call `GetQueryTypeName`, clear, call again — should re-resolve)
-    - Test `GetQueryTypeName` vs `Resolve` independence: type `OrderListQuery` with `static string QueryType => "list-orders"` — `GetQueryTypeName` derives from type name → `"order-list"` (strips suffix, converts), while `Resolve` reads the static member → `"list-orders"`. They are independent paths and CAN return different values. This is by design.
+- [x] Task 8: Unit tests — Tier 1: NamingConventionEngine query type derivation (AC: #2, #3, #8)
+    - [x] 8.1 Update `tests/Hexalith.EventStore.Client.Tests/Conventions/NamingConventionEngineTests.cs`
+        - Test `GetQueryTypeName()` with standard name: `GetCounterStatusQuery` → `"get-counter-status"`
+        - Test `GetQueryTypeName()` with no "Query" suffix: `OrderSummary` → `"order-summary"`
+        - Test `GetQueryTypeName()` with attribute override: `[EventStoreQueryType("custom")]` → `"custom"`
+        - Test colon rejection: attribute value with colon → `ArgumentException`
+        - Test invalid characters: uppercase, special chars → `ArgumentException`
+        - Test max length (64 chars)
+        - Test cache behavior (second call returns same value)
+        - Test `ClearCache()` also clears query type cache (call `GetQueryTypeName`, clear, call again — should re-resolve)
+        - Test `GetQueryTypeName` vs `Resolve` independence: type `OrderListQuery` with `static string QueryType => "list-orders"` — `GetQueryTypeName` derives from type name → `"order-list"` (strips suffix, converts), while `Resolve` reads the static member → `"list-orders"`. They are independent paths and CAN return different values. This is by design.
 
-- [ ] Task 9: Unit tests — Tier 1: QueryContractResolver (AC: #5, #7)
-  - [ ] 9.1 Create `tests/Hexalith.EventStore.Client.Tests/Queries/QueryContractResolverTests.cs`
-    - Test `Resolve<TQuery>()` with valid contract → correct metadata
-    - Test `Resolve<TQuery>()` with mismatched Domain/ProjectionType → still valid (they CAN differ)
-    - Test `GetETagActorId<TQuery>()` → `"{ProjectionType}:{tenantId}"`
-    - Test cache hit (second call, same type)
-    - Test validation: invalid kebab-case in static members → `ArgumentException`
-    - Test empty-string contract: `Resolve<EmptyDomainQuery>()` where `Domain => ""` → `ArgumentException`
-    - Test null-suppressed contract: `Resolve<NullQueryTypeQuery>()` where `QueryType => null!` → `ArgumentNullException`
+- [x] Task 9: Unit tests — Tier 1: QueryContractResolver (AC: #5, #7)
+    - [x] 9.1 Create `tests/Hexalith.EventStore.Client.Tests/Queries/QueryContractResolverTests.cs`
+        - Test `Resolve<TQuery>()` with valid contract → correct metadata
+        - Test `Resolve<TQuery>()` with mismatched Domain/ProjectionType → still valid (they CAN differ)
+        - Test `GetETagActorId<TQuery>()` → `"{ProjectionType}:{tenantId}"`
+        - Test cache hit (second call, same type)
+        - Test validation: invalid kebab-case in static members → `ArgumentException`
+        - Test empty-string contract: `Resolve<EmptyDomainQuery>()` where `Domain => ""` → `ArgumentException`
+        - Test null-suppressed contract: `Resolve<NullQueryTypeQuery>()` where `QueryType => null!` → `ArgumentNullException`
 
-- [ ] Task 10: Unit tests — Tier 1: QueryActorIdHelper generic overload (AC: #6)
-  - [ ] 10.1 Update `tests/Hexalith.EventStore.Server.Tests/Queries/QueryActorIdHelperTests.cs`
-    - Test `DeriveActorId<TestQuery>(tenantId, entityId, payload)` Tier 1 → `"{QueryType}:{tenantId}:{entityId}"`
-    - Test `DeriveActorId<TestQuery>(tenantId, null, empty)` Tier 3 → `"{QueryType}:{tenantId}"`
-    - Test `DeriveActorId<TestQuery>(tenantId, null, payload)` Tier 2 → `"{QueryType}:{tenantId}:{checksum}"`
-    - Verify result matches non-generic overload with same QueryType string
+- [x] Task 10: Unit tests — Tier 1: QueryActorIdHelper generic overload (AC: #6)
+    - [x] 10.1 Update `tests/Hexalith.EventStore.Server.Tests/Queries/QueryActorIdHelperTests.cs`
+        - Test `DeriveActorId<TestQuery>(tenantId, entityId, payload)` Tier 1 → `"{QueryType}:{tenantId}:{entityId}"`
+        - Test `DeriveActorId<TestQuery>(tenantId, null, empty)` Tier 3 → `"{QueryType}:{tenantId}"`
+        - Test `DeriveActorId<TestQuery>(tenantId, null, payload)` Tier 2 → `"{QueryType}:{tenantId}:{checksum}"`
+        - Verify result matches non-generic overload with same QueryType string
 
-- [ ] Task 11: Verify zero regression (AC: #10)
-  - [ ] 11.1 All Tier 1 tests pass: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ && dotnet test tests/Hexalith.EventStore.Client.Tests/ && dotnet test tests/Hexalith.EventStore.Sample.Tests/ && dotnet test tests/Hexalith.EventStore.Testing.Tests/`
-  - [ ] 11.2 All Tier 2 tests pass: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
-  - [ ] 11.3 Full solution build: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+- [x] Task 11: Verify zero regression (AC: #10)
+    - [x] 11.1 All Tier 1 tests pass: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ && dotnet test tests/Hexalith.EventStore.Client.Tests/ && dotnet test tests/Hexalith.EventStore.Sample.Tests/ && dotnet test tests/Hexalith.EventStore.Testing.Tests/`
+    - [x] 11.2 All Tier 2 tests pass: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
+    - [x] 11.3 Full solution build: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+        - [x] 11.4 Tier 3 baseline verification recorded: `dotnet test tests/Hexalith.EventStore.IntegrationTests/` — 163 passed, 17 pre-existing failures (Keycloak, DaprAccessControl, authorization, validation, hot-reload, command lifecycle) all outside Story 18.4 scope. Zero new failures introduced by story changes.
 
 ## Architectural Decisions
 
 **ADR-18.4a: IQueryContract Uses Static Abstract Interface Members (C# 14)**
+
 - **Choice:** `IQueryContract` uses `static abstract string` properties for QueryType, Domain, ProjectionType
 - **Rejected:** Instance properties on a base class — doesn't provide compile-time enforcement, allows runtime modification
 - **Rejected:** Attributes only (no interface) — attributes are metadata-only, not constrained by the type system; easy to forget or misapply
@@ -129,6 +131,7 @@ So that **query routing is type-safe and consistent across all domain services**
 - **Rationale:** Static abstract members provide true compile-time enforcement — a type implementing `IQueryContract` MUST define all three properties. The compiler catches missing metadata, not runtime validation.
 
 **ADR-18.4b: Contracts Package Contains Interface Only, Client Contains Resolution Logic**
+
 - **Choice:** `IQueryContract` and `QueryContractMetadata` in Contracts (zero dependencies). `QueryContractResolver` and `NamingConventionEngine` extensions in Client.
 - **Rejected:** All in Contracts — would add NamingConventionEngine logic to a package that's currently dependency-free
 - **Rejected:** All in Client — would make `IQueryContract` unavailable without Client package reference
@@ -136,12 +139,14 @@ So that **query routing is type-safe and consistent across all domain services**
 - **Rationale:** Follows existing split: Contracts has `SubmitQueryRequest` (data types), Client has `NamingConventionEngine` (convention logic). The `EventStoreQueryTypeAttribute` goes in Contracts alongside `IQueryContract` since it's attribute metadata, not resolution logic.
 
 **ADR-18.4c: ProjectionType as Separate Field (Not Derived from Domain)**
+
 - **Choice:** `IQueryContract.ProjectionType` is an explicit static property, independent of `Domain`
 - **Rejected:** Deriving ProjectionType from Domain automatically — prevents finer-grained ETag scoping
 - **Trade-off:** Most queries will have Domain == ProjectionType. Developers must explicitly set both (no default derivation from one to the other). This is intentional — explicit is better than implicit for routing metadata.
 - **Rationale:** ADR-18.3c foreshadowed this: "Story 18.4 adds explicit ProjectionType metadata to query contracts, enabling finer-grained mapping." A reporting domain might have multiple projection types (order-summary, order-detail), each with independent ETag scoping.
 
 **ADR-18.4d: EventStoreQueryTypeAttribute in Contracts/Queries Namespace**
+
 - **Choice:** `EventStoreQueryTypeAttribute` lives in `Hexalith.EventStore.Contracts/Queries/` alongside `IQueryContract` and `QueryContractMetadata` — same namespace, same folder
 - **Rejected:** Separate `Contracts/Attributes/` folder — creating a new folder for a single file is overengineered
 - **Rejected:** In Client package alongside `EventStoreDomainAttribute` — but query contracts are defined by domain developers who reference Contracts, not Client
@@ -149,6 +154,7 @@ So that **query routing is type-safe and consistent across all domain services**
 - **Rationale:** The attribute is used ON query contract classes in domain code. Domain developers reference Contracts to get `IQueryContract`. Having the attribute in the same package and namespace means they don't need Client just for the attribute. Resolution logic (reading the attribute) is in Client's `NamingConventionEngine`.
 
 **ADR-18.4e: No Pipeline Integration in This Story**
+
 - **Choice:** This story creates the contract library and type-safe helpers. It does NOT modify `QueriesController`, `QueryRouter`, or `SubmitQuery` to use `IQueryContract`.
 - **Rejected:** Full pipeline integration — too large for a single story, would touch controller, MediatR pipeline, router, and all tests
 - **Trade-off:** Developers can use `QueryContractResolver` and `DeriveActorId<TQuery>()` for type-safe routing, but the existing string-based pipeline continues unchanged. Integration is a follow-up story.
@@ -157,36 +163,47 @@ So that **query routing is type-safe and consistent across all domain services**
 ## Pre-mortem Findings
 
 **PM-1: NamingConventionEngine Extension vs. New Class**
+
 - Extending `NamingConventionEngine` with `GetQueryTypeName()` keeps all convention logic in one place. Creating a separate `QueryConventionEngine` would scatter convention logic across classes. Extension is the right choice — the engine already handles domain names, adding query type names is a natural extension. The "Query" suffix stripping should use a separate array (`_knownQuerySuffixes`) from `_knownSuffixes` (which has "Aggregate", "Projection", "Processor").
 
 **PM-2: QueryType Colon Validation Consistency**
+
 - `SubmitQueryRequestValidator` already rejects colons in QueryType (added in Story 18-2). The `NamingConventionEngine.GetQueryTypeName()` and `QueryContractResolver.Resolve()` must also reject colons. This is defense-in-depth — the validator catches API input, the resolver catches developer misconfiguration.
 
 **PM-3: Static Abstract Members and Test Doubles**
+
 - `IQueryContract` uses `static abstract` members. Unit tests define test query classes implementing the interface. Each test class has its own static values. This is straightforward — no mocking needed for static abstract members; just define test types with the right values.
 
 **PM-4: Cache Isolation Between Domain Names and Query Type Names**
+
 - `NamingConventionEngine` currently has one `ConcurrentDictionary<Type, string> _cache` for domain names. Adding query type name resolution requires a SEPARATE cache (`_queryTypeCache`) because the same type could theoretically have both a domain name and a query type name resolved. Using the same cache would cause key collisions.
 
 **PM-5: EventStoreQueryTypeAttribute Placement — Future Consistency**
+
 - `EventStoreDomainAttribute` is in `Client/Attributes/`. `EventStoreQueryTypeAttribute` is placed in `Contracts/Queries/` (same namespace as `IQueryContract`). This creates a minor inconsistency between attribute locations. However, the rationale (ADR-18.4d) is sound — query contracts are defined in domain code that references Contracts, not Client. Placing the attribute alongside the interface it annotates is the simplest approach. A future refactoring could move `EventStoreDomainAttribute` to Contracts for consistency, but that's out of scope.
 
 **PM-6: QueryContractResolver Thread Safety**
+
 - The resolver uses `ConcurrentDictionary.GetOrAdd()` like `NamingConventionEngine`. The lambda inside `GetOrAdd` reads static abstract members (pure, thread-safe) and validates strings (pure, thread-safe). No locking needed.
 
 **PM-7: ValidateKebabCase Must Be Public**
+
 - `QueryContractResolver.Resolve()` needs to validate all three static members against kebab-case rules. The existing `ValidateDomainArgument` is **private** in `NamingConventionEngine`. Task 4.0 refactors it into a `public static void ValidateKebabCase(string value, string parameterName)` method. This is a clean refactoring — all existing callers (`GetStateStoreName`, `GetPubSubTopic`, etc.) switch to the new public method. Without this refactoring, the resolver would duplicate the regex validation logic.
 
 **PM-8: NamingConventionEngine God-Class Risk**
+
 - Adding `GetQueryTypeName()` with its own cache, suffix array, and validation creates two parallel resolution paths (domain + query type). To mitigate: (a) reuse existing regex instances (`_wordBoundaryRegex`, `_domainNameRegex`), (b) keep `_knownQuerySuffixes` separate from `_knownSuffixes`, (c) factor shared validation into `ValidateKebabCase()`. The engine remains cohesive because all convention logic lives in one place.
 
-**PM-9: _knownQuerySuffixes Extensibility**
+**PM-9: \_knownQuerySuffixes Extensibility**
+
 - Currently `["Query"]`. Future types like `"GetCounterStatusRequest"` or `"CounterSpecification"` won't be stripped. This is intentional — keep the suffix list minimal and explicit. The `[EventStoreQueryType]` attribute provides an escape hatch for non-standard names.
 
 **PM-10: IQueryContract Doesn't Include TenantId as Static Member**
+
 - FR57 lists TenantId as "mandatory." But TenantId is per-request (each API call specifies a tenant), not per-query-type. The `IQueryContract` enforces type-level metadata (Domain, QueryType, ProjectionType). TenantId remains a parameter in `SubmitQueryRequest`, `QueryActorIdHelper.DeriveActorId<TQuery>(tenantId, ...)`, etc. FR57's "mandatory" means it's always required in query requests — already enforced by `SubmitQueryRequestValidator`.
 
 **PM-11: Colon Validation Across Three Layers**
+
 - Colons are validated in three places: (1) `EventStoreQueryTypeAttribute` constructor, (2) `QueryContractResolver.Resolve()`, (3) `QueryActorIdHelper.DeriveActorId()` (existing). All check `Contains(':')`. This is defense-in-depth. Add a comment in each noting the shared constraint: "Colons reserved as actor ID separator — validated at attribute, resolver, and helper layers."
 
 ## Dev Notes
@@ -196,6 +213,7 @@ So that **query routing is type-safe and consistent across all domain services**
 The generic `DeriveActorId<TQuery>()` overload requires the concrete type at compile time. This is useful in **domain service code** where the developer knows their query type. The **server pipeline** (`QueriesController` → `QueryRouter`) receives `QueryType` as a string from HTTP requests and will always use the string-based overload. This is by design — the contract library provides type safety for domain developers, not for the server pipeline.
 
 **Before (string-based — silent runtime failure):**
+
 ```csharp
 // Developer typos "counter" as "conter" — compiles fine, fails silently at runtime
 var request = new SubmitQueryRequest("acme", "conter", "counter-1", "get-counter-status");
@@ -203,6 +221,7 @@ var request = new SubmitQueryRequest("acme", "conter", "counter-1", "get-counter
 ```
 
 **After (contract-based — compile-time safety):**
+
 ```csharp
 // Developer defines query contract — compiler enforces all 3 properties
 public class GetCounterStatusQuery : IQueryContract
@@ -458,12 +477,13 @@ public static string DeriveActorId<TQuery>(
 
 Two distinct APIs exist for query metadata — they serve different purposes:
 
-| API | Package | Input | Purpose |
-|-----|---------|-------|---------|
-| `NamingConventionEngine.GetQueryTypeName(Type)` | Client | Any type | Convention-based name derivation from type name (strips "Query" suffix → kebab-case). Does NOT read `IQueryContract` static members. |
-| `QueryContractResolver.Resolve<TQuery>()` | Client | `IQueryContract` type | Reads and validates static abstract members from the interface. Returns cached `QueryContractMetadata`. |
+| API                                             | Package | Input                 | Purpose                                                                                                                              |
+| ----------------------------------------------- | ------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `NamingConventionEngine.GetQueryTypeName(Type)` | Client  | Any type              | Convention-based name derivation from type name (strips "Query" suffix → kebab-case). Does NOT read `IQueryContract` static members. |
+| `QueryContractResolver.Resolve<TQuery>()`       | Client  | `IQueryContract` type | Reads and validates static abstract members from the interface. Returns cached `QueryContractMetadata`.                              |
 
 **When to use which:**
+
 - **Domain developers defining queries:** Implement `IQueryContract`, call `Resolve<TQuery>()` to validate
 - **Convention engine / discovery:** `GetQueryTypeName()` for assembly scanning when the type may not implement `IQueryContract`
 - **Type-safe routing:** `DeriveActorId<TQuery>()` (calls `TQuery.QueryType` directly — ensure `Resolve<TQuery>()` was called at least once for validation)
@@ -559,6 +579,7 @@ tests/Hexalith.EventStore.Server.Tests/Queries/QueryActorIdHelperTests.cs       
 ### Build Verification Checkpoints
 
 After each major task group, verify the build to catch errors early:
+
 - After Tasks 1-3: `dotnet build src/Hexalith.EventStore.Contracts/`
 - After Task 4: `dotnet build src/Hexalith.EventStore.Client/`
 - After Task 5: `dotnet build src/Hexalith.EventStore.Client/`
@@ -580,32 +601,38 @@ After each major task group, verify the build to catch errors early:
 ### Previous Story Intelligence
 
 **From Story 18-1 (done — ETag Actor & Projection Change Notification):**
+
 - ETag actor ID format: `{ProjectionType}:{TenantId}` — this story adds `IQueryContract.ProjectionType` as the explicit source for the `ProjectionType` segment, replacing the implicit Domain == ProjectionType assumption
 - `NamingConventionEngine.GetProjectionChangedTopic()` already uses `projectionType` as a parameter — consistent with `IQueryContract.ProjectionType`
 
 **From Story 18-2 (review — 3-Tier Query Actor Routing):**
+
 - `QueryActorIdHelper.DeriveActorId(queryType, tenantId, entityId, payload)` — this story adds a generic overload `DeriveActorId<TQuery>(tenantId, entityId, payload)` that reads QueryType from the type's static abstract member
 - QueryType colon prohibition already enforced in `SubmitQueryRequestValidator` — this story adds the same validation in convention engine and resolver (defense-in-depth)
 - `QueryActorIdHelper` validates no colons in routing segments — the generic overload inherits this validation automatically
 
 **From Story 18-3 (ready-for-dev — Query Endpoint with ETag Pre-Check & Cache):**
+
 - ADR-18.3c explicitly states: "Story 18.4 (Query Contract Library) adds explicit ProjectionType metadata to query contracts, enabling finer-grained mapping. For now, Domain = ProjectionType is sufficient."
 - The `DaprETagService` uses `Domain` as ProjectionType for ETag lookup — future integration story can use `IQueryContract.ProjectionType` instead
 
 **From Story 16-2 (done — NamingConventionEngine):**
+
 - `NamingConventionEngine` pattern: `GetDomainName(Type)` → `_cache.GetOrAdd()` → `ResolveDomainName()` → attribute check → suffix strip → PascalCase-to-kebab → validate
 - Known suffixes: `["Aggregate", "Projection", "Processor"]` — query types use separate suffix list `["Query"]`
 - Regex: `_wordBoundaryRegex` for PascalCase splitting, `_domainNameRegex` for validation — both reused for query types
 - Cache clearing: `ClearCache()` internal method for test isolation — must also clear query type cache
 
 **From Story 16-8 (done — Unit tests for convention engine):**
+
 - Test patterns: `GetDomainName_WithAttribute_ReturnsAttributeValue`, `GetDomainName_StripsSuffix_And_ConvertsToPascalCase`, etc. — follow same naming convention for `GetQueryTypeName` tests
 - Edge cases: empty after suffix stripping, >64 char names, invalid characters — all apply to query types
 
 ### Git Intelligence
 
 Recent commits:
-```
+
+```text
 a7fe357 Update sprint status to reflect completed epics and adjust generated dates
 648a9db Add Implementation Readiness Assessment Report for Hexalith.EventStore
 8c97752 Add integration tests for actor-based authorization and service unavailability
@@ -617,6 +644,7 @@ Working tree has uncommitted changes from Stories 18-1, 18-2, 18-3 (story files 
 ### Scope Boundary
 
 **IN scope:**
+
 - `IQueryContract` interface with static abstract members (FR57)
 - `QueryContractMetadata` record
 - `EventStoreQueryTypeAttribute` for query type name override
@@ -626,6 +654,7 @@ Working tree has uncommitted changes from Stories 18-1, 18-2, 18-3 (story files 
 - Tier 1 unit tests for all new types
 
 **OUT of scope:**
+
 - Pipeline integration (modifying `QueriesController`, `QueryRouter`, `SubmitQuery` to use contracts) — follow-up story
 - Startup validation of all discovered `IQueryContract` types via `Resolve()` during `UseEventStore()` — follow-up integration story should add this for fail-fast validation
 - Modifying `SubmitQueryRequest` to carry `ProjectionType` — follow-up
@@ -651,10 +680,89 @@ Working tree has uncommitted changes from Stories 18-1, 18-2, 18-3 (story files 
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+No issues encountered during implementation.
+
 ### Completion Notes List
 
+- **Tasks 1-3 (Contracts):** Created `IQueryContract` interface with 3 static abstract string properties, `QueryContractMetadata` record, and `EventStoreQueryTypeAttribute` with colon/null/whitespace validation. All in `Hexalith.EventStore.Contracts.Queries` namespace, zero dependencies.
+- **Task 4 (NamingConventionEngine):** Refactored private `ValidateDomainArgument` → public `ValidateKebabCase`. Also refactored `StripKnownSuffix` → parameterized `StripSuffix` for reuse. Added `GetQueryTypeName(Type)` and `GetQueryTypeName<T>()` with separate `_queryTypeCache`, `_knownQuerySuffixes`, and `ResolveQueryTypeName` + `ValidateQueryTypeName` methods. Updated `ClearCache()` to clear both caches.
+- **Task 5 (QueryContractResolver):** Created static resolver with `Resolve<TQuery>()` (validates all 3 static members against kebab-case + no colons, cached via `ConcurrentDictionary`) and `GetETagActorId<TQuery>(tenantId)` returning `{ProjectionType}:{tenantId}`.
+- **Task 6 (QueryActorIdHelper):** Added `DeriveActorId<TQuery>(tenantId, entityId, payload)` generic overload that delegates to existing string-based method using `TQuery.QueryType`.
+- **Tasks 7-10 (Tests):** Created 5 new test classes and updated 2 existing ones. All tests pass: Contracts (197), Client (269), Sample (29), Testing (61), Server (1210) — 1766 total, 0 failures.
+- **Task 11 (Regression):** Full solution build 0 warnings/0 errors. All Tier 1 and Tier 2 tests pass.
+- **Post-review remediation (2026-03-13):** `QueryContractResolver.GetETagActorId<TQuery>()` now resolves metadata through the validated cached resolver path, `NamingConventionEngine.GetQueryTypeName()` unwraps invalid `EventStoreQueryTypeAttribute` constructor failures as `ArgumentException`, and regression tests now exercise the actual runtime attribute-resolution path plus invalid projection type handling.
+- **Code-review remediation (2026-03-13):** `QueryContractResolver.GetETagActorId<TQuery>()` now rejects colon-delimited tenant IDs to preserve actor ID separator safety, and `NamingConventionEngine` regression tests now cover uppercase and special-character attribute override values.
+- **Tier 3 verification (2026-03-13):** 163/180 pass. 17 failures are all pre-existing (Keycloak 8, DaprAccessControl 2, authorization 1, validation 1, hot-reload 2, command lifecycle 3). Zero new failures from Story 18.4 changes — AC #10 satisfied (zero behavioral change).
+
+### Implementation Plan
+
+Followed the story tasks sequentially. Key design decisions aligned with ADRs:
+
+- `ValidateDomainArgument` → `ValidateKebabCase` refactoring (ADR-18.4b, PM-7)
+- Separate query type cache (PM-4)
+- Parameterized `StripSuffix` to avoid code duplication between domain and query type resolution
+
 ### File List
+
+**New files (4 production, 3 test):**
+
+- `src/Hexalith.EventStore.Contracts/Queries/IQueryContract.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryContractMetadata.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/EventStoreQueryTypeAttribute.cs`
+- `src/Hexalith.EventStore.Client/Queries/QueryContractResolver.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/IQueryContractTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/EventStoreQueryTypeAttributeTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Queries/QueryContractResolverTests.cs`
+
+**Modified files (2 production, 2 test, 4 tracking):**
+
+- `src/Hexalith.EventStore.Client/Conventions/NamingConventionEngine.cs`
+- `src/Hexalith.EventStore.Server/Queries/QueryActorIdHelper.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Conventions/NamingConventionEngineTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Queries/QueryActorIdHelperTests.cs`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/18-4-query-contract-library.md`
+- `_bmad-output/implementation-artifacts/18-3-query-endpoint-with-etag-pre-check-and-cache.md`
+- `_bmad-output/implementation-artifacts/18-5-signalr-real-time-notifications.md`
+
+**Review-time scope notes:**
+
+- Concurrent working-tree edits in `src/Hexalith.EventStore.CommandApi/Controllers/QueriesController.cs`, `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`, `tests/Hexalith.EventStore.Server.Tests/Queries/DaprETagServiceTests.cs`, and `_bmad-output/implementation-artifacts/18-6-sample-ui-refresh-patterns.md` were reviewed for collision risk but remain out of Story 18.4 scope and are therefore excluded from this story file list.
+
+## Change Log
+
+- 2026-03-13: Implemented Story 18.4 — Query Contract Library (IQueryContract, QueryContractMetadata, EventStoreQueryTypeAttribute, QueryContractResolver, NamingConventionEngine query type extension, QueryActorIdHelper generic overload). All 11 tasks complete, 1766 tests pass.
+- 2026-03-13: Senior developer review remediation — routed `GetETagActorId<TQuery>()` through validated metadata resolution, improved runtime attribute error surfacing, strengthened regression coverage for the real query-type override path, and re-ran targeted validation (Tier 1, Tier 2, Release build).
+- 2026-03-13: Final verification — Tier 1 (557 pass), Tier 2 (1210 pass), Tier 3 (163 pass, 17 pre-existing failures outside story scope), Release build (0 warnings, 0 errors). Story marked for review.
+- 2026-03-13: Code review auto-fixes — rejected colon-delimited tenant IDs in typed ETag actor IDs, added missing invalid-attribute regression coverage, clarified Tier 3 baseline wording, and documented adjacent out-of-scope working-tree changes discovered during review.
+
+## Senior Developer Review (AI)
+
+### Review Date
+
+2026-03-13
+
+### Reviewer
+
+Jerome
+
+### Outcome
+
+Changes applied. All High and Medium review findings addressed. Story moved to **done** — targeted regression tests pass, and Tier 3 baseline history still shows zero new failures from Story 18.4 (17 pre-existing failures outside scope).
+
+### Findings Addressed
+
+- Fixed `QueryContractResolver.GetETagActorId<TQuery>()` to reuse validated, cached metadata instead of reading `TQuery.ProjectionType` directly.
+- Added colon validation for `tenantId` in `QueryContractResolver.GetETagActorId<TQuery>()` so typed ETag actor IDs cannot produce ambiguous colon-delimited segments.
+- Updated `NamingConventionEngine` to surface invalid `[EventStoreQueryType]` constructor failures as `ArgumentException` when resolving query types via reflection.
+- Corrected the regression test so it exercises `NamingConventionEngine.GetQueryTypeName(typeof(ColonAttributeQuery))` instead of only constructing the attribute directly.
+- Added regression coverage for uppercase and special-character `[EventStoreQueryType]` override values to match the story's claimed validation matrix.
+- Updated the story file list and validation notes to match the actual working tree and review-time verification results.
+
+### Remaining Blocker
+
+- None. Tier 3 re-verified on 2026-03-13: 163 pass, 17 pre-existing failures outside story scope. AC #10 satisfied (zero behavioral change from Story 18.4).

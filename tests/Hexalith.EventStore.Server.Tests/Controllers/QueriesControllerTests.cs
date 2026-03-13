@@ -241,6 +241,7 @@ public class QueriesControllerTests {
         // Assert
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
         statusResult.StatusCode.ShouldBe(304);
+        controller.Response.Headers.ETag.ToString().ShouldBe("\"abc123etag\"");
         await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -384,6 +385,28 @@ public class QueriesControllerTests {
 
         // Assert
         actionResult.ShouldBeOfType<OkObjectResult>();
+        await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_ETagServiceThrows_FailsOpenAndReturns200() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), "\"some-etag\"", CancellationToken.None);
+
+        // Assert
+        actionResult.ShouldBeOfType<OkObjectResult>();
+        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
         await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 

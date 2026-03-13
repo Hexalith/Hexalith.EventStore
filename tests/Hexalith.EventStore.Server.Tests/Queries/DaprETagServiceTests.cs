@@ -14,11 +14,9 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Queries;
 
-public class DaprETagServiceTests
-{
+public class DaprETagServiceTests {
     [Fact]
-    public async Task GetCurrentETagAsync_ReturnsETag_WhenActorReturnsValue()
-    {
+    public async Task GetCurrentETagAsync_ReturnsETag_WhenActorReturnsValue() {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
@@ -35,11 +33,15 @@ public class DaprETagServiceTests
 
         // Assert
         result.ShouldBe("abc123");
+
+        _ = factory.Received(1).CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            ETagActor.ETagActorTypeName,
+            Arg.Is<ActorProxyOptions>(options => options.RequestTimeout == TimeSpan.FromSeconds(3)));
     }
 
     [Fact]
-    public async Task GetCurrentETagAsync_ReturnsNull_WhenActorReturnsNull()
-    {
+    public async Task GetCurrentETagAsync_ReturnsNull_WhenActorReturnsNull() {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
@@ -59,8 +61,7 @@ public class DaprETagServiceTests
     }
 
     [Fact]
-    public async Task GetCurrentETagAsync_ReturnsNull_WhenActorThrows()
-    {
+    public async Task GetCurrentETagAsync_ReturnsNull_WhenActorThrows() {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
@@ -80,8 +81,7 @@ public class DaprETagServiceTests
     }
 
     [Fact]
-    public async Task GetCurrentETagAsync_DerivesActorId_WithColonSeparator()
-    {
+    public async Task GetCurrentETagAsync_DerivesActorId_WithColonSeparator() {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
@@ -107,8 +107,7 @@ public class DaprETagServiceTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    public async Task GetCurrentETagAsync_ThrowsArgumentException_WhenProjectionTypeInvalid(string? projectionType)
-    {
+    public async Task GetCurrentETagAsync_ThrowsArgumentException_WhenProjectionTypeInvalid(string? projectionType) {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
@@ -122,8 +121,7 @@ public class DaprETagServiceTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    public async Task GetCurrentETagAsync_ThrowsArgumentException_WhenTenantIdInvalid(string? tenantId)
-    {
+    public async Task GetCurrentETagAsync_ThrowsArgumentException_WhenTenantIdInvalid(string? tenantId) {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);

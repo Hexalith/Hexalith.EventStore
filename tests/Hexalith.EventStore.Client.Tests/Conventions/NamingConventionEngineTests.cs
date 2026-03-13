@@ -1,6 +1,7 @@
 
 using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Contracts.Queries;
 
 namespace Hexalith.EventStore.Client.Tests.Conventions;
 
@@ -87,6 +88,38 @@ internal class LeadingHyphenAttribute;
 
 [EventStoreDomain("invalid-")]
 internal class TrailingHyphenAttribute;
+
+// --- Query type test stub types for Story 18-4 ---
+internal class GetCounterStatusQuery;
+
+internal class OrderSummaryQuery;
+
+internal class OrderSummary;
+
+[EventStoreQueryType("custom-query-name")]
+internal class CustomQueryTypeQuery;
+
+[EventStoreQueryType("INVALID")]
+internal class UppercaseQueryTypeQuery;
+
+[EventStoreQueryType("invalid$query")]
+internal class SpecialCharacterQueryTypeQuery;
+
+[EventStoreQueryType("get:invalid")]
+internal class ColonAttributeQuery;
+
+// Suffix-only query name (empty after stripping)
+internal class Query;
+
+// Query type name too long
+internal class ThisIsAnExtremelyLongQueryClassNameThatWillDefinitelyExceedTheSixtyFourCharacterLimitWhenConvertedToKebabCaseFormat;
+
+// Type with IQueryContract that has different static member value than convention derivation
+internal class OrderListQuery : IQueryContract {
+    public static string QueryType => "list-orders";
+    public static string Domain => "order";
+    public static string ProjectionType => "order";
+}
 
 public class NamingConventionEngineTests : IDisposable {
     public NamingConventionEngineTests() {
@@ -440,5 +473,124 @@ public class NamingConventionEngineTests : IDisposable {
     public void GetProjectionChangedTopic_NullTenantId_ThrowsArgumentNullException() {
         _ = Assert.Throws<ArgumentNullException>(
             () => NamingConventionEngine.GetProjectionChangedTopic("order-list", null!));
+    }
+
+    // ============================================================================
+    // Story 18-4: GetQueryTypeName tests (Task 8)
+    // ============================================================================
+
+    [Fact]
+    public void GetQueryTypeName_StandardName_StripsQuerySuffixAndConvertsToKebabCase() {
+        // GetCounterStatusQuery → strips "Query" → GetCounterStatus → "get-counter-status"
+        string result = NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery));
+
+        Assert.Equal("get-counter-status", result);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_WithQuerySuffix_StripsAndConverts() {
+        // OrderSummaryQuery → strips "Query" → OrderSummary → "order-summary"
+        string result = NamingConventionEngine.GetQueryTypeName(typeof(OrderSummaryQuery));
+
+        Assert.Equal("order-summary", result);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_NoQuerySuffix_ConvertsPascalCaseToKebabCase() {
+        // OrderSummary → no "Query" suffix to strip → "order-summary"
+        string result = NamingConventionEngine.GetQueryTypeName(typeof(OrderSummary));
+
+        Assert.Equal("order-summary", result);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_WithAttribute_ReturnsAttributeValue() {
+        string result = NamingConventionEngine.GetQueryTypeName(typeof(CustomQueryTypeQuery));
+
+        Assert.Equal("custom-query-name", result);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_UppercaseAttributeValue_ThrowsArgumentException() {
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetQueryTypeName(typeof(UppercaseQueryTypeQuery)));
+
+        Assert.Contains("INVALID", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_SpecialCharacterAttributeValue_ThrowsArgumentException() {
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetQueryTypeName(typeof(SpecialCharacterQueryTypeQuery)));
+
+        Assert.Contains("invalid$query", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_AttributeWithColon_ThrowsArgumentException() {
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetQueryTypeName(typeof(ColonAttributeQuery)));
+
+        Assert.Contains("colon", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_EmptyAfterSuffixStrip_ThrowsArgumentException() {
+        // "Query" → strips "Query" → empty
+        _ = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetQueryTypeName(typeof(Query)));
+    }
+
+    [Fact]
+    public void GetQueryTypeName_NameTooLong_ThrowsArgumentException() {
+        ArgumentException ex = Assert.Throws<ArgumentException>(
+            () => NamingConventionEngine.GetQueryTypeName(typeof(ThisIsAnExtremelyLongQueryClassNameThatWillDefinitelyExceedTheSixtyFourCharacterLimitWhenConvertedToKebabCaseFormat)));
+
+        Assert.Contains("64", ex.Message);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_CalledTwice_ReturnsSameStringReference() {
+        string first = NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery));
+        string second = NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery));
+
+        Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_Generic_MatchesNonGenericOverload() {
+        Assert.Equal(
+            NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery)),
+            NamingConventionEngine.GetQueryTypeName<GetCounterStatusQuery>());
+    }
+
+    [Fact]
+    public void ClearCache_AlsoClearsQueryTypeCache() {
+        // Populate query type cache
+        string first = NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery));
+        NamingConventionEngine.ClearCache();
+        // After clearing, re-resolve (should still produce correct value)
+        string second = NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery));
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void GetQueryTypeName_NullType_ThrowsArgumentNullException() {
+        _ = Assert.Throws<ArgumentNullException>(
+            () => NamingConventionEngine.GetQueryTypeName(null!));
+    }
+
+    [Fact]
+    public void GetQueryTypeName_VsResolve_AreIndependentPaths() {
+        // GetQueryTypeName derives from type name: OrderListQuery → "order-list"
+        // Resolve reads static member: TQuery.QueryType → "list-orders"
+        // They are independent and CAN return different values — this is by design.
+        string conventionDerived = NamingConventionEngine.GetQueryTypeName(typeof(OrderListQuery));
+        string staticMember = OrderListQuery.QueryType;
+
+        Assert.Equal("order-list", conventionDerived);
+        Assert.Equal("list-orders", staticMember);
+        Assert.NotEqual(conventionDerived, staticMember);
     }
 }

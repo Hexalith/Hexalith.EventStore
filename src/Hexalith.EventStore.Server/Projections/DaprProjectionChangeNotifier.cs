@@ -22,6 +22,7 @@ namespace Hexalith.EventStore.Server.Projections;
 public partial class DaprProjectionChangeNotifier(
     DaprClient daprClient,
     IActorProxyFactory actorProxyFactory,
+    IProjectionChangedBroadcaster broadcaster,
     IOptions<ProjectionChangeNotifierOptions> options,
     ILogger<DaprProjectionChangeNotifier> logger) : IProjectionChangeNotifier {
     /// <inheritdoc/>
@@ -55,6 +56,15 @@ public partial class DaprProjectionChangeNotifier(
             ETagActor.ETagActorTypeName);
 
         _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+
+        // Broadcast to SignalR clients (fail-open — ADR-18.5a)
+        try {
+            await broadcaster.BroadcastChangedAsync(projectionType, tenantId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.BroadcastFailed(logger, projectionType, tenantId, ex.GetType().Name);
+        }
     }
 
     private static partial class Log {
@@ -63,5 +73,11 @@ public partial class DaprProjectionChangeNotifier(
             Level = LogLevel.Debug,
             Message = "Projection change notification received. ProjectionType: {ProjectionType}, TenantId: {TenantId}, EntityId: {EntityId}, Transport: {Transport}")]
         public static partial void NotificationReceived(ILogger logger, string projectionType, string tenantId, string? entityId, string transport);
+
+        [LoggerMessage(
+            EventId = 1088,
+            Level = LogLevel.Warning,
+            Message = "SignalR broadcast failed after ETag regeneration (fail-open). ProjectionType: {ProjectionType}, TenantId: {TenantId}, ExceptionType: {ExceptionType}")]
+        public static partial void BroadcastFailed(ILogger logger, string projectionType, string tenantId, string exceptionType);
     }
 }

@@ -1,0 +1,82 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject EventStoreSignalRClient SignalRClient
+@inject CounterQueryService QueryService
+@implements IAsyncDisposable
+
+<FluentCard Style="padding: 24px; margin-top: 16px;">
+    <h3>Counter History</h3>
+    @if (_isLoading && _history.Count == 0)
+    {
+        <FluentProgress />
+    }
+    else
+    {
+        <FluentDataGrid Items="@_history.AsQueryable()" Style="width: 100%;">
+            <PropertyColumn Property="@(e => e.Timestamp)" Title="Time" Format="HH:mm:ss.fff" />
+            <PropertyColumn Property="@(e => e.Count)" Title="Count" />
+            <PropertyColumn Property="@(e => e.ETag)" Title="ETag (prefix)" />
+        </FluentDataGrid>
+        @if (_isLoading)
+        {
+            <FluentProgress Style="margin-top: 8px;" />
+        }
+    }
+</FluentCard>
+
+@code {
+    [Parameter] public string TenantId { get; set; } = "sample-tenant";
+    [Parameter] public string ProjectionType { get; set; } = "counter";
+
+    private readonly List<CounterHistoryEntry> _history = [];
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SignalRClient.SubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
+        await LoadDataAsync();
+        _isLoading = false;
+    }
+
+    private void OnProjectionChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            await LoadDataAsync();
+
+            _isLoading = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            CounterStatusResult result = await QueryService.GetCounterStatusAsync(TenantId);
+            _history.Insert(0, new CounterHistoryEntry(
+                DateTime.Now,
+                result.Count,
+                result.ETag?[..Math.Min(8, result.ETag.Length)] ?? "n/a"));
+
+            // Keep last 20 entries to prevent unbounded growth
+            if (_history.Count > 20)
+            {
+                _history.RemoveAt(_history.Count - 1);
+            }
+        }
+        catch
+        {
+            // Silently skip failed queries — grid preserves existing data
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId);
+    }
+
+    private sealed record CounterHistoryEntry(DateTime Timestamp, int Count, string ETag);
+}

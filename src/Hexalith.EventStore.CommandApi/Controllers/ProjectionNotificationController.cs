@@ -4,8 +4,10 @@ using Dapr;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Configuration;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,13 +22,14 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Route("projections")]
 public partial class ProjectionNotificationController(
     IActorProxyFactory actorProxyFactory,
+    IProjectionChangedBroadcaster broadcaster,
     ILogger<ProjectionNotificationController> logger) : ControllerBase {
     /// <summary>
     /// Receives a projection change notification from DAPR pub/sub and triggers ETag regeneration.
     /// Returns non-200 on actor failure to trigger DAPR retry (CM-1).
     /// </summary>
     [HttpPost("changed")]
-    [Topic("pubsub", "*.*.projection-changed")]
+    [Topic(ProjectionChangeNotifierOptions.DefaultPubSubName, "*.*.projection-changed")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -51,6 +54,16 @@ public partial class ProjectionNotificationController(
                 ETagActor.ETagActorTypeName);
 
             _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+
+            // Broadcast to SignalR clients (fail-open — ADR-18.5a)
+            try {
+                await broadcaster.BroadcastChangedAsync(
+                    notification.ProjectionType, notification.TenantId, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) {
+                Log.BroadcastFailed(logger, notification.ProjectionType, notification.TenantId, ex.GetType().Name);
+            }
 
             return Ok();
         }
@@ -79,5 +92,11 @@ public partial class ProjectionNotificationController(
             Level = LogLevel.Error,
             Message = "ETag actor invocation failed for actor {ActorId}. ExceptionType: {ExceptionType}. Returning non-200 for DAPR retry.")]
         public static partial void ActorInvocationFailed(ILogger logger, string actorId, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1086,
+            Level = LogLevel.Warning,
+            Message = "SignalR broadcast failed after ETag regeneration (fail-open). ProjectionType: {ProjectionType}, TenantId: {TenantId}, ExceptionType: {ExceptionType}")]
+        public static partial void BroadcastFailed(ILogger logger, string projectionType, string tenantId, string exceptionType);
     }
 }

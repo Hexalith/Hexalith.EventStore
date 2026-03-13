@@ -1,51 +1,51 @@
 ---
 stepsCompleted:
-  - step-01-init
-  - step-02-discovery
-  - step-03-success
-  - step-04-journeys
-  - step-05-domain
-  - step-06-innovation
-  - step-07-project-type
-  - step-08-scoping
-  - step-09-functional
-  - step-10-nonfunctional
-  - step-11-polish
-  - step-01b-continue
-  - step-12-complete
+    - step-01-init
+    - step-02-discovery
+    - step-03-success
+    - step-04-journeys
+    - step-05-domain
+    - step-06-innovation
+    - step-07-project-type
+    - step-08-scoping
+    - step-09-functional
+    - step-10-nonfunctional
+    - step-11-polish
+    - step-01b-continue
+    - step-12-complete
 inputDocuments:
-  - product-brief-Hexalith.EventStore-2026-02-11.md
-  - market-event-sourcing-event-store-solutions-research-2026-02-11.md
-  - technical-aspnet-core-command-api-authorization-research-2026-02-11.md
-  - technical-blazor-fluent-ui-v4-research-2026-02-11.md
-  - technical-dapr-workflow-pubsub-actors-research-2026-02-11.md
-  - technical-dotnet-10-aspire-13-research-2026-02-11.md
-  - brainstorming-session-2026-02-11.md
-  - brainstorming-session-2026-03-12-1.md
-workflowType: 'prd'
+    - product-brief-Hexalith.EventStore-2026-02-11.md
+    - market-event-sourcing-event-store-solutions-research-2026-02-11.md
+    - technical-aspnet-core-command-api-authorization-research-2026-02-11.md
+    - technical-blazor-fluent-ui-v4-research-2026-02-11.md
+    - technical-dapr-workflow-pubsub-actors-research-2026-02-11.md
+    - technical-dotnet-10-aspire-13-research-2026-02-11.md
+    - brainstorming-session-2026-02-11.md
+    - brainstorming-session-2026-03-12-1.md
+workflowType: "prd"
 documentCounts:
-  briefs: 1
-  research: 5
-  brainstorming: 2
-  projectDocs: 0
+    briefs: 1
+    research: 5
+    brainstorming: 2
+    projectDocs: 0
 classification:
-  projectType: 'Event Sourcing Server Platform (primary) + Developer Tooling (secondary)'
-  domain: 'Event Sourcing Infrastructure'
-  complexity: 'High (Technical)'
-  complexityDrivers:
-    - distributed actor state management
-    - exactly-once event persistence semantics
-    - multi-tenant isolation at infrastructure level
-    - irreversible event envelope design
-    - DAPR runtime dependency adding operational surface area
-  projectContext: 'Greenfield codebase, pre-validated architecture'
-  scopeStrategy: 'Deliberate phasing - v1 actors with workflow-ready design, v2 workflow migration'
-lastEdited: '2026-03-12'
+    projectType: "Event Sourcing Server Platform (primary) + Developer Tooling (secondary)"
+    domain: "Event Sourcing Infrastructure"
+    complexity: "High (Technical)"
+    complexityDrivers:
+        - distributed actor state management
+        - exactly-once event persistence semantics
+        - multi-tenant isolation at infrastructure level
+        - irreversible event envelope design
+        - DAPR runtime dependency adding operational surface area
+    projectContext: "Greenfield codebase, pre-validated architecture"
+    scopeStrategy: "Deliberate phasing - v1 actors with workflow-ready design, v2 workflow migration"
+lastEdited: "2026-03-12"
 editHistory:
-  - date: '2026-03-12'
-    changes: 'Integrate brainstorming session (2026-03-12): added Query Pipeline & Projection Caching (FR50-FR60, NFR35-NFR39), Journey 7 (Marco Builds a Read Model), Innovation #5 (ETag Actor pattern), expanded Phase 2 roadmap with query pipeline/SignalR/contract library. Party mode review fixes: Query API endpoint spec, query success criteria, FR50 checksum pinned to 11-char + serialization risk note, FR52 default transport, FR53/FR54 two-tier clarification, FR58 coarse invalidation rationale, NFR35 warm-actor qualifier, NFR reordering, test tier updates. Post-validation fixes: FR59 (SignalR auto-rejoin on circuit reconnect), FR60 (3 sample UI refresh patterns)'
-  - date: '2026-03-12'
-    changes: 'Fix all validation report findings: added Journey 6 (Platform Validation), FR49 (command idempotency), NFR33-34 (rate limiting), refined FR10/FR13, added Data Schema patterns, added causation depth guardrail to Phase 2 roadmap'
+    - date: "2026-03-12"
+      changes: "Integrate brainstorming session (2026-03-12): added Query Pipeline & Projection Caching (FR50-FR60, NFR35-NFR39), Journey 7 (Marco Builds a Read Model), Innovation #5 (ETag Actor pattern), expanded Phase 2 roadmap with query pipeline/SignalR/contract library. Party mode review fixes: Query API endpoint spec, query success criteria, FR50 checksum pinned to 11-char + serialization risk note, FR52 default transport, FR53/FR54 two-tier clarification, FR58 coarse invalidation rationale, NFR35 warm-actor qualifier, NFR reordering, test tier updates. Post-validation fixes: FR59 (SignalR auto-rejoin on circuit reconnect), FR60 (3 sample UI refresh patterns)"
+    - date: "2026-03-12"
+      changes: "Fix all validation report findings: added Journey 6 (Platform Validation), FR49 (command idempotency), NFR33-34 (rate limiting), refined FR10/FR13, added Data Schema patterns, added causation depth guardrail to Phase 2 roadmap"
 ---
 
 # Product Requirements Document - Hexalith.EventStore
@@ -60,6 +60,7 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 **Core Differentiator:** Unlike existing solutions that are either purpose-built databases (EventStoreDB), PostgreSQL-coupled libraries (Marten), or JVM-centric frameworks (Axon), Hexalith.EventStore composes DAPR's actors, state store, pub/sub, and config store into an infrastructure-agnostic event sourcing platform. Infrastructure decisions become deployment decisions -- the same application code runs on Redis (dev), PostgreSQL (prod), or Cosmos DB (scale) with zero code changes.
 
 **Target Users:**
+
 - **Domain service developers** -- Build event-sourced DDD services using the pure function programming model via NuGet packages and REST Command API
 - **DevOps engineers** -- Deploy and configure EventStore across environments using Aspire publishers and DAPR component YAML files
 - **Support engineers** (v2) -- Monitor and resolve operational issues via the Blazor Fluent UI admin dashboard
@@ -128,25 +129,25 @@ Performance and resilience targets are summarized here as success criteria; deta
 
 **Performance KPIs:**
 
-| KPI | Target | Measurement |
-|-----|--------|-------------|
-| Event append latency (p99) | < 10ms | End-to-end from actor event persist to state store confirmation |
-| Actor activation latency (p99) | < 50ms | Cold activation with state rehydration from snapshot + subsequent events |
-| Pub/sub delivery latency (p99) | < 50ms | From event persistence to subscriber delivery confirmation |
-| Aggregate replay (1000 events) | < 100ms | Full state reconstruction from event stream |
-| Command lifecycle (end-to-end) | < 200ms | From REST API receipt to event published on pub/sub |
-| System availability | 99.9%+ | With HA DAPR control plane and multi-replica deployment |
+| KPI                            | Target  | Measurement                                                              |
+| ------------------------------ | ------- | ------------------------------------------------------------------------ |
+| Event append latency (p99)     | < 10ms  | End-to-end from actor event persist to state store confirmation          |
+| Actor activation latency (p99) | < 50ms  | Cold activation with state rehydration from snapshot + subsequent events |
+| Pub/sub delivery latency (p99) | < 50ms  | From event persistence to subscriber delivery confirmation               |
+| Aggregate replay (1000 events) | < 100ms | Full state reconstruction from event stream                              |
+| Command lifecycle (end-to-end) | < 200ms | From REST API receipt to event published on pub/sub                      |
+| System availability            | 99.9%+  | With HA DAPR control plane and multi-replica deployment                  |
 
 **Resilience KPIs (validated by brainstorming chaos scenarios):**
 
-| Scenario | Required Outcome |
-|----------|-----------------|
-| State store dies mid-command | Command retried, deterministic replay, zero data loss |
-| Domain service crashes | Stateless pure function, actor retries via DAPR resiliency policies |
-| Actor crashes after store, before publish | Actor state machine resumes from checkpoint, events eventually published |
-| Pub/sub unavailable | Events safe in state store, DAPR retry policies drain backlog on recovery |
-| Network partition (on-prem to cloud) | Append-only single-writer remains available, cloud replica catches up |
-| Saga command storm | Latency degrades, correctness preserved, pull-based backpressure |
+| Scenario                                  | Required Outcome                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| State store dies mid-command              | Command retried, deterministic replay, zero data loss                     |
+| Domain service crashes                    | Stateless pure function, actor retries via DAPR resiliency policies       |
+| Actor crashes after store, before publish | Actor state machine resumes from checkpoint, events eventually published  |
+| Pub/sub unavailable                       | Events safe in state store, DAPR retry policies drain backlog on recovery |
+| Network partition (on-prem to cloud)      | Append-only single-writer remains available, cloud replica catches up     |
+| Saga command storm                        | Latency degrades, correctness preserved, pull-based backpressure          |
 
 **Architectural Validation:**
 
@@ -159,23 +160,23 @@ Performance and resilience targets are summarized here as success criteria; deta
 
 **Developer Experience Scorecard:**
 
-| Metric | Target | Measurement Method |
-|--------|--------|-------------------|
-| Time to running locally | < 10 min | Timed from `git clone` to working system with Aspire |
-| Time to first domain service | < 1 hour | Timed from blank project to registered, command-processing service |
-| Docs pages to first service | <= 3 pages | Count of required reading before first working service |
-| Zero-code infrastructure swap | 0 lines changed | Backend change via DAPR component config only |
-| Documentation completeness | 100% of core workflows | Getting started, domain service creation, deployment, operational guide |
+| Metric                        | Target                 | Measurement Method                                                      |
+| ----------------------------- | ---------------------- | ----------------------------------------------------------------------- |
+| Time to running locally       | < 10 min               | Timed from `git clone` to working system with Aspire                    |
+| Time to first domain service  | < 1 hour               | Timed from blank project to registered, command-processing service      |
+| Docs pages to first service   | <= 3 pages             | Count of required reading before first working service                  |
+| Zero-code infrastructure swap | 0 lines changed        | Backend change via DAPR component config only                           |
+| Documentation completeness    | 100% of core workflows | Getting started, domain service creation, deployment, operational guide |
 
 **Adoption Funnel:**
 
-| Stage | Target (12 months) | Signal |
-|-------|--------------------|----|
-| Awareness | 1000+ GitHub visitors | Repository traffic |
-| Evaluation | 500+ NuGet downloads | Package adoption |
-| First success | 50+ clones with Aspire run | Clone + run pattern |
+| Stage            | Target (12 months)                    | Signal                          |
+| ---------------- | ------------------------------------- | ------------------------------- |
+| Awareness        | 1000+ GitHub visitors                 | Repository traffic              |
+| Evaluation       | 500+ NuGet downloads                  | Package adoption                |
+| First success    | 50+ clones with Aspire run            | Clone + run pattern             |
 | Production usage | 3+ applications (internal + external) | Reported production deployments |
-| Advocacy | 1+ community blog post or talk | External content creation |
+| Advocacy         | 1+ community blog post or talk        | External content creation       |
 
 ## Product Scope
 
@@ -199,11 +200,13 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 10. **Sample Domain Service + Testing Patterns** -- Reference implementation with three-tier testing strategy (unit, integration, contract)
 
 **v1 Operational Baseline (No UI):**
+
 - Dead letter handling via DAPR pub/sub dead-letter topic + structured logging
 - Command replay via Command API
 - Full OpenTelemetry distributed tracing across the pipeline
 
 **MVP Go/No-Go Gates:**
+
 - Full command-to-event pipeline works end-to-end
 - Zero data loss in testing across all chaos scenarios
 - Multi-tenant isolation confirmed across all three layers
@@ -332,15 +335,15 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 ### Journey Requirements Summary
 
-| Journey | Primary Capabilities Required |
-|---------|-------------------------------|
-| Marco's First Day (Success Path) | Aspire orchestration, sample domain service, getting started docs, Command API, DAPR config-based service registration, OpenTelemetry, infrastructure-agnostic state store |
-| Marco's Bad Day (Edge Case) | Multi-tenant actor isolation, structured logging, dead-letter topics, correlation ID tracing, OpenTelemetry spans, Command API replay |
-| Alex's Monday Morning (Operations v2) | Blazor dashboard, dead-letter management UI, domain service version rollback, tenant management, event stream explorer |
-| Priya's Deployment (Infrastructure) | Aspire publishers, DAPR component configuration, OpenTelemetry export, infrastructure portability, zero-code environment switching |
-| Sanjay's Integration (API Consumer) | Command API Gateway, JWT + claims authorization, command status tracking, correlation IDs, clean REST abstraction, HTTP error responses |
+| Journey                                     | Primary Capabilities Required                                                                                                                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Marco's First Day (Success Path)            | Aspire orchestration, sample domain service, getting started docs, Command API, DAPR config-based service registration, OpenTelemetry, infrastructure-agnostic state store                       |
+| Marco's Bad Day (Edge Case)                 | Multi-tenant actor isolation, structured logging, dead-letter topics, correlation ID tracing, OpenTelemetry spans, Command API replay                                                            |
+| Alex's Monday Morning (Operations v2)       | Blazor dashboard, dead-letter management UI, domain service version rollback, tenant management, event stream explorer                                                                           |
+| Priya's Deployment (Infrastructure)         | Aspire publishers, DAPR component configuration, OpenTelemetry export, infrastructure portability, zero-code environment switching                                                               |
+| Sanjay's Integration (API Consumer)         | Command API Gateway, JWT + claims authorization, command status tracking, correlation IDs, clean REST abstraction, HTTP error responses                                                          |
 | Jerome's Platform Validation (Quality Gate) | Event envelope validation, snapshot consistency, chaos scenario testing, performance benchmarking, infrastructure swap, health/readiness endpoints, concurrency testing, composite key isolation |
-| Marco's Read Model (Query/Projection v2) | 3-tier query actor routing, ETag actor cache invalidation, HTTP 304 pre-check, query actor page cache, SignalR real-time notification, NotifyProjectionChanged API, query contract library |
+| Marco's Read Model (Query/Projection v2)    | 3-tier query actor routing, ETag actor cache invalidation, HTTP 304 pre-check, query actor page cache, SignalR real-time notification, NotifyProjectionChanged API, query contract library       |
 
 **Cross-Journey Insights:**
 
@@ -380,13 +383,13 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 ### Domain-Specific Risks
 
-| Risk | Mitigation |
-|------|-----------|
-| Event envelope too narrow | Validate through 3+ domain service implementations before v1 GA; include extension metadata bag for unforeseen needs |
-| Snapshot divergence from replay | Automated verification in test suite: snapshot + tail events must equal full replay |
-| Cross-tenant data leak | Triple-layer isolation (actor identity, DAPR policies, command metadata) with integration tests verifying isolation |
-| Unbounded event stream growth | Snapshot strategy limits replay window; hot/cold tiering deferred to v3 |
-| DAPR sidecar as single point of failure | DAPR resiliency policies + HA control plane; application never bypasses sidecar |
+| Risk                                    | Mitigation                                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Event envelope too narrow               | Validate through 3+ domain service implementations before v1 GA; include extension metadata bag for unforeseen needs |
+| Snapshot divergence from replay         | Automated verification in test suite: snapshot + tail events must equal full replay                                  |
+| Cross-tenant data leak                  | Triple-layer isolation (actor identity, DAPR policies, command metadata) with integration tests verifying isolation  |
+| Unbounded event stream growth           | Snapshot strategy limits replay window; hot/cold tiering deferred to v3                                              |
+| DAPR sidecar as single point of failure | DAPR resiliency policies + HA control plane; application never bypasses sidecar                                      |
 
 ## Innovation & Novel Patterns
 
@@ -410,11 +413,12 @@ Using DAPR virtual actors as 1:1 aggregate proxies is not new in concept, but th
 
 **5. ETag Actor as Dual-Purpose Cache Invalidation Gateway (Design Innovation)**
 
-Projection cache invalidation in distributed systems typically requires complex pub/sub fanout, distributed cache coherence protocols, or application-level polling. Hexalith.EventStore introduces the ETag actor pattern: a single DAPR virtual actor per `{ProjectionType}-{TenantId}` that serves as both the staleness detection point (GUID-based ETag regenerated on every projection change) and the SignalR broadcast point (notifying connected clients of changes). The innovation is dual: (1) failure is safe by construction -- any actor state loss generates a new GUID, causing refresh rather than serving stale data; (2) the REST endpoint performs an ETag pre-check before activating the query actor, enabling HTTP 304 responses that skip the entire query pipeline for warm clients. This transforms the hot path from two actor calls to one lightweight ETag comparison, bringing standard HTTP caching semantics into an actor-based system.
+Projection cache invalidation in distributed systems typically requires complex pub/sub fanout, distributed cache coherence protocols, or application-level polling. Hexalith.EventStore introduces the ETag actor pattern: a single DAPR virtual actor per `{ProjectionType}:{TenantId}` that serves as both the staleness detection point (GUID-based ETag regenerated on every projection change) and the SignalR broadcast point (notifying connected clients of changes). The innovation is dual: (1) failure is safe by construction -- any actor state loss generates a new GUID, causing refresh rather than serving stale data; (2) the REST endpoint performs an ETag pre-check before activating the query actor, enabling HTTP 304 responses that skip the entire query pipeline for warm clients. This transforms the hot path from two actor calls to one lightweight ETag comparison, bringing standard HTTP caching semantics into an actor-based system.
 
 ### Market Context & Competitive Landscape
 
 The .NET event sourcing market is split between:
+
 - **Dedicated databases** (EventStoreDB/KurrentDB) -- powerful but heavy operational footprint
 - **Library approaches** (Marten, Eventuous, Equinox) -- lightweight but PostgreSQL-coupled or framework-dependent
 - **JVM-centric platforms** (Axon) -- mature but wrong ecosystem
@@ -423,21 +427,21 @@ No solution occupies the "DAPR-native, infrastructure-agnostic platform" positio
 
 ### Validation Approach
 
-| Innovation | Validation Method | Success Signal |
-|-----------|-------------------|----------------|
-| DAPR-native architecture | Build 3+ domain services on the platform | No DAPR limitation forces architectural compromise |
-| Infrastructure portability | Run identical tests against Redis, PostgreSQL, and Cosmos DB backends | All tests pass, zero code changes |
-| Platform model | External developer builds a domain service without Hexalith team help | Under 1 hour from docs to working service |
-| Workflow-ready actors | v2 migration to DAPR Workflows | Actor state machine maps cleanly to workflow activities without data migration |
+| Innovation                 | Validation Method                                                     | Success Signal                                                                 |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| DAPR-native architecture   | Build 3+ domain services on the platform                              | No DAPR limitation forces architectural compromise                             |
+| Infrastructure portability | Run identical tests against Redis, PostgreSQL, and Cosmos DB backends | All tests pass, zero code changes                                              |
+| Platform model             | External developer builds a domain service without Hexalith team help | Under 1 hour from docs to working service                                      |
+| Workflow-ready actors      | v2 migration to DAPR Workflows                                        | Actor state machine maps cleanly to workflow activities without data migration |
 
 ### Risk Mitigation
 
-| Innovation Risk | Fallback Strategy |
-|----------------|-------------------|
-| DAPR abstraction leaks (state store limitations, pub/sub semantics differ across backends) | Document supported backend matrix with known limitations; don't promise universal compatibility, promise tested compatibility |
-| Platform model too opaque for advanced users | Provide escape hatches: direct event stream access for read models, custom middleware hooks in the command pipeline (v4) |
-| DAPR runtime dependency adds operational complexity | Aspire orchestration minimizes local friction; document production DAPR deployment patterns; provide Aspire publisher manifests |
-| Actor model doesn't scale for high-throughput aggregates | Benchmark and document throughput ceilings; provide guidance on aggregate design for high-volume scenarios |
+| Innovation Risk                                                                            | Fallback Strategy                                                                                                               |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| DAPR abstraction leaks (state store limitations, pub/sub semantics differ across backends) | Document supported backend matrix with known limitations; don't promise universal compatibility, promise tested compatibility   |
+| Platform model too opaque for advanced users                                               | Provide escape hatches: direct event stream access for read models, custom middleware hooks in the command pipeline (v4)        |
+| DAPR runtime dependency adds operational complexity                                        | Aspire orchestration minimizes local friction; document production DAPR deployment patterns; provide Aspire publisher manifests |
+| Actor model doesn't scale for high-throughput aggregates                                   | Benchmark and document throughput ceilings; provide guidance on aggregate design for high-volume scenarios                      |
 
 ## Event Sourcing Server Platform Specific Requirements
 
@@ -448,6 +452,7 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 ### Technical Architecture Considerations
 
 **Runtime Stack:**
+
 - .NET 10 LTS (November 2025 GA) with C# 14
 - DAPR 1.14+ runtime (sidecar model)
 - Aspire 13 for orchestration and deployment
@@ -455,28 +460,29 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 
 **DAPR Building Block Dependencies:**
 
-| Building Block | Purpose | v1 Required |
-|---------------|---------|-------------|
-| Actors | Aggregate processing (1:1 actor-to-aggregate) | Yes |
-| State Store | Event persistence + actor state + snapshots | Yes |
-| Pub/Sub | Event distribution (CloudEvents 1.0) | Yes |
-| Configuration | Domain service registration by tenant + domain | Yes |
-| Resiliency | Retry policies, circuit breakers, timeouts | Yes |
-| Workflows | Aggregate lifecycle orchestration | No (v2) |
+| Building Block | Purpose                                        | v1 Required |
+| -------------- | ---------------------------------------------- | ----------- |
+| Actors         | Aggregate processing (1:1 actor-to-aggregate)  | Yes         |
+| State Store    | Event persistence + actor state + snapshots    | Yes         |
+| Pub/Sub        | Event distribution (CloudEvents 1.0)           | Yes         |
+| Configuration  | Domain service registration by tenant + domain | Yes         |
+| Resiliency     | Retry policies, circuit breakers, timeouts     | Yes         |
+| Workflows      | Aggregate lifecycle orchestration              | No (v2)     |
 
 ### NuGet Package Architecture
 
 **Package Distribution Strategy:**
 
-| Package | Purpose | Consumers |
-|---------|---------|-----------|
-| `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme | Domain service developers |
-| `Hexalith.EventStore.Client` | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
-| `Hexalith.EventStore.Server` | Core EventStore server with actor processing pipeline | Platform operators |
-| `Hexalith.EventStore.Aspire` | Aspire AppHost integration and service defaults | Both |
-| `Hexalith.EventStore.Testing` | Test helpers, in-memory DAPR mocks, assertion utilities | Domain service developers |
+| Package                         | Purpose                                                                                                                                             | Consumers                 |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme                                                                                                | Domain service developers |
+| `Hexalith.EventStore.Client`    | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
+| `Hexalith.EventStore.Server`    | Core EventStore server with actor processing pipeline                                                                                               | Platform operators        |
+| `Hexalith.EventStore.Aspire`    | Aspire AppHost integration and service defaults                                                                                                     | Both                      |
+| `Hexalith.EventStore.Testing`   | Test helpers, in-memory DAPR mocks, assertion utilities                                                                                             | Domain service developers |
 
 **Versioning Strategy:**
+
 - SemVer 2.0 for all packages
 - Event envelope changes are MAJOR version bumps (breaking, irreversible)
 - Domain service contract changes are MAJOR version bumps
@@ -487,21 +493,21 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 
 **Endpoints:**
 
-| Method | Path | Purpose | Auth |
-|--------|------|---------|------|
-| POST | `/api/v1/commands` | Submit a command for processing | JWT (tenant + domain + command type) |
-| GET | `/api/v1/commands/{correlationId}/status` | Query command processing status | JWT (tenant) |
-| POST | `/api/v1/commands/{correlationId}/replay` | Replay a failed command | JWT (tenant + domain + admin) |
-| GET | `/api/v1/health` | Health check (DAPR sidecar + state store + pub/sub) | None |
-| GET | `/api/v1/ready` | Readiness check (all dependencies healthy) | None |
+| Method | Path                                      | Purpose                                             | Auth                                 |
+| ------ | ----------------------------------------- | --------------------------------------------------- | ------------------------------------ |
+| POST   | `/api/v1/commands`                        | Submit a command for processing                     | JWT (tenant + domain + command type) |
+| GET    | `/api/v1/commands/{correlationId}/status` | Query command processing status                     | JWT (tenant)                         |
+| POST   | `/api/v1/commands/{correlationId}/replay` | Replay a failed command                             | JWT (tenant + domain + admin)        |
+| GET    | `/api/v1/health`                          | Health check (DAPR sidecar + state store + pub/sub) | None                                 |
+| GET    | `/api/v1/ready`                           | Readiness check (all dependencies healthy)          | None                                 |
 
 **Query API Endpoints (v2):**
 
-| Method | Path | Purpose | Auth |
-|--------|------|---------|------|
-| POST | `/api/v2/queries` | Submit a query for processing (payload contains query type, filters, paging) | JWT (tenant + domain) |
-| GET | `/api/v2/queries/{queryType}/{tenantId}` | Singleton query (no parameters) | JWT (tenant + domain) |
-| GET | `/api/v2/queries/{queryType}/{tenantId}/{entityId}` | Entity-specific query | JWT (tenant + domain) |
+| Method | Path                                                | Purpose                                                                      | Auth                  |
+| ------ | --------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------- |
+| POST   | `/api/v2/queries`                                   | Submit a query for processing (payload contains query type, filters, paging) | JWT (tenant + domain) |
+| GET    | `/api/v2/queries/{queryType}/{tenantId}`            | Singleton query (no parameters)                                              | JWT (tenant + domain) |
+| GET    | `/api/v2/queries/{queryType}/{tenantId}/{entityId}` | Entity-specific query                                                        | JWT (tenant + domain) |
 
 Query responses include `ETag` header. Clients pass `If-None-Match` with cached ETag to receive HTTP 304 when data is unchanged. Authorization uses the same JWT claims model as the Command API, scoped to tenant + domain (no command-type dimension for queries).
 
@@ -509,27 +515,27 @@ Query responses include `ETag` header. Clients pass `If-None-Match` with cached 
 
 ```json
 {
-  "tenantId": "string (required)",
-  "domain": "string (required)",
-  "aggregateId": "string (required)",
-  "commandType": "string (required, fully qualified type name)",
-  "payload": "object (required, opaque JSON)",
-  "correlationId": "string (optional, generated if omitted)",
-  "causationId": "string (optional, for saga chains)",
-  "userId": "string (extracted from JWT claims)"
+    "tenantId": "string (required)",
+    "domain": "string (required)",
+    "aggregateId": "string (required)",
+    "commandType": "string (required, fully qualified type name)",
+    "payload": "object (required, opaque JSON)",
+    "correlationId": "string (optional, generated if omitted)",
+    "causationId": "string (optional, for saga chains)",
+    "userId": "string (extracted from JWT claims)"
 }
 ```
 
 **Response Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 202 Accepted | Command queued for processing |
-| 400 Bad Request | Validation failure (missing fields, malformed payload) |
-| 401 Unauthorized | Missing or invalid JWT |
-| 403 Forbidden | JWT lacks required tenant/domain/command claims |
-| 409 Conflict | Optimistic concurrency violation (retry with current state) |
-| 503 Service Unavailable | DAPR sidecar or dependent service unhealthy |
+| Code                    | Meaning                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| 202 Accepted            | Command queued for processing                               |
+| 400 Bad Request         | Validation failure (missing fields, malformed payload)      |
+| 401 Unauthorized        | Missing or invalid JWT                                      |
+| 403 Forbidden           | JWT lacks required tenant/domain/command claims             |
+| 409 Conflict            | Optimistic concurrency violation (retry with current state) |
+| 503 Service Unavailable | DAPR sidecar or dependent service unhealthy                 |
 
 ### Authentication & Authorization Model
 
@@ -544,52 +550,53 @@ Query responses include `ETag` header. Clients pass `If-None-Match` with cached 
 
 **Permission Dimensions:**
 
-| Dimension | Source | Enforcement Point |
-|-----------|--------|-------------------|
-| Tenant | JWT claim `tenant_id` | Layers 2-6 |
-| Domain | JWT claim `domains[]` | Layers 3-5 |
-| Command Type | JWT claim `commands[]` | Layers 3-4 |
-| Admin Operations | JWT claim `role=admin` | Layers 3-4 |
+| Dimension        | Source                 | Enforcement Point |
+| ---------------- | ---------------------- | ----------------- |
+| Tenant           | JWT claim `tenant_id`  | Layers 2-6        |
+| Domain           | JWT claim `domains[]`  | Layers 3-5        |
+| Command Type     | JWT claim `commands[]` | Layers 3-4        |
+| Admin Operations | JWT claim `role=admin` | Layers 3-4        |
 
 ### Data Schemas
 
 **Event Envelope (11-field metadata):**
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `aggregateId` | string | Target aggregate identity |
-| `tenantId` | string | Tenant isolation key |
-| `domain` | string | Domain service namespace |
-| `sequenceNumber` | long | Strictly ordered per aggregate stream |
-| `timestamp` | DateTimeOffset | Event creation time (server clock) |
-| `correlationId` | string | Request-level tracing |
-| `causationId` | string | Parent event/command tracing |
-| `userId` | string | Authenticated user identity |
-| `domainServiceVersion` | string | Version of domain service that produced the event |
-| `eventTypeName` | string | Fully qualified event type for deserialization |
-| `serializationFormat` | string | Payload encoding (default: JSON) |
-| `payload` | byte[] | Opaque serialized event data |
-| `extensions` | Dictionary<string, string> | Open metadata bag for domain-specific needs |
+| Field                  | Type                       | Purpose                                           |
+| ---------------------- | -------------------------- | ------------------------------------------------- |
+| `aggregateId`          | string                     | Target aggregate identity                         |
+| `tenantId`             | string                     | Tenant isolation key                              |
+| `domain`               | string                     | Domain service namespace                          |
+| `sequenceNumber`       | long                       | Strictly ordered per aggregate stream             |
+| `timestamp`            | DateTimeOffset             | Event creation time (server clock)                |
+| `correlationId`        | string                     | Request-level tracing                             |
+| `causationId`          | string                     | Parent event/command tracing                      |
+| `userId`               | string                     | Authenticated user identity                       |
+| `domainServiceVersion` | string                     | Version of domain service that produced the event |
+| `eventTypeName`        | string                     | Fully qualified event type for deserialization    |
+| `serializationFormat`  | string                     | Payload encoding (default: JSON)                  |
+| `payload`              | byte[]                     | Opaque serialized event data                      |
+| `extensions`           | Dictionary<string, string> | Open metadata bag for domain-specific needs       |
 
 **Composite Key Strategy (DAPR State Store):**
 
-| Key Pattern | Purpose |
-|-------------|---------|
-| `{tenant}:{domain}:{aggregateId}:events:{sequence}` | Individual event storage |
-| `{tenant}:{domain}:{aggregateId}:snapshot` | Latest snapshot |
-| `{tenant}:{domain}:{aggregateId}:metadata` | Aggregate metadata (version, last sequence) |
-| `{tenant}:{domain}:{correlationId}:status` | Command processing status tracking |
+| Key Pattern                                         | Purpose                                     |
+| --------------------------------------------------- | ------------------------------------------- |
+| `{tenant}:{domain}:{aggregateId}:events:{sequence}` | Individual event storage                    |
+| `{tenant}:{domain}:{aggregateId}:snapshot`          | Latest snapshot                             |
+| `{tenant}:{domain}:{aggregateId}:metadata`          | Aggregate metadata (version, last sequence) |
+| `{tenant}:{domain}:{correlationId}:status`          | Command processing status tracking          |
 
 **Pub/Sub Topic Naming Convention:**
 
-| Topic Pattern | Purpose |
-|---------------|---------|
-| `{tenant}:{domain}:events` | Per-tenant-per-domain event distribution topic |
-| `{tenant}:{domain}:deadletter` | Per-tenant-per-domain dead-letter topic |
+| Topic Pattern                  | Purpose                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `{tenant}:{domain}:events`     | Per-tenant-per-domain event distribution topic |
+| `{tenant}:{domain}:deadletter` | Per-tenant-per-domain dead-letter topic        |
 
 ### Implementation Considerations
 
 **Performance Constraints:**
+
 - DAPR sidecar adds ~1-2ms per building block call
 - Actor activation requires state rehydration -- snapshot strategy critical for aggregates with 100+ events
 - Pub/sub delivery is at-least-once; subscribers must be idempotent
@@ -597,13 +604,14 @@ Query responses include `ETag` header. Clients pass `If-None-Match` with cached 
 
 **Testing Strategy (Three-Tier):**
 
-| Tier | Scope | DAPR Dependency | Speed |
-|------|-------|-----------------|-------|
-| Unit | Domain service pure functions, event envelope validation | None (in-process) | < 1s |
-| Integration | Actor processing pipeline, state store operations, ETag actor logic, query actor caching | DAPR test container | < 30s |
-| Contract | End-to-end command lifecycle, multi-tenant isolation, query pipeline with ETag 304 flow, SignalR notification delivery | Full Aspire topology | < 2min |
+| Tier        | Scope                                                                                                                  | DAPR Dependency      | Speed  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------- | ------ |
+| Unit        | Domain service pure functions, event envelope validation                                                               | None (in-process)    | < 1s   |
+| Integration | Actor processing pipeline, state store operations, ETag actor logic, query actor caching                               | DAPR test container  | < 30s  |
+| Contract    | End-to-end command lifecycle, multi-tenant isolation, query pipeline with ETag 304 flow, SignalR notification delivery | Full Aspire topology | < 2min |
 
 **Aspire Integration Points:**
+
 - `AppHost` project defines complete local topology (EventStore server, sample domain service, DAPR sidecars, state store, message broker)
 - Service defaults project configures OpenTelemetry, health checks, resilience
 - Aspire publishers generate deployment manifests for Docker Compose, Kubernetes, Azure Container Apps
@@ -617,12 +625,14 @@ Query responses include `ETag` header. Clients pass `If-None-Match` with cached 
 Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure that enables building a DDD application on EventStore. Unlike a feature MVP (smallest useful product) or experience MVP (simplest delightful experience), a platform MVP must deliver a complete pipeline or it delivers nothing. A half-built event sourcing pipeline has zero value -- commands must flow to events, events must persist, events must distribute. There is no useful subset of this pipeline.
 
 **Strategic Rationale:**
+
 - The product brief's vision is "the missing Dapr-native, append-only event store for .NET" -- the MVP must prove this vision works end-to-end
 - Jerome is the primary developer -- the MVP must be achievable by a single experienced .NET developer in a focused development period
 - The open-source traction goal (100+ stars, 500+ NuGet downloads in 12 months) requires a working, demonstrable system on day one of public release
 - The irreversible event envelope decision must be validated before GA -- the MVP scope includes 3+ domain service implementations as a validation gate
 
 **Resource Requirements:**
+
 - Primary developer: 1 senior .NET developer (Jerome) with deep DAPR and DDD expertise
 - Infrastructure: DAPR runtime, .NET 10 SDK, Aspire 13 tooling
 - Testing environments: Redis (local dev), PostgreSQL (production validation)
@@ -632,101 +642,101 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 **Core User Journeys Supported by v1:**
 
-| Journey | v1 Support | Key Features Required |
-|---------|-----------|----------------------|
-| Marco's First Day (Developer Success) | Full | Aspire orchestration, sample service, Command API, domain registration |
-| Marco's Bad Day (Error Recovery) | Full | Structured logging, dead-letter topics, correlation tracing, Command API replay |
-| Priya's Deployment (Infrastructure) | Full | Aspire publishers, DAPR component config, OpenTelemetry |
-| Sanjay's Integration (API Consumer) | Full | Command API Gateway, JWT auth, correlation IDs |
-| Alex's Monday Morning (Operations) | Deferred to v2 | Requires Blazor dashboard |
-| Marco's Read Model (Query/Projection) | Deferred to v2 | Requires query pipeline, ETag actors, SignalR |
+| Journey                               | v1 Support     | Key Features Required                                                           |
+| ------------------------------------- | -------------- | ------------------------------------------------------------------------------- |
+| Marco's First Day (Developer Success) | Full           | Aspire orchestration, sample service, Command API, domain registration          |
+| Marco's Bad Day (Error Recovery)      | Full           | Structured logging, dead-letter topics, correlation tracing, Command API replay |
+| Priya's Deployment (Infrastructure)   | Full           | Aspire publishers, DAPR component config, OpenTelemetry                         |
+| Sanjay's Integration (API Consumer)   | Full           | Command API Gateway, JWT auth, correlation IDs                                  |
+| Alex's Monday Morning (Operations)    | Deferred to v2 | Requires Blazor dashboard                                                       |
+| Marco's Read Model (Query/Projection) | Deferred to v2 | Requires query pipeline, ETag actors, SignalR                                   |
 
 **Must-Have Analysis:**
 
-| Capability | Without This... | Manual Alternative? | MVP Verdict |
-|-----------|-----------------|---------------------|-------------|
-| Event Envelope (11 fields) | Events lack traceability, multi-tenancy, versioning | No | MUST HAVE |
-| Identity Scheme (`tenant:domain:id`) | No consistent addressing across actors, stores, topics | No | MUST HAVE |
-| Command API Gateway | No entry point for commands | No | MUST HAVE |
-| Actor-Based Processing | No concurrency control, no aggregate isolation | No | MUST HAVE |
-| Domain Service Integration | EventStore can't process domain logic | No | MUST HAVE |
-| Event Persistence | Events are lost | No | MUST HAVE |
-| Event Distribution (Pub/Sub) | Subscribers can't react to events | Polling state store (fragile) | MUST HAVE |
-| Snapshot Support | Aggregates with many events become slow to load | Tolerable for small event counts | MUST HAVE (performance gate) |
-| Aspire Orchestration | Manual multi-service startup | Docker Compose (painful) | MUST HAVE (DX gate) |
-| Sample Domain Service | Developers have no reference | Documentation only (insufficient) | MUST HAVE (onboarding gate) |
-| Dead Letter Handling | Failed commands disappear silently | Manual log searching | MUST HAVE (operational gate) |
-| OpenTelemetry Tracing | No visibility into command lifecycle | printf debugging | MUST HAVE (operational gate) |
-| JWT Authentication | No access control on Command API | None (security risk) | MUST HAVE |
-| Blazor Dashboard | No UI for operations | Logs + traces (v1 operational model) | DEFER TO v2 |
-| DAPR Workflows | No workflow orchestration | Actors with state machine (v1 design) | DEFER TO v2 |
-| Saga Support | No multi-aggregate coordination | Manual compensation via domain services | DEFER TO v2 |
-| Query Pipeline / Projection Caching | No server-side query caching or cache invalidation | Direct database queries from domain services | DEFER TO v2 |
-| SignalR Real-Time Notification | No push notification to UI clients | Client polling or manual refresh | DEFER TO v2 |
+| Capability                           | Without This...                                        | Manual Alternative?                          | MVP Verdict                  |
+| ------------------------------------ | ------------------------------------------------------ | -------------------------------------------- | ---------------------------- |
+| Event Envelope (11 fields)           | Events lack traceability, multi-tenancy, versioning    | No                                           | MUST HAVE                    |
+| Identity Scheme (`tenant:domain:id`) | No consistent addressing across actors, stores, topics | No                                           | MUST HAVE                    |
+| Command API Gateway                  | No entry point for commands                            | No                                           | MUST HAVE                    |
+| Actor-Based Processing               | No concurrency control, no aggregate isolation         | No                                           | MUST HAVE                    |
+| Domain Service Integration           | EventStore can't process domain logic                  | No                                           | MUST HAVE                    |
+| Event Persistence                    | Events are lost                                        | No                                           | MUST HAVE                    |
+| Event Distribution (Pub/Sub)         | Subscribers can't react to events                      | Polling state store (fragile)                | MUST HAVE                    |
+| Snapshot Support                     | Aggregates with many events become slow to load        | Tolerable for small event counts             | MUST HAVE (performance gate) |
+| Aspire Orchestration                 | Manual multi-service startup                           | Docker Compose (painful)                     | MUST HAVE (DX gate)          |
+| Sample Domain Service                | Developers have no reference                           | Documentation only (insufficient)            | MUST HAVE (onboarding gate)  |
+| Dead Letter Handling                 | Failed commands disappear silently                     | Manual log searching                         | MUST HAVE (operational gate) |
+| OpenTelemetry Tracing                | No visibility into command lifecycle                   | printf debugging                             | MUST HAVE (operational gate) |
+| JWT Authentication                   | No access control on Command API                       | None (security risk)                         | MUST HAVE                    |
+| Blazor Dashboard                     | No UI for operations                                   | Logs + traces (v1 operational model)         | DEFER TO v2                  |
+| DAPR Workflows                       | No workflow orchestration                              | Actors with state machine (v1 design)        | DEFER TO v2                  |
+| Saga Support                         | No multi-aggregate coordination                        | Manual compensation via domain services      | DEFER TO v2                  |
+| Query Pipeline / Projection Caching  | No server-side query caching or cache invalidation     | Direct database queries from domain services | DEFER TO v2                  |
+| SignalR Real-Time Notification       | No push notification to UI clients                     | Client polling or manual refresh             | DEFER TO v2                  |
 
 ### Post-MVP Features
 
 **Phase 2: Operational Control Plane (v2)**
 
-| Feature | Dependency | Value |
-|---------|-----------|-------|
-| Blazor Fluent UI Dashboard | v1 stable, Blazor Fluent UI V4 | Enables Alex's journey -- self-service operations |
-| DAPR Workflow Migration | v1 workflow-ready actor design | Replaces direct actor lifecycle with orchestrated workflows |
-| Saga/Process Manager | DAPR Workflows | Multi-aggregate operations with compensation |
-| Dead-Letter Management UI | Blazor Dashboard | Visual inspect/fix/replay replacing topic + log approach |
-| Domain Service Version Management | Blazor Dashboard + DAPR config | Instant rollback via UI |
-| External Authorization Engine | v1 JWT model stable | OpenFGA/OPA extending claims-based model |
-| Max Causation Depth Guardrail | Saga/Process Manager | Saga loop prevention via configurable causation chain depth limit |
-| Query Pipeline & Projection Caching | v1 stable event distribution | ETag actor-based cache invalidation, 3-tier query actor routing, page cache actors, HTTP 304 pre-check |
-| SignalR Real-Time Notification | Query Pipeline | Push-to-browser projection change signals via SignalR hub inside EventStore, DAPR pub/sub as backplane |
-| Query Contract Library (NuGet) | Query Pipeline | Typed query metadata (Domain, QueryType, TenantId, ProjectionType, optional EntityId) as single source of routing truth |
+| Feature                             | Dependency                     | Value                                                                                                                   |
+| ----------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Blazor Fluent UI Dashboard          | v1 stable, Blazor Fluent UI V4 | Enables Alex's journey -- self-service operations                                                                       |
+| DAPR Workflow Migration             | v1 workflow-ready actor design | Replaces direct actor lifecycle with orchestrated workflows                                                             |
+| Saga/Process Manager                | DAPR Workflows                 | Multi-aggregate operations with compensation                                                                            |
+| Dead-Letter Management UI           | Blazor Dashboard               | Visual inspect/fix/replay replacing topic + log approach                                                                |
+| Domain Service Version Management   | Blazor Dashboard + DAPR config | Instant rollback via UI                                                                                                 |
+| External Authorization Engine       | v1 JWT model stable            | OpenFGA/OPA extending claims-based model                                                                                |
+| Max Causation Depth Guardrail       | Saga/Process Manager           | Saga loop prevention via configurable causation chain depth limit                                                       |
+| Query Pipeline & Projection Caching | v1 stable event distribution   | ETag actor-based cache invalidation, 3-tier query actor routing, page cache actors, HTTP 304 pre-check                  |
+| SignalR Real-Time Notification      | Query Pipeline                 | Push-to-browser projection change signals via SignalR hub inside EventStore, DAPR pub/sub as backplane                  |
+| Query Contract Library (NuGet)      | Query Pipeline                 | Typed query metadata (Domain, QueryType, TenantId, ProjectionType, optional EntityId) as single source of routing truth |
 
 **Phase 3: Enterprise Readiness (v3)**
 
-| Feature | Dependency | Value |
-|---------|-----------|-------|
-| GDPR Crypto-Shredding | Per-tenant encryption key management | Regulatory compliance for EU markets |
-| Event Versioning/Migration | Stable event envelope | Schema evolution tooling (EF Migrations-like) |
-| Active-Passive Failover | Cloud replica infrastructure | HA for production-critical deployments |
-| Hot/Cold Storage Tiering | Snapshot-based archival | Cost optimization for high-volume event streams |
-| Advanced Authorization | External auth engine (v2) | Per-command ACLs, state-dependent rules |
+| Feature                    | Dependency                           | Value                                           |
+| -------------------------- | ------------------------------------ | ----------------------------------------------- |
+| GDPR Crypto-Shredding      | Per-tenant encryption key management | Regulatory compliance for EU markets            |
+| Event Versioning/Migration | Stable event envelope                | Schema evolution tooling (EF Migrations-like)   |
+| Active-Passive Failover    | Cloud replica infrastructure         | HA for production-critical deployments          |
+| Hot/Cold Storage Tiering   | Snapshot-based archival              | Cost optimization for high-volume event streams |
+| Advanced Authorization     | External auth engine (v2)            | Per-command ACLs, state-dependent rules         |
 
 **Phase 4: Ecosystem & Community (v4)**
 
-| Feature | Dependency | Value |
-|---------|-----------|-------|
-| `dotnet new` Templates | Stable domain service contract | One-command domain service scaffolding |
-| Domain Service SDK | v1+ stable packages | Testing helpers, assertion utilities |
-| Interactive Onboarding Tutorial | Stable platform + docs | Guided first experience |
-| gRPC Command API | REST API stable (v1-v3) | High-performance command submission |
-| Plugin Architecture | Stable command pipeline | Custom middleware extensibility |
+| Feature                         | Dependency                     | Value                                  |
+| ------------------------------- | ------------------------------ | -------------------------------------- |
+| `dotnet new` Templates          | Stable domain service contract | One-command domain service scaffolding |
+| Domain Service SDK              | v1+ stable packages            | Testing helpers, assertion utilities   |
+| Interactive Onboarding Tutorial | Stable platform + docs         | Guided first experience                |
+| gRPC Command API                | REST API stable (v1-v3)        | High-performance command submission    |
+| Plugin Architecture             | Stable command pipeline        | Custom middleware extensibility        |
 
 ### Risk Mitigation Strategy
 
 **Technical Risks:**
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Event envelope insufficient for real-world domains | Medium | Critical (irreversible) | Validate through 3+ domain implementations before GA; extension metadata bag as escape valve |
-| DAPR state store limitations block event sourcing patterns | Medium | High | Test against Redis + PostgreSQL early; document backend compatibility matrix; design around lowest common denominator with backend-specific optimizations |
-| Actor rebalancing causes command loss during scaling | Low | Critical | DAPR actor placement uses consistent hashing; checkpointed state machine enables recovery; integration tests simulate rebalancing |
-| Performance targets missed (p99 latency) | Medium | Medium | Benchmark early and continuously; snapshot strategy tunable per aggregate; identify DAPR sidecar overhead baseline |
+| Risk                                                       | Likelihood | Impact                  | Mitigation                                                                                                                                                |
+| ---------------------------------------------------------- | ---------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event envelope insufficient for real-world domains         | Medium     | Critical (irreversible) | Validate through 3+ domain implementations before GA; extension metadata bag as escape valve                                                              |
+| DAPR state store limitations block event sourcing patterns | Medium     | High                    | Test against Redis + PostgreSQL early; document backend compatibility matrix; design around lowest common denominator with backend-specific optimizations |
+| Actor rebalancing causes command loss during scaling       | Low        | Critical                | DAPR actor placement uses consistent hashing; checkpointed state machine enables recovery; integration tests simulate rebalancing                         |
+| Performance targets missed (p99 latency)                   | Medium     | Medium                  | Benchmark early and continuously; snapshot strategy tunable per aggregate; identify DAPR sidecar overhead baseline                                        |
 
 **Market Risks:**
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| .NET event sourcing market too niche for traction | Low | Medium | Target DAPR community (broader than event sourcing community); position as "DAPR-native" not "yet another event store" |
-| DAPR dependency scares potential adopters | Medium | Medium | Emphasize Aspire single-command startup; demonstrate zero-config local development; show DAPR as value-add not lock-in |
-| Marten or EventStoreDB adds DAPR integration | Low | High | Move fast to establish first-mover position; focus on platform model differentiator (not just DAPR integration) |
+| Risk                                              | Likelihood | Impact | Mitigation                                                                                                             |
+| ------------------------------------------------- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
+| .NET event sourcing market too niche for traction | Low        | Medium | Target DAPR community (broader than event sourcing community); position as "DAPR-native" not "yet another event store" |
+| DAPR dependency scares potential adopters         | Medium     | Medium | Emphasize Aspire single-command startup; demonstrate zero-config local development; show DAPR as value-add not lock-in |
+| Marten or EventStoreDB adds DAPR integration      | Low        | High   | Move fast to establish first-mover position; focus on platform model differentiator (not just DAPR integration)        |
 
 **Resource Risks:**
 
-| Risk | Mitigation |
-|------|-----------|
-| Solo developer bottleneck | v1 scope deliberately sized for single developer; no UI work in v1; leverage DAPR building blocks to avoid building infrastructure |
-| Burnout from scope creep | Strict v1 feature freeze after 10 core features defined; defer all "nice-to-have" to v2+ |
-| External contributor dependency for v2 | v2 Blazor dashboard is independent from core pipeline; can be contributed separately without blocking v1 operations |
+| Risk                                   | Mitigation                                                                                                                         |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Solo developer bottleneck              | v1 scope deliberately sized for single developer; no UI work in v1; leverage DAPR building blocks to avoid building infrastructure |
+| Burnout from scope creep               | Strict v1 feature freeze after 10 core features defined; defer all "nice-to-have" to v2+                                           |
+| External contributor dependency for v2 | v2 Blazor dashboard is independent from core pipeline; can be contributed separately without blocking v1 operations                |
 
 ## Functional Requirements
 
@@ -810,8 +820,8 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - FR52: A domain service developer can notify EventStore of a projection change by calling `NotifyProjectionChanged(projectionType, tenantId, entityId?)` via NuGet helper, with the underlying transport (DAPR pub/sub by default, or direct service invocation) selected by configuration
 - FR53: The query REST endpoint can perform an ETag pre-check (first gate) by calling the ETag actor before routing to the query actor -- if the client's `If-None-Match` header matches the current ETag, the endpoint returns HTTP 304 without activating the query actor
 - FR54: A query actor can serve as an in-memory page cache (second gate) with no state store persistence, comparing its cached ETag against the current ETag actor value on each request and re-querying the projection on mismatch. FR53 is the hot-path optimization; FR54 operates independently when the query actor is activated (e.g., client has no ETag or ETag is stale)
-- FR55: The system can broadcast a signal-only "changed" message to connected SignalR clients when a projection's ETag is regenerated, with clients grouped by ETag actor ID (`{ProjectionType}-{TenantId}`)
-- FR56: The system can host a SignalR hub inside the EventStore server, using DAPR pub/sub as the backplane for multi-instance SignalR message distribution
+- FR55: The system can broadcast a signal-only "changed" message to connected SignalR clients when a projection's ETag is regenerated, with clients grouped by ETag actor ID (`{ProjectionType}:{TenantId}`)
+- FR56: The system can host a SignalR hub inside the EventStore server, using a Redis backplane for multi-instance SignalR message distribution (a DAPR-managed Redis instance may be reused in supported deployments)
 - FR57: A query contract library (NuGet) can define mandatory query metadata fields (Domain, QueryType, TenantId, ProjectionType) and optional fields (EntityId) as typed static members, serving as the single source of truth for query routing
 - FR58: The system can invalidate all cached query results for a projection+tenant pair on any projection change notification (coarse invalidation model -- all filters invalidated per projection per tenant). Rationale: coarse invalidation trades unnecessary cache refreshes for design simplicity -- fine-grained filter-aware invalidation would require the EventStore to understand projection schemas, violating the platform's opacity principle
 - FR59: The SignalR client helper (NuGet) can automatically rejoin SignalR groups on connection recovery, restoring real-time push notification after Blazor Server circuit reconnection, WebSocket drops, or network interruption -- without requiring manual intervention by the developer

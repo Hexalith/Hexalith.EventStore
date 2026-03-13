@@ -46,6 +46,7 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-build --configuration Release --logger "trx;LogFileName=client-results.trx"
           dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=testing-results.trx"
           dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=sample-results.trx"
+          dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --no-build --configuration Release --logger "trx;LogFileName=signalr-results.trx"
           dotnet test tests/Hexalith.EventStore.Server.Tests/ --no-build --configuration Release --logger "trx;LogFileName=server-results.trx"
 
       - name: Pack NuGet
@@ -64,6 +65,7 @@ jobs:
             "Hexalith.EventStore.Contracts",
             "Hexalith.EventStore.Client",
             "Hexalith.EventStore.Server",
+            "Hexalith.EventStore.SignalR",
             "Hexalith.EventStore.Testing",
             "Hexalith.EventStore.Aspire",
           }
@@ -79,8 +81,8 @@ jobs:
           for p in packages:
             print(f" - {p.name}")
 
-          if len(packages) != 5:
-            print(f"::error::Expected exactly 5 .nupkg files, found {len(packages)}")
+          if len(packages) != 6:
+            print(f"::error::Expected exactly 6 .nupkg files, found {len(packages)}")
             sys.exit(1)
 
           found_ids = set()

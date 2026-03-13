@@ -1,0 +1,75 @@
+@page "/"
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<h1>Hexalith EventStore — UI Refresh Patterns</h1>
+
+<p>
+    This sample demonstrates three approaches for handling real-time projection change signals
+    from EventStore via SignalR. Each pattern uses the <code>EventStoreSignalRClient</code> to
+    subscribe to the "changed" signal — a notification that contains only
+    <code>(projectionType, tenantId)</code> with no data payload. Patterns must re-query the
+    CommandApi to get updated data.
+</p>
+
+<h2>Pattern Comparison</h2>
+
+<FluentDataGrid Items="@_patterns.AsQueryable()" Style="width: 100%; margin-bottom: 24px;">
+    <PropertyColumn Property="@(p => p.Name)" Title="Pattern" />
+    <PropertyColumn Property="@(p => p.UxImpact)" Title="UX Impact" />
+    <PropertyColumn Property="@(p => p.Effort)" Title="Implementation Effort" />
+    <PropertyColumn Property="@(p => p.BestFor)" Title="Best Use Case" />
+</FluentDataGrid>
+
+<h2>Recommended Learning Order</h2>
+<ol>
+    <li>
+        <strong><a href="/pattern-silent-reload">Pattern 2: Silent Reload</a></strong> —
+        Simplest (~20 lines). Data refreshes automatically on signal with debounce.
+        Start here for immediate gratification.
+    </li>
+    <li>
+        <strong><a href="/pattern-notification">Pattern 1: Notification</a></strong> —
+        Adds user control. A persistent message bar prompts the user to refresh when
+        data changes. No layout shifts until user acts.
+    </li>
+    <li>
+        <strong><a href="/pattern-selective-refresh">Pattern 3: Selective Refresh</a></strong> —
+        Most sophisticated. Each component manages its own subscription and refreshes
+        independently. Best UX but more implementation effort.
+    </li>
+</ol>
+
+<h2>How to Run</h2>
+<FluentCard Style="padding: 24px; margin-bottom: 16px;">
+    <ol>
+        <li>
+            <strong>Start the Aspire AppHost:</strong>
+            <code>dotnet run --project src/Hexalith.EventStore.AppHost</code>
+        </li>
+        <li>
+            <strong>Verify CommandApi is running</strong> with SignalR enabled
+            (<code>EventStore:SignalR:Enabled = true</code>). The Aspire topology
+            configures this automatically.
+        </li>
+        <li>
+            <strong>Open the Blazor UI URL</strong> from the Aspire dashboard
+            (look for "sample-blazor-ui" resource).
+        </li>
+        <li>
+            <strong>Try the patterns:</strong> Navigate using the sidebar. Use the
+            Counter domain sample to trigger projection changes and observe each
+            pattern's behavior.
+        </li>
+    </ol>
+</FluentCard>
+
+@code {
+    private readonly List<PatternInfo> _patterns =
+    [
+        new("1: Notification", "Least disruptive — user controls refresh", "Low", "Dashboards, admin panels"),
+        new("2: Silent Reload", "Seamless — data always current", "Low", "Real-time monitoring, counters"),
+        new("3: Selective Refresh", "Best — only affected components update", "Medium", "Complex dashboards, multi-panel UIs"),
+    ];
+
+    private sealed record PatternInfo(string Name, string UxImpact, string Effort, string BestFor);
+}

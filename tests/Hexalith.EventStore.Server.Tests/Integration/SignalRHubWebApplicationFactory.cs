@@ -1,0 +1,22 @@
+extern alias commandapi;
+
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+
+using CommandApiProgram = commandapi::Program;
+
+namespace Hexalith.EventStore.Server.Tests.Integration;
+
+public class SignalRHubWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
+    protected override void ConfigureWebHost(IWebHostBuilder builder) {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.UseEnvironment("Development");
+
+        builder.ConfigureAppConfiguration((_, config) => {
+            config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:SignalR:Enabled"] = "true",
+            });
+        });
+    }
+}

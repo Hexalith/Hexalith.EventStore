@@ -1,0 +1,23 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentHeader>
+        Hexalith EventStore — UI Refresh Patterns
+    </FluentHeader>
+
+    <FluentBodyContent>
+        <FluentStack Orientation="Orientation.Horizontal" Style="height: 100%;">
+            <FluentNavMenu Width="280" Title="Patterns">
+                <FluentNavLink Href="/">Overview</FluentNavLink>
+                <FluentNavLink Href="/pattern-notification">Pattern 1: Notification</FluentNavLink>
+                <FluentNavLink Href="/pattern-silent-reload">Pattern 2: Silent Reload</FluentNavLink>
+                <FluentNavLink Href="/pattern-selective-refresh">Pattern 3: Selective Refresh</FluentNavLink>
+            </FluentNavMenu>
+
+            <div style="flex: 1; padding: 24px; overflow-y: auto;">
+                @Body
+            </div>
+        </FluentStack>
+    </FluentBodyContent>
+</FluentLayout>

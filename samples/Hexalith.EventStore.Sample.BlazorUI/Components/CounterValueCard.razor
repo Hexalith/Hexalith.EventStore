@@ -1,0 +1,75 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject EventStoreSignalRClient SignalRClient
+@inject CounterQueryService QueryService
+@implements IAsyncDisposable
+
+<FluentCard Style="padding: 24px;">
+    <h3>Current Count</h3>
+    @if (_isLoading)
+    {
+        <FluentProgress />
+    }
+    else if (_result is not null)
+    {
+        <p style="font-size: 48px; font-weight: bold; margin: 16px 0;">@_result.Count</p>
+        <p style="color: var(--neutral-foreground-hint); font-size: 12px;">
+            Last refreshed: @_lastRefreshed?.ToString("HH:mm:ss")
+        </p>
+    }
+    else if (_error is not null)
+    {
+        <FluentMessageBar Title="Error" Intent="MessageIntent.Error">
+            @_error
+        </FluentMessageBar>
+    }
+</FluentCard>
+
+@code {
+    [Parameter] public string TenantId { get; set; } = "sample-tenant";
+    [Parameter] public string ProjectionType { get; set; } = "counter";
+
+    private CounterStatusResult? _result;
+    private DateTime? _lastRefreshed;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SignalRClient.SubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
+        await LoadDataAsync();
+        _isLoading = false;
+    }
+
+    private void OnProjectionChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            await LoadDataAsync();
+
+            _isLoading = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _result = await QueryService.GetCounterStatusAsync(TenantId);
+            _lastRefreshed = DateTime.Now;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId);
+    }
+}

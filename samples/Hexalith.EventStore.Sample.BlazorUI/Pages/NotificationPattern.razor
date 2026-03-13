@@ -1,0 +1,120 @@
+@page "/pattern-notification"
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject EventStoreSignalRClient SignalRClient
+@inject CounterQueryService QueryService
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+
+<!-- Pattern 1: Persistent Notification (FluentMessageBar)
+     Trade-offs:
+     + Least disruptive — user controls when data refreshes
+     + No layout shifts — UI stays stable until user acts
+     + Persistent — unlike toasts, doesn't auto-dismiss before user can act
+     - Requires user action — stale data shown until refresh clicked
+     - Notification fatigue if changes are very frequent
+     Best for: Dashboards, admin panels, infrequent updates
+     Why not FluentToast? Toasts auto-dismiss (default ~5s). A "Refresh"
+     action on an auto-dismissing toast gives insufficient time to act. -->
+
+<h1>Pattern 1: Persistent Notification</h1>
+<p>
+    Shows a persistent inline message bar when the counter projection changes.
+    The user decides when to refresh — data stays stable until they click "Refresh Now".
+</p>
+
+@if (_hasChanges)
+{
+    <FluentMessageBar Title="Data Changed"
+                      Intent="MessageIntent.Warning"
+                      AllowDismiss="false"
+                      Style="margin-bottom: 16px;">
+        Counter data has changed.
+        <FluentButton Appearance="Appearance.Accent"
+                      OnClick="RefreshDataAsync"
+                      Style="margin-left: 12px;">
+            Refresh Now
+        </FluentButton>
+    </FluentMessageBar>
+}
+
+<FluentCard Style="max-width: 400px; padding: 24px;">
+    <h2>Counter Value</h2>
+    @if (_result is not null)
+    {
+        <p style="font-size: 48px; font-weight: bold; margin: 16px 0;">@_result.Count</p>
+        <p style="color: var(--neutral-foreground-hint);">
+            Last refreshed: @_lastRefreshed?.ToString("HH:mm:ss")
+        </p>
+        @if (_result.ETag is not null)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 12px;">
+                ETag: @_result.ETag[..Math.Min(8, _result.ETag.Length)]...
+            </p>
+        }
+    }
+    else if (_error is not null)
+    {
+        <FluentMessageBar Title="Error" Intent="MessageIntent.Error">
+            @_error
+        </FluentMessageBar>
+    }
+    else
+    {
+        <p>Loading...</p>
+    }
+</FluentCard>
+
+@code {
+    private string _tenantId = "sample-tenant";
+    private string _projectionType = "counter";
+    private CounterStatusResult? _result;
+    private DateTime? _lastRefreshed;
+    private bool _hasChanges;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tenantId = Configuration["EventStore:Counter:TenantId"] ?? "sample-tenant";
+        _projectionType = Configuration["EventStore:Counter:ProjectionType"] ?? "counter";
+
+        await SignalRClient.SubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
+        await LoadDataAsync();
+    }
+
+    private void OnProjectionChanged()
+    {
+        // Signal received — show notification bar (do not stack multiple)
+        _ = InvokeAsync(() =>
+        {
+            _hasChanges = true;
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        _hasChanges = false;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _result = await QueryService.GetCounterStatusAsync(_tenantId);
+            _lastRefreshed = DateTime.Now;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load counter: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId);
+    }
+}

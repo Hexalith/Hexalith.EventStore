@@ -67,6 +67,13 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
             Config = accessControlConfigPath,
         }));
 
+// Add Blazor UI sample — consumes CommandApi via Aspire service discovery (Story 18-6).
+// Enables SignalR on CommandApi so the hub is active when the Blazor UI is running.
+_ = commandApi.WithEnvironment("EventStore__SignalR__Enabled", "true");
+IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
+    .WithReference(commandApi)
+    .WithExternalHttpEndpoints();
+
 // --- Publisher environments (only activate during `aspire publish`) ---
 // Aspire requires exactly one compute environment per resource at publish time.
 // Set PUBLISH_TARGET to select the target publisher:

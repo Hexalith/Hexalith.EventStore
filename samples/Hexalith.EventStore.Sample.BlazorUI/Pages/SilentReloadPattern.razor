@@ -1,0 +1,127 @@
+@page "/pattern-silent-reload"
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject EventStoreSignalRClient SignalRClient
+@inject CounterQueryService QueryService
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+
+<!-- Pattern 2: Automatic Silent Reload
+     Trade-offs:
+     + Seamless — data always current without user intervention
+     + Simple to implement — just re-fetch on signal
+     - May cause layout shifts if data size changes
+     - Higher query load — every signal triggers a fetch
+     - User may lose scroll position or selection state
+     Best for: Real-time monitoring, simple data views, counter displays -->
+
+<h1>Pattern 2: Automatic Silent Reload</h1>
+<p>
+    Data refreshes automatically when the counter projection changes.
+    A subtle fade transition indicates the update — no user action required.
+</p>
+
+<FluentCard Style="max-width: 400px; padding: 24px;">
+    <h2>Counter Value</h2>
+    @if (_result is not null)
+    {
+        <div style="transition: opacity 0.3s ease; opacity: @(_isRefreshing ? "0.5" : "1");">
+            <p style="font-size: 48px; font-weight: bold; margin: 16px 0;">@_result.Count</p>
+        </div>
+        <p style="color: var(--neutral-foreground-hint);">
+            Last updated: @_lastRefreshed?.ToString("HH:mm:ss")
+        </p>
+        @if (_result.ETag is not null)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 12px;">
+                ETag: @_result.ETag[..Math.Min(8, _result.ETag.Length)]...
+            </p>
+        }
+        <p style="color: var(--neutral-foreground-hint); font-size: 12px;">
+            Refresh count: @_refreshCount
+        </p>
+    }
+    else if (_error is not null)
+    {
+        <FluentMessageBar Title="Error" Intent="MessageIntent.Error">
+            @_error
+        </FluentMessageBar>
+    }
+    else
+    {
+        <p>Loading...</p>
+    }
+</FluentCard>
+
+@code {
+    // 200ms balances responsiveness vs. query coalescing — increase for high-frequency projections
+    private const int DebounceDelayMs = 200;
+
+    private string _tenantId = "sample-tenant";
+    private string _projectionType = "counter";
+    private CounterStatusResult? _result;
+    private DateTime? _lastRefreshed;
+    private bool _isRefreshing;
+    private int _refreshCount;
+    private string? _error;
+    private CancellationTokenSource? _debounceCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tenantId = Configuration["EventStore:Counter:TenantId"] ?? "sample-tenant";
+        _projectionType = Configuration["EventStore:Counter:ProjectionType"] ?? "counter";
+
+        await SignalRClient.SubscribeAsync(_projectionType, _tenantId, OnProjectionChanged);
+        await LoadDataAsync();
+    }
+
+    private void OnProjectionChanged()
+    {
+        // Cancel any pending debounce and start a new one
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        CancellationToken token = _debounceCts.Token;
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(DebounceDelayMs, token);
+            }
+            catch (TaskCanceledException)
+            {
+                return; // Another signal arrived — this debounce was superseded
+            }
+
+            _isRefreshing = true;
+            StateHasChanged();
+
+            await LoadDataAsync();
+
+            _isRefreshing = false;
+            _refreshCount++;
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _result = await QueryService.GetCounterStatusAsync(_tenantId);
+            _lastRefreshed = DateTime.Now;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load counter: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        await SignalRClient.UnsubscribeAsync(_projectionType, _tenantId);
+    }
+}

@@ -1,0 +1,39 @@
+@page "/pattern-selective-refresh"
+@inject IConfiguration Configuration
+
+<!-- Pattern 3: Selective Component Refresh
+     Trade-offs:
+     + Best UX — only affected components refresh
+     + Preserves user state in non-affected components
+     + Minimal layout shifts — isolated refresh boundaries
+     - Most implementation effort — each component manages its own subscription
+     - Multiple query calls per signal (one per subscribed component)
+     Best for: Complex dashboards, multi-panel UIs, collaborative editing -->
+
+<h1>Pattern 3: Selective Component Refresh</h1>
+<p>
+    Each component independently subscribes to projection changes and refreshes its own data.
+    The command form does not subscribe — it only submits commands. Notice how each card
+    refreshes independently when the projection changes.
+</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px;">
+    <div>
+        <CounterValueCard TenantId="@_tenantId" ProjectionType="@_projectionType" />
+        <CounterCommandForm TenantId="@_tenantId" />
+    </div>
+    <div>
+        <CounterHistoryGrid TenantId="@_tenantId" ProjectionType="@_projectionType" />
+    </div>
+</div>
+
+@code {
+    private string _tenantId = "sample-tenant";
+    private string _projectionType = "counter";
+
+    protected override void OnInitialized()
+    {
+        _tenantId = Configuration["EventStore:Counter:TenantId"] ?? "sample-tenant";
+        _projectionType = Configuration["EventStore:Counter:ProjectionType"] ?? "counter";
+    }
+}
