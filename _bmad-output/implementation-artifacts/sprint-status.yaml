@@ -41,13 +41,15 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Developer SDK, Core Contracts & Local Development Setup
-  epic-1: done
+  # REOPENED: Story 1.7 added via sprint-change-proposal-2026-03-14.md (DDD Message Design)
+  epic-1: in-progress
   1-1-solution-structure-and-build-infrastructure: done
   1-2-contracts-package-event-envelope-and-core-types: done
   1-3-client-package-domain-processor-contract-and-registration: done
   1-4-testing-package-in-memory-test-helpers: done
   1-5-aspire-apphost-and-servicedefaults-scaffolding: done
   1-6-contracts-unit-tests-tier-1: done
+  1-7-messagetype-value-object-and-ulid-integration: backlog
   epic-1-retrospective: optional
 
   # Epic 2: Command API Gateway & Status Tracking
@@ -88,11 +90,14 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Multi-Tenant Security & Access Control Enforcement
-  epic-5: done
+  # REOPENED: FR66 (aggregate tombstoning) and FR67 (backpressure) added via sprint-change-proposal-2026-03-14.md
+  epic-5: in-progress
   5-1-dapr-access-control-policies: done
   5-2-data-path-isolation-verification: done
   5-3-pubsub-topic-isolation-enforcement: done
   5-4-security-audit-logging-and-payload-protection: done
+  5-5-aggregate-tombstoning-and-lifecycle-termination: backlog
+  5-6-per-aggregate-backpressure-with-http-429: backlog
   epic-5-retrospective: optional
 
   # Epic 6: Observability, Health & Operational Readiness

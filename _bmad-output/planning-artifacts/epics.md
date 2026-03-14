@@ -31,23 +31,26 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - FR8: The system can route failed commands to a dead-letter topic with full command payload, error details, and correlation context
 - FR49: The system can detect and reject duplicate commands by tracking processed command IDs per aggregate, returning an idempotent success response for already-processed commands
 
-**Event Management (8 FRs):**
+**Event Management (10 FRs):**
 
 - FR9: The system can persist events in an append-only, immutable event store where events are never modified or deleted after persistence
 - FR10: The system can assign strictly ordered, gapless sequence numbers to events within a single aggregate stream
-- FR11: The system can wrap each event in an 11-field metadata envelope (aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type, serialization format) plus opaque payload and extension metadata bag
+- FR11: The system can wrap each event in a 14-field metadata envelope (aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type, serialization format) plus opaque payload and extension metadata bag
 - FR12: The system can reconstruct aggregate state by replaying all events in an aggregate's stream from sequence 1 to current
 - FR13: The system can create snapshots of aggregate state at administrator-configured event count intervals (default: every 100 events, configurable per tenant-domain pair)
 - FR14: The system can reconstruct aggregate state from the latest snapshot plus subsequent events, producing identical state to full replay
 - FR15: The system can store events using a composite key strategy that includes tenant, domain, and aggregate identity for isolation
 - FR16: The system can enforce atomic event writes -- a command produces 0 or N events as a single transaction, never a partial subset
+- FR65: The event metadata envelope can include a `metadataVersion` field (integer, starting at 1) enabling external consumers to detect envelope schema changes and adapt their deserialization without breaking
+- FR66: The system can mark an aggregate as terminated (tombstoned) via a terminal event. A terminated aggregate rejects all subsequent commands with a domain rejection event, while its event stream remains immutable and replayable
 
-**Event Distribution (4 FRs):**
+**Event Distribution (5 FRs):**
 
 - FR17: The system can publish persisted events to subscribers via a pub/sub mechanism using CloudEvents 1.0 envelope format
 - FR18: The system can deliver events to subscribers with at-least-once delivery guarantee
 - FR19: The system can publish events to per-tenant-per-domain topics, ensuring subscribers only receive events for their authorized scope
 - FR20: The system can continue persisting events when the pub/sub system is temporarily unavailable, draining the backlog on recovery
+- FR67: The system can apply backpressure when aggregate command queues exceed a configurable depth threshold (default: 100 pending commands per aggregate), returning HTTP 429 with Retry-After header to prevent saga storms
 
 **Domain Service Integration (5 FRs):**
 
@@ -221,7 +224,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 | FR8 | Epic 3 | Dead-letter routing for failed commands |
 | FR9 | Epic 1 | Append-only immutable event store |
 | FR10 | Epic 1 | Gapless sequence numbers per aggregate |
-| FR11 | Epic 1 | 11-field metadata envelope |
+| FR11 | Epic 1 | 14-field metadata envelope |
 | FR12 | Epic 1 | State reconstruction via event replay |
 | FR13 | Epic 5 | Configurable snapshot intervals |
 | FR14 | Epic 5 | State from snapshot + tail events |
@@ -275,12 +278,15 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 | FR62 | Epic 8 | IQueryResponse compile-time enforcement |
 | FR63 | Epic 8 | Runtime projection type discovery |
 | FR64 | Epic 8 | Short projection type name guidance |
+| FR65 | Epic 1 | Metadata version field in envelope |
+| FR66 | Epic 5 | Aggregate tombstoning/lifecycle termination |
+| FR67 | Epic 5 | Per-aggregate backpressure with HTTP 429 |
 
 ## Epic List
 
 ### Epic 1: Core Command-to-Event Pipeline
 A developer can submit a command via REST API, have it routed to an aggregate actor, processed by a domain service, and see events persisted with full lifecycle status tracking.
-**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR9, FR10, FR11, FR12, FR15, FR16, FR21, FR23, FR26
+**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR9, FR10, FR11, FR12, FR15, FR16, FR21, FR23, FR26, FR65
 
 ### Epic 2: Developer SDK & Experience
 A domain developer can build their own domain service using the SDK, register it, run the complete system with Aspire, reference the sample Counter implementation, and write unit tests without DAPR.
@@ -296,7 +302,7 @@ The Command API enforces JWT authentication and fine-grained authorization. Mult
 
 ### Epic 5: Resilience & Advanced Processing
 The system handles duplicate commands idempotently, optimizes state rehydration with snapshots, supports operator command replay, and detects optimistic concurrency conflicts.
-**FRs covered:** FR6, FR7, FR13, FR14, FR49
+**FRs covered:** FR6, FR7, FR13, FR14, FR49, FR66, FR67
 
 ### Epic 6: Observability & Operations
 Full pipeline visibility with distributed OpenTelemetry traces, structured logs with correlation/causation IDs, dead-letter traceability, and health/readiness endpoints.
@@ -335,22 +341,25 @@ So that I can understand the event sourcing data model and start building agains
 
 **Given** the Contracts package exists
 **When** I reference `Hexalith.EventStore.Contracts`
-**Then** I can create an `EventEnvelope` record with all 11 metadata fields: aggregateId, tenantId, domain, sequenceNumber, timestamp, correlationId, causationId, userId, domainServiceVersion, eventType, serializationFormat
-**And** the envelope includes an opaque `payload` (byte array or JSON) and an `extensionMetadata` dictionary
+**Then** I can create an `EventMetadata` record with all 14 metadata fields: messageId (ULID), aggregateId (ULID), aggregateType, tenantId, sequenceNumber, globalPosition, timestamp, correlationId (ULID), causationId (ULID), userId, eventType (kebab), domainServiceVersion, metadataVersion, extensions. Event storage uses two-document format: `EventEnvelope` contains `EventMetadata` + opaque `payload` (JSON)
+**And** the `metadataVersion` field defaults to 1 and is included in every event's metadata JSON, enabling external consumers to detect envelope schema evolution (FR65)
 **And** a `EventStoreIdentity` value object encapsulates the canonical tuple `tenant:domain:aggregate-id`
 **And** `EventStoreIdentity` provides derived keys for actor IDs, event stream keys, and pub/sub topics per FR26
 **And** composite storage keys follow the pattern `{tenant}:{domain}:{aggId}:events:{seq}` per D1
 
 **Given** the Contracts package defines base types
 **When** I inspect the command and event contracts
-**Then** there is a base command type with mandatory fields (tenantId, domain, aggregateId, commandType)
+**Then** there is a `CommandEnvelope` with mandatory fields (messageId ULID, aggregateId ULID, commandType kebab `{domain}-{command}-v{ver}`, payload) and optional correlationId (ULID). No tenantId, domain, userId, or causationId — these are server-derived (D15, D16)
 **And** there is a base domain event type
 **And** there is an `IRejectionEvent` marker interface per D3
 **And** events follow past-tense naming convention per enforcement rule 8
 
+**And** a `MessageType` value object parses and validates the `{domain}-{name}-v{ver}` kebab convention (D13), exposing `Domain`, `Name`, and `Version` properties, with factory validation rejecting malformed strings
+**And** a `UlidId` value object wraps ULID generation and parsing (D12), used for messageId, aggregateId, correlationId
+
 **Given** all contract types are defined
 **When** I run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/`
-**Then** all serialization round-trip tests pass (JSON serialize → deserialize produces identical records)
+**Then** all serialization round-trip tests pass for both `EventMetadata` and payload JSON documents independently. `MessageType` parsing tests cover valid conventions, malformed strings, and edge cases. `UlidId` generation and parsing tests pass
 **And** identity tuple parsing and key derivation tests pass
 
 ---
@@ -366,7 +375,7 @@ So that I can write domain logic with zero infrastructure concerns and trust tha
 **Given** the Contracts package defines the domain processor interface
 **When** I inspect `IDomainProcessor<TCommand, TState>`
 **Then** it declares a method with signature `Process(TCommand command, TState? currentState) -> DomainResult`
-**And** `DomainResult` contains a `List<DomainEvent>` (may be empty for no-op commands)
+**And** `DomainResult` contains `AggregateType` (short kebab, e.g., `tenant`) and a `List<EventOutput>` where each `EventOutput` is (event .NET type, event payload). May be empty for no-op commands. **And** the domain service has zero knowledge of metadata fields, ULIDs, timestamps, or correlation chains — it returns only aggregate type, event types, and business payloads
 **And** the interface imposes no DAPR, HTTP, or infrastructure dependencies
 
 **Given** an event replay engine exists in the Server package
@@ -411,9 +420,9 @@ So that the event store guarantees consistency and no partial writes.
 **Given** the actor has rehydrated state and invoked the domain processor
 **When** the domain processor returns N events (N >= 1)
 **Then** each event is assigned a gapless sequence number continuing from the current aggregate sequence
-**And** the EventStore populates all 11 envelope metadata fields (SEC-1: domain service cannot set metadata)
-**And** events are stored via `IActorStateManager.SetStateAsync` at keys `{identity}:events:{seq}`
-**And** aggregate metadata is updated with the new sequence number
+**And** the EventStore populates all 14 envelope metadata fields (SEC-1): messageId (ULID, EventStore-generated), aggregateId, aggregateType (from DomainResult), tenantId (from JWT), sequenceNumber, globalPosition, timestamp (server clock), correlationId (from command, defaulted to command messageId), causationId (= command messageId), userId (from JWT), eventType (assembled as `{domain}-{event}-v{ver}` from .NET type), domainServiceVersion, metadataVersion
+**And** events are stored via `IActorStateManager.SetStateAsync` at keys `{identity}:events:{seq}` as two-document JSON: `{ metadata: {...}, payload: {...} }` per D14
+**And** aggregate metadata is updated with the new sequence number and the command messageId is added to the processed messageIds set (for idempotency per FR49)
 **And** `SaveStateAsync` commits all state changes atomically (all or nothing per FR16)
 
 **Given** the actor has rehydrated state and invoked the domain processor
@@ -442,17 +451,17 @@ So that I can send commands to the event store and track their lifecycle.
 **Acceptance Criteria:**
 
 **Given** the CommandApi is running
-**When** I send `POST /api/v1/commands` with a valid JSON payload containing tenantId, domain, aggregateId, commandType, and payload
+**When** I send `POST /api/v1/commands` with a valid JSON payload containing messageId (ULID), aggregateId (ULID), commandType (kebab `{domain}-{command}-v{ver}`), and payload
 **Then** I receive HTTP `202 Accepted`
 **And** the response includes a `correlationId` in the body
 **And** the response includes a `Location` header pointing to `/api/v1/commands/{correlationId}/status`
 **And** the response includes a `Retry-After: 1` header
 
 **Given** the CommandApi is running
-**When** I send `POST /api/v1/commands` with a missing `tenantId` field
+**When** I send `POST /api/v1/commands` with a missing `messageId` field
 **Then** I receive HTTP `400 Bad Request`
 **And** the response body is `application/problem+json` per RFC 7807 (D5)
-**And** the `validationErrors` array includes a field-level error for `tenantId`
+**And** the `validationErrors` array includes a field-level error for `messageId`
 **And** the error response never references event sourcing, actors, or DAPR internals
 
 **Given** the CommandApi is running
@@ -462,9 +471,9 @@ So that I can send commands to the event store and track their lifecycle.
 
 **Given** a valid command is submitted
 **When** the API generates the correlation ID
-**Then** the correlation ID is a unique identifier (GUID or equivalent)
+**Then** the correlationId defaults to the client-supplied messageId if not provided **And** tenantId is extracted from JWT claims (D15) **And** domain is parsed from commandType prefix via `MessageType` (D13, D15)
 **And** the command status is written to `Received` state at the API layer (D2: before actor invocation)
-**And** the command is routed to the aggregate actor based on `{tenantId}:{domain}:{aggregateId}`
+**And** the command is routed to the aggregate actor based on `{tenant}:{domain}:{aggregateId}` where tenant comes from JWT and domain from commandType prefix
 
 **Given** the CommandApi exposes Swagger documentation
 **When** I navigate to `/swagger`
@@ -521,7 +530,7 @@ So that the end-to-end command-to-event pipeline is functional.
 **When** the aggregate actor processes a command for `tenant-a:orders:order-123`
 **Then** the actor invokes the domain service via `DaprClient.InvokeMethodAsync` (D7)
 **And** the request payload includes the command and current aggregate state (or null for first command)
-**And** the response is a `DomainResult` containing a list of domain events
+**And** the response is a `DomainResult` containing aggregate type (short kebab) and a list of event outputs (event .NET type + payload). EventStore enriches each with full 14-field metadata, assembles kebab event type, and persists as two-document format
 
 **Given** the domain service returns events successfully
 **When** the actor receives the response
@@ -549,7 +558,36 @@ So that the end-to-end command-to-event pipeline is functional.
 
 ---
 
-**Epic 1 Complete: 6 stories, 14 FRs covered.**
+### Story 1.7: MessageType Value Object & ULID Integration
+
+As a domain service developer,
+I want a `MessageType` value object that validates `{domain}-{name}-v{ver}` and a `UlidId` type for identity fields,
+So that message routing is safe and IDs are lexicographically sortable.
+
+**FRs:** FR2 (validation), D12, D13
+
+**Acceptance Criteria:**
+
+**Given** the Contracts package provides a `MessageType` value object
+**When** I call `MessageType.Parse("tenants-create-tenant-v1")`
+**Then** it returns domain=`tenants`, name=`create-tenant`, version=`1`
+**And** `MessageType.Parse("invalid")` throws with descriptive error
+**And** `MessageType.Assemble("tenants", typeof(TenantCreated), 1)` produces `tenants-tenant-created-v1` (PascalCase → kebab conversion)
+
+**Given** the Contracts package provides a `UlidId` value object
+**When** I call `UlidId.New()`
+**Then** it generates a valid ULID
+**And** `UlidId.Parse(string)` validates ULID format and rejects malformed strings
+**And** ULIDs sort lexicographically by creation time
+
+**Given** all new types are in the Contracts package
+**When** I check dependencies
+**Then** the Contracts package has zero dependencies beyond the ULID library
+**And** all serialization round-trip tests pass for `MessageType` and `UlidId`
+
+---
+
+**Epic 1 Complete: 7 stories, 15 FRs covered.**
 
 Now moving to **Epic 2: Developer SDK & Experience**.
 
@@ -659,7 +697,8 @@ So that I can use convention-based aggregate patterns with less boilerplate than
 
 **Given** an aggregate uses convention-based DAPR resource naming
 **When** the aggregate type is named `CounterAggregate`
-**Then** the derived resource name is `counter` (kebab-case, automatic `Aggregate` suffix stripping per enforcement rule 17)
+**Then** the derived domain name is `counter` (kebab-case, automatic `Aggregate` suffix stripping per enforcement rule 17)
+**And** this domain name becomes the message type prefix for all commands and events: `counter-{name}-v{ver}` per D13
 **And** attribute overrides are validated at startup for non-empty, kebab-case compliance
 
 **Given** a developer implements both `IDomainProcessor` and `EventStoreAggregate`
@@ -700,6 +739,9 @@ So that I can learn the pure function programming model from a real example.
 **And** tests demonstrate: successful command → events, rejection scenario, state replay from events
 **And** tests use the `DomainProcessorTestHarness` from the Testing package
 **And** no DAPR runtime is required to run the tests
+
+**And** commands use kebab message types per D13: `counter-increment-counter-v1`, `counter-decrement-counter-v1`, `counter-reset-counter-v1`
+**And** the sample demonstrates ultra-thin command submission with messageId (ULID), aggregateId, commandType, payload per D16
 
 ### Story 2.4: Aspire AppHost & Single-Command Startup
 
@@ -1181,6 +1223,57 @@ So that I can recover from infrastructure failures without manual event manipula
 **Then** the replayed command is processed against the current aggregate state
 **And** the domain service decides whether the command is still valid given the new state
 **And** if the domain rejects it, a rejection event is persisted normally (D3)
+
+### Story 5.5: Aggregate Tombstoning & Lifecycle Termination
+
+As a system operator,
+I want aggregates to support terminal states that reject subsequent commands,
+So that completed or cancelled aggregates are permanently sealed while their event history remains intact.
+
+**FRs:** FR66
+
+**Acceptance Criteria:**
+
+**Given** a domain processor returns an event implementing `ITerminalEvent` marker interface
+**When** the event is persisted to the aggregate's event stream
+**Then** the aggregate metadata is updated to mark the aggregate as terminated
+**And** the terminal event increments the sequence number like any other event
+
+**Given** an aggregate is marked as terminated
+**When** a new command targets that aggregate
+**Then** the command is rejected with a domain rejection event (e.g., `AggregateTerminated`)
+**And** no domain service invocation occurs
+**And** the rejection event is persisted and the command status reflects `Rejected`
+
+**Given** an aggregate is terminated
+**When** its event stream is replayed
+**Then** all events including the terminal event are replayed correctly
+**And** the aggregate state reflects the terminated status
+
+### Story 5.6: Per-Aggregate Backpressure
+
+As a system operator,
+I want the system to apply backpressure when an aggregate's command queue exceeds a configurable depth,
+So that saga storms and head-of-line blocking cascades are prevented without affecting other aggregates.
+
+**FRs:** FR67
+
+**Acceptance Criteria:**
+
+**Given** the backpressure threshold is configured at 100 pending commands per aggregate (default)
+**When** an aggregate's pending command queue reaches the threshold
+**Then** subsequent commands targeting that aggregate receive HTTP 429 Too Many Requests
+**And** the response includes a `Retry-After` header with a configurable delay
+**And** commands targeting other aggregates are unaffected
+
+**Given** the backpressure threshold is configurable per tenant-domain pair via DAPR config store
+**When** an operator changes the threshold
+**Then** the new threshold takes effect without system restart (NFR20)
+
+**Given** backpressure is active on an aggregate
+**When** the pending command queue drains below the threshold
+**Then** new commands are accepted normally
+**And** no manual intervention is required to resume processing
 
 ## Epic 6: Observability & Operations
 

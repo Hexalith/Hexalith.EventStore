@@ -13,6 +13,9 @@ stepsCompleted:
     - step-11-polish
     - step-01b-continue
     - step-12-complete
+    - step-e-01-discovery
+    - step-e-02-review
+    - step-e-03-edit
 inputDocuments:
     - product-brief-Hexalith.EventStore-2026-02-11.md
     - market-event-sourcing-event-store-solutions-research-2026-02-11.md
@@ -22,11 +25,12 @@ inputDocuments:
     - technical-dotnet-10-aspire-13-research-2026-02-11.md
     - brainstorming-session-2026-02-11.md
     - brainstorming-session-2026-03-12-1.md
+    - brainstorming-session-2026-03-13-01.md
 workflowType: "prd"
 documentCounts:
     briefs: 1
     research: 5
-    brainstorming: 2
+    brainstorming: 3
     projectDocs: 0
 classification:
     projectType: "Event Sourcing Server Platform (primary) + Developer Tooling (secondary)"
@@ -40,8 +44,12 @@ classification:
         - DAPR runtime dependency adding operational surface area
     projectContext: "Greenfield codebase, pre-validated architecture"
     scopeStrategy: "Deliberate phasing - v1 actors with workflow-ready design, v2 workflow migration"
-lastEdited: "2026-03-13"
+lastEdited: "2026-03-14"
 editHistory:
+    - date: "2026-03-14"
+      changes: "Apply brainstorming session 2026-03-13 (DDD Message Design for Hexalith.Tenants) + validation fixes. Post-validation: fixed Journey 5 command payload (critical), FR23 field enumeration, line 86 Blazor→Aspire dashboard, line 88 learning curve quantified (4hr), line 118 ops model threshold (<2 escalations/month). Added FR65 (metadataVersion for external contract evolution), FR66 (aggregate tombstoning/lifecycle termination), FR67 (per-aggregate backpressure with HTTP 429). Event envelope 13→14 fields (added metadataVersion). Added JSON-only serialization note."
+    - date: "2026-03-14"
+      changes: "Initial brainstorming integration before validation. Command payload: 4+1 ultra-thin fields (messageId ULID, aggregateId ULID, commandType kebab {domain}-{command}-v{ver}, payload, optional correlationId). Server-derived: tenantId (JWT), domain (commandType prefix), userId (JWT), causationId (= command messageId). Event envelope: 11→13 fields (added messageId, aggregateType, globalPosition; removed domain, serializationFormat) + two-document storage (metadata JSON + payload JSON). Domain service contract: returns DomainResult (aggregateType + event outputs), EventStore enriches all metadata. ULID as universal ID format. Message type convention {domain}-{name}-v{ver}. Immutable events with multi-version handlers. Updated: Executive Summary, MVP Features 1-3-5, FR1/FR2/FR4/FR11/FR21/FR23/FR26/FR49, Data Schemas (envelope, keys, topics), API spec, auth model, risk section, Success Criteria, Journey 6. Added domain=bounded context note (1:1 with domain microservice). References architecture decisions D12-D17."
     - date: "2026-03-13"
       changes: "Apply brainstorming Extension 2 (2026-03-13): self-routing ETag design. ETag format changed from GUID base64-22 to {base64url(projectionType)}.{guid} -- opaque to clients, self-routing to server. Removed ProjectionType from mandatory client-side query metadata (FR57). Added runtime projection discovery via IQueryResponse<T> compile-time contract (FR62). Query actor learns projection mapping from microservice response on first call (FR63). Added self-routing ETag encoding/decoding FR (FR61). Updated FR51 (ETag format), FR53 (endpoint decodes ETag), FR54 (query actor cold path). Updated Innovation #5, Journey 7, Success Criteria, Executive Summary, Query API spec, Phase 2 roadmap, Journey Requirements Summary. Post-elicitation fixes: FR51 trimmed (FR61 owns format spec), FR53 covers non-existent projection type, FR57 clarifies consumer vs microservice sides, FR61 adds RFC 7232 quoting, FR64 added (projection type naming guidance for compact ETags)."
     - date: "2026-03-12"
@@ -57,7 +65,7 @@ editHistory:
 
 ## Executive Summary
 
-Hexalith.EventStore is an open-source, DAPR-native event sourcing server platform for .NET. It provides the missing infrastructure layer between DAPR's distributed building blocks and DDD application development -- enabling developers to build event-sourced applications by implementing pure function domain processors (`(Command, CurrentState?) -> List<DomainEvent>`) without writing any infrastructure code.
+Hexalith.EventStore is an open-source, DAPR-native event sourcing server platform for .NET. It provides the missing infrastructure layer between DAPR's distributed building blocks and DDD application development -- enabling developers to build event-sourced applications by implementing pure function domain processors (`(Command, CurrentState?) -> DomainResult`) that return only aggregate type, event types, and business payloads -- EventStore handles all metadata enrichment, persistence, and distribution without any infrastructure code in the domain service.
 
 **Core Differentiator:** Unlike existing solutions that are either purpose-built databases (EventStoreDB), PostgreSQL-coupled libraries (Marten), or JVM-centric frameworks (Axon), Hexalith.EventStore composes DAPR's actors, state store, pub/sub, and config store into an infrastructure-agnostic event sourcing platform. Infrastructure decisions become deployment decisions -- the same application code runs on Redis (dev), PostgreSQL (prod), or Cosmos DB (scale) with zero code changes.
 
@@ -77,9 +85,9 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 
 **Developer Experience (Jerome persona):**
 
-- **Time to first running system**: A new developer clones the repo, runs `dotnet aspire run`, and has the full EventStore + sample domain service + Blazor dashboard running locally in under 10 minutes -- zero manual infrastructure setup
+- **Time to first running system**: A new developer clones the repo, runs `dotnet aspire run`, and has the full EventStore + sample domain service + Aspire dashboard running locally in under 10 minutes -- zero manual infrastructure setup
 - **Time to first domain service**: A developer implements and registers a new domain service with EventStore in under 1 hour, following documentation and the sample reference implementation
-- **Learning curve**: A .NET developer familiar with DDD concepts understands the programming model -- pure function domain processor, `(Command, CurrentState?) -> List<DomainEvent>`, command/event flow -- within a single working session without prior event sourcing experience
+- **Learning curve**: A .NET developer familiar with DDD concepts understands the programming model -- pure function domain processor, `(Command, CurrentState?) -> DomainResult`, command/event flow -- within 4 hours without prior event sourcing experience
 - **Onboarding friction**: A developer reads no more than 3 documentation pages before writing their first working domain service. The "getting started" path is linear, not branching
 - **The "aha!" moment**: The first time a domain service registers with EventStore and a command flows through actors to events to subscribers without writing any infrastructure code. This should happen within the first hour of onboarding
 - **Zero-confusion infrastructure swap**: Changing state store or message broker backend requires only DAPR component YAML changes -- zero application code modifications, zero domain service changes
@@ -109,7 +117,7 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 **Project Viability (6 months):**
 
 - At least 2 Hexalith DDD applications running on the EventStore backbone in production
-- v1 operational model (logs + traces + dead-letter topics) proven sufficient for daily operations without developer escalation for routine issues
+- v1 operational model (logs + traces + dead-letter topics) proven sufficient for daily operations with fewer than 2 developer escalations per month for routine operational issues
 - Architecture validated: no data-loss incidents, no fundamental design rework required
 - Event envelope design validated through 3+ distinct domain service implementations before declaring v1 stable
 
@@ -153,7 +161,7 @@ Performance and resilience targets are summarized here as success criteria; deta
 
 **Architectural Validation:**
 
-- Event envelope (11-field metadata) validated as sufficient across 3+ domain service implementations before v1 GA -- this is the irreversible decision that must be right
+- Event envelope (14-field metadata + two-document storage) validated as sufficient across 3+ domain service implementations before v1 GA -- this is the irreversible decision that must be right
 - Multi-tenant isolation confirmed: commands for tenant A never reach tenant B's domain service across all three isolation layers (actor identity, DAPR policies, command metadata)
 - Infrastructure swap validated: identical application code works with Redis (dev) and PostgreSQL (prod) backends with zero code changes
 - Zero data-loss across all tested failure scenarios
@@ -190,11 +198,11 @@ The MVP delivers the complete command-to-event pipeline -- the minimum infrastru
 
 **10 Core Features:**
 
-1. **Event Envelope** -- 11-field metadata (aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type name, serialization format) + opaque JSON payload + extension metadata bag
-2. **Identity Scheme** -- Canonical `tenant:domain:aggregate-id` format deriving actor IDs, queue sessions, event stream keys, and pub/sub topics from one tuple
-3. **Command API Gateway** -- REST endpoints with JWT authentication and claims-based authorization (tenant + domain + command type)
+1. **Event Envelope** -- 14-field metadata (event message ID, aggregate ID, aggregate type, tenant, sequence number, global position, timestamp, correlation ID, causation ID, user identity, event type, domain service version, metadata version, extension bag) stored as separate metadata JSON + payload JSON (two-document storage per D14)
+2. **Identity Scheme** -- Canonical `tenant:domain:aggregate-id` tuple derived from server context: tenant from JWT claims, domain from message type prefix (`{domain}-{name}-v{ver}` per D13), aggregate ID from client command. Derives actor IDs, event stream keys, and pub/sub topics
+3. **Command API Gateway** -- REST endpoints with JWT authentication and claims-based authorization (tenant + domain + command type). Ultra-thin client command (4+1 fields: messageId, aggregateId, commandType, payload, optional correlationId per D16)
 4. **DAPR Actor-Based Aggregate Processing** -- Single-threaded, turn-based concurrency with checkpointed state machine (designed for v2 workflow migration)
-5. **Domain Service Integration** -- Pure function processors registered by tenant + domain via DAPR config store
+5. **Domain Service Integration** -- Pure function processors returning (aggregate type, event type, event payload) only. EventStore enriches events with all metadata. Registration by tenant + domain via DAPR config store
 6. **Event Persistence** -- Append-only storage via DAPR state store with composite key strategy and ETag-based optimistic concurrency
 7. **Event Distribution** -- DAPR pub/sub with CloudEvents 1.0 envelope, at-least-once delivery, per tenant+domain topics
 8. **Snapshot Support** -- Snapshots as special event types, EventStore controls WHEN (every N events), domain controls WHAT
@@ -293,7 +301,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 **Opening Scene:** Sanjay receives API documentation for the Hexalith payment service's Command API. He needs to send `AuthorizePayment` commands and receive confirmation that they were processed. He's built REST integrations before, but event sourcing systems make him nervous -- he's heard they're complex.
 
-**Rising Action:** The Command API is a standard REST endpoint. Sanjay sends a POST with a JSON body containing the command type, tenant ID, aggregate ID, and command payload. He includes a JWT token issued by his company's identity provider -- the token contains claims for the allowed tenant and command types. The API returns a `202 Accepted` with a correlation ID. Sanjay uses the correlation ID to query the command status endpoint and sees the command progress through states: `Received -> Processing -> Completed`. For failed commands, the status includes the error details. No event sourcing concepts leak through the API -- Sanjay doesn't know or care about actors, event streams, or pub/sub topics.
+**Rising Action:** The Command API is a standard REST endpoint. Sanjay sends a POST with a JSON body containing the message ID (ULID), aggregate ID, command type, and command payload -- just four required fields. He includes a JWT token issued by his company's identity provider -- the token contains claims for the allowed tenant and command types. The EventStore extracts the tenant from the JWT automatically. The API returns a `202 Accepted` with a correlation ID (defaulting to his message ID). Sanjay uses the correlation ID to query the command status endpoint and sees the command progress through states: `Received -> Processing -> Completed`. For failed commands, the status includes the error details. No event sourcing concepts leak through the API -- Sanjay doesn't know or care about actors, event streams, or pub/sub topics.
 
 **Climax:** Sanjay's integration test sends 1,000 concurrent `AuthorizePayment` commands across 50 different aggregates. Every command returns `202 Accepted` within the p99 latency target. He checks the status of each -- all `Completed`. He intentionally sends a malformed command and gets a clear `400 Bad Request` with validation details. He sends a command for a tenant his JWT doesn't authorize and gets `403 Forbidden`. The API behaves exactly like any well-designed REST API.
 
@@ -309,7 +317,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 **Opening Scene:** Jerome has three domain services running on EventStore -- the Counter sample, a payment processing service, and an inventory management service. The core pipeline works. Now he needs to prove the platform meets its success criteria before public release. He opens the Aspire AppHost and prepares his validation suite.
 
-**Rising Action:** Jerome starts with event envelope validation. He reviews the 11-field metadata across all three domain services: Counter uses basic fields, Payments uses correlation + causation chains for saga flows, Inventory uses the extension metadata bag for warehouse-specific context. All three work without envelope changes -- the extension bag absorbed domain-specific needs without schema modification. He runs the automated snapshot verification: snapshot at sequence N plus events N+1..M produces identical state to full replay from sequence 1..M across all three domains.
+**Rising Action:** Jerome starts with event envelope validation. He reviews the 14-field metadata across all three domain services: Counter uses basic fields, Payments uses correlation + causation chains for saga flows, Inventory uses the extension metadata bag for warehouse-specific context. All three work without envelope changes -- the extension bag absorbed domain-specific needs without schema modification. He runs the automated snapshot verification: snapshot at sequence N plus events N+1..M produces identical state to full replay from sequence 1..M across all three domains.
 
 **Climax:** Jerome executes the chaos scenario suite. He kills the state store mid-command -- the actor's checkpointed state machine resumes from the correct stage, deterministic replay produces the same events, zero data loss. He crashes the pub/sub while commands are processing -- events persist safely in the state store, DAPR retry policies drain the backlog on recovery. He simulates actor rebalancing during load -- consistent hashing and the checkpoint design ensure no commands are lost. He runs 100 concurrent command submissions per second for 10 minutes, monitoring p99 latencies: command submission < 50ms, end-to-end lifecycle < 200ms, event append < 10ms. All targets met. He switches the entire test suite from Redis to PostgreSQL -- all tests pass with zero code changes.
 
@@ -363,7 +371,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 - **Append-only immutability** -- Events, once persisted, are never modified or deleted. This is the foundational invariant of event sourcing and must be enforced at the storage layer, not just by convention
 - **Strict ordering guarantee** -- Events within a single aggregate stream must be strictly ordered by sequence number with no gaps. Cross-aggregate ordering is not guaranteed and must not be relied upon
 - **Idempotent event application** -- Replaying the same events must always produce the same state. Domain service pure functions must be deterministic
-- **Event envelope irreversibility** -- The 11-field metadata schema is the hardest decision to change post-GA. Any field omitted now requires a breaking migration later; any unnecessary field is permanent cruft
+- **Event envelope irreversibility** -- The 14-field metadata schema and two-document storage format are the hardest decisions to change post-GA. Any field omitted now requires a breaking migration later; any unnecessary field is permanent cruft. The `{domain}-{name}-v{ver}` message type convention is equally irreversible -- domain names in message types become permanent identifiers (see brainstorming pre-mortem: "The Great Rename" scenario)
 
 ### Data Integrity Constraints
 
@@ -497,7 +505,7 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 
 | Method | Path                                      | Purpose                                             | Auth                                 |
 | ------ | ----------------------------------------- | --------------------------------------------------- | ------------------------------------ |
-| POST   | `/api/v1/commands`                        | Submit a command for processing                     | JWT (tenant + domain + command type) |
+| POST   | `/api/v1/commands`                        | Submit a command for processing (D16: 4+1 fields)   | JWT (tenant + domain + command type) |
 | GET    | `/api/v1/commands/{correlationId}/status` | Query command processing status                     | JWT (tenant)                         |
 | POST   | `/api/v1/commands/{correlationId}/replay` | Replay a failed command                             | JWT (tenant + domain + admin)        |
 | GET    | `/api/v1/health`                          | Health check (DAPR sidecar + state store + pub/sub) | None                                 |
@@ -513,20 +521,19 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 
 Query responses include a self-routing `ETag` header (opaque to clients, format: `{base64url(projectionType)}.{guid}`). Clients pass `If-None-Match` with the cached ETag to receive HTTP 304 when data is unchanged -- the server decodes the projection type from the ETag, requiring no projection metadata from the client. Authorization uses the same JWT claims model as the Command API, scoped to tenant + domain (no command-type dimension for queries).
 
-**Command Payload Schema:**
+**Command Payload Schema (D16: Ultra-Thin Client Command, 4+1 fields):**
 
 ```json
 {
-    "tenantId": "string (required)",
-    "domain": "string (required)",
-    "aggregateId": "string (required)",
-    "commandType": "string (required, fully qualified type name)",
-    "payload": "object (required, opaque JSON)",
-    "correlationId": "string (optional, generated if omitted)",
-    "causationId": "string (optional, for saga chains)",
-    "userId": "string (extracted from JWT claims)"
+    "messageId": "string (required, client-generated ULID, idempotency key)",
+    "aggregateId": "string (required, ULID, target aggregate)",
+    "commandType": "string (required, kebab: {domain}-{command}-v{ver})",
+    "payload": "object (required, opaque JSON, pure business parameters)",
+    "correlationId": "string (optional, ULID, defaults to messageId if omitted)"
 }
 ```
+
+**Server-derived fields (not in client payload):** `tenantId` (from JWT `tenant_id` claim), `userId` (from JWT claims), `causationId` (set by EventStore = command messageId), `domain` (parsed from commandType prefix via MessageType value object). See D15.
 
 **Response Codes:**
 
@@ -561,39 +568,44 @@ Query responses include a self-routing `ETag` header (opaque to clients, format:
 
 ### Data Schemas
 
-**Event Envelope (11-field metadata):**
+**Event Envelope (14-field metadata, two-document storage per D14):**
 
-| Field                  | Type                       | Purpose                                           |
-| ---------------------- | -------------------------- | ------------------------------------------------- |
-| `aggregateId`          | string                     | Target aggregate identity                         |
-| `tenantId`             | string                     | Tenant isolation key                              |
-| `domain`               | string                     | Domain service namespace                          |
-| `sequenceNumber`       | long                       | Strictly ordered per aggregate stream             |
-| `timestamp`            | DateTimeOffset             | Event creation time (server clock)                |
-| `correlationId`        | string                     | Request-level tracing                             |
-| `causationId`          | string                     | Parent event/command tracing                      |
-| `userId`               | string                     | Authenticated user identity                       |
-| `domainServiceVersion` | string                     | Version of domain service that produced the event |
-| `eventTypeName`        | string                     | Fully qualified event type for deserialization    |
-| `serializationFormat`  | string                     | Payload encoding (default: JSON)                  |
-| `payload`              | byte[]                     | Opaque serialized event data                      |
-| `extensions`           | Dictionary<string, string> | Open metadata bag for domain-specific needs       |
+Each event is stored as two separate JSON documents: metadata (EventStore-owned) + payload (domain-owned). In this system, "domain" corresponds to a DDD bounded context -- each domain is served by exactly one domain microservice.
+
+| Field                  | Type                       | Source                                      | Purpose                                           |
+| ---------------------- | -------------------------- | ------------------------------------------- | ------------------------------------------------- |
+| `messageId`            | string (ULID)              | EventStore-generated                        | Unique event identity                             |
+| `aggregateId`          | string (ULID)              | From command                                | Target aggregate identity                         |
+| `aggregateType`        | string (kebab)             | From domain service DomainResult            | Aggregate type (e.g., `tenant`)                   |
+| `tenantId`             | string                     | From JWT claims (D15)                       | Tenant isolation key                              |
+| `sequenceNumber`       | long                       | EventStore-assigned                         | Strictly ordered per aggregate stream             |
+| `globalPosition`       | long                       | EventStore-assigned                         | Cross-stream ordering                             |
+| `timestamp`            | DateTimeOffset             | EventStore clock                            | Event persistence time                            |
+| `correlationId`        | string (ULID)              | From command (defaults to command messageId)| Request-level tracing                             |
+| `causationId`          | string (ULID)              | EventStore-set (= command messageId)        | Originating command tracing                       |
+| `userId`               | string                     | From JWT claims (D15)                       | Authenticated user identity                       |
+| `eventType`            | string (kebab)             | Assembled by EventStore (D13)               | `{domain}-{event}-v{ver}` for routing and deser   |
+| `domainServiceVersion` | string                     | From domain service response                | Version that produced the event                   |
+| `metadataVersion`      | int                        | EventStore-set (default: 1)                 | Envelope schema version for consumer compat (FR65)|
+| `extensions`           | Dictionary<string, string> | Domain-specific                             | Open metadata bag (escape valve)                  |
+
+**Payload** stored as separate JSON document -- pure business facts, no metadata. EventStore is schema-ignorant for payload content. v1 supports JSON serialization only; the two-document storage format enables future binary serialization without envelope schema changes.
 
 **Composite Key Strategy (DAPR State Store):**
 
 | Key Pattern                                         | Purpose                                     |
 | --------------------------------------------------- | ------------------------------------------- |
-| `{tenant}:{domain}:{aggregateId}:events:{sequence}` | Individual event storage                    |
+| `{tenant}:{domain}:{aggregateId}:events:{sequence}` | Individual event (two-document: metadata JSON + payload JSON per D14) |
 | `{tenant}:{domain}:{aggregateId}:snapshot`          | Latest snapshot                             |
-| `{tenant}:{domain}:{aggregateId}:metadata`          | Aggregate metadata (version, last sequence) |
+| `{tenant}:{domain}:{aggregateId}:metadata`          | Aggregate metadata (version, last sequence, processed messageIds for idempotency per FR49) |
 | `{tenant}:{domain}:{correlationId}:status`          | Command processing status tracking          |
 
 **Pub/Sub Topic Naming Convention:**
 
 | Topic Pattern                  | Purpose                                        |
 | ------------------------------ | ---------------------------------------------- |
-| `{tenant}:{domain}:events`     | Per-tenant-per-domain event distribution topic |
-| `{tenant}:{domain}:deadletter` | Per-tenant-per-domain dead-letter topic        |
+| `{tenant}.{domain}.events`     | Per-tenant-per-domain event distribution topic (broker partitioned by aggregateId -- aggregate boundary = ordering boundary) |
+| `{tenant}.{domain}.deadletter` | Per-tenant-per-domain dead-letter topic        |
 
 ### Implementation Considerations
 
@@ -657,7 +669,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 | Capability                           | Without This...                                        | Manual Alternative?                          | MVP Verdict                  |
 | ------------------------------------ | ------------------------------------------------------ | -------------------------------------------- | ---------------------------- |
-| Event Envelope (11 fields)           | Events lack traceability, multi-tenancy, versioning    | No                                           | MUST HAVE                    |
+| Event Envelope (14 fields + two-document storage) | Events lack traceability, multi-tenancy, versioning    | No                                           | MUST HAVE                    |
 | Identity Scheme (`tenant:domain:id`) | No consistent addressing across actors, stores, topics | No                                           | MUST HAVE                    |
 | Command API Gateway                  | No entry point for commands                            | No                                           | MUST HAVE                    |
 | Actor-Based Processing               | No concurrency control, no aggregate isolation         | No                                           | MUST HAVE                    |
@@ -744,26 +756,28 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 ### Command Processing
 
-- FR1: An API consumer can submit a command to the EventStore via a REST endpoint with tenant, domain, aggregate ID, command type, and payload
-- FR2: The system can validate a submitted command for structural completeness (required fields: tenantId, domain, aggregateId, commandType, payload; well-formed JSON structure) before routing it for processing
+- FR1: An API consumer can submit a command to the EventStore via a REST endpoint with message ID (ULID), aggregate ID (ULID), command type (kebab `{domain}-{command}-v{ver}`), and payload
+- FR2: The system can validate a submitted command for structural completeness (required fields: messageId, aggregateId, commandType, payload; valid ULID format for messageId and aggregateId; valid `{domain}-{command}-v{ver}` kebab format for commandType via MessageType value object; well-formed JSON structure) before routing it for processing
 - FR3: The system can route a command to the correct aggregate actor based on the identity scheme (`tenant:domain:aggregate-id`)
-- FR4: An API consumer can receive a correlation ID upon command submission for tracking the command lifecycle
+- FR4: An API consumer can receive a correlation ID upon command submission for tracking the command lifecycle. The correlation ID defaults to the client-supplied messageId (ULID) if not provided. The client's messageId also serves as the idempotency key
 - FR5: An API consumer can query the processing status of a previously submitted command using its correlation ID
 - FR6: An operator can replay a previously failed command via the Command API after root cause is fixed
 - FR7: The system can reject duplicate commands targeting an aggregate that has an optimistic concurrency conflict, returning an appropriate error
 - FR8: The system can route failed commands to a dead-letter topic with full command payload, error details, and correlation context
-- FR49: The system can detect and reject duplicate commands by tracking processed command IDs per aggregate, returning an idempotent success response for already-processed commands
+- FR49: The system can detect and reject duplicate commands by tracking processed command message IDs (client-generated ULIDs) per aggregate, returning an idempotent success response for already-processed commands
 
 ### Event Management
 
 - FR9: The system can persist events in an append-only, immutable event store where events are never modified or deleted after persistence
 - FR10: The system can assign strictly ordered, gapless sequence numbers to events within a single aggregate stream. Cross-aggregate event ordering is explicitly not guaranteed and must not be relied upon by consumers
-- FR11: The system can wrap each event in an 11-field metadata envelope (aggregate ID, tenant, domain, sequence, timestamp, correlation ID, causation ID, user identity, domain service version, event type, serialization format) plus opaque payload and extension metadata bag
+- FR11: The system can wrap each event in a 14-field metadata envelope (event message ID, aggregate ID, aggregate type, tenant, sequence number, global position, timestamp, correlation ID, causation ID, user identity, event type, domain service version, metadata version, extension bag) stored as separate metadata JSON and payload JSON (two-document storage per D14)
 - FR12: The system can reconstruct aggregate state by replaying all events in an aggregate's stream from sequence 1 to current
 - FR13: The system can create snapshots of aggregate state at administrator-configured event count intervals (default: every 100 events, configurable per tenant-domain pair) to optimize state rehydration. The EventStore signals the domain service when a snapshot threshold is reached; the domain service produces the snapshot content inline as part of command processing
 - FR14: The system can reconstruct aggregate state from the latest snapshot plus subsequent events, producing identical state to full replay
 - FR15: The system can store events using a composite key strategy that includes tenant, domain, and aggregate identity for isolation
 - FR16: The system can enforce atomic event writes -- a command produces 0 or N events as a single transaction, never a partial subset
+- FR65: The event metadata envelope can include a `metadataVersion` field (integer, starting at 1) enabling external consumers to detect envelope schema changes and adapt their deserialization without breaking. Internal consumers use the same version for forward-compatibility checks
+- FR66: The system can mark an aggregate as terminated (tombstoned) via a terminal event. A terminated aggregate rejects all subsequent commands with a domain rejection event, while its event stream remains immutable and replayable
 
 ### Event Distribution
 
@@ -771,18 +785,19 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - FR18: The system can deliver events to subscribers with at-least-once delivery guarantee
 - FR19: The system can publish events to per-tenant-per-domain topics, ensuring subscribers only receive events for their authorized scope
 - FR20: The system can continue persisting events when the pub/sub system is temporarily unavailable, draining the backlog on recovery
+- FR67: The system can apply backpressure when aggregate command queues exceed a configurable depth threshold (default: 100 pending commands per aggregate), returning HTTP 429 with Retry-After header to prevent saga storms and head-of-line blocking cascades. Backpressure is per-aggregate, not system-wide
 
 ### Domain Service Integration
 
-- FR21: A domain service developer can implement a domain processor as a pure function with the contract `(Command, CurrentState?) -> List<DomainEvent>`
+- FR21: A domain service developer can implement a domain processor as a pure function with the contract `(Command, CurrentState?) -> DomainResult`. The domain service returns only aggregate type (short kebab), event types (.NET types, EventStore converts to kebab), and event payloads (pure business facts). EventStore handles all metadata enrichment
 - FR22: A domain service developer can register their domain service with EventStore by tenant and domain via explicit DAPR configuration entry (specifying tenant ID, domain name, and service invocation endpoint) or automatically via convention-based assembly scanning
-- FR23: The system can invoke a registered domain service when processing a command, passing the command and current aggregate state
+- FR23: The system can invoke a registered domain service when processing a command, passing the command and current aggregate state. The domain service returns a `DomainResult` containing aggregate type and event outputs (event type + payload). EventStore enriches each event with all 14 metadata fields per FR11
 - FR24: The system can process commands for at least 2 independent domains within the same EventStore instance
 - FR25: The system can process commands for at least 2 tenants within the same domain, each with isolated event streams
 
 ### Identity & Multi-Tenancy
 
-- FR26: The system can derive actor IDs, event stream keys, pub/sub topics, and queue sessions from a single canonical identity tuple (`tenant:domain:aggregate-id`)
+- FR26: The system can derive actor IDs, event stream keys, and pub/sub topics from a canonical identity tuple (`tenant:domain:aggregate-id`) where tenant is extracted from JWT claims (D15) and domain is parsed from the message type prefix (`{domain}-{name}-v{ver}` per D13)
 - FR27: The system can enforce data path isolation so that commands for one tenant are never routed to another tenant's domain service
 - FR28: The system can enforce storage key isolation so that event streams for different tenants are inaccessible to each other even at the state store level
 - FR29: The system can enforce pub/sub topic isolation so that event subscribers only receive events from tenants they are authorized to access
