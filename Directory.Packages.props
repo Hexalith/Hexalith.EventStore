@@ -52,6 +52,10 @@
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.13.2" />
   </ItemGroup>
 
+  <ItemGroup Label="Hexalith">
+    <PackageVersion Include="Hexalith.Commons.UniqueIds" Version="2.13.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Application">
     <PackageVersion Include="MediatR" Version="14.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />

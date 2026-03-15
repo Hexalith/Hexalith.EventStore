@@ -19,7 +19,7 @@ For most upgrades, follow these five steps:
     - Bash: `dotnet list package --include-transitive | grep -E '^\s*>\s+Hexalith\.EventStore\.'`
 
 2. **Read the CHANGELOG** for your target version's breaking changes (if any)
-3. **Update all 5 packages together** in `Directory.Packages.props` — never mix versions
+3. **Update all installed Hexalith.EventStore packages together** in `Directory.Packages.props` — never mix versions
 4. **Check `global.json`** SDK pin matches the [dependency compatibility matrix](#dependency-compatibility-matrix)
 5. **Run tests:** `dotnet test` across all tiers and deploy
 
@@ -77,7 +77,7 @@ flowchart TD
 
 No breaking changes by SemVer contract. Three steps:
 
-1. Update all 5 Hexalith package versions in `Directory.Packages.props`
+1. Update all installed Hexalith package versions in `Directory.Packages.props`
 2. Run all test tiers (see [Testing Your Upgrade](#testing-your-upgrade))
 3. Deploy
 
@@ -95,7 +95,7 @@ Follow these steps in order:
 1. **Read the CHANGELOG** for ALL versions between your current and target version — do not skip intermediate versions even when jumping multiple majors
 2. **Update .NET SDK** in `global.json` if the target version requires a newer SDK
 3. **Update DAPR runtime** if the target version requires a newer DAPR SDK (see [DAPR compatibility](#dapr-compatibility))
-4. **Update Hexalith NuGet packages** in `Directory.Packages.props` — all 5 packages together
+4. **Update Hexalith NuGet packages** in `Directory.Packages.props` — keep every installed Hexalith package on the same version
 5. **Handle breaking API changes** per the CHANGELOG migration steps
 6. **Audit custom code** (see [Auditing Custom Code](#auditing-custom-code))
 7. **Run all 3 test tiers** (see [Testing Your Upgrade](#testing-your-upgrade))
@@ -117,19 +117,20 @@ For major upgrades, review these areas of your codebase for compatibility:
 
 ## NuGet Package Updates
 
-Hexalith.EventStore publishes 5 NuGet packages, all versioned as a single unit via [MinVer](https://github.com/adamralph/minver) git tags (prefix `v`):
+Hexalith.EventStore publishes 6 NuGet packages, all versioned as a single unit via [MinVer](https://github.com/adamralph/minver) git tags (prefix `v`):
 
 | Package                         | Purpose                                             |
 | ------------------------------- | --------------------------------------------------- |
 | `Hexalith.EventStore.Contracts` | Domain types: commands, events, results, identities |
 | `Hexalith.EventStore.Client`    | Client abstractions and DI registration             |
 | `Hexalith.EventStore.Server`    | Server-side domain processors, DAPR integration     |
+| `Hexalith.EventStore.SignalR`   | SignalR client helper for projection change signals |
 | `Hexalith.EventStore.Testing`   | Testing utilities and helpers                       |
 | `Hexalith.EventStore.Aspire`    | .NET Aspire hosting extensions                      |
 
 All packages use centralized version management via [`Directory.Packages.props`](../../Directory.Packages.props). To update, change the version in that single file.
 
-> **Warning:** All 5 Hexalith packages **MUST** be updated together — mixed versions are unsupported and **WILL** cause runtime type mismatches. The packages are versioned as a single unit from one git tag. Mixing versions (for example, v1 Contracts with v2 Server) means serialized types will not match because packages share contract types such as `EventEnvelope`, `AggregateIdentity`, and `DomainResult` from the Contracts package that are used by Client, Server, and Testing.
+> **Warning:** All installed Hexalith packages **MUST** be updated together — mixed versions are unsupported and **WILL** cause runtime type mismatches. The packages are versioned as a single unit from one git tag. Mixing versions (for example, v1 Contracts with v2 Server) means serialized types will not match because packages share contract types such as `EventEnvelope`, `AggregateIdentity`, and `DomainResult` across Client, Server, SignalR, and Testing.
 
 ## Dependency Compatibility Matrix
 

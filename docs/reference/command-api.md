@@ -2,9 +2,10 @@
 
 # Command API Reference
 
-Complete REST API reference for the Hexalith EventStore Command API, covering command submission, status tracking, and replay endpoints. Use this page to look up HTTP methods, request/response schemas, and copy-pasteable `curl` commands for building clients or testing integrations.
+Complete REST API reference for the Hexalith EventStore command surface, covering command submission, status tracking, replay, and command preflight validation. Use this page to look up HTTP methods, request/response schemas, and copy-pasteable `curl` commands for building clients or testing integrations.
 
 > **Prerequisites:** [Quickstart](../getting-started/quickstart.md) — you should have the sample running locally before using these endpoints.
+> **Looking for the read side?** Query execution, query preflight validation, projection invalidation, and SignalR notifications are documented in the [Query & Projection API Reference](query-api.md).
 
 ## Base URL and Authentication
 
@@ -182,6 +183,62 @@ Content-Type: application/json
 ### Extensions
 
 The `extensions` field carries optional metadata with the command. Extension values are sanitized for injection patterns at the API gateway layer. Values matching the regex `(?i)(javascript\s*:|on\w+\s*=|<\s*script)` are rejected with a `400` error — if you receive an unexpected validation error on extensions, check for these patterns in your values.
+
+## POST /api/v1/commands/validate
+
+Perform a preflight authorization check for a command without enqueuing it for execution. This endpoint is useful for UI affordances such as disabling a command button before the user submits the full request.
+
+### Request Body
+
+| Field       | Type   | Required | Description                                                             |
+| ----------- | ------ | -------- | ----------------------------------------------------------------------- |
+| tenant      | string | Yes      | Tenant identifier to authorize against.                                 |
+| domain      | string | Yes      | Target domain name, for example `counter` or `inventory`.               |
+| commandType | string | Yes      | Command type name, for example `IncrementCounter`.                      |
+| aggregateId | string | No       | Optional aggregate identifier for resource-scoped authorization checks. |
+
+### Example
+
+```bash
+$ curl -X POST https://localhost:5001/api/v1/commands/validate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant": "tenant-a",
+    "domain": "counter",
+    "commandType": "IncrementCounter",
+    "aggregateId": "counter-1"
+  }'
+```
+
+### Response — 200 OK
+
+The endpoint always returns `200 OK` for an authenticated request, with the authorization result encoded in the response body:
+
+```json
+{
+    "isAuthorized": true,
+    "reason": null
+}
+```
+
+If authorization fails, `isAuthorized` is `false` and `reason` explains why:
+
+```json
+{
+    "isAuthorized": false,
+    "reason": "RBAC check failed."
+}
+```
+
+### Error Responses
+
+| Status                  | Condition                               | Body                                              |
+| ----------------------- | --------------------------------------- | ------------------------------------------------- |
+| 400 Bad Request         | Validation failure for the request body | RFC 7807 ProblemDetails with `errors` dictionary  |
+| 401 Unauthorized        | Missing or invalid JWT token            | —                                                 |
+| 429 Too Many Requests   | Per-tenant rate limit exceeded          | RFC 7807 ProblemDetails with `Retry-After` header |
+| 503 Service Unavailable | Authorization dependencies unavailable  | RFC 7807 ProblemDetails                           |
 
 ## GET /api/v1/commands/status/{correlationId}
 
@@ -442,6 +499,6 @@ $ curl https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1
 
 ## Next Steps
 
-**Next:** [NuGet Packages Guide](nuget-packages.md) — understand which packages to install for your use case
+**Next:** [Query & Projection API Reference](query-api.md) — query execution, ETag validation, and real-time projection refresh
 
-**Related:** [Command Lifecycle](../concepts/command-lifecycle.md), [Event Envelope](../concepts/event-envelope.md), [Architecture Overview](../concepts/architecture-overview.md)
+**Related:** [NuGet Packages Guide](nuget-packages.md), [Command Lifecycle](../concepts/command-lifecycle.md), [Event Envelope](../concepts/event-envelope.md), [Architecture Overview](../concepts/architecture-overview.md)

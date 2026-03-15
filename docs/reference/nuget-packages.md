@@ -2,7 +2,7 @@
 
 # NuGet Packages Guide
 
-Guide to the 5 published Hexalith.EventStore NuGet packages — their purposes, dependency relationships, and which ones to install for your use case. This page is for .NET developers integrating Hexalith.EventStore into their projects.
+Guide to the 6 published Hexalith.EventStore NuGet packages — their purposes, dependency relationships, and which ones to install for your use case. This page is for .NET developers integrating Hexalith.EventStore into their projects.
 
 > **Prerequisites:** [Architecture Overview](../concepts/architecture-overview.md) — you should understand the system topology before choosing packages.
 
@@ -13,6 +13,7 @@ Guide to the 5 published Hexalith.EventStore NuGet packages — their purposes, 
 | Hexalith.EventStore.Contracts | Domain types: commands, events, results, identities                             | Define shared command/event contracts and aggregate identity primitives       | Always required — foundational types for any Hexalith integration |
 | Hexalith.EventStore.Client    | Client abstractions, domain processor contract, and DI registration             | Register and activate domain processors with fluent `AddEventStore` setup     | In your domain service project to register domain processors      |
 | Hexalith.EventStore.Server    | Server-side domain processors, aggregate actors, DAPR state/pub-sub integration | Host command processing, state rehydration, persistence, and event publishing | In the hosting project that runs the event store server           |
+| Hexalith.EventStore.SignalR   | SignalR client helper for projection change notifications                       | React to read-model invalidation signals in web or desktop clients            | In UI or integration clients that need live projection refresh    |
 | Hexalith.EventStore.Testing   | In-memory fakes, builders, and test helpers for unit/integration testing        | Build deterministic tests for command/event flows without real infrastructure | In your test projects                                             |
 | Hexalith.EventStore.Aspire    | .NET Aspire hosting extensions for DAPR topology orchestration                  | Compose the local distributed topology in an Aspire AppHost                   | In your AppHost project for local development orchestration       |
 
@@ -23,11 +24,13 @@ graph TD
     Contracts[Hexalith.EventStore.Contracts]
     Client[Hexalith.EventStore.Client]
     Server[Hexalith.EventStore.Server]
+    SignalR[Hexalith.EventStore.SignalR]
     Testing[Hexalith.EventStore.Testing]
     Aspire[Hexalith.EventStore.Aspire]
 
     Client --> Contracts
     Server --> Contracts
+    SignalR --> Contracts
     Testing --> Contracts
     Testing --> Server
 ```
@@ -38,12 +41,13 @@ graph TD
 - **Contracts** is the root package with no dependencies on other Hexalith packages.
 - **Client** depends on Contracts.
 - **Server** depends on Contracts.
+- **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
 - **Testing** depends on both Contracts and Server (it provides fake implementations of server-side components for integration testing).
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
 
 </details>
 
-> **Note:** All 5 packages always ship at the same semantic version. Install matching versions to avoid compatibility issues.
+> **Note:** All 6 packages always ship at the same semantic version. Install matching versions to avoid compatibility issues.
 
 ## Which Packages Do I Need?
 
@@ -79,6 +83,16 @@ Testing provides in-memory implementations, fake state stores, and test builders
 $ dotnet add package Hexalith.EventStore.Testing
 ```
 
+### Reacting to projection changes in a client
+
+Install **SignalR**.
+
+SignalR provides `EventStoreSignalRClient`, a small helper that connects to `/hubs/projection-changes`, joins projection groups, and automatically rejoins them after reconnects.
+
+```bash
+$ dotnet add package Hexalith.EventStore.SignalR
+```
+
 ### Local development with Aspire
 
 Install **Aspire** in your AppHost project.
@@ -93,12 +107,13 @@ $ dotnet add package Hexalith.EventStore.Aspire
 
 Install packages across your projects based on their role:
 
-| Project                | Packages          |
-| ---------------------- | ----------------- |
-| Domain service library | Contracts, Client |
-| Event store host       | Contracts, Server |
-| Test project           | Testing           |
-| Aspire AppHost         | Aspire            |
+| Project                  | Packages          |
+| ------------------------ | ----------------- |
+| Domain service library   | Contracts, Client |
+| Event store host         | Contracts, Server |
+| UI or integration client | SignalR           |
+| Test project             | Testing           |
+| Aspire AppHost           | Aspire            |
 
 ## Package Details
 
@@ -166,6 +181,24 @@ Aggregate actors, command routing, event persistence, state rehydration, and DAP
 $ dotnet add package Hexalith.EventStore.Server
 ```
 
+### Hexalith.EventStore.SignalR
+
+Signal-only client helper for real-time projection change notifications. This package is designed for read-model consumers that want to refresh cached or displayed projection data when the server announces a change.
+
+**Key namespace and types:**
+
+- `Hexalith.EventStore.SignalR` — `EventStoreSignalRClient`, `EventStoreSignalRClientOptions`
+
+**External dependencies:**
+
+| Package                             | Version |
+| ----------------------------------- | ------- |
+| Microsoft.AspNetCore.SignalR.Client | 10.0.0  |
+
+```bash
+$ dotnet add package Hexalith.EventStore.SignalR
+```
+
 ### Hexalith.EventStore.Testing
 
 Test helpers, in-memory fakes, and builders for unit and integration testing. Depends on Server (not just Contracts) because it provides fake implementations of server-side components like state stores and test builders.
@@ -209,7 +242,7 @@ $ dotnet add package Hexalith.EventStore.Aspire
 
 ## Versioning
 
-All 5 packages use [MinVer](https://github.com/adamralph/minver) for semantic versioning. Versions are derived from git tags with a `v` prefix (e.g., tag `v1.2.0` produces version `1.2.0`).
+All 6 packages use [MinVer](https://github.com/adamralph/minver) for semantic versioning. Versions are derived from git tags with a `v` prefix (e.g., tag `v1.2.0` produces version `1.2.0`).
 
 All package versions are centralized in `Directory.Packages.props` at the repository root. Every package always ships at the same version — there is no mix-and-match between package versions.
 
@@ -217,6 +250,6 @@ Browse all published packages on [NuGet.org](https://www.nuget.org/packages?q=He
 
 ## Next Steps
 
-**Next:** [Command API Reference](command-api.md) — look up REST endpoints with request/response examples
+**Next:** [Command API Reference](command-api.md) — look up write-side endpoints with request/response examples
 
-**Related:** [API Reference](api/index.md) — auto-generated type documentation for all public APIs | [Architecture Overview](../concepts/architecture-overview.md) | [First Domain Service](../getting-started/first-domain-service.md) | [Quickstart](../getting-started/quickstart.md)
+**Related:** [Query & Projection API Reference](query-api.md) | [API Reference](api/index.md) — auto-generated type documentation for all public APIs | [Architecture Overview](../concepts/architecture-overview.md) | [First Domain Service](../getting-started/first-domain-service.md) | [Quickstart](../getting-started/quickstart.md)

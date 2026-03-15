@@ -8,7 +8,7 @@
 [![Docs](https://img.shields.io/github/actions/workflow/status/Hexalith/Hexalith.EventStore/docs-validation.yml?branch=main&label=Docs)](https://github.com/Hexalith/Hexalith.EventStore/actions/workflows/docs-validation.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-If you've spent weeks wiring up an event store, a message broker, and multi-tenant isolation — only to realize you'll do it again for your next project — we built this for you. Hexalith.EventStore is a distributed, CQRS and DDD-ready event sourcing framework that handles command routing, event persistence, snapshots, and pub/sub delivery so you can focus on domain logic. Built on DAPR for infrastructure portability.
+If you've spent weeks wiring up an event store, a message broker, multi-tenant isolation, and a read-model refresh story — only to realize you'll do it again for your next project — we built this for you. Hexalith.EventStore is a distributed, CQRS and DDD-ready event sourcing framework that handles command routing, event persistence, snapshots, query execution, and pub/sub delivery so you can focus on domain logic. Built on DAPR for infrastructure portability.
 
 ## The Programming Model
 
@@ -68,6 +68,8 @@ builder.Services.AddEventStore();  // Auto-discovers CounterAggregate
 app.UseEventStore();               // Activates domains with convention-derived names
 ```
 
+Today the sample topology also includes a query endpoint, preflight authorization endpoints, projection invalidation hooks, and optional SignalR notifications for real-time read-model refresh.
+
 **Get started in under 10 minutes** — follow the [Quickstart Guide](docs/getting-started/quickstart.md).
 
 Prerequisites: [.NET SDK](https://dotnet.microsoft.com/download), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [DAPR CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
@@ -76,13 +78,15 @@ Prerequisites: [.NET SDK](https://dotnet.microsoft.com/download), [Docker Deskto
 
 ```mermaid
 flowchart TB
-    Client([Client Application]) -->|REST| CommandAPI[Command API Gateway]
-    CommandAPI -->|Route| Actor[Aggregate Actor]
+    Client([Client Application]) -->|REST commands + queries| CommandAPI[Command API Gateway]
+    Realtime[Realtime UI / Client] <-.->|SignalR change notifications| CommandAPI
+    CommandAPI -->|Route command| Actor[Aggregate Actor]
     Actor -->|Invoke| Domain[Domain Service<br/>IDomainProcessor]
     Domain -->|Return events| Actor
     Actor -->|Persist| StateStore[(State Store<br/>Redis / PostgreSQL / Cosmos DB)]
     Actor -->|Publish| PubSub{{Pub/Sub<br/>RabbitMQ / Kafka / Azure Service Bus}}
     PubSub -->|Subscribe| Projections[Event Handlers / Projections]
+    Projections -->|Projection changed| CommandAPI
 
     subgraph DAPR ["DAPR Sidecar (Infrastructure Abstraction)"]
         StateStore
@@ -93,7 +97,7 @@ flowchart TB
 <details>
 <summary>Architecture diagram text description</summary>
 
-The system follows a command-event architecture: Client applications send commands via REST to the Command API Gateway, which routes them to Aggregate Actors. Each actor invokes the domain service (your IDomainProcessor implementation) and persists resulting events to a state store. Events are published to a pub/sub system for downstream consumers. DAPR provides the infrastructure abstraction layer, allowing you to swap state stores (Redis, PostgreSQL, Cosmos DB) and message brokers (RabbitMQ, Kafka, Azure Service Bus) without changing application code.
+The system follows a command-event architecture with a built-in read-model refresh path: client applications send commands and queries via REST to the Command API Gateway, which routes commands to Aggregate Actors and queries to projection handlers. Each actor invokes the domain service (your `IDomainProcessor` implementation) and persists resulting events to a state store. Events are published to a pub/sub system for downstream consumers, and projection changes can be surfaced back to clients through HTTP cache validators and optional SignalR notifications. DAPR provides the infrastructure abstraction layer, allowing you to swap state stores (Redis, PostgreSQL, Cosmos DB) and message brokers (RabbitMQ, Kafka, Azure Service Bus) without changing application code.
 
 </details>
 
@@ -118,8 +122,10 @@ The system follows a command-event architecture: Client applications send comman
 
 ### Reference
 
-- [API Reference](docs/reference/) — command API endpoints and configuration
-- [NuGet Packages](https://www.nuget.org/packages?q=Hexalith.EventStore) — available packages on NuGet
+- [Command API Reference](docs/reference/command-api.md) — command submission, status, replay, and preflight validation
+- [Query & Projection API Reference](docs/reference/query-api.md) — query execution, ETag caching, projection notifications, and SignalR
+- [NuGet Packages Guide](docs/reference/nuget-packages.md) — package roles, dependencies, and installation guidance
+- [Generated API Reference](docs/reference/api/) — auto-generated public type documentation
 
 ### Community
 

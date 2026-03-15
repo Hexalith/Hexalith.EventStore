@@ -34,6 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-13
+last_updated: 2026-03-15
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +51,7 @@ development_status:
   1-4-testing-package-in-memory-test-helpers: done
   1-5-aspire-apphost-and-servicedefaults-scaffolding: done
   1-6-contracts-unit-tests-tier-1: done
-  1-7-messagetype-value-object-and-hexalith-commons-ulid-integration: ready-for-dev
+  1-7-messagetype-value-object-and-hexalith-commons-ulid-integration: done
   epic-1-retrospective: optional
 
   # Epic 2: Command API Gateway & Status Tracking

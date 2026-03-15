@@ -2,13 +2,13 @@
 
 # Architecture Overview
 
-This page explains how Hexalith.EventStore components work together — the services, DAPR sidecars, infrastructure building blocks, and the flow of a command from HTTP request to persisted event. If you completed the [Quickstart Guide](../getting-started/quickstart.md), you already have the system running; this page shows you what happens under the hood.
+This page explains how Hexalith.EventStore components work together — the services, DAPR sidecars, infrastructure building blocks, and the flow from HTTP request to persisted event and refreshed read model. If you completed the [Quickstart Guide](../getting-started/quickstart.md), you already have the system running; this page shows you what happens under the hood.
 
 > **Prerequisites:** [Quickstart Guide](../getting-started/quickstart.md), basic familiarity with REST APIs
 
 ## What Happens When You Send a Command?
 
-When you send a command like `IncrementCounter`, it travels through a layered pipeline: the Command API Gateway authenticates and validates the request, a DAPR Actor processes it with single-threaded safety, a domain service applies your business logic as a pure function, and DAPR handles all the infrastructure work — persisting events, publishing to subscribers, and managing state. Your domain code never touches a database, never opens a network connection, and never knows what backend is running underneath.
+When you send a command like `IncrementCounter`, it travels through a layered pipeline: the Command API Gateway authenticates and validates the request, a DAPR Actor processes it with single-threaded safety, a domain service applies your business logic as a pure function, and DAPR handles all the infrastructure work — persisting events, publishing to subscribers, and managing state. Those published events can then refresh projections that are queried through the same gateway, with ETag-based cache validation and optional SignalR notifications for real-time UIs. Your domain code never touches a database, never opens a network connection, and never knows what backend is running underneath.
 
 The rest of this page breaks down each layer of that pipeline: the static topology (what components exist and how they connect), the DAPR building blocks (what infrastructure DAPR abstracts), and the dynamic flow (how a single command moves through the system step by step).
 
@@ -19,6 +19,7 @@ When you ran `aspire run` on the Aspire AppHost in the quickstart, you started a
 ```mermaid
 flowchart TB
     Client([HTTP Client])
+    ReadClient([Read-model Client])
 
     subgraph AppHost["Aspire AppHost"]
         CommandApi[Command API Gateway]
@@ -26,10 +27,15 @@ flowchart TB
         Sample[Domain Service<br/>Counter Sample]
         SampleSidecar(DAPR Sidecar<br/>sample)
         Actor[Aggregate Actor]
+        Query[Query Handling / Projection Access]
+        SignalRHub[Projection Changed Hub]
         Placement([Actor Placement])
 
         Client -->|REST| CommandApi
+        ReadClient -->|REST queries| CommandApi
+        ReadClient <-.->|SignalR| SignalRHub
         CommandApi --> Actor
+        CommandApi --> Query
         Actor --- CmdSidecar
         CmdSidecar -->|Service Invocation| SampleSidecar
         SampleSidecar --> Sample
@@ -37,6 +43,7 @@ flowchart TB
         SampleSidecar -->|Response| CmdSidecar
         CmdSidecar -->|Persist| StateStore[(State Store)]
         CmdSidecar -->|Publish| PubSub{{Pub/Sub}}
+        PubSub -->|Projection changed| CommandApi
         CmdSidecar -->|Resolve| ConfigStore[/Config Store/]
         Placement -->|Assign| Actor
     end
@@ -47,11 +54,13 @@ flowchart TB
 
 The diagram shows the complete Hexalith.EventStore topology running inside the Aspire AppHost boundary — the same boundary you see on the Aspire dashboard when you run the quickstart.
 
-An HTTP Client (shown as a rounded shape) sends REST requests to the Command API Gateway (rectangle), which is the system's single entry point. The Command API Gateway routes commands to the Aggregate Actor (rectangle), which is the core processing unit for each aggregate identity.
+An HTTP Client (shown as a rounded shape) sends REST requests to the Command API Gateway (rectangle), which is the system's single entry point. A read-model client can call the same gateway for query execution and optionally connect to the Projection Changed Hub for lightweight refresh signals. The Command API Gateway routes commands to the Aggregate Actor (rectangle), which is the core processing unit for each aggregate identity.
 
 The Aggregate Actor communicates through its DAPR Sidecar (rounded rectangle, labeled "commandapi"), which handles all infrastructure interactions on the actor's behalf. The commandapi sidecar connects to three infrastructure components: a State Store (cylinder shape) for persisting events, snapshots, and actor state; a Pub/Sub component (hexagon shape) for publishing domain events to downstream subscribers; and a Config Store (parallelogram shape) for resolving which domain service handles commands for a given tenant and domain.
 
 When the actor needs to invoke business logic, the commandapi sidecar uses DAPR Service Invocation to call the sample sidecar (another rounded rectangle), which forwards the request to the Domain Service (rectangle, labeled "Counter Sample"). The Domain Service processes the command using pure business logic and returns events back through the sidecar chain to the actor.
+
+After events are published, projection handlers can emit a projection-changed notification back to the Command API. The API uses that signal to refresh ETags and, when enabled, broadcast a SignalR message to connected clients that subscribed to the affected projection type and tenant.
 
 An Actor Placement service (stadium shape) manages actor assignment, ensuring each aggregate identity is handled by exactly one actor instance at a time.
 
@@ -130,13 +139,16 @@ Hexalith uses the configuration store for **domain service resolution** — mapp
 
 The Command API Gateway (`commandapi`, port 8080) is the system's entry point. It is a .NET Minimal API application that hosts:
 
-- **REST endpoints** for submitting commands, querying command status, and replaying commands
+- **REST endpoints** for submitting commands, querying command status, replaying commands, validating command/query authorization, and executing queries
 - **JWT authentication** with claims transformation for tenant-aware authorization
 - **MediatR pipeline** with validation behaviors (FluentValidation), logging, and command routing
 - **Rate limiting** to protect against excessive request volumes
 - **Swagger UI** for interactive API exploration (the UI you used in the quickstart)
+- **Optional SignalR hub** for projection change notifications at `/hubs/projection-changes`
 
 The Command API Gateway also hosts the DAPR Actor runtime, making it the home for all `AggregateActor` instances. In the quickstart, this is the service you interacted with through Swagger UI at `http://localhost:8080/swagger`.
+
+It also fronts the read side: `POST /api/v1/queries` executes a query and returns the projection payload, `POST /api/v1/queries/validate` and `POST /api/v1/commands/validate` provide preflight authorization checks, and `POST /projections/changed` invalidates cached validators after projection updates.
 
 ### Aggregate Actor
 
@@ -229,7 +241,19 @@ The flow begins when an HTTP Client sends a POST request to the Command API Gate
 
 </details>
 
+## Read Model Refresh Flow
+
+The same topology also supports a lightweight read path for projections:
+
+1. A client calls `POST /api/v1/queries` with tenant, domain, aggregate ID, and query type.
+2. The Command API authenticates the user and optionally short-circuits the request with `304 Not Modified` when the `If-None-Match` header already matches the current projection ETag.
+3. A projection handler resolves the current read model and returns the payload.
+4. When new events update that projection, downstream handlers publish a `ProjectionChangedNotification`.
+5. The Command API receives `POST /projections/changed`, regenerates the ETag, and can broadcast a SignalR `ProjectionChanged` signal to subscribed clients.
+
+This keeps write-side processing authoritative while giving read-side consumers efficient cache validation and near-real-time refresh hooks.
+
 ## Next Steps
 
 - **Next:** [Command Lifecycle Deep Dive](command-lifecycle.md) — trace a command end-to-end through the system
-- **Related:** [Choose the Right Tool](choose-the-right-tool.md), [Quickstart Guide](../getting-started/quickstart.md)
+- **Related:** [Choose the Right Tool](choose-the-right-tool.md), [Quickstart Guide](../getting-started/quickstart.md), [Query & Projection API Reference](../reference/query-api.md)

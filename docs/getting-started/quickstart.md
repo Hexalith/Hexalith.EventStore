@@ -8,7 +8,7 @@ Clone the repository, run the sample application with .NET Aspire, send a comman
 
 ## What You'll Build
 
-The sample application includes a Counter domain service that processes three commands: `IncrementCounter`, `DecrementCounter`, and `ResetCounter`. Each command produces a corresponding event (`CounterIncremented`, `CounterDecremented`, `CounterReset`) that updates the `CounterState`.
+The sample application includes a Counter domain service that processes three commands: `IncrementCounter`, `DecrementCounter`, and `ResetCounter`. Each command produces a corresponding event (`CounterIncremented`, `CounterDecremented`, `CounterReset`) that updates the `CounterState`. The same local topology also exposes a query endpoint and an optional real-time projection refresh path used by the sample Blazor UI.
 
 Your domain logic lives in a `CounterAggregate` class that extends `EventStoreAggregate<CounterState>`. Each command gets a typed `Handle` method that receives the command and current state, then returns events. State is reconstructed via `Apply` methods on `CounterState`. The platform handles everything else: routing, persistence, snapshots, and pub/sub delivery.
 
@@ -28,7 +28,7 @@ $ cd Hexalith.EventStore
 Start the Aspire AppHost, which launches the CommandAPI, the sample domain service, Redis, and Keycloak:
 
 ```bash
-$ dotnet run --project src/Hexalith.EventStore.AppHost
+$ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 > **Note:** The first run takes longer than usual because .NET restores NuGet packages and Docker pulls container images for Redis, Keycloak, and the DAPR sidecar.
@@ -73,11 +73,11 @@ Expand the **POST /api/v1/commands** endpoint, click **Try it out**, and use thi
 
 ```json
 {
-  "tenant": "tenant-a",
-  "domain": "counter",
-  "aggregateId": "counter-1",
-  "commandType": "IncrementCounter",
-  "payload": {}
+    "tenant": "tenant-a",
+    "domain": "counter",
+    "aggregateId": "counter-1",
+    "commandType": "IncrementCounter",
+    "payload": {}
 }
 ```
 
@@ -85,7 +85,7 @@ Click **Execute**. The API returns `202 Accepted` with a response containing the
 
 ```json
 {
-  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -106,6 +106,8 @@ The correlation ID from your command response links the request to all downstrea
 
 You can also check the **Structured Logs** tab in the Aspire dashboard to see detailed log entries from each service.
 
+If you open the sample Blazor UI from the dashboard, you'll see the complementary read side in action: it uses the query API to fetch projection data and can subscribe to projection change notifications to refresh when new events land.
+
 ## What Happened
 
 Here is what happened when you sent that command:
@@ -122,6 +124,7 @@ You wrote zero infrastructure code — DAPR handled state, messaging, and actor 
 ## Next Steps
 
 - **Next:** [Build Your First Domain Service](first-domain-service.md) — create your own domain from scratch
+- **Related:** [Query & Projection API Reference](../reference/query-api.md) — inspect the read-model and real-time endpoints exposed by the same sample
 - **Related:** [Architecture Overview](../concepts/architecture-overview.md) — understand the design decisions behind the system
 - **Related:** [Choose the Right Tool](../concepts/choose-the-right-tool.md) — compare Hexalith with alternatives
 - **Related:** [Prerequisites](prerequisites.md) — review tool setup details

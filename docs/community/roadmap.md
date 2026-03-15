@@ -2,7 +2,7 @@
 
 # Product Roadmap
 
-Hexalith.EventStore is in active pre-v1.0 development. This page outlines where the project is headed — what we are building now, what comes next, and what we have already shipped. The roadmap reflects current priorities; it is not a commitment to specific dates. For real-time progress, track [GitHub Issues](https://github.com/Hexalith/Hexalith.EventStore/issues) and [Milestones](https://github.com/Hexalith/Hexalith.EventStore/milestones).
+Hexalith.EventStore is in active development and continues to evolve across major releases. This page outlines where the project is headed — what we are building now, what comes next, and what we have already shipped. The roadmap reflects current priorities; it is not a commitment to specific dates. For real-time progress, track [GitHub Issues](https://github.com/Hexalith/Hexalith.EventStore/issues) and [Milestones](https://github.com/Hexalith/Hexalith.EventStore/milestones).
 
 > **Tip:** Want to influence what gets built next? Jump to [How to Influence the Roadmap](#how-to-influence-the-roadmap) or start a conversation in the [Ideas category on GitHub Discussions](https://github.com/Hexalith/Hexalith.EventStore/discussions/categories/ideas).
 
@@ -11,7 +11,8 @@ Hexalith.EventStore is in active pre-v1.0 development. This page outlines where 
 These areas are actively being worked on right now:
 
 - **Final lifecycle documentation polish** — the roadmap is in review and the remaining Epic 15 work is the DAPR FAQ deep dive, which closes out the current documentation lifecycle track
-- **Actor-based authorization and query API** — introducing pluggable authorization validators at the actor level, query contracts and routing, projection actor abstractions, and validation endpoints (Epic 17)
+- **Operational and deployment guidance** — expanding deployment walkthroughs, DAPR component guidance, and production-readiness reference material around the current feature set
+- **Read-model ergonomics** — polishing the developer experience around query endpoints, ETag caching, and real-time projection refresh patterns
 
 ## Planned
 
@@ -40,6 +41,8 @@ Key capabilities that have already shipped:
 
 - **Core event sourcing server** — CQRS command processing with DDD aggregate pattern using pure-function `Handle(Command, State?) → DomainResult`, event persistence with atomic writes, snapshots, and state rehydration
 - **Command API gateway** — REST endpoints with JWT authentication, FluentValidation, MediatR pipeline, rate limiting, OpenAPI/Swagger, RFC 7807 error responses, and optimistic concurrency
+- **Query and projection refresh API** — query execution via `POST /api/v1/queries`, preflight authorization endpoints, ETag-based cache validation, projection invalidation hooks, and projection-changed notifications
+- **Real-time projection updates** — optional SignalR hub at `/hubs/projection-changes` plus the `Hexalith.EventStore.SignalR` client helper for automatic reconnect and group rejoin
 - **Event distribution** — CloudEvents 1.0 publishing, per-tenant per-domain topic isolation, at-least-once delivery with DAPR retry policies, persist-then-publish resilience, and dead-letter routing
 - **Multi-tenant security** — DAPR access control policies, data-path isolation, pub/sub topic isolation, security audit logging, and payload protection
 - **Observability and operations** — end-to-end OpenTelemetry tracing, structured logging, health and readiness endpoints, dead-letter-to-origin tracing
@@ -60,8 +63,8 @@ This roadmap is shaped by community feedback. If a planned feature matters to yo
 
 Hexalith.EventStore uses [Semantic Versioning](https://semver.org/) via [MinVer](https://github.com/adamralph/minver). Releases are triggered by git tags (prefix `v`) and published to [NuGet.org](https://www.nuget.org/packages?q=Hexalith.EventStore).
 
-- **Pre-v1.0:** Breaking changes may occur between minor versions. Each release documents migration steps.
-- **Post-v1.0:** Breaking changes will follow SemVer major version increments with documented upgrade paths.
+- **Current releases:** Breaking changes follow documented release notes and upgrade guidance in the [Changelog](../../CHANGELOG.md) and [Upgrade Path](../guides/upgrade-path.md).
+- **Forward compatibility goal:** Breaking changes should continue to follow SemVer major version increments with explicit migration guidance.
 
 See the [Changelog](../../CHANGELOG.md) for release history and the [Upgrade Path](../guides/upgrade-path.md) guide for migration between versions.
 

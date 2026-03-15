@@ -200,7 +200,7 @@ The naming convention engine converts `InventoryAggregate` to domain name `inven
 Restart the AppHost:
 
 ```bash
-$ dotnet run --project src/Hexalith.EventStore.AppHost
+$ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 ### Verify Discovery
@@ -384,4 +384,4 @@ That is it. The convention engine discovers your aggregate, derives the domain n
 ## Next Steps
 
 - **Next:** [Architecture Overview](../concepts/architecture-overview.md) — understand the design decisions behind the system
-- **Related:** [Quickstart](quickstart.md), [Command Lifecycle](../concepts/command-lifecycle.md), [Identity Scheme](../concepts/identity-scheme.md)
+- **Related:** [Quickstart](quickstart.md), [Command Lifecycle](../concepts/command-lifecycle.md), [Identity Scheme](../concepts/identity-scheme.md), [Query & Projection API Reference](../reference/query-api.md)

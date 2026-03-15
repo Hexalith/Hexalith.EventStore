@@ -1,6 +1,6 @@
 # Story 1.7: MessageType Value Object & Hexalith.Commons ULID Integration
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,51 +34,52 @@ So that message routing is safe and IDs are lexicographically sortable.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `Hexalith.Commons.UniqueIds` dependency (AC: #4)
-  - [ ] 1.1 Add `<PackageVersion Include="Hexalith.Commons.UniqueIds" Version="2.13.0" />` to `Directory.Packages.props` under a new `Hexalith` ItemGroup label
-  - [ ] 1.2 Add `<PackageReference Include="Hexalith.Commons.UniqueIds" />` to `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj`
-  - [ ] 1.3 Verify `dotnet restore` and `dotnet build` succeed
+- [x] Task 1: Add `Hexalith.Commons.UniqueIds` dependency (AC: #4)
+    - [x] 1.1 Add `<PackageVersion Include="Hexalith.Commons.UniqueIds" Version="2.13.0" />` to `Directory.Packages.props` under a new `Hexalith` ItemGroup label
+    - [x] 1.2 Add `<PackageReference Include="Hexalith.Commons.UniqueIds" />` to `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj`
+    - [x] 1.3 Verify `dotnet restore` and `dotnet build` succeed
 
-- [ ] Task 2: Implement `MessageType` value object (AC: #1, #2, #3, #7, #9)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Contracts/Messages/KebabConverter.cs` — `internal static` helper with PascalCase-to-kebab regex (copied from NamingConventionEngine, kept internal for future extraction)
-  - [ ] 2.2 Create `src/Hexalith.EventStore.Contracts/Messages/MessageType.cs`
-  - [ ] 2.3 Implement `Parse(string)` — regex-validated parsing of `{domain}-{name}-v{ver}` format, max 192 chars
-  - [ ] 2.4 Implement `TryParse(string, out MessageType?)` — non-throwing variant
-  - [ ] 2.5 Implement `Assemble(string domain, Type messageType, int version)` — uses `KebabConverter` for PascalCase-to-kebab, no suffix stripping (raw type name converted as-is, unlike NamingConventionEngine which strips Aggregate/Projection suffixes)
-  - [ ] 2.6 Expose `Domain`, `Name`, `Version` properties + `ToString()` returning canonical format
-  - [ ] 2.7 Implement value equality (record or manual Equals/GetHashCode)
-  - [ ] 2.8 Implement `MessageTypeJsonConverter : JsonConverter<MessageType>` — serialize as JSON string via `ToString()`, deserialize via `Parse()`
-  - [ ] 2.9 Apply `[JsonConverter(typeof(MessageTypeJsonConverter))]` attribute to `MessageType`
+- [x] Task 2: Implement `MessageType` value object (AC: #1, #2, #3, #7, #9)
+    - [x] 2.1 Create `src/Hexalith.EventStore.Contracts/Messages/KebabConverter.cs` — `internal static` helper with PascalCase-to-kebab regex (copied from NamingConventionEngine, kept internal for future extraction)
+    - [x] 2.2 Create `src/Hexalith.EventStore.Contracts/Messages/MessageType.cs`
+    - [x] 2.3 Implement `Parse(string)` — regex-validated parsing of `{domain}-{name}-v{ver}` format, max 192 chars
+    - [x] 2.4 Implement `TryParse(string, out MessageType?)` — non-throwing variant
+    - [x] 2.5 Implement `Assemble(string domain, Type messageType, int version)` — uses `KebabConverter` for PascalCase-to-kebab, no suffix stripping (raw type name converted as-is, unlike NamingConventionEngine which strips Aggregate/Projection suffixes)
+    - [x] 2.6 Expose `Domain`, `Name`, `Version` properties + `ToString()` returning canonical format
+    - [x] 2.7 Implement value equality (record or manual Equals/GetHashCode)
+    - [x] 2.8 Implement `MessageTypeJsonConverter : JsonConverter<MessageType>` — serialize as JSON string via `ToString()`, deserialize via `Parse()`
+    - [x] 2.9 Apply `[JsonConverter(typeof(MessageTypeJsonConverter))]` attribute to `MessageType`
 
-- [ ] Task 3: Write MessageType tests (AC: #1, #2, #3, #7, #8)
-  - [ ] 3.1 Create `tests/Hexalith.EventStore.Contracts.Tests/Messages/MessageTypeTests.cs`
-  - [ ] 3.2 Test Parse with valid inputs: single-segment name, multi-segment name, various versions
-  - [ ] 3.3 Test Parse with invalid inputs: no version suffix, missing domain, empty string, null, no hyphens, version=0, non-numeric version
-  - [ ] 3.4 Test TryParse returns false for invalid inputs (no exceptions)
-  - [ ] 3.5 Test Assemble with PascalCase types: `TenantCreated` -> `tenant-created`, `OrderItemAdded` -> `order-item-added`
-  - [ ] 3.6 Test Assemble with single-word types: `Incremented` -> `incremented`
-  - [ ] 3.7 Test Assemble negative cases: null domain throws, null type throws, empty domain throws, version=0 throws, version=-1 throws
-  - [ ] 3.8 Test Assemble intentional repeated segment: domain=`counter`, type=`CounterIncremented` -> `counter-counter-incremented-v1` (correct per convention — no deduplication)
-  - [ ] 3.9 Test max length enforcement: Parse and Assemble reject strings exceeding 192 chars
-  - [ ] 3.10 Test value equality: equal instances, unequal instances
-  - [ ] 3.11 Test ToString() round-trip: `Parse(mt.ToString())` equals `mt`
-  - [ ] 3.12 Test JSON serialization round-trip: serialize as `"tenants-create-tenant-v1"` (string, not object), deserialize back to equal instance
+- [x] Task 3: Write MessageType tests (AC: #1, #2, #3, #7, #8)
+    - [x] 3.1 Create `tests/Hexalith.EventStore.Contracts.Tests/Messages/MessageTypeTests.cs`
+    - [x] 3.2 Test Parse with valid inputs: single-segment name, multi-segment name, various versions
+    - [x] 3.3 Test Parse with invalid inputs: no version suffix, missing domain, empty string, null, no hyphens, version=0, non-numeric version
+    - [x] 3.4 Test TryParse returns false for invalid inputs (no exceptions)
+    - [x] 3.5 Test Assemble with PascalCase types: `TenantCreated` -> `tenant-created`, `OrderItemAdded` -> `order-item-added`
+    - [x] 3.6 Test Assemble with single-word types: `Incremented` -> `incremented`
+    - [x] 3.7 Test Assemble negative cases: null domain throws, null type throws, empty domain throws, version=0 throws, version=-1 throws
+    - [x] 3.8 Test Assemble intentional repeated segment: domain=`counter`, type=`CounterIncremented` -> `counter-counter-incremented-v1` (correct per convention — no deduplication)
+    - [x] 3.9 Test max length enforcement: Parse and Assemble reject strings exceeding 192 chars
+    - [x] 3.10 Test value equality: equal instances, unequal instances
+    - [x] 3.11 Test ToString() round-trip: `Parse(mt.ToString())` equals `mt`
+    - [x] 3.12 Test JSON serialization round-trip: serialize as `"tenants-create-tenant-v1"` (string, not object), deserialize back to equal instance
 
-- [ ] Task 4: Write UniqueIdHelper integration tests (AC: #5, #6, #8)
-  - [ ] 4.1 Create `tests/Hexalith.EventStore.Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs`
-  - [ ] 4.2 Test `GenerateSortableUniqueStringId()` produces 26-char string
-  - [ ] 4.3 Test `ExtractTimestamp()` returns valid DateTimeOffset close to now
-  - [ ] 4.4 Test `ToGuid()` and `ToSortableUniqueId()` round-trip
-  - [ ] 4.5 Test lexicographic ordering: two ULIDs generated sequentially maintain sort order
-  - [ ] 4.6 Test `ExtractTimestamp()` throws on invalid/malformed input (empty string, null, 25-char truncated, 27-char overflow, non-Base32 characters)
+- [x] Task 4: Write UniqueIdHelper integration tests (AC: #5, #6, #8)
+    - [x] 4.1 Create `tests/Hexalith.EventStore.Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs`
+    - [x] 4.2 Test `GenerateSortableUniqueStringId()` produces 26-char string
+    - [x] 4.3 Test `ExtractTimestamp()` returns valid DateTimeOffset close to now
+    - [x] 4.4 Test `ToGuid()` and `ToSortableUniqueId()` round-trip
+    - [x] 4.5 Test lexicographic ordering: two ULIDs generated sequentially maintain sort order
+    - [x] 4.6 Test `ExtractTimestamp()` throws on invalid/malformed input (empty string, null, 25-char truncated, 27-char overflow, non-Base32 characters)
 
-- [ ] Task 5: Verify all tests pass (AC: #8)
-  - [ ] 5.1 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — all pass, zero errors
-  - [ ] 5.2 Run `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
+- [x] Task 5: Verify all tests pass (AC: #8)
+    - [x] 5.1 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — all pass, zero errors
+    - [x] 5.2 Run `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
 
 ## Out of Scope
 
 This story does NOT modify any existing types. Specifically:
+
 - **`EventMetadata`** — `EventTypeName` remains a raw `string`. A future story may change it to `MessageType`, but that is out of scope here.
 - **`CommandEnvelope`** — `CommandType` remains a raw `string`. Same reasoning.
 - **`AggregateIdentity`** — No changes.
@@ -96,14 +97,17 @@ This story does NOT modify any existing types. Specifically:
 ### PascalCase-to-Kebab Conversion via KebabConverter
 
 The `NamingConventionEngine` in Client package (`src/Hexalith.EventStore.Client/Conventions/NamingConventionEngine.cs:20`) already implements this regex:
+
 ```
 @"(?<=[a-z0-9])([A-Z])|(?<=[A-Z])([A-Z][a-z])|(?<=[a-zA-Z])([0-9])"
 ```
+
 **DO NOT reference Client from Contracts** (Contracts is the lowest-level package — no upward dependencies). Create `KebabConverter` as an `internal static` class in `Contracts/Messages/KebabConverter.cs` with a single method `ConvertToKebab(string pascalCase) -> string`. This keeps the logic testable and extractable to a shared package later if the duplication becomes a maintenance concern.
 
 **Key difference from NamingConventionEngine:** `KebabConverter` does NOT strip suffixes (Aggregate, Projection, etc.). It performs raw PascalCase-to-kebab conversion only. Suffix stripping is a Client-layer concern for domain name derivation, not a Contracts-layer concern for message type names.
 
 Examples:
+
 - `TenantCreated` -> `tenant-created`
 - `OrderItemAdded` -> `order-item-added`
 - `CounterIncremented` -> `counter-incremented`
@@ -147,11 +151,13 @@ Format: `{domain}-{name}-v{ver}`
 - **Max total length**: 192 characters
 
 **Full examples**:
+
 - `tenants-create-tenant-v1` — domain=`tenants`, name=`create-tenant`, version=1
 - `counter-counter-incremented-v1` — domain=`counter`, name=`counter-incremented`, version=1 (repeated `counter` is correct and intentional — domain is the routing segment, name is the full type name converted to kebab)
 - `order-order-item-added-v2` — domain=`order`, name=`order-item-added`, version=2
 
 Parse algorithm:
+
 1. Validate non-null/empty, max 192 chars
 2. Find last `-v{digits}` suffix — extract version, validate >= 1
 3. Find first hyphen — everything before is domain (single segment, no hyphens)
@@ -205,10 +211,35 @@ Recent commits show Epic 18 (Query Pipeline) completion. No conflicts with Story
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- Assemble max-length test initially failed — dummy type name was too short when kebab-converted (153 chars + domain + version = 164, under 192). Extended class name to produce ~187 kebab chars → 198 total. Fixed in one iteration.
+
 ### Completion Notes List
 
+- ✅ Task 1: Added `Hexalith.Commons.UniqueIds` v2.13.0 as first external Contracts dependency. Centralized version in `Directory.Packages.props` under `Hexalith` label.
+- ✅ Task 2: Implemented `MessageType` as a `sealed partial record` with `Parse`, `TryParse`, `Assemble`, value equality, and `MessageTypeJsonConverter`. Used `[GeneratedRegex]` for source-generated compiled regex. `KebabConverter` is `internal static partial` — duplicates NamingConventionEngine regex without suffix stripping.
+- ✅ Task 3: 35 MessageType tests covering Parse valid/invalid, TryParse, Assemble PascalCase/negative/repeated-segment, max length, value equality, ToString round-trip, JSON serialization round-trip.
+- ✅ Task 4: 9 UniqueIdHelper integration tests covering generation, timestamp extraction, Guid round-trip, lexicographic ordering, and invalid input rejection.
+- ✅ Task 5: Full Tier 1 regression suite passes (608 tests, 0 failures). Release build: 0 warnings, 0 errors.
+- ✅ Review fixes applied: `MessageType.Assemble` now rejects CLR type names that convert to invalid non-ASCII kebab-case, and `MessageTypeJsonConverter` now rejects JSON `null` instead of silently returning `null`.
+- ✅ Review housekeeping applied: reconciled the Dev Agent Record `File List` with review-driven artifact updates and noted one unrelated pre-existing untracked planning artifact observed in the workspace during review.
+
+### Change Log
+
+- 2026-03-15: Story 1.7 implemented — MessageType value object, KebabConverter, MessageTypeJsonConverter, UniqueIdHelper integration, 44 new tests
+- 2026-03-15: Code review fixes applied — enforced `MessageType.Assemble` invariants for generated names, rejected JSON `null` for `MessageType`, added focused regression tests, and synchronized review artifacts
+
 ### File List
+
+- `Directory.Packages.props` — Modified (added Hexalith.Commons.UniqueIds v2.13.0)
+- `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj` — Modified (added PackageReference)
+- `src/Hexalith.EventStore.Contracts/Messages/KebabConverter.cs` — New (internal PascalCase-to-kebab converter)
+- `src/Hexalith.EventStore.Contracts/Messages/MessageType.cs` — New, then modified in review (sealed partial record with Parse/TryParse/Assemble; now validates generated kebab names in `Assemble`)
+- `src/Hexalith.EventStore.Contracts/Messages/MessageTypeJsonConverter.cs` — New, then modified in review (JSON string serializer; now rejects `null` and non-string JSON tokens explicitly)
+- `tests/Hexalith.EventStore.Contracts.Tests/Messages/MessageTypeTests.cs` — New, then modified in review (35 original tests plus focused regression coverage for unicode CLR type names and JSON `null`)
+- `tests/Hexalith.EventStore.Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs` — New (9 tests)
+- `_bmad-output/implementation-artifacts/1-7-messagetype-value-object-and-hexalith-commons-ulid-integration.md` — Modified during review (status, review fix notes, file list reconciliation)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — Modified during review (story status synchronized to `done`)

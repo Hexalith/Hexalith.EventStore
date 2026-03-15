@@ -4,4 +4,8 @@
     <Description>CQRS and DDD contract types for the Hexalith event store — commands, events, results, and aggregate identities for .NET event sourcing</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Hexalith.Commons.UniqueIds" />
+  </ItemGroup>
+
 </Project>
