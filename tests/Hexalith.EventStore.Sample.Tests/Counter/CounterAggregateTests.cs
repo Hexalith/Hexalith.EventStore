@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
@@ -94,6 +95,48 @@ public class CounterAggregateTests {
         Assert.True(result.IsSuccess);
         _ = Assert.Single(result.Events);
         _ = Assert.IsType<CounterReset>(result.Events[0]);
+    }
+
+    // --- Story 1.5: Tombstoning tests ---
+
+    [Fact]
+    public async Task ProcessAsync_CloseCounter_ActiveCounter_ProducesCounterClosedEvent() {
+        var state = new CounterState();
+        state.Apply(new CounterIncremented());
+
+        DomainResult result = await _aggregate.ProcessAsync(CreateCommand(new CloseCounter()), state);
+
+        Assert.True(result.IsSuccess);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<CounterClosed>(result.Events[0]);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_AnyCommand_AfterCounterClosed_RejectsWithAggregateTerminated() {
+        var state = new CounterState();
+        state.Apply(new CounterIncremented());
+        state.Apply(new CounterClosed()); // Terminate
+
+        DomainResult result = await _aggregate.ProcessAsync(CreateCommand(new IncrementCounter()), state);
+
+        Assert.True(result.IsRejection);
+        _ = Assert.Single(result.Events);
+        AggregateTerminated terminated = Assert.IsType<AggregateTerminated>(result.Events[0]);
+        Assert.Equal("CounterAggregate", terminated.AggregateType);
+        Assert.Equal("counter-1", terminated.AggregateId);
+    }
+
+    [Fact]
+    public void CounterClosed_EventStream_IsReplayable() {
+        // Simulate full event stream replay: increment, close, then AggregateTerminated rejection
+        var state = new CounterState();
+        state.Apply(new CounterIncremented());
+        state.Apply(new CounterIncremented());
+        state.Apply(new CounterClosed());
+        state.Apply(new AggregateTerminated("CounterAggregate", "counter-1")); // Rejection event replayed
+
+        Assert.Equal(2, state.Count);
+        Assert.True(state.IsTerminated);
     }
 
     [Fact]

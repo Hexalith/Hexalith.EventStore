@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
@@ -154,6 +155,37 @@ public class EventStoreAggregateTests : IDisposable {
         public static DomainResult Handle(AddItem command, TestState? state)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
     }
+
+    // --- Terminatable state and aggregate for tombstoning tests ---
+    private sealed record TerminalEvent : IEventPayload;
+
+    private sealed class TerminatableState : ITerminatable {
+        public int Value { get; private set; }
+
+        public bool IsTerminated { get; private set; }
+
+        public void Apply(ItemAdded e) => Value++;
+
+        public void Apply(TerminalEvent e) => IsTerminated = true;
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Apply must be instance method for reflection-based event replay")]
+        public void Apply(AggregateTerminated e) {
+            // No-op — required because rejection events are persisted and replayed
+        }
+    }
+
+    private sealed record TerminateCommand;
+
+    private sealed class TerminatableAggregate : EventStoreAggregate<TerminatableState> {
+        public static DomainResult Handle(AddItem command, TerminatableState? state)
+            => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
+
+        public static DomainResult Handle(TerminateCommand command, TerminatableState? state)
+            => DomainResult.Success(new IEventPayload[] { new TerminalEvent() });
+    }
+
+    // --- Non-terminatable state (no ITerminatable) for backward compatibility ---
+    // Uses existing TestAggregate/TestState (no ITerminatable interface)
 
     // --- Separate aggregate type for cache independence tests ---
     private sealed class OtherState {
@@ -812,6 +844,61 @@ public class EventStoreAggregateTests : IDisposable {
         CommandEnvelope command = CreateCommand(new RemoveItem());
 
         DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    // --- Story 1.5: Tombstoning guard tests ---
+
+    [Fact]
+    public async Task ProcessAsync_TerminatedState_RejectsWithAggregateTerminated() {
+        var aggregate = new TerminatableAggregate();
+        var state = new TerminatableState();
+        state.Apply(new TerminalEvent()); // Terminate the aggregate
+
+        CommandEnvelope command = CreateCommand(new AddItem("should-fail"));
+        DomainResult result = await aggregate.ProcessAsync(command, state);
+
+        Assert.True(result.IsRejection);
+        _ = Assert.Single(result.Events);
+        AggregateTerminated terminated = Assert.IsType<AggregateTerminated>(result.Events[0]);
+        Assert.Equal("TerminatableAggregate", terminated.AggregateType);
+        Assert.Equal("agg-1", terminated.AggregateId);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_NonTerminatedState_ProcessesNormally() {
+        var aggregate = new TerminatableAggregate();
+        var state = new TerminatableState();
+        // IsTerminated is false (default)
+
+        CommandEnvelope command = CreateCommand(new AddItem("should-succeed"));
+        DomainResult result = await aggregate.ProcessAsync(command, state);
+
+        Assert.True(result.IsSuccess);
+        _ = Assert.IsType<ItemAdded>(result.Events[0]);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_NonTerminatableState_ProcessesNormally() {
+        // TestAggregate uses TestState which does NOT implement ITerminatable
+        var aggregate = new TestAggregate();
+        var state = new TestState();
+        state.Apply(new ItemAdded { Name = "a" });
+
+        CommandEnvelope command = CreateCommand(new RemoveItem());
+        DomainResult result = await aggregate.ProcessAsync(command, state);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_NullState_TerminatableAggregate_ProcessesNormally() {
+        // Null state can't be ITerminatable, guard is safe
+        var aggregate = new TerminatableAggregate();
+
+        CommandEnvelope command = CreateCommand(new AddItem("first-command"));
+        DomainResult result = await aggregate.ProcessAsync(command, null);
 
         Assert.True(result.IsSuccess);
     }

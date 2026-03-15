@@ -1,6 +1,6 @@
 # Story 1.5: CommandStatus Enum & Aggregate Tombstoning
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -20,36 +20,36 @@ So that command status tracking uses a shared vocabulary and terminated aggregat
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Verify CommandStatus enum completeness (AC: #1) — audit only, no code changes expected
-  - [ ] 1.1 Verify `src/Hexalith.EventStore.Contracts/Commands/CommandStatus.cs` contains exactly 8 states: Received (0), Processing (1), EventsStored (2), EventsPublished (3), Completed (4), Rejected (5), PublishFailed (6), TimedOut (7)
-  - [ ] 1.2 Verify `CommandStatusRecord.cs` has XML documentation on all public members
-  - [ ] 1.3 Verify CommandStatus tests exist in Contracts.Tests (search for `CommandStatus` tests). If no dedicated test class exists, add `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandStatusTests.cs` verifying: enum has exactly 8 values, explicit integer assignments match expected values, all terminal statuses identified
-  - [ ] 1.4 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` to confirm all pass
-- [ ] Task 2: Define `ITerminatable` interface in Contracts (AC: #2)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Contracts/Aggregates/ITerminatable.cs` with `bool IsTerminated { get; }` property. XML docs must include a `<remarks>` warning: "States implementing this interface MUST also provide a no-op `Apply(AggregateTerminated)` method, because the framework persists `AggregateTerminated` rejection events to the event stream and rehydration replays all events." Interface in `Hexalith.EventStore.Contracts.Aggregates` namespace
-  - [ ] 2.2 Add unit test: `tests/Hexalith.EventStore.Contracts.Tests/Aggregates/ITerminatableTests.cs` — verify interface shape (has `IsTerminated` property, property type is `bool`)
-- [ ] Task 3: Define `AggregateTerminated` rejection event in Contracts (AC: #2)
-  - [ ] 3.1 Create `src/Hexalith.EventStore.Contracts/Events/AggregateTerminated.cs` — a sealed record implementing `IRejectionEvent`. Follows past-tense negative naming (Rule 8). Include `string AggregateType` (class name, e.g., `"CounterAggregate"` — diagnostic context, not routing) and `string AggregateId` properties. XML docs
-  - [ ] 3.2 Add test: verify `AggregateTerminated` implements `IRejectionEvent`, verify it follows naming convention
-- [ ] Task 4: Add tombstoning guard to `EventStoreAggregate.ProcessAsync` (AC: #2)
-  - [ ] 4.1 In `src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs`, modify `ProcessAsync` to check if `state is ITerminatable { IsTerminated: true }` AFTER rehydration, BEFORE command dispatch. If terminated, return `DomainResult.Rejection(new IRejectionEvent[] { new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId) })`. The existing rejection path (IRejectionEvent → actor → rejection event persisted) handles it from there
-  - [ ] 4.2 Add tests in `tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs`:
+- [x] Task 1: Verify CommandStatus enum completeness (AC: #1) — audit only, no code changes expected
+  - [x] 1.1 Verify `src/Hexalith.EventStore.Contracts/Commands/CommandStatus.cs` contains exactly 8 states: Received (0), Processing (1), EventsStored (2), EventsPublished (3), Completed (4), Rejected (5), PublishFailed (6), TimedOut (7)
+  - [x] 1.2 Verify `CommandStatusRecord.cs` has XML documentation on all public members
+  - [x] 1.3 Verify CommandStatus tests exist in Contracts.Tests (search for `CommandStatus` tests). If no dedicated test class exists, add `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandStatusTests.cs` verifying: enum has exactly 8 values, explicit integer assignments match expected values, all terminal statuses identified
+  - [x] 1.4 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` to confirm all pass
+- [x] Task 2: Define `ITerminatable` interface in Contracts (AC: #2)
+  - [x] 2.1 Create `src/Hexalith.EventStore.Contracts/Aggregates/ITerminatable.cs` with `bool IsTerminated { get; }` property. XML docs must include a `<remarks>` warning: "States implementing this interface MUST also provide a no-op `Apply(AggregateTerminated)` method, because the framework persists `AggregateTerminated` rejection events to the event stream and rehydration replays all events." Interface in `Hexalith.EventStore.Contracts.Aggregates` namespace
+  - [x] 2.2 Add unit test: `tests/Hexalith.EventStore.Contracts.Tests/Aggregates/ITerminatableTests.cs` — verify interface shape (has `IsTerminated` property, property type is `bool`)
+- [x] Task 3: Define `AggregateTerminated` rejection event in Contracts (AC: #2)
+  - [x] 3.1 Create `src/Hexalith.EventStore.Contracts/Events/AggregateTerminated.cs` — a sealed record implementing `IRejectionEvent`. Follows past-tense negative naming (Rule 8). Include `string AggregateType` (class name, e.g., `"CounterAggregate"` — diagnostic context, not routing) and `string AggregateId` properties. XML docs
+  - [x] 3.2 Add test: verify `AggregateTerminated` implements `IRejectionEvent`, verify it follows naming convention
+- [x] Task 4: Add tombstoning guard to `EventStoreAggregate.ProcessAsync` (AC: #2)
+  - [x] 4.1 In `src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs`, modify `ProcessAsync` to check if `state is ITerminatable { IsTerminated: true }` AFTER rehydration, BEFORE command dispatch. If terminated, return `DomainResult.Rejection(new IRejectionEvent[] { new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId) })`. The existing rejection path (IRejectionEvent → actor → rejection event persisted) handles it from there
+  - [x] 4.2 Add tests in `tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs`:
     - Test: aggregate with `ITerminatable` state that `IsTerminated == true` returns `DomainResult.IsRejection == true` with `AggregateTerminated` event
     - Test: aggregate with `ITerminatable` state that `IsTerminated == false` processes command normally
     - Test: aggregate with state NOT implementing `ITerminatable` processes command normally (no termination check — backward compatible)
     - Test: aggregate with null state (first command, no prior events) and `ITerminatable` state type processes command normally (null can't be ITerminatable, guard is safe)
-- [ ] Task 5: Counter sample demonstrates tombstoning (AC: #2)
-  - [ ] 5.1 Add terminal event `CounterClosed` in `samples/Hexalith.EventStore.Sample/Counter/Events/CounterClosed.cs` — sealed record implementing `IEventPayload`. Past-tense naming (Rule 8). XML docs
-  - [ ] 5.2 Add command `CloseCounter` in `samples/Hexalith.EventStore.Sample/Counter/Commands/CloseCounter.cs` — sealed record. XML docs
-  - [ ] 5.3 Update `CounterState` to implement `ITerminatable`: add `bool IsTerminated { get; private set; }` property, add `Apply(CounterClosed e)` method that sets `IsTerminated = true`, add `Apply(AggregateTerminated e)` no-op method (required — rejection events are persisted to the event stream and replayed during rehydration; missing this Apply method causes rehydration to throw)
-  - [ ] 5.4 Add `Handle(CloseCounter, CounterState?)` to `CounterAggregate`: return `DomainResult.Success` with `CounterClosed` event. Do NOT add an `IsTerminated` check inside Handle — the `ProcessAsync` tombstoning guard already rejects commands before Handle is called, so a terminated check here would be dead code
-  - [ ] 5.5 Add tests in `tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs`:
+- [x] Task 5: Counter sample demonstrates tombstoning (AC: #2)
+  - [x] 5.1 Add terminal event `CounterClosed` in `samples/Hexalith.EventStore.Sample/Counter/Events/CounterClosed.cs` — sealed record implementing `IEventPayload`. Past-tense naming (Rule 8). XML docs
+  - [x] 5.2 Add command `CloseCounter` in `samples/Hexalith.EventStore.Sample/Counter/Commands/CloseCounter.cs` — sealed record. XML docs
+  - [x] 5.3 Update `CounterState` to implement `ITerminatable`: add `bool IsTerminated { get; private set; }` property, add `Apply(CounterClosed e)` method that sets `IsTerminated = true`, add `Apply(AggregateTerminated e)` no-op method (required — rejection events are persisted to the event stream and replayed during rehydration; missing this Apply method causes rehydration to throw)
+  - [x] 5.4 Add `Handle(CloseCounter, CounterState?)` to `CounterAggregate`: return `DomainResult.Success` with `CounterClosed` event. Do NOT add an `IsTerminated` check inside Handle — the `ProcessAsync` tombstoning guard already rejects commands before Handle is called, so a terminated check here would be dead code
+  - [x] 5.5 Add tests in `tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs`:
     - CloseCounter on active counter → produces CounterClosed event
     - Any command after CounterClosed → AggregateTerminated rejection (verify the tombstoning guard fires)
     - CounterClosed event stream is replayable (rehydrate state, verify IsTerminated == true)
-- [ ] Task 6: Build and run all Tier 1 tests (AC: #3, #4)
-  - [ ] 6.1 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds with zero warnings
-  - [ ] 6.2 Run ALL Tier 1 test projects (Contracts.Tests, Client.Tests, Sample.Tests, Testing.Tests) — all must pass
+- [x] Task 6: Build and run all Tier 1 tests (AC: #3, #4)
+  - [x] 6.1 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds with zero warnings
+  - [x] 6.2 Run ALL Tier 1 test projects (Contracts.Tests, Client.Tests, Sample.Tests, Testing.Tests) — all must pass
 
 ## Dev Notes
 
@@ -161,9 +161,35 @@ Story 1.4 implemented `EventStoreAggregate<TState>` with reflection-based Handle
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
+- Build: 0 warnings, 0 errors (Release)
+- Contracts.Tests: 266 passed (5 new: 2 ITerminatable + 3 AggregateTerminated)
+- Client.Tests: 286 passed (4 new tombstoning guard tests)
+- Sample.Tests: 32 passed (3 new tombstoning demo tests)
+- Testing.Tests: 64 passed (no changes)
 
 ### Completion Notes List
+- Task 1: CommandStatus enum verified complete — 8 states with correct integer assignments, XML docs, and existing test coverage
+- Task 2: Created `ITerminatable` interface in `Contracts.Aggregates` with `bool IsTerminated` property and `<remarks>` warning about Apply(AggregateTerminated) obligation
+- Task 3: Created `AggregateTerminated` sealed record implementing `IRejectionEvent` with `AggregateType` and `AggregateId` properties
+- Task 4: Added tombstoning guard in `EventStoreAggregate.ProcessAsync` — checks `state is ITerminatable { IsTerminated: true }` after rehydration, before dispatch. Returns `DomainResult.Rejection` with `AggregateTerminated`
+- Task 5: Counter sample demonstrates full tombstoning lifecycle — `CloseCounter` command, `CounterClosed` terminal event, `CounterState` implements `ITerminatable` with Apply(CounterClosed) and no-op Apply(AggregateTerminated)
+- Task 6: Full solution builds with zero warnings, all 648 Tier 1 tests pass
+
+### Change Log
+- 2026-03-15: Story 1.5 implementation complete — CommandStatus verified, aggregate tombstoning implemented (FR66)
 
 ### File List
+- src/Hexalith.EventStore.Contracts/Aggregates/ITerminatable.cs (new)
+- src/Hexalith.EventStore.Contracts/Events/AggregateTerminated.cs (new)
+- src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs (modified — tombstoning guard)
+- samples/Hexalith.EventStore.Sample/Counter/Events/CounterClosed.cs (new)
+- samples/Hexalith.EventStore.Sample/Counter/Commands/CloseCounter.cs (new)
+- samples/Hexalith.EventStore.Sample/Counter/State/CounterState.cs (modified — ITerminatable)
+- samples/Hexalith.EventStore.Sample/Counter/CounterAggregate.cs (modified — Handle(CloseCounter))
+- tests/Hexalith.EventStore.Contracts.Tests/Aggregates/ITerminatableTests.cs (new)
+- tests/Hexalith.EventStore.Contracts.Tests/Events/AggregateTerminatedTests.cs (new)
+- tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs (modified — 4 tombstoning tests)
+- tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs (modified — 3 tombstoning tests)

@@ -30,4 +30,7 @@ public sealed class CounterAggregate : EventStoreAggregate<CounterState> {
 
         return DomainResult.Success(new IEventPayload[] { new CounterReset() });
     }
+
+    public static DomainResult Handle(CloseCounter command, CounterState? state)
+        => DomainResult.Success(new IEventPayload[] { new CounterClosed() });
 }

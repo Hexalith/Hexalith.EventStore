@@ -6,7 +6,9 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.Client.Aggregates;
@@ -44,6 +46,13 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
 
         AggregateMetadata metadata = GetOrBuildMetadata();
         TState? state = RehydrateState(currentState, metadata);
+
+        if (state is ITerminatable { IsTerminated: true }) {
+            return DomainResult.Rejection(new IRejectionEvent[] {
+                new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId),
+            });
+        }
+
         return await DispatchCommandAsync(command, state, metadata).ConfigureAwait(false);
     }
 
