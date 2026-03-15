@@ -239,6 +239,7 @@ public class LogLevelConventionTests : IDisposable {
 
     private static SubmitCommand CreateSubmitCommand() =>
         new(
+            MessageId: "msg-loglevel",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -250,6 +251,7 @@ public class LogLevelConventionTests : IDisposable {
 
     private static CommandEnvelope CreateCommandEnvelope() =>
         new(
+            MessageId: "msg-loglevel",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

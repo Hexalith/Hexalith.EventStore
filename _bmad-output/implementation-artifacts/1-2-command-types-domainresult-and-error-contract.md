@@ -1,6 +1,6 @@
 # Story 1.2: Command Types, DomainResult & Error Contract
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -28,45 +28,45 @@ So that I can return events (including rejection events) from my pure function w
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `MessageId` field to CommandEnvelope (AC: #1, #4, #5)
-  - [ ] 1.1 Add `MessageId` (string, ULID) as first positional parameter in CommandEnvelope record. MessageId needs non-empty validation, so follow the **CorrelationId pattern**: use an explicit property declaration with `[DataMember]` attribute and validation logic (not `[property: DataMember]` on the positional param). Without `[DataMember]`, MessageId vanishes during DAPR actor state serialization
-  - [ ] 1.2 Add non-empty validation for MessageId (same pattern as CorrelationId)
-  - [ ] 1.3 Update ToString() to include MessageId (keep Payload redacted)
-  - [ ] 1.4 Verify Extensions defensive copy still works
-- [ ] Task 2: Update SubmitCommand to include MessageId (AC: #1)
-  - [ ] 2.1 Add `MessageId` field to `SubmitCommand` record in `src/Hexalith.EventStore.Server/Pipeline/Commands/SubmitCommand.cs`
-  - [ ] 2.2 Update `SubmitCommandExtensions.ToCommandEnvelope()` to pass MessageId
-  - [ ] 2.3 Fix CausationId derivation in `SubmitCommandHandler.cs` (line 25): change `string causationId = request.CorrelationId` to `string causationId = request.MessageId` — CausationId is the specific command that caused events, not the tracing ID
-  - [ ] 2.4 Update `SubmitCommandHandler` logging to include MessageId in the `CommandReceived` log message
-- [ ] Task 3: Update SubmitCommandRequest API DTO (AC: #1)
-  - [ ] 3.1 Add **required** `MessageId` (string) field to `SubmitCommandRequest` in `src/Hexalith.EventStore.CommandApi/Models/SubmitCommandRequest.cs` — client owns MessageId generation (ULID, idempotency key per FR49)
-  - [ ] 3.2 Add **optional** `CorrelationId` (string?) field to `SubmitCommandRequest` — for cross-system tracing (FR4)
-  - [ ] 3.3 In the mapping layer (controller or extension that converts SubmitCommandRequest → SubmitCommand), default `CorrelationId = request.CorrelationId ?? request.MessageId` (FR4, D16). No server-side MessageId generation — missing MessageId is a 400 validation error (FR2)
-- [ ] Task 4: Update CommandEnvelopeBuilder in Testing project (AC: #1)
-  - [ ] 4.1 Add `_messageId` field with ULID default
-  - [ ] 4.2 Add `WithMessageId(string)` fluent method
-  - [ ] 4.3 Update `Build()` to pass MessageId as named argument
-- [ ] Task 5: Fix all construction sites, update tests, verify build (AC: #7, #8) — **Do NOT start until Tasks 1-4 are complete**
-  - [ ] 5.1 Grep `new CommandEnvelope(` **AND** `new SubmitCommandRequest(` **AND** `new SubmitCommand(` across ALL projects: `src/`, `tests/`, `samples/`. Also grep `typeof(CommandEnvelope)` and `nameof(CommandEnvelope)` to catch reflection-based usage
-  - [ ] 5.2 Update all `new CommandEnvelope(` callers — use **named arguments** (positional record swap safety)
-  - [ ] 5.3 Update all `new SubmitCommandRequest(` callers — add MessageId + CorrelationId
-  - [ ] 5.4 Update all `new SubmitCommand(` callers — add MessageId
-  - [ ] 5.5 Update `SubmitCommandExtensions.ToCommandEnvelope()` in Server
-  - [ ] 5.6 Update `CommandEnvelopeTests.cs` — all construction sites need MessageId parameter
-  - [ ] 5.7 Add MessageId validation test: empty and whitespace must throw `ArgumentException`
-  - [ ] 5.8 Add test verifying MessageId appears in ToString() output
-  - [ ] 5.9 Add DataContract serialization roundtrip test for CommandEnvelope to `Contracts.Tests` — verifies `[DataMember]` on MessageId survives serialize/deserialize cycle (no Tier 1 serialization coverage currently exists)
-  - [ ] 5.10 Update `tests/Hexalith.EventStore.Testing.Tests/Builders/CommandEnvelopeBuilderTests.cs` — builder tests must verify MessageId field + WithMessageId()
-  - [ ] 5.11 Update Server.Tests (direct construction): `PayloadProtectionTests.cs`, `TenantInjectionPreventionTests.cs`, `SecurityAuditLoggingTests.cs`, `EndToEndTraceTests.cs`, `DataPathIsolationTests.cs`, `DomainServiceIsolationTests.cs`, `DaprDomainServiceInvokerTests.cs`, `CausationIdLoggingTests.cs`, `FakeDeadLetterPublisherTests.cs`, `Logging/PayloadProtectionTests.cs`
-  - [ ] 5.12 Verify Server.Tests (builder-based) compile: `DaprSerializationRoundTripTests.cs`, `SnapshotIntegrationTests.cs`, `AggregateActorIntegrationTests.cs`, `ActorConcurrencyConflictTests.cs`, `EventPersistenceIntegrationTests.cs`, `ActorTenantIsolationTests.cs`, `CommandRoutingIntegrationTests.cs`, `FakeDomainServiceInvokerTests.cs`
-  - [ ] 5.13 Update Client.Tests: `EventStoreAggregateTests.cs`
-  - [ ] 5.14 Update Sample.Tests: `CounterProcessorTests.cs`
-  - [ ] 5.15 Update IntegrationTests: `CommandEnvelopeSerializationTests.cs`, `ValidationTests.cs`, `ConcurrencyConflictIntegrationTests.cs`
-  - [ ] 5.16 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds with zero warnings — **must build ALL test projects (Tier 1, 2, and 3) to catch compilation errors even in tests that won't be executed**
-  - [ ] 5.17 Run ALL Tier 1 test projects (Contracts.Tests, Client.Tests, Sample.Tests, Testing.Tests)
-- [ ] Task 6: Verify DomainResult + IRejectionEvent regressions (AC: #2, #3) — run-only, no code changes expected
-  - [ ] 6.1 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — confirms DomainResult tests (13 tests), IRejectionEvent coverage via Counter sample, and all CommandEnvelope changes pass
-  - [ ] 6.2 Verify Counter sample's `CounterCannotGoNegative` implements IRejectionEvent and follows past-tense negative naming (Rule 8)
+- [x] Task 1: Add `MessageId` field to CommandEnvelope (AC: #1, #4, #5)
+  - [x] 1.1 Add `MessageId` (string, ULID) as first positional parameter in CommandEnvelope record. MessageId needs non-empty validation, so follow the **CorrelationId pattern**: use an explicit property declaration with `[DataMember]` attribute and validation logic (not `[property: DataMember]` on the positional param). Without `[DataMember]`, MessageId vanishes during DAPR actor state serialization
+  - [x] 1.2 Add non-empty validation for MessageId (same pattern as CorrelationId)
+  - [x] 1.3 Update ToString() to include MessageId (keep Payload redacted)
+  - [x] 1.4 Verify Extensions defensive copy still works
+- [x] Task 2: Update SubmitCommand to include MessageId (AC: #1)
+  - [x] 2.1 Add `MessageId` field to `SubmitCommand` record in `src/Hexalith.EventStore.Server/Pipeline/Commands/SubmitCommand.cs`
+  - [x] 2.2 Update `SubmitCommandExtensions.ToCommandEnvelope()` to pass MessageId
+  - [x] 2.3 Fix CausationId derivation in `SubmitCommandHandler.cs` (line 25): change `string causationId = request.CorrelationId` to `string causationId = request.MessageId` — CausationId is the specific command that caused events, not the tracing ID
+  - [x] 2.4 Update `SubmitCommandHandler` logging to include MessageId in the `CommandReceived` log message
+- [x] Task 3: Update SubmitCommandRequest API DTO (AC: #1)
+  - [x] 3.1 Add **required** `MessageId` (string) field to `SubmitCommandRequest` in `src/Hexalith.EventStore.CommandApi/Models/SubmitCommandRequest.cs` — client owns MessageId generation (ULID, idempotency key per FR49)
+  - [x] 3.2 Add **optional** `CorrelationId` (string?) field to `SubmitCommandRequest` — for cross-system tracing (FR4)
+  - [x] 3.3 In the mapping layer (controller or extension that converts SubmitCommandRequest → SubmitCommand), default `CorrelationId = request.CorrelationId ?? request.MessageId` (FR4, D16). No server-side MessageId generation — missing MessageId is a 400 validation error (FR2)
+- [x] Task 4: Update CommandEnvelopeBuilder in Testing project (AC: #1)
+  - [x] 4.1 Add `_messageId` field with ULID default
+  - [x] 4.2 Add `WithMessageId(string)` fluent method
+  - [x] 4.3 Update `Build()` to pass MessageId as named argument
+- [x] Task 5: Fix all construction sites, update tests, verify build (AC: #7, #8) — **Do NOT start until Tasks 1-4 are complete**
+  - [x] 5.1 Grep `new CommandEnvelope(` **AND** `new SubmitCommandRequest(` **AND** `new SubmitCommand(` across ALL projects: `src/`, `tests/`, `samples/`. Also grep `typeof(CommandEnvelope)` and `nameof(CommandEnvelope)` to catch reflection-based usage
+  - [x] 5.2 Update all `new CommandEnvelope(` callers — use **named arguments** (positional record swap safety)
+  - [x] 5.3 Update all `new SubmitCommandRequest(` callers — add MessageId + CorrelationId
+  - [x] 5.4 Update all `new SubmitCommand(` callers — add MessageId
+  - [x] 5.5 Update `SubmitCommandExtensions.ToCommandEnvelope()` in Server
+  - [x] 5.6 Update `CommandEnvelopeTests.cs` — all construction sites need MessageId parameter
+  - [x] 5.7 Add MessageId validation test: empty and whitespace must throw `ArgumentException`
+  - [x] 5.8 Add test verifying MessageId appears in ToString() output
+  - [x] 5.9 Add DataContract serialization roundtrip test for CommandEnvelope to `Contracts.Tests` — verifies `[DataMember]` on MessageId survives serialize/deserialize cycle (no Tier 1 serialization coverage currently exists)
+  - [x] 5.10 Update `tests/Hexalith.EventStore.Testing.Tests/Builders/CommandEnvelopeBuilderTests.cs` — builder tests must verify MessageId field + WithMessageId()
+  - [x] 5.11 Update Server.Tests (direct construction): `PayloadProtectionTests.cs`, `TenantInjectionPreventionTests.cs`, `SecurityAuditLoggingTests.cs`, `EndToEndTraceTests.cs`, `DataPathIsolationTests.cs`, `DomainServiceIsolationTests.cs`, `DaprDomainServiceInvokerTests.cs`, `CausationIdLoggingTests.cs`, `FakeDeadLetterPublisherTests.cs`, `Logging/PayloadProtectionTests.cs`
+  - [x] 5.12 Verify Server.Tests (builder-based) compile: `DaprSerializationRoundTripTests.cs`, `SnapshotIntegrationTests.cs`, `AggregateActorIntegrationTests.cs`, `ActorConcurrencyConflictTests.cs`, `EventPersistenceIntegrationTests.cs`, `ActorTenantIsolationTests.cs`, `CommandRoutingIntegrationTests.cs`, `FakeDomainServiceInvokerTests.cs`
+  - [x] 5.13 Update Client.Tests: `EventStoreAggregateTests.cs`
+  - [x] 5.14 Update Sample.Tests: `CounterProcessorTests.cs`
+  - [x] 5.15 Update IntegrationTests: `CommandEnvelopeSerializationTests.cs`, `ValidationTests.cs`, `ConcurrencyConflictIntegrationTests.cs`
+  - [x] 5.16 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds with zero warnings — **must build ALL test projects (Tier 1, 2, and 3) to catch compilation errors even in tests that won't be executed**
+  - [x] 5.17 Run ALL Tier 1 test projects (Contracts.Tests, Client.Tests, Sample.Tests, Testing.Tests)
+- [x] Task 6: Verify DomainResult + IRejectionEvent regressions (AC: #2, #3) — run-only, no code changes expected
+  - [x] 6.1 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — confirms DomainResult tests (13 tests), IRejectionEvent coverage via Counter sample, and all CommandEnvelope changes pass
+  - [x] 6.2 Verify Counter sample's `CounterCannotGoNegative` implements IRejectionEvent and follows past-tense negative naming (Rule 8)
 
 ## Dev Notes
 
@@ -232,8 +232,97 @@ Story 1.1 added 4 fields to `EventMetadata` (a positional record) with the same 
 
 ### Agent Model Used
 
+Claude Opus 4.6 (1M context)
+
 ### Debug Log References
+
+- Build: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 warnings, 0 errors
+- Tier 1 tests: Contracts.Tests (261), Testing.Tests (64), Client.Tests (280), Sample.Tests (29) — all passed
 
 ### Completion Notes List
 
+- Added `MessageId` (string, ULID) as first positional parameter on `CommandEnvelope` with `[DataMember]` and non-empty validation
+- Added `MessageId` as first parameter on `SubmitCommand` MediatR command
+- Added `MessageId` (required) and `CorrelationId` (optional, defaults to MessageId) to `SubmitCommandRequest` API DTO
+- Updated `CommandsController` to map `MessageId` from request and default `CorrelationId = request.CorrelationId ?? request.MessageId`
+- Added `MessageId` validation rule to `SubmitCommandRequestValidator`
+- Fixed `CausationId` derivation in `SubmitCommandHandler`: now uses `request.MessageId` instead of `request.CorrelationId`
+- Updated `SubmitCommandHandler` log message template to include `MessageId`
+- Updated `SubmitCommandExtensions.ToCommandEnvelope()` to pass `MessageId` and derive `CausationId` from `MessageId`
+- Updated `CommandEnvelopeBuilder` with `_messageId` field, `WithMessageId()`, and named-arg `Build()`
+- Updated ~60+ construction sites across all test projects (src, tests, samples, integration tests)
+- Added 3 new tests: MessageId validation, ToString includes MessageId, DataContract serialization roundtrip
+- DomainResult and IRejectionEvent confirmed complete — regression tests passed (261 Contracts.Tests)
+- `CounterCannotGoNegative` correctly implements `IRejectionEvent` with past-tense negative naming (Rule 8)
+
 ### File List
+
+**Source (modified):**
+- src/Hexalith.EventStore.Contracts/Commands/CommandEnvelope.cs
+- src/Hexalith.EventStore.Server/Pipeline/Commands/SubmitCommand.cs
+- src/Hexalith.EventStore.Server/Commands/SubmitCommandExtensions.cs
+- src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
+- src/Hexalith.EventStore.CommandApi/Models/SubmitCommandRequest.cs
+- src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs
+- src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandRequestValidator.cs
+- src/Hexalith.EventStore.Testing/Builders/CommandEnvelopeBuilder.cs
+- src/Hexalith.EventStore.Server/Commands/ArchivedCommandExtensions.cs
+
+**Tests (modified — MessageId added to construction sites):**
+- tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandEnvelopeTests.cs
+- tests/Hexalith.EventStore.Testing.Tests/Builders/CommandEnvelopeBuilderTests.cs
+- tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs
+- tests/Hexalith.EventStore.Client.Tests/Handlers/DomainProcessorTests.cs
+- tests/Hexalith.EventStore.Client.Tests/Registration/ServiceCollectionExtensionsTests.cs
+- tests/Hexalith.EventStore.Sample.Tests/Counter/CounterProcessorTests.cs
+- tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs
+- tests/Hexalith.EventStore.Sample.Tests/Registration/FluentApiRegistrationIntegrationTests.cs
+- samples/Hexalith.EventStore.Sample.Tests/QuickstartSmokeTest.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/DomainServiceIsolationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/DataPathIsolationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Telemetry/EndToEndTraceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Telemetry/CommandApiTraceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/FakeDeadLetterPublisherTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterPublisherTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterMessageTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/AtLeastOnceDeliveryTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/LogLevelConventionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Logging/StructuredLoggingCompletenessTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandRequestValidatorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/AuthorizationBehaviorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/LoggingBehaviorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandExtensionsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/CommandRouterTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerRoutingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Controllers/CommandsControllerTenantTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Configuration/CommandApiAuthorizationRegistrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Validation/ValidatorConsistencyTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/StateMachineIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/EventPublicationIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/DeadLetterRoutingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/MultiTenantPublicationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterTraceChainTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Serialization/CommandEnvelopeSerializationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Events/EventPersistenceIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Security/MultiTenantStorageIsolationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/ValidationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs
+
+### Change Log
+
+- 2026-03-15: Story 1.2 implemented — MessageId added to CommandEnvelope, SubmitCommand, SubmitCommandRequest; CausationId derivation fixed; ~60+ construction sites updated; 3 new tests added; build passes with 0 errors/warnings; all Tier 1 tests green (634 total)

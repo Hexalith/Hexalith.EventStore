@@ -32,6 +32,7 @@ public class PersistThenPublishResilienceTests {
     private static CommandEnvelope CreateTestEnvelope(
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",

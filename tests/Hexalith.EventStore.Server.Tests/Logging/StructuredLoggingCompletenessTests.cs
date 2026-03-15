@@ -305,6 +305,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
 
     private static SubmitCommand CreateSubmitCommand() =>
         new(
+            MessageId: "msg-logging",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -316,6 +317,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
 
     private static CommandEnvelope CreateCommandEnvelope() =>
         new(
+            MessageId: "msg-logging",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

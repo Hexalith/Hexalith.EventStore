@@ -47,6 +47,7 @@ public class DeadLetterOriginTracingTests {
         string aggregateId = "agg-001",
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,

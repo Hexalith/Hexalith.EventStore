@@ -28,6 +28,7 @@ public class EventPersisterTests {
         string? correlationId = null,
         string? causationId = null,
         string userId = "user-1") => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",

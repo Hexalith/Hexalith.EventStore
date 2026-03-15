@@ -53,6 +53,7 @@ public class LoggingBehaviorTests : IDisposable {
         string commandType = "CreateOrder",
         string correlationId = "test-correlation-id") =>
         new(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: tenant,
             Domain: domain,
             AggregateId: aggregateId,
