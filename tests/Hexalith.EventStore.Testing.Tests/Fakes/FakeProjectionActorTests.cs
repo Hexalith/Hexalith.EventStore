@@ -17,7 +17,7 @@ public class FakeProjectionActorTests {
 
         _ = await sut.QueryAsync(envelope);
 
-        Assert.Single(sut.ReceivedEnvelopes);
+        _ = Assert.Single(sut.ReceivedEnvelopes);
         Assert.Equal(1, sut.QueryCount);
         Assert.Equal(envelope, sut.ReceivedEnvelopes.First());
     }
@@ -36,9 +36,10 @@ public class FakeProjectionActorTests {
 
     [Fact]
     public async Task QueryAsync_ThrowsConfiguredException() {
-        var sut = new FakeProjectionActor();
-        sut.ConfiguredException = new InvalidOperationException("boom");
-        sut.ConfiguredResult = new QueryResult(true, default);
+        var sut = new FakeProjectionActor {
+            ConfiguredException = new InvalidOperationException("boom"),
+            ConfiguredResult = new QueryResult(true, default)
+        };
 
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sut.QueryAsync(CreateTestEnvelope()));

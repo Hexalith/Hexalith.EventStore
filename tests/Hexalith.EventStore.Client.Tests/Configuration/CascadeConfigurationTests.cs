@@ -8,7 +8,6 @@ using Hexalith.EventStore.Client.Registration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -244,11 +243,9 @@ public class CascadeConfigurationTests : IDisposable {
     [Fact]
     public void UseEventStore_WithAppSettingsGlobalSuffix_AppliesLayer2FromBoundOptions() {
         using IHost host = Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration(config => {
-                _ = config.AddInMemoryCollection(new Dictionary<string, string?> {
-                    ["EventStore:DefaultStateStoreSuffix"] = "store",
-                });
-            })
+            .ConfigureAppConfiguration(config => _ = config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:DefaultStateStoreSuffix"] = "store",
+            }))
             .ConfigureServices(s => s.AddEventStore(typeof(Discovery.SmokeTestAggregate).Assembly))
             .Build();
 
@@ -398,9 +395,7 @@ internal sealed class NoCtorInternalAggregate : EventStoreAggregate<NoCtorIntern
 #pragma warning restore IDE0052
 
     /// <summary>Initializes a new instance with a required parameter.</summary>
-    public NoCtorInternalAggregate(string required) {
-        _required = required;
-    }
+    public NoCtorInternalAggregate(string required) => _required = required;
 }
 
 /// <summary>State for no-ctor internal aggregate.</summary>

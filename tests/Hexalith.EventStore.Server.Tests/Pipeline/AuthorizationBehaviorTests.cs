@@ -319,7 +319,7 @@ public class AuthorizationBehaviorTests {
         _ = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert — verify tenant validator called with correct parameters
-        await tenantValidator.Received(1).ValidateAsync(
+        _ = await tenantValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "test-tenant",
             Arg.Any<CancellationToken>(),
@@ -351,7 +351,7 @@ public class AuthorizationBehaviorTests {
         _ = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
 
         // Assert — verify RBAC validator called with correct parameters (including "command" category)
-        await rbacValidator.Received(1).ValidateAsync(
+        _ = await rbacValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "test-tenant",
             "test-domain",
@@ -454,7 +454,7 @@ public class AuthorizationBehaviorTests {
         _ = await behavior.Handle(CreateTestQuery(), CreateQuerySuccessDelegate(), CancellationToken.None);
 
         // Assert — verify RBAC validator called with "query" category (NOT "command")
-        await rbacValidator.Received(1).ValidateAsync(
+        _ = await rbacValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "test-tenant",
             "test-domain",
@@ -463,7 +463,7 @@ public class AuthorizationBehaviorTests {
             Arg.Any<CancellationToken>(),
             "agg-001");
 
-        await tenantValidator.Received(1).ValidateAsync(
+        _ = await tenantValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "test-tenant",
             Arg.Any<CancellationToken>(),

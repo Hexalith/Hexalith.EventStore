@@ -21,11 +21,7 @@ public sealed class MessageTypeJsonConverter : JsonConverter<MessageType> {
             throw new JsonException($"MessageType JSON value must be a string, but was {reader.TokenType}.");
         }
 
-        string? value = reader.GetString();
-        if (value is null) {
-            throw new JsonException("MessageType JSON value cannot be null. Expected a string in the format {domain}-{name}-v{ver}.");
-        }
-
+        string? value = reader.GetString() ?? throw new JsonException("MessageType JSON value cannot be null. Expected a string in the format {domain}-{name}-v{ver}.");
         return MessageType.Parse(value);
     }
 

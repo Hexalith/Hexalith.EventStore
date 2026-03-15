@@ -3,7 +3,6 @@ using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.IntegrationTests.Fixtures;
@@ -53,26 +52,21 @@ public class AspireContractTestFixture : IAsyncLifetime {
             .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
             .ConfigureAwait(false);
 
-
         // Task 1.2: Configure test logging -- Debug for app, Warning for Aspire infrastructure.
-        _builder.Services.AddLogging(logging =>
-        {
-            logging.SetMinimumLevel(LogLevel.Debug);
-            logging.AddFilter(_builder.Environment.ApplicationName, LogLevel.Debug);
-            logging.AddFilter("Aspire.", LogLevel.Warning);
+        _ = _builder.Services.AddLogging(logging => {
+            _ = logging.SetMinimumLevel(LogLevel.Debug);
+            _ = logging.AddFilter(_builder.Environment.ApplicationName, LogLevel.Debug);
+            _ = logging.AddFilter("Aspire.", LogLevel.Warning);
         });
 
         // Task 1.3: Configure resilient HTTP defaults for test clients.
-        _builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
-        {
-            _ = clientBuilder.AddStandardResilienceHandler();
-        });
+        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler());
 
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);
 
         // Task 1.4 / AC #1: Wait for commandapi resource to be healthy via Aspire resource notifications.
-        await _app.ResourceNotifications
+        _ = await _app.ResourceNotifications
             .WaitForResourceHealthyAsync("commandapi", cts.Token)
             .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
             .ConfigureAwait(false);
@@ -82,7 +76,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _commandApiClient.Timeout = TimeSpan.FromSeconds(60);
 
         // Also wait for the sample domain service to be healthy.
-        await _app.ResourceNotifications
+        _ = await _app.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", cts.Token)
             .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
             .ConfigureAwait(false);

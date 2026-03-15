@@ -57,18 +57,18 @@ public class ProjectionChangedHubTests {
     [Fact]
     public async Task JoinGroup_AddToGroupFailure_DoesNotConsumeQuota() {
         IGroupManager groups = Substitute.For<IGroupManager>();
-        groups.AddToGroupAsync("conn-failure", "order-list:acme", Arg.Any<CancellationToken>())
+        _ = groups.AddToGroupAsync("conn-failure", "order-list:acme", Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("add failed")));
 
         ProjectionChangedHub sut = CreateHub("conn-failure", groups, maxGroupsPerConnection: 1);
 
-        await Should.ThrowAsync<InvalidOperationException>(() => sut.JoinGroup("order-list", "acme"));
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => sut.JoinGroup("order-list", "acme"));
         await Should.NotThrowAsync(() => sut.JoinGroup("invoice-list", "acme"));
     }
 
     private static ProjectionChangedHub CreateHub(string connectionId, IGroupManager groups, int maxGroupsPerConnection = 50) {
         HubCallerContext context = Substitute.For<HubCallerContext>();
-        context.ConnectionId.Returns(connectionId);
+        _ = context.ConnectionId.Returns(connectionId);
 
         ProjectionChangedHub hub = new(
             Options.Create(new SignalROptions {

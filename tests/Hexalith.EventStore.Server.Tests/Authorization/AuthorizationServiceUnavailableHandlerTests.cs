@@ -14,7 +14,7 @@ namespace Hexalith.EventStore.Server.Tests.Authorization;
 
 public class AuthorizationServiceUnavailableHandlerTests {
     private static AuthorizationServiceUnavailableHandler CreateHandler() {
-        var logger = NullLoggerFactory.Instance.CreateLogger<AuthorizationServiceUnavailableHandler>();
+        ILogger<AuthorizationServiceUnavailableHandler> logger = NullLoggerFactory.Instance.CreateLogger<AuthorizationServiceUnavailableHandler>();
         return new AuthorizationServiceUnavailableHandler(logger);
     }
 
@@ -27,7 +27,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
     }
 
     private static async Task<ProblemDetails?> ReadProblemDetails(HttpContext context) {
-        context.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = context.Response.Body.Seek(0, SeekOrigin.Begin);
         return await JsonSerializer.DeserializeAsync<ProblemDetails>(
             context.Response.Body,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }).ConfigureAwait(false);
@@ -77,7 +77,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
 
         // Assert — SECURITY: no internal details in response body
         ProblemDetails? problem = await ReadProblemDetails(context);
-        problem.ShouldNotBeNull();
+        _ = problem.ShouldNotBeNull();
         problem.Title.ShouldBe("Service Unavailable");
         problem.Detail.ShouldBe("Authorization service is temporarily unavailable. Please retry.");
 
@@ -100,7 +100,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
 
         // Assert
-        context.Response.ContentType.ShouldNotBeNull();
+        _ = context.Response.ContentType.ShouldNotBeNull();
         context.Response.ContentType.ShouldContain("application/problem+json");
     }
 
@@ -136,7 +136,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
     }
 
     private static async Task<string> ReadResponseBody(HttpContext context) {
-        context.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = context.Response.Body.Seek(0, SeekOrigin.Begin);
         using var reader = new StreamReader(context.Response.Body);
         return await reader.ReadToEndAsync().ConfigureAwait(false);
     }

@@ -12,6 +12,7 @@ using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 
@@ -22,7 +23,7 @@ namespace Hexalith.EventStore.Server.Tests.Configuration;
 public class CommandApiAuthorizationRegistrationTests {
     private static ServiceProvider BuildProvider(Dictionary<string, string?>? configValues = null) {
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(configValues ?? new Dictionary<string, string?>())
+            .AddInMemoryCollection(configValues ?? [])
             .Build();
 
         var services = new ServiceCollection();
@@ -46,7 +47,7 @@ public class CommandApiAuthorizationRegistrationTests {
 
         ITenantValidator validator = scope.ServiceProvider.GetRequiredService<ITenantValidator>();
 
-        validator.ShouldBeOfType<ClaimsTenantValidator>();
+        _ = validator.ShouldBeOfType<ClaimsTenantValidator>();
     }
 
     [Fact]
@@ -56,7 +57,7 @@ public class CommandApiAuthorizationRegistrationTests {
 
         IRbacValidator validator = scope.ServiceProvider.GetRequiredService<IRbacValidator>();
 
-        validator.ShouldBeOfType<ClaimsRbacValidator>();
+        _ = validator.ShouldBeOfType<ClaimsRbacValidator>();
     }
 
     [Fact]
@@ -69,7 +70,7 @@ public class CommandApiAuthorizationRegistrationTests {
 
         ITenantValidator validator = scope.ServiceProvider.GetRequiredService<ITenantValidator>();
 
-        validator.ShouldBeOfType<ActorTenantValidator>();
+        _ = validator.ShouldBeOfType<ActorTenantValidator>();
     }
 
     [Fact]
@@ -82,7 +83,7 @@ public class CommandApiAuthorizationRegistrationTests {
 
         IRbacValidator validator = scope.ServiceProvider.GetRequiredService<IRbacValidator>();
 
-        validator.ShouldBeOfType<ActorRbacValidator>();
+        _ = validator.ShouldBeOfType<ActorRbacValidator>();
     }
 
     [Fact]
@@ -127,8 +128,8 @@ public class CommandApiAuthorizationRegistrationTests {
         ITenantValidator tenantValidator = scope.ServiceProvider.GetRequiredService<ITenantValidator>();
         IRbacValidator rbacValidator = scope.ServiceProvider.GetRequiredService<IRbacValidator>();
 
-        tenantValidator.ShouldBeOfType<ClaimsTenantValidator>();
-        rbacValidator.ShouldBeOfType<ActorRbacValidator>();
+        _ = tenantValidator.ShouldBeOfType<ClaimsTenantValidator>();
+        _ = rbacValidator.ShouldBeOfType<ActorRbacValidator>();
     }
 
     [Fact]
@@ -143,13 +144,13 @@ public class CommandApiAuthorizationRegistrationTests {
         IPipelineBehavior<SubmitCommand, SubmitCommandResult>? authBehavior = behaviors
             .FirstOrDefault(b => b.GetType().GetGenericTypeDefinition() == typeof(AuthorizationBehavior<,>));
 
-        authBehavior.ShouldNotBeNull("AuthorizationBehavior should be resolved from DI container");
+        _ = authBehavior.ShouldNotBeNull("AuthorizationBehavior should be resolved from DI container");
 
         // Also verify the validators are the claims-based defaults
         ITenantValidator tenantValidator = scope.ServiceProvider.GetRequiredService<ITenantValidator>();
         IRbacValidator rbacValidator = scope.ServiceProvider.GetRequiredService<IRbacValidator>();
-        tenantValidator.ShouldBeOfType<ClaimsTenantValidator>();
-        rbacValidator.ShouldBeOfType<ClaimsRbacValidator>();
+        _ = tenantValidator.ShouldBeOfType<ClaimsTenantValidator>();
+        _ = rbacValidator.ShouldBeOfType<ClaimsRbacValidator>();
     }
 
     [Fact]
@@ -174,7 +175,7 @@ public class CommandApiAuthorizationRegistrationTests {
         Microsoft.AspNetCore.Http.IHttpContextAccessor accessor = Substitute.For<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
-        var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>>();
+        ILogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>> logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>>();
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, nullReturningValidator, rbacValidator, logger);
 
         var command = new SubmitCommand("test-tenant", "test-domain", "agg-1", "TestCmd", [0x01], "corr-1", "user");
@@ -198,7 +199,7 @@ public class CommandApiAuthorizationRegistrationTests {
         ITenantValidator tenantValidator = scope.ServiceProvider.GetRequiredService<ITenantValidator>();
         IRbacValidator rbacValidator = scope.ServiceProvider.GetRequiredService<IRbacValidator>();
 
-        tenantValidator.ShouldBeOfType<ActorTenantValidator>();
-        rbacValidator.ShouldBeOfType<ClaimsRbacValidator>();
+        _ = tenantValidator.ShouldBeOfType<ActorTenantValidator>();
+        _ = rbacValidator.ShouldBeOfType<ClaimsRbacValidator>();
     }
 }

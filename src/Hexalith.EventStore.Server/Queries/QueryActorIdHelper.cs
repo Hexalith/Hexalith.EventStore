@@ -63,9 +63,7 @@ public static class QueryActorIdHelper {
     /// using this method in hot paths.
     /// </remarks>
     public static string DeriveActorId<TQuery>(string tenantId, string? entityId, byte[] payload)
-        where TQuery : IQueryContract {
-        return DeriveActorId(TQuery.QueryType, tenantId, entityId, payload);
-    }
+        where TQuery : IQueryContract => DeriveActorId(TQuery.QueryType, tenantId, entityId, payload);
 
     /// <summary>
     /// Computes an 11-character base64url-encoded truncated SHA256 checksum of the payload.

@@ -19,19 +19,15 @@ public class EventStoreQueryTypeAttributeTests {
     }
 
     [Fact]
-    public void Constructor_NullQueryType_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void Constructor_NullQueryType_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
             () => new EventStoreQueryTypeAttribute(null!));
-    }
 
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
-    public void Constructor_EmptyOrWhitespace_ThrowsArgumentException(string queryType) {
-        _ = Assert.Throws<ArgumentException>(
+    public void Constructor_EmptyOrWhitespace_ThrowsArgumentException(string queryType) => _ = Assert.Throws<ArgumentException>(
             () => new EventStoreQueryTypeAttribute(queryType));
-    }
 
     [Theory]
     [InlineData("get:counter")]
@@ -47,7 +43,7 @@ public class EventStoreQueryTypeAttributeTests {
 
     [Fact]
     public void AttributeUsage_AllowsClassOnly() {
-        AttributeUsageAttribute? usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
+        var usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
             typeof(EventStoreQueryTypeAttribute), typeof(AttributeUsageAttribute));
 
         Assert.NotNull(usage);

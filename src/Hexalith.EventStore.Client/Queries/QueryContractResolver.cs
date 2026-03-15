@@ -23,8 +23,7 @@ public static class QueryContractResolver {
     /// <exception cref="ArgumentNullException">Thrown when a static member returns null.</exception>
     /// <exception cref="ArgumentException">Thrown when a static member value is invalid.</exception>
     public static QueryContractMetadata Resolve<TQuery>()
-        where TQuery : IQueryContract {
-        return _cache.GetOrAdd(typeof(TQuery), static _ => {
+        where TQuery : IQueryContract => _cache.GetOrAdd(typeof(TQuery), static _ => {
             string queryType = TQuery.QueryType;
             string domain = TQuery.Domain;
             string projectionType = TQuery.ProjectionType;
@@ -41,7 +40,6 @@ public static class QueryContractResolver {
 
             return new QueryContractMetadata(queryType, domain, projectionType);
         });
-    }
 
     /// <summary>
     /// Gets the ETag actor ID for a query contract using ProjectionType (not Domain).

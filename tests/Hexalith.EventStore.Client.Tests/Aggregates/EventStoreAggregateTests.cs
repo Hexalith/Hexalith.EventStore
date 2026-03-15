@@ -154,7 +154,7 @@ public class EventStoreAggregateTests : IDisposable {
 
         Assert.True(result.IsSuccess);
         _ = Assert.Single(result.Events);
-        Assert.IsType<ItemAdded>(result.Events[0]);
+        _ = Assert.IsType<ItemAdded>(result.Events[0]);
     }
 
     [Fact]
@@ -248,7 +248,7 @@ public class EventStoreAggregateTests : IDisposable {
     [Fact]
     public async Task ProcessAsync_EnumerableEvents_ReplaysViaApply() {
         var aggregate = new TestAggregate();
-        var events = new object[] {
+        object[] events = new object[] {
             new ItemAdded { Name = "one" },
             new ItemAdded { Name = "two" },
         };
@@ -322,7 +322,7 @@ public class EventStoreAggregateTests : IDisposable {
     [Fact]
     public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
-        var events = new object[] { new UnknownCommand() };
+        object[] events = new object[] { new UnknownCommand() };
         CommandEnvelope command = CreateCommand(new ResetItems());
 
         _ = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -359,7 +359,7 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
         Assert.True(result.IsSuccess);
-        var evt = Assert.IsType<ItemAdded>(result.Events[0]);
+        ItemAdded evt = Assert.IsType<ItemAdded>(result.Events[0]);
         Assert.Equal("sync-test", evt.Name);
     }
 
@@ -371,7 +371,7 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
         Assert.True(result.IsRejection);
-        Assert.IsType<ItemCannotBeRemoved>(result.Events[0]);
+        _ = Assert.IsType<ItemCannotBeRemoved>(result.Events[0]);
     }
 
     [Fact]
@@ -392,7 +392,7 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
         Assert.True(result.IsSuccess);
-        var evt = Assert.IsType<ItemAdded>(result.Events[0]);
+        ItemAdded evt = Assert.IsType<ItemAdded>(result.Events[0]);
         Assert.Equal("async-test", evt.Name);
     }
 
@@ -477,7 +477,7 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
         Assert.True(result.IsSuccess);
-        var evt = Assert.IsType<ItemAdded>(result.Events[0]);
+        ItemAdded evt = Assert.IsType<ItemAdded>(result.Events[0]);
         // Verifies instance data (_prefix) is accessible — proving non-static dispatch
         Assert.Equal("instance-test", evt.Name);
     }
@@ -491,19 +491,19 @@ public class EventStoreAggregateTests : IDisposable {
         // Dispatch AddItem
         DomainResult addResult = await aggregate.ProcessAsync(CreateCommand(new AddItem("a")), null);
         Assert.True(addResult.IsSuccess);
-        Assert.IsType<ItemAdded>(addResult.Events[0]);
+        _ = Assert.IsType<ItemAdded>(addResult.Events[0]);
 
         // Dispatch RemoveItem (with state having items)
         var state = new TestState();
         state.Apply(new ItemAdded { Name = "a" });
         DomainResult removeResult = await aggregate.ProcessAsync(CreateCommand(new RemoveItem()), state);
         Assert.True(removeResult.IsSuccess);
-        Assert.IsType<ItemRemoved>(removeResult.Events[0]);
+        _ = Assert.IsType<ItemRemoved>(removeResult.Events[0]);
 
         // Dispatch ResetItems (with state having items)
         DomainResult resetResult = await aggregate.ProcessAsync(CreateCommand(new ResetItems()), state);
         Assert.True(resetResult.IsSuccess);
-        Assert.IsType<ItemReset>(resetResult.Events[0]);
+        _ = Assert.IsType<ItemReset>(resetResult.Events[0]);
     }
 
     // --- Story 16-8: JsonElement array suffix-match fallback (AC#5: 6.4) ---
@@ -531,7 +531,7 @@ public class EventStoreAggregateTests : IDisposable {
     [Fact]
     public async Task ProcessAsync_EnumerableEvents_WithNullElements_SkipsNulls() {
         var aggregate = new TestAggregate();
-        var events = new object?[] {
+        object?[] events = new object?[] {
             new ItemAdded { Name = "one" },
             null,
             new ItemAdded { Name = "two" },
@@ -541,6 +541,45 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, events);
 
         Assert.True(result.IsSuccess); // 2 items added, remove succeeds
+    }
+
+    // --- Base64 payload deserialization (EventEnvelope byte[] arrives as Base64 string) ---
+
+    [Fact]
+    public async Task ProcessAsync_JsonElementArray_Base64Payload_DeserializesCorrectly() {
+        var aggregate = new TestAggregate();
+        // Simulate EventEnvelope.Payload (byte[]) serialized as Base64 by System.Text.Json.
+        // Base64 of '{"Name":"base64-test"}' is 'eyJOYW1lIjoiYmFzZTY0LXRlc3QifQ=='
+        string payloadJson = """{"Name":"base64-test"}""";
+        string base64Payload = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(payloadJson));
+        string eventsJson = $$"""
+            [
+                {"eventTypeName":"ItemAdded","payload":"{{base64Payload}}"}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new RemoveItem());
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess); // 1 item added via Base64 payload, remove succeeds
+    }
+
+    [Fact]
+    public async Task ProcessAsync_JsonElementArray_Base64EmptyRecordPayload_DeserializesCorrectly() {
+        var aggregate = new TestAggregate();
+        // Simulate empty record (like CounterIncremented) serialized as Base64.
+        // Base64 of '{}' is 'e30='
+        string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
+        // Build JSON manually to avoid raw string interpolation brace conflicts
+        string eventsJson = "[{\"eventTypeName\":\"ItemAdded\",\"payload\":{\"Name\":\"setup\"}},"
+            + "{\"eventTypeName\":\"ItemRemoved\",\"payload\":\"" + base64Empty + "\"}]";
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new AddItem("after-base64"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess); // State rehydrated: 1 added - 1 removed = 0 items, then add succeeds
     }
 
     // --- Story 16-8: JsonElement array without payload wrapper (direct element) ---

@@ -11,14 +11,13 @@ namespace Hexalith.EventStore.SignalR;
 /// Implements <see cref="IAsyncDisposable"/> — callers MUST dispose when done.
 /// </summary>
 public sealed class EventStoreSignalRClient : IAsyncDisposable {
-    private sealed class GroupSubscription {
-        public ConcurrentDictionary<Guid, Action> Callbacks { get; } = new();
-    }
-
     private readonly HubConnection _connection;
-    private readonly ConcurrentDictionary<string, GroupSubscription> _subscribedGroups = new();
+
     private readonly CancellationTokenSource _disposeCts = new();
+
     private readonly ILogger<EventStoreSignalRClient>? _logger;
+
+    private readonly ConcurrentDictionary<string, GroupSubscription> _subscribedGroups = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreSignalRClient"/> class.
@@ -35,17 +34,42 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         _logger = logger;
 
         HubConnectionBuilder builder = new();
-        builder.WithUrl(options.HubUrl, connectionOptions => {
+        _ = builder.WithUrl(options.HubUrl, connectionOptions => {
             if (options.AccessTokenProvider is not null) {
                 connectionOptions.AccessTokenProvider = options.AccessTokenProvider;
             }
         });
-        builder.WithAutomaticReconnect();
+        _ = builder.WithAutomaticReconnect();
 
         _connection = builder.Build();
 
         _connection.Reconnected += OnReconnectedAsync;
-        _connection.On<string, string>("ProjectionChanged", OnProjectionChanged);
+        _ = _connection.On<string, string>("ProjectionChanged", OnProjectionChanged);
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync() {
+        await _disposeCts.CancelAsync().ConfigureAwait(false);
+        _subscribedGroups.Clear();
+
+        if (_connection.State != HubConnectionState.Disconnected) {
+            await _connection.StopAsync().ConfigureAwait(false);
+        }
+
+        await _connection.DisposeAsync().ConfigureAwait(false);
+        _disposeCts.Dispose();
+    }
+
+    /// <summary>
+    /// Starts the SignalR connection and joins all pre-subscribed groups.
+    /// Groups added via <see cref="SubscribeAsync"/> before <see cref="StartAsync"/> are joined on initial connect.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task StartAsync(CancellationToken cancellationToken = default) {
+        await _connection.StartAsync(cancellationToken).ConfigureAwait(false);
+
+        // Join all pre-subscribed groups on initial connect
+        await JoinAllGroupsAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -118,35 +142,13 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         }
     }
 
-    /// <summary>
-    /// Starts the SignalR connection and joins all pre-subscribed groups.
-    /// Groups added via <see cref="SubscribeAsync"/> before <see cref="StartAsync"/> are joined on initial connect.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task StartAsync(CancellationToken cancellationToken = default) {
-        await _connection.StartAsync(cancellationToken).ConfigureAwait(false);
+    private static void ValidateGroupPart(string value, string paramName) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
 
-        // Join all pre-subscribed groups on initial connect
-        await JoinAllGroupsAsync().ConfigureAwait(false);
-    }
-
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync() {
-        await _disposeCts.CancelAsync().ConfigureAwait(false);
-        _subscribedGroups.Clear();
-
-        if (_connection.State != HubConnectionState.Disconnected) {
-            await _connection.StopAsync().ConfigureAwait(false);
+        if (value.Contains(':')) {
+            throw new ArgumentException($"{paramName} must not contain ':'.", paramName);
         }
-
-        await _connection.DisposeAsync().ConfigureAwait(false);
-        _disposeCts.Dispose();
     }
-
-    /// <summary>
-    /// FR59: Auto-rejoin all subscribed groups on reconnection.
-    /// </summary>
-    private Task OnReconnectedAsync(string? connectionId) => JoinAllGroupsAsync();
 
     /// <summary>
     /// Joins all tracked groups. Used by both <see cref="StartAsync"/> (initial connect) and
@@ -188,11 +190,12 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         }
     }
 
-    private static void ValidateGroupPart(string value, string paramName) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
+    /// <summary>
+    /// FR59: Auto-rejoin all subscribed groups on reconnection.
+    /// </summary>
+    private Task OnReconnectedAsync(string? connectionId) => JoinAllGroupsAsync();
 
-        if (value.Contains(':')) {
-            throw new ArgumentException($"{paramName} must not contain ':'.", paramName);
-        }
+    private sealed class GroupSubscription {
+        public ConcurrentDictionary<Guid, Action> Callbacks { get; } = new();
     }
 }

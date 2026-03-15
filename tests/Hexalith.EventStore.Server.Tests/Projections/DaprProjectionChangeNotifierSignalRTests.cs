@@ -29,7 +29,7 @@ public class DaprProjectionChangeNotifierSignalRTests {
             new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
         var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
 
-        actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
             .Returns(actor);
 
         await sut.NotifyProjectionChangedAsync("order-list", "acme");
@@ -62,10 +62,10 @@ public class DaprProjectionChangeNotifierSignalRTests {
             new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
         var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
 
-        actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
             .Returns(actor);
 
-        broadcaster.BroadcastChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = broadcaster.BroadcastChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SignalR down"));
 
         // Should not throw — fail-open

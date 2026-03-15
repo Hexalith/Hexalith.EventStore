@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Server.Queries;
 /// Abstraction for retrieving the current ETag for a projection+tenant pair.
 /// Encapsulates DAPR actor proxy creation, timeout, and fail-open error handling.
 /// </summary>
-public interface IETagService
-{
+public interface IETagService {
     /// <summary>
     /// Gets the current ETag for a projection+tenant pair.
     /// Returns null if the ETag has never been set (cold start) or if the ETag actor is unavailable.

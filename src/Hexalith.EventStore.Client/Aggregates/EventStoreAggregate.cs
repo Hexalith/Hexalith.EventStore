@@ -7,7 +7,6 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.Client.Aggregates;
@@ -133,7 +132,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
     private static TState RehydrateFromJsonObject(JsonElement jsonObject) {
         var state = new TState();
 
-        Dictionary<string, JsonElement> jsonProperties = jsonObject
+        var jsonProperties = jsonObject
             .EnumerateObject()
             .ToDictionary(static p => p.Name, static p => p.Value, StringComparer.OrdinalIgnoreCase);
 
@@ -152,7 +151,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
             }
 
             object? value = valueElement.Deserialize(property.PropertyType);
-            setter.Invoke(state, [value]);
+            _ = setter.Invoke(state, [value]);
         }
 
         return state;
@@ -203,7 +202,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
 
             string eventTypeName = evt.GetType().Name;
             if (metadata.ApplyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
-                applyMethod.Invoke(state, [evt]);
+                _ = applyMethod.Invoke(state, [evt]);
                 continue;
             }
 
@@ -242,7 +241,17 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
         try {
             if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
-                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
+                object? deserializedEvent;
+                if (payloadElement.ValueKind == JsonValueKind.String) {
+                    // Payload is Base64-encoded bytes (byte[] serialized as Base64 by System.Text.Json).
+                    // Decode and deserialize from the raw JSON bytes.
+                    byte[] payloadBytes = payloadElement.GetBytesFromBase64();
+                    deserializedEvent = JsonSerializer.Deserialize(payloadBytes, eventType);
+                }
+                else {
+                    deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
+                }
+
                 if (deserializedEvent is null) {
                     throw new InvalidOperationException(
                         string.Format(
@@ -253,21 +262,17 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
                             eventType.Name));
                 }
 
-                applyMethod.Invoke(state, [deserializedEvent]);
+                _ = applyMethod.Invoke(state, [deserializedEvent]);
             }
             else {
-                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType);
-                if (deserializedEvent is null) {
-                    throw new InvalidOperationException(
+                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType) ?? throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
                             "Unable to rehydrate aggregate state '{0}'. Event '{1}' could not be deserialized to '{2}'.",
                             typeof(TState).Name,
                             eventTypeName,
                             eventType.Name));
-                }
-
-                applyMethod.Invoke(state, [deserializedEvent]);
+                _ = applyMethod.Invoke(state, [deserializedEvent]);
             }
         }
         catch (JsonException ex) {

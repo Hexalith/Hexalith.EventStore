@@ -6,7 +6,6 @@ using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.Contracts.Validation;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.CommandApi.Controllers;

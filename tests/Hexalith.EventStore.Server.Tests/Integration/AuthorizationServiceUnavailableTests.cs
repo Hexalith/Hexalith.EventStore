@@ -1,11 +1,11 @@
 
-using Dapr.Actors;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+
+using Dapr.Actors;
 
 using Hexalith.EventStore.Server.Actors.Authorization;
 
@@ -49,7 +49,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
-        response.Headers.RetryAfter.ShouldNotBeNull();
+        _ = response.Headers.RetryAfter.ShouldNotBeNull();
         response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
 
         // Cleanup
@@ -73,7 +73,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
-        response.Headers.RetryAfter.ShouldNotBeNull();
+        _ = response.Headers.RetryAfter.ShouldNotBeNull();
         response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
 
         // Cleanup
@@ -133,7 +133,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
-        response.Headers.RetryAfter.ShouldNotBeNull();
+        _ = response.Headers.RetryAfter.ShouldNotBeNull();
         response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
 
         // Cleanup
@@ -165,7 +165,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
         string contentType = response.Content.Headers.ContentType?.MediaType ?? "";
         contentType.ShouldContain("problem+json");
 
-        response.Headers.RetryAfter.ShouldNotBeNull();
+        _ = response.Headers.RetryAfter.ShouldNotBeNull();
         response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
 
         // Verify the exception was caught by 503 handler, NOT the 403 handler

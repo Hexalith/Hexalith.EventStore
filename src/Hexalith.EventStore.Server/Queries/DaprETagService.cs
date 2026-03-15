@@ -14,36 +14,30 @@ namespace Hexalith.EventStore.Server.Queries;
 /// </summary>
 public partial class DaprETagService(
     IActorProxyFactory actorProxyFactory,
-    ILogger<DaprETagService> logger) : IETagService
-{
-    private static readonly ActorProxyOptions _proxyOptions = new()
-    {
+    ILogger<DaprETagService> logger) : IETagService {
+    private static readonly ActorProxyOptions _proxyOptions = new() {
         RequestTimeout = TimeSpan.FromSeconds(3),
     };
 
     /// <inheritdoc/>
     public async Task<string?> GetCurrentETagAsync(
-        string projectionType, string tenantId, CancellationToken cancellationToken = default)
-    {
+        string projectionType, string tenantId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
 
         string actorId = $"{projectionType}:{tenantId}";
-        try
-        {
+        try {
             IETagActor proxy = actorProxyFactory.CreateActorProxy<IETagActor>(
                 new ActorId(actorId), ETagActor.ETagActorTypeName, _proxyOptions);
             return await proxy.GetCurrentETagAsync().ConfigureAwait(false);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Log.ETagFetchFailed(logger, actorId, ex.GetType().Name);
             return null;
         }
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1061,
             Level = LogLevel.Warning,

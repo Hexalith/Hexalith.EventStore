@@ -43,9 +43,7 @@ internal class NullQueryTypeQuery : IQueryContract {
 }
 
 public class QueryContractResolverTests : IDisposable {
-    public QueryContractResolverTests() {
-        QueryContractResolver.ClearCache();
-    }
+    public QueryContractResolverTests() => QueryContractResolver.ClearCache();
 
     public void Dispose() {
         QueryContractResolver.ClearCache();
@@ -80,22 +78,16 @@ public class QueryContractResolverTests : IDisposable {
     }
 
     [Fact]
-    public void Resolve_InvalidKebabCase_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
-            () => QueryContractResolver.Resolve<InvalidKebabCaseQuery>());
-    }
+    public void Resolve_InvalidKebabCase_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
+            QueryContractResolver.Resolve<InvalidKebabCaseQuery>);
 
     [Fact]
-    public void Resolve_EmptyDomain_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
-            () => QueryContractResolver.Resolve<EmptyDomainQuery>());
-    }
+    public void Resolve_EmptyDomain_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
+            QueryContractResolver.Resolve<EmptyDomainQuery>);
 
     [Fact]
-    public void Resolve_NullQueryType_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
-            () => QueryContractResolver.Resolve<NullQueryTypeQuery>());
-    }
+    public void Resolve_NullQueryType_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
+            QueryContractResolver.Resolve<NullQueryTypeQuery>);
 
     [Fact]
     public void GetETagActorId_ValidInputs_UsesProjectionType() {
@@ -113,32 +105,22 @@ public class QueryContractResolverTests : IDisposable {
     }
 
     [Fact]
-    public void GetETagActorId_InvalidProjectionType_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetETagActorId_InvalidProjectionType_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => QueryContractResolver.GetETagActorId<InvalidProjectionTypeQuery>("acme"));
-    }
 
     [Fact]
-    public void GetETagActorId_NullTenantId_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void GetETagActorId_NullTenantId_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
             () => QueryContractResolver.GetETagActorId<ValidCounterQuery>(null!));
-    }
 
     [Fact]
-    public void GetETagActorId_EmptyTenantId_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetETagActorId_EmptyTenantId_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => QueryContractResolver.GetETagActorId<ValidCounterQuery>(""));
-    }
 
     [Fact]
-    public void GetETagActorId_WhitespaceTenantId_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetETagActorId_WhitespaceTenantId_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => QueryContractResolver.GetETagActorId<ValidCounterQuery>("  "));
-    }
 
     [Fact]
-    public void GetETagActorId_TenantIdWithColon_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetETagActorId_TenantIdWithColon_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => QueryContractResolver.GetETagActorId<ValidCounterQuery>("acme:west"));
-    }
 }

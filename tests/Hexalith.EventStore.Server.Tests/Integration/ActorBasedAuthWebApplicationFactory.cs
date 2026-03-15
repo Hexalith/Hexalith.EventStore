@@ -42,34 +42,32 @@ public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<Command
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.UseEnvironment("Development");
+        _ = builder.UseEnvironment("Development");
 
-        builder.ConfigureAppConfiguration((_, config) => {
-            config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["EventStore:Authorization:TenantValidatorActorName"] = "TestTenantValidatorActor",
-                ["EventStore:Authorization:RbacValidatorActorName"] = "TestRbacValidatorActor",
-            });
-        });
+        _ = builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+            ["EventStore:Authorization:TenantValidatorActorName"] = "TestTenantValidatorActor",
+            ["EventStore:Authorization:RbacValidatorActorName"] = "TestRbacValidatorActor",
+        }));
 
-        builder.ConfigureTestServices(services => {
+        _ = builder.ConfigureTestServices(services => {
             // Remove existing IActorProxyFactory registration (from AddDaprClient)
             // and replace with our mock that returns configurable fake actors
             ServiceDescriptor? existingFactory = services.FirstOrDefault(
                 d => d.ServiceType == typeof(IActorProxyFactory));
             if (existingFactory is not null) {
-                services.Remove(existingFactory);
+                _ = services.Remove(existingFactory);
             }
 
             // Configure mock to return fake actors
-            MockProxyFactory
+            _ = MockProxyFactory
                 .CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
                 .Returns(FakeTenantActor);
 
-            MockProxyFactory
+            _ = MockProxyFactory
                 .CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
                 .Returns(FakeRbacActor);
 
-            services.AddSingleton(MockProxyFactory);
+            _ = services.AddSingleton(MockProxyFactory);
         });
     }
 }

@@ -8,8 +8,7 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// </summary>
 /// <typeparam name="T">The projection data type. Covariant to allow
 /// <c>IQueryResponse&lt;DerivedType&gt;</c> to be assigned to <c>IQueryResponse&lt;BaseType&gt;</c>.</typeparam>
-public interface IQueryResponse<out T>
-{
+public interface IQueryResponse<out T> {
     /// <summary>
     /// Gets the projection data returned by the query.
     /// </summary>

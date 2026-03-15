@@ -46,7 +46,7 @@ public class ActorRbacValidatorTests {
                 RbacValidatorActorName = ActorType,
                 RetryAfterSeconds = retryAfterSeconds,
             });
-        var logger = NullLoggerFactory.Instance.CreateLogger<ActorRbacValidator>();
+        ILogger<ActorRbacValidator> logger = NullLoggerFactory.Instance.CreateLogger<ActorRbacValidator>();
         var validator = new ActorRbacValidator(factory, options, logger);
         return (validator, factory);
     }
@@ -55,10 +55,10 @@ public class ActorRbacValidatorTests {
         IActorProxyFactory factory,
         ActorValidationResponse? response) {
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
-        actor.ValidatePermissionAsync(Arg.Any<RbacValidationRequest>())
+        _ = actor.ValidatePermissionAsync(Arg.Any<RbacValidationRequest>())
             .Returns(Task.FromResult(response)!);
 
-        factory.CreateActorProxy<IRbacValidatorActor>(
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(
             Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
     }
@@ -67,10 +67,10 @@ public class ActorRbacValidatorTests {
         IActorProxyFactory factory,
         Exception exception) {
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
-        actor.ValidatePermissionAsync(Arg.Any<RbacValidationRequest>())
+        _ = actor.ValidatePermissionAsync(Arg.Any<RbacValidationRequest>())
             .Throws(exception);
 
-        factory.CreateActorProxy<IRbacValidatorActor>(
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(
             Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
     }
@@ -130,7 +130,7 @@ public class ActorRbacValidatorTests {
         AuthorizationServiceUnavailableException ex = await Should.ThrowAsync<AuthorizationServiceUnavailableException>(
             () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None));
 
-        ex.InnerException.ShouldBeOfType<HttpRequestException>();
+        _ = ex.InnerException.ShouldBeOfType<HttpRequestException>();
     }
 
     [Fact]
@@ -139,9 +139,9 @@ public class ActorRbacValidatorTests {
         (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
         RbacValidationRequest? capturedRequest = null;
-        actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier("specific-user-id");
 
@@ -149,7 +149,7 @@ public class ActorRbacValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None);
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.UserId.ShouldBe("specific-user-id");
     }
 
@@ -159,9 +159,9 @@ public class ActorRbacValidatorTests {
         (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
         RbacValidationRequest? capturedRequest = null;
-        actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -169,7 +169,7 @@ public class ActorRbacValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None, "order-123");
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.AggregateId.ShouldBe("order-123");
     }
 
@@ -192,9 +192,9 @@ public class ActorRbacValidatorTests {
         (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
         RbacValidationRequest? capturedRequest = null;
-        actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -202,7 +202,7 @@ public class ActorRbacValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, "query", CancellationToken.None);
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.MessageCategory.ShouldBe("query");
     }
 
@@ -212,9 +212,9 @@ public class ActorRbacValidatorTests {
         (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
         RbacValidationRequest? capturedRequest = null;
-        actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -222,7 +222,7 @@ public class ActorRbacValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, "Inventory", "AdjustStock", MessageCategory, CancellationToken.None);
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.Domain.ShouldBe("Inventory");
         capturedRequest.MessageType.ShouldBe("AdjustStock");
     }
@@ -233,9 +233,9 @@ public class ActorRbacValidatorTests {
         (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
         IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
         RbacValidationRequest? capturedRequest = null;
-        actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -243,7 +243,7 @@ public class ActorRbacValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, "notification", CancellationToken.None);
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.MessageCategory.ShouldBe("notification");
     }
 
@@ -285,7 +285,7 @@ public class ActorRbacValidatorTests {
         _ = await validator.ValidateAsync(user, "my-tenant", Domain, MessageType, MessageCategory, CancellationToken.None);
 
         // Assert
-        factory.Received(1).CreateActorProxy<IRbacValidatorActor>(
+        _ = factory.Received(1).CreateActorProxy<IRbacValidatorActor>(
             Arg.Is<ActorId>(id => id.GetId() == "my-tenant"),
             Arg.Any<string>());
     }

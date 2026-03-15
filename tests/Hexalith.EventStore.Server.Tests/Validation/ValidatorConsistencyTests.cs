@@ -79,14 +79,10 @@ public class ValidatorConsistencyTests {
     }
 
     [Fact]
-    public void IdentityFieldConsistency_AllValidatorsRejectTenantLongerThanCanonicalLimit() {
-        IdentityFieldConsistency_AllValidatorsAgree(new string('a', 65), "test-domain", "agg-001", false);
-    }
+    public void IdentityFieldConsistency_AllValidatorsRejectTenantLongerThanCanonicalLimit() => IdentityFieldConsistency_AllValidatorsAgree(new string('a', 65), "test-domain", "agg-001", false);
 
     [Fact]
-    public void IdentityFieldConsistency_AllValidatorsRejectDomainLongerThanCanonicalLimit() {
-        IdentityFieldConsistency_AllValidatorsAgree("test-tenant", new string('b', 65), "agg-001", false);
-    }
+    public void IdentityFieldConsistency_AllValidatorsRejectDomainLongerThanCanonicalLimit() => IdentityFieldConsistency_AllValidatorsAgree("test-tenant", new string('b', 65), "agg-001", false);
 
     /// <summary>
     /// Proves that identical strings used as CommandType and QueryType produce

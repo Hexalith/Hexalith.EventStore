@@ -104,9 +104,8 @@ public class ClaimsTenantValidatorTests {
     }
 
     [Fact]
-    public async Task ValidateAsync_NullUser_ThrowsArgumentNullException() {
+    public async Task ValidateAsync_NullUser_ThrowsArgumentNullException() =>
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentNullException>(
             () => _validator.ValidateAsync(null!, "test-tenant", CancellationToken.None));
-    }
 }

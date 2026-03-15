@@ -1,8 +1,9 @@
 
-using Dapr.Actors;
-using Dapr.Actors.Client;
 using System.Net;
 using System.Text.Json;
+
+using Dapr.Actors;
+using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
@@ -174,7 +175,7 @@ public class EventPersistenceIntegrationTests {
 
     private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
         string metadataJson = await GetStateJsonAsync(metadataKey).ConfigureAwait(true);
-        using JsonDocument doc = JsonDocument.Parse(metadataJson);
+        using var doc = JsonDocument.Parse(metadataJson);
         return doc.RootElement.GetProperty("CurrentSequence").GetInt64();
     }
 }

@@ -1,9 +1,9 @@
 
-using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
-using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
@@ -99,7 +99,7 @@ public class ServiceCollectionExtensionsTests : IDisposable {
         using ServiceProvider provider = services.BuildServiceProvider();
         IDomainProcessor processor = provider.GetRequiredService<IDomainProcessor>();
 
-        Assert.IsType<AggregateProcessor>(processor);
+        _ = Assert.IsType<AggregateProcessor>(processor);
 
         CommandEnvelope command = new(
             TenantId: "tenant",

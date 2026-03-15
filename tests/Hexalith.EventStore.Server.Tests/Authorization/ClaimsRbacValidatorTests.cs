@@ -304,11 +304,10 @@ public class ClaimsRbacValidatorTests {
     }
 
     [Fact]
-    public async Task ValidateAsync_NullUser_ThrowsArgumentNullException() {
+    public async Task ValidateAsync_NullUser_ThrowsArgumentNullException() =>
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentNullException>(
             () => _validator.ValidateAsync(null!, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None));
-    }
 
     // --- Combined domain + permission tests ---
 

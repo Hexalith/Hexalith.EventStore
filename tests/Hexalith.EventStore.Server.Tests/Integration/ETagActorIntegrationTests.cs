@@ -22,7 +22,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
@@ -185,7 +184,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         string? currentETag = await actor.GetCurrentETagAsync();
 
         // Assert
-        currentETag.ShouldNotBeNull();
+        _ = currentETag.ShouldNotBeNull();
         currentETag.ShouldBe(newETag);
         newETag.ShouldContain("."); // Self-routing format: {base64url(projectionType)}.{guid}
     }
@@ -244,7 +243,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("save failed"));
 
-        await Should.ThrowAsync<InvalidOperationException>(() => actor.RegenerateAsync());
+        _ = await Should.ThrowAsync<InvalidOperationException>(actor.RegenerateAsync);
 
         (await actor.GetCurrentETagAsync()).ShouldBeNull();
     }
@@ -266,7 +265,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         string? migrated = await actor.GetCurrentETagAsync();
 
-        migrated.ShouldNotBeNull();
+        _ = migrated.ShouldNotBeNull();
         migrated.ShouldContain('.');
         SelfRoutingETag.TryDecode(migrated, out string? projectionType, out _).ShouldBeTrue();
         projectionType.ShouldBe("order-list");
@@ -312,7 +311,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             ?? throw new InvalidOperationException("Could not locate OnActivateAsync.");
 
-        Task task = (Task)method.Invoke(actor, null)!;
+        var task = (Task)method.Invoke(actor, null)!;
         await task.ConfigureAwait(false);
     }
 
@@ -323,33 +322,31 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         public FakeETagActor FakeETagActor { get; } = new();
         public IActorProxyFactory MockProxyFactory { get; } = Substitute.For<IActorProxyFactory>();
 
-        public void ResetActors() {
-            FakeETagActor.Reset();
-        }
+        public void ResetActors() => FakeETagActor.Reset();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.UseEnvironment("Development");
+            _ = builder.UseEnvironment("Development");
 
-            builder.ConfigureTestServices(services => {
+            _ = builder.ConfigureTestServices(services => {
                 // Remove existing IActorProxyFactory and replace with mock
                 ServiceDescriptor? existingFactory = services.FirstOrDefault(
                     d => d.ServiceType == typeof(IActorProxyFactory));
                 if (existingFactory is not null) {
-                    services.Remove(existingFactory);
+                    _ = services.Remove(existingFactory);
                 }
 
                 // Configure mock to return fake ETag actor for any actor ID
-                MockProxyFactory
+                _ = MockProxyFactory
                     .CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
                     .Returns(FakeETagActor);
 
-                services.AddSingleton<IOptions<ProjectionChangeNotifierOptions>>(
+                _ = services.AddSingleton<IOptions<ProjectionChangeNotifierOptions>>(
                     Options.Create(
                         new ProjectionChangeNotifierOptions {
                             Transport = ProjectionChangeTransport.Direct,
                         }));
-                services.AddSingleton(MockProxyFactory);
+                _ = services.AddSingleton(MockProxyFactory);
             });
         }
     }

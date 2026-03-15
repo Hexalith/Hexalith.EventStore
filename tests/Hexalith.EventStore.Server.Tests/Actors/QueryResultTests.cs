@@ -51,7 +51,7 @@ public class QueryResultTests {
         string json = JsonSerializer.Serialize(original);
         QueryResult? deserialized = JsonSerializer.Deserialize<QueryResult>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Success.ShouldBeTrue();
         deserialized.Payload.GetProperty("count").GetInt32().ShouldBe(42);
         deserialized.ErrorMessage.ShouldBeNull();

@@ -52,6 +52,8 @@
     }
 </FluentCard>
 
+<CounterCommandForm TenantId="@_tenantId" />
+
 @code {
     // 200ms balances responsiveness vs. query coalescing — increase for high-frequency projections
     private const int DebounceDelayMs = 200;

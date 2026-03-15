@@ -1,5 +1,3 @@
-
-using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Registration;
@@ -40,7 +38,7 @@ public class UseEventStoreTests : IDisposable {
     public void UseEventStore_ThrowsInvalidOperationException_WhenAddEventStoreNotCalled() {
         using IHost host = Host.CreateDefaultBuilder().Build();
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => host.UseEventStore());
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(host.UseEventStore);
         Assert.Equal(
             "UseEventStore() requires AddEventStore() to be called first during service registration. Ensure builder.Services.AddEventStore() is called before building the host.",
             ex.Message);
@@ -63,7 +61,7 @@ public class UseEventStoreTests : IDisposable {
     public void UseEventStore_NullHost_ThrowsArgumentNullException() {
         IHost host = null!;
 
-        _ = Assert.Throws<ArgumentNullException>(() => host.UseEventStore());
+        _ = Assert.Throws<ArgumentNullException>(host.UseEventStore);
     }
 
     [Fact]

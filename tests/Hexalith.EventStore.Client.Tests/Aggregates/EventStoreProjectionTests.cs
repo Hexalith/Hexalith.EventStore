@@ -44,7 +44,7 @@ public class EventStoreProjectionTests : IDisposable {
     [Fact]
     public void Project_TypedEvents_AppliesCorrectly() {
         var projection = new TestProjection();
-        var events = new object[] {
+        object[] events = new object[] {
             new ItemAdded { Name = "first" },
             new ItemAdded { Name = "second" },
             new ItemRemoved(),
@@ -76,7 +76,7 @@ public class EventStoreProjectionTests : IDisposable {
     [Fact]
     public void Project_SkipsNullElements() {
         var projection = new TestProjection();
-        var events = new object?[] {
+        object?[] events = new object?[] {
             new ItemAdded { Name = "a" },
             null,
             new ItemAdded { Name = "b" },
@@ -194,7 +194,7 @@ public class EventStoreProjectionTests : IDisposable {
     public void Project_MultipleApplyMethods_AllInvokedCorrectly() {
         var projection = new TestProjection();
         // Send only ItemRemoved events to verify the second Apply method works independently
-        var events = new object[] {
+        object[] events = new object[] {
             new ItemAdded { Name = "a" },
             new ItemAdded { Name = "b" },
             new ItemRemoved(),
@@ -211,7 +211,7 @@ public class EventStoreProjectionTests : IDisposable {
     [Fact]
     public void Project_UnknownEventType_SilentlySkipped() {
         var projection = new TestProjection();
-        var events = new object[] {
+        object[] events = new object[] {
             new ItemAdded { Name = "known" },
             new UnknownProjectionEvent(), // no Apply method for this type
             new ItemRemoved(),

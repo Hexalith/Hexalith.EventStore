@@ -3,8 +3,8 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Client;
 
-using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;

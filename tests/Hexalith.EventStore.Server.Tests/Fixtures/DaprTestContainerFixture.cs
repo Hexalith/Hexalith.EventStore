@@ -18,7 +18,6 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace Hexalith.EventStore.Server.Tests.Fixtures;
 /// <summary>
@@ -280,7 +279,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                     }
 
                     process.Kill(entireProcessTree: true);
-                    process.WaitForExit(5000);
+                    _ = process.WaitForExit(5000);
                 }
                 catch (Exception) {
                     // Best-effort: process may have already exited
@@ -314,7 +313,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                 };
                 _ = searcher.Start();
                 string output = searcher.StandardOutput.ReadToEnd();
-                searcher.WaitForExit(3000);
+                _ = searcher.WaitForExit(3000);
                 return output;
             }
 
@@ -350,11 +349,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         builder.Configuration["Dapr:HttpPort"] = _daprHttpPort.ToString();
         builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
 
-        builder.WebHost.ConfigureKestrel(serverOptions => {
-            serverOptions.ListenLocalhost(_appPort, listenOptions => {
-                listenOptions.Protocols = HttpProtocols.Http1;
-            });
-        });
+        _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
 
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
 
@@ -367,7 +362,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
         _testHost = builder.Build();
 
-        _testHost.Lifetime.ApplicationStopping.Register(() => {
+        _ = _testHost.Lifetime.ApplicationStopping.Register(() => {
             _hostStopping = true;
             _hostStopStackTrace = Environment.StackTrace;
         });
@@ -504,7 +499,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// </summary>
     private static int[] GetAvailablePorts(int count) {
         var listeners = new TcpListener[count];
-        var ports = new int[count];
+        int[] ports = new int[count];
 
         for (int i = 0; i < count; i++) {
             listeners[i] = new TcpListener(IPAddress.Loopback, 0);

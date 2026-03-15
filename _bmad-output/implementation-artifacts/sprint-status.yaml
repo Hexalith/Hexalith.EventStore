@@ -252,7 +252,7 @@ development_status:
   18-3-query-endpoint-with-etag-pre-check-and-cache: done
   18-4-query-contract-library: done
   18-5-signalr-real-time-notifications: done
-  18-6-sample-ui-refresh-patterns: done
+  18-6-sample-ui-refresh-patterns: done  # FIXUP: Add CounterCommandForm to Pattern 1 & 2 pages (sprint-change-proposal-2026-03-15-counter-command-buttons)
   18-7-self-routing-etag-format-and-endpoint-decode: done
   18-8-iquery-response-enforcement-and-runtime-discovery: done
   epic-18-retrospective: optional

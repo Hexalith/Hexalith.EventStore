@@ -1,6 +1,6 @@
-using Hexalith.EventStore.CommandApi.SignalR;
-
 using System.Diagnostics;
+
+using Hexalith.EventStore.CommandApi.SignalR;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -16,10 +16,10 @@ public class SignalRProjectionChangedBroadcasterTests {
     public async Task BroadcastChangedAsync_ValidInput_ForwardsToGroupClient() {
         IProjectionChangedClient projectionClient = Substitute.For<IProjectionChangedClient>();
         IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
-        clients.Group("order-list:acme").Returns(projectionClient);
+        _ = clients.Group("order-list:acme").Returns(projectionClient);
 
         IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
-        hubContext.Clients.Returns(clients);
+        _ = hubContext.Clients.Returns(clients);
 
         var sut = new SignalRProjectionChangedBroadcaster(hubContext, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
 
@@ -31,15 +31,15 @@ public class SignalRProjectionChangedBroadcasterTests {
     [Fact]
     public async Task BroadcastChangedAsync_ClientFailure_DoesNotThrow() {
         IProjectionChangedClient projectionClient = Substitute.For<IProjectionChangedClient>();
-        projectionClient
+        _ = projectionClient
             .ProjectionChanged("order-list", "acme")
             .Returns(_ => throw new InvalidOperationException("SignalR down"));
 
         IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
-        clients.Group("order-list:acme").Returns(projectionClient);
+        _ = clients.Group("order-list:acme").Returns(projectionClient);
 
         IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
-        hubContext.Clients.Returns(clients);
+        _ = hubContext.Clients.Returns(clients);
 
         var sut = new SignalRProjectionChangedBroadcaster(hubContext, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
 
@@ -51,10 +51,10 @@ public class SignalRProjectionChangedBroadcasterTests {
     public async Task BroadcastChangedAsync_P99Dispatch_RemainsUnder100Milliseconds() {
         IProjectionChangedClient projectionClient = Substitute.For<IProjectionChangedClient>();
         IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
-        clients.Group("order-list:acme").Returns(projectionClient);
+        _ = clients.Group("order-list:acme").Returns(projectionClient);
 
         IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
-        hubContext.Clients.Returns(clients);
+        _ = hubContext.Clients.Returns(clients);
 
         var sut = new SignalRProjectionChangedBroadcaster(hubContext, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
         const int warmupCount = 5;

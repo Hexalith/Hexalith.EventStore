@@ -76,7 +76,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
 
             string eventTypeName = evt.GetType().Name;
             if (applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
-                applyMethod.Invoke(model, [evt]);
+                _ = applyMethod.Invoke(model, [evt]);
             }
         }
 
@@ -186,32 +186,24 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
         try {
             if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
-                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);
-                if (deserializedEvent is null) {
-                    throw new InvalidOperationException(
+                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType) ?? throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
                             "Unable to project read model '{0}'. Payload for event type '{1}' could not be deserialized to '{2}'.",
                             typeof(TReadModel).Name,
                             eventTypeName,
                             eventType.Name));
-                }
-
-                applyMethod.Invoke(model, [deserializedEvent]);
+                _ = applyMethod.Invoke(model, [deserializedEvent]);
             }
             else {
-                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType);
-                if (deserializedEvent is null) {
-                    throw new InvalidOperationException(
+                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType) ?? throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
                             "Unable to project read model '{0}'. Event '{1}' could not be deserialized to '{2}'.",
                             typeof(TReadModel).Name,
                             eventTypeName,
                             eventType.Name));
-                }
-
-                applyMethod.Invoke(model, [deserializedEvent]);
+                _ = applyMethod.Invoke(model, [deserializedEvent]);
             }
         }
         catch (JsonException ex) {

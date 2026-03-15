@@ -129,28 +129,20 @@ public class QueryActorIdHelperTests {
     }
 
     [Fact]
-    public void DeriveActorId_NullPayload_ThrowsArgumentNullException() {
-        Should.Throw<ArgumentNullException>(() =>
+    public void DeriveActorId_NullPayload_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
             QueryActorIdHelper.DeriveActorId("GetOrder", "tenant1", null, null!));
-    }
 
     [Fact]
-    public void DeriveActorId_QueryTypeWithColon_ThrowsArgumentException() {
-        Should.Throw<ArgumentException>(() =>
+    public void DeriveActorId_QueryTypeWithColon_ThrowsArgumentException() => Should.Throw<ArgumentException>(() =>
             QueryActorIdHelper.DeriveActorId("Get:Order", "tenant1", null, []));
-    }
 
     [Fact]
-    public void DeriveActorId_TenantIdWithColon_ThrowsArgumentException() {
-        Should.Throw<ArgumentException>(() =>
+    public void DeriveActorId_TenantIdWithColon_ThrowsArgumentException() => Should.Throw<ArgumentException>(() =>
             QueryActorIdHelper.DeriveActorId("GetOrder", "tenant:1", null, []));
-    }
 
     [Fact]
-    public void DeriveActorId_EntityIdWithColon_ThrowsArgumentException() {
-        Should.Throw<ArgumentException>(() =>
+    public void DeriveActorId_EntityIdWithColon_ThrowsArgumentException() => Should.Throw<ArgumentException>(() =>
             QueryActorIdHelper.DeriveActorId("GetOrder", "tenant1", "order:123", []));
-    }
 
     // ============================================================================
     // Story 18-4: Generic DeriveActorId<TQuery> overload tests (Task 10)

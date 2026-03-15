@@ -3,11 +3,9 @@ using Hexalith.EventStore.Contracts.Validation;
 
 namespace Hexalith.EventStore.Contracts.Tests.Validation;
 
-public class ValidateCommandRequestTests
-{
+public class ValidateCommandRequestTests {
     [Fact]
-    public void Constructor_WithAllFields_CreatesInstance()
-    {
+    public void Constructor_WithAllFields_CreatesInstance() {
         var request = new ValidateCommandRequest(
             Tenant: "acme",
             Domain: "orders",
@@ -21,8 +19,7 @@ public class ValidateCommandRequestTests
     }
 
     [Fact]
-    public void Constructor_WithoutAggregateId_DefaultsToNull()
-    {
+    public void Constructor_WithoutAggregateId_DefaultsToNull() {
         var request = new ValidateCommandRequest(
             Tenant: "acme",
             Domain: "orders",
@@ -32,8 +29,7 @@ public class ValidateCommandRequestTests
     }
 
     [Fact]
-    public void RecordEquality_SameValues_AreEqual()
-    {
+    public void RecordEquality_SameValues_AreEqual() {
         var request1 = new ValidateCommandRequest("acme", "orders", "CreateOrder");
         var request2 = new ValidateCommandRequest("acme", "orders", "CreateOrder");
 
@@ -41,8 +37,7 @@ public class ValidateCommandRequestTests
     }
 
     [Fact]
-    public void RecordEquality_DifferentAggregateId_AreNotEqual()
-    {
+    public void RecordEquality_DifferentAggregateId_AreNotEqual() {
         var request1 = new ValidateCommandRequest("acme", "orders", "CreateOrder", "order-1");
         var request2 = new ValidateCommandRequest("acme", "orders", "CreateOrder", "order-2");
 

@@ -122,9 +122,7 @@ internal class OrderListQuery : IQueryContract {
 }
 
 public class NamingConventionEngineTests : IDisposable {
-    public NamingConventionEngineTests() {
-        NamingConventionEngine.ClearCache();
-    }
+    public NamingConventionEngineTests() => NamingConventionEngine.ClearCache();
 
     public void Dispose() {
         NamingConventionEngine.ClearCache();
@@ -202,10 +200,8 @@ public class NamingConventionEngineTests : IDisposable {
     }
 
     [Fact]
-    public void GetDomainName_EmptyAfterSuffixStrip_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetDomainName_EmptyAfterSuffixStrip_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => NamingConventionEngine.GetDomainName(typeof(Aggregate)));
-    }
 
     [Fact]
     public void GetDomainName_NameTooLong_ThrowsArgumentException() {
@@ -216,16 +212,12 @@ public class NamingConventionEngineTests : IDisposable {
     }
 
     [Fact]
-    public void GetDomainName_LeadingHyphenAttribute_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetDomainName_LeadingHyphenAttribute_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => NamingConventionEngine.GetDomainName(typeof(LeadingHyphenAttribute)));
-    }
 
     [Fact]
-    public void GetDomainName_TrailingHyphenAttribute_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetDomainName_TrailingHyphenAttribute_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(
             () => NamingConventionEngine.GetDomainName(typeof(TrailingHyphenAttribute)));
-    }
 
     // --- Task 4.7: Resource name derivation tests ---
 
@@ -242,14 +234,10 @@ public class NamingConventionEngineTests : IDisposable {
     [InlineData("Order")]
     [InlineData("-order")]
     [InlineData("order-")]
-    public void GetStateStoreName_InvalidDomain_ThrowsArgumentException(string domain) {
-        _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetStateStoreName(domain));
-    }
+    public void GetStateStoreName_InvalidDomain_ThrowsArgumentException(string domain) => _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetStateStoreName(domain));
 
     [Fact]
-    public void GetStateStoreName_NullDomain_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetStateStoreName(null!));
-    }
+    public void GetStateStoreName_NullDomain_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetStateStoreName(null!));
 
     [Fact]
     public void GetPubSubTopic_ValidInputs_ReturnsExpectedFormat() {
@@ -267,19 +255,13 @@ public class NamingConventionEngineTests : IDisposable {
     [InlineData("acme", "Order")]
     [InlineData("acme", "-order")]
     [InlineData("acme", "order-")]
-    public void GetPubSubTopic_InvalidInputs_ThrowsArgumentException(string tenantId, string domain) {
-        _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetPubSubTopic(tenantId, domain));
-    }
+    public void GetPubSubTopic_InvalidInputs_ThrowsArgumentException(string tenantId, string domain) => _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetPubSubTopic(tenantId, domain));
 
     [Fact]
-    public void GetPubSubTopic_NullTenant_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetPubSubTopic(null!, "order"));
-    }
+    public void GetPubSubTopic_NullTenant_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetPubSubTopic(null!, "order"));
 
     [Fact]
-    public void GetPubSubTopic_NullDomain_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetPubSubTopic("acme", null!));
-    }
+    public void GetPubSubTopic_NullDomain_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetPubSubTopic("acme", null!));
 
     [Fact]
     public void GetCommandEndpoint_ValidDomain_ReturnsExpectedFormat() {
@@ -294,14 +276,10 @@ public class NamingConventionEngineTests : IDisposable {
     [InlineData("Order")]
     [InlineData("-order")]
     [InlineData("order-")]
-    public void GetCommandEndpoint_InvalidDomain_ThrowsArgumentException(string domain) {
-        _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetCommandEndpoint(domain));
-    }
+    public void GetCommandEndpoint_InvalidDomain_ThrowsArgumentException(string domain) => _ = Assert.Throws<ArgumentException>(() => NamingConventionEngine.GetCommandEndpoint(domain));
 
     [Fact]
-    public void GetCommandEndpoint_NullDomain_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetCommandEndpoint(null!));
-    }
+    public void GetCommandEndpoint_NullDomain_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(() => NamingConventionEngine.GetCommandEndpoint(null!));
 
     // --- Task 4.8: Cache behavior tests ---
 
@@ -336,10 +314,8 @@ public class NamingConventionEngineTests : IDisposable {
     // --- Null guard test ---
 
     [Fact]
-    public void GetDomainName_NullType_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void GetDomainName_NullType_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
             () => NamingConventionEngine.GetDomainName(null!));
-    }
 
     // --- Story 16-8: Multi-digit boundary tests (AC#1: 2.1) ---
 
@@ -376,10 +352,8 @@ public class NamingConventionEngineTests : IDisposable {
     [Theory]
     [InlineData(typeof(Projection))]
     [InlineData(typeof(Processor))]
-    public void GetDomainName_SuffixOnlyName_ThrowsArgumentException(Type input) {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetDomainName_SuffixOnlyName_ThrowsArgumentException(Type input) => _ = Assert.Throws<ArgumentException>(
             () => NamingConventionEngine.GetDomainName(input));
-    }
 
     // --- Story 16-8: Thread-safety test (AC#1: 2.2) ---
 
@@ -391,9 +365,9 @@ public class NamingConventionEngineTests : IDisposable {
             typeof(OrderProjection), typeof(PaymentProcessor),
             typeof(OrderHandler), typeof(Order),
         ];
-        var results = new string[parallelism];
+        string[] results = new string[parallelism];
 
-        Parallel.For(0, parallelism, i => {
+        _ = Parallel.For(0, parallelism, i => {
             Type type = types[i % types.Length];
             results[i] = NamingConventionEngine.GetDomainName(type);
         });
@@ -458,22 +432,16 @@ public class NamingConventionEngineTests : IDisposable {
     [InlineData("order-list", "Acme")]
     [InlineData("order-list", "-acme")]
     [InlineData("order-list", "acme-")]
-    public void GetProjectionChangedTopic_InvalidInputs_ThrowsArgumentException(string projectionType, string tenantId) {
-        _ = Assert.Throws<ArgumentException>(
+    public void GetProjectionChangedTopic_InvalidInputs_ThrowsArgumentException(string projectionType, string tenantId) => _ = Assert.Throws<ArgumentException>(
             () => NamingConventionEngine.GetProjectionChangedTopic(projectionType, tenantId));
-    }
 
     [Fact]
-    public void GetProjectionChangedTopic_NullProjectionType_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void GetProjectionChangedTopic_NullProjectionType_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
             () => NamingConventionEngine.GetProjectionChangedTopic(null!, "acme"));
-    }
 
     [Fact]
-    public void GetProjectionChangedTopic_NullTenantId_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void GetProjectionChangedTopic_NullTenantId_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
             () => NamingConventionEngine.GetProjectionChangedTopic("order-list", null!));
-    }
 
     // ============================================================================
     // Story 18-4: GetQueryTypeName tests (Task 8)
@@ -535,11 +503,10 @@ public class NamingConventionEngineTests : IDisposable {
     }
 
     [Fact]
-    public void GetQueryTypeName_EmptyAfterSuffixStrip_ThrowsArgumentException() {
+    public void GetQueryTypeName_EmptyAfterSuffixStrip_ThrowsArgumentException() =>
         // "Query" → strips "Query" → empty
         _ = Assert.Throws<ArgumentException>(
             () => NamingConventionEngine.GetQueryTypeName(typeof(Query)));
-    }
 
     [Fact]
     public void GetQueryTypeName_NameTooLong_ThrowsArgumentException() {
@@ -558,11 +525,9 @@ public class NamingConventionEngineTests : IDisposable {
     }
 
     [Fact]
-    public void GetQueryTypeName_Generic_MatchesNonGenericOverload() {
-        Assert.Equal(
+    public void GetQueryTypeName_Generic_MatchesNonGenericOverload() => Assert.Equal(
             NamingConventionEngine.GetQueryTypeName(typeof(GetCounterStatusQuery)),
             NamingConventionEngine.GetQueryTypeName<GetCounterStatusQuery>());
-    }
 
     [Fact]
     public void ClearCache_AlsoClearsQueryTypeCache() {
@@ -576,10 +541,8 @@ public class NamingConventionEngineTests : IDisposable {
     }
 
     [Fact]
-    public void GetQueryTypeName_NullType_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void GetQueryTypeName_NullType_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(
             () => NamingConventionEngine.GetQueryTypeName(null!));
-    }
 
     [Fact]
     public void GetQueryTypeName_VsResolve_AreIndependentPaths() {

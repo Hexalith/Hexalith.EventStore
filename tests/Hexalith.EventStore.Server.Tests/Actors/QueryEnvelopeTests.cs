@@ -3,6 +3,7 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Xml.Linq;
 
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 
 using Shouldly;
@@ -96,7 +97,7 @@ public class QueryEnvelopeTests {
     [Fact]
     public void AggregateIdentity_ReturnsCorrectIdentity() {
         QueryEnvelope sut = CreateValid();
-        var identity = sut.AggregateIdentity;
+        AggregateIdentity identity = sut.AggregateIdentity;
 
         identity.TenantId.ShouldBe("test-tenant");
         identity.Domain.ShouldBe("orders");
@@ -117,7 +118,7 @@ public class QueryEnvelopeTests {
         string json = JsonSerializer.Serialize(original);
         QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.TenantId.ShouldBe(original.TenantId);
         deserialized.Domain.ShouldBe(original.Domain);
         deserialized.AggregateId.ShouldBe(original.AggregateId);
@@ -141,7 +142,7 @@ public class QueryEnvelopeTests {
         string json = JsonSerializer.Serialize(original);
         QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.EntityId.ShouldBe("order-42");
     }
 
@@ -173,7 +174,7 @@ public class QueryEnvelopeTests {
         // Manually remove EntityId from serialized XML to simulate old format
         ms.Position = 0;
         string xml = new StreamReader(ms).ReadToEnd();
-        XDocument document = XDocument.Parse(xml);
+        var document = XDocument.Parse(xml);
         document.Descendants().Where(e => e.Name.LocalName == "EntityId").Remove();
         string oldFormatXml = document.ToString(SaveOptions.DisableFormatting);
 
@@ -182,7 +183,7 @@ public class QueryEnvelopeTests {
         using var ms2 = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(oldFormatXml));
         var deserialized = (QueryEnvelope?)serializer.ReadObject(ms2);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.EntityId.ShouldBeNull();
         deserialized.TenantId.ShouldBe(original.TenantId);
     }

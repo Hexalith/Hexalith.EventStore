@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Hexalith.EventStore.Sample.BlazorUI.Services;
 

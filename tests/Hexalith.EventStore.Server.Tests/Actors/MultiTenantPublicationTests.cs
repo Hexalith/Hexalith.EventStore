@@ -12,7 +12,6 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
-using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;

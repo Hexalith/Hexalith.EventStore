@@ -302,6 +302,7 @@ GPT-5.4
 - 2026-03-13: Story 18-6 implementation complete — 3 Blazor UI refresh patterns with Aspire integration
 - 2026-03-13: Review fixes applied — aligned persistent notification wording, added `FluentDesignTheme`, and corrected JSON payload contracts for sample command/query requests
 - 2026-03-13: Review remediation completed — added sample auth/token plumbing, multi-subscriber SignalR callback support, callback-specific unsubscribe, legacy query-claim compatibility, and visible history refresh errors
+- 2026-03-15: Fixup — added `CounterCommandForm` to NotificationPattern.razor and SilentReloadPattern.razor so all 3 pattern pages are self-contained with increment/decrement/reset buttons (sprint-change-proposal-2026-03-15-counter-command-buttons)
 
 ### File List
 
@@ -348,3 +349,44 @@ Modified files:
 - `src/Hexalith.EventStore.CommandApi/Authorization/ClaimsRbacValidator.cs` — accepted legacy query permission for local auth compatibility
 - `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs` — added regression coverage for multi-callback and callback-specific unsubscribe behavior
 - `tests/Hexalith.EventStore.Server.Tests/Authorization/ClaimsRbacValidatorTests.cs` — added regression coverage for legacy query permission handling
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+GPT-5.4
+
+### Date
+
+2026-03-15
+
+### Outcome
+
+Approved — no blocking findings in Story 18.6 scope.
+
+### Scope Reviewed
+
+- Story acceptance criteria and task completion claims in this file
+- Sample UI implementation under `samples/Hexalith.EventStore.Sample.BlazorUI/`
+- Supporting SignalR client and Aspire wiring used by the sample
+- Focused diagnostics and a Release build of the sample Blazor UI project
+
+### What I Validated
+
+- All 3 refresh pattern pages exist and are linked from the landing page
+- Each pattern uses `EventStoreSignalRClient.SubscribeAsync(...)` rather than raw `HubConnection` wiring
+- Pattern trade-offs are documented inline in the sample pages/components
+- Counter projection (`projectionType = "counter"`) is used consistently
+- Fluent UI components (`FluentMessageBar`, `FluentCard`, `FluentButton`, `FluentDataGrid`) are present in the sample implementation
+- `Index.razor` includes launch guidance and recommends the order Pattern 2 → Pattern 1 → Pattern 3
+- `NotificationPattern.razor` and `SilentReloadPattern.razor` now include `CounterCommandForm`, making all 3 demos self-contained for interactive evaluation
+- The reviewed files report no diagnostics, and `dotnet build samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj --configuration Release` succeeded
+
+### Findings
+
+No medium or high-severity findings identified in the reviewed story scope.
+
+### Notes
+
+- The repository working tree contains many unrelated changes outside Story 18.6; those were not treated as story findings unless they directly affected the sample UI implementation under review.
+- This review confirms the 2026-03-15 fixup resolves the prior self-contained demo gap for Pattern 1 and Pattern 2.

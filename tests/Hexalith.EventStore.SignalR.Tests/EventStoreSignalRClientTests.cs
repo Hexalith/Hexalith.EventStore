@@ -1,23 +1,19 @@
 using System.Reflection;
 
-using Hexalith.EventStore.SignalR;
-
 using Shouldly;
 
 namespace Hexalith.EventStore.SignalR.Tests;
 
 public class EventStoreSignalRClientTests {
     [Fact]
-    public void Constructor_NullOptions_ThrowsArgumentNullException() {
-        Should.Throw<ArgumentNullException>(() =>
+    public void Constructor_NullOptions_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
             new EventStoreSignalRClient(null!));
-    }
 
     [Fact]
     public void Constructor_EmptyHubUrl_ThrowsArgumentException() {
         var options = new EventStoreSignalRClientOptions { HubUrl = " " };
 
-        Should.Throw<ArgumentException>(() =>
+        _ = Should.Throw<ArgumentException>(() =>
             new EventStoreSignalRClient(options));
     }
 
@@ -25,7 +21,7 @@ public class EventStoreSignalRClientTests {
     public void Constructor_RelativeHubUrl_ThrowsArgumentException() {
         var options = new EventStoreSignalRClientOptions { HubUrl = "/hubs/projection-changes" };
 
-        Should.Throw<ArgumentException>(() =>
+        _ = Should.Throw<ArgumentException>(() =>
             new EventStoreSignalRClient(options));
     }
 
@@ -76,7 +72,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await Should.ThrowAsync<ArgumentException>(() =>
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
                 sut.SubscribeAsync(null!, "acme", () => { }));
         }
         finally {
@@ -89,7 +85,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await Should.ThrowAsync<ArgumentException>(() =>
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
                 sut.SubscribeAsync("counter", null!, () => { }));
         }
         finally {
@@ -102,7 +98,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await Should.ThrowAsync<ArgumentNullException>(() =>
+            _ = await Should.ThrowAsync<ArgumentNullException>(() =>
                 sut.SubscribeAsync("counter", "acme", null!));
         }
         finally {
@@ -115,7 +111,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await Should.ThrowAsync<ArgumentException>(() =>
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
                 sut.SubscribeAsync("counter:bad", "acme", () => { }));
         }
         finally {
@@ -128,7 +124,7 @@ public class EventStoreSignalRClientTests {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
         try {
-            await Should.ThrowAsync<ArgumentException>(() =>
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
                 sut.UnsubscribeAsync("counter", "acme:bad"));
         }
         finally {
@@ -155,8 +151,8 @@ public class EventStoreSignalRClientTests {
             int callback1Count = 0;
             int callback2Count = 0;
 
-            Action callback1 = () => callback1Count++;
-            Action callback2 = () => callback2Count++;
+            void callback1() => callback1Count++;
+            void callback2() => callback2Count++;
 
             await sut.SubscribeAsync("counter", "acme", callback1);
             await sut.SubscribeAsync("counter", "acme", callback2);
@@ -179,8 +175,8 @@ public class EventStoreSignalRClientTests {
             int callback1Count = 0;
             int callback2Count = 0;
 
-            Action callback1 = () => callback1Count++;
-            Action callback2 = () => callback2Count++;
+            void callback1() => callback1Count++;
+            void callback2() => callback2Count++;
 
             await sut.SubscribeAsync("counter", "acme", callback1);
             await sut.SubscribeAsync("counter", "acme", callback2);

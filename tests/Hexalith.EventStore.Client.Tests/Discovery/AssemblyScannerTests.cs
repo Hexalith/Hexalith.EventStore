@@ -71,7 +71,7 @@ public sealed class AssemblyScannerTests : IDisposable {
     private static Assembly CreateDynamicAggregateAssemblyWithTypeName(string typeName, Type stateType) {
         string assemblyName = $"Hexalith.EventStore.Client.Tests.Dynamic.{Guid.NewGuid():N}";
         var name = new AssemblyName(assemblyName);
-        AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run);
+        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run);
         ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("Main");
 
         Type aggregateBase = typeof(EventStoreAggregate<>).MakeGenericType(stateType);
@@ -135,8 +135,8 @@ public sealed class AssemblyScannerTests : IDisposable {
 
         DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
 
-        Assert.Single(result.Aggregates);
-        Assert.Single(result.Projections);
+        _ = Assert.Single(result.Aggregates);
+        _ = Assert.Single(result.Projections);
         Assert.Equal(2, result.TotalCount);
     }
 
@@ -164,7 +164,7 @@ public sealed class AssemblyScannerTests : IDisposable {
         // Providing the same type twice produces duplicate domain names
         Type[] types = [typeof(TestCounterAggregate), typeof(TestCounterAggregate)];
 
-        Assert.Throws<InvalidOperationException>(() => AssemblyScanner.ScanForDomainTypes(types));
+        _ = Assert.Throws<InvalidOperationException>(() => AssemblyScanner.ScanForDomainTypes(types));
     }
 
     // --- AC6: Domain name resolution integration ---
@@ -307,19 +307,13 @@ public sealed class AssemblyScannerTests : IDisposable {
     // --- Null assembly ---
 
     [Fact]
-    public void ScanForDomainTypes_NullAssembly_ThrowsArgumentNullException() {
-        Assert.Throws<ArgumentNullException>(() => AssemblyScanner.ScanForDomainTypes((Assembly)null!));
-    }
+    public void ScanForDomainTypes_NullAssembly_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() => AssemblyScanner.ScanForDomainTypes((Assembly)null!));
 
     [Fact]
-    public void ScanForAggregates_NullAssembly_ThrowsArgumentNullException() {
-        Assert.Throws<ArgumentNullException>(() => AssemblyScanner.ScanForAggregates(null!));
-    }
+    public void ScanForAggregates_NullAssembly_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() => AssemblyScanner.ScanForAggregates(null!));
 
     [Fact]
-    public void ScanForProjections_NullAssembly_ThrowsArgumentNullException() {
-        Assert.Throws<ArgumentNullException>(() => AssemblyScanner.ScanForProjections(null!));
-    }
+    public void ScanForProjections_NullAssembly_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() => AssemblyScanner.ScanForProjections(null!));
 
     // --- Null in multi-assembly collection ---
 
@@ -327,21 +321,17 @@ public sealed class AssemblyScannerTests : IDisposable {
     public void ScanForDomainTypes_NullInAssemblyCollection_ThrowsArgumentNullException() {
         Assembly valid = typeof(SmokeTestAggregate).Assembly;
 
-        Assert.Throws<ArgumentNullException>(
+        _ = Assert.Throws<ArgumentNullException>(
             () => AssemblyScanner.ScanForDomainTypes(new Assembly[] { valid, null! }));
     }
 
     [Fact]
-    public void ScanForDomainTypes_NullAssemblyCollection_ThrowsArgumentNullException() {
-        Assert.Throws<ArgumentNullException>(
+    public void ScanForDomainTypes_NullAssemblyCollection_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(
             () => AssemblyScanner.ScanForDomainTypes((IEnumerable<Assembly>)null!));
-    }
 
     [Fact]
-    public void ScanForDomainTypes_NullTypeInCollection_ThrowsArgumentNullException() {
-        Assert.Throws<ArgumentNullException>(
+    public void ScanForDomainTypes_NullTypeInCollection_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(
             () => AssemblyScanner.ScanForDomainTypes(new Type[] { typeof(TestCounterAggregate), null! }));
-    }
 
     // --- Intermediate generic inheritance ---
 
@@ -378,7 +368,7 @@ public sealed class AssemblyScannerTests : IDisposable {
             () => AssemblyScanner.ScanForDomainTypes(types));
 
         Assert.Contains(nameof(TestInvalidNameAggregate), ex.Message);
-        Assert.IsType<ArgumentException>(ex.InnerException);
+        _ = Assert.IsType<ArgumentException>(ex.InnerException);
     }
 
     // --- Open generic excluded ---
@@ -506,7 +496,7 @@ public sealed class AssemblyScannerTests : IDisposable {
         DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
 
         Assert.Empty(result.Aggregates);
-        Assert.Single(result.Projections);
+        _ = Assert.Single(result.Projections);
     }
 
     [Fact]
@@ -515,7 +505,7 @@ public sealed class AssemblyScannerTests : IDisposable {
 
         DiscoveryResult result = AssemblyScanner.ScanForDomainTypes(types);
 
-        Assert.Single(result.Aggregates);
+        _ = Assert.Single(result.Aggregates);
         Assert.Empty(result.Projections);
     }
 
@@ -593,7 +583,7 @@ public sealed class AssemblyScannerTests : IDisposable {
     private static Assembly CreateDynamicProjectionAssemblyWithTypeName(string typeName) {
         string assemblyName = $"Hexalith.EventStore.Client.Tests.Dynamic.Proj.{Guid.NewGuid():N}";
         var name = new AssemblyName(assemblyName);
-        AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run);
+        var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run);
         ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("Main");
 
         Type projectionBase = typeof(EventStoreProjection<>).MakeGenericType(typeof(SmokeTestReadModel));

@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// Implement this interface on query contract classes to get compile-time
 /// safety for query routing metadata (FR57).
 /// </summary>
-public interface IQueryContract
-{
+public interface IQueryContract {
     /// <summary>
     /// Gets the query type name used for actor ID routing (first segment).
     /// Must be kebab-case, no colons (reserved as actor ID separator).

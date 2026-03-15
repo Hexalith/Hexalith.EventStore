@@ -188,7 +188,7 @@ public sealed class FluentApiRegistrationIntegrationTests {
     public void UseEventStore_WithoutAddEventStore_ThrowsInvalidOperationException() {
         using IHost host = Host.CreateDefaultBuilder().Build();
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => host.UseEventStore());
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(host.UseEventStore);
 
         Assert.Contains("AddEventStore()", ex.Message);
     }
@@ -224,24 +224,25 @@ public sealed class FluentApiRegistrationIntegrationTests {
 
     private static IHost BuildTestHost(Action<EventStoreOptions>? configureOptions = null) {
         IHostBuilder builder = Host.CreateDefaultBuilder();
-        builder.ConfigureServices(services => {
+        _ = builder.ConfigureServices(services => {
             if (configureOptions is not null) {
-                services.AddEventStore(configureOptions, typeof(CounterAggregate).Assembly);
-            } else {
-                services.AddEventStore(typeof(CounterAggregate).Assembly);
+                _ = services.AddEventStore(configureOptions, typeof(CounterAggregate).Assembly);
+            }
+            else {
+                _ = services.AddEventStore(typeof(CounterAggregate).Assembly);
             }
         });
         IHost host = builder.Build();
-        host.UseEventStore();
+        _ = host.UseEventStore();
         return host;
     }
 
     private static IHost BuildTestHostWithAppSettings(Dictionary<string, string?> appSettings) {
         IHostBuilder builder = Host.CreateDefaultBuilder();
-        builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(appSettings));
-        builder.ConfigureServices(services => services.AddEventStore(typeof(CounterAggregate).Assembly));
+        _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(appSettings));
+        _ = builder.ConfigureServices(services => services.AddEventStore(typeof(CounterAggregate).Assembly));
         IHost host = builder.Build();
-        host.UseEventStore();
+        _ = host.UseEventStore();
         return host;
     }
 

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.CommandApi.SignalR;

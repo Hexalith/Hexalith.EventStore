@@ -11,12 +11,10 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 public class SignalRHubWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.UseEnvironment("Development");
+        _ = builder.UseEnvironment("Development");
 
-        builder.ConfigureAppConfiguration((_, config) => {
-            config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["EventStore:SignalR:Enabled"] = "true",
-            });
-        });
+        _ = builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+            ["EventStore:SignalR:Enabled"] = "true",
+        }));
     }
 }

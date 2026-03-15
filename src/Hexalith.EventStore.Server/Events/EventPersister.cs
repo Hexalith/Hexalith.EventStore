@@ -25,22 +25,19 @@ namespace Hexalith.EventStore.Server.Events;
 public partial class EventPersister(
     IActorStateManager stateManager,
     ILogger<EventPersister> logger,
-    IEventPayloadProtectionService payloadProtectionService) : IEventPersister
-{
+    IEventPayloadProtectionService payloadProtectionService) : IEventPersister {
     /// <inheritdoc/>
     public async Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
         CommandEnvelope command,
         DomainResult domainResult,
-        string domainServiceVersion)
-    {
+        string domainServiceVersion) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(domainResult);
         ArgumentException.ThrowIfNullOrWhiteSpace(domainServiceVersion);
 
-        if (domainResult.Events.Count == 0)
-        {
+        if (domainResult.Events.Count == 0) {
             return new EventPersistResult(0, []);
         }
 
@@ -56,8 +53,7 @@ public partial class EventPersister(
         _ = currentSequence + 1;
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
-        for (int i = 0; i < domainResult.Events.Count; i++)
-        {
+        for (int i = 0; i < domainResult.Events.Count; i++) {
             IEventPayload eventPayload = domainResult.Events[i];
             long sequenceNumber = currentSequence + 1 + i;
 
@@ -117,8 +113,7 @@ public partial class EventPersister(
         return new EventPersistResult(newSequence, envelopes);
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 3000,
             Level = LogLevel.Debug,

@@ -1,9 +1,10 @@
 
-using Dapr.Actors;
-using Dapr.Actors.Client;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+
+using Dapr.Actors;
+using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;

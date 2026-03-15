@@ -36,7 +36,7 @@ public class DaprProjectionChangeNotifierTests {
                 && n.EntityId == "order-123"),
             Arg.Any<CancellationToken>());
 
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IETagActor>(default!, default!);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IETagActor>(default!, default!);
     }
 
     [Fact]
@@ -50,12 +50,12 @@ public class DaprProjectionChangeNotifierTests {
             new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
         var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
 
-        actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
             .Returns(actor);
 
         await sut.NotifyProjectionChangedAsync("order-list", "acme");
 
-        await actor.Received(1).RegenerateAsync();
+        _ = await actor.Received(1).RegenerateAsync();
         await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync<object>(default!, default!, default!, default!, default);
     }
 }

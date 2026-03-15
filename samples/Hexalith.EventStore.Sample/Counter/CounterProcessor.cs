@@ -1,7 +1,6 @@
 // Legacy IDomainProcessor implementation. See CounterAggregate for the fluent API approach.
 
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;

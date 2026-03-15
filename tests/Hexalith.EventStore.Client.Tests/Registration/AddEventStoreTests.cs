@@ -11,7 +11,6 @@ using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Tests.Discovery;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Client.Tests.Registration;
@@ -38,7 +37,7 @@ public class AddEventStoreTests : IDisposable {
         IDomainProcessor processor = provider.GetRequiredService<IDomainProcessor>();
 
         Assert.NotNull(processor);
-        Assert.IsType<SmokeTestAggregate>(processor);
+        _ = Assert.IsType<SmokeTestAggregate>(processor);
     }
 
     [Fact]
@@ -51,7 +50,7 @@ public class AddEventStoreTests : IDisposable {
         IDomainProcessor processor = provider.GetRequiredService<IDomainProcessor>();
 
         Assert.NotNull(processor);
-        Assert.IsType<SmokeTestAggregate>(processor);
+        _ = Assert.IsType<SmokeTestAggregate>(processor);
     }
 
     [Fact]
@@ -97,7 +96,7 @@ public class AddEventStoreTests : IDisposable {
         IDomainProcessor keyed = scope.ServiceProvider.GetRequiredKeyedService<IDomainProcessor>(domainName);
 
         Assert.NotNull(keyed);
-        Assert.IsType<SmokeTestAggregate>(keyed);
+        _ = Assert.IsType<SmokeTestAggregate>(keyed);
     }
 
     [Fact]

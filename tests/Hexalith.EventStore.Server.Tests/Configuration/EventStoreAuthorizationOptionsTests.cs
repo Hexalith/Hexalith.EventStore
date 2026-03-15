@@ -121,7 +121,7 @@ public class EventStoreAuthorizationOptionsTests {
         var validator = new ValidateEventStoreAuthorizationOptions();
 
         // Act & Assert
-        Should.Throw<ArgumentNullException>(() => validator.Validate(null, null!));
+        _ = Should.Throw<ArgumentNullException>(() => validator.Validate(null, null!));
     }
 
     [Fact]

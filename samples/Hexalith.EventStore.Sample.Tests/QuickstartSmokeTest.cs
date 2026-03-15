@@ -12,8 +12,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Sample.QuickstartTests;
 
-public class QuickstartSmokeTest
-{
+public class QuickstartSmokeTest {
     private readonly IDomainProcessor _aggregate = new CounterAggregate();
 
     private static CommandEnvelope CreateCommand<T>(T command)
@@ -30,18 +29,16 @@ public class QuickstartSmokeTest
             Extensions: null);
 
     [Fact]
-    public async Task Quickstart_IncrementCounter_ProducesCounterIncrementedEvent()
-    {
+    public async Task Quickstart_IncrementCounter_ProducesCounterIncrementedEvent() {
         DomainResult result = await _aggregate.ProcessAsync(CreateCommand(new IncrementCounter()), currentState: null);
 
         result.IsSuccess.ShouldBeTrue();
         result.Events.Count.ShouldBe(1);
-        result.Events[0].ShouldBeOfType<CounterIncremented>();
+        _ = result.Events[0].ShouldBeOfType<CounterIncremented>();
     }
 
     [Fact]
-    public async Task Quickstart_IncrementThenDecrement_ProducesCounterDecrementedEvent()
-    {
+    public async Task Quickstart_IncrementThenDecrement_ProducesCounterDecrementedEvent() {
         // Execute increment through the documented command path
         DomainResult incrementResult = await _aggregate.ProcessAsync(CreateCommand(new IncrementCounter()), currentState: null);
         incrementResult.IsSuccess.ShouldBeTrue();
@@ -57,22 +54,20 @@ public class QuickstartSmokeTest
 
         result.IsSuccess.ShouldBeTrue();
         result.Events.Count.ShouldBe(1);
-        result.Events[0].ShouldBeOfType<CounterDecremented>();
+        _ = result.Events[0].ShouldBeOfType<CounterDecremented>();
     }
 
     [Fact]
-    public async Task Quickstart_DecrementOnZero_ProducesRejection()
-    {
+    public async Task Quickstart_DecrementOnZero_ProducesRejection() {
         DomainResult result = await _aggregate.ProcessAsync(CreateCommand(new DecrementCounter()), currentState: null);
 
         result.IsRejection.ShouldBeTrue();
         result.Events.Count.ShouldBe(1);
-        result.Events[0].ShouldBeOfType<CounterCannotGoNegative>();
+        _ = result.Events[0].ShouldBeOfType<CounterCannotGoNegative>();
     }
 
     [Fact]
-    public async Task Quickstart_ResetAfterIncrements_ProducesCounterResetEvent()
-    {
+    public async Task Quickstart_ResetAfterIncrements_ProducesCounterResetEvent() {
         // First increment
         DomainResult firstIncrement = await _aggregate.ProcessAsync(CreateCommand(new IncrementCounter()), currentState: null);
         firstIncrement.IsSuccess.ShouldBeTrue();
@@ -96,6 +91,6 @@ public class QuickstartSmokeTest
 
         result.IsSuccess.ShouldBeTrue();
         result.Events.Count.ShouldBe(1);
-        result.Events[0].ShouldBeOfType<CounterReset>();
+        _ = result.Events[0].ShouldBeOfType<CounterReset>();
     }
 }

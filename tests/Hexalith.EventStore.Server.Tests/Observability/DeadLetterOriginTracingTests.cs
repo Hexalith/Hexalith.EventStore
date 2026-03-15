@@ -11,7 +11,6 @@ using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
-using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -721,7 +720,7 @@ public class DeadLetterOriginTracingTests {
         _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => new SubmitCommandResult(callInfo.Arg<SubmitCommand>().CorrelationId));
 
-        var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>(new List<ObservabilityLogEntry>())) {
+        var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>([])) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = new ClaimsPrincipal(new ClaimsIdentity([
@@ -767,7 +766,7 @@ public class DeadLetterOriginTracingTests {
             CancellationToken.None);
 
         IMediator mediator = Substitute.For<IMediator>();
-        var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>(new List<ObservabilityLogEntry>())) {
+        var replayController = new ReplayController(archiveStore, statusStore, mediator, new TestLogger<ReplayController>([])) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = new ClaimsPrincipal(new ClaimsIdentity([

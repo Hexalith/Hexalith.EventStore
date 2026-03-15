@@ -32,17 +32,11 @@ public class EventStoreDomainAttributeTests : IDisposable {
     }
 
     [Fact]
-    public void Constructor_NullDomainName_ThrowsArgumentNullException() {
-        _ = Assert.Throws<ArgumentNullException>(() => new EventStoreDomainAttribute(null!));
-    }
+    public void Constructor_NullDomainName_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(() => new EventStoreDomainAttribute(null!));
 
     [Fact]
-    public void Constructor_EmptyDomainName_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(() => new EventStoreDomainAttribute(""));
-    }
+    public void Constructor_EmptyDomainName_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(() => new EventStoreDomainAttribute(""));
 
     [Fact]
-    public void Constructor_WhitespaceDomainName_ThrowsArgumentException() {
-        _ = Assert.Throws<ArgumentException>(() => new EventStoreDomainAttribute("  "));
-    }
+    public void Constructor_WhitespaceDomainName_ThrowsArgumentException() => _ = Assert.Throws<ArgumentException>(() => new EventStoreDomainAttribute("  "));
 }

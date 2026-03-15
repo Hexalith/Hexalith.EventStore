@@ -1,6 +1,3 @@
-
-using System.Text.Json;
-
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.Server.Queries;
 
@@ -58,7 +55,7 @@ public class QueryNotFoundExceptionHandlerTests {
         _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
 
         // Assert — read response body
-        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         using var reader = new StreamReader(httpContext.Response.Body);
         string body = await reader.ReadToEndAsync();
 

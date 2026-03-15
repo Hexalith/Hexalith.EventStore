@@ -98,11 +98,14 @@ if (keycloak is not null && realmUrl is not null) {
 //   PUBLISH_TARGET=aca     -> Azure Container Apps (Bicep modules)
 // Example: PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker
 string? publishTarget = builder.Configuration["PUBLISH_TARGET"];
-if (string.Equals(publishTarget, "docker", StringComparison.OrdinalIgnoreCase))
-    builder.AddDockerComposeEnvironment("docker");
-else if (string.Equals(publishTarget, "k8s", StringComparison.OrdinalIgnoreCase))
-    builder.AddKubernetesEnvironment("k8s");
-else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase))
-    builder.AddAzureContainerAppEnvironment("aca");
+if (string.Equals(publishTarget, "docker", StringComparison.OrdinalIgnoreCase)) {
+    _ = builder.AddDockerComposeEnvironment("docker");
+}
+else if (string.Equals(publishTarget, "k8s", StringComparison.OrdinalIgnoreCase)) {
+    _ = builder.AddKubernetesEnvironment("k8s");
+}
+else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)) {
+    _ = builder.AddAzureContainerAppEnvironment("aca");
+}
 
 builder.Build().Run();

@@ -14,7 +14,6 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
-using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Testing.Fakes;
@@ -307,8 +306,8 @@ public class DeadLetterTraceChainTests {
 
         using var listener = new ActivityListener {
             ShouldListenTo = source =>
-                source.Name == EventStoreActivitySource.SourceName
-                || source.Name == "Hexalith.EventStore.CommandApi",
+                source.Name is EventStoreActivitySource.SourceName
+                or "Hexalith.EventStore.CommandApi",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => {
                 if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {

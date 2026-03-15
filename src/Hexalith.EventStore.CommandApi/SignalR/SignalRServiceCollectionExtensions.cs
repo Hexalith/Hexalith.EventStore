@@ -1,7 +1,5 @@
 using Hexalith.EventStore.Client.Projections;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -49,7 +47,7 @@ public static class SignalRServiceCollectionExtensions {
             ?? Environment.GetEnvironmentVariable("EVENTSTORE_SIGNALR_REDIS");
 
         if (!string.IsNullOrWhiteSpace(redis)) {
-            builder.AddStackExchangeRedis(redis);
+            _ = builder.AddStackExchangeRedis(redis);
         }
     }
 }

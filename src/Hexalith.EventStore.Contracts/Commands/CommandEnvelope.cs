@@ -1,7 +1,7 @@
 
-using Hexalith.EventStore.Contracts.Identity;
-
 using System.Runtime.Serialization;
+
+using Hexalith.EventStore.Contracts.Identity;
 
 namespace Hexalith.EventStore.Contracts.Commands;
 /// <summary>

@@ -12,9 +12,7 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 public class SignalRHubEndpointTests : IClassFixture<SignalRHubWebApplicationFactory> {
     private readonly SignalRHubWebApplicationFactory _factory;
 
-    public SignalRHubEndpointTests(SignalRHubWebApplicationFactory factory) {
-        _factory = factory;
-    }
+    public SignalRHubEndpointTests(SignalRHubWebApplicationFactory factory) => _factory = factory;
 
     [Fact]
     public async Task NegotiateEndpoint_WhenSignalREnabled_IsHostedAtExpectedPath() {

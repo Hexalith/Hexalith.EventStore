@@ -1,6 +1,3 @@
-
-using System.Collections.ObjectModel;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 
@@ -61,7 +58,7 @@ public class CommandEnvelopeTests {
 
     [Fact]
     public void Extensions_AcceptsDictionary() {
-        Dictionary<string, string> extensions = new Dictionary<string, string> { ["key"] = "value" };
+        var extensions = new Dictionary<string, string> { ["key"] = "value" };
         var envelope = new CommandEnvelope("acme", "payments", "order-123", "CreateOrder", [1], "c1", null, "u1", extensions);
 
         Assert.NotNull(envelope.Extensions);

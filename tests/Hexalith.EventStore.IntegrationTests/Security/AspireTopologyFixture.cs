@@ -107,7 +107,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
         // Wait for the sample domain service to be ready. The CommandApi's actor pipeline
         // invokes the sample service via Dapr service invocation. Without this check,
         // the first command submission hangs until the sample sidecar becomes available.
-        using var sampleProbeClient = _app.CreateHttpClient("sample");
+        using HttpClient sampleProbeClient = _app.CreateHttpClient("sample");
         sampleProbeClient.Timeout = TimeSpan.FromSeconds(15);
         await WaitForEndpointAsync(
             sampleProbeClient,

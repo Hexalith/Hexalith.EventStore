@@ -43,7 +43,7 @@ public class ActorTenantValidatorTests {
                 TenantValidatorActorName = ActorType,
                 RetryAfterSeconds = retryAfterSeconds,
             });
-        var logger = NullLoggerFactory.Instance.CreateLogger<ActorTenantValidator>();
+        ILogger<ActorTenantValidator> logger = NullLoggerFactory.Instance.CreateLogger<ActorTenantValidator>();
         var validator = new ActorTenantValidator(factory, options, logger);
         return (validator, factory);
     }
@@ -52,10 +52,10 @@ public class ActorTenantValidatorTests {
         IActorProxyFactory factory,
         ActorValidationResponse? response) {
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
-        actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
+        _ = actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
             .Returns(Task.FromResult(response)!);
 
-        factory.CreateActorProxy<ITenantValidatorActor>(
+        _ = factory.CreateActorProxy<ITenantValidatorActor>(
             Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
     }
@@ -64,10 +64,10 @@ public class ActorTenantValidatorTests {
         IActorProxyFactory factory,
         Exception exception) {
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
-        actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
+        _ = actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
             .Throws(exception);
 
-        factory.CreateActorProxy<ITenantValidatorActor>(
+        _ = factory.CreateActorProxy<ITenantValidatorActor>(
             Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
     }
@@ -130,7 +130,7 @@ public class ActorTenantValidatorTests {
 
         ex.ActorTypeName.ShouldBe(ActorType);
         ex.ActorId.ShouldBe(TenantId);
-        ex.InnerException.ShouldBeOfType<HttpRequestException>();
+        _ = ex.InnerException.ShouldBeOfType<HttpRequestException>();
     }
 
     [Fact]
@@ -139,9 +139,9 @@ public class ActorTenantValidatorTests {
         (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
         TenantValidationRequest? capturedRequest = null;
-        actor.ValidateTenantAccessAsync(Arg.Do<TenantValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidateTenantAccessAsync(Arg.Do<TenantValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier("specific-user-id");
 
@@ -149,7 +149,7 @@ public class ActorTenantValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.UserId.ShouldBe("specific-user-id");
     }
 
@@ -159,9 +159,9 @@ public class ActorTenantValidatorTests {
         (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
         TenantValidationRequest? capturedRequest = null;
-        actor.ValidateTenantAccessAsync(Arg.Do<TenantValidationRequest>(r => capturedRequest = r))
+        _ = actor.ValidateTenantAccessAsync(Arg.Do<TenantValidationRequest>(r => capturedRequest = r))
             .Returns(Task.FromResult(new ActorValidationResponse(true)));
-        factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -169,7 +169,7 @@ public class ActorTenantValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, CancellationToken.None, "order-123");
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
+        _ = capturedRequest.ShouldNotBeNull();
         capturedRequest.AggregateId.ShouldBe("order-123");
     }
 
@@ -197,7 +197,7 @@ public class ActorTenantValidatorTests {
         _ = await validator.ValidateAsync(user, "my-tenant", CancellationToken.None);
 
         // Assert
-        factory.Received(1).CreateActorProxy<ITenantValidatorActor>(
+        _ = factory.Received(1).CreateActorProxy<ITenantValidatorActor>(
             Arg.Is<ActorId>(id => id.GetId() == "my-tenant"),
             Arg.Any<string>());
     }
@@ -213,7 +213,7 @@ public class ActorTenantValidatorTests {
         _ = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
 
         // Assert
-        factory.Received(1).CreateActorProxy<ITenantValidatorActor>(
+        _ = factory.Received(1).CreateActorProxy<ITenantValidatorActor>(
             Arg.Any<ActorId>(),
             ActorType);
     }

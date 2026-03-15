@@ -5,13 +5,11 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Queries;
 
-public class SelfRoutingETagTests
-{
+public class SelfRoutingETagTests {
     // ===== Encode tests =====
 
     [Fact]
-    public void Encode_ProducesExpectedFormat()
-    {
+    public void Encode_ProducesExpectedFormat() {
         string result = SelfRoutingETag.Encode("counter", "KW4RnPjU7EuIVqT4LX_AKA");
 
         // "counter" → base64url "Y291bnRlcg"
@@ -19,8 +17,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void Encode_ProjectionTypeWithHyphen_EncodesCorrectly()
-    {
+    public void Encode_ProjectionTypeWithHyphen_EncodesCorrectly() {
         string result = SelfRoutingETag.Encode("user-profile", "KW4RnPjU7EuIVqT4LX_AKA");
 
         // "user-profile" → base64url "dXNlci1wcm9maWxl"
@@ -28,8 +25,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void Encode_ProjectionTypeWithUpperCase_EncodesCorrectly()
-    {
+    public void Encode_ProjectionTypeWithUpperCase_EncodesCorrectly() {
         string result = SelfRoutingETag.Encode("OrderList", "KW4RnPjU7EuIVqT4LX_AKA");
 
         // "OrderList" → base64url "T3JkZXJMaXN0"
@@ -39,16 +35,14 @@ public class SelfRoutingETagTests
     // ===== GenerateNew tests =====
 
     [Fact]
-    public void GenerateNew_ContainsDotSeparator()
-    {
+    public void GenerateNew_ContainsDotSeparator() {
         string etag = SelfRoutingETag.GenerateNew("counter");
 
         etag.ShouldContain(".");
     }
 
     [Fact]
-    public void GenerateNew_PrefixDecodesToProjectionType()
-    {
+    public void GenerateNew_PrefixDecodesToProjectionType() {
         string etag = SelfRoutingETag.GenerateNew("counter");
 
         bool decoded = SelfRoutingETag.TryDecode(etag, out string? projectionType, out _);
@@ -58,8 +52,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void GenerateNew_GuidPartIsBase64Url()
-    {
+    public void GenerateNew_GuidPartIsBase64Url() {
         string etag = SelfRoutingETag.GenerateNew("counter");
 
         int dotIndex = etag.IndexOf('.');
@@ -73,8 +66,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void GenerateNew_ProducesUniqueValues()
-    {
+    public void GenerateNew_ProducesUniqueValues() {
         string e1 = SelfRoutingETag.GenerateNew("counter");
         string e2 = SelfRoutingETag.GenerateNew("counter");
 
@@ -84,8 +76,7 @@ public class SelfRoutingETagTests
     // ===== TryDecode tests =====
 
     [Fact]
-    public void TryDecode_ValidSelfRoutingETag_ReturnsTrue()
-    {
+    public void TryDecode_ValidSelfRoutingETag_ReturnsTrue() {
         string etag = SelfRoutingETag.GenerateNew("order-list");
 
         bool result = SelfRoutingETag.TryDecode(etag, out string? projectionType, out string? guidPart);
@@ -96,48 +87,42 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void TryDecode_NoDotSeparator_ReturnsFalse()
-    {
+    public void TryDecode_NoDotSeparator_ReturnsFalse() {
         bool result = SelfRoutingETag.TryDecode("KW4RnPjU7EuIVqT4LX_AKA", out _, out _);
 
         result.ShouldBeFalse();
     }
 
     [Fact]
-    public void TryDecode_EmptyString_ReturnsFalse()
-    {
+    public void TryDecode_EmptyString_ReturnsFalse() {
         bool result = SelfRoutingETag.TryDecode("", out _, out _);
 
         result.ShouldBeFalse();
     }
 
     [Fact]
-    public void TryDecode_NullString_ReturnsFalse()
-    {
+    public void TryDecode_NullString_ReturnsFalse() {
         bool result = SelfRoutingETag.TryDecode(null!, out _, out _);
 
         result.ShouldBeFalse();
     }
 
     [Fact]
-    public void TryDecode_EmptyPrefix_ReturnsFalse()
-    {
+    public void TryDecode_EmptyPrefix_ReturnsFalse() {
         bool result = SelfRoutingETag.TryDecode(".KW4RnPjU7EuIVqT4LX_AKA", out _, out _);
 
         result.ShouldBeFalse();
     }
 
     [Fact]
-    public void TryDecode_EmptyGuidPart_ReturnsFalse()
-    {
+    public void TryDecode_EmptyGuidPart_ReturnsFalse() {
         bool result = SelfRoutingETag.TryDecode("Y291bnRlcg.", out _, out _);
 
         result.ShouldBeFalse();
     }
 
     [Fact]
-    public void TryDecode_InvalidBase64UrlPrefix_ReturnsFalse()
-    {
+    public void TryDecode_InvalidBase64UrlPrefix_ReturnsFalse() {
         // "!!!" is not valid base64
         bool result = SelfRoutingETag.TryDecode("!!!.KW4RnPjU7EuIVqT4LX_AKA", out _, out _);
 
@@ -145,8 +130,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void TryDecode_PrefixContainsColon_ReturnsFalse()
-    {
+    public void TryDecode_PrefixContainsColon_ReturnsFalse() {
         // Base64url of "counter:tenant" would decode to something with colon
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes("counter:tenant");
         string encoded = Convert.ToBase64String(bytes)
@@ -160,8 +144,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void TryDecode_OldFormatGuidOnly_ReturnsFalse()
-    {
+    public void TryDecode_OldFormatGuidOnly_ReturnsFalse() {
         // Old format: 22-char base64url GUID without dot separator
         string oldFormat = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
             .Replace('+', '-')
@@ -174,8 +157,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void TryDecode_SingleCharBase64_ReturnsFalse()
-    {
+    public void TryDecode_SingleCharBase64_ReturnsFalse() {
         // base64 length % 4 == 1 is always invalid
         bool result = SelfRoutingETag.TryDecode("A.KW4RnPjU7EuIVqT4LX_AKA", out _, out _);
 
@@ -183,8 +165,7 @@ public class SelfRoutingETagTests
     }
 
     [Fact]
-    public void TryDecode_MultipleDots_UsesFirstDotAsSeparator()
-    {
+    public void TryDecode_MultipleDots_UsesFirstDotAsSeparator() {
         // Edge case: projection type that base64-encodes with no dots,
         // but someone sends multiple dots — should use first dot
         string etag = SelfRoutingETag.Encode("counter", "part1.part2");
@@ -205,8 +186,7 @@ public class SelfRoutingETagTests
     [InlineData("user-profile")]
     [InlineData("a")]
     [InlineData("very-long-projection-type-name-for-testing")]
-    public void Roundtrip_EncodeDecodePreservesProjectionType(string projectionType)
-    {
+    public void Roundtrip_EncodeDecodePreservesProjectionType(string projectionType) {
         string etag = SelfRoutingETag.GenerateNew(projectionType);
 
         bool decoded = SelfRoutingETag.TryDecode(etag, out string? decodedType, out _);

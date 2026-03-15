@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// Client package defines the interface with zero infrastructure dependencies.
 /// Server package provides the DAPR implementation (<c>DaprProjectionChangeNotifier</c>).
 /// </remarks>
-public interface IProjectionChangeNotifier
-{
+public interface IProjectionChangeNotifier {
     /// <summary>
     /// Notifies that a projection has changed for a given tenant.
     /// </summary>

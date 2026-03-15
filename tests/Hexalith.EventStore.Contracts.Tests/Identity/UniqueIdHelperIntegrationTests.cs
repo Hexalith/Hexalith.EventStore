@@ -26,7 +26,7 @@ public class UniqueIdHelperIntegrationTests {
     public void ToGuid_AndBack_RoundTrips() {
         string original = UniqueIdHelper.GenerateSortableUniqueStringId();
 
-        Guid guid = UniqueIdHelper.ToGuid(original);
+        var guid = UniqueIdHelper.ToGuid(original);
         string roundTripped = UniqueIdHelper.ToSortableUniqueId(guid);
 
         Assert.Equal(original, roundTripped);
@@ -45,30 +45,23 @@ public class UniqueIdHelperIntegrationTests {
     }
 
     [Fact]
-    public void ExtractTimestamp_EmptyString_Throws() {
-        Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp(string.Empty));
-    }
+    public void ExtractTimestamp_EmptyString_Throws() => Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp(string.Empty));
 
     [Fact]
-    public void ExtractTimestamp_NullString_Throws() {
-        Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp(null!));
-    }
+    public void ExtractTimestamp_NullString_Throws() => Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp(null!));
 
     [Fact]
-    public void ExtractTimestamp_TruncatedString_Throws() {
+    public void ExtractTimestamp_TruncatedString_Throws() =>
         // 25-char string (one short)
         Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp("0123456789012345678901234"));
-    }
 
     [Fact]
-    public void ExtractTimestamp_OverflowString_Throws() {
+    public void ExtractTimestamp_OverflowString_Throws() =>
         // 27-char string (one too many)
         Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp("012345678901234567890123456"));
-    }
 
     [Fact]
-    public void ExtractTimestamp_NonBase32Characters_Throws() {
+    public void ExtractTimestamp_NonBase32Characters_Throws() =>
         // Exactly 26 chars, all invalid for Crockford Base32
         Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp("!!!!!!!!!!!!!!!!!!!!!!!!!!"));
-    }
 }

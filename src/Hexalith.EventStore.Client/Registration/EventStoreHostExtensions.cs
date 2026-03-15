@@ -1,7 +1,6 @@
 
 using System.Text;
 
-using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
@@ -36,13 +35,9 @@ public static class EventStoreHostExtensions {
         ArgumentNullException.ThrowIfNull(host);
 
         // Resolve DiscoveryResult — fail fast if AddEventStore() was never called
-        DiscoveryResult? discoveryResult = host.Services.GetService<DiscoveryResult>();
-        if (discoveryResult is null) {
-            throw new InvalidOperationException(
+        DiscoveryResult? discoveryResult = host.Services.GetService<DiscoveryResult>() ?? throw new InvalidOperationException(
                 "UseEventStore() requires AddEventStore() to be called first during service registration. " +
                 "Ensure builder.Services.AddEventStore() is called before building the host.");
-        }
-
         EventStoreActivationContext context = host.Services.GetRequiredService<EventStoreActivationContext>();
         EventStoreOptions options = host.Services.GetRequiredService<IOptions<EventStoreOptions>>().Value;
         ILogger logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(EventStoreHostExtensions));
@@ -71,7 +66,8 @@ public static class EventStoreHostExtensions {
         // Summary logging
         if (activations.Count == 0) {
             logger.LogInformation("EventStore activated: 0 domains");
-        } else {
+        }
+        else {
             StringBuilder sb = new();
             for (int i = 0; i < activations.Count; i++) {
                 if (i > 0) {
@@ -151,7 +147,7 @@ public static class EventStoreHostExtensions {
                 "InvokeOnConfiguring",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             if (invokeMethod is not null) {
-                invokeMethod.Invoke(instance, [domainOpts]);
+                _ = invokeMethod.Invoke(instance, [domainOpts]);
                 invoked = true;
             }
 

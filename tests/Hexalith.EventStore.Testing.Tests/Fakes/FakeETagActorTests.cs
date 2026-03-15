@@ -7,8 +7,9 @@ namespace Hexalith.EventStore.Testing.Tests.Fakes;
 public class FakeETagActorTests {
     [Fact]
     public async Task GetCurrentETagAsync_ReturnsConfiguredETag() {
-        var sut = new FakeETagActor();
-        sut.ConfiguredETag = "test-etag-value";
+        var sut = new FakeETagActor {
+            ConfiguredETag = "test-etag-value"
+        };
 
         string? result = await sut.GetCurrentETagAsync();
 
@@ -76,11 +77,11 @@ public class FakeETagActorTests {
 
     [Fact]
     public async Task RegenerateAsync_ThrowsConfiguredException() {
-        var sut = new FakeETagActor();
-        sut.ConfiguredException = new InvalidOperationException("actor failure");
+        var sut = new FakeETagActor {
+            ConfiguredException = new InvalidOperationException("actor failure")
+        };
 
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.RegenerateAsync());
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(sut.RegenerateAsync);
     }
 
     [Fact]
@@ -97,8 +98,9 @@ public class FakeETagActorTests {
 
     [Fact]
     public async Task Reset_ClearsAllState() {
-        var sut = new FakeETagActor();
-        sut.ConfiguredETag = "old-etag";
+        var sut = new FakeETagActor {
+            ConfiguredETag = "old-etag"
+        };
         _ = await sut.RegenerateAsync();
         sut.ConfiguredException = new Exception("old-exception");
 

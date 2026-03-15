@@ -29,6 +29,6 @@ public class NoOpProjectionChangedBroadcasterTests {
     public void NoOpBroadcaster_ImplementsInterface() {
         var sut = new NoOpProjectionChangedBroadcaster();
 
-        sut.ShouldBeAssignableTo<IProjectionChangedBroadcaster>();
+        _ = sut.ShouldBeAssignableTo<IProjectionChangedBroadcaster>();
     }
 }

@@ -5,11 +5,9 @@ using Hexalith.EventStore.Contracts.Queries;
 
 namespace Hexalith.EventStore.Contracts.Tests.Queries;
 
-public class SubmitQueryRequestTests
-{
+public class SubmitQueryRequestTests {
     [Fact]
-    public void Constructor_WithAllFields_CreatesInstance()
-    {
+    public void Constructor_WithAllFields_CreatesInstance() {
         JsonElement payload = JsonDocument.Parse("{\"page\":1}").RootElement;
         var request = new SubmitQueryRequest(
             Tenant: "acme",
@@ -23,14 +21,13 @@ public class SubmitQueryRequestTests
         Assert.Equal("orders", request.Domain);
         Assert.Equal("order-123", request.AggregateId);
         Assert.Equal("GetCurrentState", request.QueryType);
-        Assert.NotNull(request.Payload);
+        _ = Assert.NotNull(request.Payload);
         Assert.Equal(JsonValueKind.Object, request.Payload.Value.ValueKind);
         Assert.Equal("entity-1", request.EntityId);
     }
 
     [Fact]
-    public void Constructor_WithoutPayloadOrEntityId_DefaultsToNull()
-    {
+    public void Constructor_WithoutPayloadOrEntityId_DefaultsToNull() {
         var request = new SubmitQueryRequest(
             Tenant: "acme",
             Domain: "orders",
@@ -42,8 +39,7 @@ public class SubmitQueryRequestTests
     }
 
     [Fact]
-    public void RecordEquality_SameValues_AreEqual()
-    {
+    public void RecordEquality_SameValues_AreEqual() {
         var request1 = new SubmitQueryRequest("acme", "orders", "order-123", "GetCurrentState");
         var request2 = new SubmitQueryRequest("acme", "orders", "order-123", "GetCurrentState");
 
@@ -51,8 +47,7 @@ public class SubmitQueryRequestTests
     }
 
     [Fact]
-    public void RecordEquality_DifferentValues_AreNotEqual()
-    {
+    public void RecordEquality_DifferentValues_AreNotEqual() {
         var request1 = new SubmitQueryRequest("acme", "orders", "order-123", "GetCurrentState");
         var request2 = new SubmitQueryRequest("acme", "orders", "order-456", "GetCurrentState");
 

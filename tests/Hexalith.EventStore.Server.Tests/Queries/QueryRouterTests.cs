@@ -50,7 +50,7 @@ public class QueryRouterTests {
         // Assert
         result.Success.ShouldBeTrue();
         result.NotFound.ShouldBeFalse();
-        result.Payload.ShouldNotBeNull();
+        _ = result.Payload.ShouldNotBeNull();
         result.Payload!.Value.GetProperty("status").GetString().ShouldBe("shipped");
     }
 
@@ -72,7 +72,7 @@ public class QueryRouterTests {
         _ = await router.RouteQueryAsync(query);
 
         // Assert — verify actor proxy created with correct 3-tier-derived actor ID (Tier 3: no EntityId, empty payload)
-        factory.Received(1).CreateActorProxy<IProjectionActor>(
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
             Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant"),
             QueryRouter.ProjectionActorTypeName);
     }
@@ -197,7 +197,7 @@ public class QueryRouterTests {
         _ = await router.RouteQueryAsync(CreateTestQuery(entityId: "order-123"));
 
         // Assert — Tier 1: {QueryType}:{TenantId}:{EntityId}
-        factory.Received(1).CreateActorProxy<IProjectionActor>(
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
             Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant:order-123"),
             QueryRouter.ProjectionActorTypeName);
     }
@@ -220,7 +220,7 @@ public class QueryRouterTests {
         _ = await router.RouteQueryAsync(CreateTestQuery(payload: payload));
 
         // Assert — Tier 2: {QueryType}:{TenantId}:{Checksum} (11-char checksum)
-        factory.Received(1).CreateActorProxy<IProjectionActor>(
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
             Arg.Is<ActorId>(id => id.ToString().StartsWith("GetOrderStatus:test-tenant:") && id.ToString().Split(':')[2].Length == 11),
             QueryRouter.ProjectionActorTypeName);
     }
@@ -242,7 +242,7 @@ public class QueryRouterTests {
         _ = await router.RouteQueryAsync(CreateTestQuery());
 
         // Assert — Tier 3: {QueryType}:{TenantId}
-        factory.Received(1).CreateActorProxy<IProjectionActor>(
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
             Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant"),
             QueryRouter.ProjectionActorTypeName);
     }
@@ -310,7 +310,7 @@ public class QueryRouterTests {
         _ = await router.RouteQueryAsync(query);
 
         // Assert — verify QueryEnvelope fields match SubmitQuery fields
-        await actor.Received(1).QueryAsync(Arg.Is<QueryEnvelope>(e =>
+        _ = await actor.Received(1).QueryAsync(Arg.Is<QueryEnvelope>(e =>
             e.TenantId == "test-tenant" &&
             e.Domain == "orders" &&
             e.AggregateId == "order-1" &&

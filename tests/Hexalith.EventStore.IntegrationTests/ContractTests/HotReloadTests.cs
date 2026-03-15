@@ -57,17 +57,17 @@ public class HotReloadTests {
         await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
 
         // Phase 2 (restart): Stop sample domain service, then restart it
-        await _fixture.App.ResourceCommands
+        _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
         // AC #5: CommandApi should remain responsive while domain service is stopped
         await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
 
-        await _fixture.App.ResourceCommands
+        _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-start", ct);
 
         // Wait for sample to become healthy again
-        await _fixture.App.ResourceNotifications
+        _ = await _fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", ct)
             .WaitAsync(s_resourceRecoveryTimeout, ct);
 
@@ -114,7 +114,7 @@ public class HotReloadTests {
         HttpClient client = _fixture.CommandApiClient;
 
         // Stop sample domain service
-        await _fixture.App.ResourceCommands
+        _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
         // Submit while restart is in-flight (retry through transient transport windows).
@@ -124,11 +124,11 @@ public class HotReloadTests {
             aggregateId: aggregateId, commandType: "IncrementCounter");
 
         // Restart sample domain service
-        await _fixture.App.ResourceCommands
+        _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-start", ct);
 
         // Wait for sample to become healthy again
-        await _fixture.App.ResourceNotifications
+        _ = await _fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", ct)
             .WaitAsync(s_resourceRecoveryTimeout, ct);
 
@@ -161,7 +161,7 @@ public class HotReloadTests {
         HttpClient client = _fixture.CommandApiClient;
 
         // Stop sample domain service
-        await _fixture.App.ResourceCommands
+        _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
         // AC #5 (Task 4.3): Assert CommandApi remains reachable while domain service is stopped.
@@ -176,10 +176,10 @@ public class HotReloadTests {
             "CommandApi should return a tracking correlationId while domain service is down (AC #5, Task 4.4)");
 
         // Restart sample domain service
-        await _fixture.App.ResourceCommands
+        _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-start", ct);
 
-        await _fixture.App.ResourceNotifications
+        _ = await _fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", ct)
             .WaitAsync(s_resourceRecoveryTimeout, ct);
 

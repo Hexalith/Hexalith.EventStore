@@ -3,11 +3,9 @@ using Hexalith.EventStore.Contracts.Projections;
 
 namespace Hexalith.EventStore.Contracts.Tests.Projections;
 
-public class ProjectionChangedNotificationTests
-{
+public class ProjectionChangedNotificationTests {
     [Fact]
-    public void Constructor_WithAllFields_CreatesInstance()
-    {
+    public void Constructor_WithAllFields_CreatesInstance() {
         var notification = new ProjectionChangedNotification(
             ProjectionType: "order-list",
             TenantId: "acme",
@@ -19,8 +17,7 @@ public class ProjectionChangedNotificationTests
     }
 
     [Fact]
-    public void Constructor_WithoutEntityId_DefaultsToNull()
-    {
+    public void Constructor_WithoutEntityId_DefaultsToNull() {
         var notification = new ProjectionChangedNotification(
             ProjectionType: "order-list",
             TenantId: "acme");
@@ -29,8 +26,7 @@ public class ProjectionChangedNotificationTests
     }
 
     [Fact]
-    public void RecordEquality_SameValues_AreEqual()
-    {
+    public void RecordEquality_SameValues_AreEqual() {
         var n1 = new ProjectionChangedNotification("order-list", "acme", "order-123");
         var n2 = new ProjectionChangedNotification("order-list", "acme", "order-123");
 
@@ -38,8 +34,7 @@ public class ProjectionChangedNotificationTests
     }
 
     [Fact]
-    public void RecordEquality_DifferentValues_AreNotEqual()
-    {
+    public void RecordEquality_DifferentValues_AreNotEqual() {
         var n1 = new ProjectionChangedNotification("order-list", "acme");
         var n2 = new ProjectionChangedNotification("order-list", "other-tenant");
 
@@ -47,8 +42,7 @@ public class ProjectionChangedNotificationTests
     }
 
     [Fact]
-    public void RecordEquality_WithAndWithoutEntityId_AreNotEqual()
-    {
+    public void RecordEquality_WithAndWithoutEntityId_AreNotEqual() {
         var n1 = new ProjectionChangedNotification("order-list", "acme", "order-123");
         var n2 = new ProjectionChangedNotification("order-list", "acme");
 

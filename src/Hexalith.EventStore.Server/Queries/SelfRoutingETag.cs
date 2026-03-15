@@ -9,16 +9,14 @@ namespace Hexalith.EventStore.Server.Queries;
 /// The projection type is embedded in the ETag so the query endpoint
 /// can determine the correct ETag actor without server-side routing state.
 /// </summary>
-internal static class SelfRoutingETag
-{
+internal static class SelfRoutingETag {
     /// <summary>
     /// Encodes a projection type and GUID part into a self-routing ETag.
     /// </summary>
     /// <param name="projectionType">The projection type name.</param>
     /// <param name="guid">The base64url-encoded GUID portion.</param>
     /// <returns>A self-routing ETag string in the format {base64url(projectionType)}.{guid}.</returns>
-    public static string Encode(string projectionType, string guid)
-    {
+    public static string Encode(string projectionType, string guid) {
         string encodedType = EncodeProjectionType(projectionType);
         return $"{encodedType}.{guid}";
     }
@@ -28,8 +26,7 @@ internal static class SelfRoutingETag
     /// </summary>
     /// <param name="projectionType">The projection type name.</param>
     /// <returns>A self-routing ETag string.</returns>
-    public static string GenerateNew(string projectionType)
-    {
+    public static string GenerateNew(string projectionType) {
         byte[] bytes = Guid.NewGuid().ToByteArray();
         string guid = Convert.ToBase64String(bytes)
             .Replace('+', '-')
@@ -46,35 +43,29 @@ internal static class SelfRoutingETag
     /// <param name="projectionType">The decoded projection type, or null if decode fails.</param>
     /// <param name="guidPart">The GUID portion of the ETag, or null if decode fails.</param>
     /// <returns>True if the ETag was successfully decoded; false otherwise.</returns>
-    public static bool TryDecode(string? etag, out string? projectionType, out string? guidPart)
-    {
+    public static bool TryDecode(string? etag, out string? projectionType, out string? guidPart) {
         projectionType = null;
         guidPart = null;
 
-        if (string.IsNullOrEmpty(etag))
-        {
+        if (string.IsNullOrEmpty(etag)) {
             return false;
         }
 
         int dotIndex = etag.IndexOf('.');
-        if (dotIndex <= 0 || dotIndex >= etag.Length - 1)
-        {
+        if (dotIndex <= 0 || dotIndex >= etag.Length - 1) {
             return false;
         }
 
         string encodedPrefix = etag[..dotIndex];
         guidPart = etag[(dotIndex + 1)..];
 
-        if (string.IsNullOrEmpty(guidPart))
-        {
+        if (string.IsNullOrEmpty(guidPart)) {
             return false;
         }
 
-        try
-        {
+        try {
             string decoded = DecodeProjectionType(encodedPrefix);
-            if (string.IsNullOrEmpty(decoded) || decoded.Contains(':'))
-            {
+            if (string.IsNullOrEmpty(decoded) || decoded.Contains(':')) {
                 guidPart = null;
                 return false;
             }
@@ -82,15 +73,13 @@ internal static class SelfRoutingETag
             projectionType = decoded;
             return true;
         }
-        catch (FormatException)
-        {
+        catch (FormatException) {
             guidPart = null;
             return false;
         }
     }
 
-    private static string EncodeProjectionType(string projectionType)
-    {
+    private static string EncodeProjectionType(string projectionType) {
         byte[] bytes = Encoding.UTF8.GetBytes(projectionType);
         return Convert.ToBase64String(bytes)
             .Replace('+', '-')
@@ -98,11 +87,9 @@ internal static class SelfRoutingETag
             .TrimEnd('=');
     }
 
-    private static string DecodeProjectionType(string encoded)
-    {
+    private static string DecodeProjectionType(string encoded) {
         string padded = encoded.Replace('-', '+').Replace('_', '/');
-        switch (padded.Length % 4)
-        {
+        switch (padded.Length % 4) {
             case 2:
                 padded += "==";
                 break;

@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// Optional infrastructure hook for protecting event payloads and snapshot state before storage,
 /// and unprotecting them before publication or replay.
 /// </summary>
-public interface IEventPayloadProtectionService
-{
+public interface IEventPayloadProtectionService {
     /// <summary>
     /// Applies optional protection to an event payload before it is persisted.
     /// </summary>

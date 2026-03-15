@@ -26,9 +26,9 @@ public class QueryValidationControllerTests {
         var logger = new TestLogger<QueryValidationController>(logs);
 
         // Default: both validators allow
-        tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(TenantValidationResult.Allowed);
-        rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(RbacValidationResult.Allowed);
 
         var controller = new QueryValidationController(tenantValidator, rbacValidator, logger);
@@ -69,7 +69,7 @@ public class QueryValidationControllerTests {
     public async Task Validate_UnauthorizedTenant_Returns200WithDenied() {
         // Arrange
         (QueryValidationController controller, ITenantValidator tenantValidator, _, _) = CreateController();
-        tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), "acme", Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), "acme", Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(TenantValidationResult.Denied("Not authorized for tenant 'acme'."));
         ValidateQueryRequest request = CreateRequest();
 
@@ -87,7 +87,7 @@ public class QueryValidationControllerTests {
     public async Task Validate_UnauthorizedRbac_Returns200WithDenied() {
         // Arrange
         (QueryValidationController controller, _, IRbacValidator rbacValidator, _) = CreateController();
-        rbacValidator.ValidateAsync(
+        _ = rbacValidator.ValidateAsync(
             Arg.Any<ClaimsPrincipal>(), "acme", "orders", "GetOrderDetails", "query",
             Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(RbacValidationResult.Denied("Not authorized for query type 'GetOrderDetails' in domain 'orders'."));
@@ -113,7 +113,7 @@ public class QueryValidationControllerTests {
         _ = await controller.Validate(request, CancellationToken.None);
 
         // Assert — verify messageCategory is "query"
-        await rbacValidator.Received(1).ValidateAsync(
+        _ = await rbacValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "acme",
             "orders",
@@ -137,9 +137,9 @@ public class QueryValidationControllerTests {
         PreflightValidationResult validationResult = okResult.Value.ShouldBeOfType<PreflightValidationResult>();
         validationResult.IsAuthorized.ShouldBeTrue();
 
-        await tenantValidator.Received(1).ValidateAsync(
+        _ = await tenantValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(), "acme", Arg.Any<CancellationToken>(), null);
-        await rbacValidator.Received(1).ValidateAsync(
+        _ = await rbacValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(), "acme", "orders", "GetOrderDetails", "query", Arg.Any<CancellationToken>(), null);
     }
 
@@ -157,9 +157,9 @@ public class QueryValidationControllerTests {
         PreflightValidationResult validationResult = okResult.Value.ShouldBeOfType<PreflightValidationResult>();
         validationResult.IsAuthorized.ShouldBeTrue();
 
-        await tenantValidator.Received(1).ValidateAsync(
+        _ = await tenantValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(), "acme", Arg.Any<CancellationToken>(), "order-123");
-        await rbacValidator.Received(1).ValidateAsync(
+        _ = await rbacValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(), "acme", "orders", "GetOrderDetails", "query", Arg.Any<CancellationToken>(), "order-123");
     }
 
@@ -197,7 +197,7 @@ public class QueryValidationControllerTests {
     public async Task Validate_AuthorizationServiceUnavailable_TenantValidator_Propagates503() {
         // Arrange
         (QueryValidationController controller, ITenantValidator tenantValidator, _, _) = CreateController();
-        tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .ThrowsAsync(new AuthorizationServiceUnavailableException(
                 "TenantValidatorActor", "acme", "Actor unreachable", 30,
                 new HttpRequestException("Connection refused")));
@@ -212,7 +212,7 @@ public class QueryValidationControllerTests {
     public async Task Validate_AuthorizationServiceUnavailable_RbacValidator_Propagates503() {
         // Arrange
         (QueryValidationController controller, _, IRbacValidator rbacValidator, _) = CreateController();
-        rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .ThrowsAsync(new AuthorizationServiceUnavailableException(
                 "RbacValidatorActor", "acme", "Actor unreachable", 30,
                 new HttpRequestException("Connection refused")));

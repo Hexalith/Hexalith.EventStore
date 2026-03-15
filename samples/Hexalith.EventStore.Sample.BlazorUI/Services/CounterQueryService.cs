@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Hexalith.EventStore.Sample.BlazorUI.Services;
@@ -38,7 +37,7 @@ public sealed class CounterQueryService(IHttpClientFactory httpClientFactory) {
         });
 
         if (_lastETag is not null) {
-            request.Headers.TryAddWithoutValidation("If-None-Match", $"\"{_lastETag}\"");
+            _ = request.Headers.TryAddWithoutValidation("If-None-Match", $"\"{_lastETag}\"");
         }
 
         using HttpResponseMessage response = await client.SendAsync(request, ct).ConfigureAwait(false);
@@ -71,7 +70,7 @@ public sealed class CounterQueryService(IHttpClientFactory httpClientFactory) {
             string? base64 = payloadElement.GetString();
             if (base64 is not null) {
                 byte[] bytes = Convert.FromBase64String(base64);
-                using JsonDocument inner = JsonDocument.Parse(bytes);
+                using var inner = JsonDocument.Parse(bytes);
                 if (inner.RootElement.TryGetProperty("count", out JsonElement countEl)) {
                     return countEl.GetInt32();
                 }

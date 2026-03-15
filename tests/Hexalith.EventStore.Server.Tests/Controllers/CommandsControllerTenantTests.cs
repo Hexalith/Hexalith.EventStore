@@ -1,5 +1,3 @@
-
-using System.IO;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -21,9 +19,9 @@ using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -143,10 +141,10 @@ public class CommandsControllerTenantTests {
     private static ITenantValidator CreateUnavailableActorTenantValidator(int retryAfterSeconds) {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
-        actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
+        _ = actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
             .Throws(new HttpRequestException("Connection refused"));
 
-        factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+        _ = factory.CreateActorProxy<ITenantValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
 
         return new ActorTenantValidator(
@@ -169,7 +167,7 @@ public class CommandsControllerTenantTests {
         _ = await controller.Submit(request, CancellationToken.None);
 
         // Assert — MediatR.Send was called exactly once
-        await mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -183,7 +181,7 @@ public class CommandsControllerTenantTests {
         _ = await controller.Submit(request, CancellationToken.None);
 
         // Assert — verify command fields are passed through correctly
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitCommand>(cmd =>
                 cmd.Tenant == "test-tenant" &&
                 cmd.Domain == "test-domain" &&
@@ -203,7 +201,7 @@ public class CommandsControllerTenantTests {
         _ = await controller.Submit(request, CancellationToken.None);
 
         // Assert — controller sends to MediatR regardless of claims; behavior handles auth
-        await mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -217,8 +215,8 @@ public class CommandsControllerTenantTests {
         IActionResult result = await controller.Submit(request, CancellationToken.None);
 
         // Assert
-        result.ShouldBeOfType<UnauthorizedResult>();
-        await mediator.DidNotReceive().Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+        _ = result.ShouldBeOfType<UnauthorizedResult>();
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

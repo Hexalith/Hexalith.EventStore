@@ -34,7 +34,7 @@ public class DaprETagServiceTests {
 
         // Assert
         result.ShouldBe(selfRoutingETag);
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.ShouldContain('.');
 
         _ = factory.Received(1).CreateActorProxy<IETagActor>(
@@ -125,7 +125,7 @@ public class DaprETagServiceTests {
         string? result = await service.GetCurrentETagAsync("counter", "tenant1");
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         SelfRoutingETag.TryDecode(result, out string? projectionType, out _).ShouldBeTrue();
         projectionType.ShouldBe("counter");
     }
@@ -140,7 +140,7 @@ public class DaprETagServiceTests {
         var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentException>(
+        _ = await Should.ThrowAsync<ArgumentException>(
             () => service.GetCurrentETagAsync(projectionType!, "tenant1"));
     }
 
@@ -154,7 +154,7 @@ public class DaprETagServiceTests {
         var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
 
         // Act & Assert
-        await Should.ThrowAsync<ArgumentException>(
+        _ = await Should.ThrowAsync<ArgumentException>(
             () => service.GetCurrentETagAsync("counter", tenantId!));
     }
 }

@@ -1,7 +1,6 @@
 using Hexalith.EventStore.Client.Projections;
 
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.CommandApi.SignalR;
 

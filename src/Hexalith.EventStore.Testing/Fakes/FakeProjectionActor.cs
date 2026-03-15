@@ -15,7 +15,7 @@ public class FakeProjectionActor : IProjectionActor {
     private readonly ConcurrentQueue<QueryEnvelope> _receivedEnvelopes = new();
 
     private static JsonElement CreateDefaultPayload() {
-        using JsonDocument document = JsonDocument.Parse("{}");
+        using var document = JsonDocument.Parse("{}");
         return document.RootElement.Clone();
     }
 

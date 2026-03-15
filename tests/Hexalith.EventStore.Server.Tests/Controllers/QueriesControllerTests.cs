@@ -1,8 +1,8 @@
 
-using System.Security.Claims;
 using System.Diagnostics;
-using System.Text.Json;
 using System.Reflection;
+using System.Security.Claims;
+using System.Text.Json;
 
 using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.Contracts.Queries;
@@ -104,7 +104,7 @@ public class QueriesControllerTests {
         _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert — verify mediator received query with correlationId from HttpContext
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitQuery>(q => q.CorrelationId == "corr-1"),
             Arg.Any<CancellationToken>());
     }
@@ -142,7 +142,7 @@ public class QueriesControllerTests {
         _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitQuery>(q => q.UserId == "jwt-user-id"),
             Arg.Any<CancellationToken>());
     }
@@ -158,8 +158,8 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<UnauthorizedResult>();
-        await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = actionResult.ShouldBeOfType<UnauthorizedResult>();
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class QueriesControllerTests {
         _ = await controller.Submit(request, null, CancellationToken.None);
 
         // Assert
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitQuery>(q => q.Payload.Length == 0),
             Arg.Any<CancellationToken>());
     }
@@ -202,7 +202,7 @@ public class QueriesControllerTests {
         _ = await controller.Submit(request, null, CancellationToken.None);
 
         // Assert — EntityId from request forwarded to SubmitQuery
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitQuery>(q => q.EntityId == "entity-42"),
             Arg.Any<CancellationToken>());
     }
@@ -221,7 +221,7 @@ public class QueriesControllerTests {
         _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert — null EntityId from request results in null EntityId in SubmitQuery
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitQuery>(q => q.EntityId == null),
             Arg.Any<CancellationToken>());
     }
@@ -242,7 +242,7 @@ public class QueriesControllerTests {
         _ = await controller.Submit(request, null, CancellationToken.None);
 
         // Assert — payload bytes should be non-empty
-        await mediator.Received(1).Send(
+        _ = await mediator.Received(1).Send(
             Arg.Is<SubmitQuery>(q => q.Payload.Length > 0),
             Arg.Any<CancellationToken>());
     }
@@ -267,7 +267,7 @@ public class QueriesControllerTests {
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
         statusResult.StatusCode.ShouldBe(304);
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{testETag}\"");
-        await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{serverETag}\"");
     }
 
@@ -333,7 +333,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
     }
 
@@ -382,9 +382,9 @@ public class QueriesControllerTests {
             CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{responseETag}\"");
-        await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -408,7 +408,7 @@ public class QueriesControllerTests {
             CreateTestRequest(), $"\"{etagA}\", \"{etagB}\"", CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
     }
 
     [Fact]
@@ -428,8 +428,8 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), "*", CancellationToken.None);
 
         // Assert — wildcard skips Gate 1, proceeds to query, returns 200
-        actionResult.ShouldBeOfType<OkObjectResult>();
-        await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -450,8 +450,8 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{selfRoutingETag}\"", CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
-        await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -472,9 +472,9 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{selfRoutingETag}\"", CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
-        await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -516,7 +516,7 @@ public class QueriesControllerTests {
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Generate 10 random ETags and insert the server ETag at position 5
-        List<string> etags = Enumerable.Range(1, 11).Select(_ => GenerateTestETag()).ToList();
+        var etags = Enumerable.Range(1, 11).Select(_ => GenerateTestETag()).ToList();
         etags[4] = serverETag;
         string manyETags = string.Join(", ", etags.Select(e => $"\"{e}\""));
 
@@ -524,7 +524,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), manyETags, CancellationToken.None);
 
         // Assert — should proceed to full query despite containing a match (>10 limit)
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
     }
 
     // ===== Backward compatibility and self-routing decode tests =====
@@ -549,7 +549,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), $"\"{oldFormatETag}\"", CancellationToken.None);
 
         // Assert — old format → cache miss → 200, response has new self-routing ETag
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         string responseETag = controller.Response.Headers.ETag.ToString();
         responseETag.ShouldContain(".");  // New self-routing format
     }
@@ -569,7 +569,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), "*", CancellationToken.None);
 
         // Assert — wildcard skips Gate 1 entirely, no ETag service call for decode
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
     }
 
     [Fact]
@@ -644,10 +644,10 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert — ETag fetched using "order-list", not "orders" (request.Domain)
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{orderListETag}\"");
-        await eTagService.Received(1).GetCurrentETagAsync("order-list", "test-tenant", Arg.Any<CancellationToken>());
-        await eTagService.DidNotReceive().GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(1).GetCurrentETagAsync("order-list", "test-tenant", Arg.Any<CancellationToken>());
+        _ = await eTagService.DidNotReceive().GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -668,9 +668,9 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert — fallback to "orders" (request.Domain)
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{ordersETag}\"");
-        await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -691,9 +691,9 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
         // Assert
-        actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{ordersETag}\"");
-        await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     private sealed class ConstantETagService(string etag) : IETagService {

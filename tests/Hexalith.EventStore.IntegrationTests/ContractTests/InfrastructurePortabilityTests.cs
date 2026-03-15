@@ -130,7 +130,7 @@ public class InfrastructurePortabilityTests {
 
         // Assert - only REST API response assertions, zero backend-specific checks
         // No Redis key patterns, no direct state store queries, no RESP protocol assertions
-        terminalStatus.ShouldNotBeNull("Command should reach a terminal status");
+        _ = terminalStatus.ShouldNotBeNull("Command should reach a terminal status");
         terminalStatus.ShouldBe("Completed");
     }
 }
