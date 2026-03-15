@@ -84,7 +84,7 @@ public partial class SubmitCommandHandler(
                 .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (status is { Status: CommandStatus.Rejected, RejectionEventType: not null })
+            if (status is { RejectionEventType: not null })
             {
                 throw new DomainCommandRejectedException(
                     request.CorrelationId,
