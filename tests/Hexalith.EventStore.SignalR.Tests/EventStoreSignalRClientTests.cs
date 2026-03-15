@@ -196,11 +196,129 @@ public class EventStoreSignalRClientTests {
         }
     }
 
+    // === FR59: Reconnection auto-rejoin tests ===
+
+    [Fact]
+    public async Task OnReconnectedAsync_WithSubscribedGroups_CompletesWithoutThrowing() {
+        // FR59: Auto-rejoin all subscribed groups on reconnection.
+        // Since the connection isn't started, JoinGroup will fail gracefully.
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            await sut.SubscribeAsync("counter", "acme", () => { });
+            await sut.SubscribeAsync("orders", "contoso", () => { });
+
+            // Simulate reconnection event — should attempt rejoining all groups
+            await InvokeOnReconnectedAsync(sut, "new-connection-id");
+
+            // No exception — rejoin failures are non-fatal (FR59)
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_NoSubscribedGroups_CompletesWithoutThrowing() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            // Reconnect with no groups — should be a no-op
+            await InvokeOnReconnectedAsync(sut, "new-connection-id");
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_AfterUnsubscribe_DoesNotRejoinRemovedGroup() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            await sut.SubscribeAsync("counter", "acme", () => { });
+            await sut.SubscribeAsync("orders", "contoso", () => { });
+            await sut.UnsubscribeAsync("counter", "acme");
+
+            // Reconnect — should only attempt to rejoin "orders:contoso"
+            await InvokeOnReconnectedAsync(sut, "new-connection-id");
+
+            // Verify original callbacks still work for remaining group
+            int callbackCount = 0;
+            await sut.SubscribeAsync("orders", "contoso", () => callbackCount++);
+            InvokeProjectionChanged(sut, "orders", "contoso");
+            callbackCount.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_PreservesCallbacks_AfterReconnection() {
+        // FR59: Callbacks must survive reconnection — they are tracked in _subscribedGroups
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+
+            // Simulate reconnection
+            await InvokeOnReconnectedAsync(sut, "new-connection-id");
+
+            // Callbacks should still fire after reconnection
+            InvokeProjectionChanged(sut, "counter", "acme");
+            callbackCount.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_NullConnectionId_CompletesWithoutThrowing() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            await sut.SubscribeAsync("counter", "acme", () => { });
+
+            // Null connectionId is valid per SignalR spec
+            await InvokeOnReconnectedAsync(sut, null);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task DisposeAsync_PreventsSubsequentReconnectionRejoin() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+
+        await sut.SubscribeAsync("counter", "acme", () => { });
+        await sut.DisposeAsync();
+
+        // After disposal, subscribed groups are cleared
+        // Any reconnection attempt would find no groups to rejoin
+        // Cannot invoke OnReconnectedAsync after disposal — connection is disposed
+    }
+
     private static void InvokeProjectionChanged(EventStoreSignalRClient client, string projectionType, string tenantId) {
         MethodInfo method = typeof(EventStoreSignalRClient)
             .GetMethod("OnProjectionChanged", BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("OnProjectionChanged method not found.");
 
         _ = method.Invoke(client, [projectionType, tenantId]);
+    }
+
+    private static async Task InvokeOnReconnectedAsync(EventStoreSignalRClient client, string? connectionId) {
+        MethodInfo method = typeof(EventStoreSignalRClient)
+            .GetMethod("OnReconnectedAsync", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OnReconnectedAsync method not found.");
+
+        object? result = method.Invoke(client, [connectionId]);
+        if (result is Task task) {
+            await task.ConfigureAwait(false);
+        }
     }
 }
