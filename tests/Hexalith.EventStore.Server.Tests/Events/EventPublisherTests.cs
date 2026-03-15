@@ -26,16 +26,20 @@ public class EventPublisherTests {
 
     private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1, string eventTypeName = "OrderCreated") =>
         new(
+            MessageId: $"msg-{sequenceNumber}",
             AggregateId: "agg-001",
+            AggregateType: "test-aggregate",
             TenantId: "test-tenant",
             Domain: "test-domain",
             SequenceNumber: sequenceNumber,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: "corr-001",
             CausationId: "cause-001",
             UserId: "user-1",
             DomainServiceVersion: "1.0.0",
             EventTypeName: eventTypeName,
+            MetadataVersion: 1,
             SerializationFormat: "json",
             Payload: [1, 2, 3],
             Extensions: null);
@@ -111,8 +115,8 @@ public class EventPublisherTests {
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         var identity = new AggregateIdentity("acme", "orders", "order-42");
         EventEnvelope envelope = new(
-            "order-42", "acme", "orders", 1, DateTimeOffset.UtcNow,
-            "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", "json", [1], null);
+            "msg-1", "order-42", "test-aggregate", "acme", "orders", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", 1, "json", [1], null);
 
         // Act
         _ = await publisher.PublishEventsAsync(identity, [envelope], "corr-1");

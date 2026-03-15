@@ -6,6 +6,7 @@ namespace Hexalith.EventStore.Server.Pipeline.Commands;
 /// MediatR command for submitting a domain command through the pipeline.
 /// </summary>
 public record SubmitCommand(
+    string MessageId,
     string Tenant,
     string Domain,
     string AggregateId,

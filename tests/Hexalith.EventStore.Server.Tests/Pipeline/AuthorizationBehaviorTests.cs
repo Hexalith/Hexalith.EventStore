@@ -29,6 +29,7 @@ public class AuthorizationBehaviorTests {
         string domain = "test-domain",
         string commandType = "CreateOrder") =>
         new(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: tenant,
             Domain: domain,
             AggregateId: "agg-001",

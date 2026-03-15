@@ -138,16 +138,20 @@ public class DaprSerializationRoundTripTests {
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(
             new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented());
         var envelope = new ServerEventEnvelope(
+            MessageId: "msg-1",
             AggregateId: "counter-1",
+            AggregateType: "test-aggregate",
             TenantId: "tenant-a",
             Domain: "counter",
             SequenceNumber: 1,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: "corr-1",
             CausationId: "corr-1",
             UserId: "user-1",
             DomainServiceVersion: "v1",
             EventTypeName: typeof(Hexalith.EventStore.Sample.Counter.Events.CounterIncremented).FullName!,
+            MetadataVersion: 1,
             SerializationFormat: "json",
             Payload: payload,
             Extensions: null);

@@ -82,6 +82,7 @@ public class EndToEndTraceTests {
     }
 
     private static CommandEnvelope CreateTestEnvelope(string correlationId = "corr-trace-test") => new(
+        MessageId: "msg-trace-test",
         TenantId: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",
@@ -144,6 +145,7 @@ public class EndToEndTraceTests {
 
         (AggregateActor actor, _, _, _, _) = CreateActorWithMockState();
         var command = new CommandEnvelope(
+            MessageId: "msg-traceparent-test",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -312,6 +314,7 @@ public class EndToEndTraceTests {
         // Actor ID uses "test-tenant" but command uses "wrong-tenant"
         (AggregateActor actor, _, _, _, _) = CreateActorWithMockState("test-tenant:test-domain:agg-001");
         var command = new CommandEnvelope(
+            MessageId: "msg-tenant-mismatch",
             TenantId: "wrong-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -357,16 +360,20 @@ public class EndToEndTraceTests {
         var events = new List<EventEnvelope>
         {
             new(
+                MessageId: "msg-1",
                 AggregateId: "agg-001",
+                AggregateType: "test-aggregate",
                 TenantId: "test-tenant",
                 Domain: "test-domain",
                 SequenceNumber: 1,
+                GlobalPosition: 0,
                 Timestamp: DateTimeOffset.UtcNow,
                 CorrelationId: correlationId,
                 CausationId: "cmd-001",
                 UserId: "system",
                 DomainServiceVersion: "1.0",
                 EventTypeName: "OrderCreated",
+                MetadataVersion: 1,
                 SerializationFormat: "json",
                 Payload: [1, 2, 3],
                 Extensions: null),
@@ -409,6 +416,7 @@ public class EndToEndTraceTests {
 
         var identity = new Contracts.Identity.AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var commandEnvelope = new CommandEnvelope(
+            MessageId: "msg-deadletter-test",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

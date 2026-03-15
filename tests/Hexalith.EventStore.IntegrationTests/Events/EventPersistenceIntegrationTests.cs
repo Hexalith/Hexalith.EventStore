@@ -31,6 +31,7 @@ public class EventPersistenceIntegrationTests {
     private static CommandEnvelope CreateTestCommand(
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",

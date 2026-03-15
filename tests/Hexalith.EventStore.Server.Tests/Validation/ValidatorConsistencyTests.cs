@@ -36,6 +36,7 @@ public class ValidatorConsistencyTests {
         string tenant, string domain, string aggregateId, bool expectedValid) {
         // SubmitCommandRequest
         var submitCommand = new SubmitCommandRequest(
+            MessageId: "msg-1",
             Tenant: tenant,
             Domain: domain,
             AggregateId: aggregateId,
@@ -101,6 +102,7 @@ public class ValidatorConsistencyTests {
     public void TypeFieldConsistency_AllValidatorsAgree(string typeValue, bool expectedValid) {
         // SubmitCommandRequest (CommandType)
         var submitCommand = new SubmitCommandRequest(
+            MessageId: "msg-2",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -150,6 +152,7 @@ public class ValidatorConsistencyTests {
         string longType = new('A', 257);
 
         var submitCommand = new SubmitCommandRequest(
+            MessageId: "msg-3",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

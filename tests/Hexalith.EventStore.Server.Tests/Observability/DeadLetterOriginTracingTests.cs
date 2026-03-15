@@ -195,6 +195,7 @@ public class DeadLetterOriginTracingTests {
             CreateActorWithFakeDeadLetter();
 
         var submitCommand = new SubmitCommand(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: "origin-tenant",
             Domain: "origin-domain",
             AggregateId: "origin-agg",
@@ -423,6 +424,7 @@ public class DeadLetterOriginTracingTests {
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(testLogger, httpContextAccessor);
 
         var command = new SubmitCommand(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

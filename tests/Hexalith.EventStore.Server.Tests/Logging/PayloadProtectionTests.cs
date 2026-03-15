@@ -57,6 +57,7 @@ public class PayloadProtectionTests : IDisposable {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         var command = new SubmitCommand(
+            MessageId: "msg-payload-submit-1",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -87,6 +88,7 @@ public class PayloadProtectionTests : IDisposable {
         var persister = new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var command = new CommandEnvelope(
+            MessageId: "msg-payload-persist-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -118,6 +120,7 @@ public class PayloadProtectionTests : IDisposable {
         _ = httpContextAccessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, httpContextAccessor);
         var command = new SubmitCommand(
+            MessageId: "msg-payload-behavior-1",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -141,6 +144,7 @@ public class PayloadProtectionTests : IDisposable {
     [Fact]
     public void CommandEnvelope_ToString_RedactsPayload() {
         var envelope = new CommandEnvelope(
+            MessageId: "msg-payload-tostring-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -161,16 +165,20 @@ public class PayloadProtectionTests : IDisposable {
     [Fact]
     public void EventEnvelope_ToString_RedactsPayload() {
         var envelope = new EventEnvelope(
+            MessageId: "msg-1",
             AggregateId: "agg-001",
+            AggregateType: "test-aggregate",
             TenantId: "test-tenant",
             Domain: "test-domain",
             SequenceNumber: 1,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: "corr-123",
             CausationId: "corr-123",
             UserId: "test-user",
             DomainServiceVersion: "v1",
             EventTypeName: "OrderCreated",
+            MetadataVersion: 1,
             SerializationFormat: "json",
             Payload: SensitivePayload,
             Extensions: null);

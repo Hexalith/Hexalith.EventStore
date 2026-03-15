@@ -35,13 +35,14 @@ public static class SubmitCommandExtensions {
         }
 
         return new CommandEnvelope(
+            MessageId: command.MessageId,
             TenantId: command.Tenant,
             Domain: command.Domain,
             AggregateId: command.AggregateId,
             CommandType: command.CommandType,
             Payload: command.Payload,
             CorrelationId: command.CorrelationId,
-            CausationId: command.CorrelationId,
+            CausationId: command.MessageId,
             UserId: command.UserId,
             Extensions: extensions.Count > 0 ? extensions : null);
     }

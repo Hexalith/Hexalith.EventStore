@@ -94,8 +94,8 @@ public class EventDrainRecoveryTests {
 
         for (int seq = startSequence; seq <= endSequence; seq++) {
             var evt = new EventEnvelope(
-                "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
-                correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", "json",
+                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())

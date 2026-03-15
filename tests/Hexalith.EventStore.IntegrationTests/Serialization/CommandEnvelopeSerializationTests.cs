@@ -12,6 +12,7 @@ public class CommandEnvelopeSerializationTests {
     public void CommandEnvelope_JsonRoundtrip_PreservesAllFields() {
         // Arrange
         var original = new CommandEnvelope(
+            MessageId: "msg-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -42,6 +43,7 @@ public class CommandEnvelopeSerializationTests {
         // Arrange
         byte[] payload = [0xFF, 0x00, 0xAB, 0xCD];
         var envelope = new CommandEnvelope(
+            MessageId: "msg-2",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -65,6 +67,7 @@ public class CommandEnvelopeSerializationTests {
     public void CommandEnvelope_NullExtensions_RoundtripsCorrectly() {
         // Arrange
         var original = new CommandEnvelope(
+            MessageId: "msg-3",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

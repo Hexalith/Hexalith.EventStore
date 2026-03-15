@@ -29,6 +29,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// </summary>
 public class MultiTenantPublicationTests {
     private static CommandEnvelope CreateCommand(string tenantId, string domain, string aggregateId, string? correlationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,

@@ -55,16 +55,20 @@ public sealed class FakeEventPersister : IEventPersister {
             byte[] payloadBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
 
             var envelope = new EventEnvelope(
+                MessageId: Guid.NewGuid().ToString(),
                 AggregateId: identity.AggregateId,
+                AggregateType: "unknown",
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: currentSequence,
+                GlobalPosition: 0,
                 Timestamp: timestamp,
                 CorrelationId: command.CorrelationId,
                 CausationId: causationId,
                 UserId: command.UserId,
                 DomainServiceVersion: domainServiceVersion,
                 EventTypeName: eventTypeName,
+                MetadataVersion: 1,
                 SerializationFormat: "json",
                 Payload: payloadBytes,
                 Extensions: null);

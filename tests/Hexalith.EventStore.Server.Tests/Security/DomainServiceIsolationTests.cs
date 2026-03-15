@@ -109,7 +109,7 @@ public class DomainServiceIsolationTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         var invoker = new DaprDomainServiceInvoker(daprClient, resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
-        var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
+        var command = new CommandEnvelope("msg-iso-1", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act & Assert -- resolver returns null so exception expected
@@ -132,9 +132,9 @@ public class DomainServiceIsolationTests {
         fakeInvoker.SetupResponse("tenant-a", "orders", resultA);
         fakeInvoker.SetupResponse("tenant-b", "orders", resultB);
 
-        var commandA = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
+        var commandA = new CommandEnvelope("msg-iso-2", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
-        var commandB = new CommandEnvelope("tenant-b", "orders", "order-001", "CreateOrder", [1],
+        var commandB = new CommandEnvelope("msg-iso-3", "tenant-b", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act
@@ -181,7 +181,7 @@ public class DomainServiceIsolationTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var invoker = new DaprDomainServiceInvoker(daprClient, resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
 
-        var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
+        var command = new CommandEnvelope("msg-iso-4", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act & Assert

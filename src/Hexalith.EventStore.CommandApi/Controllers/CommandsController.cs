@@ -83,12 +83,13 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         }
 
         var command = new SubmitCommand(
+            MessageId: request.MessageId,
             Tenant: request.Tenant,
             Domain: request.Domain,
             AggregateId: request.AggregateId,
             CommandType: request.CommandType,
             Payload: JsonSerializer.SerializeToUtf8Bytes(request.Payload),
-            CorrelationId: correlationId,
+            CorrelationId: request.CorrelationId ?? request.MessageId,
             UserId: userId,
             Extensions: request.Extensions);
 

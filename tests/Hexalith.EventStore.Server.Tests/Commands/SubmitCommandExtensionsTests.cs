@@ -14,6 +14,7 @@ public class SubmitCommandExtensionsTests {
     private static SubmitCommand CreateTestCommand(
         string userId = "test-user",
         Dictionary<string, string>? extensions = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         Tenant: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",

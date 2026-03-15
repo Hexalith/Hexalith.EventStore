@@ -38,6 +38,7 @@ public class DeadLetterMessageCompletenessTests {
         string commandType = "CreateOrder",
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,

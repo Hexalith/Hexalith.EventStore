@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-03-15 (story 1-1 created)
+# last_updated: 2026-03-15 (story 1-3 done — already implemented as old story 1-7)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -44,6 +44,7 @@
 generated: 2026-03-15
 last_updated: 2026-03-15
 project: Hexalith.EventStore
+# Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
@@ -51,9 +52,9 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   # Epic 1: Domain Contract Foundation
   epic-1: in-progress
-  1-1-core-identity-and-event-envelope: ready-for-dev
-  1-2-command-types-domainresult-and-error-contract: backlog
-  1-3-messagetype-value-object-and-hexalith-commons-ulid-integration: backlog
+  1-1-core-identity-and-event-envelope: review
+  1-2-command-types-domainresult-and-error-contract: in-progress
+  1-3-messagetype-value-object-and-hexalith-commons-ulid-integration: done
   1-4-pure-function-contract-and-eventstoreaggregate-base: backlog
   1-5-commandstatus-enum-and-aggregate-tombstoning: backlog
   epic-1-retrospective: optional

@@ -14,16 +14,20 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 public class TopicIsolationTests {
     private static EventEnvelope CreateEnvelope(string tenantId, string domain, string aggregateId, long seq = 1) =>
         new(
+            MessageId: $"msg-{seq}",
             AggregateId: aggregateId,
+            AggregateType: "test-aggregate",
             TenantId: tenantId,
             Domain: domain,
             SequenceNumber: seq,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: $"corr-{tenantId}-{domain}-{seq}",
             CausationId: "cause-1",
             UserId: "user-1",
             DomainServiceVersion: "1.0.0",
             EventTypeName: "TestEvent",
+            MetadataVersion: 1,
             SerializationFormat: "json",
             Payload: [1, 2, 3],
             Extensions: null);

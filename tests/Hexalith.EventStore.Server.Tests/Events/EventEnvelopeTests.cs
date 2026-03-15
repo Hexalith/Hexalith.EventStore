@@ -11,16 +11,20 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 public class EventEnvelopeTests {
     private static EventEnvelope CreateTestEnvelope(
         IDictionary<string, string>? extensions = null) => new(
+        MessageId: "msg-1",
         AggregateId: "agg-001",
+        AggregateType: "test-aggregate",
         TenantId: "test-tenant",
         Domain: "test-domain",
         SequenceNumber: 1,
+        GlobalPosition: 0,
         Timestamp: new DateTimeOffset(2026, 1, 15, 10, 30, 0, TimeSpan.Zero),
         CorrelationId: "corr-1",
         CausationId: "cause-1",
         UserId: "user-1",
         DomainServiceVersion: "1.0.0",
         EventTypeName: "OrderCreated",
+        MetadataVersion: 1,
         SerializationFormat: "json",
         Payload: [1, 2, 3, 4, 5],
         Extensions: extensions);
@@ -37,16 +41,20 @@ public class EventEnvelopeTests {
 
         // Assert
         _ = deserialized.ShouldNotBeNull();
+        deserialized.MessageId.ShouldBe(original.MessageId);
         deserialized.AggregateId.ShouldBe(original.AggregateId);
+        deserialized.AggregateType.ShouldBe(original.AggregateType);
         deserialized.TenantId.ShouldBe(original.TenantId);
         deserialized.Domain.ShouldBe(original.Domain);
         deserialized.SequenceNumber.ShouldBe(original.SequenceNumber);
+        deserialized.GlobalPosition.ShouldBe(original.GlobalPosition);
         deserialized.Timestamp.ShouldBe(original.Timestamp);
         deserialized.CorrelationId.ShouldBe(original.CorrelationId);
         deserialized.CausationId.ShouldBe(original.CausationId);
         deserialized.UserId.ShouldBe(original.UserId);
         deserialized.DomainServiceVersion.ShouldBe(original.DomainServiceVersion);
         deserialized.EventTypeName.ShouldBe(original.EventTypeName);
+        deserialized.MetadataVersion.ShouldBe(original.MetadataVersion);
         deserialized.SerializationFormat.ShouldBe(original.SerializationFormat);
         deserialized.Payload.ShouldBe(original.Payload);
         _ = deserialized.Extensions.ShouldNotBeNull();

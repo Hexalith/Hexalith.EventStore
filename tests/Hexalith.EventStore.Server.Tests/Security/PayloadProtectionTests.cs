@@ -20,8 +20,8 @@ public class PayloadProtectionTests {
     [Fact]
     public void EventEnvelope_ToString_DoesNotContainPayload() {
         var metadata = new EventMetadata(
-            "aggregate-1", "tenant-a", "billing", 1, DateTimeOffset.UtcNow,
-            "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", "json");
+            "msg-1", "aggregate-1", "test-aggregate", "tenant-a", "billing", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", 1, "json");
 
         var envelope = new ContractsEventEnvelope(metadata, SamplePayload, null);
 
@@ -38,7 +38,7 @@ public class PayloadProtectionTests {
     [Fact]
     public void CommandEnvelope_ToString_DoesNotContainPayload() {
         var envelope = new CommandEnvelope(
-            "tenant-a", "billing", "aggregate-1", "PlaceOrder",
+            "msg-prot-1", "tenant-a", "billing", "aggregate-1", "PlaceOrder",
             SamplePayload, "corr-1", null, "user-1", null);
 
         string result = envelope.ToString();
@@ -52,8 +52,8 @@ public class PayloadProtectionTests {
     [Fact]
     public void EventEnvelope_ToString_ContainsAllMetadataFields() {
         var metadata = new EventMetadata(
-            "aggregate-1", "tenant-a", "billing", 42, DateTimeOffset.UtcNow,
-            "corr-123", "cause-456", "user-bob", "2.1.0", "OrderPlaced", "json");
+            "msg-1", "aggregate-1", "test-aggregate", "tenant-a", "billing", 42, 0, DateTimeOffset.UtcNow,
+            "corr-123", "cause-456", "user-bob", "2.1.0", "OrderPlaced", 1, "json");
 
         var envelope = new ContractsEventEnvelope(metadata, SamplePayload, null);
 
@@ -75,7 +75,7 @@ public class PayloadProtectionTests {
     [Fact]
     public void CommandEnvelope_ToString_ContainsAllMetadataFields() {
         var envelope = new CommandEnvelope(
-            "tenant-a", "billing", "aggregate-1", "PlaceOrder",
+            "msg-prot-2", "tenant-a", "billing", "aggregate-1", "PlaceOrder",
             SamplePayload, "corr-123", "cause-456", "user-bob", null);
 
         string result = envelope.ToString();
@@ -164,8 +164,8 @@ public class PayloadProtectionTests {
     [Fact]
     public void ServerEventEnvelope_ToString_DoesNotContainPayload() {
         var envelope = new ServerEventEnvelope(
-            "aggregate-1", "tenant-a", "billing", 1, DateTimeOffset.UtcNow,
-            "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", "json",
+            "msg-1", "aggregate-1", "test-aggregate", "tenant-a", "billing", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", 1, "json",
             SamplePayload, null);
 
         string result = envelope.ToString();
@@ -179,8 +179,8 @@ public class PayloadProtectionTests {
     [Fact]
     public void EventEnvelope_DeveloperLogsFullObject_PayloadIsRedacted() {
         var metadata = new EventMetadata(
-            "agg-1", "t-a", "billing", 1, DateTimeOffset.UtcNow,
-            "corr-1", "cause-1", "user-1", "1.0", "OrderPlaced", "json");
+            "msg-1", "agg-1", "test-aggregate", "t-a", "billing", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0", "OrderPlaced", 1, "json");
 
         var envelope = new ContractsEventEnvelope(metadata, SamplePayload, null);
 
@@ -195,7 +195,7 @@ public class PayloadProtectionTests {
     [Fact]
     public void CommandEnvelope_DeveloperLogsFullObject_PayloadIsRedacted() {
         var envelope = new CommandEnvelope(
-            "t-a", "billing", "agg-1", "PlaceOrder",
+            "msg-prot-3", "t-a", "billing", "agg-1", "PlaceOrder",
             SamplePayload, "corr-1", null, "user-1", null);
 
         string logOutput = $"Command: {envelope}";

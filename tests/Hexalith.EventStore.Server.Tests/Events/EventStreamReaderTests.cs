@@ -16,16 +16,20 @@ public class EventStreamReaderTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateTestEvent(int seq) => new(
+        MessageId: $"msg-{seq}",
         AggregateId: "agg-001",
+        AggregateType: "test-aggregate",
         TenantId: "test-tenant",
         Domain: "test-domain",
         SequenceNumber: seq,
+        GlobalPosition: 0,
         Timestamp: DateTimeOffset.UtcNow,
         CorrelationId: $"corr-{seq}",
         CausationId: $"cause-{seq}",
         UserId: "user-1",
         DomainServiceVersion: "1.0.0",
         EventTypeName: "OrderCreated",
+        MetadataVersion: 1,
         SerializationFormat: "json",
         Payload: [1, 2, 3],
         Extensions: null);

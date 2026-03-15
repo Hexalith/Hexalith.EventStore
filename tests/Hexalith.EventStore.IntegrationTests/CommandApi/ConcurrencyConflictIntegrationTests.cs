@@ -132,6 +132,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
 
         // Second request: normal command (simulates retry with non-conflict command type)
         var retryRequest = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "order-123",
@@ -224,6 +225,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
 
     private static object CreateConflictRequest(string aggregateId = "order-123")
         => new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId,

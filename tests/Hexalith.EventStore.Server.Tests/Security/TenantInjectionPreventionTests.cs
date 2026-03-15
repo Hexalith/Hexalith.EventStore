@@ -80,7 +80,7 @@ public class TenantInjectionPreventionTests {
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
-        var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
+        var command = new CommandEnvelope("msg-tenant-1", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), "cause-mismatch", "system", null);
 
         // Act
@@ -117,7 +117,7 @@ public class TenantInjectionPreventionTests {
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
-        var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
+        var command = new CommandEnvelope("msg-tenant-2", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), "cause-reject", "system", null);
 
         // Act
@@ -157,7 +157,7 @@ public class TenantInjectionPreventionTests {
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 
-        var command = new CommandEnvelope("tenant-a", "orders", "order-001", "CreateOrder", [1],
+        var command = new CommandEnvelope("msg-tenant-3", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), "cause-1", "system", null);
 
         // Act

@@ -78,19 +78,23 @@ public partial class EventPublisher(
                     .ConfigureAwait(false);
 
                 EventEnvelope publishEnvelope = new(
-                    eventEnvelope.AggregateId,
-                    eventEnvelope.TenantId,
-                    eventEnvelope.Domain,
-                    eventEnvelope.SequenceNumber,
-                    eventEnvelope.Timestamp,
-                    eventEnvelope.CorrelationId,
-                    eventEnvelope.CausationId,
-                    eventEnvelope.UserId,
-                    eventEnvelope.DomainServiceVersion,
-                    eventEnvelope.EventTypeName,
-                    protectionResult.SerializationFormat,
-                    protectionResult.PayloadBytes,
-                    eventEnvelope.Extensions);
+                    MessageId: eventEnvelope.MessageId,
+                    AggregateId: eventEnvelope.AggregateId,
+                    AggregateType: eventEnvelope.AggregateType,
+                    TenantId: eventEnvelope.TenantId,
+                    Domain: eventEnvelope.Domain,
+                    SequenceNumber: eventEnvelope.SequenceNumber,
+                    GlobalPosition: eventEnvelope.GlobalPosition,
+                    Timestamp: eventEnvelope.Timestamp,
+                    CorrelationId: eventEnvelope.CorrelationId,
+                    CausationId: eventEnvelope.CausationId,
+                    UserId: eventEnvelope.UserId,
+                    DomainServiceVersion: eventEnvelope.DomainServiceVersion,
+                    EventTypeName: eventEnvelope.EventTypeName,
+                    MetadataVersion: eventEnvelope.MetadataVersion,
+                    SerializationFormat: protectionResult.SerializationFormat,
+                    Payload: protectionResult.PayloadBytes,
+                    Extensions: eventEnvelope.Extensions);
 
                 var metadata = new Dictionary<string, string> {
                     ["cloudevent.type"] = eventEnvelope.EventTypeName,

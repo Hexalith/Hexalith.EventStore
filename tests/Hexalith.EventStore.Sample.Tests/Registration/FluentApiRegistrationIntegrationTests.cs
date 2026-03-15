@@ -248,6 +248,7 @@ public sealed class FluentApiRegistrationIntegrationTests {
 
     private static CommandEnvelope CreateCommand<T>(T command) where T : notnull
         => new(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "test-tenant",
             Domain: "counter",
             AggregateId: "counter-1",

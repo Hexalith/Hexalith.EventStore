@@ -43,6 +43,7 @@ public class CommandsControllerTenantTests {
         string commandType = "CreateOrder",
         string aggregateId = "agg-001") =>
         new(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: tenant,
             Domain: domain,
             AggregateId: aggregateId,

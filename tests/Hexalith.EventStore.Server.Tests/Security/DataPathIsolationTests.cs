@@ -46,8 +46,8 @@ public class DataPathIsolationTests {
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
 
-        var commandA = new SubmitCommand("tenant-a", "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user");
-        var commandB = new SubmitCommand("tenant-b", "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user");
+        var commandA = new SubmitCommand("msg-dp-1", "tenant-a", "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user");
+        var commandB = new SubmitCommand("msg-dp-2", "tenant-b", "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user");
 
         // Act
         _ = await router.RouteCommandAsync(commandA);
@@ -79,7 +79,7 @@ public class DataPathIsolationTests {
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
         var expectedIdentity = new AggregateIdentity(tenant, domain, aggregateId);
-        var command = new SubmitCommand(tenant, domain, aggregateId, "TestCommand", [1, 2, 3], Guid.NewGuid().ToString(), "test-user");
+        var command = new SubmitCommand("msg-dp-3", tenant, domain, aggregateId, "TestCommand", [1, 2, 3], Guid.NewGuid().ToString(), "test-user");
 
         // Act
         _ = await router.RouteCommandAsync(command);
@@ -106,7 +106,7 @@ public class DataPathIsolationTests {
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
 
         string[] tenants = new[] { "tenant-a", "tenant-b", "tenant-c", "tenant-d" };
-        SubmitCommand[] commands = tenants.Select(t => new SubmitCommand(t, "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user")).ToArray();
+        SubmitCommand[] commands = tenants.Select(t => new SubmitCommand(Guid.NewGuid().ToString(), t, "orders", "order-001", "CreateOrder", [1], Guid.NewGuid().ToString(), "user")).ToArray();
 
         // Act -- concurrent submission
         _ = await Task.WhenAll(commands.Select(c => router.RouteCommandAsync(c)));
@@ -155,7 +155,7 @@ public class DataPathIsolationTests {
         _ = invoker.InvokeAsync(Arg.Do<CommandEnvelope>(c => capturedInvokerCommand = c), Arg.Any<object?>())
             .Returns(DomainResult.NoOp());
 
-        var command = new CommandEnvelope(tenantId, domain, aggId, "CreateOrder", [1, 2, 3],
+        var command = new CommandEnvelope("msg-dp-5", tenantId, domain, aggId, "CreateOrder", [1, 2, 3],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act
@@ -218,7 +218,7 @@ public class DataPathIsolationTests {
         string actorIdTenant = host.Id.GetId().Split(':')[0];
 
         // Process through actor
-        var command = new CommandEnvelope(tenantId, domain, aggId, "TestCmd", [1],
+        var command = new CommandEnvelope("msg-dp-6", tenantId, domain, aggId, "TestCmd", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         _ = await actor.ProcessCommandAsync(command);
@@ -264,7 +264,7 @@ public class DataPathIsolationTests {
             .Returns(DomainResult.NoOp());
 
         // Send mismatched tenant -- proves TenantValidator IS called
-        var command = new CommandEnvelope("wrong-tenant", "test-domain", "agg-001", "TestCmd", [1],
+        var command = new CommandEnvelope("msg-dp-7", "wrong-tenant", "test-domain", "agg-001", "TestCmd", [1],
             Guid.NewGuid().ToString(), "cause-1", "system", null);
 
         // Act

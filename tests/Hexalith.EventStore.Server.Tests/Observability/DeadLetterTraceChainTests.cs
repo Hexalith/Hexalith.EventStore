@@ -43,6 +43,7 @@ public class DeadLetterTraceChainTests {
         string aggregateId = "agg-001",
         string? correlationId = null,
         Dictionary<string, string>? extensions = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,
