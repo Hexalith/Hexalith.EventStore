@@ -72,9 +72,13 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
 // Add Blazor UI sample — consumes CommandApi via Aspire service discovery (Story 18-6).
 // Enables SignalR on CommandApi so the hub is active when the Blazor UI is running.
 _ = commandApi.WithEnvironment("EventStore__SignalR__Enabled", "true");
+EndpointReference commandApiHttps = commandApi.GetEndpoint("https");
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
     .WithReference(commandApi)
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    // SignalR HubConnectionBuilder bypasses Aspire service discovery (it doesn't use HttpClientFactory),
+    // so we must pass the resolved commandapi endpoint URL explicitly.
+    .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{commandApiHttps}/hubs/projection-changes"));
 
 if (keycloak is not null && realmUrl is not null) {
     _ = blazorUi

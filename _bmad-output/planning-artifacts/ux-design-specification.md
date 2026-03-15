@@ -2,6 +2,8 @@
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
 completedAt: 2026-02-12
+revisedAt: 2026-03-15
+revisionNotes: "Added v1 API Error Journeys (6-10), v1 API Error Enforcement Rules, and v1 Implementation Checklist"
 inputDocuments:
   - product-brief-Hexalith.EventStore-2026-02-11.md
   - prd.md
@@ -1769,3 +1771,311 @@ As an operational tool primarily running on Windows workstations, high-contrast 
 9. **Page inventory and state matrix tests are mandatory.** Every new Blazor route must have a corresponding axe-core test case covering all major states. CI blocks merge if a route exists without a test.
 
 10. **ARIA tree snapshots for custom components.** Each custom component has a snapshot test capturing its ARIA tree. Changes to accessible names, roles, or structure flag the PR for manual screen reader verification before merge.
+
+## v1 API Error Journeys
+
+The v2 dashboard journeys (Alex, Jerome, Marco, Priya) define the visual experience. But v1 has no graphical UI — the REST API IS the product surface. These journeys define how the API communicates failure with the same care as the dashboard communicates success.
+
+### Journey 6: Sanjay Sends a Malformed Command
+
+**Trigger:** Sanjay is integrating a payment system and sends a command with a missing required field.
+
+**Entry point:** `POST /api/commands` via Swagger UI or programmatic HTTP client.
+
+```
+POST /api/commands
+Content-Type: application/json
+Authorization: Bearer <valid-jwt>
+
+{
+    "aggregateId": "order-42",
+    "commandType": "banking-transfer-funds-v1",
+    "payload": {
+        "sourceAccount": "ACC-001"
+    }
+}
+```
+
+**Expected response — 400 Bad Request:**
+
+```json
+{
+    "type": "https://hexalith.io/problems/validation-error",
+    "title": "Command Validation Failed",
+    "status": 400,
+    "detail": "The TransferFunds command payload is missing required fields. See 'errors' for specifics.",
+    "instance": "/api/commands",
+    "correlationId": "01JQXYZ1234567890ABCDEF",
+    "errors": {
+        "payload.destinationAccount": "Required field is missing.",
+        "payload.amount": "Required field is missing."
+    }
+}
+```
+
+**UX principles applied:**
+
+| Principle | Implementation |
+|-----------|---------------|
+| **"Write error messages for the reader"** (Stripe) | `detail` says what's wrong and points to the `errors` object. No stack traces, no internal type names. |
+| **Field-level specificity** | Each missing field is identified by its JSON path within `payload`. Sanjay knows exactly what to add. |
+| **Correlation ID always present** | Even on validation failures, a correlation ID is returned for support reference. |
+| **No event sourcing leakage** | The response never mentions aggregates, events, actors, or DAPR. It's a standard REST validation error. |
+
+**Sanjay's emotional response:** Understanding — "I know exactly what I forgot."
+
+---
+
+### Journey 7: Sanjay's JWT is Missing or Expired
+
+**Trigger:** Sanjay's integration test runs overnight, the JWT expires, and commands start failing.
+
+**Scenario A — Missing Authorization header:**
+
+```
+POST /api/commands
+Content-Type: application/json
+
+{ ... }
+```
+
+**Expected response — 401 Unauthorized:**
+
+```json
+{
+    "type": "https://hexalith.io/problems/authentication-required",
+    "title": "Authentication Required",
+    "status": 401,
+    "detail": "A valid JWT bearer token is required in the Authorization header. See your identity provider for token issuance.",
+    "instance": "/api/commands"
+}
+```
+
+Response header: `WWW-Authenticate: Bearer realm="hexalith-eventstore"`
+
+**Scenario B — Expired JWT:**
+
+```json
+{
+    "type": "https://hexalith.io/problems/token-expired",
+    "title": "Authentication Token Expired",
+    "status": 401,
+    "detail": "The provided JWT expired at 2026-03-14T23:59:59Z. Request a new token from your identity provider.",
+    "instance": "/api/commands"
+}
+```
+
+Response header: `WWW-Authenticate: Bearer realm="hexalith-eventstore", error="invalid_token", error_description="The token has expired"`
+
+**UX principles applied:**
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Actionable detail** | The `detail` field tells Sanjay exactly what to do: get a new token. |
+| **Expired vs. missing distinction** | Two different `type` URIs let Sanjay's retry logic distinguish between "I forgot auth" and "my token rotated." |
+| **Standard `WWW-Authenticate`** | HTTP clients and libraries can parse this header automatically. |
+| **No correlation ID on 401** | Authentication failures are pre-pipeline — no command was accepted, no correlation ID is generated. |
+
+**Sanjay's emotional response:** Familiarity — "This is standard OAuth2 error handling. My retry logic handles this."
+
+---
+
+### Journey 8: Sanjay Lacks Tenant Authorization
+
+**Trigger:** Sanjay's JWT is valid but doesn't include claims for the target tenant.
+
+```
+POST /api/commands
+Content-Type: application/json
+Authorization: Bearer <valid-jwt-for-tenant-beta>
+
+{
+    "aggregateId": "order-42",
+    "commandType": "banking-transfer-funds-v1",
+    "payload": { ... },
+    "tenantId": "tenant-acme"
+}
+```
+
+**Expected response — 403 Forbidden:**
+
+```json
+{
+    "type": "https://hexalith.io/problems/insufficient-permissions",
+    "title": "Insufficient Permissions",
+    "status": 403,
+    "detail": "Your credentials do not authorize command submission to tenant 'tenant-acme'. Verify your JWT includes the required tenant claim.",
+    "instance": "/api/commands",
+    "correlationId": "01JQXYZ9876543210FEDCBA"
+}
+```
+
+**UX principles applied:**
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Name the specific tenant** | Sanjay sees which tenant was rejected, not a generic "forbidden." |
+| **No claim enumeration** | The response does NOT list which tenants Sanjay IS authorized for — that would be an information disclosure vulnerability. |
+| **Guidance without exposition** | "Verify your JWT includes the required tenant claim" points toward resolution without explaining the claims model. |
+
+**Sanjay's emotional response:** Understanding — "Wrong tenant scope, I need to check my token configuration."
+
+---
+
+### Journey 9: Optimistic Concurrency Conflict
+
+**Trigger:** Two commands arrive for the same aggregate simultaneously. The second one conflicts.
+
+```
+POST /api/commands
+Content-Type: application/json
+Authorization: Bearer <valid-jwt>
+
+{
+    "aggregateId": "order-42",
+    "commandType": "banking-transfer-funds-v1",
+    "payload": { "sourceAccount": "ACC-001", "destinationAccount": "ACC-002", "amount": 100.00 }
+}
+```
+
+**Expected response — 409 Conflict:**
+
+```json
+{
+    "type": "https://hexalith.io/problems/concurrency-conflict",
+    "title": "Concurrency Conflict",
+    "status": 409,
+    "detail": "Another command was processed for aggregate 'order-42' while yours was in flight. Retry your command — the system will apply it against the updated state.",
+    "instance": "/api/commands",
+    "correlationId": "01JQXYZCONFLICT1234ABCD"
+}
+```
+
+Response header: `Retry-After: 1`
+
+**UX principles applied:**
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Retry guidance** | `detail` explicitly tells the consumer to retry. `Retry-After` header enables automatic retry logic. |
+| **No state leakage** | The response doesn't expose the current event sequence number or the conflicting command's details — that would leak event sourcing internals. |
+| **Correlation ID present** | The command was accepted into the pipeline before the conflict was detected, so a correlation ID exists for debugging. |
+| **Familiar HTTP semantics** | 409 Conflict is the standard code for optimistic concurrency in REST APIs. Sanjay's HTTP library handles it natively. |
+
+**Sanjay's emotional response:** Confidence — "This is expected in concurrent systems. I'll add retry logic."
+
+---
+
+### Journey 10: DAPR Sidecar Unavailable
+
+**Trigger:** The DAPR sidecar is down or unreachable. The CommandApi cannot route commands.
+
+```
+POST /api/commands
+Content-Type: application/json
+Authorization: Bearer <valid-jwt>
+
+{ ... valid command ... }
+```
+
+**Expected response — 503 Service Unavailable:**
+
+```json
+{
+    "type": "https://hexalith.io/problems/service-unavailable",
+    "title": "Service Temporarily Unavailable",
+    "status": 503,
+    "detail": "The command processing pipeline is temporarily unavailable. Retry after the indicated interval.",
+    "instance": "/api/commands"
+}
+```
+
+Response header: `Retry-After: 30`
+
+**UX principles applied:**
+
+| Principle | Implementation |
+|-----------|---------------|
+| **No internal component naming** | The response says "command processing pipeline," not "DAPR sidecar" or "actor runtime." Infrastructure details are invisible. |
+| **Retry-After with realistic interval** | 30 seconds, not 1 second. Sidecar recovery takes longer than a concurrency retry. |
+| **No correlation ID** | The command never entered the pipeline — no tracking ID exists. |
+| **Calm tone** | "Temporarily unavailable" — not "CRITICAL ERROR" or "SYSTEM FAILURE." Matches the emotional design principle of professional competence. |
+
+**Sanjay's emotional response:** Trust — "The system is honest about its state. I'll implement a backoff strategy."
+
+---
+
+### v1 API Error Response Enforcement Rules
+
+These rules apply to every HTTP error response from the CommandApi:
+
+| # | Rule | Rationale |
+|---|------|-----------|
+| E1 | Every error response is RFC 7807 `application/problem+json` | Uniform error shape across all endpoints. |
+| E2 | `detail` is written for the API consumer, not the developer who wrote the code | Stripe principle. No internal jargon, no stack traces. |
+| E3 | `type` is a stable URI that uniquely identifies the error category | Enables programmatic error handling without string-matching `detail`. |
+| E4 | `correlationId` is included only when a command entered the pipeline (400 with validation = yes, 401 = no, 403 = yes, 409 = yes, 503 = no) | Correlation IDs are for tracking commands, not for pre-pipeline rejections. |
+| E5 | `Retry-After` header on 409 and 503 responses | Enables automatic retry logic in HTTP clients. |
+| E6 | No event sourcing terminology in any error response | "aggregate," "event stream," "actor," "DAPR" never appear in consumer-facing errors. |
+| E7 | No stack traces in production error responses | Stack traces are logged server-side with the correlation ID for developer debugging. |
+| E8 | Validation errors use JSON path notation (`payload.amount`) in the `errors` object | Field-level specificity lets consumers build clear UI error messages. |
+| E9 | 401 responses include `WWW-Authenticate` header per RFC 6750 | Standard OAuth2 error communication. |
+| E10 | Error `type` URIs resolve to human-readable documentation | Sanjay can open the URI in a browser and read an explanation + code example. |
+
+## v1 Implementation Checklist
+
+Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor dashboard). Each item references the spec section it derives from.
+
+### REST API (CommandApi)
+
+| # | Deliverable | Spec Source | Acceptance Criteria |
+|---|-------------|-------------|---------------------|
+| A1 | RFC 7807 ProblemDetails on all error responses | Error Journeys 6–10, Enforcement Rules E1–E10 | Every 4xx/5xx response is `application/problem+json` with `type`, `title`, `status`, `detail`, `instance` |
+| A2 | `correlationId` field in ProblemDetails extension | Journey 6, Rule E4 | Present on 400, 403, 409. Absent on 401, 503 |
+| A3 | `errors` object with JSON path keys on 400 | Journey 6, Rule E8 | Validation failures list each invalid field with a human-readable message |
+| A4 | `WWW-Authenticate` header on 401 | Journey 7, Rule E9 | Includes `realm`, `error`, and `error_description` per RFC 6750 |
+| A5 | `Retry-After` header on 409 and 503 | Journeys 9–10, Rule E5 | 409: short interval (1s). 503: longer interval (30s) |
+| A6 | No event sourcing terminology in any error response | Rule E6, Experience Principle "consistent mental model" | Grep test: "aggregate", "event stream", "actor", "DAPR", "sidecar" never appear in ProblemDetails |
+| A7 | OpenAPI 3.1 spec with Swagger UI at `/swagger` | Design System Foundation, UX Pattern Analysis | Swagger UI loads on running CommandApi with grouped endpoints |
+| A8 | Pre-populated example payloads in OpenAPI spec | Pattern Analysis "Try-it-now", Act 2 mechanics | Swagger UI "Try it out" pre-fills a valid Counter domain command |
+| A9 | Command status endpoint at `/api/commands/status/{correlationId}` | Act 2 mechanics, Core Experience | Returns current lifecycle state with timestamp |
+| A10 | `202 Accepted` response with `Location` + `Retry-After` headers | Act 2, PRD response codes | `Location` points to status endpoint. `Retry-After: 1` |
+| A11 | Error `type` URIs resolve to documentation pages | Rule E10 | Each `https://hexalith.io/problems/*` URI returns a human-readable page |
+
+### Developer SDK (NuGet)
+
+| # | Deliverable | Spec Source | Acceptance Criteria |
+|---|-------------|-------------|---------------------|
+| S1 | `CommandStatus` enum with 8 states | Semantic Foundation, Command Lifecycle Status Rendering | `Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, `TimedOut` |
+| S2 | Registration via `AddEventStoreClient()` extension method | .NET API Design Guidelines, SDK experience | Single extension method on `IServiceCollection` |
+| S3 | `IDomainProcessor<TCommand, TState>` interface | Act 1 mechanics, Core Experience | Pure function contract: `Process(TCommand, TState?) -> List<DomainEvent>` |
+| S4 | XML documentation on all public types | SDK Design System, IDE discoverability | IntelliSense shows meaningful descriptions for all public members |
+| S5 | Minimal public surface area | SDK implementation approach | Only domain service developer-facing types are public. Internal pipeline types are `internal` |
+
+### CLI / Aspire Onboarding
+
+| # | Deliverable | Spec Source | Acceptance Criteria |
+|---|-------------|-------------|---------------------|
+| O1 | `dotnet aspire run` starts full topology | Act 3, Critical Success Moments, Journey 3 | Single command → EventStore + sample domain service + DAPR sidecars visible in Aspire dashboard |
+| O2 | Clear prerequisite error messages | Critical Success Moments, Effortless Interactions | Missing Docker, .NET SDK, or DAPR produces actionable error with installation link — not a stack trace |
+| O3 | Sample Counter domain service | Act 1 mechanics, Journey 3 | Working reference implementation: `IncrementCounter` command, `CounterIncremented` event, `CounterState` |
+| O4 | OpenTelemetry traces for full pipeline | Act 3, Experience Principle "the trace tells the story" | Command submission → actor processing → domain service invocation → events stored → events published visible in Aspire Traces tab |
+| O5 | Domain service hot reload | Critical Success Moments, Jerome persona | Modify domain processor → restart only domain service (~2s) → test updated behavior without full topology restart |
+
+### Cross-Surface Consistency
+
+| # | Deliverable | Spec Source | Acceptance Criteria |
+|---|-------------|-------------|---------------------|
+| C1 | Shared terminology: Command, Event, Aggregate, Tenant, Domain, Correlation ID | Cross-Surface Consistency Rules | Same terms in OpenAPI schema names, SDK type names, structured log fields, error messages |
+| C2 | Shared lifecycle model in API responses and SDK enum | Cross-Surface Consistency Rules, Semantic Foundation | `CommandStatus` values identical in API `status` field and SDK enum |
+| C3 | Structured logs with correlation/causation IDs | Act 3, Experience Principle "the trace tells the story" | Every log entry includes `correlationId` field. Aspire structured log viewer can filter by correlation ID |
+| C4 | Status color semantics documented in OpenAPI descriptions | Visual Design Foundation, Cross-Surface Consistency | OpenAPI `description` fields reference the status color vocabulary for consumer documentation tools |
+
+### Documentation
+
+| # | Deliverable | Spec Source | Acceptance Criteria |
+|---|-------------|-------------|---------------------|
+| D1 | Quick start guide (3 pages maximum) | Persona: Marco, Experience Principle "organized depth" | Clone → run → first command in under 10 minutes following the guide |
+| D2 | API reference embedded at `/swagger` | UX Pattern Analysis anti-pattern #2 | No separate docs site needed for API consumers. Swagger UI is the documentation |
+| D3 | Error reference pages at `type` URIs | Rule E10, Journey 6 | Each error `type` URI explains the error, shows an example, and suggests resolution |
+| D4 | Progressive documentation structure | Experience Principle "organized depth" | Quick start (assumes DDD knowledge), concepts (for newcomers), reference (deep dives). Levels never mixed |

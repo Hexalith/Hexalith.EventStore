@@ -47,6 +47,11 @@ public sealed class CounterQueryService(IHttpClientFactory httpClientFactory) {
             return _cachedResult;
         }
 
+        // 404 means no projection exists yet (no commands submitted) — return zero count.
+        if (response.StatusCode == HttpStatusCode.NotFound) {
+            return new CounterStatusResult(0, null);
+        }
+
         _ = response.EnsureSuccessStatusCode();
 
         string? eTag = response.Headers.ETag?.Tag?.Trim('"');
