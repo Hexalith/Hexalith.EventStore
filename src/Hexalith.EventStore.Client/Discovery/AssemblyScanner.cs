@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Client.Discovery;
 /// <see cref="EventStoreProjection{TReadModel}"/> and resolves their domain names via
 /// <see cref="NamingConventionEngine"/>.
 /// </summary>
-public static class AssemblyScanner {
+internal static class AssemblyScanner {
     private static readonly ConcurrentDictionary<Assembly, DiscoveryResult> _cache = new();
 
     /// <summary>

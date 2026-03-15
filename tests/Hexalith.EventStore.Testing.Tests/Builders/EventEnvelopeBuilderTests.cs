@@ -12,7 +12,7 @@ public class EventEnvelopeBuilderTests {
         Assert.NotNull(envelope.Metadata);
         Assert.NotNull(envelope.Payload);
         Assert.NotEmpty(envelope.Metadata.MessageId);
-        Assert.Equal("test-tenant:test-domain:test-agg-001", envelope.Metadata.AggregateId);
+        Assert.Equal("test-agg-001", envelope.Metadata.AggregateId);
         Assert.Equal("test-aggregate", envelope.Metadata.AggregateType);
         Assert.Equal("test-tenant", envelope.Metadata.TenantId);
         Assert.Equal("test-domain", envelope.Metadata.Domain);
@@ -42,22 +42,23 @@ public class EventEnvelopeBuilderTests {
     }
 
     [Fact]
-    public void Build_composite_aggregate_id_reflects_tenant_and_domain_overrides() {
+    public void Build_aggregate_id_reflects_part_override() {
         EventEnvelope envelope = new EventEnvelopeBuilder()
             .WithTenantId("acme")
             .WithDomain("billing")
             .WithAggregateIdPart("inv-001")
             .Build();
 
-        Assert.Equal("acme:billing:inv-001", envelope.Metadata.AggregateId);
+        Assert.Equal("inv-001", envelope.Metadata.AggregateId);
         Assert.Equal("acme", envelope.Metadata.TenantId);
         Assert.Equal("billing", envelope.Metadata.Domain);
     }
 
     [Fact]
-    public void Build_composite_aggregate_id_consistent_with_defaults() {
+    public void Build_aggregate_id_is_bare_id_not_composite() {
         EventEnvelope envelope = new EventEnvelopeBuilder().Build();
 
-        Assert.Equal($"{envelope.Metadata.TenantId}:{envelope.Metadata.Domain}:test-agg-001", envelope.Metadata.AggregateId);
+        Assert.Equal("test-agg-001", envelope.Metadata.AggregateId);
+        Assert.DoesNotContain(":", envelope.Metadata.AggregateId);
     }
 }

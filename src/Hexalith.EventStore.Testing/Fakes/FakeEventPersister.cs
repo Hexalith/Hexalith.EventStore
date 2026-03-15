@@ -1,4 +1,5 @@
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
@@ -55,7 +56,7 @@ public sealed class FakeEventPersister : IEventPersister {
             byte[] payloadBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
 
             var envelope = new EventEnvelope(
-                MessageId: Guid.NewGuid().ToString(),
+                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
                 AggregateType: "unknown",
                 TenantId: identity.TenantId,

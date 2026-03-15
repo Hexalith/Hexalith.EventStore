@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Dapr.Actors.Runtime;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
@@ -77,7 +78,7 @@ public partial class EventPersister(
                 .ConfigureAwait(false);
 
             var envelope = new EventEnvelope(
-                MessageId: Guid.NewGuid().ToString(),
+                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
                 AggregateType: "unknown",
                 TenantId: identity.TenantId,

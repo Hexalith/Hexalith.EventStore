@@ -143,6 +143,18 @@ public class EventStoreAggregateTests : IDisposable {
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = $"{_prefix}-{command.Name}" } });
     }
 
+    // --- Test Aggregate with wrong return type Handle method (should be silently skipped) ---
+    private sealed class WrongReturnTypeCommand;
+
+    private sealed class WrongReturnTypeAggregate : EventStoreAggregate<TestState> {
+        // This Handle method returns string instead of DomainResult — discovery should skip it
+        public static string Handle(WrongReturnTypeCommand command, TestState? state) => "not-a-domain-result";
+
+        // Valid handler for AddItem so the aggregate isn't completely empty
+        public static DomainResult Handle(AddItem command, TestState? state)
+            => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
+    }
+
     // --- Separate aggregate type for cache independence tests ---
     private sealed class OtherState {
         public int Value { get; private set; }
@@ -756,6 +768,33 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, currentState);
 
         Assert.True(result.IsSuccess); // 1 increment → count=1, decrement succeeds
+    }
+
+    // --- Story 1.4: Handle method with wrong return type silently skipped (AC#2: 2.4) ---
+
+    [Fact]
+    public async Task ProcessAsync_HandleMethodWithWrongReturnType_IsSilentlySkipped() {
+        var aggregate = new WrongReturnTypeAggregate();
+        // WrongReturnTypeCommand has a Handle method returning string — should be skipped
+        CommandEnvelope command = CreateCommand(new WrongReturnTypeCommand());
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => aggregate.ProcessAsync(command, null));
+
+        // The string-returning Handle was skipped, so no handler found for this command type
+        Assert.Contains("WrongReturnTypeCommand", ex.Message);
+        Assert.Contains("No Handle method found", ex.Message);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_WrongReturnTypeAggregate_ValidHandler_StillWorks() {
+        var aggregate = new WrongReturnTypeAggregate();
+        // AddItem has a valid DomainResult-returning handler — should still work
+        CommandEnvelope command = CreateCommand(new AddItem("valid"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
     }
 
     // --- Story 16-8: JsonElement array without payload wrapper (direct element) ---

@@ -1,6 +1,6 @@
 # Story 1.1: Core Identity & Event Envelope
 
-Status: review
+Status: done
 
 ## Story
 
@@ -91,6 +91,14 @@ So that all events carry consistent, complete metadata from the start.
   - [x] 8.3 Update `PayloadProtectionTests.cs` ServerEventEnvelope construction (line 167)
   - [x] 8.4 Grep `new ServerEventEnvelope(` and `Server.Events.EventEnvelope` across all test files
   - [x] 8.5 Check for any **conversion logic** between `Contracts.EventEnvelope` and `Server.EventEnvelope` in `EventPersister.cs`, `EventStreamReader.cs`, or `AggregateActor.cs` — update field mappings
+
+### Review Follow-ups (AI)
+
+- [x] AI-Review (HIGH): EventPersister, FakeEventPersister, EventEnvelopeBuilder used Guid.NewGuid() instead of UniqueIdHelper.GenerateSortableUniqueStringId() for MessageId (AC#3/D12 violation) — fixed
+- [x] AI-Review (HIGH): EventEnvelopeBuilder.Build() created composite AggregateId (`tenant:domain:id`) instead of bare id — fixed, tests updated
+- [x] AI-Review (MEDIUM): EventMetadata had no non-empty validation for new string fields (MessageId, AggregateType) — fixed, ArgumentException thrown on null/whitespace
+- [ ] AI-Review (MEDIUM): EventPersister.cs:82 and FakeEventPersister.cs:60 use `AggregateType: "unknown"` hardcoded placeholder — needs architecture change to pass aggregate type through the pipeline
+- [x] AI-Review (MEDIUM): EventEnvelopeTests.Metadata_ExposesAll15Fields was missing Timestamp assertion — fixed
 
 ## Dev Notes
 
@@ -267,3 +275,4 @@ No debug issues encountered. All changes were straightforward field additions.
 ### Change Log
 
 - 2026-03-15: Added 4 FR11 metadata fields (MessageId, AggregateType, GlobalPosition, MetadataVersion) to EventMetadata, Contracts EventEnvelope, and Server EventEnvelope. Updated all 30+ construction sites, test helpers, and assertions. All 628 Tier 1 tests pass. Build: 0 warnings, 0 errors.
+- 2026-03-15: Code review fixes — replaced Guid.NewGuid() with UniqueIdHelper.GenerateSortableUniqueStringId() for MessageId in EventPersister, FakeEventPersister, EventEnvelopeBuilder (AC#3/D12); fixed EventEnvelopeBuilder to use bare AggregateId instead of composite; added non-empty validation for MessageId and AggregateType in EventMetadata; added missing Timestamp assertion in EventEnvelopeTests. All 636 Tier 1 tests pass. Build: 0 warnings, 0 errors. Remaining action item: AggregateType "unknown" placeholder needs pipeline change.

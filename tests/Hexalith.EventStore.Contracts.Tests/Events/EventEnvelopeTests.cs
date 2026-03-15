@@ -128,6 +128,7 @@ public class EventEnvelopeTests {
         Assert.Equal("payments", envelope.Metadata.Domain);
         Assert.Equal(1, envelope.Metadata.SequenceNumber);
         Assert.Equal(0, envelope.Metadata.GlobalPosition);
+        Assert.NotEqual(default, envelope.Metadata.Timestamp);
         Assert.Equal("corr-1", envelope.Metadata.CorrelationId);
         Assert.Equal("cause-1", envelope.Metadata.CausationId);
         Assert.Equal("user-1", envelope.Metadata.UserId);

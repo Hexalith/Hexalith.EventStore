@@ -35,6 +35,16 @@ public record EventMetadata(
     string EventTypeName,
     int MetadataVersion,
     string SerializationFormat) {
+    /// <summary>Gets the unique event message identifier (ULID, non-empty).</summary>
+    public string MessageId { get; } = !string.IsNullOrWhiteSpace(MessageId)
+        ? MessageId
+        : throw new ArgumentException("MessageId must not be null or whitespace.", nameof(MessageId));
+
+    /// <summary>Gets the aggregate type name (non-empty).</summary>
+    public string AggregateType { get; } = !string.IsNullOrWhiteSpace(AggregateType)
+        ? AggregateType
+        : throw new ArgumentException("AggregateType must not be null or whitespace.", nameof(AggregateType));
+
     /// <summary>Gets the event sequence number (must be >= 1 per FR12).</summary>
     public long SequenceNumber { get; } = SequenceNumber >= 1
         ? SequenceNumber
