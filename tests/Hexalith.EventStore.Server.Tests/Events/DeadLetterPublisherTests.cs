@@ -24,6 +24,7 @@ public class DeadLetterPublisherTests {
         string tenantId = "test-tenant",
         string domain = "test-domain",
         string aggregateId = "agg-001") => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,

@@ -36,16 +36,20 @@ public class AtLeastOnceDeliveryTests {
 
     private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1) =>
         new(
+            MessageId: $"msg-{sequenceNumber}",
             AggregateId: "agg-001",
+            AggregateType: "test-aggregate",
             TenantId: "test-tenant",
             Domain: "test-domain",
             SequenceNumber: sequenceNumber,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: "corr-001",
             CausationId: "cause-001",
             UserId: "user-1",
             DomainServiceVersion: "1.0.0",
             EventTypeName: "OrderCreated",
+            MetadataVersion: 1,
             SerializationFormat: "json",
             Payload: [1, 2, 3],
             Extensions: null);
@@ -53,6 +57,7 @@ public class AtLeastOnceDeliveryTests {
     private static CommandEnvelope CreateTestCommand(
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",

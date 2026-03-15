@@ -29,6 +29,7 @@ public class AggregateActorTests {
         string tenantId = "test-tenant",
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: "test-domain",
         AggregateId: "agg-001",
@@ -99,8 +100,8 @@ public class AggregateActorTests {
         for (int i = 1; i <= eventCount; i++) {
             int seq = i;
             var evt = new EventEnvelope(
-                "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
-                $"corr-{seq}", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", "json",
+                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                $"corr-{seq}", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
@@ -472,8 +473,8 @@ public class AggregateActorTests {
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
         string keyPrefix = "test-tenant:test-domain:agg-001:events:";
-        var evt1 = new EventEnvelope("agg-001", "test-tenant", "test-domain", 1, DateTimeOffset.UtcNow,
-            "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", "json", [1], null);
+        var evt1 = new EventEnvelope("msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", 1, "json", [1], null);
         _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(true, evt1));
         _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}2", Arg.Any<CancellationToken>())

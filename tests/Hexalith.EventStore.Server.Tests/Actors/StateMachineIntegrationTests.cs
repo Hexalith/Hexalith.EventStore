@@ -33,6 +33,7 @@ public class StateMachineIntegrationTests {
         string tenantId = "test-tenant",
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: "test-domain",
         AggregateId: "agg-001",
@@ -217,16 +218,20 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
+                    "msg-1",
                     "agg-001",
+                    "test-aggregate",
                     "test-tenant",
                     "test-domain",
                     1,
+                    0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
                     "cause-1",
                     "system",
                     "1.0.0",
                     "TestEvent",
+                    1,
                     "json",
                     [1],
                     null)));
@@ -237,16 +242,20 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
+                    "msg-1",
                     "agg-001",
+                    "test-aggregate",
                     "test-tenant",
                     "test-domain",
                     2,
+                    0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
                     "cause-2",
                     "system",
                     "1.0.0",
                     "TestEvent",
+                    1,
                     "json",
                     [2],
                     null)));
@@ -309,16 +318,20 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
+                    "msg-1",
                     "agg-001",
+                    "test-aggregate",
                     "test-tenant",
                     "test-domain",
                     1,
+                    0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
                     "cause-1",
                     "system",
                     "1.0.0",
                     "TestEvent",
+                    1,
                     "json",
                     [1],
                     null)));
@@ -329,16 +342,20 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
+                    "msg-1",
                     "agg-001",
+                    "test-aggregate",
                     "test-tenant",
                     "test-domain",
                     2,
+                    0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
                     "cause-2",
                     "system",
                     "1.0.0",
                     "TestEvent",
+                    1,
                     "json",
                     [2],
                     null)));

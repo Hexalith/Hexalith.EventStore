@@ -16,6 +16,7 @@ public class CounterProcessorTests {
     private static CommandEnvelope CreateCommand<T>(T command)
         where T : notnull
         => new(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "sample-tenant",
             Domain: "counter",
             AggregateId: "counter-1",
@@ -96,6 +97,7 @@ public class CounterProcessorTests {
     public async Task UnknownCommandType_ThrowsInvalidOperationException() => await Assert.ThrowsAsync<InvalidOperationException>(
             () => _processor.ProcessAsync(
                 new CommandEnvelope(
+                    MessageId: Guid.NewGuid().ToString(),
                     TenantId: "sample-tenant",
                     Domain: "counter",
                     AggregateId: "counter-1",
@@ -111,6 +113,7 @@ public class CounterProcessorTests {
     public async Task EmptyPayload_ThrowsInvalidOperationException() => await Assert.ThrowsAsync<InvalidOperationException>(
             () => _processor.ProcessAsync(
                 new CommandEnvelope(
+                    MessageId: Guid.NewGuid().ToString(),
                     TenantId: "sample-tenant",
                     Domain: "counter",
                     AggregateId: "counter-1",

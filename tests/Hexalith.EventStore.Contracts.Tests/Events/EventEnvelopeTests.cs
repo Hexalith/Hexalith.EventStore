@@ -8,16 +8,20 @@ namespace Hexalith.EventStore.Contracts.Tests.Events;
 public class EventEnvelopeTests {
     private static EventMetadata CreateMetadata(long sequenceNumber = 1) =>
         new(
+            MessageId: "msg-001",
             AggregateId: "order-123",
+            AggregateType: "order",
             TenantId: "acme",
             Domain: "payments",
             SequenceNumber: sequenceNumber,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: "corr-1",
             CausationId: "cause-1",
             UserId: "user-1",
             DomainServiceVersion: "1.0.0",
             EventTypeName: "OrderCreated",
+            MetadataVersion: 1,
             SerializationFormat: "json");
 
     [Fact]
@@ -112,20 +116,24 @@ public class EventEnvelopeTests {
     }
 
     [Fact]
-    public void Metadata_ExposesAll11Fields() {
+    public void Metadata_ExposesAll15Fields() {
         EventMetadata metadata = CreateMetadata();
         byte[] payload = [1, 2, 3];
         var envelope = new EventEnvelope(metadata, payload, null);
 
+        Assert.Equal("msg-001", envelope.Metadata.MessageId);
         Assert.Equal("order-123", envelope.Metadata.AggregateId);
+        Assert.Equal("order", envelope.Metadata.AggregateType);
         Assert.Equal("acme", envelope.Metadata.TenantId);
         Assert.Equal("payments", envelope.Metadata.Domain);
         Assert.Equal(1, envelope.Metadata.SequenceNumber);
+        Assert.Equal(0, envelope.Metadata.GlobalPosition);
         Assert.Equal("corr-1", envelope.Metadata.CorrelationId);
         Assert.Equal("cause-1", envelope.Metadata.CausationId);
         Assert.Equal("user-1", envelope.Metadata.UserId);
         Assert.Equal("1.0.0", envelope.Metadata.DomainServiceVersion);
         Assert.Equal("OrderCreated", envelope.Metadata.EventTypeName);
+        Assert.Equal(1, envelope.Metadata.MetadataVersion);
         Assert.Equal("json", envelope.Metadata.SerializationFormat);
     }
 }

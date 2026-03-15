@@ -45,6 +45,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     public async Task PostCommands_InjectionInExtensions_Returns400WithProblemDetails() {
         // Arrange - extension value contains dangerous characters
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -79,6 +80,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
 
         // 50 entries * (6 + 1000) chars * 2 bytes = ~100KB > 64KB limit
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -103,6 +105,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     public async Task PostCommands_EmptyTenant_Returns400WithInstanceAndCorrelationId() {
         // Arrange
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -128,6 +131,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     public async Task PostCommands_FieldLengthExceeded_Returns400() {
         // Arrange - tenant exceeds 128 char limit
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = new string('a', 129),
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -146,6 +150,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     public async Task PostCommands_InvalidTenantChars_Returns400() {
         // Arrange - tenant with uppercase (violates AggregateIdentity pattern)
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "INVALID_TENANT",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -164,6 +169,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
     public async Task PostCommands_JavascriptInjectionInExtensions_Returns400() {
         // Arrange
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -186,6 +192,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
         // Arrange - valid tenant but empty domain triggers validation error
         // tenantId should appear in ProblemDetails extensions (AC3)
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "",
             aggregateId = "agg-001",
@@ -228,6 +235,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",

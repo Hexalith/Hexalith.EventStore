@@ -102,6 +102,7 @@ public class ServiceCollectionExtensionsTests : IDisposable {
         _ = Assert.IsType<AggregateProcessor>(processor);
 
         CommandEnvelope command = new(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "tenant",
             Domain: "test",
             AggregateId: "aggregate-1",

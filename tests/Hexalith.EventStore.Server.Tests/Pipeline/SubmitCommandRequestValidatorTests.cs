@@ -15,6 +15,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_MissingTenant_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
+            MessageId: "msg-1",
             Tenant: "",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -33,6 +34,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_InjectionCharacters_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
+            MessageId: "msg-2",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -57,6 +59,7 @@ public class SubmitCommandRequestValidatorTests {
         }
 
         var request = new SubmitCommandRequest(
+            MessageId: "msg-3",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -76,6 +79,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_FieldLengthLimits_ReturnsValidationError() {
         // Arrange - tenant exceeds canonical AggregateIdentity max length (64 chars)
         var request = new SubmitCommandRequest(
+            MessageId: "msg-4",
             Tenant: new string('a', 65),
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -94,6 +98,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_InvalidTenantCharacters_ReturnsValidationError() {
         // Arrange - uppercase not allowed (AggregateIdentity pattern)
         var request = new SubmitCommandRequest(
+            MessageId: "msg-5",
             Tenant: "INVALID",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -112,6 +117,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_ValidRequest_Passes() {
         // Arrange
         var request = new SubmitCommandRequest(
+            MessageId: "msg-6",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -129,6 +135,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_JavascriptInjection_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
+            MessageId: "msg-7",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -148,6 +155,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_AmpersandInExtensions_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
+            MessageId: "msg-8",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -166,6 +174,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_DangerousCommandType_ReturnsValidationError() {
         // Arrange - CommandType with injection characters (SEC-4)
         var request = new SubmitCommandRequest(
+            MessageId: "msg-9",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -186,6 +195,7 @@ public class SubmitCommandRequestValidatorTests {
     public void SubmitCommandRequestValidator_ScriptPatternInCommandType_ReturnsValidationError(string commandType) {
         // Arrange
         var request = new SubmitCommandRequest(
+            MessageId: "msg-10",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

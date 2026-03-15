@@ -230,6 +230,7 @@ public class StorageKeyIsolationTests {
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
         var expectedIdentity = new AggregateIdentity(tenant, domain, aggregateId);
         var command = new SubmitCommand(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: tenant,
             Domain: domain,
             AggregateId: aggregateId,

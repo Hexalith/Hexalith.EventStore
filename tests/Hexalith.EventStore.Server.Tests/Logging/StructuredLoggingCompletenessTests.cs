@@ -328,16 +328,20 @@ public class StructuredLoggingCompletenessTests : IDisposable {
 
     private static EventEnvelope CreateEventEnvelope() =>
         new(
+            MessageId: "msg-1",
             AggregateId: "agg-001",
+            AggregateType: "test-aggregate",
             TenantId: "test-tenant",
             Domain: "test-domain",
             SequenceNumber: 1,
+            GlobalPosition: 0,
             Timestamp: DateTimeOffset.UtcNow,
             CorrelationId: "corr-123",
             CausationId: "corr-123",
             UserId: "test-user",
             DomainServiceVersion: "v1",
             EventTypeName: "OrderCreated",
+            MetadataVersion: 1,
             SerializationFormat: "json",
             Payload: [0x01],
             Extensions: null);

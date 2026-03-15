@@ -48,6 +48,7 @@ public class CommandApiTraceTests {
 
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, accessor);
         var command = new SubmitCommand(
+            MessageId: "msg-1",
             Tenant: "tenant-a",
             Domain: "orders",
             AggregateId: "agg-001",

@@ -13,6 +13,7 @@ public class FakeDeadLetterPublisherTests {
         string tenantId = "test-tenant",
         string domain = "test-domain",
         string aggregateId = "agg-001") => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,
@@ -111,6 +112,7 @@ public class FakeDeadLetterPublisherTests {
         DeadLetterMessage message1 = CreateTestDeadLetterMessage(envelope1);
 
         var envelope2 = new CommandEnvelope(
+            MessageId: "msg-dlq-correlation-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-002",

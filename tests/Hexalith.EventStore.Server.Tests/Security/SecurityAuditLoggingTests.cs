@@ -150,7 +150,7 @@ public class SecurityAuditLoggingTests {
 
         // Submit command with different tenant (tenant-b) -- tenant mismatch
         var command = new CommandEnvelope(
-            "tenant-b", "billing", "agg-1", "PlaceOrder",
+            "msg-audit-1", "tenant-b", "billing", "agg-1", "PlaceOrder",
             [0x01], "corr-mismatch", null, "user-1", null);
 
         CommandProcessingResult result = await actor.ProcessCommandAsync(command);
@@ -211,6 +211,7 @@ public class SecurityAuditLoggingTests {
 
         using var payloadDocument = JsonDocument.Parse("{\"amount\":42}");
         var request = new SubmitCommandRequest(
+            MessageId: "msg-audit-2",
             Tenant: "tenant-a",
             Domain: "billing",
             AggregateId: "agg-1",
@@ -249,6 +250,7 @@ public class SecurityAuditLoggingTests {
 
         using var payloadDocument = JsonDocument.Parse("{\"amount\":42}");
         var request = new SubmitCommandRequest(
+            MessageId: "msg-audit-3",
             Tenant: "tenant-a",
             Domain: "billing",
             AggregateId: "agg-1",
@@ -276,6 +278,7 @@ public class SecurityAuditLoggingTests {
         string domain = "test-domain",
         string commandType = "CreateOrder") =>
         new(
+            MessageId: "msg-test",
             Tenant: tenant,
             Domain: domain,
             AggregateId: "agg-001",

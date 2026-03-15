@@ -16,6 +16,7 @@ namespace Hexalith.EventStore.Server.Tests.Commands;
 
 public class SubmitCommandHandlerRoutingTests {
     private static SubmitCommand CreateTestCommand(string? correlationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         Tenant: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",

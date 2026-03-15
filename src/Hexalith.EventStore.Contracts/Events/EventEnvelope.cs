@@ -8,14 +8,14 @@ namespace Hexalith.EventStore.Contracts.Events;
 /// Use <see cref="System.Linq.Enumerable.SequenceEqual{TSource}(System.Collections.Generic.IEnumerable{TSource}, System.Collections.Generic.IEnumerable{TSource})"/>
 /// for byte-level payload comparison in tests.
 /// </summary>
-/// <param name="Metadata">The 11-field event metadata.</param>
+/// <param name="Metadata">The 15-field event metadata (FR11).</param>
 /// <param name="Payload">The serialized event payload as raw bytes.</param>
 /// <param name="Extensions">Optional extension metadata. Null is stored as an empty read-only dictionary.</param>
 public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDictionary<string, string>? Extensions) {
     private static readonly IReadOnlyDictionary<string, string> EmptyExtensions =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
 
-    /// <summary>Gets the 11-field event metadata.</summary>
+    /// <summary>Gets the 15-field event metadata (FR11).</summary>
     public EventMetadata Metadata { get; } = Metadata ?? throw new ArgumentNullException(nameof(Metadata));
 
     /// <summary>Gets the serialized event payload as raw bytes.</summary>
@@ -35,6 +35,6 @@ public record EventEnvelope(EventMetadata Metadata, byte[] Payload, IReadOnlyDic
         string extensionKeys = Extensions.Count > 0
             ? string.Join(", ", Extensions.Keys)
             : "none";
-        return $"EventEnvelope {{ AggregateId = {Metadata.AggregateId}, TenantId = {Metadata.TenantId}, Domain = {Metadata.Domain}, SequenceNumber = {Metadata.SequenceNumber}, Timestamp = {Metadata.Timestamp}, CorrelationId = {Metadata.CorrelationId}, CausationId = {Metadata.CausationId}, UserId = {Metadata.UserId}, DomainServiceVersion = {Metadata.DomainServiceVersion}, EventTypeName = {Metadata.EventTypeName}, SerializationFormat = {Metadata.SerializationFormat}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
+        return $"EventEnvelope {{ MessageId = {Metadata.MessageId}, AggregateId = {Metadata.AggregateId}, AggregateType = {Metadata.AggregateType}, TenantId = {Metadata.TenantId}, Domain = {Metadata.Domain}, SequenceNumber = {Metadata.SequenceNumber}, GlobalPosition = {Metadata.GlobalPosition}, Timestamp = {Metadata.Timestamp}, CorrelationId = {Metadata.CorrelationId}, CausationId = {Metadata.CausationId}, UserId = {Metadata.UserId}, DomainServiceVersion = {Metadata.DomainServiceVersion}, EventTypeName = {Metadata.EventTypeName}, MetadataVersion = {Metadata.MetadataVersion}, SerializationFormat = {Metadata.SerializationFormat}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
     }
 }

@@ -37,6 +37,7 @@ public class MultiTenantStorageIsolationTests {
         string aggregateId = "order-001",
         string? correlationId = null,
         string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: aggregateId,

@@ -8,6 +8,7 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// Fluent builder for creating <see cref="CommandEnvelope"/> instances with sensible defaults for testing.
 /// </summary>
 public sealed class CommandEnvelopeBuilder {
+    private string _messageId = Guid.NewGuid().ToString();
     private string _tenantId = "test-tenant";
     private string _domain = "test-domain";
     private string _aggregateId = "test-agg-001";
@@ -17,6 +18,11 @@ public sealed class CommandEnvelopeBuilder {
     private string? _causationId;
     private string _userId = "test-user";
     private Dictionary<string, string>? _extensions;
+
+    /// <summary>Sets the message identifier (unique command identity / idempotency key).</summary>
+    /// <param name="messageId">The message identifier.</param>
+    /// <returns>This builder instance.</returns>
+    public CommandEnvelopeBuilder WithMessageId(string messageId) { _messageId = messageId; return this; }
 
     /// <summary>Sets the tenant identifier.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
@@ -66,6 +72,14 @@ public sealed class CommandEnvelopeBuilder {
     /// <summary>Builds the <see cref="CommandEnvelope"/> instance.</summary>
     /// <returns>A new <see cref="CommandEnvelope"/> with the configured values.</returns>
     public CommandEnvelope Build() => new(
-        _tenantId, _domain, _aggregateId, _commandType,
-        _payload, _correlationId, _causationId, _userId, _extensions);
+        MessageId: _messageId,
+        TenantId: _tenantId,
+        Domain: _domain,
+        AggregateId: _aggregateId,
+        CommandType: _commandType,
+        Payload: _payload,
+        CorrelationId: _correlationId,
+        CausationId: _causationId,
+        UserId: _userId,
+        Extensions: _extensions);
 }

@@ -25,9 +25,9 @@ public partial class SubmitCommandHandler(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        string causationId = request.CorrelationId; // For original submissions, CausationId = CorrelationId
+        string causationId = request.MessageId; // CausationId traces from the specific command (MessageId) that caused the events
 
-        Log.CommandReceived(logger, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
+        Log.CommandReceived(logger, request.MessageId, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
 
         var result = new SubmitCommandResult(request.CorrelationId);
 
@@ -106,9 +106,10 @@ public partial class SubmitCommandHandler(
         [LoggerMessage(
             EventId = 1100,
             Level = LogLevel.Information,
-            Message = "Command received: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
+            Message = "Command received: MessageId={MessageId}, CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
         public static partial void CommandReceived(
             ILogger logger,
+            string messageId,
             string correlationId,
             string causationId,
             string commandType,

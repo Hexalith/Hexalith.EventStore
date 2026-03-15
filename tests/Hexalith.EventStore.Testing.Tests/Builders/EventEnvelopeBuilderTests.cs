@@ -11,16 +11,20 @@ public class EventEnvelopeBuilderTests {
 
         Assert.NotNull(envelope.Metadata);
         Assert.NotNull(envelope.Payload);
+        Assert.NotEmpty(envelope.Metadata.MessageId);
         Assert.Equal("test-tenant:test-domain:test-agg-001", envelope.Metadata.AggregateId);
+        Assert.Equal("test-aggregate", envelope.Metadata.AggregateType);
         Assert.Equal("test-tenant", envelope.Metadata.TenantId);
         Assert.Equal("test-domain", envelope.Metadata.Domain);
         Assert.Equal(1, envelope.Metadata.SequenceNumber);
+        Assert.Equal(0, envelope.Metadata.GlobalPosition);
         Assert.NotEqual(default, envelope.Metadata.Timestamp);
         Assert.NotEmpty(envelope.Metadata.CorrelationId);
         Assert.NotEmpty(envelope.Metadata.CausationId);
         Assert.Equal("test-user", envelope.Metadata.UserId);
         Assert.Equal("1.0.0", envelope.Metadata.DomainServiceVersion);
         Assert.Equal("TestEvent", envelope.Metadata.EventTypeName);
+        Assert.Equal(1, envelope.Metadata.MetadataVersion);
         Assert.Equal("json", envelope.Metadata.SerializationFormat);
     }
 

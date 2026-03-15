@@ -44,16 +44,20 @@ public class SnapshotCreationIntegrationTests {
             currentSequence++;
             string key = $"{identity.EventStreamKeyPrefix}{currentSequence}";
             var envelope = new EventEnvelope(
+                "msg-1",
                 identity.AggregateId,
+                "test-aggregate",
                 identity.TenantId,
                 identity.Domain,
                 currentSequence,
+                0,
                 DateTimeOffset.UtcNow,
                 $"corr-{currentSequence}",
                 $"cause-{currentSequence}",
                 "user-1",
                 "1.0.0",
                 "TestEvent",
+                1,
                 "json",
                 [1, 2, 3],
                 null);

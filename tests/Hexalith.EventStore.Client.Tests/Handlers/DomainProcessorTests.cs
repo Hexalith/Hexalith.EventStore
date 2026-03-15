@@ -50,6 +50,7 @@ public class DomainProcessorTests : IDisposable {
     }
 
     private static CommandEnvelope CreateTestCommand() => new(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "tenant-1",
             Domain: "test-domain",
             AggregateId: "agg-1",

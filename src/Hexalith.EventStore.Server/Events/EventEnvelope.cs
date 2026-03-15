@@ -4,32 +4,40 @@ using Hexalith.EventStore.Contracts.Identity;
 namespace Hexalith.EventStore.Server.Events;
 /// <summary>
 /// Storage representation of a persisted event in the actor state store.
-/// Contains 11 metadata fields plus the serialized payload.
+/// Contains 15 metadata fields (FR11) plus the serialized payload.
 /// </summary>
+/// <param name="MessageId">The unique event message identifier (ULID).</param>
 /// <param name="AggregateId">The aggregate identifier.</param>
+/// <param name="AggregateType">The aggregate type name.</param>
 /// <param name="TenantId">The tenant identifier.</param>
 /// <param name="Domain">The domain name.</param>
 /// <param name="SequenceNumber">The event sequence number (1-based).</param>
+/// <param name="GlobalPosition">The cross-aggregate monotonic position (>= 0).</param>
 /// <param name="Timestamp">When the event was persisted.</param>
 /// <param name="CorrelationId">The correlation identifier for tracing.</param>
 /// <param name="CausationId">The causation identifier linking to the originating command.</param>
 /// <param name="UserId">The user who triggered the command.</param>
 /// <param name="DomainServiceVersion">The version of the domain service that produced the event.</param>
 /// <param name="EventTypeName">The fully qualified event type name for deserialization.</param>
+/// <param name="MetadataVersion">The metadata envelope schema version (>= 1 per FR65).</param>
 /// <param name="SerializationFormat">The serialization format (e.g., "json").</param>
 /// <param name="Payload">The serialized event data.</param>
 /// <param name="Extensions">Optional extension metadata.</param>
 public record EventEnvelope(
+    string MessageId,
     string AggregateId,
+    string AggregateType,
     string TenantId,
     string Domain,
     long SequenceNumber,
+    long GlobalPosition,
     DateTimeOffset Timestamp,
     string CorrelationId,
     string CausationId,
     string UserId,
     string DomainServiceVersion,
     string EventTypeName,
+    int MetadataVersion,
     string SerializationFormat,
     byte[] Payload,
     IDictionary<string, string>? Extensions) {
@@ -45,6 +53,6 @@ public record EventEnvelope(
         string extensionKeys = Extensions is not null
             ? string.Join(", ", Extensions.Keys)
             : "none";
-        return $"EventEnvelope {{ AggregateId = {AggregateId}, TenantId = {TenantId}, Domain = {Domain}, SequenceNumber = {SequenceNumber}, Timestamp = {Timestamp}, CorrelationId = {CorrelationId}, CausationId = {CausationId}, UserId = {UserId}, DomainServiceVersion = {DomainServiceVersion}, EventTypeName = {EventTypeName}, SerializationFormat = {SerializationFormat}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
+        return $"EventEnvelope {{ MessageId = {MessageId}, AggregateId = {AggregateId}, AggregateType = {AggregateType}, TenantId = {TenantId}, Domain = {Domain}, SequenceNumber = {SequenceNumber}, GlobalPosition = {GlobalPosition}, Timestamp = {Timestamp}, CorrelationId = {CorrelationId}, CausationId = {CausationId}, UserId = {UserId}, DomainServiceVersion = {DomainServiceVersion}, EventTypeName = {EventTypeName}, MetadataVersion = {MetadataVersion}, SerializationFormat = {SerializationFormat}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
     }
 }

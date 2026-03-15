@@ -8,6 +8,7 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// Command payload envelope containing all command fields and a computed aggregate identity.
 /// Validates required fields eagerly at construction time.
 /// </summary>
+/// <param name="MessageId">The unique command identity and idempotency key (ULID string).</param>
 /// <param name="TenantId">The tenant identifier.</param>
 /// <param name="Domain">The domain name.</param>
 /// <param name="AggregateId">The aggregate identifier.</param>
@@ -19,6 +20,7 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// <param name="Extensions">Optional extension metadata (null if no extensions).</param>
 [DataContract]
 public record CommandEnvelope(
+    string MessageId,
     [property: DataMember] string TenantId,
     [property: DataMember] string Domain,
     [property: DataMember] string AggregateId,
@@ -40,6 +42,12 @@ public record CommandEnvelope(
         _ = new AggregateIdentity(tenantId, domain, aggregateId);
         return true;
     }
+
+    /// <summary>Gets the unique command identity and idempotency key (ULID string).</summary>
+    [DataMember]
+    public string MessageId { get; init; } = !string.IsNullOrWhiteSpace(MessageId)
+        ? MessageId
+        : throw new ArgumentException("MessageId cannot be null, empty, or whitespace.", nameof(MessageId));
 
     /// <summary>Gets the fully qualified command type name.</summary>
     [DataMember]
@@ -78,6 +86,6 @@ public record CommandEnvelope(
         string extensionKeys = Extensions is not null
             ? string.Join(", ", Extensions.Keys)
             : "none";
-        return $"CommandEnvelope {{ TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, CommandType = {CommandType}, CorrelationId = {CorrelationId}, CausationId = {CausationId}, UserId = {UserId}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
+        return $"CommandEnvelope {{ MessageId = {MessageId}, TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, CommandType = {CommandType}, CorrelationId = {CorrelationId}, CausationId = {CausationId}, UserId = {UserId}, Payload = [REDACTED], Extensions = [{extensionKeys}] }}";
     }
 }

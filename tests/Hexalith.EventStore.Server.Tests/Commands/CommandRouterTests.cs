@@ -23,6 +23,7 @@ public class CommandRouterTests {
         string aggregateId = "agg-001",
         string commandType = "CreateOrder",
         string? correlationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
         Tenant: tenant,
         Domain: domain,
         AggregateId: aggregateId,

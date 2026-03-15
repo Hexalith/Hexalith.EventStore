@@ -30,6 +30,7 @@ public static class ArchivedCommandExtensions {
         ArgumentNullException.ThrowIfNull(archived);
         ArgumentNullException.ThrowIfNull(correlationId);
         return new SubmitCommand(
+            MessageId: Guid.NewGuid().ToString(),
             Tenant: archived.Tenant,
             Domain: archived.Domain,
             AggregateId: archived.AggregateId,

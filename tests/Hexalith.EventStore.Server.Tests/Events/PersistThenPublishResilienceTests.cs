@@ -243,8 +243,8 @@ public class PersistThenPublishResilienceTests {
         for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
-                "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
-                "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", "json", [1], null);
+                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1, "json", [1], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
@@ -300,8 +300,8 @@ public class PersistThenPublishResilienceTests {
         for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
-                "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
-                "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", "json", [1], null);
+                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1, "json", [1], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
@@ -350,8 +350,8 @@ public class PersistThenPublishResilienceTests {
         for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
-                "agg-001", "test-tenant", "test-domain", seq, DateTimeOffset.UtcNow,
-                "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", "json", [1], null);
+                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                "corr-resilience", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1, "json", [1], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));

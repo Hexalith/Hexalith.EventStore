@@ -29,6 +29,7 @@ public class SubmitCommandHandlerTests {
         var archiveStore = new InMemoryCommandArchiveStore();
         var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
         var command = new SubmitCommand(
+            MessageId: "msg-1",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

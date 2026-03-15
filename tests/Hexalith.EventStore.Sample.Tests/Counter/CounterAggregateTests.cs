@@ -21,6 +21,7 @@ public class CounterAggregateTests {
     private static CommandEnvelope CreateCommand<T>(T command)
         where T : notnull
         => new(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "sample-tenant",
             Domain: "counter",
             AggregateId: "counter-1",

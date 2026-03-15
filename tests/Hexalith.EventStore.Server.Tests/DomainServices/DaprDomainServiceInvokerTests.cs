@@ -26,6 +26,7 @@ public class DaprDomainServiceInvokerTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string domain = "test-domain") => new(
+        MessageId: Guid.NewGuid().ToString(),
         TenantId: tenantId,
         Domain: domain,
         AggregateId: "agg-001",
@@ -268,6 +269,7 @@ public class DaprDomainServiceInvokerTests {
     public void ExtractVersion_ExtensionsWithoutVersionKey_ReturnsDefaultV1() {
         // Arrange - extensions present but no domain-service-version key
         var envelope = new CommandEnvelope(
+            MessageId: "msg-version-nokey-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -289,6 +291,7 @@ public class DaprDomainServiceInvokerTests {
     public void ExtractVersion_ExtensionsWithVersionKey_ReturnsSpecifiedVersion() {
         // Arrange - Task 8.5: versioned key lookup via extensions
         var envelope = new CommandEnvelope(
+            MessageId: "msg-version-key-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -310,6 +313,7 @@ public class DaprDomainServiceInvokerTests {
     public void ExtractVersion_UppercaseVersion_NormalizedToLowercase() {
         // Arrange - Task 8.7: "V1" normalized to "v1"
         var envelope = new CommandEnvelope(
+            MessageId: "msg-version-upper-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -331,6 +335,7 @@ public class DaprDomainServiceInvokerTests {
     public void ExtractVersion_MixedCaseVersion_NormalizedToLowercase() {
         // Arrange - "V10" -> "v10"
         var envelope = new CommandEnvelope(
+            MessageId: "msg-version-mixed-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -359,6 +364,7 @@ public class DaprDomainServiceInvokerTests {
     public void ExtractVersion_InvalidFormat_ThrowsArgumentException(string invalidVersion) {
         // Arrange - Task 8.6: invalid version formats rejected
         var envelope = new CommandEnvelope(
+            MessageId: "msg-version-invalid-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -392,6 +398,7 @@ public class DaprDomainServiceInvokerTests {
             .Returns((DomainServiceRegistration?)null);
         var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
         var envelope = new CommandEnvelope(
+            MessageId: "msg-version-resolver-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

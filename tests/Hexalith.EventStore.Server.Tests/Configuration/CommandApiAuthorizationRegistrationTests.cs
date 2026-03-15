@@ -178,7 +178,7 @@ public class CommandApiAuthorizationRegistrationTests {
         ILogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>> logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>>();
         var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, nullReturningValidator, rbacValidator, logger);
 
-        var command = new SubmitCommand("test-tenant", "test-domain", "agg-1", "TestCmd", [0x01], "corr-1", "user");
+        var command = new SubmitCommand("msg-1", "test-tenant", "test-domain", "agg-1", "TestCmd", [0x01], "corr-1", "user");
         var next = new RequestHandlerDelegate<SubmitCommandResult>((_) => Task.FromResult(new SubmitCommandResult("corr-1")));
 
         // Should throw InvalidOperationException (server bug → 500), NOT NullReferenceException

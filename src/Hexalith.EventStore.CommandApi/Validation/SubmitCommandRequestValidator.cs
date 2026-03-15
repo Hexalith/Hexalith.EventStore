@@ -24,6 +24,10 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
     private static readonly Regex _injectionPattern = InjectionPattern();
 
     public SubmitCommandRequestValidator() {
+        _ = RuleFor(x => x.MessageId)
+            .NotNull().WithMessage("MessageId is required")
+            .NotEmpty().WithMessage("MessageId cannot be empty");
+
         _ = RuleFor(x => x.Tenant)
             .NotNull().WithMessage("Tenant is required")
             .NotEmpty().WithMessage("Tenant cannot be empty")

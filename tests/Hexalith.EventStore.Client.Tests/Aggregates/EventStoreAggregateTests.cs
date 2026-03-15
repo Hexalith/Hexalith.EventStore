@@ -158,6 +158,7 @@ public class EventStoreAggregateTests : IDisposable {
     private static CommandEnvelope CreateCommand<T>(T payload) where T : notnull {
         byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(payload);
         return new CommandEnvelope(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "tenant-1",
             Domain: "test",
             AggregateId: "agg-1",
@@ -171,6 +172,7 @@ public class EventStoreAggregateTests : IDisposable {
 
     private static CommandEnvelope CreateEmptyPayloadCommand(string commandType) =>
         new(
+            MessageId: Guid.NewGuid().ToString(),
             TenantId: "tenant-1",
             Domain: "test",
             AggregateId: "agg-1",

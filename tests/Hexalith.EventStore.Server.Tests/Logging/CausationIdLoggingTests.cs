@@ -100,6 +100,7 @@ public class CausationIdLoggingTests : IDisposable {
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         // Use a distinct CausationId to verify it propagates (not just CorrelationId)
         var command = new CommandEnvelope(
+            MessageId: "msg-causation-persist-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -131,16 +132,20 @@ public class CausationIdLoggingTests : IDisposable {
         var events = new List<EventEnvelope>
         {
             new(
+                MessageId: "msg-1",
                 AggregateId: "agg-001",
+                AggregateType: "test-aggregate",
                 TenantId: "test-tenant",
                 Domain: "test-domain",
                 SequenceNumber: 1,
+                GlobalPosition: 0,
                 Timestamp: DateTimeOffset.UtcNow,
                 CorrelationId: "corr-123",
                 CausationId: "cause-789",
                 UserId: "test-user",
                 DomainServiceVersion: "v1",
                 EventTypeName: "OrderCreated",
+                MetadataVersion: 1,
                 SerializationFormat: "json",
                 Payload: [0x01],
                 Extensions: null)
@@ -163,6 +168,7 @@ public class CausationIdLoggingTests : IDisposable {
         var publisher = new DeadLetterPublisher(daprClient, options, logger);
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var command = new CommandEnvelope(
+            MessageId: "msg-causation-dlq-1",
             TenantId: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",
@@ -187,6 +193,7 @@ public class CausationIdLoggingTests : IDisposable {
 
     private static SubmitCommand CreateSubmitCommand() =>
         new(
+            MessageId: "msg-causation-submit-1",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

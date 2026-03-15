@@ -8,24 +8,38 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// Fluent builder for creating <see cref="EventEnvelope"/> instances with sensible defaults for testing.
 /// </summary>
 public sealed class EventEnvelopeBuilder {
+    private string _messageId = Guid.NewGuid().ToString();
+    private string _aggregateIdPart = "test-agg-001";
+    private string _aggregateType = "test-aggregate";
     private string _tenantId = "test-tenant";
     private string _domain = "test-domain";
-    private string _aggregateIdPart = "test-agg-001";
     private long _sequenceNumber = 1;
+    private long _globalPosition = 0;
     private DateTimeOffset _timestamp = DateTimeOffset.UtcNow;
     private string _correlationId = Guid.NewGuid().ToString();
     private string _causationId = Guid.NewGuid().ToString();
     private string _userId = "test-user";
     private string _domainServiceVersion = "1.0.0";
     private string _eventTypeName = "TestEvent";
+    private int _metadataVersion = 1;
     private string _serializationFormat = "json";
     private byte[] _payload = Encoding.UTF8.GetBytes("{}");
     private IReadOnlyDictionary<string, string>? _extensions;
+
+    /// <summary>Sets the event message identifier.</summary>
+    /// <param name="messageId">The message identifier.</param>
+    /// <returns>This builder instance.</returns>
+    public EventEnvelopeBuilder WithMessageId(string messageId) { _messageId = messageId; return this; }
 
     /// <summary>Sets the aggregate identifier part (the ID portion, not the full colon-separated form).</summary>
     /// <param name="aggregateIdPart">The aggregate identifier part.</param>
     /// <returns>This builder instance.</returns>
     public EventEnvelopeBuilder WithAggregateIdPart(string aggregateIdPart) { _aggregateIdPart = aggregateIdPart; return this; }
+
+    /// <summary>Sets the aggregate type name.</summary>
+    /// <param name="aggregateType">The aggregate type name.</param>
+    /// <returns>This builder instance.</returns>
+    public EventEnvelopeBuilder WithAggregateType(string aggregateType) { _aggregateType = aggregateType; return this; }
 
     /// <summary>Sets the tenant identifier.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
@@ -41,6 +55,11 @@ public sealed class EventEnvelopeBuilder {
     /// <param name="sequenceNumber">The sequence number (must be >= 1).</param>
     /// <returns>This builder instance.</returns>
     public EventEnvelopeBuilder WithSequenceNumber(long sequenceNumber) { _sequenceNumber = sequenceNumber; return this; }
+
+    /// <summary>Sets the global position.</summary>
+    /// <param name="globalPosition">The global position (must be >= 0).</param>
+    /// <returns>This builder instance.</returns>
+    public EventEnvelopeBuilder WithGlobalPosition(long globalPosition) { _globalPosition = globalPosition; return this; }
 
     /// <summary>Sets the event timestamp.</summary>
     /// <param name="timestamp">The timestamp.</param>
@@ -72,6 +91,11 @@ public sealed class EventEnvelopeBuilder {
     /// <returns>This builder instance.</returns>
     public EventEnvelopeBuilder WithEventTypeName(string eventTypeName) { _eventTypeName = eventTypeName; return this; }
 
+    /// <summary>Sets the metadata version.</summary>
+    /// <param name="metadataVersion">The metadata version (must be >= 1).</param>
+    /// <returns>This builder instance.</returns>
+    public EventEnvelopeBuilder WithMetadataVersion(int metadataVersion) { _metadataVersion = metadataVersion; return this; }
+
     /// <summary>Sets the serialization format.</summary>
     /// <param name="serializationFormat">The serialization format.</param>
     /// <returns>This builder instance.</returns>
@@ -91,17 +115,21 @@ public sealed class EventEnvelopeBuilder {
     /// <returns>A new <see cref="EventEnvelope"/> with the configured values.</returns>
     public EventEnvelope Build() {
         var metadata = new EventMetadata(
-            $"{_tenantId}:{_domain}:{_aggregateIdPart}",
-            _tenantId,
-            _domain,
-            _sequenceNumber,
-            _timestamp,
-            _correlationId,
-            _causationId,
-            _userId,
-            _domainServiceVersion,
-            _eventTypeName,
-            _serializationFormat);
+            MessageId: _messageId,
+            AggregateId: $"{_tenantId}:{_domain}:{_aggregateIdPart}",
+            AggregateType: _aggregateType,
+            TenantId: _tenantId,
+            Domain: _domain,
+            SequenceNumber: _sequenceNumber,
+            GlobalPosition: _globalPosition,
+            Timestamp: _timestamp,
+            CorrelationId: _correlationId,
+            CausationId: _causationId,
+            UserId: _userId,
+            DomainServiceVersion: _domainServiceVersion,
+            EventTypeName: _eventTypeName,
+            MetadataVersion: _metadataVersion,
+            SerializationFormat: _serializationFormat);
 
         return new EventEnvelope(metadata, _payload, _extensions);
     }
