@@ -1,4 +1,5 @@
-# generated: 2026-03-13
+# generated: 2026-03-15
+# last_updated: 2026-03-15 (story 1-1 created)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -32,8 +33,15 @@
 # - Stories can be worked in parallel if team capacity allows
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+#
+# MIGRATION NOTE:
+# ===============
+# This sprint-status.yaml was regenerated on 2026-03-15 from a completely new epics.md
+# (13 epics, 56 stories). The previous sprint-status.yaml tracked 18 epics from the old
+# epic structure. Many requirements covered by the new stories have already been implemented
+# under the old structure. Story statuses will be updated as stories are created/implemented.
 
-generated: 2026-03-13
+generated: 2026-03-15
 last_updated: 2026-03-15
 project: Hexalith.EventStore
 project_key: NOKEY
@@ -41,218 +49,110 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  # Epic 1: Developer SDK, Core Contracts & Local Development Setup
-  # REOPENED: Story 1.7 added via sprint-change-proposal-2026-03-14.md (DDD Message Design)
-  # UPDATED: Story 1.7 refined via sprint-change-proposal-2026-03-15.md (Hexalith.Commons.UniqueIds for ULID)
+  # Epic 1: Domain Contract Foundation
   epic-1: in-progress
-  1-1-solution-structure-and-build-infrastructure: done  # ACs updated: UlidId → UniqueIdHelper (sprint-change-proposal-2026-03-15)
-  1-2-contracts-package-event-envelope-and-core-types: done
-  1-3-client-package-domain-processor-contract-and-registration: done
-  1-4-testing-package-in-memory-test-helpers: done
-  1-5-aspire-apphost-and-servicedefaults-scaffolding: done
-  1-6-contracts-unit-tests-tier-1: done
-  1-7-messagetype-value-object-and-hexalith-commons-ulid-integration: done
+  1-1-core-identity-and-event-envelope: ready-for-dev
+  1-2-command-types-domainresult-and-error-contract: backlog
+  1-3-messagetype-value-object-and-hexalith-commons-ulid-integration: backlog
+  1-4-pure-function-contract-and-eventstoreaggregate-base: backlog
+  1-5-commandstatus-enum-and-aggregate-tombstoning: backlog
   epic-1-retrospective: optional
 
-  # Epic 2: Command API Gateway & Status Tracking
-  epic-2: done
-  2-1-commandapi-host-and-minimal-endpoint-scaffolding: done
-  2-2-command-validation-and-rfc-7807-error-responses: done
-  2-3-mediatr-pipeline-and-logging-behavior: done
-  2-4-jwt-authentication-and-claims-transformation: done
-  2-5-endpoint-authorization-and-command-rejection: done
-  2-6-command-status-tracking-and-query-endpoint: done
-  2-7-command-replay-endpoint: done
-  2-8-optimistic-concurrency-conflict-handling: done
-  2-9-rate-limiting-and-openapi-swagger-ui: done
+  # Epic 2: Event Persistence & Aggregate Processing
+  epic-2: backlog
+  2-1-aggregate-actor-and-command-routing: backlog
+  2-2-event-persistence-and-sequence-numbers: backlog
+  2-3-state-rehydration-and-domain-service-invocation: backlog
+  2-4-command-status-tracking: backlog
+  2-5-duplicate-command-detection: backlog
   epic-2-retrospective: optional
 
-  # Epic 3: Command Processing, Event Storage & State Management
-  epic-3: done
-  3-1-command-router-and-actor-activation: done
-  3-2-aggregateactor-orchestrator-and-idempotency-check: done
-  3-3-tenant-validation-at-actor-level: done
-  3-4-event-stream-reader-and-state-rehydration: done
-  3-5-domain-service-registration-and-invocation: done
-  3-6-multi-domain-and-multi-tenant-processing: done
-  3-7-event-persistence-with-atomic-writes-and-sequence-numbers: done
-  3-8-storage-key-isolation-and-composite-key-strategy: done
-  3-9-snapshot-creation-at-configurable-intervals: done
-  3-10-state-reconstruction-from-snapshot-plus-tail-events: done
-  3-11-actor-state-machine-and-checkpointed-stages: done
+  # Epic 3: Command REST API & Error Experience
+  epic-3: backlog
+  3-1-command-submission-endpoint: backlog
+  3-2-command-validation-and-400-error-responses: backlog
+  3-3-command-status-query-endpoint: backlog
+  3-4-dead-letter-routing-and-command-replay: backlog
+  3-5-concurrency-auth-and-infrastructure-error-responses: backlog
+  3-6-openapi-specification-and-swagger-ui: backlog
   epic-3-retrospective: optional
 
-  # Epic 4: Event Distribution & Dead-Letter Handling
-  epic-4: done
-  4-1-event-publisher-with-cloudevents-1-0: done
-  4-2-per-tenant-per-domain-topic-isolation: done
-  4-3-at-least-once-delivery-and-dapr-retry-policies: done
-  4-4-persist-then-publish-resilience: done
-  4-5-dead-letter-routing-with-full-context: done
+  # Epic 4: Event Distribution & Pub/Sub
+  epic-4: backlog
+  4-1-cloudevents-publication-and-topic-routing: backlog
+  4-2-resilient-publication-and-backlog-draining: backlog
+  4-3-per-aggregate-backpressure: backlog
   epic-4-retrospective: optional
 
-  # Epic 5: Multi-Tenant Security & Access Control Enforcement
-  # REOPENED: FR66 (aggregate tombstoning) and FR67 (backpressure) added via sprint-change-proposal-2026-03-14.md
-  epic-5: in-progress
-  5-1-dapr-access-control-policies: done
-  5-2-data-path-isolation-verification: done
-  5-3-pubsub-topic-isolation-enforcement: done
-  5-4-security-audit-logging-and-payload-protection: done
-  5-5-aggregate-tombstoning-and-lifecycle-termination: backlog
-  5-6-per-aggregate-backpressure-with-http-429: backlog
+  # Epic 5: Security & Multi-Tenant Isolation
+  epic-5: backlog
+  5-1-jwt-authentication-and-claims-transformation: backlog
+  5-2-claims-based-command-authorization: backlog
+  5-3-three-layer-multi-tenant-data-isolation: backlog
+  5-4-dapr-service-to-service-access-control: backlog
+  5-5-e2e-security-testing-with-keycloak: backlog
   epic-5-retrospective: optional
 
-  # Epic 6: Observability, Health & Operational Readiness
-  epic-6: done
-  6-1-end-to-end-opentelemetry-trace-instrumentation: done
-  6-2-structured-logging-completeness-verification: done
-  6-3-dead-letter-to-origin-tracing: done
-  6-4-health-check-endpoints: done
-  6-5-readiness-check-endpoints: done
+  # Epic 6: Observability & Operations
+  epic-6: backlog
+  6-1-opentelemetry-tracing-across-command-lifecycle: backlog
+  6-2-structured-logging-with-correlation-and-causation-ids: backlog
+  6-3-health-and-readiness-endpoints: backlog
   epic-6-retrospective: optional
 
-  # Epic 7: Sample Application, Testing, CI/CD & Deployment
-  epic-7: done
-  7-1-sample-counter-domain-service: done
-  7-2-local-dapr-component-configurations: done
-  7-3-production-dapr-component-configurations: done
-  7-4-integration-tests-with-dapr-test-containers-tier-2: done
-  7-5-end-to-end-contract-tests-with-aspire-topology-tier-3: done
-  7-6-cicd-pipeline-and-nuget-publishing: done
-  7-7-aspire-publisher-deployment-manifests: done
-  7-8-domain-service-hot-reload-validation: done
+  # Epic 7: Snapshots, Rate Limiting & Performance
+  epic-7: backlog
+  7-1-configurable-aggregate-snapshots: backlog
+  7-2-per-tenant-rate-limiting: backlog
+  7-3-per-consumer-rate-limiting: backlog
   epic-7-retrospective: optional
 
-  # ============================================================================
-  # DOCUMENTATION INITIATIVE (from prd-documentation.md)
-  # ============================================================================
-
-  # Epic 8: Foundation & First Impression (Phase 1a)
-  epic-8: done
-  8-1-documentation-folder-structure-and-page-conventions: done
-  8-2-readme-rewrite-with-progressive-disclosure: done
-  8-3-prerequisites-and-local-dev-environment-page: done
-  8-4-choose-the-right-tool-decision-aid: done
-  8-5-animated-gif-demo-capture: done
-  8-6-changelog-initialization: done
+  # Epic 8: Aspire Orchestration, Sample App & Testing
+  epic-8: backlog
+  8-1-aspire-apphost-and-dapr-topology: backlog
+  8-2-counter-sample-domain-service: backlog
+  8-3-nuget-client-package-and-zero-config-registration: backlog
+  8-4-domain-service-hot-reload: backlog
+  8-5-three-tier-test-pyramid: backlog
+  8-6-deployment-manifests-and-environment-portability: backlog
+  8-7-cicd-pipeline: backlog
   epic-8-retrospective: optional
 
-  # Epic 9: Quickstart & Onboarding (Phase 1a)
-  epic-9: done
-  9-1-quickstart-guide: done
+  # Epic 9: Query Pipeline & ETag Caching
+  epic-9: backlog
+  9-1-query-contracts-and-routing-model: backlog
+  9-2-self-routing-etag-encode-decode: backlog
+  9-3-etag-actor-and-projection-change-notification: backlog
+  9-4-query-actor-in-memory-page-cache: backlog
+  9-5-iqueryresponse-compile-time-enforcement: backlog
   epic-9-retrospective: optional
 
-  # Epic 10: Community Infrastructure (Phase 1a)
-  epic-10: done
-  10-1-contributing-and-code-of-conduct: done
-  10-2-github-issue-templates: done
-  10-3-pr-template-and-review-process: done
-  10-4-github-discussions-setup: done
+  # Epic 10: SignalR Real-Time Notifications
+  epic-10: backlog
+  10-1-signalr-hub-and-projection-change-broadcasting: backlog
+  10-2-redis-backplane-for-multi-instance-signalr: backlog
+  10-3-automatic-signalr-group-rejoining-on-reconnection: backlog
   epic-10-retrospective: optional
 
-  # ============================================================================
-  # FLUENT CLIENT SDK API (from brainstorming session 2026-02-28)
-  # ============================================================================
-
-  # Epic 16: Fluent Client SDK API (Phase 1 Foundation)
-  # DEPENDENCY: Must complete before Epics 12-15 (documentation deep dives)
-  # SOURCE: sprint-change-proposal-2026-02-28.md
-  epic-16: done
-  16-1-eventstore-aggregate-base-class: done
-  16-2-eventstore-domain-attribute-and-naming-convention-engine: done
-  16-3-assembly-scanner-and-auto-discovery: done
-  16-4-add-eventstore-extension-method-with-global-options: done
-  16-5-use-eventstore-extension-method-with-activation: done
-  16-6-five-layer-cascading-configuration: done
-  16-7-updated-sample-with-fluent-api: done
-  16-8-unit-tests-for-convention-engine-and-discovery: done
-  16-9-readme-and-quickstart-code-example-updates: done
-  16-10-integration-test-for-fluent-api-registration-path: done
-  epic-16-retrospective: optional
-
-  # Epic 11: Documentation CI Pipeline (Phase 1a)
-  epic-11: done
-  11-1-markdown-linting-configuration: done
-  11-2-link-checking-configuration: done
-  11-3-documentation-validation-github-actions-workflow: done
-  11-4-stale-content-detection: done
+  # Epic 11: Server-Managed Projection Builder
+  epic-11: backlog
+  11-1-projection-contract-dtos-and-aggregateactor-event-reading: backlog
+  11-2-eventreplayprojectionactor-and-projection-state-storage: backlog
+  11-3-immediate-projection-trigger-fire-and-forget: backlog
+  11-4-convention-based-projection-discovery-and-configuration: backlog
+  11-5-counter-sample-project-endpoint: backlog
   epic-11-retrospective: optional
 
-  # Epic 12: Concept Deep Dives & Technical Reference (Phase 1b)
-  epic-12: done
-  12-1-architecture-overview-with-mermaid-topology: done
-  12-2-command-lifecycle-deep-dive: done
-  12-3-event-envelope-metadata-structure: done
-  12-4-identity-scheme-documentation: done
-  12-5-dapr-trade-offs-and-faq-intro: done
-  12-6-first-domain-service-tutorial: done
-  12-7-command-api-reference: done
-  12-8-nuget-packages-guide-and-dependency-graph: done
-  12-9-awesome-event-sourcing-ecosystem-page: done
+  # Epic 12: Blazor Sample UI & Refresh Patterns
+  epic-12: backlog
+  12-1-three-blazor-refresh-patterns: backlog
+  12-2-interactive-command-buttons-on-all-pattern-pages: backlog
   epic-12-retrospective: optional
 
-  # Epic 13: Sample Integration Tests & Local Validation (Phase 1b)
-  epic-13: done
-  13-1-sample-integration-test-project: done
-  13-2-dapr-component-variants-for-backend-swap-demo: done
-  13-3-local-validation-script: done
-  13-4-fr-traceability-check: done
+  # Epic 13: Documentation & Developer Onboarding
+  epic-13: backlog
+  13-1-quick-start-guide: backlog
+  13-2-error-reference-pages-at-type-uris: backlog
+  13-3-progressive-documentation-structure: backlog
+  13-4-repository-documentation-refresh: backlog
   epic-13-retrospective: optional
-
-  # Epic 14: Deployment & Operations Guides (Phase 2)
-  epic-14: done
-  14-1-docker-compose-deployment-guide-and-configuration: done
-  14-2-kubernetes-deployment-guide-and-configuration: done
-  14-3-azure-container-apps-deployment-guide-and-configuration: done
-  14-4-deployment-progression-guide: done
-  14-5-dapr-component-configuration-reference: done
-  14-6-security-model-documentation: done
-  14-7-troubleshooting-guide: done
-  14-8-disaster-recovery-procedure: done
-  epic-14-retrospective: optional
-
-  # Epic 15: Configuration, Versioning & Lifecycle (Phase 2)
-  epic-15: done
-  15-1-configuration-reference: done
-  15-2-auto-generated-api-reference-and-ci-workflow: done
-  15-3-event-versioning-and-schema-evolution-guide: done
-  15-4-upgrade-path-documentation: done
-  15-5-public-product-roadmap: done
-  15-6-dapr-faq-deep-dive: done
-  epic-15-retrospective: optional
-
-  # ============================================================================
-  # ACTOR-BASED AUTHORIZATION & QUERY API (from sprint-change-proposal-2026-03-08-auth-query.md)
-  # ============================================================================
-
-  # Epic 17: Actor-Based Authorization & Query API
-  # DEPENDENCY: Epics 1-3, 5 (done). Complete before Epic 15 remaining stories.
-  # SOURCE: sprint-change-proposal-2026-03-08-auth-query.md
-  epic-17: done
-  17-1-authorization-options-and-validator-abstractions: done
-  17-2-actor-based-validator-implementations: done
-  17-3-refactor-authorization-behavior: done
-  17-4-query-contracts: done
-  17-5-queries-controller-and-query-router: done
-  17-6-projection-actor-contract: done
-  17-7-command-validation-endpoint: done
-  17-8-query-validation-endpoint: done
-  17-9-integration-and-e2e-tests: done
-  epic-17-retrospective: optional
-
-  # ============================================================================
-  # QUERY PIPELINE & REAL-TIME UPDATES (from epics.md Epic 8)
-  # ============================================================================
-
-  # Epic 18: Query Pipeline & Real-Time Updates (v2)
-  # SOURCE: epics.md Epic 8 (restructured 2026-03-13, was Epic 9)
-  epic-18: in-progress
-  18-1-etag-actor-and-projection-change-notification: done
-  18-2-3-tier-query-actor-routing: done
-  18-3-query-endpoint-with-etag-pre-check-and-cache: done
-  18-4-query-contract-library: done
-  18-5-signalr-real-time-notifications: done
-  18-6-sample-ui-refresh-patterns: done  # FIXUP: Add CounterCommandForm to Pattern 1 & 2 pages (sprint-change-proposal-2026-03-15-counter-command-buttons)
-  18-7-self-routing-etag-format-and-endpoint-decode: done
-  18-8-iquery-response-enforcement-and-runtime-discovery: done
-  epic-18-retrospective: optional

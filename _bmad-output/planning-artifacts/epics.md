@@ -2,6 +2,8 @@
 stepsCompleted:
   - step-01-validate-prerequisites
   - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -984,3 +986,579 @@ So that load balancers and orchestrators can route traffic correctly.
 **Given** a dependency is unhealthy,
 **When** the readiness endpoint is called,
 **Then** the system reports not-ready with the failing dependency identified.
+
+## Epic 7: Snapshots, Rate Limiting & Performance
+
+Configurable snapshots accelerate state rehydration, per-tenant and per-consumer rate limiting prevents abuse, and aggregate-level backpressure protects against saga storms.
+
+### Story 7.1: Configurable Aggregate Snapshots
+
+As a platform developer,
+I want aggregate state snapshots created at configurable intervals,
+So that state rehydration remains fast regardless of total event count.
+
+**Acceptance Criteria:**
+
+**Given** an aggregate with events exceeding the snapshot threshold (default: every 100 events),
+**When** EventStore signals the domain service,
+**Then** the domain service produces the snapshot content inline as part of command processing (FR13)
+**And** the snapshot is stored in DAPR actor state.
+
+**Given** a configurable snapshot interval,
+**When** configured per tenant-domain pair,
+**Then** the interval overrides the system default (Rule 15)
+**And** snapshot configuration is mandatory — there is always a threshold.
+
+**Given** an aggregate with a snapshot and subsequent events,
+**When** state is rehydrated,
+**Then** reconstruction from snapshot + tail events produces identical state to full replay (FR14)
+**And** rehydration time remains bounded regardless of total event count (NFR19).
+
+### Story 7.2: Per-Tenant Rate Limiting
+
+As a platform developer,
+I want per-tenant rate limiting at the Command API,
+So that one tenant's saga storm cannot degrade service for other tenants.
+
+**Acceptance Criteria:**
+
+**Given** ASP.NET Core `RateLimiting` middleware configured with `SlidingWindowRateLimiter` (D8),
+**When** a tenant exceeds the configurable threshold (default: 1,000 commands/minute/tenant),
+**Then** the system returns `429 Too Many Requests` with `Retry-After` header (NFR33)
+**And** rate limits are extracted from the JWT `tenant_id` claim.
+
+**Given** rate limits configured per tenant via DAPR config store,
+**When** the configuration is changed,
+**Then** the new limits take effect dynamically without system restart (NFR20).
+
+### Story 7.3: Per-Consumer Rate Limiting
+
+As a platform developer,
+I want per-consumer rate limiting at the Command API,
+So that individual consumers cannot overwhelm the system.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated consumer,
+**When** they exceed the configurable threshold (default: 100 commands/second/consumer),
+**Then** the system returns `429 Too Many Requests` with `Retry-After` header (NFR34)
+**And** the consumer identity is derived from JWT claims.
+
+## Epic 8: Aspire Orchestration, Sample App & Testing
+
+A developer starts the complete DAPR topology with a single Aspire command, references a working Counter domain service, and runs three-tier tests (unit, integration with DAPR, E2E contract). DevOps generates deployment manifests via Aspire publishers.
+
+### Story 8.1: Aspire AppHost & DAPR Topology
+
+As a developer,
+I want to start the complete EventStore system with a single Aspire command,
+So that I have a working local development environment in minutes.
+
+**Acceptance Criteria:**
+
+**Given** the AppHost project is configured,
+**When** `dotnet aspire run` is executed,
+**Then** EventStore server, sample domain service, DAPR sidecars, state store, and message broker all start (FR40, UX-DR21)
+**And** all services are visible in the Aspire dashboard.
+
+**Given** prerequisites are missing (Docker, .NET SDK, DAPR),
+**When** startup fails,
+**Then** clear, actionable error messages identify exactly what's needed with installation links (UX-DR22).
+
+### Story 8.2: Counter Sample Domain Service
+
+As a developer evaluating EventStore,
+I want a working Counter domain service as a reference implementation,
+So that I can understand the pure function programming model by example.
+
+**Acceptance Criteria:**
+
+**Given** the sample domain service,
+**When** inspected,
+**Then** it implements `IncrementCounter` command, `CounterIncremented` event, and `CounterState` (FR41, UX-DR23)
+**And** demonstrates the pure function contract `(Command, CurrentState?) -> DomainResult`
+**And** demonstrates rejection events via `IRejectionEvent`.
+
+**Given** the domain service is registered,
+**When** configured via DAPR,
+**Then** it supports at least 2 independent domains within the same EventStore instance (FR24)
+**And** supports at least 2 tenants within the same domain with isolated event streams (FR22, FR25).
+
+### Story 8.3: NuGet Client Package & Zero-Config Registration
+
+As a domain service developer,
+I want to install EventStore client packages via NuGet with zero-configuration quickstart,
+So that I can register my domain service with a single extension method call.
+
+**Acceptance Criteria:**
+
+**Given** the EventStore client NuGet package,
+**When** a developer adds it to their project,
+**Then** `AddEventStore()` extension method on `IServiceCollection` provides convention-based registration (FR42, UX-DR17)
+**And** auto-discovery finds domain processor types without manual listing.
+
+### Story 8.4: Domain Service Hot Reload
+
+As a daily developer,
+I want to modify domain logic and restart only the domain service,
+So that my inner development loop stays under 5 seconds.
+
+**Acceptance Criteria:**
+
+**Given** the full Aspire topology is running,
+**When** a developer modifies a domain processor and restarts only the domain service,
+**Then** the updated behavior is testable within ~2 seconds (UX-DR25)
+**And** EventStore and the full topology continue running without restart.
+
+### Story 8.5: Three-Tier Test Pyramid
+
+As a developer,
+I want unit, integration, and E2E contract tests,
+So that domain logic, DAPR integration, and full pipeline are each validated at the appropriate level.
+
+**Acceptance Criteria:**
+
+**Given** Tier 1 unit tests,
+**When** executed,
+**Then** domain service pure functions are tested without any DAPR runtime dependency (FR45).
+
+**Given** Tier 2 integration tests,
+**When** executed with DAPR slim init,
+**Then** the actor processing pipeline is tested using DAPR test containers (FR46).
+
+**Given** Tier 3 E2E contract tests,
+**When** executed with full DAPR init + Docker,
+**Then** the full command lifecycle is validated across the complete Aspire topology (FR47).
+
+### Story 8.6: Deployment Manifests & Environment Portability
+
+As a DevOps engineer,
+I want to deploy EventStore to different environments by changing only DAPR component configuration,
+So that the same application runs across Redis, PostgreSQL, and cloud backends without code changes.
+
+**Acceptance Criteria:**
+
+**Given** Aspire publishers,
+**When** generating deployment manifests,
+**Then** Docker Compose, Kubernetes, and Azure Container Apps targets are supported (FR44).
+
+**Given** a different target environment,
+**When** DAPR component YAML files are changed,
+**Then** the system functions correctly with zero application code changes, zero recompilation, zero redeployment (FR43, NFR29).
+
+### Story 8.7: CI/CD Pipeline
+
+As a platform maintainer,
+I want automated CI/CD with MinVer-based versioning,
+So that builds, tests, and NuGet publishing are consistent and hands-off.
+
+**Acceptance Criteria:**
+
+**Given** a push or PR to main,
+**When** GitHub Actions runs,
+**Then** restore, build (Release), and Tier 1+2 tests execute (D10).
+
+**Given** a `v*` tag is pushed,
+**When** the release pipeline runs,
+**Then** all tests pass, NuGet packages are packed, the expected package count is validated, and packages are pushed to NuGet.org (D9, D10).
+
+**Given** MinVer versioning,
+**When** a tag `v1.0.0` exists on a release commit,
+**Then** all packages receive version `1.0.0` with pre-release versions auto-calculated from tag + commit height (D9).
+
+## Epic 9: Query Pipeline & ETag Caching
+
+Queries are routed through a 3-tier model (entity, checksum, tenant), with self-routing ETag pre-checks returning HTTP 304, in-memory page cache in query actors, coarse invalidation on projection changes, and compile-time enforced query response contracts.
+
+### Story 9.1: Query Contracts & Routing Model
+
+As a domain service developer,
+I want typed query contracts with mandatory metadata fields and a 3-tier routing model,
+So that queries are routed deterministically to the correct query actor.
+
+**Acceptance Criteria:**
+
+**Given** the query contract library,
+**When** a query is defined,
+**Then** mandatory fields Domain, QueryType, TenantId and optional field EntityId are enforced as typed static members (FR57).
+
+**Given** a query with EntityId,
+**When** routed,
+**Then** it targets `{QueryType}-{TenantId}-{EntityId}` (FR50 tier 1).
+
+**Given** a query without EntityId but with non-empty payload,
+**When** routed,
+**Then** it targets `{QueryType}-{TenantId}-{Checksum}` where Checksum is truncated SHA256 base64url (11 chars) of serialized payload (FR50 tier 2).
+
+**Given** a query without EntityId and with empty payload,
+**When** routed,
+**Then** it targets `{QueryType}-{TenantId}` (FR50 tier 3).
+
+### Story 9.2: Self-Routing ETag Encode/Decode
+
+As a platform developer,
+I want self-routing ETags that embed the projection type,
+So that the query endpoint can extract routing information without additional lookups.
+
+**Acceptance Criteria:**
+
+**Given** an ETag is generated,
+**When** encoded,
+**Then** the format is `{base64url(projectionType)}.{guid}` (FR61)
+**And** ETags are wrapped in quotes in HTTP response headers per RFC 7232.
+
+**Given** a client sends an `If-None-Match` header,
+**When** the ETag is decoded,
+**Then** the projection type is extracted for routing.
+
+**Given** a malformed, undecodable, or missing ETag,
+**When** processed,
+**Then** it is treated as a cache miss — safe degradation by construction (FR61).
+
+### Story 9.3: ETag Actor & Projection Change Notification
+
+As a platform developer,
+I want one ETag actor per projection+tenant that tracks the current projection version,
+So that ETag pre-checks can return HTTP 304 without activating query actors.
+
+**Acceptance Criteria:**
+
+**Given** an ETag actor keyed by `{ProjectionType}-{TenantId}`,
+**When** a projection change is notified via `NotifyProjectionChanged(projectionType, tenantId, entityId?)` (FR52),
+**Then** the ETag is regenerated (new GUID portion) (FR51)
+**And** all cached query results for that projection+tenant pair are invalidated (FR58, coarse invalidation).
+
+**Given** a query arrives with a valid `If-None-Match` header,
+**When** the decoded ETag's GUID matches the current ETag actor value,
+**Then** the endpoint returns HTTP 304 without activating the query actor (FR53)
+**And** the pre-check completes within 5ms at p99 for warm actors (NFR35).
+
+### Story 9.4: Query Actor In-Memory Page Cache
+
+As a platform developer,
+I want query actors to serve as in-memory page caches with no state store persistence,
+So that repeated queries return cached data without hitting the microservice.
+
+**Acceptance Criteria:**
+
+**Given** a query actor on first activation (cold call),
+**When** it receives a query,
+**Then** it forwards the query to the microservice, receives `IQueryResponse<T>` (FR54)
+**And** caches both the data and the projection type mapping in memory
+**And** returns the result with a self-routing ETag header.
+
+**Given** a warm query actor with cached data,
+**When** it receives a subsequent query,
+**Then** it checks the ETag actor for the learned projection type
+**And** returns cached data on ETag match (within 10ms at p99, NFR36)
+**And** re-queries the microservice on ETag mismatch (within 200ms at p99, NFR37).
+
+**Given** DAPR idle timeout deactivates the query actor,
+**When** the next query arrives,
+**Then** the mapping resets — the cold call re-learns the projection type from the microservice (FR63).
+
+### Story 9.5: IQueryResponse Compile-Time Enforcement
+
+As a platform developer,
+I want `IQueryResponse<T>` to enforce at compile time that every response includes a non-empty ProjectionType,
+So that silent caching degradation is impossible when a microservice omits projection mapping.
+
+**Acceptance Criteria:**
+
+**Given** a microservice implements `IQueryResponse<T>`,
+**When** the response is constructed,
+**Then** a non-empty `ProjectionType` field is required at compile time (FR62).
+
+**Given** a query actor receives a response with empty or whitespace-only ProjectionType,
+**When** processing the response,
+**Then** it is treated as an error equivalent to a missing response (FR62).
+
+## Epic 10: SignalR Real-Time Notifications
+
+Connected clients receive push "changed" signals when projections update, with Redis backplane for multi-instance distribution and automatic group rejoining on connection recovery.
+
+### Story 10.1: SignalR Hub & Projection Change Broadcasting
+
+As a platform developer,
+I want a SignalR hub inside EventStore that broadcasts "changed" signals when projections update,
+So that connected clients receive real-time push notifications without polling.
+
+**Acceptance Criteria:**
+
+**Given** a SignalR hub hosted inside the EventStore server,
+**When** a projection's ETag is regenerated,
+**Then** a signal-only "changed" message is broadcast to connected clients (FR55)
+**And** clients are grouped by ETag actor ID (`{ProjectionType}-{TenantId}`)
+**And** the signal contains no projection data — clients re-query on receipt.
+
+**Given** the SignalR hub endpoint,
+**When** the CommandApi starts,
+**Then** the hub is conditionally mapped at `/hubs/projection-changes` (FR56).
+
+### Story 10.2: Redis Backplane for Multi-Instance SignalR
+
+As a platform developer,
+I want a Redis backplane for SignalR message distribution,
+So that push notifications work across multiple EventStore server replicas.
+
+**Acceptance Criteria:**
+
+**Given** multiple EventStore server instances,
+**When** a projection change is broadcast,
+**Then** all connected clients across all instances receive the signal (FR56)
+**And** Redis is used as the backplane (a DAPR-managed Redis instance may be reused).
+
+**Given** SignalR signal delivery,
+**When** measured,
+**Then** delivery from ETag regeneration to client receipt completes within 100ms at p99 (NFR38).
+
+### Story 10.3: Automatic SignalR Group Rejoining on Reconnection
+
+As a domain service developer,
+I want the SignalR client helper to automatically rejoin groups on connection recovery,
+So that real-time notifications resume after network interruptions without manual intervention.
+
+**Acceptance Criteria:**
+
+**Given** the SignalR client helper NuGet package,
+**When** a Blazor Server circuit reconnects, a WebSocket drops, or a network interruption recovers,
+**Then** the client automatically rejoins its SignalR groups (FR59)
+**And** real-time push notifications resume without developer intervention.
+
+## Epic 11: Server-Managed Projection Builder
+
+EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
+
+### Story 11.1: Projection Contract DTOs & AggregateActor Event Reading
+
+As a platform developer,
+I want wire-format DTOs for the /project endpoint and a read-only method on AggregateActor to fetch events,
+So that the projection builder can deliver events without coupling to DAPR internal key formats.
+
+**Acceptance Criteria:**
+
+**Given** the Contracts project,
+**When** `ProjectionEventDto` is defined,
+**Then** it contains: EventTypeName, Payload, SerializationFormat, SequenceNumber, Timestamp, CorrelationId
+**And** excludes Server-internal fields (CausationId, UserId, DomainServiceVersion, Extensions).
+
+**Given** the Contracts project,
+**When** `ProjectionRequest` is defined,
+**Then** it contains: TenantId, Domain, AggregateId, ProjectionEventDto[] — with per-aggregate granularity.
+
+**Given** the Contracts project,
+**When** `ProjectionResponse` is defined,
+**Then** it contains: ProjectionType (string), State (JsonElement) — State is opaque, CommandApi never interprets it.
+
+**Given** `IAggregateActor`,
+**When** `GetEventsAsync(long fromSequence)` is called,
+**Then** it returns `EventEnvelope[]` for events after fromSequence
+**And** encapsulates DAPR actor state key format internally
+**And** returns empty array for new aggregates.
+
+### Story 11.2: EventReplayProjectionActor & Projection State Storage
+
+As a platform developer,
+I want a concrete ProjectionActor that stores projection state received from domain services,
+So that query actors can serve real projection data.
+
+**Acceptance Criteria:**
+
+**Given** `EventReplayProjectionActor` as a concrete implementation of `CachingProjectionActor`,
+**When** registered with DAPR actor type name `"ProjectionActor"`,
+**Then** `QueryRouter` can route queries to it via the existing `ProjectionActorTypeName`.
+
+**Given** the actor implements `IProjectionActor` (read) and `IProjectionWriteActor` (write),
+**When** `UpdateProjectionAsync(state)` is called,
+**Then** state is persisted to DAPR actor state
+**And** ETag is regenerated via `IETagActor.RegenerateAsync()`
+**And** SignalR notification is broadcast via `IProjectionChangedBroadcaster.BroadcastChangedAsync()`.
+
+**Given** a query arrives,
+**When** `ExecuteQueryAsync` is called,
+**Then** it reads the last persisted state from DAPR actor state (cache miss path)
+**And** `CachingProjectionActor` base provides in-memory ETag caching on top (no double-caching).
+
+### Story 11.3: Immediate Projection Trigger (Fire-and-Forget)
+
+As a platform developer,
+I want a fire-and-forget background task that delivers new events to domain services immediately after persistence,
+So that projections update in near-real-time without blocking command processing.
+
+**Acceptance Criteria:**
+
+**Given** `RefreshIntervalMs = 0` (default configuration),
+**When** events are persisted by the aggregate actor,
+**Then** a fire-and-forget background task is triggered via `IProjectionUpdateOrchestrator` (non-blocking — does NOT block command processing).
+
+**Given** the background task executes,
+**When** it runs,
+**Then** it reads new events via `AggregateActor.GetEventsAsync(fromSequence)` (actor proxy call)
+**And** maps `EventEnvelope[]` to `ProjectionEventDto[]`
+**And** sends `ProjectionRequest` to the domain service `/project` endpoint via DAPR service invocation
+**And** stores the returned state in `EventReplayProjectionActor` via `UpdateProjectionAsync`.
+
+**Given** the projection update fails (domain service unavailable or error),
+**When** the failure is logged,
+**Then** the projection stays at last known state (eventual consistency)
+**And** the next trigger retries.
+
+### Story 11.4: Convention-Based Projection Discovery & Configuration
+
+As a platform developer,
+I want domain services that expose a `/project` endpoint to be automatically wired for projections,
+So that no explicit projection registration is needed beyond existing domain service setup.
+
+**Acceptance Criteria:**
+
+**Given** a domain service registered in `EventStore:DomainServices` that also exposes a `/project` endpoint,
+**When** the system starts,
+**Then** it is automatically wired for projection building via convention-based discovery.
+
+**Given** projection configuration,
+**When** `EventStore:Projections:DefaultRefreshIntervalMs` is set,
+**Then** 0 = immediate (fire-and-forget), >0 = polling interval in ms.
+
+**Given** per-domain override,
+**When** `EventStore:Projections:Domains:{domain}:RefreshIntervalMs` is configured,
+**Then** it overrides the system default for that domain.
+
+**Given** tenant isolation,
+**When** projection updates execute,
+**Then** they are scoped to `tenant:domain:aggregateId`
+**And** no cross-tenant event leakage occurs in triggering or delivery.
+
+### Story 11.5: Counter Sample /project Endpoint
+
+As a developer evaluating EventStore,
+I want the counter sample domain service to expose a /project endpoint,
+So that I have a working reference for how domain services build projection state from events.
+
+**Acceptance Criteria:**
+
+**Given** the Sample domain service,
+**When** a POST `/project` request arrives with `ProjectionRequest`,
+**Then** `CounterProjectionHandler` applies events to in-memory state
+**And** returns `ProjectionResponse { "counter", { "count": N } }`.
+
+**Given** `CounterProjectionHandler` receives increment/decrement/reset events,
+**When** it applies them,
+**Then** Count is updated correctly.
+
+**Given** the Blazor UI increments the counter,
+**When** the full pipeline executes (command -> events -> /project -> ProjectionActor -> query),
+**Then** the counter value card displays the correct count
+**And** no `QueryNotFoundException` errors appear in commandapi logs.
+
+## Epic 12: Blazor Sample UI & Refresh Patterns
+
+The sample Blazor UI demonstrates 3 reference patterns for handling projection change notifications: toast notification, silent data reload, and selective component refresh. All pattern pages include interactive command buttons.
+
+### Story 12.1: Three Blazor Refresh Patterns
+
+As a developer evaluating EventStore,
+I want three reference patterns demonstrating how to handle real-time projection updates in Blazor,
+So that I can choose the right approach for my application.
+
+**Acceptance Criteria:**
+
+**Given** the sample Blazor UI,
+**When** a projection change signal arrives via SignalR,
+**Then** Pattern 1 (Notification) shows a toast notification prompting manual refresh (FR60)
+**And** Pattern 2 (Silent Reload) automatically reloads data without user interaction (FR60)
+**And** Pattern 3 (Selective Refresh) refreshes only the affected projection component (FR60).
+
+**Given** the status color system,
+**When** rendering command lifecycle states,
+**Then** Green = Completed/Healthy, Blue = Processing/Received/EventsStored/EventsPublished, Yellow = Rejected, Red = PublishFailed/TimedOut/Unhealthy, Gray = Unknown/Deactivated (UX-DR40).
+
+### Story 12.2: Interactive Command Buttons on All Pattern Pages
+
+As a developer evaluating EventStore,
+I want all three pattern pages to include increment/decrement/reset buttons,
+So that each pattern is a self-contained interactive demo.
+
+**Acceptance Criteria:**
+
+**Given** `NotificationPattern.razor`,
+**When** rendered,
+**Then** it includes `<CounterCommandForm TenantId="@_tenantId" />` (SCP-Buttons).
+
+**Given** `SilentReloadPattern.razor`,
+**When** rendered,
+**Then** it includes `<CounterCommandForm TenantId="@_tenantId" />` (SCP-Buttons).
+
+**Given** any of the three pattern pages,
+**When** buttons are clicked,
+**Then** commands are successfully sent to the EventStore API and the respective pattern behavior is observable.
+
+## Epic 13: Documentation & Developer Onboarding
+
+Quick start guide (3 pages, clone to first command in 10 minutes), error reference pages at type URIs, progressive documentation structure, Swagger UI as embedded API reference, and repository-wide documentation refresh aligning with the implemented surface area.
+
+### Story 13.1: Quick Start Guide
+
+As a developer new to EventStore,
+I want a concise quick start guide,
+So that I can go from clone to first successful command in under 10 minutes.
+
+**Acceptance Criteria:**
+
+**Given** the quick start guide,
+**When** a developer follows it,
+**Then** it is 3 pages maximum (UX-DR30)
+**And** assumes DDD knowledge (no event sourcing basics explained)
+**And** results in a running Aspire topology with a successful Counter command within 10 minutes.
+
+### Story 13.2: Error Reference Pages at Type URIs
+
+As an API consumer,
+I want error `type` URIs to resolve to human-readable documentation,
+So that I can understand any error and find the resolution without support.
+
+**Acceptance Criteria:**
+
+**Given** each error `type` URI (e.g., `https://hexalith.io/problems/validation-error`),
+**When** opened in a browser,
+**Then** a documentation page explains the error, shows an example request/response, and suggests resolution steps (UX-DR32).
+
+### Story 13.3: Progressive Documentation Structure
+
+As a developer,
+I want documentation organized by expertise level,
+So that newcomers aren't overwhelmed and experts aren't condescended to.
+
+**Acceptance Criteria:**
+
+**Given** the documentation set,
+**When** organized,
+**Then** it follows a progressive structure: quick start (assumes DDD knowledge), concepts (for newcomers), reference (deep dives) (UX-DR33)
+**And** levels are never mixed within a single page.
+
+**Given** projection type naming guidance,
+**When** documented,
+**Then** short names are recommended (e.g., `OrderList` rather than fully qualified type names) for compact ETags (FR64).
+
+### Story 13.4: Repository Documentation Refresh
+
+As a maintainer,
+I want all documentation aligned with the actual implemented surface area,
+So that docs, planning artifacts, and code tell the same story.
+
+**Acceptance Criteria:**
+
+**Given** the README,
+**When** refreshed,
+**Then** it reflects the current product surface including query/projection/SignalR entry points (SCP-Docs).
+
+**Given** `docs/reference/nuget-packages.md`,
+**When** updated,
+**Then** it lists 6 packages (including `Hexalith.EventStore.SignalR`) with correct descriptions (SCP-Docs).
+
+**Given** `docs/community/roadmap.md`,
+**When** updated,
+**Then** it clearly distinguishes implemented capabilities from planned future work (SCP-Docs).
+
+**Given** planning artifacts (PRD, architecture),
+**When** selectively corrected,
+**Then** factual statements about shipped behavior match the current repository state (SCP-Docs).
