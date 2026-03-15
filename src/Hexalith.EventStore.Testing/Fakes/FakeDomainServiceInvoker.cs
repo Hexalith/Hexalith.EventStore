@@ -12,13 +12,17 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// Tracks all invocations for test assertions.
 /// </summary>
 public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
-    private readonly ConcurrentQueue<CommandEnvelope> _invocations = new();
+    private readonly ConcurrentQueue<(CommandEnvelope Command, object? CurrentState)> _invocations = new();
     private readonly ConcurrentDictionary<string, DomainResult> _commandTypeResponses = new();
     private readonly ConcurrentDictionary<string, DomainResult> _tenantDomainResponses = new();
     private DomainResult? _defaultResponse;
 
     /// <summary>Gets the list of all commands that were passed to <see cref="InvokeAsync"/>.</summary>
-    public IReadOnlyList<CommandEnvelope> Invocations => [.. _invocations];
+    public IReadOnlyList<CommandEnvelope> Invocations => [.. _invocations.Select(i => i.Command)];
+
+    /// <summary>Gets the list of all (command, currentState) pairs passed to <see cref="InvokeAsync"/>.
+    /// Use this to inspect the exact state the AggregateActor passes to the domain service.</summary>
+    public IReadOnlyList<(CommandEnvelope Command, object? CurrentState)> InvocationsWithState => [.. _invocations];
 
     /// <summary>
     /// Configures a canned response for a specific command type.
@@ -56,7 +60,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     /// <inheritdoc/>
     public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
-        _invocations.Enqueue(command);
+        _invocations.Enqueue((command, currentState));
 
         if (_commandTypeResponses.TryGetValue(command.CommandType, out DomainResult? commandTypeResult)) {
             return Task.FromResult(commandTypeResult);

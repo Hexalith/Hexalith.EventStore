@@ -244,9 +244,13 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
                 object? deserializedEvent;
                 if (payloadElement.ValueKind == JsonValueKind.String) {
                     // Payload is Base64-encoded bytes (byte[] serialized as Base64 by System.Text.Json).
-                    // Decode and deserialize from the raw JSON bytes.
+                    // Decode, parse into a JsonDocument, and deserialize from the root element.
+                    // Using JsonDocument.Parse rather than Deserialize(byte[]) for robustness:
+                    // Dapr's gRPC/HTTP serialization pipeline may produce subtly different byte
+                    // representations that JsonDocument handles more reliably.
                     byte[] payloadBytes = payloadElement.GetBytesFromBase64();
-                    deserializedEvent = JsonSerializer.Deserialize(payloadBytes, eventType);
+                    using JsonDocument payloadDoc = JsonDocument.Parse(payloadBytes);
+                    deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType);
                 }
                 else {
                     deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType);

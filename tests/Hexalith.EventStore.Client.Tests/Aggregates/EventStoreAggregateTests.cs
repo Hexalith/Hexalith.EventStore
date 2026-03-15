@@ -33,6 +33,15 @@ public class EventStoreAggregateTests : IDisposable {
 
     private sealed class ItemCannotBeRemoved : IRejectionEvent;
 
+    // --- Record event types (matching production patterns like CounterIncremented) ---
+    private sealed record CounterIncremented : IEventPayload;
+
+    private sealed record CounterDecremented : IEventPayload;
+
+    private sealed record CounterReset : IEventPayload;
+
+    private sealed record CounterCannotGoNegative : IRejectionEvent;
+
     // --- Test State ---
     private sealed class TestState {
         public int ItemCount { get; private set; }
@@ -49,10 +58,25 @@ public class EventStoreAggregateTests : IDisposable {
         public void Apply(ItemReset e) => ItemCount = 0;
     }
 
+    // --- Counter state for record-based aggregate ---
+    private sealed class CounterState {
+        public int Count { get; private set; }
+
+        public void Apply(CounterIncremented e) => Count++;
+
+        public void Apply(CounterDecremented e) => Count--;
+
+        public void Apply(CounterReset e) => Count = 0;
+    }
+
     // --- Test Commands ---
     private sealed record AddItem(string Name);
 
     private sealed record RemoveItem;
+
+    private sealed record IncrementCounter;
+
+    private sealed record DecrementCounter;
 
     private sealed record ResetItems;
 
@@ -79,6 +103,20 @@ public class EventStoreAggregateTests : IDisposable {
             }
 
             return DomainResult.Success(new IEventPayload[] { new ItemReset() });
+        }
+    }
+
+    // --- Record-based aggregate (mirrors production CounterAggregate pattern) ---
+    private sealed class RecordAggregate : EventStoreAggregate<CounterState> {
+        public static DomainResult Handle(IncrementCounter command, CounterState? state)
+            => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
+
+        public static DomainResult Handle(DecrementCounter command, CounterState? state) {
+            if ((state?.Count ?? 0) == 0) {
+                return DomainResult.Rejection(new IRejectionEvent[] { new CounterCannotGoNegative() });
+            }
+
+            return DomainResult.Success(new IEventPayload[] { new CounterDecremented() });
         }
     }
 
@@ -580,6 +618,142 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
 
         Assert.True(result.IsSuccess); // State rehydrated: 1 added - 1 removed = 0 items, then add succeeds
+    }
+
+    // --- Record event types with Base64 payload (Dapr wire format) ---
+    // These tests use sealed record types (not classes) to match production event types
+    // like CounterIncremented, and simulate the full Dapr EventEnvelope serialization format.
+
+    [Fact]
+    public async Task ProcessAsync_RecordEvent_Base64EmptyPayload_DeserializesCorrectly() {
+        var aggregate = new RecordAggregate();
+        // sealed record CounterIncremented serialized as Base64: {} → e30=
+        string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
+        string eventsJson = "[{\"eventTypeName\":\"CounterIncremented\",\"payload\":\"" + base64Empty + "\"}]";
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        // State: 1 increment → count=1, then decrement succeeds
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DaprEventEnvelopeFormat_Base64Payload_DeserializesCorrectly() {
+        var aggregate = new RecordAggregate();
+        // Simulate the full Dapr EventEnvelope JSON format as it arrives via DaprClient.InvokeMethodAsync.
+        // EventEnvelope has 12 fields; byte[] Payload is serialized as Base64 by System.Text.Json.
+        string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
+        string eventsJson = $$"""
+            [
+                {
+                    "aggregateId": "counter-1",
+                    "tenantId": "tenant-a",
+                    "domain": "counter",
+                    "sequenceNumber": 1,
+                    "timestamp": "2026-03-15T09:00:00+00:00",
+                    "correlationId": "corr-1",
+                    "causationId": "corr-1",
+                    "userId": "user-1",
+                    "domainServiceVersion": "v1",
+                    "eventTypeName": "CounterIncremented",
+                    "serializationFormat": "json",
+                    "payload": "{{base64Empty}}",
+                    "extensions": null
+                }
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DaprEventEnvelopeFormat_MultipleEvents_RehydratesState() {
+        var aggregate = new RecordAggregate();
+        string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
+        // Two increments then a decrement — final count should be 1
+        string eventsJson = $$"""
+            [
+                {"eventTypeName":"CounterIncremented","payload":"{{base64Empty}}"},
+                {"eventTypeName":"CounterIncremented","payload":"{{base64Empty}}"},
+                {"eventTypeName":"CounterDecremented","payload":"{{base64Empty}}"}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        // Decrement when count=1 should succeed
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DaprEventEnvelopeFormat_ResetEvent_RehydratesState() {
+        var aggregate = new RecordAggregate();
+        string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
+        // Increment, then reset — final count should be 0
+        string eventsJson = $$"""
+            [
+                {"eventTypeName":"CounterIncremented","payload":"{{base64Empty}}"},
+                {"eventTypeName":"CounterReset","payload":"{{base64Empty}}"}
+            ]
+            """;
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
+        // Decrement when count=0 should be rejected
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsRejection);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DaprSerializationRoundTrip_Base64Payload_Survives() {
+        // Simulate the exact Dapr serialization round-trip:
+        // 1. DaprClient.InvokeMethodAsync serializes DomainServiceRequest with JsonSerializerDefaults.Web
+        // 2. Target service ASP.NET Core deserializes with Web defaults
+        // 3. CurrentState (object?) becomes JsonElement
+        // This catches bugs where byte[] → Base64 → JsonElement deserialization breaks.
+        var aggregate = new RecordAggregate();
+        byte[] emptyRecordPayload = JsonSerializer.SerializeToUtf8Bytes(new CounterIncremented());
+
+        // Build the wire format as Dapr would: EventEnvelope with byte[] Payload
+        var wireEvents = new[] {
+            new {
+                aggregateId = "counter-1",
+                tenantId = "tenant-a",
+                domain = "counter",
+                sequenceNumber = 1L,
+                timestamp = DateTimeOffset.UtcNow,
+                correlationId = "corr-1",
+                causationId = "corr-1",
+                userId = "user-1",
+                domainServiceVersion = "v1",
+                eventTypeName = "CounterIncremented",
+                serializationFormat = "json",
+                payload = emptyRecordPayload, // byte[] — System.Text.Json serializes as Base64
+                extensions = (Dictionary<string, string>?)null,
+            },
+        };
+
+        // Step 1: Serialize with Web defaults (as DaprClient does)
+        var webOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(wireEvents, webOptions);
+
+        // Step 2: Deserialize as object? (as ASP.NET Core does for DomainServiceRequest.CurrentState)
+        object? currentState = JsonSerializer.Deserialize<JsonElement>(serialized, webOptions);
+
+        // Step 3: Process — EventStoreAggregate must handle the Base64 payload
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+        DomainResult result = await aggregate.ProcessAsync(command, currentState);
+
+        Assert.True(result.IsSuccess); // 1 increment → count=1, decrement succeeds
     }
 
     // --- Story 16-8: JsonElement array without payload wrapper (direct element) ---
