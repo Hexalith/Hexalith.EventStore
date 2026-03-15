@@ -1,6 +1,6 @@
 # Story 1.4: Pure Function Contract & EventStoreAggregate Base
 
-Status: review
+Status: done
 Complexity: XS (audit-and-verify — no new code expected beyond XML doc fixes)
 
 ## Story
@@ -246,11 +246,13 @@ These are Server.Tests (Tier 2) and should not affect Tier 1 test execution, but
 
 ### Agent Model Used
 
-Claude Opus 4.6 (1M context)
+GPT-5.4
 
 ### Debug Log References
 
 Pre-flight check: Client package had changes after 493bcd8 (commits e85f64d, 0f446b7). Verified actual code state before auditing.
+
+2026-03-15 code review follow-up: fixed UTF-8 extension size accounting in `SubmitCommandRequestValidator`, aligned `CommandEnvelopeBuilder` default `CorrelationId` semantics with `MessageId`, and re-ran Tier 1 regression plus full Release build.
 
 ### Completion Notes List
 
@@ -284,26 +286,44 @@ Pre-flight check: Client package had changes after 493bcd8 (commits e85f64d, 0f4
 **Task 5:** CounterAggregate and CounterState verified. CounterAggregateTests: 8/8 passed (baseline was 7; 8th test was added previously for DI resolution).
 
 **Task 6 — Tier 1 Regression:**
-- Contracts.Tests: 261 (matches baseline)
-- Client.Tests: 282 (+2 from baseline 280 — new wrong-return-type tests added in Task 2.4)
-- Sample.Tests: 29 (matches baseline)
-- Testing.Tests: 64 (matches baseline)
-- **Total: 636** (baseline 634 + 2 new tests)
+- Contracts.Tests: 266 (current baseline)
+- Client.Tests: 286 (current baseline; includes prior wrong-return-type tests)
+- Sample.Tests: 32 (current baseline)
+- Testing.Tests: 67 (+2 builder semantics tests, +1 existing baseline growth)
+- **Total: 651**
 - Full Release build: 0 warnings, 0 errors
+
+**Code review fixes applied (2026-03-15):**
+- Fixed UTF-8 byte-budget validation for `SubmitCommandRequest.Extensions` so multi-byte characters are measured by actual UTF-8 payload size rather than `charCount * 2`.
+- Added validator regression coverage proving oversized UTF-8 extension payloads are rejected.
+- Updated `CommandEnvelopeBuilder` so default `CorrelationId` follows `MessageId` unless explicitly overridden, matching command submission semantics.
+- Added testing coverage for default and explicit correlation-id behavior.
+- Reconciled story metadata to distinguish verified historical implementation files from review follow-up fixes and documented unrelated workspace changes as out of scope.
+
+**Review scope note:** unrelated workspace edits in Story 1.2 artifacts and other non-1.4 files were observed during review and left untouched.
 
 ### Implementation Plan
 
-Audit-and-verify with two code changes:
+Audit-and-verify with focused code and test changes:
 1. Added `GenerateDocumentationFile=true` to Client.csproj (Task 4.2)
 2. Changed AssemblyScanner from `public` to `internal` (Task 4.6)
 3. Added 2 tests for wrong-return-type Handle method skipping (Task 2.4)
+4. Fixed UTF-8 extension size validation and added a validator regression test.
+5. Fixed `CommandEnvelopeBuilder` default correlation-id semantics and added regression tests.
 
 ### File List
 
-- `src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj` — Added `<GenerateDocumentationFile>true</GenerateDocumentationFile>`
-- `src/Hexalith.EventStore.Client/Discovery/AssemblyScanner.cs` — Changed `public static class` to `internal static class`
-- `tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs` — Added `WrongReturnTypeCommand`, `WrongReturnTypeAggregate`, and 2 test methods
+- Verified existing implementation files:
+  - `src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj` — XML doc generation enabled.
+  - `src/Hexalith.EventStore.Client/Discovery/AssemblyScanner.cs` — `AssemblyScanner` visibility is internal.
+  - `tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs` — wrong-return-type handler coverage present.
+- Code review follow-up fixes:
+  - `src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandRequestValidator.cs` — use actual UTF-8 byte counts for extension-size validation.
+  - `tests/Hexalith.EventStore.Server.Tests/Validation/ValidatorConsistencyTests.cs` — added UTF-8 extension-size regression coverage.
+  - `src/Hexalith.EventStore.Testing/Builders/CommandEnvelopeBuilder.cs` — default `CorrelationId` now follows `MessageId` unless explicitly overridden.
+  - `tests/Hexalith.EventStore.Testing.Tests/Builders/CommandEnvelopeBuilderTests.cs` — added correlation-id semantic regression coverage.
 
 ### Change Log
 
 - 2026-03-15: Story 1.4 audit-and-verify completed. Enabled XML doc generation for Client package, fixed AssemblyScanner visibility (public→internal), added 2 tests for Handle method wrong-return-type skipping. All 636 Tier 1 tests green.
+- 2026-03-15: Code review follow-up fixed UTF-8 extension-size accounting, aligned `CommandEnvelopeBuilder` default correlation-id behavior with `MessageId`, added regression tests, and closed the story as done.

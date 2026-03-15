@@ -19,7 +19,11 @@ public enum CommandStatus {
     /// <summary>Terminal — all events stored and published.</summary>
     Completed = 4,
 
-    /// <summary>Terminal — domain rejection event persisted.</summary>
+    /// <summary>
+    /// Terminal — command rejected before completion.
+    /// Domain rejections set <see cref="CommandStatusRecord.RejectionEventType"/>;
+    /// infrastructure rejections set <see cref="CommandStatusRecord.FailureReason"/>.
+    /// </summary>
     Rejected = 5,
 
     /// <summary>Terminal — events stored but pub/sub permanently failed.</summary>

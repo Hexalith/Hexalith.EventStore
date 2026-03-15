@@ -119,6 +119,13 @@ public class AggregateActorTests {
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
     }
 
+    private static bool IsSnapshotAwareCurrentState(object? state) =>
+        state is DomainServiceCurrentState snapshotState
+        && snapshotState.UsedSnapshot
+        && snapshotState.LastSnapshotSequence == 1
+        && snapshotState.CurrentSequence == 2
+        && snapshotState.Events.Count == 1;
+
     [Fact]
     public async Task ProcessCommandAsync_ValidCommand_ReturnsAccepted() {
         // Arrange
@@ -435,7 +442,7 @@ public class AggregateActorTests {
         logger.Received().Log(
             LogLevel.Information,
             Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("State rehydrated") && o.ToString()!.Contains("List")),
+            Arg.Is<object>(o => o.ToString()!.Contains("State rehydrated") && o.ToString()!.Contains("DomainServiceCurrentState")),
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -510,7 +517,7 @@ public class AggregateActorTests {
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_WithSnapshot_RehydratesUsingListStateForDomainCompatibility() {
+    public async Task ProcessCommandAsync_WithSnapshot_PassesSnapshotAwareCurrentStateToDomainService() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ISnapshotManager snapshotManager) = CreateActorWithAllMocks();
         ConfigureNoDuplicate(stateManager);
@@ -527,10 +534,10 @@ public class AggregateActorTests {
         // Act
         _ = await actor.ProcessCommandAsync(envelope);
 
-        // Assert -- domain invocation gets a List<EventEnvelope> (backward-compatible contract), not RehydrationResult
+        // Assert -- domain invocation gets snapshot state plus tail events without forcing a second full replay
         _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<CommandEnvelope>(),
-            Arg.Is<object?>(o => o is List<EventEnvelope> && ((List<EventEnvelope>)o).Count == 2));
+            Arg.Is<object?>(o => IsSnapshotAwareCurrentState(o)));
     }
 
     // === Story 3.5: Domain Service Invocation Tests ===
@@ -639,6 +646,30 @@ public class AggregateActorTests {
         // Assert
         result.Accepted.ShouldBeFalse();
         result.ErrorMessage!.ShouldContain("Service unavailable");
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainInfrastructureFailure_WritesRejectedStatusWithFailureReason() {
+        // Arrange -- infrastructure failures must remain distinguishable from domain rejections
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, ICommandStatusStore statusStore) = CreateActorWithStatusStoreMock();
+        ConfigureNoDuplicate(stateManager);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .ThrowsAsync(new HttpRequestException("Service unavailable"));
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeFalse();
+        await statusStore.Received().WriteStatusAsync(
+            envelope.TenantId,
+            envelope.CorrelationId,
+            Arg.Is<CommandStatusRecord>(record =>
+                record.Status == CommandStatus.Rejected
+                && record.FailureReason == "Service unavailable"
+                && record.RejectionEventType == null),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -969,6 +1000,65 @@ public class AggregateActorTests {
 
         // Assert -- ShouldCreateSnapshotAsync called on rejection path
         _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", Arg.Any<long>(), Arg.Is<long>(0));
+    }
+
+    // === Story 2.4: Advisory Status Write Rule 12 Tests ===
+
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, ICommandStatusStore StatusStore) CreateActorWithStatusStoreMock() {
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns(true);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+
+        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
+        prop?.SetValue(actor, stateManager);
+
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.NoOp());
+
+        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(false, default!));
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+
+        return (actor, stateManager, logger, invoker, commandStatusStore);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_AdvisoryStatusWriteFails_StillReturnsAccepted() {
+        // Arrange -- Rule 12: WriteAdvisoryStatusAsync must swallow exceptions without blocking pipeline
+        (AggregateActor actor, IActorStateManager stateManager, _, _, ICommandStatusStore statusStore) = CreateActorWithStatusStoreMock();
+        ConfigureNoDuplicate(stateManager);
+
+        // Configure status store to throw on every write
+        statusStore.WriteStatusAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandStatusRecord>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("DAPR state store unavailable"));
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act -- should NOT throw despite advisory status write failures
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- pipeline completed successfully (Rule 12: advisory failures never block)
+        result.Accepted.ShouldBeTrue();
     }
 
     // Test event types for domain invocation tests

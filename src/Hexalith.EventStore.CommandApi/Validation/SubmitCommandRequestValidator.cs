@@ -1,4 +1,5 @@
 
+using System.Text;
 using System.Text.RegularExpressions;
 
 using FluentValidation;
@@ -7,6 +8,10 @@ using Hexalith.EventStore.CommandApi.Models;
 
 namespace Hexalith.EventStore.CommandApi.Validation;
 
+/// <summary>
+/// Validates <see cref="SubmitCommandRequest"/> payloads for structural integrity and
+/// security constraints before command processing.
+/// </summary>
 public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCommandRequest> {
     private const int MaxTenantDomainLength = 64;
     private const int MaxExtensionEntries = 50;
@@ -66,7 +71,7 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .WithMessage($"Extensions dictionary cannot exceed {MaxExtensionEntries} entries")
             .Must(ext => ext == null || ext.All(kvp => kvp.Key.Length <= MaxExtensionKeyLength && kvp.Value.Length <= MaxExtensionValueLength))
             .WithMessage($"Extension keys must be ≤{MaxExtensionKeyLength} chars and values ≤{MaxExtensionValueLength} chars")
-            .Must(ext => ext == null || ext.Sum(kvp => kvp.Key.Length + kvp.Value.Length) * 2 <= MaxTotalExtensionBytes)
+            .Must(ext => ext == null || ext.Sum(static kvp => Encoding.UTF8.GetByteCount(kvp.Key) + Encoding.UTF8.GetByteCount(kvp.Value)) <= MaxTotalExtensionBytes)
             .WithMessage($"Total extension size cannot exceed {MaxTotalExtensionBytes / 1024}KB")
             .Must(ext => ext == null || !ext.Any(kvp => ContainsDangerousCharacters(kvp.Key) || ContainsDangerousCharacters(kvp.Value)))
             .WithMessage("Extensions cannot contain dangerous characters (<, >, &, ', \") for injection prevention")

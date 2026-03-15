@@ -16,6 +16,7 @@ public class CommandEnvelopeBuilderTests {
         Assert.Equal("TestCommand", envelope.CommandType);
         Assert.NotNull(envelope.Payload);
         Assert.NotEmpty(envelope.CorrelationId);
+        Assert.Equal(envelope.MessageId, envelope.CorrelationId);
         Assert.Equal("test-user", envelope.UserId);
     }
 
@@ -49,6 +50,7 @@ public class CommandEnvelopeBuilderTests {
             .Build();
 
         Assert.Equal("custom-msg-id", envelope.MessageId);
+        Assert.Equal("custom-msg-id", envelope.CorrelationId);
     }
 
     [Fact]
@@ -57,5 +59,32 @@ public class CommandEnvelopeBuilderTests {
         CommandEnvelope envelope2 = new CommandEnvelopeBuilder().Build();
 
         Assert.NotEqual(envelope1.MessageId, envelope2.MessageId);
+    }
+
+    [Fact]
+    public void Default_MessageId_is_not_guid_format() {
+        CommandEnvelope envelope = new CommandEnvelopeBuilder().Build();
+
+        bool isGuid = Guid.TryParse(envelope.MessageId, out _);
+        Assert.False(isGuid);
+    }
+
+    [Fact]
+    public void Default_CorrelationId_is_not_guid_format() {
+        CommandEnvelope envelope = new CommandEnvelopeBuilder().Build();
+
+        bool isGuid = Guid.TryParse(envelope.CorrelationId, out _);
+        Assert.False(isGuid);
+    }
+
+    [Fact]
+    public void WithCorrelationId_preserves_explicit_override() {
+        CommandEnvelope envelope = new CommandEnvelopeBuilder()
+            .WithMessageId("custom-msg-id")
+            .WithCorrelationId("custom-correlation-id")
+            .Build();
+
+        Assert.Equal("custom-msg-id", envelope.MessageId);
+        Assert.Equal("custom-correlation-id", envelope.CorrelationId);
     }
 }

@@ -15,17 +15,13 @@ namespace Hexalith.EventStore.Client.Handlers;
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type.</typeparam>
 public abstract class DomainProcessorBase<TState> : IDomainProcessor
-    where TState : class {
+    where TState : class, new() {
     /// <inheritdoc/>
     public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
         ArgumentNullException.ThrowIfNull(command);
-        TState? typedState = currentState switch {
-            null => null,
-            TState s => s,
-            JsonElement je => je.Deserialize<TState>(),
-            _ => throw new InvalidOperationException(
-                $"Expected state type '{typeof(TState).Name}' but received '{currentState.GetType().Name}'."),
-        };
+        TState? typedState = DomainProcessorStateRehydrator.RehydrateState<TState>(
+            currentState,
+            DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)));
         return HandleAsync(command, typedState);
     }
 

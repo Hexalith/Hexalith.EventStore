@@ -151,9 +151,8 @@ public class CommandRouterTests {
     }
 
     [Fact]
-    public async Task RouteCommandAsync_CommandEnvelope_HasCausationIdEqualToCorrelationId() {
+    public async Task RouteCommandAsync_CommandEnvelope_HasCausationIdEqualToMessageId() {
         // Arrange
-        string correlationId = Guid.NewGuid().ToString();
         CommandEnvelope? capturedEnvelope = null;
 
         IAggregateActor actorProxy = Substitute.For<IAggregateActor>();
@@ -165,14 +164,14 @@ public class CommandRouterTests {
             .Returns(actorProxy);
 
         var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
-        SubmitCommand command = CreateTestCommand(correlationId: correlationId);
+        SubmitCommand command = CreateTestCommand();
 
         // Act
         _ = await router.RouteCommandAsync(command);
 
-        // Assert
+        // Assert — CausationId is the MessageId of the originating SubmitCommand
         _ = capturedEnvelope.ShouldNotBeNull();
-        capturedEnvelope.CausationId.ShouldBe(correlationId);
+        capturedEnvelope.CausationId.ShouldBe(command.MessageId);
     }
 
     [Fact]
@@ -235,5 +234,22 @@ public class CommandRouterTests {
         capturedActorIds[0].ToString().ShouldBe("tenant-a:orders:item-001");
         capturedActorIds[1].ToString().ShouldBe("tenant-a:inventory:item-001");
         capturedActorIds[0].ShouldNotBe(capturedActorIds[1]);
+    }
+
+    // --- Negative path: malformed identity propagation ---
+
+    [Theory]
+    [InlineData("", "orders", "agg-001")]
+    [InlineData("tenant", "", "agg-001")]
+    [InlineData("tenant", "orders", "")]
+    public async Task RouteCommandAsync_EmptyIdentitySegment_ThrowsArgumentException(
+        string tenant, string domain, string aggregateId) {
+        // Arrange
+        (CommandRouter router, _, _) = CreateRouter();
+        SubmitCommand command = CreateTestCommand(tenant: tenant, domain: domain, aggregateId: aggregateId);
+
+        // Act & Assert — AggregateIdentity constructor validates and throws
+        _ = await Should.ThrowAsync<ArgumentException>(
+            () => router.RouteCommandAsync(command));
     }
 }

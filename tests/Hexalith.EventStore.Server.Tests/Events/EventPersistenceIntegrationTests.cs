@@ -1,5 +1,4 @@
 
-using System.Net;
 using System.Text.Json;
 
 using Dapr.Actors;
@@ -8,10 +7,13 @@ using Dapr.Actors.Client;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
+
+using StackExchange.Redis;
 
 namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
@@ -20,6 +22,15 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 /// </summary>
 [Collection("DaprTestContainer")]
 public class EventPersistenceIntegrationTests {
+    private static readonly JsonSerializerOptions JsonOptions = new() {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    private static readonly Lazy<Task<IConnectionMultiplexer>> RedisConnection =
+        new(async () => (IConnectionMultiplexer)await ConnectionMultiplexer
+            .ConnectAsync("localhost:6379,abortConnect=false")
+            .ConfigureAwait(false));
+
     private readonly DaprTestContainerFixture _fixture;
 
     public EventPersistenceIntegrationTests(DaprTestContainerFixture fixture) {
@@ -39,8 +50,9 @@ public class EventPersistenceIntegrationTests {
         });
 
         string aggregateId = $"redis-kv-test-{Guid.NewGuid():N}";
+        var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-            new ActorId($"tenant-a:counter:{aggregateId}"),
+            new ActorId(identity.ActorId),
             nameof(AggregateActor));
 
         _fixture.ThrowIfHostStopped();
@@ -58,10 +70,46 @@ public class EventPersistenceIntegrationTests {
             result.Accepted.ShouldBeTrue($"Command {i + 1} should succeed on Redis state store");
         }
 
-        // Assert - Tier 2 pub/sub path is exercised through FakeEventPublisher
+        // Assert - persisted state is append-only and metadata tracks the latest sequence.
+        (await GetCurrentSequenceAsync(identity.MetadataKey).ConfigureAwait(true)).ShouldBe(10);
+
+        EventEnvelope firstEvent = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}1").ConfigureAwait(true);
+        EventEnvelope tenthEvent = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}10").ConfigureAwait(true);
+
+        firstEvent.SequenceNumber.ShouldBe(1);
+        firstEvent.AggregateId.ShouldBe(aggregateId);
+        firstEvent.AggregateType.ShouldBe("counter");
+        firstEvent.TenantId.ShouldBe("tenant-a");
+        firstEvent.Domain.ShouldBe("counter");
+
+        tenthEvent.SequenceNumber.ShouldBe(10);
+        tenthEvent.AggregateId.ShouldBe(aggregateId);
+        tenthEvent.AggregateType.ShouldBe("counter");
+        tenthEvent.Domain.ShouldBe("counter");
+
+        CommandProcessingResult eleventhResult = await proxy.ProcessCommandAsync(
+            new CommandEnvelopeBuilder()
+                .WithTenantId("tenant-a")
+                .WithDomain("counter")
+                .WithAggregateId(aggregateId)
+                .WithCommandType("IncrementCounter")
+                .Build()).ConfigureAwait(true);
+
+        eleventhResult.Accepted.ShouldBeTrue();
+        (await GetCurrentSequenceAsync(identity.MetadataKey).ConfigureAwait(true)).ShouldBe(11);
+
+        EventEnvelope originalFirstEvent = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}1").ConfigureAwait(true);
+        EventEnvelope eleventhEvent = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}11").ConfigureAwait(true);
+
+        originalFirstEvent.SequenceNumber.ShouldBe(1);
+        originalFirstEvent.MessageId.ShouldBe(firstEvent.MessageId);
+        eleventhEvent.SequenceNumber.ShouldBe(11);
+        eleventhEvent.AggregateType.ShouldBe("counter");
+
+        // Tier 2 pub/sub path is exercised through FakeEventPublisher.
         string expectedTopic = "tenant-a.counter.events";
         _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);
-        _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(10);
+        _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(11);
     }
 
     /// <summary>
@@ -147,35 +195,47 @@ public class EventPersistenceIntegrationTests {
         CommandProcessingResult finalResult = await proxy.ProcessCommandAsync(finalCommand).ConfigureAwait(true);
         finalResult.Accepted.ShouldBeTrue("Post-snapshot command should succeed (state rehydrated)");
 
+        (await GetCurrentSequenceAsync(identity.MetadataKey).ConfigureAwait(true)).ShouldBe(21);
+        string snapshotJson = await GetStateJsonAsync(identity.SnapshotKey).ConfigureAwait(true);
+        snapshotJson.ShouldNotBeNullOrWhiteSpace();
+
         string expectedTopic = "tenant-a.counter.events";
         _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);
         _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(21);
     }
 
-    private async Task<string> GetStateJsonAsync(string key) {
-        using var http = new HttpClient();
-        string url = $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(key)}";
+    private static async Task<T> GetStateAsync<T>(string key) {
+        string json = await GetStateJsonAsync(key).ConfigureAwait(true);
+        T? value = JsonSerializer.Deserialize<T>(json, JsonOptions);
+        if (value is null) {
+            throw new ShouldAssertException($"State for key '{key}' could not be deserialized as {typeof(T).Name}.");
+        }
+
+        return value;
+    }
+
+    private static async Task<string> GetStateJsonAsync(string key) {
+        string[] segments = key.Split(':');
+        string actorId = $"{segments[0]}:{segments[1]}:{segments[2]}";
+        string redisKey = $"commandapi||AggregateActor||{actorId}||{key}";
+
+        IConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(true);
+        IDatabase database = multiplexer.GetDatabase();
 
         for (int attempt = 0; attempt < 10; attempt++) {
-            using HttpResponseMessage response = await http.GetAsync(url).ConfigureAwait(true);
-            response.StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.NoContent);
-
-            if (response.StatusCode == HttpStatusCode.OK) {
-                string json = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                if (!string.IsNullOrWhiteSpace(json)) {
-                    return json;
-                }
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(true);
+            if (!json.IsNullOrEmpty) {
+                return json!;
             }
 
             await Task.Delay(50).ConfigureAwait(true);
         }
 
-        throw new ShouldAssertException($"State for key '{key}' did not become available after retries.");
+        throw new ShouldAssertException($"Redis actor state for key '{key}' did not become available after retries.");
     }
 
-    private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
-        string metadataJson = await GetStateJsonAsync(metadataKey).ConfigureAwait(true);
-        using var doc = JsonDocument.Parse(metadataJson);
-        return doc.RootElement.GetProperty("CurrentSequence").GetInt64();
+    private static async Task<long> GetCurrentSequenceAsync(string metadataKey) {
+        AggregateMetadata metadata = await GetStateAsync<AggregateMetadata>(metadataKey).ConfigureAwait(true);
+        return metadata.CurrentSequence;
     }
 }

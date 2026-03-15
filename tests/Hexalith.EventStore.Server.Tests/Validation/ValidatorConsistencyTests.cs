@@ -185,4 +185,24 @@ public class ValidatorConsistencyTests {
         _validateQueryValidator.Validate(validateQuery).Errors
             .ShouldContain(e => e.PropertyName == "QueryType" && e.ErrorMessage.Contains("256"));
     }
+
+    [Fact]
+    public void SubmitCommandRequestValidator_ExtensionsUtf8ByteBudget_UsesActualUtf8Length() {
+        Dictionary<string, string> extensions = Enumerable.Range(0, 22)
+            .ToDictionary(
+                i => $"k{i}",
+                _ => new string('€', 1000));
+
+        var submitCommand = new SubmitCommandRequest(
+            MessageId: "msg-utf8-budget",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "ValidType",
+            Payload: JsonDocument.Parse("{}").RootElement,
+            Extensions: extensions);
+
+        _submitCommandValidator.Validate(submitCommand).Errors
+            .ShouldContain(e => e.PropertyName == "Extensions" && e.ErrorMessage.Contains("64KB"));
+    }
 }

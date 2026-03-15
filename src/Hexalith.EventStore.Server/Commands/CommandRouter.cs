@@ -27,8 +27,7 @@ public partial class CommandRouter(
 
         var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
         string actorId = identity.ActorId;
-        // At this layer, CausationId = CorrelationId (original submission, not replay)
-        string causationId = command.CorrelationId;
+        string causationId = command.MessageId;
 
         Log.CommandRouting(logger, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
 

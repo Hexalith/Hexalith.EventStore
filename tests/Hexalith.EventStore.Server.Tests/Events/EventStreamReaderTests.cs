@@ -481,6 +481,40 @@ public class EventStreamReaderTests {
         swSnapshot.ElapsedMilliseconds.ShouldBeLessThan(swFull.ElapsedMilliseconds + 1); // At least not slower
     }
 
+    // === EventDeserializationException coverage (Story 2.2 Task 4.5) ===
+
+    [Fact]
+    public async Task RehydrateAsync_StateManagerThrowsDuringEventRead_ThrowsEventDeserializationException() {
+        // Arrange -- simulate corrupt/incompatible data causing deserialization failure
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 2);
+
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(1)));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns<ConditionalValue<EventEnvelope>>(_ => throw new InvalidCastException("Simulated deserialization failure"));
+
+        // Act & Assert
+        EventDeserializationException ex = await Should.ThrowAsync<EventDeserializationException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.SequenceNumber.ShouldBe(2);
+        ex.ActorId.ShouldBe(TestIdentity.ActorId);
+        ex.InnerException.ShouldBeOfType<InvalidCastException>();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_StateManagerThrowsDuringMetadataRead_ThrowsEventDeserializationException() {
+        // Arrange -- simulate metadata deserialization failure
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns<ConditionalValue<AggregateMetadata>>(_ => throw new InvalidCastException("Simulated metadata corruption"));
+
+        // Act & Assert
+        EventDeserializationException ex = await Should.ThrowAsync<EventDeserializationException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.SequenceNumber.ShouldBe(-1);
+        ex.InnerException.ShouldBeOfType<InvalidCastException>();
+    }
+
     // === Full replay backward compatibility (Task 9) ===
 
     [Fact]

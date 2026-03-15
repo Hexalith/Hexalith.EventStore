@@ -44,13 +44,12 @@ public class CommandStatusController(
             ?? correlationId;
 
         try {
-            // Validate GUID format
-            if (!Guid.TryParse(correlationId, out _)) {
+            if (string.IsNullOrWhiteSpace(correlationId)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
                     "Bad Request",
-                    $"Correlation ID '{correlationId}' is not a valid GUID format.",
+                    "Correlation ID is required.",
                     requestCorrelationId);
             }
 

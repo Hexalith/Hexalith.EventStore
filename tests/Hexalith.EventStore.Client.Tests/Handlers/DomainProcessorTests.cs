@@ -24,6 +24,10 @@ public class DomainProcessorTests : IDisposable {
 
     private sealed class TestState {
         public string Value { get; init; } = "default";
+
+        public int AppliedCount { get; private set; }
+
+        public void Apply(TestEventApplied _) => AppliedCount++;
     }
 
     private sealed class WrongState {
@@ -31,6 +35,8 @@ public class DomainProcessorTests : IDisposable {
     }
 
     private sealed class TestEvent : IEventPayload;
+
+    private sealed class TestEventApplied : IEventPayload;
 
     private sealed class StateCapturingProcessor : DomainProcessorBase<TestState> {
         public TestState? CapturedState { get; private set; }
@@ -60,6 +66,30 @@ public class DomainProcessorTests : IDisposable {
             CausationId: null,
             UserId: "user-1",
             Extensions: null);
+
+    private static EventEnvelope CreateEnvelope<TEvent>(TEvent payload, long sequenceNumber = 1)
+        where TEvent : IEventPayload {
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+        return new EventEnvelope(
+            new EventMetadata(
+                MessageId: Guid.NewGuid().ToString(),
+                AggregateId: "agg-1",
+                AggregateType: "test-aggregate",
+                TenantId: "tenant-1",
+                Domain: "test-domain",
+                SequenceNumber: sequenceNumber,
+                GlobalPosition: sequenceNumber,
+                Timestamp: DateTimeOffset.UtcNow,
+                CorrelationId: "corr-1",
+                CausationId: "corr-1",
+                UserId: "user-1",
+                DomainServiceVersion: "v1",
+                EventTypeName: typeof(TEvent).FullName ?? typeof(TEvent).Name,
+                MetadataVersion: 1,
+                SerializationFormat: "json"),
+            bytes,
+            null);
+    }
 
     [Fact]
     public async Task DirectProcessor_ProcessAsync_ReturnsDomainResult() {
@@ -143,5 +173,36 @@ public class DomainProcessorTests : IDisposable {
 
         Assert.True(result.IsSuccess);
         Assert.Null(processor.CapturedState);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithEventEnvelopeEnumerable_RehydratesViaApply() {
+        var processor = new StateCapturingProcessor();
+        CommandEnvelope command = CreateTestCommand();
+        var currentState = new object[] { CreateEnvelope(new TestEventApplied()), CreateEnvelope(new TestEventApplied(), 2) };
+
+        DomainResult result = await processor.ProcessAsync(command, currentState);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(processor.CapturedState);
+        Assert.Equal(2, processor.CapturedState!.AppliedCount);
+    }
+
+    [Fact]
+    public async Task DomainProcessorBase_WithSnapshotAwareCurrentState_RehydratesSnapshotAndTail() {
+        var processor = new StateCapturingProcessor();
+        CommandEnvelope command = CreateTestCommand();
+        var currentState = new DomainServiceCurrentState(
+            new TestState { Value = "from-snapshot" },
+            [CreateEnvelope(new TestEventApplied())],
+            5,
+            6);
+
+        DomainResult result = await processor.ProcessAsync(command, currentState);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(processor.CapturedState);
+        Assert.Equal("from-snapshot", processor.CapturedState!.Value);
+        Assert.Equal(1, processor.CapturedState.AppliedCount);
     }
 }

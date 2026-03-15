@@ -29,7 +29,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 namespace Hexalith.EventStore.Server.Tests.Logging;
 /// <summary>
 /// Verifies that CausationId is present in all log messages that carry CorrelationId (AC #4).
-/// CausationId = CorrelationId for original submissions; different for replays.
+/// CausationId = MessageId for original submissions (set by ToCommandEnvelope); different for replays.
 /// </summary>
 public class CausationIdLoggingTests : IDisposable {
     private readonly List<LogEntry> _logEntries = [];
@@ -55,15 +55,17 @@ public class CausationIdLoggingTests : IDisposable {
         ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
         ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
         ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         SubmitCommand command = CreateSubmitCommand();
 
         // Act
         _ = await handler.Handle(command, CancellationToken.None);
 
-        // Assert - the "Command received" log must include CausationId
+        // Assert - the "Command received" log must include CausationId (= MessageId per SubmitCommandHandler)
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Command received"));
-        entry.Message.ShouldContain("CausationId=corr-123");
+        entry.Message.ShouldContain("CausationId=msg-causation-submit-1");
     }
 
     [Fact]

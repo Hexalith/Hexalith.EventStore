@@ -199,6 +199,10 @@ public class EventStoreAggregateTests : IDisposable {
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
     }
 
+    private sealed class CounterStateJson {
+        public int Count { get; init; }
+    }
+
     private static CommandEnvelope CreateCommand<T>(T payload) where T : notnull {
         byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(payload);
         return new CommandEnvelope(
@@ -226,6 +230,30 @@ public class EventStoreAggregateTests : IDisposable {
             CausationId: null,
             UserId: "user-1",
             Extensions: null);
+
+    private static EventEnvelope CreateHistoricalEnvelope<T>(T payload, long sequenceNumber)
+        where T : IEventPayload {
+        byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(payload);
+        return new EventEnvelope(
+            new EventMetadata(
+                MessageId: Guid.NewGuid().ToString(),
+                AggregateId: "agg-1",
+                AggregateType: "counter",
+                TenantId: "tenant-1",
+                Domain: "test",
+                SequenceNumber: sequenceNumber,
+                GlobalPosition: sequenceNumber,
+                Timestamp: DateTimeOffset.UtcNow,
+                CorrelationId: "corr-1",
+                CausationId: "corr-1",
+                UserId: "user-1",
+                DomainServiceVersion: "v1",
+                EventTypeName: typeof(T).FullName ?? typeof(T).Name,
+                MetadataVersion: 1,
+                SerializationFormat: "json"),
+            serialized,
+            null);
+    }
 
     // --- Command dispatch tests ---
 
@@ -800,6 +828,39 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, currentState);
 
         Assert.True(result.IsSuccess); // 1 increment → count=1, decrement succeeds
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SnapshotAwareCurrentState_RehydratesSnapshotPlusTail() {
+        var aggregate = new RecordAggregate();
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+        var currentState = new DomainServiceCurrentState(
+            new CounterStateJson { Count = 1 },
+            [CreateHistoricalEnvelope(new CounterIncremented(), 2)],
+            1,
+            2);
+
+        DomainResult result = await aggregate.ProcessAsync(command, currentState);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SnapshotAwareCurrentState_DaprRoundTrip_RehydratesSnapshotPlusTail() {
+        var aggregate = new RecordAggregate();
+        var currentState = new DomainServiceCurrentState(
+            new CounterStateJson { Count = 1 },
+            [CreateHistoricalEnvelope(new CounterIncremented(), 2)],
+            1,
+            2);
+        var webOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(currentState, webOptions);
+        object? wireState = JsonSerializer.Deserialize<JsonElement>(serialized, webOptions);
+        CommandEnvelope command = CreateCommand(new DecrementCounter());
+
+        DomainResult result = await aggregate.ProcessAsync(command, wireState);
+
+        Assert.True(result.IsSuccess);
     }
 
     // --- Story 1.4: Handle method with wrong return type silently skipped (AC#2: 2.4) ---

@@ -17,6 +17,8 @@ namespace Hexalith.EventStore.Sample.Counter;
 /// success events, rejection events, or no-op.
 /// </summary>
 public sealed class CounterProcessor : IDomainProcessor {
+    private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
+
     /// <inheritdoc/>
     public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
         ArgumentNullException.ThrowIfNull(command);
@@ -76,6 +78,10 @@ public sealed class CounterProcessor : IDomainProcessor {
             return typedState.Count;
         }
 
+        if (currentState is DomainServiceCurrentState snapshotAwareState) {
+            return RehydrateCount(snapshotAwareState);
+        }
+
         if (currentState is JsonElement json) {
             return RehydrateCountFromJson(json);
         }
@@ -83,7 +89,23 @@ public sealed class CounterProcessor : IDomainProcessor {
         return RehydrateCountFromObjectEnumerable(currentState);
     }
 
+    private static int RehydrateCount(DomainServiceCurrentState currentState) {
+        int countValue = RehydrateCount(currentState.SnapshotState);
+
+        foreach (EventEnvelope envelope in currentState.Events) {
+            ApplyEventToCount(envelope.Metadata.EventTypeName, ref countValue);
+        }
+
+        return Math.Max(0, countValue);
+    }
+
     private static int RehydrateCountFromJson(JsonElement json) {
+        if (IsDomainServiceCurrentState(json)) {
+            DomainServiceCurrentState currentState = json.Deserialize<DomainServiceCurrentState>(WebJsonOptions)
+                ?? throw new InvalidOperationException("Unable to deserialize snapshot-aware current state payload.");
+            return RehydrateCount(currentState);
+        }
+
         if (json.ValueKind == JsonValueKind.Object) {
             if (json.TryGetProperty("count", out JsonElement countElement)
                 && countElement.ValueKind == JsonValueKind.Number
@@ -121,6 +143,10 @@ public sealed class CounterProcessor : IDomainProcessor {
     }
 
     private static int RehydrateCountFromObjectEnumerable(object currentState) {
+        if (currentState is DomainServiceCurrentState snapshotAwareState) {
+            return RehydrateCount(snapshotAwareState);
+        }
+
         if (currentState is not System.Collections.IEnumerable events) {
             return 0;
         }
@@ -131,7 +157,9 @@ public sealed class CounterProcessor : IDomainProcessor {
                 continue;
             }
 
-            string? eventTypeName = evt.GetType().GetProperty("EventTypeName")?.GetValue(evt) as string;
+            string? eventTypeName = evt is EventEnvelope envelope
+                ? envelope.Metadata.EventTypeName
+                : evt.GetType().GetProperty("EventTypeName")?.GetValue(evt) as string;
             if (string.IsNullOrWhiteSpace(eventTypeName)) {
                 eventTypeName = evt.GetType().FullName ?? evt.GetType().Name;
             }
@@ -141,6 +169,11 @@ public sealed class CounterProcessor : IDomainProcessor {
 
         return Math.Max(0, countValue);
     }
+
+    private static bool IsDomainServiceCurrentState(JsonElement json) =>
+        json.ValueKind == JsonValueKind.Object
+        && json.TryGetProperty("currentSequence", out _)
+        && json.TryGetProperty("events", out _);
 
     private static void ApplyEventToCount(string eventTypeName, ref int countValue) {
         if (eventTypeName.EndsWith("CounterIncremented", StringComparison.Ordinal)) {

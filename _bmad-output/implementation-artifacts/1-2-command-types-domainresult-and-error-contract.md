@@ -1,6 +1,6 @@
 # Story 1.2: Command Types, DomainResult & Error Contract
 
-Status: review
+Status: done
 
 ## Story
 
@@ -323,6 +323,28 @@ Claude Opus 4.6 (1M context)
 - tests/Hexalith.EventStore.IntegrationTests/CommandApi/ValidationTests.cs
 - tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs
 
+### Senior Developer Review (AI)
+
+- Review date: 2026-03-15
+- Reviewer: GitHub Copilot (GPT-5.3-Codex)
+- Outcome: High/medium issues fixed automatically; story is now `done`.
+
+#### Findings Fixed
+
+1. Task 4.1 required a ULID default for `CommandEnvelopeBuilder._messageId`; implementation used GUID format.
+2. AC #6 required XML documentation on all public types; `SubmitCommandRequestValidator` lacked a type-level XML summary.
+
+#### Review Fix File List (2026-03-15)
+
+- src/Hexalith.EventStore.Testing/Builders/CommandEnvelopeBuilder.cs
+- src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandRequestValidator.cs
+- tests/Hexalith.EventStore.Testing.Tests/Builders/CommandEnvelopeBuilderTests.cs
+
+#### Validation
+
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj` passed (65/65).
+
 ### Change Log
 
 - 2026-03-15: Story 1.2 implemented — MessageId added to CommandEnvelope, SubmitCommand, SubmitCommandRequest; CausationId derivation fixed; ~60+ construction sites updated; 3 new tests added; build passes with 0 errors/warnings; all Tier 1 tests green (634 total)
+- 2026-03-15: Senior review fixes applied — CommandEnvelopeBuilder default MessageId now uses ULID helper, XML docs added to SubmitCommandRequestValidator, and builder tests updated/verified.

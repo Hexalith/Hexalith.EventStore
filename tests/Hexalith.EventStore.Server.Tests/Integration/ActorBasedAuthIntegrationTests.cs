@@ -131,6 +131,7 @@ public class ActorBasedAuthIntegrationTests : IClassFixture<ActorBasedAuthWebApp
             permissions: ["command:submit", "command:query"]);
 
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = domain,
             AggregateId = $"actor-auth-{Guid.NewGuid():N}",

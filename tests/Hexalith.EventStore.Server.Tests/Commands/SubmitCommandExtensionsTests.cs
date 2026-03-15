@@ -57,15 +57,15 @@ public class SubmitCommandExtensionsTests {
     }
 
     [Fact]
-    public void ToCommandEnvelope_CausationId_EqualsCorrelationId() {
+    public void ToCommandEnvelope_CausationId_EqualsMessageId() {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
         // Act
         var envelope = command.ToCommandEnvelope();
 
-        // Assert
-        envelope.CausationId.ShouldBe(command.CorrelationId);
+        // Assert — CausationId is the MessageId of the originating SubmitCommand
+        envelope.CausationId.ShouldBe(command.MessageId);
     }
 
     [Fact]

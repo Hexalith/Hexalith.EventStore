@@ -17,6 +17,8 @@ namespace Hexalith.EventStore.Server.Events;
 public partial class EventStreamReader(
     IActorStateManager stateManager,
     ILogger<EventStreamReader> logger) : IEventStreamReader {
+    private const int MaxConcurrentStateReads = 32;
+
     /// <inheritdoc/>
     public async Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null) {
         ArgumentNullException.ThrowIfNull(identity);
@@ -91,33 +93,39 @@ public partial class EventStreamReader(
         // Load events using parallel reads (F5: NFR6 performance)
         string keyPrefix = identity.EventStreamKeyPrefix;
 
-        Task<(int Sequence, EventEnvelope Event)>[] loadTasks = Enumerable.Range(startSequence, eventCount)
-            .Select(async seq => {
-                ConditionalValue<EventEnvelope> eventResult;
-                try {
-                    eventResult = await stateManager
-                        .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException) {
-                    throw new EventDeserializationException(seq, identity.ActorId, ex);
-                }
+        var events = new List<EventEnvelope>(eventCount);
+        int cursor = startSequence;
+        int endExclusive = startSequence + eventCount;
 
-                if (!eventResult.HasValue) {
-                    throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
-                }
+        while (cursor < endExclusive) {
+            int batchSize = Math.Min(MaxConcurrentStateReads, endExclusive - cursor);
+            Task<(int Sequence, EventEnvelope Event)>[] loadTasks = Enumerable.Range(cursor, batchSize)
+                .Select(async seq => {
+                    ConditionalValue<EventEnvelope> eventResult;
+                    try {
+                        eventResult = await stateManager
+                            .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException) {
+                        throw new EventDeserializationException(seq, identity.ActorId, ex);
+                    }
 
-                return (Sequence: seq, Event: eventResult.Value);
-            })
-            .ToArray();
+                    if (!eventResult.HasValue) {
+                        throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+                    }
 
-        (int Sequence, EventEnvelope Event)[] loadedEvents = await Task.WhenAll(loadTasks).ConfigureAwait(false);
+                    return (Sequence: seq, Event: eventResult.Value);
+                })
+                .ToArray();
 
-        // Sort by sequence to ensure strict order (AC #9)
-        var events = loadedEvents
-            .OrderBy(x => x.Sequence)
-            .Select(x => x.Event)
-            .ToList();
+            (int Sequence, EventEnvelope Event)[] loadedBatch = await Task.WhenAll(loadTasks).ConfigureAwait(false);
+            foreach ((int _, EventEnvelope evt) in loadedBatch.OrderBy(x => x.Sequence)) {
+                events.Add(evt);
+            }
+
+            cursor += batchSize;
+        }
 
         sw.Stop();
 

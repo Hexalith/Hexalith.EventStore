@@ -51,15 +51,40 @@ public class SubmitCommandRequestValidatorTests {
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_ExtensionSizeLimits_ReturnsValidationError() {
-        // Arrange - 50 entries * (6+1000) chars * 2 bytes > 64KB
+    public void SubmitCommandRequestValidator_ExtensionCountExceedsLimit_ReturnsValidationError() {
+        // Arrange - 51 entries exceeds MaxExtensionEntries (50)
         var extensions = new Dictionary<string, string>();
-        for (int i = 0; i < 50; i++) {
-            extensions[$"key{i:D3}"] = new string('x', 1000);
+        for (int i = 0; i < 51; i++) {
+            extensions[$"key{i:D3}"] = "value";
         }
 
         var request = new SubmitCommandRequest(
-            MessageId: "msg-3",
+            MessageId: "msg-3a",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: JsonDocument.Parse("{}").RootElement,
+            Extensions: extensions);
+
+        // Act
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Extensions" && e.ErrorMessage.Contains("50"));
+    }
+
+    [Fact]
+    public void SubmitCommandRequestValidator_ExtensionTotalSizeExceedsLimit_ReturnsValidationError() {
+        // Arrange - 50 entries * (6 + 1400) bytes = 70,300 > 64KB (65,536)
+        var extensions = new Dictionary<string, string>();
+        for (int i = 0; i < 50; i++) {
+            extensions[$"key{i:D3}"] = new string('x', 1400);
+        }
+
+        var request = new SubmitCommandRequest(
+            MessageId: "msg-3b",
             Tenant: "test-tenant",
             Domain: "test-domain",
             AggregateId: "agg-001",

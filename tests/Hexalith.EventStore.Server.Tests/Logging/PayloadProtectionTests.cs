@@ -55,6 +55,8 @@ public class PayloadProtectionTests : IDisposable {
         ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
         ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
         ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
         var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         var command = new SubmitCommand(
             MessageId: "msg-payload-submit-1",

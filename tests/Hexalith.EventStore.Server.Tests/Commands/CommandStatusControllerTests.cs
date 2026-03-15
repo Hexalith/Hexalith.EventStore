@@ -17,6 +17,7 @@ namespace Hexalith.EventStore.Server.Tests.Commands;
 public class CommandStatusControllerTests {
     private readonly InMemoryCommandStatusStore _statusStore = new();
     private readonly CommandStatusController _controller;
+    private const string CorrelationId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
     public CommandStatusControllerTests() {
         _controller = new CommandStatusController(_statusStore, NullLogger<CommandStatusController>.Instance);
@@ -26,7 +27,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_ExistingStatus_Returns200WithRecord() {
         // Arrange
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         SetupHttpContext("tenant-a");
         await _statusStore.WriteStatusAsync(
             "tenant-a", correlationId,
@@ -46,7 +47,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetails() {
         // Arrange
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         SetupHttpContext("tenant-a");
 
         // Act
@@ -62,7 +63,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_TenantMismatch_Returns404ProblemDetails() {
         // Arrange - status belongs to tenant-a
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         await _statusStore.WriteStatusAsync(
             "tenant-a", correlationId,
             new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null),
@@ -82,7 +83,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_NoTenantClaims_Returns403ProblemDetails() {
         // Arrange - user with no tenant claims
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         SetupHttpContextWithClaims([]); // no tenant claims
 
         // Act
@@ -98,7 +99,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_MultipleTenantClaims_TriesAllTenants() {
         // Arrange - status belongs to tenant-b, user has [tenant-a, tenant-b]
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         await _statusStore.WriteStatusAsync(
             "tenant-b", correlationId,
             new CommandStatusRecord(CommandStatus.Processing, DateTimeOffset.UtcNow, "agg-multi", null, null, null, null),
@@ -118,7 +119,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_CompletedStatus_IncludesEventCount() {
         // Arrange
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         SetupHttpContext("tenant-a");
         await _statusStore.WriteStatusAsync(
             "tenant-a", correlationId,
@@ -138,7 +139,7 @@ public class CommandStatusControllerTests {
     [Fact]
     public async Task GetStatus_RejectedStatus_IncludesRejectionEventType() {
         // Arrange
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         SetupHttpContext("tenant-a");
         await _statusStore.WriteStatusAsync(
             "tenant-a", correlationId,
@@ -156,24 +157,45 @@ public class CommandStatusControllerTests {
     }
 
     [Fact]
-    public async Task GetStatus_InvalidCorrelationIdFormat_Returns400() {
+    public async Task GetStatus_RejectedInfrastructureFailure_IncludesFailureReason() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "agg-rej", null, null, "Service unavailable", null),
+            CancellationToken.None);
+
+        // Act
+        IActionResult result = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        CommandStatusResponse response = okResult.Value.ShouldBeOfType<CommandStatusResponse>();
+        response.Status.ShouldBe("Rejected");
+        response.FailureReason.ShouldBe("Service unavailable");
+        response.RejectionEventType.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetStatus_WhitespaceCorrelationId_Returns400() {
         // Arrange
         SetupHttpContext("tenant-a");
 
         // Act
-        IActionResult result = await _controller.GetStatus("not-a-guid", CancellationToken.None);
+        IActionResult result = await _controller.GetStatus("   ", CancellationToken.None);
 
         // Assert
         ObjectResult objResult = result.ShouldBeOfType<ObjectResult>();
         objResult.StatusCode.ShouldBe(400);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
-        pd.Detail!.ShouldContain("not a valid GUID");
+        pd.Detail.ShouldBe("Correlation ID is required.");
     }
 
     [Fact]
     public async Task GetStatus_TimedOutStatus_IncludesIso8601Duration() {
         // Arrange
-        string correlationId = Guid.NewGuid().ToString();
+        string correlationId = CorrelationId;
         SetupHttpContext("tenant-a");
         await _statusStore.WriteStatusAsync(
             "tenant-a", correlationId,

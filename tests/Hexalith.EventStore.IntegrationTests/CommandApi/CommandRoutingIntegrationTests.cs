@@ -18,6 +18,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
         string domain = "test-domain",
         string aggregateId = "agg-001",
         string commandType = "CreateOrder") => new {
+            messageId = Guid.NewGuid().ToString(),
             tenant,
             domain,
             aggregateId,
@@ -135,7 +136,7 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
 
     [Fact]
     public async Task PostCommands_SameCorrelationIdDifferentCausationId_BothProcessed() {
-        // Arrange -- each request gets a unique correlationId/causationId from pipeline
+        // Arrange -- each request gets a unique MessageId, which becomes CausationId in the routed envelope.
         var fakeActor = new FakeAggregateActor { SimulateIdempotency = true };
         factory.Router.FakeActor = fakeActor;
         HttpClient client = CreateAuthenticatedClient();
@@ -168,6 +169,6 @@ public class CommandRoutingIntegrationTests(JwtAuthenticatedWebApplicationFactor
         fakeActor.ReceivedCommands.ShouldNotBeEmpty();
         Contracts.Commands.CommandEnvelope envelope = fakeActor.ReceivedCommands.First();
         envelope.UserId.ShouldBe("test-user");
-        envelope.CausationId.ShouldBe(envelope.CorrelationId);
+        envelope.CausationId.ShouldBe(envelope.MessageId, "CausationId should be the MessageId of the originating SubmitCommand");
     }
 }

@@ -156,24 +156,26 @@ public class EventPersisterTests {
         var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
 
         // Act
-        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
+        EventPersistResult result = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
 
-        // Assert
-        await stateManager.Received(1).SetStateAsync(
-            Arg.Any<string>(),
-            Arg.Is<EventEnvelope>(e =>
-                e.AggregateId == "agg-001" &&
-                e.TenantId == "test-tenant" &&
-                e.Domain == "test-domain" &&
-                e.SequenceNumber == 1 &&
-                e.CorrelationId == "corr-abc" &&
-                e.CausationId == "cause-xyz" &&
-                e.UserId == "alice" &&
-                e.DomainServiceVersion == "v2" &&
-                e.EventTypeName.Contains("TestEvent") &&
-                e.SerializationFormat == "json" &&
-                e.Timestamp > DateTimeOffset.MinValue),
-            Arg.Any<CancellationToken>());
+        // Assert -- verify all 15 metadata fields (FR11 + SerializationFormat)
+        EventEnvelope envelope = result.PersistedEnvelopes.ShouldHaveSingleItem();
+        envelope.MessageId.ShouldNotBeNullOrWhiteSpace();       // 1. MessageId (ULID)
+        envelope.AggregateId.ShouldBe("agg-001");               // 2. AggregateId
+        envelope.AggregateType.ShouldBe("test-domain");        // 3. AggregateType (domain)
+        envelope.TenantId.ShouldBe("test-tenant");               // 4. TenantId
+        envelope.Domain.ShouldBe("test-domain");                 // 5. Domain
+        envelope.SequenceNumber.ShouldBe(1);                     // 6. SequenceNumber
+        envelope.GlobalPosition.ShouldBe(0);                     // 7. GlobalPosition (v1 hardcoded)
+        envelope.Timestamp.ShouldBeGreaterThan(DateTimeOffset.MinValue); // 8. Timestamp
+        envelope.CorrelationId.ShouldBe("corr-abc");             // 9. CorrelationId
+        envelope.CausationId.ShouldBe("cause-xyz");              // 10. CausationId
+        envelope.UserId.ShouldBe("alice");                       // 11. UserId
+        envelope.DomainServiceVersion.ShouldBe("v2");            // 12. DomainServiceVersion
+        envelope.EventTypeName.ShouldContain("TestEvent");       // 13. EventTypeName
+        envelope.MetadataVersion.ShouldBe(1);                    // 14. MetadataVersion
+        envelope.SerializationFormat.ShouldBe("json");           // 15. SerializationFormat
+        envelope.Payload.Length.ShouldBeGreaterThan(0);          // Payload populated
     }
 
     [Fact]

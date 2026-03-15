@@ -58,7 +58,7 @@ public sealed class FakeEventPersister : IEventPersister {
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
-                AggregateType: "unknown",
+                AggregateType: identity.Domain,
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: currentSequence,

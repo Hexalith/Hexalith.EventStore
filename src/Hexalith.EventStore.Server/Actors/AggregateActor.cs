@@ -4,6 +4,8 @@ using System.Diagnostics;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
+using ContractEventEnvelope = Hexalith.EventStore.Contracts.Events.EventEnvelope;
+using ContractEventMetadata = Hexalith.EventStore.Contracts.Events.EventMetadata;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
@@ -229,26 +231,13 @@ public partial class AggregateActor(
 
                     lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
 
-                    // Maintain domain processor contract compatibility: always pass List<EventEnvelope> (or null)
-                    // to the domain service. Snapshot-assisted rehydration is still used for lastSnapshotSequence
-                    // tracking and optimized actor-level state loading, but domain invocation remains backward-compatible.
-                    if (rehydrationResult?.UsedSnapshot == true)
-                    {
-                        logger.LogDebug(
-                            "Snapshot-assisted rehydration detected for ActorId={ActorId}, CorrelationId={CorrelationId}. Using full replay event list for domain compatibility.",
-                            Host.Id,
-                            command.CorrelationId);
-
-                        RehydrationResult? fullReplayResult = await eventStreamReader
-                            .RehydrateAsync(command.AggregateIdentity)
-                            .ConfigureAwait(false);
-
-                        currentState = fullReplayResult?.Events;
-                    }
-                    else
-                    {
-                        currentState = rehydrationResult?.Events;
-                    }
+                    currentState = rehydrationResult is null
+                        ? null
+                        : new DomainServiceCurrentState(
+                            rehydrationResult.SnapshotState,
+                            [.. rehydrationResult.Events.Select(ToContractEventEnvelope)],
+                            rehydrationResult.LastSnapshotSequence,
+                            rehydrationResult.CurrentSequence);
 
                     logger.LogInformation(
                         "State rehydrated: {StateType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
@@ -1194,6 +1183,27 @@ public partial class AggregateActor(
 
         return [.. events];
     }
+
+    private static ContractEventEnvelope ToContractEventEnvelope(EventEnvelope envelope) =>
+        new(
+            new ContractEventMetadata(
+                envelope.MessageId,
+                envelope.AggregateId,
+                envelope.AggregateType,
+                envelope.TenantId,
+                envelope.Domain,
+                envelope.SequenceNumber,
+                envelope.GlobalPosition,
+                envelope.Timestamp,
+                envelope.CorrelationId,
+                envelope.CausationId,
+                envelope.UserId,
+                envelope.DomainServiceVersion,
+                envelope.EventTypeName,
+                envelope.MetadataVersion,
+                envelope.SerializationFormat),
+            envelope.Payload,
+            envelope.Extensions is null ? null : new Dictionary<string, string>(envelope.Extensions));
 
     /// <summary>
     /// Story 4.5: Handles infrastructure failures by routing to dead-letter and transitioning to Rejected.

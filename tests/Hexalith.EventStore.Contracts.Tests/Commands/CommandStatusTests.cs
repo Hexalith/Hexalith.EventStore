@@ -34,4 +34,23 @@ public class CommandStatusTests {
         Assert.Equal(CommandStatus.PublishFailed, values[6]);
         Assert.Equal(CommandStatus.TimedOut, values[7]);
     }
+
+    [Fact]
+    public void CommandStatus_TerminalStatuses_AreIdentifiedCorrectly() {
+        CommandStatus[] terminalStatuses = new[] {
+            CommandStatus.Completed,
+            CommandStatus.Rejected,
+            CommandStatus.PublishFailed,
+            CommandStatus.TimedOut,
+        };
+
+        Assert.Equal(4, terminalStatuses.Length);
+        Assert.DoesNotContain(CommandStatus.Received, terminalStatuses);
+        Assert.DoesNotContain(CommandStatus.Processing, terminalStatuses);
+        Assert.DoesNotContain(CommandStatus.EventsStored, terminalStatuses);
+        Assert.DoesNotContain(CommandStatus.EventsPublished, terminalStatuses);
+        Assert.Equal(
+            Enum.GetValues<CommandStatus>().Where(status => (int)status >= (int)CommandStatus.Completed),
+            terminalStatuses);
+    }
 }

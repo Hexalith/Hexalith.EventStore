@@ -1,6 +1,7 @@
 
 using System.Text;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 
 namespace Hexalith.EventStore.Testing.Builders;
@@ -8,13 +9,14 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// Fluent builder for creating <see cref="CommandEnvelope"/> instances with sensible defaults for testing.
 /// </summary>
 public sealed class CommandEnvelopeBuilder {
-    private string _messageId = Guid.NewGuid().ToString();
+    private string _messageId = UniqueIdHelper.GenerateSortableUniqueStringId();
     private string _tenantId = "test-tenant";
     private string _domain = "test-domain";
     private string _aggregateId = "test-agg-001";
     private string _commandType = "TestCommand";
     private byte[] _payload = Encoding.UTF8.GetBytes("{}");
-    private string _correlationId = Guid.NewGuid().ToString();
+    private string? _correlationId;
+    private bool _correlationIdExplicitlySet;
     private string? _causationId;
     private string _userId = "test-user";
     private Dictionary<string, string>? _extensions;
@@ -52,7 +54,11 @@ public sealed class CommandEnvelopeBuilder {
     /// <summary>Sets the correlation identifier.</summary>
     /// <param name="correlationId">The correlation identifier.</param>
     /// <returns>This builder instance.</returns>
-    public CommandEnvelopeBuilder WithCorrelationId(string correlationId) { _correlationId = correlationId; return this; }
+    public CommandEnvelopeBuilder WithCorrelationId(string correlationId) {
+        _correlationId = correlationId;
+        _correlationIdExplicitlySet = true;
+        return this;
+    }
 
     /// <summary>Sets the causation identifier.</summary>
     /// <param name="causationId">The causation identifier.</param>
@@ -78,7 +84,7 @@ public sealed class CommandEnvelopeBuilder {
         AggregateId: _aggregateId,
         CommandType: _commandType,
         Payload: _payload,
-        CorrelationId: _correlationId,
+        CorrelationId: _correlationIdExplicitlySet ? _correlationId ?? _messageId : _messageId,
         CausationId: _causationId,
         UserId: _userId,
         Extensions: _extensions);

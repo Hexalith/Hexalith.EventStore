@@ -3,7 +3,9 @@ extern alias commandapi;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Actors.Authorization;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
@@ -66,6 +68,17 @@ public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<Command
             _ = MockProxyFactory
                 .CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
                 .Returns(FakeRbacActor);
+
+            // Mock IAggregateActor so CommandRouter can complete the pipeline after auth passes.
+            // Intentionally always returns Accepted: these tests validate authorization flows,
+            // not command processing. Command processing integration is covered by Tier 2/3 tests.
+            IAggregateActor fakeAggregateActor = Substitute.For<IAggregateActor>();
+            _ = fakeAggregateActor
+                .ProcessCommandAsync(Arg.Any<Contracts.Commands.CommandEnvelope>())
+                .Returns(new CommandProcessingResult(true, CorrelationId: "test-corr"));
+            _ = MockProxyFactory
+                .CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+                .Returns(fakeAggregateActor);
 
             _ = services.AddSingleton(MockProxyFactory);
         });

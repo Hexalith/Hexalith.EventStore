@@ -8,8 +8,8 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// <param name="Timestamp">When this status was recorded.</param>
 /// <param name="AggregateId">The aggregate identifier (nullable for non-terminal states).</param>
 /// <param name="EventCount">Number of events produced (Completed status only).</param>
-/// <param name="RejectionEventType">Fully qualified rejection event type name (Rejected status only).</param>
-/// <param name="FailureReason">Description of publish failure (PublishFailed status only).</param>
+/// <param name="RejectionEventType">Fully qualified rejection event type name for domain rejections.</param>
+/// <param name="FailureReason">Description of an infrastructure or publication failure when available.</param>
 /// <param name="TimeoutDuration">Duration before timeout occurred (TimedOut status only).</param>
 public record CommandStatusRecord(
     CommandStatus Status,
