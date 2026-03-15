@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
@@ -18,8 +19,10 @@ public partial class SubmitCommandHandler(
     ICommandStatusStore statusStore,
     ICommandArchiveStore archiveStore,
     ICommandRouter commandRouter,
-    ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
-    public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
+    ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
+{
+    public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(request);
 
         string causationId = request.CorrelationId; // For original submissions, CausationId = CorrelationId
@@ -29,7 +32,8 @@ public partial class SubmitCommandHandler(
         var result = new SubmitCommandResult(request.CorrelationId);
 
         // Write "Received" status before returning (advisory per rule #12)
-        try {
+        try
+        {
             await statusStore.WriteStatusAsync(
                 request.Tenant,
                 request.CorrelationId,
@@ -43,38 +47,62 @@ public partial class SubmitCommandHandler(
                     TimeoutDuration: null),
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
+        catch (OperationCanceledException)
+        {
             throw;
         }
-        catch (Exception ex) {
+        catch (Exception ex)
+        {
             Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
         // Archive original command for replay (advisory per rule #12)
-        try {
+        try
+        {
             await archiveStore.WriteCommandAsync(
                 request.Tenant,
                 request.CorrelationId,
                 request.ToArchivedCommand(),
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
+        catch (OperationCanceledException)
+        {
             throw;
         }
-        catch (Exception ex) {
+        catch (Exception ex)
+        {
             Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
         // Route to aggregate actor (NOT advisory -- failure must propagate)
-        _ = await commandRouter.RouteCommandAsync(request, cancellationToken)
+        CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);
+
+        if (!processingResult.Accepted)
+        {
+            CommandStatusRecord? status = await statusStore
+                .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (status is { Status: CommandStatus.Rejected, RejectionEventType: not null })
+            {
+                throw new DomainCommandRejectedException(
+                    request.CorrelationId,
+                    request.Tenant,
+                    status.RejectionEventType,
+                    processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
+            }
+
+            throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
+        }
 
         Log.CommandRouted(logger, request.CorrelationId);
 
         return result;
     }
 
-    private static partial class Log {
+    private static partial class Log
+    {
         [LoggerMessage(
             EventId = 1100,
             Level = LogLevel.Information,
