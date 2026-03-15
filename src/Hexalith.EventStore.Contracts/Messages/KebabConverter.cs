@@ -7,7 +7,7 @@ namespace Hexalith.EventStore.Contracts.Messages;
 /// Unlike NamingConventionEngine, this does NOT strip suffixes — raw type name conversion only.
 /// </summary>
 internal static partial class KebabConverter {
-    [GeneratedRegex(@"(?<=[a-z0-9])([A-Z])|(?<=[A-Z])([A-Z][a-z])|(?<=[a-zA-Z])([0-9])", RegexOptions.Compiled)]
+    [GeneratedRegex(@"(?<=[a-z0-9])([A-Z])|(?<=[A-Z])([A-Z][a-z])|(?<=[a-zA-Z])([0-9])")]
     private static partial Regex WordBoundaryRegex();
 
     /// <summary>

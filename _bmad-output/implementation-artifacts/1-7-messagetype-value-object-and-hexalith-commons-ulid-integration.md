@@ -231,6 +231,7 @@ Claude Opus 4.6 (1M context)
 
 - 2026-03-15: Story 1.7 implemented — MessageType value object, KebabConverter, MessageTypeJsonConverter, UniqueIdHelper integration, 44 new tests
 - 2026-03-15: Code review fixes applied — enforced `MessageType.Assemble` invariants for generated names, rejected JSON `null` for `MessageType`, added focused regression tests, and synchronized review artifacts
+- 2026-03-15: Second code review — fixed non-Base32 test input length (27→26 chars), removed redundant `RegexOptions.Compiled` from `[GeneratedRegex]` attributes in MessageType.cs and KebabConverter.cs
 
 ### File List
 

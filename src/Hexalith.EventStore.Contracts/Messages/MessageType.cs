@@ -15,13 +15,13 @@ public sealed partial record MessageType {
     /// </summary>
     public const int MaxLength = 192;
 
-    [GeneratedRegex(@"^[a-z0-9]+$", RegexOptions.Compiled)]
+    [GeneratedRegex(@"^[a-z0-9]+$")]
     private static partial Regex DomainRegex();
 
-    [GeneratedRegex(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled)]
+    [GeneratedRegex(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")]
     private static partial Regex NameRegex();
 
-    [GeneratedRegex(@"-v(\d+)$", RegexOptions.Compiled)]
+    [GeneratedRegex(@"-v(\d+)$")]
     private static partial Regex VersionSuffixRegex();
 
     private MessageType(string domain, string name, int version) {

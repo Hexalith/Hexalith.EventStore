@@ -68,7 +68,7 @@ public class UniqueIdHelperIntegrationTests {
 
     [Fact]
     public void ExtractTimestamp_NonBase32Characters_Throws() {
-        // Contains characters not in Crockford Base32 (e.g., 'U', 'I', 'O', 'L')
-        Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp("!!!!!!!!!!!!!!!!!!!!!!!!!!!"));
+        // Exactly 26 chars, all invalid for Crockford Base32
+        Assert.ThrowsAny<Exception>(() => UniqueIdHelper.ExtractTimestamp("!!!!!!!!!!!!!!!!!!!!!!!!!!"));
     }
 }
