@@ -355,11 +355,11 @@ So that I can understand the event sourcing data model and start building agains
 **And** events follow past-tense naming convention per enforcement rule 8
 
 **And** a `MessageType` value object parses and validates the `{domain}-{name}-v{ver}` kebab convention (D13), exposing `Domain`, `Name`, and `Version` properties, with factory validation rejecting malformed strings
-**And** a `UlidId` value object wraps ULID generation and parsing (D12), used for messageId, aggregateId, correlationId
+**And** ULID generation and parsing uses `UniqueIdHelper` from `Hexalith.Commons.UniqueIds` (D12) — messageId, aggregateId, correlationId are `string`-typed fields validated as ULID format
 
 **Given** all contract types are defined
 **When** I run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/`
-**Then** all serialization round-trip tests pass for both `EventMetadata` and payload JSON documents independently. `MessageType` parsing tests cover valid conventions, malformed strings, and edge cases. `UlidId` generation and parsing tests pass
+**Then** all serialization round-trip tests pass for both `EventMetadata` and payload JSON documents independently. `MessageType` parsing tests cover valid conventions, malformed strings, and edge cases. ULID fields are validated using `UniqueIdHelper.ExtractTimestamp()` (which throws on invalid format)
 **And** identity tuple parsing and key derivation tests pass
 
 ---
@@ -558,10 +558,10 @@ So that the end-to-end command-to-event pipeline is functional.
 
 ---
 
-### Story 1.7: MessageType Value Object & ULID Integration
+### Story 1.7: MessageType Value Object & Hexalith.Commons ULID Integration
 
 As a domain service developer,
-I want a `MessageType` value object that validates `{domain}-{name}-v{ver}` and a `UlidId` type for identity fields,
+I want a `MessageType` value object that validates `{domain}-{name}-v{ver}` and ULID generation via `Hexalith.Commons.UniqueIds` for identity fields,
 So that message routing is safe and IDs are lexicographically sortable.
 
 **FRs:** FR2 (validation), D12, D13
@@ -574,16 +574,20 @@ So that message routing is safe and IDs are lexicographically sortable.
 **And** `MessageType.Parse("invalid")` throws with descriptive error
 **And** `MessageType.Assemble("tenants", typeof(TenantCreated), 1)` produces `tenants-tenant-created-v1` (PascalCase → kebab conversion)
 
-**Given** the Contracts package provides a `UlidId` value object
-**When** I call `UlidId.New()`
-**Then** it generates a valid ULID
-**And** `UlidId.Parse(string)` validates ULID format and rejects malformed strings
-**And** ULIDs sort lexicographically by creation time
+**Given** the Contracts package depends on `Hexalith.Commons.UniqueIds`
+**When** I call `UniqueIdHelper.GenerateSortableUniqueStringId()`
+**Then** it generates a valid 26-character Crockford Base32 ULID
+**And** `UniqueIdHelper.ExtractTimestamp(string)` extracts the creation timestamp from a ULID string
+**And** `UniqueIdHelper.ToGuid(string)` converts a ULID string to System.Guid
+**And** `UniqueIdHelper.ToSortableUniqueId(Guid)` converts a Guid back to a ULID string
+**And** ULIDs sort lexicographically by creation time (monotonic increment within same millisecond)
 
 **Given** all new types are in the Contracts package
 **When** I check dependencies
-**Then** the Contracts package has zero dependencies beyond the ULID library
-**And** all serialization round-trip tests pass for `MessageType` and `UlidId`
+**Then** the Contracts package depends on `Hexalith.Commons.UniqueIds` (which transitively brings `ByteAether.Ulid`)
+**And** there is no custom `UlidId` value object — ULID fields are `string`-typed throughout Contracts
+**And** all serialization round-trip tests pass for `MessageType`
+**And** ULID generation and validation tests use `UniqueIdHelper` directly
 
 ---
 

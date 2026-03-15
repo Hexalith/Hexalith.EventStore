@@ -485,7 +485,7 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 
 | Package                         | Purpose                                                                                                                                             | Consumers                 |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme                                                                                                | Domain service developers |
+| `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme. Depends on `Hexalith.Commons.UniqueIds` for ULID generation (D12)                             | Domain service developers |
 | `Hexalith.EventStore.Client`    | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
 | `Hexalith.EventStore.Server`    | Core EventStore server with actor processing pipeline                                                                                               | Platform operators        |
 | `Hexalith.EventStore.Aspire`    | Aspire AppHost integration and service defaults                                                                                                     | Both                      |

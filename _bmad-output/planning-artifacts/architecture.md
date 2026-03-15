@@ -3,9 +3,10 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-02-12'
-amendedAt: '2026-02-15'
+amendedAt: '2026-03-15'
 amendments:
   - D11: E2E Security Testing Infrastructure (Keycloak in Aspire)
+  - D12: ULID Everywhere -- Hexalith.Commons.UniqueIds (sprint-change-proposal-2026-03-15)
 inputDocuments:
   - product-brief-Hexalith.EventStore-2026-02-11.md
   - prd.md
@@ -331,6 +332,7 @@ Hexalith.EventStore/
 | D9 | NuGet Package Versioning | MinVer (version from Git tags, zero config) | -- |
 | D10 | CI/CD Pipeline | GitHub Actions | -- |
 | D11 | E2E Security Testing Infrastructure | Keycloak in Aspire with realm-as-code | Story 5.1 Task 7, AC #5/#6, runtime security verification for all Epic 5 stories |
+| D12 | ULID Everywhere | `Hexalith.Commons.UniqueIds` for all ID generation | Story 1.7, D13 message type prefix extraction |
 
 **Decisions Already Made (PRD + Starter Template):**
 
@@ -462,6 +464,18 @@ Hexalith.EventStore/
 - **Scope:** Shared foundation for all security-requiring stories across Epic 5 and beyond. The realm export is a living artifact -- new users/roles added as stories progress
 - **What this proves that symmetric keys cannot:** Real OIDC discovery flow, asymmetric key validation via JWKS, IdP-issued claims structure, issuer URL validation, token expiry management by Keycloak
 - **Rationale:** Minimal investment (one package, one realm JSON, environment variable overrides) that unlocks runtime verification for the entire security story backlog. No auth code changes. Existing fast tests remain untouched
+
+**D12: ULID Everywhere -- Hexalith.Commons.UniqueIds**
+
+- **Context:** The system needs lexicographically sortable, distributed-safe unique identifiers for messageId, aggregateId, and correlationId. ULIDs (26-character Crockford Base32) provide timestamp-embedded, monotonically ordered IDs ideal for event sourcing streams.
+- **Decision:** Use `Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId()` (NuGet: `Hexalith.Commons.UniqueIds` v2.13.0+) as the single ULID generation mechanism. The Contracts package takes a dependency on `Hexalith.Commons.UniqueIds` -- it does NOT depend directly on a raw ULID library. No custom `UlidId` value object is created; ULID fields are `string`-typed throughout Contracts, consistent with the existing `AggregateIdentity` pattern.
+- **Available API surface:**
+  - `UniqueIdHelper.GenerateSortableUniqueStringId()` -- 26-char Crockford Base32 ULID (monotonic increment within same millisecond)
+  - `UniqueIdHelper.ExtractTimestamp(string)` -- extract creation UTC timestamp from ULID string
+  - `UniqueIdHelper.ToGuid(string)` -- convert ULID string to System.Guid (identity-preserving, not sort-preserving)
+  - `UniqueIdHelper.ToSortableUniqueId(Guid)` -- convert Guid to ULID string
+- **Fields using ULID format:** messageId (all envelopes), aggregateId, correlationId, causationId
+- **Rationale:** `Hexalith.Commons.UniqueIds` is an organizational shared library from the Hexalith ecosystem, already published on NuGet with monotonic ULID generation, validation, and Guid conversion. Using it avoids building a redundant custom type and aligns with organizational package reuse.
 
 ### Decision Impact Analysis
 
@@ -710,7 +724,7 @@ Hexalith.EventStore/
 │
 ├── src/
 │   ├── Hexalith.EventStore.Contracts/          # NuGet: Event envelope, types, identity
-│   │   ├── Hexalith.EventStore.Contracts.csproj
+│   │   ├── Hexalith.EventStore.Contracts.csproj  # Depends on Hexalith.Commons.UniqueIds (D12)
 │   │   ├── Events/
 │   │   │   ├── EventEnvelope.cs                # 11-field metadata + payload + extensions
 │   │   │   ├── EventMetadata.cs                # Metadata record type

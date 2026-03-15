@@ -42,14 +42,15 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   # Epic 1: Developer SDK, Core Contracts & Local Development Setup
   # REOPENED: Story 1.7 added via sprint-change-proposal-2026-03-14.md (DDD Message Design)
+  # UPDATED: Story 1.7 refined via sprint-change-proposal-2026-03-15.md (Hexalith.Commons.UniqueIds for ULID)
   epic-1: in-progress
-  1-1-solution-structure-and-build-infrastructure: done
+  1-1-solution-structure-and-build-infrastructure: done  # ACs updated: UlidId → UniqueIdHelper (sprint-change-proposal-2026-03-15)
   1-2-contracts-package-event-envelope-and-core-types: done
   1-3-client-package-domain-processor-contract-and-registration: done
   1-4-testing-package-in-memory-test-helpers: done
   1-5-aspire-apphost-and-servicedefaults-scaffolding: done
   1-6-contracts-unit-tests-tier-1: done
-  1-7-messagetype-value-object-and-ulid-integration: backlog
+  1-7-messagetype-value-object-and-hexalith-commons-ulid-integration: ready-for-dev
   epic-1-retrospective: optional
 
   # Epic 2: Command API Gateway & Status Tracking
