@@ -14,7 +14,8 @@ public record SubmitCommand(
     byte[] Payload,
     string CorrelationId,
     string UserId,
-    Dictionary<string, string>? Extensions = null) : IRequest<SubmitCommandResult>;
+    Dictionary<string, string>? Extensions = null,
+    bool IsGlobalAdmin = false) : IRequest<SubmitCommandResult>;
 
 /// <summary>
 /// Result of processing a <see cref="SubmitCommand"/>.

@@ -8,12 +8,14 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Commands;
 
-public class SubmitCommandExtensionsTests {
+public class SubmitCommandExtensionsTests
+{
     private const string TestActivitySourceName = "Hexalith.EventStore.Tests.SubmitCommandExtensions";
 
     private static SubmitCommand CreateTestCommand(
         string userId = "test-user",
-        Dictionary<string, string>? extensions = null) => new(
+        Dictionary<string, string>? extensions = null,
+        bool isGlobalAdmin = false) => new(
         MessageId: Guid.NewGuid().ToString(),
         Tenant: "test-tenant",
         Domain: "test-domain",
@@ -22,10 +24,12 @@ public class SubmitCommandExtensionsTests {
         Payload: [1, 2, 3],
         CorrelationId: "corr-123",
         UserId: userId,
-        Extensions: extensions);
+        Extensions: extensions,
+        IsGlobalAdmin: isGlobalAdmin);
 
     [Fact]
-    public void ToCommandEnvelope_ValidCommand_MapsAllFields() {
+    public void ToCommandEnvelope_ValidCommand_MapsAllFields()
+    {
         // Arrange
         var extensions = new Dictionary<string, string> { ["key"] = "value" };
         SubmitCommand command = CreateTestCommand(extensions: extensions);
@@ -45,7 +49,8 @@ public class SubmitCommandExtensionsTests {
     }
 
     [Fact]
-    public void ToCommandEnvelope_NullExtensions_MapsAsNull() {
+    public void ToCommandEnvelope_NullExtensions_MapsAsNull()
+    {
         // Arrange
         SubmitCommand command = CreateTestCommand(extensions: null);
 
@@ -57,7 +62,8 @@ public class SubmitCommandExtensionsTests {
     }
 
     [Fact]
-    public void ToCommandEnvelope_CausationId_EqualsMessageId() {
+    public void ToCommandEnvelope_CausationId_EqualsMessageId()
+    {
         // Arrange
         SubmitCommand command = CreateTestCommand();
 
@@ -75,7 +81,8 @@ public class SubmitCommandExtensionsTests {
             () => SubmitCommandExtensions.ToCommandEnvelope(null!));
 
     [Fact]
-    public void ToCommandEnvelope_UserId_MapsFromCommand() {
+    public void ToCommandEnvelope_UserId_MapsFromCommand()
+    {
         // Arrange
         SubmitCommand command = CreateTestCommand(userId: "jwt-sub-user");
 
@@ -87,9 +94,11 @@ public class SubmitCommandExtensionsTests {
     }
 
     [Fact]
-    public void ToCommandEnvelope_WhenActivityCurrent_AddsTraceParentExtension() {
+    public void ToCommandEnvelope_WhenActivityCurrent_AddsTraceParentExtension()
+    {
         // Arrange
-        using var listener = new ActivityListener {
+        using var listener = new ActivityListener
+        {
             ShouldListenTo = source => source.Name == TestActivitySourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
@@ -109,16 +118,19 @@ public class SubmitCommandExtensionsTests {
     }
 
     [Fact]
-    public void ToCommandEnvelope_WhenExtensionAlreadyExists_OverwritesWithCurrentTraceContext() {
+    public void ToCommandEnvelope_WhenExtensionAlreadyExists_OverwritesWithCurrentTraceContext()
+    {
         // Arrange
-        using var listener = new ActivityListener {
+        using var listener = new ActivityListener
+        {
             ShouldListenTo = source => source.Name == TestActivitySourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
         };
         ActivitySource.AddActivityListener(listener);
         using var activitySource = new ActivitySource(TestActivitySourceName);
 
-        var extensions = new Dictionary<string, string> {
+        var extensions = new Dictionary<string, string>
+        {
             ["traceparent"] = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
             ["custom"] = "value",
         };
@@ -132,5 +144,39 @@ public class SubmitCommandExtensionsTests {
         _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions["custom"].ShouldBe("value");
         envelope.Extensions["traceparent"].ShouldBe(activity?.Id);
+    }
+
+    [Fact]
+    public void ToCommandEnvelope_ClientProvidedGlobalAdminExtension_IsIgnoredWithoutTrustedFlag()
+    {
+        // Arrange
+        SubmitCommand command = CreateTestCommand(
+            extensions: new Dictionary<string, string>
+            {
+                ["actor:globalAdmin"] = "true",
+                ["custom"] = "value",
+            });
+
+        // Act
+        var envelope = command.ToCommandEnvelope();
+
+        // Assert
+        _ = envelope.Extensions.ShouldNotBeNull();
+        envelope.Extensions.ContainsKey("actor:globalAdmin").ShouldBeFalse();
+        envelope.Extensions["custom"].ShouldBe("value");
+    }
+
+    [Fact]
+    public void ToCommandEnvelope_TrustedGlobalAdminFlag_SetsReservedExtension()
+    {
+        // Arrange
+        SubmitCommand command = CreateTestCommand(isGlobalAdmin: true);
+
+        // Act
+        var envelope = command.ToCommandEnvelope();
+
+        // Assert
+        _ = envelope.Extensions.ShouldNotBeNull();
+        envelope.Extensions["actor:globalAdmin"].ShouldBe("true");
     }
 }

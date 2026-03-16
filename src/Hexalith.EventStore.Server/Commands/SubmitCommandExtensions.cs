@@ -8,7 +8,9 @@ namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
 /// Extension methods for converting <see cref="SubmitCommand"/> to <see cref="CommandEnvelope"/>.
 /// </summary>
-public static class SubmitCommandExtensions {
+public static class SubmitCommandExtensions
+{
+    private const string GlobalAdminExtensionKey = "actor:globalAdmin";
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
 
@@ -17,19 +19,30 @@ public static class SubmitCommandExtensions {
     /// </summary>
     /// <param name="command">The submit command to convert.</param>
     /// <returns>A command envelope with all fields mapped.</returns>
-    public static CommandEnvelope ToCommandEnvelope(this SubmitCommand command) {
+    public static CommandEnvelope ToCommandEnvelope(this SubmitCommand command)
+    {
         ArgumentNullException.ThrowIfNull(command);
 
         Dictionary<string, string> extensions = command.Extensions is null
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(command.Extensions, StringComparer.OrdinalIgnoreCase);
 
-        if (Activity.Current is Activity current) {
-            if (!string.IsNullOrWhiteSpace(current.Id)) {
+        _ = extensions.Remove(GlobalAdminExtensionKey);
+
+        if (command.IsGlobalAdmin)
+        {
+            extensions[GlobalAdminExtensionKey] = "true";
+        }
+
+        if (Activity.Current is Activity current)
+        {
+            if (!string.IsNullOrWhiteSpace(current.Id))
+            {
                 extensions[TraceParentExtensionKey] = current.Id;
             }
 
-            if (!string.IsNullOrWhiteSpace(current.TraceStateString)) {
+            if (!string.IsNullOrWhiteSpace(current.TraceStateString))
+            {
                 extensions[TraceStateExtensionKey] = current.TraceStateString;
             }
         }

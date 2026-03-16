@@ -1,4 +1,4 @@
-
+using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.EventStore.CommandApi.ErrorHandling;
@@ -20,6 +20,8 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Consumes("application/json")]
 public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase
 {
+    private const string GlobalAdminExtensionKey = "actor:globalAdmin";
+
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]
@@ -80,6 +82,8 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             return sanitizationResponse;
         }
 
+        Dictionary<string, string>? extensions = BuildTrustedExtensions(request.Extensions);
+
         var command = new SubmitCommand(
             MessageId: request.MessageId,
             Tenant: request.Tenant,
@@ -89,7 +93,8 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             Payload: JsonSerializer.SerializeToUtf8Bytes(request.Payload),
             CorrelationId: string.IsNullOrWhiteSpace(request.CorrelationId) ? request.MessageId : request.CorrelationId,
             UserId: userId,
-            Extensions: request.Extensions);
+            Extensions: extensions,
+            IsGlobalAdmin: IsGlobalAdministrator(User));
 
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
@@ -100,5 +105,99 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
 
         return Accepted(new SubmitCommandResponse(result.CorrelationId));
     }
+
+    private Dictionary<string, string>? BuildTrustedExtensions(IDictionary<string, string>? requestExtensions)
+    {
+        if (requestExtensions is null || requestExtensions.Count == 0)
+        {
+            return null;
+        }
+
+        var trustedExtensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (KeyValuePair<string, string> extension in requestExtensions)
+        {
+            if (string.Equals(extension.Key, GlobalAdminExtensionKey, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning(
+                    "Reserved extension metadata key '{ExtensionKey}' was ignored for command submission.",
+                    extension.Key);
+                continue;
+            }
+
+            trustedExtensions[extension.Key] = extension.Value;
+        }
+
+        return trustedExtensions.Count > 0 ? trustedExtensions : null;
+    }
+
+    private static bool IsGlobalAdministrator(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        foreach (Claim claim in principal.Claims)
+        {
+            if (IsGlobalAdministratorClaim(claim))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsGlobalAdministratorClaim(Claim claim)
+    {
+        ArgumentNullException.ThrowIfNull(claim);
+
+        if (claim.Type is "global_admin" or "is_global_admin")
+        {
+            return bool.TryParse(claim.Value, out bool isGlobalAdmin) && isGlobalAdmin;
+        }
+
+        if (claim.Type is ClaimTypes.Role or "role")
+        {
+            return IsGlobalAdministratorValue(claim.Value);
+        }
+
+        if (claim.Type == "roles")
+        {
+            return ClaimValueContainsGlobalAdministrator(claim.Value);
+        }
+
+        return false;
+    }
+
+    private static bool ClaimValueContainsGlobalAdministrator(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (value.StartsWith('['))
+        {
+            try
+            {
+                string[]? roles = JsonSerializer.Deserialize<string[]>(value);
+                if (roles is not null)
+                {
+                    return roles.Any(IsGlobalAdministratorValue);
+                }
+            }
+            catch (JsonException)
+            {
+                // Fall through to delimiter-based parsing below.
+            }
+        }
+
+        return value.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
+            .Any(IsGlobalAdministratorValue);
+    }
+
+    private static bool IsGlobalAdministratorValue(string value)
+        => value is not null
+            && (string.Equals(value, "GlobalAdministrator", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "global-administrator", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "global-admin", StringComparison.OrdinalIgnoreCase));
 
 }
