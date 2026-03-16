@@ -38,13 +38,11 @@ public class ActorRbacValidatorTests {
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
     }
 
-    private static (ActorRbacValidator validator, IActorProxyFactory factory) CreateValidator(
-        int retryAfterSeconds = 5) {
+    private static (ActorRbacValidator validator, IActorProxyFactory factory) CreateValidator() {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IOptions<EventStoreAuthorizationOptions> options = Options.Create(
             new EventStoreAuthorizationOptions {
                 RbacValidatorActorName = ActorType,
-                RetryAfterSeconds = retryAfterSeconds,
             });
         ILogger<ActorRbacValidator> logger = NullLoggerFactory.Instance.CreateLogger<ActorRbacValidator>();
         var validator = new ActorRbacValidator(factory, options, logger);
@@ -261,9 +259,9 @@ public class ActorRbacValidatorTests {
     }
 
     [Fact]
-    public async Task ValidateAsync_ServiceUnavailableExceptionContainsRetryAfterFromOptions() {
+    public async Task ValidateAsync_ServiceUnavailableExceptionPreservesDiagnostics() {
         // Arrange
-        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator(retryAfterSeconds: 60);
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
         SetupActorProxyThrows(factory, new TimeoutException("Timed out"));
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -271,7 +269,9 @@ public class ActorRbacValidatorTests {
         AuthorizationServiceUnavailableException ex = await Should.ThrowAsync<AuthorizationServiceUnavailableException>(
             () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None));
 
-        ex.RetryAfterSeconds.ShouldBe(60);
+        ex.ActorTypeName.ShouldBe(ActorType);
+        ex.ActorId.ShouldBe(TenantId);
+        ex.Reason.ShouldBe("Timed out");
     }
 
     [Fact]

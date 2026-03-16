@@ -77,6 +77,21 @@ public class DaprSidecarUnavailableHandlerTests {
     }
 
     [Fact]
+    public async Task TryHandleAsync_RawRpcExceptionUnavailableWithoutDaprContext_ReturnsFalse() {
+        // Arrange — generic gRPC outages must not be rewritten as DAPR sidecar failures
+        DaprSidecarUnavailableHandler handler = CreateHandler();
+        HttpContext context = CreateHttpContext();
+        var exception = new RpcException(new Status(StatusCode.Unavailable, "Connection refused"));
+
+        // Act
+        bool handled = await handler.TryHandleAsync(context, exception, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
+    }
+
+    [Fact]
     public async Task TryHandleAsync_RpcExceptionNotUnavailable_ReturnsFalse() {
         // Arrange — gRPC error but NOT Unavailable status code
         DaprSidecarUnavailableHandler handler = CreateHandler();
@@ -181,6 +196,38 @@ public class DaprSidecarUnavailableHandlerTests {
         HttpContext context = CreateHttpContext();
         var socketEx = new System.Net.Sockets.SocketException(10061);
         var httpEx = new HttpRequestException("Connection refused", socketEx);
+
+        // Act
+        bool handled = await handler.TryHandleAsync(context, httpEx, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_HttpRequestExceptionWithSidecarEndpointHint_Returns503() {
+        // Arrange - raw local sidecar connection failures should map to 503
+        DaprSidecarUnavailableHandler handler = CreateHandler();
+        HttpContext context = CreateHttpContext();
+        var socketEx = new System.Net.Sockets.SocketException(10061);
+        var httpEx = new HttpRequestException("Connection refused http://127.0.0.1:3500/v1.0/invoke", socketEx);
+
+        // Act
+        bool handled = await handler.TryHandleAsync(context, httpEx, CancellationToken.None);
+
+        // Assert
+        handled.ShouldBeTrue();
+        context.Response.StatusCode.ShouldBe(503);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_HttpRequestExceptionWithLocalhostButNoSidecarHint_ReturnsFalse() {
+        // Arrange - localhost failures alone are insufficient to prove a DAPR sidecar outage
+        DaprSidecarUnavailableHandler handler = CreateHandler();
+        HttpContext context = CreateHttpContext();
+        var socketEx = new System.Net.Sockets.SocketException(10061);
+        var httpEx = new HttpRequestException("Connection refused http://127.0.0.1:8080/health", socketEx);
 
         // Act
         bool handled = await handler.TryHandleAsync(context, httpEx, CancellationToken.None);

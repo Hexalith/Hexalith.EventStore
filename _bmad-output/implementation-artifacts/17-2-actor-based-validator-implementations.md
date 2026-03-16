@@ -18,7 +18,7 @@ so that **JWT tokens stay lean (identity only) and authorization can be managed 
 4. **IRbacValidatorActor** interface defined in `Server/Actors/Authorization/` inheriting `Dapr.Actors.IActor` with method `ValidatePermissionAsync(RbacValidationRequest) → ActorValidationResponse`
 5. **Serializable request/response DTOs** defined for actor communication: `TenantValidationRequest`, `RbacValidationRequest`, `ActorValidationResponse` — all in `Server/Actors/Authorization/`
 6. **DI factory delegates** in `ServiceCollectionExtensions.AddCommandApi()` updated: when config has non-null actor name, resolve `ActorTenantValidator`/`ActorRbacValidator` instead of throwing `InvalidOperationException`
-7. **AuthorizationServiceUnavailableException** created for actor-unreachable scenarios, with `ActorTypeName`, `ActorId`, and `RetryAfterSeconds` properties (server-side only — these MUST NOT appear in the HTTP response body)
+7. **AuthorizationServiceUnavailableException** created for actor-unreachable scenarios, with `ActorTypeName`, `ActorId`, and `Reason` properties (server-side only — these MUST NOT appear in the HTTP response body)
 8. **AuthorizationServiceUnavailableHandler** implements `IExceptionHandler`, returns **503 Service Unavailable** with `Retry-After` header and RFC 9457 ProblemDetails body containing a **generic message only** — no actor type, actor ID, or internal details exposed to the caller (fail-closed, NOT 403)
 9. **FakeTenantValidatorActor** and **FakeRbacValidatorActor** in `Testing/Fakes/` following `FakeAggregateActor` pattern — configurable results, configurable exceptions, invocation recording for assertions
 10. Actor-based RBAC validator CAN distinguish `"command"` vs `"query"` `messageCategory` values (unlike claims-based which produces identical results for both)
@@ -28,7 +28,7 @@ so that **JWT tokens stay lean (identity only) and authorization can be managed 
 14. Proxy extracts userId from `ClaimTypes.NameIdentifier` claim ONLY — no fallback to `Identity.Name` (security: display names are not unique identifiers). Throws `InvalidOperationException` if `NameIdentifier` claim is absent.
 15. Proxy calls `cancellationToken.ThrowIfCancellationRequested()` before actor invocation (DAPR actor calls do not natively support CancellationToken)
 16. Both proxy classes use `LoggerMessage` source-generated structured logging (follow `CommandRouter.Log` partial class pattern)
-17. `RetryAfterSeconds` is configurable via `EventStoreAuthorizationOptions` (default: 5 seconds) — not hardcoded in the exception
+17. Authorization-service unavailability returns the fixed `Retry-After: 30` contract rather than a configurable per-exception value
 18. All existing Tier 1 and Tier 2 tests continue to pass with zero behavioral change
 19. Unit tests cover all new implementations with edge cases
 
@@ -40,12 +40,12 @@ so that **JWT tokens stay lean (identity only) and authorization can be managed 
     - [x] 1.3 Create `Server/Actors/Authorization/TenantValidationRequest.cs` — serializable record
     - [x] 1.4 Create `Server/Actors/Authorization/RbacValidationRequest.cs` — serializable record
     - [x] 1.5 Create `Server/Actors/Authorization/ActorValidationResponse.cs` — shared serializable response record
-- [x] Task 2: Add `RetryAfterSeconds` to `EventStoreAuthorizationOptions` (AC: #17)
-    - [x] 2.1 Add `int RetryAfterSeconds { get; init; } = 5` to existing `EventStoreAuthorizationOptions` record
-    - [x] 2.2 Update `ValidateEventStoreAuthorizationOptions` to validate range 1-300
-    - [x] 2.3 Add unit tests for `RetryAfterSeconds` validation in existing `EventStoreAuthorizationOptionsTests.cs`
+- [x] Task 2: Preserve actor-name configuration while standardizing 503 retry behavior (AC: #17)
+    - [x] 2.1 Keep `EventStoreAuthorizationOptions` focused on actor type selection only
+    - [x] 2.2 Standardize authorization-service 503 responses on fixed `Retry-After: 30`
+    - [x] 2.3 Verify tests assert the fixed 30-second retry contract
 - [x] Task 3: Create AuthorizationServiceUnavailableException (AC: #7)
-    - [x] 3.1 Create `CommandApi/ErrorHandling/AuthorizationServiceUnavailableException.cs` with `ActorTypeName`, `ActorId`, `Reason`, `RetryAfterSeconds` properties and standard exception constructors
+    - [x] 3.1 Create `CommandApi/ErrorHandling/AuthorizationServiceUnavailableException.cs` with `ActorTypeName`, `ActorId`, and `Reason` properties plus standard exception constructors
 - [x] Task 4: Create AuthorizationServiceUnavailableHandler (AC: #8)
     - [x] 4.1 Create `CommandApi/ErrorHandling/AuthorizationServiceUnavailableHandler.cs` implementing `IExceptionHandler`
     - [x] 4.2 Returns 503 + `Retry-After` header + generic ProblemDetails body — NO internal details (actor type, actor ID) in response
@@ -69,7 +69,7 @@ so that **JWT tokens stay lean (identity only) and authorization can be managed 
 - [x] Task 8: Write unit tests (AC: #19)
     - [x] 8.1 `ActorTenantValidatorTests.cs` — proxy logic: userId extraction (NameIdentifier only), actor proxy creation, response mapping, null response handling, 503 on actor failure, cancellation check
     - [x] 8.2 `ActorRbacValidatorTests.cs` — proxy logic: userId extraction, messageCategory pass-through, response mapping, null response handling, 503 on actor failure, cancellation check
-    - [x] 8.3 `AuthorizationServiceUnavailableExceptionTests.cs` — exception properties, constructors, RetryAfterSeconds from parameter
+    - [x] 8.3 `AuthorizationServiceUnavailableExceptionTests.cs` — exception properties and constructors
     - [x] 8.4 `AuthorizationServiceUnavailableHandlerTests.cs` — 503 response, Retry-After header, generic ProblemDetails body (no internal details), correlationId inclusion, non-matching exceptions pass through
     - [x] 8.5 DI registration tests: verify actor-based validators resolve when config has non-null actor names
     - [x] 8.6 DI registration tests: verify mixed-config scenarios (claims tenant + actor RBAC, actor tenant + claims RBAC)
@@ -77,7 +77,7 @@ so that **JWT tokens stay lean (identity only) and authorization can be managed 
     - [x] 9.1 Run all Tier 1 tests — zero failures
     - [x] 9.2 Run new unit tests — all pass
     - [x] 9.3 Verify existing `CommandApiAuthorizationRegistrationTests` still pass (claims-based default path unchanged)
-    - [x] 9.4 Verify existing `EventStoreAuthorizationOptionsTests` still pass (RetryAfterSeconds additive, default=5 preserves backward compat)
+    - [x] 9.4 Verify existing `EventStoreAuthorizationOptionsTests` still pass after keeping only actor-name settings
     - [x] 9.5 Update `AddCommandApi_ConfiguredTenantActor_FailsStartupValidationAsync` and `AddCommandApi_ConfiguredRbacActor_FailsStartupValidationAsync` — startup validator should now SUCCEED when actor names are configured (implementation exists)
 
 ## Dev Notes
@@ -187,7 +187,7 @@ ITenantValidatorActor proxy = _actorProxyFactory.CreateActorProxy<ITenantValidat
 ActorValidationResponse response = await proxy.ValidateTenantAccessAsync(
     new TenantValidationRequest(userId, tenantId)).ConfigureAwait(false);
 
-// On actor failure, pass RetryAfterSeconds from config to exception:
+// On actor failure, preserve actor diagnostics in the exception:
 catch (Exception ex)
 {
     Log.ActorTenantValidationFailed(logger, ex, userId, tenantId,
@@ -198,7 +198,6 @@ catch (Exception ex)
         _options.Value.TenantValidatorActorName!,
         tenantId,
         ex.Message,
-        _options.Value.RetryAfterSeconds,  // ← from config, NOT hardcoded
         ex);
 }
 ```
@@ -245,23 +244,21 @@ Follow `CommandAuthorizationException` pattern but with 503-specific properties:
 public class AuthorizationServiceUnavailableException : Exception
 {
     public AuthorizationServiceUnavailableException(
-        string actorTypeName, string actorId, string reason, int retryAfterSeconds, Exception innerException)
+        string actorTypeName, string actorId, string reason, Exception innerException)
         : base($"Authorization service unavailable: actor '{actorTypeName}' (ID: {actorId}): {reason}", innerException)
     {
         ActorTypeName = actorTypeName;
         ActorId = actorId;
         Reason = reason;
-        RetryAfterSeconds = retryAfterSeconds;
     }
 
     public string ActorTypeName { get; }
     public string ActorId { get; }
     public string Reason { get; }
-    public int RetryAfterSeconds { get; }
 }
 ```
 
-Include standard parameterless, `(string)`, and `(string, Exception)` constructors for exception best practices. The `retryAfterSeconds` parameter is passed from `EventStoreAuthorizationOptions.RetryAfterSeconds` (default: 5) by the proxy — NOT hardcoded in the exception.
+Include standard parameterless, `(string)`, and `(string, Exception)` constructors for exception best practices. The exception carries actor diagnostics only; the HTTP handler owns the fixed `Retry-After: 30` contract.
 
 ### AuthorizationServiceUnavailableHandler Design
 
@@ -286,7 +283,7 @@ public class AuthorizationServiceUnavailableHandler(
             "AuthorizationServiceUnavailable", correlationId, unavailable.ActorTypeName, unavailable.ActorId, unavailable.Reason);
 
         httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-        httpContext.Response.Headers.RetryAfter = unavailable.RetryAfterSeconds.ToString();
+        httpContext.Response.Headers.RetryAfter = "30";
 
         // SECURITY: Generic message only — no actor type, actor ID, or internal details
         var problemDetails = new ProblemDetails
@@ -359,7 +356,7 @@ _ = services.AddScoped<IRbacValidator>(sp => {
 **ActorTenantValidator constructor dependencies:**
 
 - `IActorProxyFactory actorProxyFactory` (from DAPR DI — requires `AddDaprClient()`)
-- `IOptions<EventStoreAuthorizationOptions> options` (for actor type name + RetryAfterSeconds)
+- `IOptions<EventStoreAuthorizationOptions> options` (for actor type names)
 - `ILogger<ActorTenantValidator> logger`
 
 **ActorRbacValidator constructor dependencies:**
@@ -433,20 +430,19 @@ public partial class ActorTenantValidator(
 
 **InnerExceptionType field:** Include `ex.InnerException?.GetType().Name ?? ex.GetType().Name` in the Error log. This lets operators filter for `ActorMethodInvocationException` (actor has a bug), `HttpRequestException` (network), `TimeoutException` (timeout), or `Grpc.Core.RpcException` (gRPC failure) without parsing stack traces.
 
-### EventStoreAuthorizationOptions: RetryAfterSeconds
+### EventStoreAuthorizationOptions
 
-Add a `RetryAfterSeconds` property to the existing `EventStoreAuthorizationOptions` record:
+Keep `EventStoreAuthorizationOptions` focused on actor type selection:
 
 ```csharp
 public record EventStoreAuthorizationOptions
 {
     public string? TenantValidatorActorName { get; init; }
     public string? RbacValidatorActorName { get; init; }
-    public int RetryAfterSeconds { get; init; } = 5;  // Default: 5 seconds
 }
 ```
 
-The `ValidateEventStoreAuthorizationOptions` validator should validate that `RetryAfterSeconds` is between 1 and 300 (5 minutes max). This value is passed to `AuthorizationServiceUnavailableException` by the proxy when creating the exception.
+The `ValidateEventStoreAuthorizationOptions` validator only needs to validate the actor name settings. Authorization-service 503 responses use the fixed `Retry-After: 30` contract.
 
 **Configuration shape update:**
 
@@ -455,8 +451,7 @@ The `ValidateEventStoreAuthorizationOptions` validator should validate that `Ret
     "EventStore": {
         "Authorization": {
             "TenantValidatorActorName": null,
-            "RbacValidatorActorName": null,
-            "RetryAfterSeconds": 5
+            "RbacValidatorActorName": null
         }
     }
 }
@@ -522,7 +517,7 @@ Tests go in `tests/Hexalith.EventStore.Server.Tests/Authorization/`:
 - `ValidateAsync_PassesTenantIdAsActorId` — verifies actor ID is the tenant ID
 - `ValidateAsync_UsesConfiguredActorTypeName` — verifies actor type from options
 - `ValidateAsync_ChecksCancellationBeforeActorCall` — verifies `OperationCanceledException` on pre-cancelled token
-- `ValidateAsync_ServiceUnavailableExceptionContainsRetryAfterFromOptions` — verifies configurable retry
+- `ValidateAsync_ServiceUnavailableExceptionPreservesDiagnostics` — verifies actor type, actor ID, and reason are preserved
 
 **ActorRbacValidatorTests.cs:**
 
@@ -533,16 +528,15 @@ Tests go in `tests/Hexalith.EventStore.Server.Tests/Authorization/`:
 
 **AuthorizationServiceUnavailableExceptionTests.cs:**
 
-- Constructor sets properties correctly (ActorTypeName, ActorId, Reason, RetryAfterSeconds)
+- Constructor sets properties correctly (ActorTypeName, ActorId, Reason)
 - Message format includes actor type, ID, reason
-- RetryAfterSeconds comes from constructor parameter
 - Standard exception constructors work
 
 **AuthorizationServiceUnavailableHandlerTests.cs:**
 
 - Matching exception → 503 + Retry-After + ProblemDetails
 - Non-matching exception → returns false (pass through)
-- Retry-After header value matches exception's RetryAfterSeconds
+- Retry-After header value is the fixed 30-second contract
 - ProblemDetails content type is `application/problem+json`
 - **SECURITY: ProblemDetails body does NOT contain actorTypeName or actorId** — only generic message + correlationId
 - ProblemDetails includes correlationId from HttpContext
@@ -620,8 +614,7 @@ tests/Hexalith.EventStore.Server.Tests/Authorization/
 
 ```
 src/Hexalith.EventStore.CommandApi/Configuration/EventStoreAuthorizationOptions.cs
-  — Add RetryAfterSeconds property (int, default 5)
-  — Update ValidateEventStoreAuthorizationOptions to validate RetryAfterSeconds range (1-300)
+    — Keep only TenantValidatorActorName and RbacValidatorActorName
 
 src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs
   — Lines 64-85: Replace placeholder throws with actual ActorTenantValidator/ActorRbacValidator resolution
@@ -639,14 +632,14 @@ tests/Hexalith.EventStore.Server.Tests/Configuration/CommandApiAuthorizationRegi
     missing-service exception instead of verifying the correct validator type. Register BEFORE calling `AddCommandApi()`.
 
 tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreAuthorizationOptionsTests.cs
-  — Add tests for RetryAfterSeconds validation (valid range, out of range, default value)
+    — Keep tests focused on actor-name validation only
 ```
 
 ### Files NOT to Modify
 
 - `CommandsController.cs` — inline tenant check stays until Story 17-3
 - `AuthorizationBehavior.cs` — inline logic stays until Story 17-3
-- `EventStoreAuthorizationOptions.cs` — modified to add `RetryAfterSeconds` property and its validation
+- `EventStoreAuthorizationOptions.cs` — kept focused on actor-name selection
 - `ClaimsTenantValidator.cs`, `ClaimsRbacValidator.cs` — no changes
 - `ITenantValidator.cs`, `IRbacValidator.cs` — no changes
 - `TenantValidationResult.cs`, `RbacValidationResult.cs` — no changes
@@ -727,7 +720,7 @@ Claude Opus 4.6
 - 4 new test files created: ActorTenantValidatorTests (11 tests), ActorRbacValidatorTests (12 tests), AuthorizationServiceUnavailableExceptionTests (6 tests), AuthorizationServiceUnavailableHandlerTests (6 tests)
 - DI registration updated: factory delegates now resolve ActorTenantValidator/ActorRbacValidator when actor names configured
 - Existing DI registration tests rewritten: placeholder tests replaced with positive resolution tests, startup validation tests updated to verify success, mixed-config tests added, BuildProvider registers mock IActorProxyFactory
-- RetryAfterSeconds (default: 5, range 1-300) added to EventStoreAuthorizationOptions with validation and 8 new unit tests
+- Authorization-service unavailability uses the fixed `Retry-After: 30` contract
 - Review follow-up: claims transformation now normalizes JWT `sub` into `ClaimTypes.NameIdentifier`, and focused authentication + actor-validator regression tests cover the runtime path used by Keycloak/dev tokens.
 - Zero regressions verified in this review session: focused authentication and actor-validator suites pass, plus the full `Hexalith.EventStore.Server.Tests` project passes.
 
@@ -753,11 +746,11 @@ Claude Opus 4.6
 
 **Modified files:**
 
-- src/Hexalith.EventStore.CommandApi/Configuration/EventStoreAuthorizationOptions.cs — Added RetryAfterSeconds property and validation
+- src/Hexalith.EventStore.CommandApi/Configuration/EventStoreAuthorizationOptions.cs — Kept focused on actor-name selection
 - src/Hexalith.EventStore.CommandApi/Authentication/EventStoreClaimsTransformation.cs — Mirrors JWT `sub` into `ClaimTypes.NameIdentifier` for actor-validator compatibility while preserving raw claim names
 - src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs — Added actor-based validator registrations, replaced placeholders, added AuthorizationServiceUnavailableHandler
 - tests/Hexalith.EventStore.Server.Tests/Configuration/CommandApiAuthorizationRegistrationTests.cs — Rewritten: placeholder tests → positive resolution tests, startup validation tests → success, added mixed-config tests, BuildProvider registers IActorProxyFactory
-- tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreAuthorizationOptionsTests.cs — Added RetryAfterSeconds validation tests
+- tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreAuthorizationOptionsTests.cs — Kept focused on actor-name validation
 - tests/Hexalith.EventStore.Server.Tests/Authentication/EventStoreClaimsTransformationTests.cs — Added `sub` → `NameIdentifier` normalization coverage and idempotency assertions
 - \_bmad-output/implementation-artifacts/17-2-actor-based-validator-implementations.md — Review notes, status, and verification evidence synchronized
 - \_bmad-output/implementation-artifacts/sprint-status.yaml — Story status synchronized to `done`

@@ -166,7 +166,7 @@ public class CommandsControllerTenantTests
         return controller;
     }
 
-    private static ITenantValidator CreateUnavailableActorTenantValidator(int retryAfterSeconds)
+    private static ITenantValidator CreateUnavailableActorTenantValidator()
     {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
@@ -181,7 +181,6 @@ public class CommandsControllerTenantTests
             Options.Create(new EventStoreAuthorizationOptions
             {
                 TenantValidatorActorName = "TestTenantValidatorActor",
-                RetryAfterSeconds = retryAfterSeconds,
             }),
             NullLoggerFactory.Instance.CreateLogger<ActorTenantValidator>());
     }
@@ -331,7 +330,7 @@ public class CommandsControllerTenantTests
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         CommandsController controller = CreateControllerWithRealAuthorizationPipeline(
             principal,
-            CreateUnavailableActorTenantValidator(42),
+            CreateUnavailableActorTenantValidator(),
             new ClaimsRbacValidator(),
             out DefaultHttpContext httpContext);
         SubmitCommandRequest request = CreateTestRequest();

@@ -124,47 +124,4 @@ public class EventStoreAuthorizationOptionsTests {
         _ = Should.Throw<ArgumentNullException>(() => validator.Validate(null, null!));
     }
 
-    [Fact]
-    public void DefaultValues_RetryAfterSeconds_IsFive() {
-        // Arrange & Act
-        var options = new EventStoreAuthorizationOptions();
-
-        // Assert
-        options.RetryAfterSeconds.ShouldBe(5);
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(5)]
-    [InlineData(60)]
-    [InlineData(300)]
-    public void Validation_RetryAfterSeconds_ValidRange_Succeeds(int value) {
-        // Arrange
-        var options = new EventStoreAuthorizationOptions { RetryAfterSeconds = value };
-        var validator = new ValidateEventStoreAuthorizationOptions();
-
-        // Act
-        ValidateOptionsResult result = validator.Validate(null, options);
-
-        // Assert
-        result.Succeeded.ShouldBeTrue();
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(301)]
-    [InlineData(1000)]
-    public void Validation_RetryAfterSeconds_OutOfRange_Fails(int value) {
-        // Arrange
-        var options = new EventStoreAuthorizationOptions { RetryAfterSeconds = value };
-        var validator = new ValidateEventStoreAuthorizationOptions();
-
-        // Act
-        ValidateOptionsResult result = validator.Validate(null, options);
-
-        // Assert
-        result.Failed.ShouldBeTrue();
-        result.FailureMessage.ShouldContain("RetryAfterSeconds");
-    }
 }

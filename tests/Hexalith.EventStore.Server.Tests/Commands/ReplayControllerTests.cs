@@ -1,6 +1,7 @@
 
 using System.Security.Claims;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Controllers;
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.Contracts.Commands;
@@ -356,7 +357,7 @@ public class ReplayControllerTests {
     }
 
     [Fact]
-    public async Task Replay_CorruptedArchive_NullPayload_Returns409ProblemDetails() {
+    public async Task Replay_CorruptedArchive_NullPayload_Returns500ProblemDetails() {
         // Arrange - archived command with empty payload (simulates corrupted state store deserialization)
         string correlationId = Guid.NewGuid().ToString();
         var corrupted = new ArchivedCommand(
@@ -382,13 +383,14 @@ public class ReplayControllerTests {
 
         // Assert - graceful error, not unhandled exception
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
-        objectResult.StatusCode.ShouldBe(409);
+        objectResult.StatusCode.ShouldBe(500);
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail!.ShouldContain("corrupted");
+        problemDetails.Type.ShouldBe(ProblemTypeUris.InternalServerError);
+        problemDetails.Detail!.ShouldContain("invalid");
     }
 
     [Fact]
-    public async Task Replay_CorruptedArchive_NullCommandType_Returns409ProblemDetails() {
+    public async Task Replay_CorruptedArchive_NullCommandType_Returns500ProblemDetails() {
         // Arrange - archived command with null CommandType (simulates corrupted state store deserialization)
         string correlationId = Guid.NewGuid().ToString();
         var corrupted = new ArchivedCommand(
@@ -414,13 +416,14 @@ public class ReplayControllerTests {
 
         // Assert - graceful error, not unhandled exception
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
-        objectResult.StatusCode.ShouldBe(409);
+        objectResult.StatusCode.ShouldBe(500);
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail!.ShouldContain("corrupted");
+        problemDetails.Type.ShouldBe(ProblemTypeUris.InternalServerError);
+        problemDetails.Detail!.ShouldContain("invalid");
     }
 
     [Fact]
-    public async Task Replay_CorruptedArchive_TenantMismatch_Returns409ProblemDetails() {
+    public async Task Replay_CorruptedArchive_TenantMismatch_Returns500ProblemDetails() {
         // Arrange - archive key tenant differs from archived tenant content
         string correlationId = Guid.NewGuid().ToString();
         var corrupted = new ArchivedCommand(
@@ -446,14 +449,15 @@ public class ReplayControllerTests {
 
         // Assert - deterministic corruption response
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
-        objectResult.StatusCode.ShouldBe(409);
+        objectResult.StatusCode.ShouldBe(500);
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail!.ShouldContain("corrupted");
-        problemDetails.Detail!.ShouldContain("tenant mismatch");
+        problemDetails.Type.ShouldBe(ProblemTypeUris.InternalServerError);
+        problemDetails.Detail!.ShouldContain("invalid");
+        problemDetails.Detail!.ShouldNotContain("tenant mismatch");
     }
 
     [Fact]
-    public async Task Replay_CorruptedArchive_MissingAggregateIdentityFields_Returns409ProblemDetails() {
+    public async Task Replay_CorruptedArchive_MissingAggregateIdentityFields_Returns500ProblemDetails() {
         // Arrange - null domain and aggregate id simulate deserialization corruption
         string correlationId = Guid.NewGuid().ToString();
         var corrupted = new ArchivedCommand(
@@ -479,8 +483,9 @@ public class ReplayControllerTests {
 
         // Assert - deterministic corruption response
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
-        objectResult.StatusCode.ShouldBe(409);
+        objectResult.StatusCode.ShouldBe(500);
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail!.ShouldContain("corrupted");
+        problemDetails.Type.ShouldBe(ProblemTypeUris.InternalServerError);
+        problemDetails.Detail!.ShouldContain("invalid");
     }
 }

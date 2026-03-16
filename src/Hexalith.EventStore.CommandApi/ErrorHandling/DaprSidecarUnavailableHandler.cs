@@ -78,24 +78,23 @@ public class DaprSidecarUnavailableHandler(
 
         bool currentHasDaprContext = hasDaprContext || IsDaprException(exception);
 
+        if (exception is RpcException rpcEx
+            && rpcEx.StatusCode == Grpc.Core.StatusCode.Unavailable
+            && (currentHasDaprContext || HasSidecarUnavailableMessage(rpcEx.Status.Detail))) {
+            return true;
+        }
+
+        if (exception is HttpRequestException httpRequestException
+            && ContainsConnectionRefusedSocketException(httpRequestException.InnerException)
+            && (currentHasDaprContext || HasSidecarEndpointHint(httpRequestException.Message))) {
+            return true;
+        }
+
         if (currentHasDaprContext
             && exception is DaprException daprException
             && daprException.InnerException is null
             && HasSidecarUnavailableMessage(daprException.Message)) {
             return true;
-        }
-
-        // Check for gRPC Unavailable status (sidecar not reachable)
-        if (currentHasDaprContext
-            && exception is RpcException rpcEx
-            && rpcEx.StatusCode == Grpc.Core.StatusCode.Unavailable) {
-            return true;
-        }
-
-        // Check for HTTP connection refused (sidecar not listening)
-        // Walk inner chain: .NET HTTP stack may wrap as HttpRequestException -> IOException -> SocketException
-        if (currentHasDaprContext && exception is HttpRequestException) {
-            return ContainsConnectionRefusedSocketException(exception.InnerException);
         }
 
         // AggregateException has multiple InnerExceptions — search all of them
@@ -138,4 +137,12 @@ public class DaprSidecarUnavailableHandler(
         && (message.Contains("sidecar", StringComparison.OrdinalIgnoreCase)
             || message.Contains("connect", StringComparison.OrdinalIgnoreCase)
             || message.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasSidecarEndpointHint(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && (message.Contains(":3500", StringComparison.OrdinalIgnoreCase)
+            || message.Contains(":50001", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("/v1.0/", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("dapr", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("sidecar", StringComparison.OrdinalIgnoreCase));
 }

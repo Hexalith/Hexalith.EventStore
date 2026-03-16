@@ -117,7 +117,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
     }
 
     /// <summary>
-    /// AC #16: Retry-After header matches configured RetryAfterSeconds (default 5).
+    /// AC #16: Retry-After header is the fixed 30-second backoff contract.
     /// </summary>
     [Fact]
     public async Task ServiceUnavailable_RetryAfterHeaderPresent() {

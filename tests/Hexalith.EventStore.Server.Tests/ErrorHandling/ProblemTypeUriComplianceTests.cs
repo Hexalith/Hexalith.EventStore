@@ -94,7 +94,7 @@ public class ProblemTypeUriComplianceTests {
         var handler = new AuthorizationServiceUnavailableHandler(
             NullLogger<AuthorizationServiceUnavailableHandler>.Instance);
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
-        var exception = new AuthorizationServiceUnavailableException("Actor", "id", "reason", 5, new Exception());
+        var exception = new AuthorizationServiceUnavailableException("Actor", "id", "reason", new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
@@ -178,7 +178,7 @@ public class ProblemTypeUriComplianceTests {
         var handler = new AuthorizationServiceUnavailableHandler(
             NullLogger<AuthorizationServiceUnavailableHandler>.Instance);
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
-        var exception = new AuthorizationServiceUnavailableException("Actor", "id", "reason", 5, new Exception());
+        var exception = new AuthorizationServiceUnavailableException("Actor", "id", "reason", new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);

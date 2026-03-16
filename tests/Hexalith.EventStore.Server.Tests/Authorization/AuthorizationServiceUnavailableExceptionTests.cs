@@ -13,13 +13,12 @@ public class AuthorizationServiceUnavailableExceptionTests {
 
         // Act
         var ex = new AuthorizationServiceUnavailableException(
-            "TenantValidatorActor", "tenant-123", "Actor unreachable", 10, inner);
+            "TenantValidatorActor", "tenant-123", "Actor unreachable", inner);
 
         // Assert
         ex.ActorTypeName.ShouldBe("TenantValidatorActor");
         ex.ActorId.ShouldBe("tenant-123");
         ex.Reason.ShouldBe("Actor unreachable");
-        ex.RetryAfterSeconds.ShouldBe(10);
         ex.InnerException.ShouldBe(inner);
     }
 
@@ -27,7 +26,7 @@ public class AuthorizationServiceUnavailableExceptionTests {
     public void Constructor_Full_MessageContainsActorTypeAndId() {
         // Arrange & Act
         var ex = new AuthorizationServiceUnavailableException(
-            "MyActor", "id-1", "Timed out", 5, new TimeoutException());
+            "MyActor", "id-1", "Timed out", new TimeoutException());
 
         // Assert
         ex.Message.ShouldContain("MyActor");
@@ -44,7 +43,6 @@ public class AuthorizationServiceUnavailableExceptionTests {
         ex.ActorTypeName.ShouldBe(string.Empty);
         ex.ActorId.ShouldBe(string.Empty);
         ex.Reason.ShouldBe(string.Empty);
-        ex.RetryAfterSeconds.ShouldBe(5);
         ex.InnerException.ShouldBeNull();
     }
 
@@ -56,7 +54,6 @@ public class AuthorizationServiceUnavailableExceptionTests {
         // Assert
         ex.Message.ShouldBe("Something went wrong");
         ex.Reason.ShouldBe("Something went wrong");
-        ex.RetryAfterSeconds.ShouldBe(5);
     }
 
     [Fact]
@@ -71,16 +68,5 @@ public class AuthorizationServiceUnavailableExceptionTests {
         ex.Message.ShouldBe("Wrapper message");
         ex.Reason.ShouldBe("Wrapper message");
         ex.InnerException.ShouldBe(inner);
-        ex.RetryAfterSeconds.ShouldBe(5);
-    }
-
-    [Fact]
-    public void RetryAfterSeconds_ComesFromConstructorParameter() {
-        // Arrange & Act
-        var ex = new AuthorizationServiceUnavailableException(
-            "Actor", "id", "reason", 120, new Exception());
-
-        // Assert
-        ex.RetryAfterSeconds.ShouldBe(120);
     }
 }

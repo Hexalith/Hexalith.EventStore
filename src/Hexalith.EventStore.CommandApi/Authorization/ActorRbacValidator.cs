@@ -59,7 +59,6 @@ public partial class ActorRbacValidator(
                 actorType,
                 tenantId,
                 ex.Message,
-                options.Value.RetryAfterSeconds,
                 ex);
         }
 
@@ -70,7 +69,6 @@ public partial class ActorRbacValidator(
                 actorType,
                 tenantId,
                 "Actor returned null response",
-                options.Value.RetryAfterSeconds,
                 new InvalidOperationException("Actor returned null response"));
         }
 

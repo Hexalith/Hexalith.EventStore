@@ -55,7 +55,6 @@ public partial class ActorTenantValidator(
                 actorType,
                 tenantId,
                 ex.Message,
-                options.Value.RetryAfterSeconds,
                 ex);
         }
 
@@ -66,7 +65,6 @@ public partial class ActorTenantValidator(
                 actorType,
                 tenantId,
                 "Actor returned null response",
-                options.Value.RetryAfterSeconds,
                 new InvalidOperationException("Actor returned null response"));
         }
 

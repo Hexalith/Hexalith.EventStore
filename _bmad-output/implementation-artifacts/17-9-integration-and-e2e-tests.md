@@ -343,7 +343,7 @@ responseBody.ShouldNotContain("StackTrace");
 - `ITenantValidator.ValidateAsync(user, tenantId, cancellationToken)` -> `TenantValidationResult`
 - `IRbacValidator.ValidateAsync(user, tenantId, domain, messageType, messageCategory, cancellationToken)` -> `RbacValidationResult`
 - Factory delegates in `AddCommandApi()` select claims-based or actor-based per config
-- `EventStoreAuthorizationOptions.RetryAfterSeconds` configures 503 `Retry-After` header value
+- Authorization-service 503 responses use the fixed `Retry-After: 30` contract
 
 ### Git Intelligence
 

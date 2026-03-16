@@ -199,7 +199,7 @@ public class QueryValidationControllerTests {
         (QueryValidationController controller, ITenantValidator tenantValidator, _, _) = CreateController();
         _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .ThrowsAsync(new AuthorizationServiceUnavailableException(
-                "TenantValidatorActor", "acme", "Actor unreachable", 30,
+                "TenantValidatorActor", "acme", "Actor unreachable",
                 new HttpRequestException("Connection refused")));
         ValidateQueryRequest request = CreateRequest();
 
@@ -214,7 +214,7 @@ public class QueryValidationControllerTests {
         (QueryValidationController controller, _, IRbacValidator rbacValidator, _) = CreateController();
         _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .ThrowsAsync(new AuthorizationServiceUnavailableException(
-                "RbacValidatorActor", "acme", "Actor unreachable", 30,
+                "RbacValidatorActor", "acme", "Actor unreachable",
                 new HttpRequestException("Connection refused")));
         ValidateQueryRequest request = CreateRequest();
 

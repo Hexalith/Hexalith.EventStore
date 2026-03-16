@@ -48,6 +48,7 @@ public class ReplayController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
     public async Task<IActionResult> Replay(string correlationId, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(correlationId);
@@ -177,10 +178,10 @@ public class ReplayController(
 
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "CorruptedArchive"));
                 return CreateProblemDetails(
-                    StatusCodes.Status409Conflict,
-                    ProblemTypeUris.ConcurrencyConflict,
-                    "Conflict",
-                    $"Archived command for '{correlationId}' is corrupted and cannot be replayed. {ex.Message}",
+                    StatusCodes.Status500InternalServerError,
+                    ProblemTypeUris.InternalServerError,
+                    "Internal Server Error",
+                    $"Stored command data for '{correlationId}' is invalid and cannot be replayed.",
                     requestCorrelationId);
             }
 

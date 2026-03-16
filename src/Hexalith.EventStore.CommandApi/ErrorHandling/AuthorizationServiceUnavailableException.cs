@@ -19,15 +19,13 @@ public class AuthorizationServiceUnavailableException : Exception {
     /// <param name="actorTypeName">The DAPR actor type name that was unreachable.</param>
     /// <param name="actorId">The actor ID (typically tenant ID) that was targeted.</param>
     /// <param name="reason">A human-readable reason for the failure.</param>
-    /// <param name="retryAfterSeconds">The suggested retry interval in seconds.</param>
     /// <param name="innerException">The underlying exception that caused the failure.</param>
     public AuthorizationServiceUnavailableException(
-        string actorTypeName, string actorId, string reason, int retryAfterSeconds, Exception innerException)
+        string actorTypeName, string actorId, string reason, Exception innerException)
         : base($"Authorization service unavailable: actor '{actorTypeName}' (ID: {actorId}): {reason}", innerException) {
         ActorTypeName = actorTypeName;
         ActorId = actorId;
         Reason = reason;
-        RetryAfterSeconds = retryAfterSeconds;
     }
 
     /// <summary>
@@ -38,7 +36,6 @@ public class AuthorizationServiceUnavailableException : Exception {
         ActorTypeName = string.Empty;
         ActorId = string.Empty;
         Reason = string.Empty;
-        RetryAfterSeconds = 5;
     }
 
     /// <summary>
@@ -51,7 +48,6 @@ public class AuthorizationServiceUnavailableException : Exception {
         ActorTypeName = string.Empty;
         ActorId = string.Empty;
         Reason = message;
-        RetryAfterSeconds = 5;
     }
 
     /// <summary>
@@ -65,7 +61,6 @@ public class AuthorizationServiceUnavailableException : Exception {
         ActorTypeName = string.Empty;
         ActorId = string.Empty;
         Reason = message;
-        RetryAfterSeconds = 5;
     }
 
     /// <summary>Gets the DAPR actor type name (server-side diagnostics only).</summary>
@@ -76,7 +71,4 @@ public class AuthorizationServiceUnavailableException : Exception {
 
     /// <summary>Gets the reason for the authorization service failure.</summary>
     public string Reason { get; }
-
-    /// <summary>Gets the suggested Retry-After interval in seconds.</summary>
-    public int RetryAfterSeconds { get; }
 }

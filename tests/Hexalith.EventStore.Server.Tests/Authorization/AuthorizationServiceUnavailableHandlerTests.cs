@@ -39,7 +39,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext();
         var exception = new AuthorizationServiceUnavailableException(
-            "TenantActor", "tenant-1", "Unreachable", 15, new HttpRequestException());
+            "TenantActor", "tenant-1", "Unreachable", new HttpRequestException());
 
         // Act
         bool handled = await handler.TryHandleAsync(context, exception, CancellationToken.None);
@@ -70,7 +70,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext();
         var exception = new AuthorizationServiceUnavailableException(
-            "SecretActorType", "secret-tenant-id", "Internal error details", 5, new Exception());
+            "SecretActorType", "secret-tenant-id", "Internal error details", new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
@@ -96,7 +96,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext();
         var exception = new AuthorizationServiceUnavailableException(
-            "Actor", "id", "reason", 5, new Exception());
+            "Actor", "id", "reason", new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
@@ -112,7 +112,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext("my-correlation-123");
         var exception = new AuthorizationServiceUnavailableException(
-            "Actor", "id", "reason", 5, new Exception());
+            "Actor", "id", "reason", new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
@@ -129,7 +129,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext();
         var exception = new AuthorizationServiceUnavailableException(
-            "Actor", "id", "reason", 5, new Exception());
+            "Actor", "id", "reason", new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);

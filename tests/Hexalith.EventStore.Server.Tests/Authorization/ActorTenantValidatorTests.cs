@@ -35,13 +35,11 @@ public class ActorTenantValidatorTests {
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
     }
 
-    private static (ActorTenantValidator validator, IActorProxyFactory factory) CreateValidator(
-        int retryAfterSeconds = 5) {
+    private static (ActorTenantValidator validator, IActorProxyFactory factory) CreateValidator() {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IOptions<EventStoreAuthorizationOptions> options = Options.Create(
             new EventStoreAuthorizationOptions {
                 TenantValidatorActorName = ActorType,
-                RetryAfterSeconds = retryAfterSeconds,
             });
         ILogger<ActorTenantValidator> logger = NullLoggerFactory.Instance.CreateLogger<ActorTenantValidator>();
         var validator = new ActorTenantValidator(factory, options, logger);
@@ -232,9 +230,9 @@ public class ActorTenantValidatorTests {
     }
 
     [Fact]
-    public async Task ValidateAsync_ServiceUnavailableExceptionContainsRetryAfterFromOptions() {
+    public async Task ValidateAsync_ServiceUnavailableExceptionPreservesDiagnostics() {
         // Arrange
-        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator(retryAfterSeconds: 30);
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
         SetupActorProxyThrows(factory, new TimeoutException("Timed out"));
         ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
 
@@ -242,7 +240,9 @@ public class ActorTenantValidatorTests {
         AuthorizationServiceUnavailableException ex = await Should.ThrowAsync<AuthorizationServiceUnavailableException>(
             () => validator.ValidateAsync(user, TenantId, CancellationToken.None));
 
-        ex.RetryAfterSeconds.ShouldBe(30);
+        ex.ActorTypeName.ShouldBe(ActorType);
+        ex.ActorId.ShouldBe(TenantId);
+        ex.Reason.ShouldBe("Timed out");
     }
 
     [Fact]
