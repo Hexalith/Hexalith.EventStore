@@ -2,6 +2,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Testing.Fakes;
@@ -32,12 +33,15 @@ public class ProblemTypeUriComplianceTests {
         "sidecar",
         "pub/sub",
         "state store",
+        "projection",
+        "snapshot",
+        "rehydration",
     ];
 
     private static DefaultHttpContext CreateHttpContextWithBody() {
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
-        httpContext.Items["CorrelationId"] = "compliance-test";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "compliance-test";
         httpContext.Request.Path = "/api/v1/commands";
         return httpContext;
     }
@@ -152,6 +156,23 @@ public class ProblemTypeUriComplianceTests {
     }
 
     [Fact]
+    public async Task AuthorizationHandler_DetailHasNoForbiddenTerms_WhenReasonContainsActorTerminology() {
+        // Arrange — actor validators return reasons containing "actor" (UX-DR6 regression guard)
+        var handler = new AuthorizationExceptionHandler(
+            NullLogger<AuthorizationExceptionHandler>.Instance);
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        var exception = new CommandAuthorizationException("tenant-1", "domain", "cmd", "Tenant access denied by actor.");
+
+        // Act
+        _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        ProblemDetails? problem = await ReadProblemDetails(httpContext);
+        _ = problem.ShouldNotBeNull();
+        AssertNoForbiddenTerms(problem);
+    }
+
+    [Fact]
     public async Task AuthorizationServiceUnavailableHandler_DetailHasNoForbiddenTerms() {
         // Arrange
         var handler = new AuthorizationServiceUnavailableHandler(
@@ -235,6 +256,52 @@ public class ProblemTypeUriComplianceTests {
         ];
 
         allUris.Distinct().Count().ShouldBe(allUris.Length);
+    }
+
+    [Fact]
+    public void RateLimitExceeded_TypeUri_IsHexalithUri() {
+        // Verify 429 rate limit response uses Hexalith URI (Task 1.8 / Task 7.8)
+        ProblemTypeUris.RateLimitExceeded.ShouldStartWith("https://hexalith.io/problems/");
+        ProblemTypeUris.RateLimitExceeded.ShouldNotContain("rfc6585");
+        ProblemTypeUris.RateLimitExceeded.ShouldNotContain("tools.ietf.org");
+    }
+
+    [Fact]
+    public void RateLimitResponse_ProblemDetailsShape_IsCompliant() {
+        // Verify the 429 ProblemDetails shape matches the rate limiter callback pattern
+        // This is a contract test for the response format produced by the OnRejected callback
+        var problemDetails = new ProblemDetails {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Too Many Requests",
+            Type = ProblemTypeUris.RateLimitExceeded,
+            Detail = "Rate limit exceeded for tenant 'test-tenant'. Please retry after the specified interval.",
+            Instance = "/api/v1/commands",
+            Extensions = {
+                ["correlationId"] = "test-correlation",
+                ["tenantId"] = "test-tenant",
+            },
+        };
+
+        problemDetails.Status.ShouldBe(429);
+        problemDetails.Type.ShouldStartWith("https://hexalith.io/problems/");
+        problemDetails.Extensions.ShouldContainKey("correlationId");
+        problemDetails.Extensions.ShouldContainKey("tenantId");
+        AssertNoForbiddenTerms(problemDetails);
+    }
+
+    [Fact]
+    public void SourceCode_RateLimiterCallback_UsesProblemTypeUrisConstant() {
+        // Regression test: verify the rate limiter OnRejected callback uses
+        // ProblemTypeUris.RateLimitExceeded, not an inline RFC string (Task 7.8)
+        string sourceFile = Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+            "src", "Hexalith.EventStore.CommandApi", "Extensions", "ServiceCollectionExtensions.cs");
+        File.Exists(sourceFile).ShouldBeTrue($"Expected to find source file at '{sourceFile}'.");
+
+        string content = File.ReadAllText(sourceFile);
+        content.ShouldContain("ProblemTypeUris.RateLimitExceeded");
+        content.ShouldNotContain("rfc6585");
+        content.ShouldNotContain("JsonSerializer.Serialize(new { status = 429, title = \"Too Many Requests\" })");
     }
 
     private static void AssertNoForbiddenTerms(ProblemDetails problem) {

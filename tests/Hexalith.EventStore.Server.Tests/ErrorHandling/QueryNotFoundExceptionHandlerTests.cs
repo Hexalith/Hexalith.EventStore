@@ -63,7 +63,8 @@ public class QueryNotFoundExceptionHandlerTests {
         body.ShouldNotContain("secret-tenant");
         body.ShouldNotContain("internal-domain");
         body.ShouldNotContain("order-123");
-        body.ShouldContain("No projection found for the requested resource.");
+        body.ShouldContain("The requested resource was not found.");
         body.ShouldNotContain("aggregate");
+        body.ShouldNotContain("projection");
     }
 }

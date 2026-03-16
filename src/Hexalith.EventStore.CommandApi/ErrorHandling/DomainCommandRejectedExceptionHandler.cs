@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using Microsoft.AspNetCore.Diagnostics;
@@ -20,7 +21,7 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
             return false;
         }
 
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? rejection.CorrelationId;
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? rejection.CorrelationId;
 
         logger.LogWarning(
             "Domain rejection returned to caller: CorrelationId={CorrelationId}, TenantId={TenantId}, RejectionType={RejectionType}",
@@ -41,7 +42,7 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
             Status = statusCode,
             Title = title,
             Type = rejection.RejectionType,
-            Detail = rejection.Detail,
+            Detail = AuthorizationExceptionHandler.SanitizeForbiddenTerms(rejection.Detail),
             Instance = httpContext.Request.Path,
             Extensions = {
                 ["correlationId"] = correlationId,

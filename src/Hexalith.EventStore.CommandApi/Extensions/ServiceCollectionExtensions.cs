@@ -214,11 +214,39 @@ public static class CommandApiServiceCollectionExtensions
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
                     logger?.LogError(ex, "OnRejected callback failed: CorrelationId={CorrelationId}", correlationId);
 
+                    if (context.HttpContext.Response.HasStarted) {
+                        return;
+                    }
+
                     context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                     context.HttpContext.Response.ContentType = "application/problem+json";
+
+                    // Preserve Retry-After in fallback: try to read from options, default to 60s
+                    int fallbackRetryAfter = 60;
+                    try {
+                        RateLimitingOptions? opts = context.HttpContext.RequestServices
+                            .GetService<IOptions<RateLimitingOptions>>()?.Value;
+                        if (opts is not null) {
+                            fallbackRetryAfter = opts.WindowSeconds;
+                        }
+                    }
+                    catch (Exception) {
+                        // Best-effort: keep default if DI fails
+                    }
+
+                    context.HttpContext.Response.Headers.RetryAfter = fallbackRetryAfter.ToString();
+
+                    var fallbackProblemDetails = new ProblemDetails
+                    {
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = "Too Many Requests",
+                        Type = ErrorHandling.ProblemTypeUris.RateLimitExceeded,
+                        Detail = "Rate limit exceeded. Please retry after the specified interval.",
+                        Instance = context.HttpContext.Request.Path.Value,
+                    };
                     await context.HttpContext.Response.WriteAsync(
-                        JsonSerializer.Serialize(new { status = 429, title = "Too Many Requests" }),
-                        cancellationToken).ConfigureAwait(false);
+                        JsonSerializer.Serialize(fallbackProblemDetails),
+                        CancellationToken.None).ConfigureAwait(false);
                 }
             };
         });

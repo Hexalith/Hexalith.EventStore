@@ -1,6 +1,8 @@
 
 using FluentValidation;
 
+using Hexalith.EventStore.CommandApi.Middleware;
+
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,7 +22,7 @@ public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logg
             return false;
         }
 
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
         logger.LogWarning(
             validationException,

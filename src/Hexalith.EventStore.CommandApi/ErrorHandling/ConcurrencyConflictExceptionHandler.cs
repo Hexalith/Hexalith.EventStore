@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 
@@ -34,7 +35,7 @@ public class ConcurrencyConflictExceptionHandler(
         // Prefer HTTP request correlation ID for API-level tracing (enables end-to-end correlation
         // from client request through the full pipeline). The exception's correlation ID is used as
         // fallback for actor-generated conflicts where HTTP context may be unavailable.
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString()
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? conflict.CorrelationId;
 
         logger.LogWarning(

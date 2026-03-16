@@ -1,4 +1,6 @@
 
+using Hexalith.EventStore.CommandApi.Middleware;
+
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +11,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(exception);
 
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
         logger.LogError(exception, "Unhandled exception. CorrelationId={CorrelationId}", correlationId);
 
@@ -33,7 +35,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             problemDetails,
             (System.Text.Json.JsonSerializerOptions?)null,
             "application/problem+json",
-            cancellationToken).ConfigureAwait(false);
+            CancellationToken.None).ConfigureAwait(false);
 
         return true;
     }

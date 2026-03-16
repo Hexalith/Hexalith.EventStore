@@ -2,6 +2,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.CommandApi.Middleware;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,7 @@ public class AuthorizationExceptionHandlerTests {
     public async Task AuthorizationExceptionHandler_HandlesCommandAuthorizationException_Returns403ProblemDetails() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         httpContext.Request.Path = "/api/v1/commands";
         var exception = new CommandAuthorizationException("test-tenant", "test-domain", "CreateOrder", "Not authorized for domain 'test-domain'.");
 
@@ -49,7 +50,7 @@ public class AuthorizationExceptionHandlerTests {
         problemDetails.Status.ShouldBe(403);
         problemDetails.Title.ShouldBe("Forbidden");
         problemDetails.Type.ShouldBe(ProblemTypeUris.Forbidden);
-        problemDetails.Detail.ShouldBe("Not authorized for domain 'test-domain'.");
+        problemDetails.Detail.ShouldBe("Not authorized for tenant 'test-tenant'. Not authorized for domain 'test-domain'.");
         problemDetails.Instance.ShouldBe("/api/v1/commands");
         problemDetails.Extensions.ShouldContainKey("correlationId");
         problemDetails.Extensions.ShouldContainKey("tenantId");
@@ -72,7 +73,7 @@ public class AuthorizationExceptionHandlerTests {
     public async Task AuthorizationExceptionHandler_SetsContentType_ApplicationProblemJson() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         var exception = new CommandAuthorizationException("test-tenant", null, null, "Access denied.");
 
         // Act
@@ -82,6 +83,99 @@ public class AuthorizationExceptionHandlerTests {
         _ = httpContext.Response.ContentType.ShouldNotBeNull();
         httpContext.Response.ContentType.ShouldContain("problem+json");
         httpContext.Response.StatusCode.ShouldBe(403);
+    }
+
+    [Fact]
+    public async Task AuthorizationExceptionHandler_DoesNotDuplicateTenantWhenReasonAlreadyContainsTenant() {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        var exception = new CommandAuthorizationException("test-tenant", null, null, "Not authorized for tenant 'test-tenant'.");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Detail.ShouldBe("Not authorized for tenant 'test-tenant'.");
+    }
+
+    [Fact]
+    public async Task AuthorizationExceptionHandler_DoesNotDuplicateTenantWhenReasonUsesDifferentCase() {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        var exception = new CommandAuthorizationException("Test-Tenant", null, null, "Not authorized for tenant 'test-tenant'.");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Detail.ShouldBe("Not authorized for tenant 'test-tenant'.");
+    }
+
+    [Fact]
+    public async Task AuthorizationExceptionHandler_SanitizesForbiddenTermsFromActorValidatorReason() {
+        // Arrange — actor validators return "Tenant access denied by actor." which contains "actor" (UX-DR6)
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        var exception = new CommandAuthorizationException("test-tenant", null, null, "Tenant access denied by actor.");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        string detail = problemDetails.Detail.ShouldNotBeNull();
+        detail.ShouldNotContain("actor", Case.Insensitive);
+        detail.ShouldContain("Tenant access denied.");
+    }
+
+    [Fact]
+    public async Task AuthorizationExceptionHandler_SanitizesRbacActorReason() {
+        // Arrange — RBAC actor validator returns "RBAC access denied by actor."
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        var exception = new CommandAuthorizationException("test-tenant", "orders", "CreateOrder", "RBAC access denied by actor.");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        string detail = problemDetails.Detail.ShouldNotBeNull();
+        detail.ShouldNotContain("actor", Case.Insensitive);
+        detail.ShouldNotContain("DAPR", Case.Insensitive);
+        detail.ShouldNotContain("aggregate", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task AuthorizationExceptionHandler_SanitizesMultipleForbiddenTerms() {
+        // Arrange — hypothetical reason with multiple forbidden terms
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        var exception = new CommandAuthorizationException("test-tenant", null, null, "DAPR actor denied access to aggregate.");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        string detail = problemDetails.Detail.ShouldNotBeNull();
+        detail.ShouldNotContain("actor", Case.Insensitive);
+        detail.ShouldNotContain("DAPR", Case.Insensitive);
+        detail.ShouldNotContain("aggregate", Case.Insensitive);
     }
 
     [Fact]

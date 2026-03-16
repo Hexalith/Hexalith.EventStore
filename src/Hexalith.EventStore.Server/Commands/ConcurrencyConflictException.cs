@@ -8,8 +8,8 @@ namespace Hexalith.EventStore.Server.Commands;
 /// </summary>
 public class ConcurrencyConflictException : Exception {
     private const string DefaultDetailTemplate =
-        "An optimistic concurrency conflict occurred on aggregate '{0}'. " +
-        "Another command was processed for this aggregate between read and write. " +
+        "An optimistic concurrency conflict occurred on entity '{0}'. " +
+        "Another command was processed concurrently. " +
         "Retry the command to process against the updated state.";
 
     /// <summary>Standard parameterless constructor (serialization support).</summary>
