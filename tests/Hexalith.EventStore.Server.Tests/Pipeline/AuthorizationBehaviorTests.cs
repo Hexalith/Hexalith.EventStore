@@ -3,6 +3,7 @@ using System.Security.Claims;
 
 using Hexalith.EventStore.CommandApi.Authorization;
 using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Pipeline.Queries;
@@ -43,7 +44,7 @@ public class AuthorizationBehaviorTests {
 
     private AuthorizationBehavior<SubmitCommand, SubmitCommandResult> CreateBehavior(ClaimsPrincipal principal) {
         var httpContext = new DefaultHttpContext { User = principal };
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
         var tenantValidator = new ClaimsTenantValidator();
@@ -118,6 +119,7 @@ public class AuthorizationBehaviorTests {
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         ex.Domain.ShouldBe("test-domain");
+        ex.Reason.ShouldContain("tenant 'test-tenant'");
         ex.Reason.ShouldContain("domain");
     }
 
@@ -161,6 +163,7 @@ public class AuthorizationBehaviorTests {
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         ex.CommandType.ShouldBe("CreateOrder");
+        ex.Reason.ShouldContain("tenant 'test-tenant'");
         ex.Reason.ShouldContain("command type");
     }
 
@@ -182,7 +185,7 @@ public class AuthorizationBehaviorTests {
     public async Task AuthorizationBehavior_NonSubmitCommandRequest_PassesThrough() {
         // Arrange - use a non-SubmitCommand MediatR request
         var httpContext = new DefaultHttpContext();
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
         var otherLogger = new TestLogger<AuthorizationBehavior<PingRequest, PingResponse>>([]);
@@ -247,6 +250,7 @@ public class AuthorizationBehaviorTests {
         CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
+        ex.Reason.ShouldContain("tenant 'test-tenant'");
         ex.Reason.ShouldContain("No tenant authorization claims");
     }
 
@@ -291,8 +295,8 @@ public class AuthorizationBehaviorTests {
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         // Should fail on RBAC (domain), not tenant
+        ex.Reason.ShouldContain("tenant 'test-tenant'");
         ex.Reason.ShouldContain("domain");
-        ex.Reason.ShouldNotContain("tenant");
     }
 
     [Fact]
@@ -301,7 +305,7 @@ public class AuthorizationBehaviorTests {
         var httpContext = new DefaultHttpContext {
             User = CreatePrincipal(tenants: ["test-tenant"]),
         };
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
@@ -333,7 +337,7 @@ public class AuthorizationBehaviorTests {
         var httpContext = new DefaultHttpContext {
             User = CreatePrincipal(tenants: ["test-tenant"]),
         };
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 
@@ -380,7 +384,7 @@ public class AuthorizationBehaviorTests {
 
     private AuthorizationBehavior<SubmitQuery, SubmitQueryResult> CreateQueryBehavior(ClaimsPrincipal principal) {
         var httpContext = new DefaultHttpContext { User = principal };
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
         var tenantValidator = new ClaimsTenantValidator();
@@ -436,7 +440,7 @@ public class AuthorizationBehaviorTests {
         var httpContext = new DefaultHttpContext {
             User = CreatePrincipal(tenants: ["test-tenant"]),
         };
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         _ = accessor.HttpContext.Returns(httpContext);
 

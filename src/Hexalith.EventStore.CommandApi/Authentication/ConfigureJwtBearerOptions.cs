@@ -21,6 +21,12 @@ public class ConfigureJwtBearerOptions(
     private const string RequestAuditMetadataKey = "AuthFailureRequestAuditMetadata";
     private readonly ILogger _logger = loggerFactory.CreateLogger<ConfigureJwtBearerOptions>();
 
+    private enum ChallengeKind {
+        MissingToken,
+        InvalidToken,
+        ExpiredToken,
+    }
+
     public void Configure(string? name, JwtBearerOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -97,9 +103,8 @@ public class ConfigureJwtBearerOptions(
                 RequestAuditMetadata metadata = await TryExtractRequestAuditMetadataAsync(context.HttpContext).ConfigureAwait(false);
 
                 // Determine challenge reason
-                string challengeReason = string.IsNullOrEmpty(context.Error)
-                    ? "MissingToken"
-                    : context.Error;
+                ChallengeKind challengeKind = GetChallengeKind(context.Error, context.AuthenticateFailure);
+                string challengeReason = GetChallengeReason(context.Error, challengeKind);
 
                 // Log failed auth at Warning level with SecurityEvent field (AC #7, NFR11)
                 // NEVER log the JWT token itself — server-side logging retains all diagnostic details
@@ -115,12 +120,13 @@ public class ConfigureJwtBearerOptions(
                     "JwtChallenge");
 
                 // Determine human-readable detail message and type URI based on failure type
-                string detail = GetDetailMessage(context.AuthenticateFailure);
-                bool isExpired = context.AuthenticateFailure is SecurityTokenExpiredException;
-                string typeUri = isExpired ? ProblemTypeUris.TokenExpired : ProblemTypeUris.AuthenticationRequired;
+                string detail = GetDetailMessage(challengeKind);
+                string typeUri = challengeKind == ChallengeKind.ExpiredToken
+                    ? ProblemTypeUris.TokenExpired
+                    : ProblemTypeUris.AuthenticationRequired;
 
                 // Set WWW-Authenticate header per RFC 6750 (UX-DR4)
-                context.Response.Headers.WWWAuthenticate = GetWwwAuthenticateHeader(context.AuthenticateFailure);
+                context.Response.Headers.WWWAuthenticate = GetWwwAuthenticateHeader(challengeKind);
 
                 // UX-DR2: No correlationId or tenantId on 401 (pre-pipeline rejection)
                 var problemDetails = new ProblemDetails {
@@ -142,70 +148,46 @@ public class ConfigureJwtBearerOptions(
 
     public void Configure(JwtBearerOptions options) => Configure(JwtBearerDefaults.AuthenticationScheme, options);
 
-    private static string GetDetailMessage(Exception? failure) {
+    private static ChallengeKind GetChallengeKind(string? error, Exception? failure) {
         if (failure is SecurityTokenExpiredException) {
-            return "The provided authentication token has expired.";
+            return ChallengeKind.ExpiredToken;
         }
 
         if (failure is not null) {
-            return "The provided authentication token is invalid.";
+            return ChallengeKind.InvalidToken;
         }
 
-        return "Authentication is required to access this resource.";
+        // Only the RFC 6750 invalid_token challenge maps to the invalid-JWT client contract.
+        // Other challenge error codes must not be rewritten into the invalid-token response.
+        if (string.Equals(error, "invalid_token", StringComparison.OrdinalIgnoreCase)) {
+            return ChallengeKind.InvalidToken;
+        }
+
+        return ChallengeKind.MissingToken;
     }
 
-    private static string GetWwwAuthenticateHeader(Exception? failure) {
-        if (failure is SecurityTokenExpiredException) {
-            return "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token has expired\"";
-        }
-
-        if (failure is not null) {
-            return "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token is invalid\"";
-        }
-
-        return "Bearer realm=\"hexalith-eventstore\"";
+    private static string GetChallengeReason(string? error, ChallengeKind challengeKind) {
+        return challengeKind switch {
+            ChallengeKind.ExpiredToken => "TokenExpired",
+            ChallengeKind.InvalidToken => error ?? "InvalidToken",
+            _ => string.IsNullOrWhiteSpace(error) ? "MissingToken" : error,
+        };
     }
 
-    private static async Task TryAddTenantExtensionAsync(HttpContext httpContext, ProblemDetails problemDetails) {
-        // Try HttpContext.Items first (set by controller for valid requests)
-        if (httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
-            && tenantObj is string tenantId
-            && !string.IsNullOrEmpty(tenantId)) {
-            problemDetails.Extensions["tenantId"] = tenantId;
-            return;
-        }
+    private static string GetDetailMessage(ChallengeKind challengeKind) {
+        return challengeKind switch {
+            ChallengeKind.ExpiredToken => "The provided authentication token has expired.",
+            ChallengeKind.InvalidToken => "The provided authentication token is invalid.",
+            _ => "Authentication is required to access this resource.",
+        };
+    }
 
-        // During auth failure the controller hasn't run, so try extracting tenant from the request body.
-        // Best-effort: do not fail if the body is unreadable or missing the tenant field.
-        try {
-            if (httpContext.Request.Body.CanSeek) {
-                httpContext.Request.Body.Position = 0;
-            }
-            else if (httpContext.Request.Body.CanRead) {
-                httpContext.Request.EnableBuffering();
-                httpContext.Request.Body.Position = 0;
-            }
-            else {
-                return;
-            }
-
-            using JsonDocument doc = await JsonDocument.ParseAsync(httpContext.Request.Body).ConfigureAwait(false);
-            if (doc.RootElement.TryGetProperty("tenant", out JsonElement tenantElement)
-                && tenantElement.ValueKind == JsonValueKind.String) {
-                string? tenant = tenantElement.GetString();
-                if (!string.IsNullOrEmpty(tenant)) {
-                    problemDetails.Extensions["tenantId"] = tenant;
-                }
-            }
-
-            // Reset position for any downstream consumers
-            if (httpContext.Request.Body.CanSeek) {
-                httpContext.Request.Body.Position = 0;
-            }
-        }
-        catch (Exception) {
-            // Best-effort: silently ignore failures
-        }
+    private static string GetWwwAuthenticateHeader(ChallengeKind challengeKind) {
+        return challengeKind switch {
+            ChallengeKind.ExpiredToken => "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token has expired\"",
+            ChallengeKind.InvalidToken => "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token is invalid\"",
+            _ => "Bearer realm=\"hexalith-eventstore\"",
+        };
     }
 
     private static async Task<RequestAuditMetadata> TryExtractRequestAuditMetadataAsync(HttpContext httpContext) {

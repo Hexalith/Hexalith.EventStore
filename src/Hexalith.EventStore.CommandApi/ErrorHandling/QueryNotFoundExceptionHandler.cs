@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.AspNetCore.Diagnostics;
@@ -18,7 +19,7 @@ public class QueryNotFoundExceptionHandler(ILogger<QueryNotFoundExceptionHandler
             return false;
         }
 
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
         logger.LogWarning(
             "Query not found: CorrelationId={CorrelationId}",
@@ -29,7 +30,7 @@ public class QueryNotFoundExceptionHandler(ILogger<QueryNotFoundExceptionHandler
             Status = StatusCodes.Status404NotFound,
             Title = "Not Found",
             Type = ProblemTypeUris.NotFound,
-            Detail = "No projection found for the requested resource.",
+            Detail = "The requested resource was not found.",
             Instance = httpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
         };

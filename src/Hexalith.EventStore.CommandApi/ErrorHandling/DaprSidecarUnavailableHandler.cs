@@ -1,8 +1,13 @@
 
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text.Json;
 
+using Dapr;
+
 using Grpc.Core;
+
+using Hexalith.EventStore.CommandApi.Middleware;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +32,7 @@ public class DaprSidecarUnavailableHandler(
             return false;
         }
 
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
         // Log at Error level with FULL internal details (server-side only)
         logger.LogError(
@@ -63,28 +68,40 @@ public class DaprSidecarUnavailableHandler(
     /// </summary>
     private static bool IsSidecarUnavailable(Exception? exception) {
         const int maxDepth = 10;
-        return IsSidecarUnavailableRecursive(exception, maxDepth);
+        return IsSidecarUnavailableRecursive(exception, maxDepth, false);
     }
 
-    private static bool IsSidecarUnavailableRecursive(Exception? exception, int remainingDepth) {
+    private static bool IsSidecarUnavailableRecursive(Exception? exception, int remainingDepth, bool hasDaprContext) {
         if (exception is null || remainingDepth <= 0) {
             return false;
         }
 
+        bool currentHasDaprContext = hasDaprContext || IsDaprException(exception);
+
+        if (currentHasDaprContext
+            && exception is DaprException daprException
+            && daprException.InnerException is null
+            && HasSidecarUnavailableMessage(daprException.Message)) {
+            return true;
+        }
+
         // Check for gRPC Unavailable status (sidecar not reachable)
-        if (exception is RpcException rpcEx && rpcEx.StatusCode == Grpc.Core.StatusCode.Unavailable) {
+        if (currentHasDaprContext
+            && exception is RpcException rpcEx
+            && rpcEx.StatusCode == Grpc.Core.StatusCode.Unavailable) {
             return true;
         }
 
         // Check for HTTP connection refused (sidecar not listening)
-        if (exception is HttpRequestException httpEx && httpEx.InnerException is System.Net.Sockets.SocketException) {
-            return true;
+        // Walk inner chain: .NET HTTP stack may wrap as HttpRequestException -> IOException -> SocketException
+        if (currentHasDaprContext && exception is HttpRequestException) {
+            return ContainsConnectionRefusedSocketException(exception.InnerException);
         }
 
         // AggregateException has multiple InnerExceptions — search all of them
         if (exception is AggregateException aggregate) {
             foreach (Exception inner in aggregate.InnerExceptions) {
-                if (IsSidecarUnavailableRecursive(inner, remainingDepth - 1)) {
+                if (IsSidecarUnavailableRecursive(inner, remainingDepth - 1, currentHasDaprContext)) {
                     return true;
                 }
             }
@@ -92,6 +109,33 @@ public class DaprSidecarUnavailableHandler(
             return false;
         }
 
-        return IsSidecarUnavailableRecursive(exception.InnerException, remainingDepth - 1);
+        return IsSidecarUnavailableRecursive(exception.InnerException, remainingDepth - 1, currentHasDaprContext);
     }
+
+    /// <summary>
+    /// Walks an inner exception chain looking for a <see cref="SocketException"/>.
+    /// Handles the common .NET HTTP stack chain: HttpRequestException -> IOException -> SocketException.
+    /// </summary>
+    private static bool ContainsConnectionRefusedSocketException(Exception? exception) {
+        const int maxDepth = 5;
+        for (int i = 0; i < maxDepth && exception is not null; i++) {
+            if (exception is SocketException socketException
+                && (socketException.SocketErrorCode == SocketError.ConnectionRefused
+                    || socketException.SocketErrorCode == SocketError.ConnectionReset)) {
+                return true;
+            }
+
+            exception = exception.InnerException;
+        }
+
+        return false;
+    }
+
+    private static bool IsDaprException(Exception exception) => exception is DaprException;
+
+    private static bool HasSidecarUnavailableMessage(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && (message.Contains("sidecar", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("connect", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
 }

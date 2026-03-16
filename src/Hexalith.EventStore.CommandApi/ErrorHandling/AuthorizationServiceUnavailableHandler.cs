@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.CommandApi.Middleware;
+
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +25,7 @@ public class AuthorizationServiceUnavailableHandler(
             return false;
         }
 
-        string correlationId = httpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
         // Log at Error level with FULL internal details (server-side only)
         logger.LogError(

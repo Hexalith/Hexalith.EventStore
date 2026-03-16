@@ -55,12 +55,15 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             ?? throw new InvalidOperationException(
                 "ITenantValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
         if (!tenantResult.IsAuthorized) {
+            string tenantReason = EnsureReasonNamesTenant(
+                tenant,
+                tenantResult.Reason ?? "Tenant access denied.");
             Log.AuthorizationFailed(logger, correlationId, causationId, "N/A",
                 tenant, domain, messageType,
-                tenantResult.Reason ?? "Tenant access denied.", sourceIp);
+                tenantReason, sourceIp);
             throw new CommandAuthorizationException(
                 tenant, domain, messageType,
-                tenantResult.Reason ?? "Tenant access denied.");
+                tenantReason);
         }
 
         // RBAC validation (was inline domain + permission checks)
@@ -70,6 +73,9 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             ?? throw new InvalidOperationException(
                 "IRbacValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
         if (!rbacResult.IsAuthorized) {
+            string rbacReason = EnsureReasonNamesTenant(
+                tenant,
+                rbacResult.Reason ?? "RBAC check failed.");
             // Collect tenant claims for logging context only
             var tenantClaims = user.FindAll("eventstore:tenant")
                 .Select(c => c.Value)
@@ -78,10 +84,10 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             string tenantClaimsCsv = tenantClaims.Count == 0 ? "none" : string.Join(",", tenantClaims);
             Log.AuthorizationFailed(logger, correlationId, causationId, tenantClaimsCsv,
                 tenant, domain, messageType,
-                rbacResult.Reason ?? "RBAC check failed.", sourceIp);
+                rbacReason, sourceIp);
             throw new CommandAuthorizationException(
                 tenant, domain, messageType,
-                rbacResult.Reason ?? "RBAC check failed.");
+                rbacReason);
         }
 
         Log.AuthorizationPassed(
@@ -93,6 +99,16 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             messageType);
 
         return await next().ConfigureAwait(false);
+    }
+
+    private static string EnsureReasonNamesTenant(string? tenant, string reason) {
+        if (string.IsNullOrWhiteSpace(reason) || string.IsNullOrWhiteSpace(tenant)) {
+            return reason;
+        }
+
+        return reason.Contains($"tenant '{tenant}'", StringComparison.OrdinalIgnoreCase)
+            ? reason
+            : $"Not authorized for tenant '{tenant}'. {reason}";
     }
 
     private static partial class Log {
