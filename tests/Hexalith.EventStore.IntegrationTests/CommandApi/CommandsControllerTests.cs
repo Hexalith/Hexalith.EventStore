@@ -39,7 +39,8 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
 
         SubmitCommandResponse? body = await response.Content.ReadFromJsonAsync<SubmitCommandResponse>();
         _ = body.ShouldNotBeNull();
-        body.CorrelationId.ShouldNotBeNullOrEmpty();
+        // FR4: CorrelationId defaults to MessageId when not provided
+        body.CorrelationId.ShouldBe(messageId);
 
         // Location header: absolute URI pointing to status endpoint
         _ = response.Headers.Location.ShouldNotBeNull();
@@ -107,6 +108,10 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
 
         // FR4: CorrelationId defaults to MessageId when empty
         body.CorrelationId.ShouldBe(messageId);
+
+        // Location header should reference the defaulted correlationId (= messageId)
+        _ = response.Headers.Location.ShouldNotBeNull();
+        response.Headers.Location!.ToString().ShouldContain($"/api/v1/commands/status/{messageId}");
     }
 
     [Fact]

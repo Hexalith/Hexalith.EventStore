@@ -1,6 +1,6 @@
 # Story 3.1: Command Submission Endpoint
 
-Status: review
+Status: done
 
 ## Story
 
