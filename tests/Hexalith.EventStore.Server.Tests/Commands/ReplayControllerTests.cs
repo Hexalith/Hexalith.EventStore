@@ -90,6 +90,7 @@ public class ReplayControllerTests {
         Guid.TryParse(response.CorrelationId, out _).ShouldBeTrue();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("Rejected");
+        response.OriginalCorrelationId.ShouldBe(correlationId);
     }
 
     [Fact]
@@ -111,6 +112,7 @@ public class ReplayControllerTests {
         ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("PublishFailed");
+        response.OriginalCorrelationId.ShouldBe(correlationId);
     }
 
     [Fact]
@@ -132,6 +134,7 @@ public class ReplayControllerTests {
         ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("TimedOut");
+        response.OriginalCorrelationId.ShouldBe(correlationId);
     }
 
     [Fact]
@@ -350,5 +353,134 @@ public class ReplayControllerTests {
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Detail!.ShouldContain("expired");
         problemDetails.Extensions["currentStatus"]!.ToString().ShouldBe("Unknown");
+    }
+
+    [Fact]
+    public async Task Replay_CorruptedArchive_NullPayload_Returns409ProblemDetails() {
+        // Arrange - archived command with empty payload (simulates corrupted state store deserialization)
+        string correlationId = Guid.NewGuid().ToString();
+        var corrupted = new ArchivedCommand(
+            Tenant: "tenant-a",
+            Domain: "orders",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: [],
+            Extensions: null,
+            OriginalTimestamp: DateTimeOffset.UtcNow);
+
+        await _archiveStore.WriteCommandAsync("tenant-a", correlationId, corrupted, CancellationToken.None);
+        await _statusStore.WriteStatusAsync(
+            "tenant-a",
+            correlationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "agg-001", null, null, null, null),
+            CancellationToken.None);
+
+        ReplayController controller = CreateController();
+
+        // Act
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        // Assert - graceful error, not unhandled exception
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(409);
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problemDetails.Detail!.ShouldContain("corrupted");
+    }
+
+    [Fact]
+    public async Task Replay_CorruptedArchive_NullCommandType_Returns409ProblemDetails() {
+        // Arrange - archived command with null CommandType (simulates corrupted state store deserialization)
+        string correlationId = Guid.NewGuid().ToString();
+        var corrupted = new ArchivedCommand(
+            Tenant: "tenant-a",
+            Domain: "orders",
+            AggregateId: "agg-001",
+            CommandType: null!,
+            Payload: [1, 2, 3],
+            Extensions: null,
+            OriginalTimestamp: DateTimeOffset.UtcNow);
+
+        await _archiveStore.WriteCommandAsync("tenant-a", correlationId, corrupted, CancellationToken.None);
+        await _statusStore.WriteStatusAsync(
+            "tenant-a",
+            correlationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "agg-001", null, null, null, null),
+            CancellationToken.None);
+
+        ReplayController controller = CreateController();
+
+        // Act
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        // Assert - graceful error, not unhandled exception
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(409);
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problemDetails.Detail!.ShouldContain("corrupted");
+    }
+
+    [Fact]
+    public async Task Replay_CorruptedArchive_TenantMismatch_Returns409ProblemDetails() {
+        // Arrange - archive key tenant differs from archived tenant content
+        string correlationId = Guid.NewGuid().ToString();
+        var corrupted = new ArchivedCommand(
+            Tenant: "tenant-b",
+            Domain: "orders",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: [1, 2, 3],
+            Extensions: null,
+            OriginalTimestamp: DateTimeOffset.UtcNow);
+
+        await _archiveStore.WriteCommandAsync("tenant-a", correlationId, corrupted, CancellationToken.None);
+        await _statusStore.WriteStatusAsync(
+            "tenant-a",
+            correlationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "agg-001", null, null, null, null),
+            CancellationToken.None);
+
+        ReplayController controller = CreateController();
+
+        // Act
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        // Assert - deterministic corruption response
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(409);
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problemDetails.Detail!.ShouldContain("corrupted");
+        problemDetails.Detail!.ShouldContain("tenant mismatch");
+    }
+
+    [Fact]
+    public async Task Replay_CorruptedArchive_MissingAggregateIdentityFields_Returns409ProblemDetails() {
+        // Arrange - null domain and aggregate id simulate deserialization corruption
+        string correlationId = Guid.NewGuid().ToString();
+        var corrupted = new ArchivedCommand(
+            Tenant: "tenant-a",
+            Domain: null!,
+            AggregateId: null!,
+            CommandType: "CreateOrder",
+            Payload: [1, 2, 3],
+            Extensions: null,
+            OriginalTimestamp: DateTimeOffset.UtcNow);
+
+        await _archiveStore.WriteCommandAsync("tenant-a", correlationId, corrupted, CancellationToken.None);
+        await _statusStore.WriteStatusAsync(
+            "tenant-a",
+            correlationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "agg-001", null, null, null, null),
+            CancellationToken.None);
+
+        ReplayController controller = CreateController();
+
+        // Act
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        // Assert - deterministic corruption response
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(409);
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problemDetails.Detail!.ShouldContain("corrupted");
     }
 }

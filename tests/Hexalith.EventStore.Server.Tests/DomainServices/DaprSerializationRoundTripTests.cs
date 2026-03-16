@@ -97,17 +97,18 @@ public class DaprSerializationRoundTripTests {
         (CommandEnvelope _, object? capturedState) = _fixture.DomainServiceInvoker.InvocationsWithState
             .Last(i => i.Command.AggregateId == aggregateId);
 
-        // The captured state should be a List<EventEnvelope> with at least 1 event
+        // The captured state should be a DomainServiceCurrentState with at least 1 event
         capturedState.ShouldNotBeNull("AggregateActor should pass non-null state after first event");
-        capturedState.ShouldBeAssignableTo<IEnumerable<ServerEventEnvelope>>();
-        var events = ((IEnumerable<ServerEventEnvelope>)capturedState).ToList();
-        events.Count.ShouldBeGreaterThan(0, "Should have stored events from previous commands");
+        capturedState.ShouldBeAssignableTo<DomainServiceCurrentState>();
+        DomainServiceCurrentState state = (DomainServiceCurrentState)capturedState;
+        state.Events.Count.ShouldBeGreaterThan(0, "Should have stored events from previous commands");
 
         // Simulate the Dapr DomainServiceRequest serialization round-trip:
         // DaprClient serializes with JsonSerializerDefaults.Web (byte[] → Base64 string)
-        // ASP.NET Core deserializes to DomainServiceRequest where CurrentState becomes JsonElement
+        // ASP.NET Core deserializes to DomainServiceRequest where CurrentState becomes JsonElement.
+        // CurrentState now carries DomainServiceCurrentState (snapshot + events tail), not a raw event list.
         var webOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(events, webOptions);
+        byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(state, webOptions);
         JsonElement deserializedState = JsonSerializer.Deserialize<JsonElement>(serialized, webOptions);
 
         // Assert: EventStoreAggregate must handle the Base64-encoded payloads

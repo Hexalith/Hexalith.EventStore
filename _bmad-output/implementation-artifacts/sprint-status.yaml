@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-16 # story 3-1 done (code review passed)
+last_updated: 2026-03-16 # story 3-4 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -73,7 +73,7 @@ development_status:
   3-1-command-submission-endpoint: done
   3-2-command-validation-and-400-error-responses: done
   3-3-command-status-query-endpoint: done
-  3-4-dead-letter-routing-and-command-replay: backlog
+  3-4-dead-letter-routing-and-command-replay: done
   3-5-concurrency-auth-and-infrastructure-error-responses: backlog
   3-6-openapi-specification-and-swagger-ui: backlog
   epic-3-retrospective: optional

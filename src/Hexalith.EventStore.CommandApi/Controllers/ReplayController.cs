@@ -6,6 +6,7 @@ using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 
 using MediatR;
@@ -158,7 +159,24 @@ public class ReplayController(
             string replayCorrelationId = Guid.NewGuid().ToString();
 
             // AC #1, #2: Create SubmitCommand from archived data and send through full MediatR pipeline
-            var command = archivedCommand.ToSubmitCommand(replayCorrelationId);
+            SubmitCommand command;
+            try {
+                command = archivedCommand.ToSubmitCommand(replayCorrelationId, foundTenant);
+            }
+            catch (InvalidOperationException ex) {
+                logger.LogError(
+                    ex,
+                    "Corrupted archived command: CorrelationId={CorrelationId}, TenantId={TenantId}",
+                    correlationId,
+                    foundTenant);
+
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, "CorruptedArchive"));
+                return CreateProblemDetails(
+                    StatusCodes.Status409Conflict,
+                    "Conflict",
+                    $"Archived command for '{correlationId}' is corrupted and cannot be replayed. {ex.Message}",
+                    requestCorrelationId);
+            }
 
             logger.LogInformation(
                 "Replay initiated: CorrelationId={CorrelationId}, TenantId={TenantId}, PreviousStatus={PreviousStatus}, IsReplay={IsReplay}",
@@ -175,7 +193,7 @@ public class ReplayController(
             Response.Headers["Retry-After"] = "1";
 
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
-            return Accepted(absoluteLocationUri, new ReplayCommandResponse(replayCorrelationId, IsReplay: true, PreviousStatus: previousStatus));
+            return Accepted(absoluteLocationUri, new ReplayCommandResponse(replayCorrelationId, IsReplay: true, PreviousStatus: previousStatus, OriginalCorrelationId: correlationId));
         }
         catch (Exception ex) {
             _ = (activity?.AddException(ex));
