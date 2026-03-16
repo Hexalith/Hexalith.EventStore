@@ -37,8 +37,11 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(400);
-        body.GetProperty("title").GetString().ShouldNotBeNullOrEmpty();
-        body.TryGetProperty("type", out _).ShouldBeTrue();
+        body.GetProperty("title").GetString().ShouldBe("Command Validation Failed");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/validation-error");
+        body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
+        body.TryGetProperty("errors", out JsonElement errors).ShouldBeTrue();
+        errors.EnumerateObject().Count().ShouldBeGreaterThan(0);
     }
 
     [Fact]
@@ -65,8 +68,10 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(400);
-        body.GetProperty("type").GetString()!.ShouldContain("rfc9457");
-        body.GetProperty("instance").GetString().ShouldBe("/api/v1/commands");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/validation-error");
+        body.GetProperty("title").GetString().ShouldBe("Command Validation Failed");
+        body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
+        body.GetProperty("tenantId").GetString().ShouldBe("test-tenant");
     }
 
     [Fact]
@@ -98,7 +103,8 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(400);
-        body.GetProperty("type").GetString()!.ShouldContain("rfc9457");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/validation-error");
+        body.GetProperty("title").GetString().ShouldBe("Command Validation Failed");
     }
 
     [Fact]
@@ -121,10 +127,14 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("title").GetString().ShouldBe("Validation Failed");
+        body.GetProperty("title").GetString().ShouldBe("Command Validation Failed");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/validation-error");
         body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
-        body.GetProperty("validationErrors").GetArrayLength().ShouldBeGreaterThan(0);
+        body.TryGetProperty("errors", out JsonElement errors).ShouldBeTrue();
+        errors.EnumerateObject().Count().ShouldBeGreaterThan(0);
         body.GetProperty("instance").GetString().ShouldBe("/api/v1/commands");
+        // Verify old format is gone
+        body.TryGetProperty("validationErrors", out _).ShouldBeFalse();
     }
 
     [Fact]
@@ -209,11 +219,15 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(400);
-        body.GetProperty("title").GetString().ShouldBe("Validation Failed");
+        body.GetProperty("title").GetString().ShouldBe("Command Validation Failed");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/validation-error");
         body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
         body.GetProperty("instance").GetString().ShouldBe("/api/v1/commands");
         body.GetProperty("tenantId").GetString().ShouldBe("test-tenant");
-        body.GetProperty("validationErrors").GetArrayLength().ShouldBeGreaterThan(0);
+        body.TryGetProperty("errors", out JsonElement errors).ShouldBeTrue();
+        errors.EnumerateObject().Count().ShouldBeGreaterThan(0);
+        // Verify old format is gone
+        body.TryGetProperty("validationErrors", out _).ShouldBeFalse();
     }
 
     [Fact]

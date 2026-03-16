@@ -17,6 +17,7 @@ using Hexalith.EventStore.Server.Pipeline;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
@@ -274,6 +275,80 @@ public static class CommandApiServiceCollectionExtensions
 
         _ = services.AddControllers(options => options.Filters.Add<ValidateModelFilter>());
 
+        _ = services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
+                string? tenantId = context.HttpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
+                    && tenantObj is string tenant
+                    && !string.IsNullOrWhiteSpace(tenant)
+                        ? tenant
+                        : null;
+
+                List<(string Key, string Message)> failures = context.ModelState
+                    .Where(kvp => kvp.Value is { Errors.Count: > 0 })
+                    .SelectMany(kvp => kvp.Value!.Errors.Select(err =>
+                    {
+                        string message = string.IsNullOrWhiteSpace(err.ErrorMessage)
+                            ? "Invalid value."
+                            : err.ErrorMessage;
+                        return (NormalizeModelStateKey(kvp.Key), message);
+                    }))
+                    .ToList();
+
+                Dictionary<string, string> errors = failures
+                    .GroupBy(f => f.Key)
+                    .ToDictionary(g => g.Key, g => string.Join("; ", g.Select(f => f.Message)));
+
+                int errorCount = failures.Count;
+                ProblemDetails problemDetails = ValidationProblemDetailsFactory.Create(
+                    $"The command has {errorCount} validation error(s). See 'errors' for specifics.",
+                    errors,
+                    correlationId,
+                    tenantId);
+                problemDetails.Instance = context.HttpContext.Request.Path;
+
+                var result = new BadRequestObjectResult(problemDetails);
+                result.ContentTypes.Add("application/problem+json");
+                return result;
+            };
+        });
+
         return services;
+    }
+
+    private static string NormalizeModelStateKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return "request";
+        }
+
+        string normalized = key.Trim();
+        if (normalized.StartsWith("$.", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+        else if (normalized.StartsWith("$", StringComparison.Ordinal))
+        {
+            normalized = normalized[1..];
+        }
+
+        if (normalized.StartsWith(".", StringComparison.Ordinal))
+        {
+            normalized = normalized[1..];
+        }
+
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "request";
+        }
+
+        return string.Join(
+            ".",
+            normalized
+                .Split('.', StringSplitOptions.RemoveEmptyEntries)
+                .Select(JsonNamingPolicy.CamelCase.ConvertName));
     }
 }
