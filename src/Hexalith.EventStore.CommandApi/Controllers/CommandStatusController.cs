@@ -48,6 +48,7 @@ public class CommandStatusController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
+                    "https://hexalith.io/problems/bad-request",
                     "Bad Request",
                     "Correlation ID is required.",
                     requestCorrelationId);
@@ -70,6 +71,7 @@ public class CommandStatusController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
                 return CreateProblemDetails(
                     StatusCodes.Status403Forbidden,
+                    "https://hexalith.io/problems/forbidden",
                     "Forbidden",
                     "No tenant authorization claims found. Access denied.",
                     requestCorrelationId);
@@ -90,7 +92,11 @@ public class CommandStatusController(
                         tenant,
                         record.Status);
 
-                    Response.Headers["Retry-After"] = "1";
+                    // Only include Retry-After for non-terminal statuses (consumer should keep polling).
+                    if (!IsTerminalStatus(record.Status)) {
+                        Response.Headers["Retry-After"] = "1";
+                    }
+
                     _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     return Ok(CommandStatusResponse.FromRecord(correlationId, record));
                 }
@@ -105,6 +111,7 @@ public class CommandStatusController(
             _ = (activity?.SetStatus(ActivityStatusCode.Error, "NotFound"));
             return CreateProblemDetails(
                 StatusCodes.Status404NotFound,
+                "https://hexalith.io/problems/command-status-not-found",
                 "Not Found",
                 $"No command status found for correlation ID '{correlationId}'.",
                 requestCorrelationId);
@@ -116,11 +123,11 @@ public class CommandStatusController(
         }
     }
 
-    private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId) {
+    private ObjectResult CreateProblemDetails(int statusCode, string type, string title, string detail, string correlationId) {
         var problemDetails = new ProblemDetails {
             Status = statusCode,
             Title = title,
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
+            Type = type,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions =
@@ -133,4 +140,10 @@ public class CommandStatusController(
 
         return new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
+
+    private static bool IsTerminalStatus(CommandStatus status) =>
+        status is CommandStatus.Completed
+            or CommandStatus.Rejected
+            or CommandStatus.PublishFailed
+            or CommandStatus.TimedOut;
 }

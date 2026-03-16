@@ -1,6 +1,6 @@
 # Story 3.3: Command Status Query Endpoint
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -62,78 +62,78 @@ Do NOT modify:
 
 ### Part A: Verify endpoint behavior and response format
 
-- [ ] Task 1: Verify 200 OK response format (AC: #1)
-  - [ ] 1.1 Read `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` fully
-  - [ ] 1.2 Confirm `GET /api/v1/commands/status/{correlationId}` returns `200 OK` with `CommandStatusResponse` body
-  - [ ] 1.3 Confirm `CommandStatusResponse` includes all 8 lifecycle states from `CommandStatus` enum: Received(0), Processing(1), EventsStored(2), EventsPublished(3), Completed(4), Rejected(5), PublishFailed(6), TimedOut(7)
-  - [ ] 1.4 Confirm response includes `correlationId`, `status` (string), `statusCode` (int), `timestamp`, and terminal-state-specific fields (`aggregateId`, `eventCount`, `rejectionEventType`, `failureReason`, `timeoutDuration`)
-  - [ ] 1.5 Confirm `timeoutDuration` is serialized as ISO 8601 duration string via `XmlConvert.ToString()` (e.g., `"PT30S"`)
+- [x] Task 1: Verify 200 OK response format (AC: #1)
+  - [x] 1.1 Read `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` fully
+  - [x] 1.2 Confirm `GET /api/v1/commands/status/{correlationId}` returns `200 OK` with `CommandStatusResponse` body
+  - [x] 1.3 Confirm `CommandStatusResponse` includes all 8 lifecycle states from `CommandStatus` enum: Received(0), Processing(1), EventsStored(2), EventsPublished(3), Completed(4), Rejected(5), PublishFailed(6), TimedOut(7)
+  - [x] 1.4 Confirm response includes `correlationId`, `status` (string), `statusCode` (int), `timestamp`, and terminal-state-specific fields (`aggregateId`, `eventCount`, `rejectionEventType`, `failureReason`, `timeoutDuration`)
+  - [x] 1.5 Confirm `timeoutDuration` is serialized as ISO 8601 duration string via `XmlConvert.ToString()` (e.g., `"PT30S"`)
 
-- [ ] Task 2: Verify and fix `Retry-After` header behavior (AC: #1)
-  - [ ] 2.1 Current code ALWAYS sets `Retry-After: 1` on 200 responses (line 93). For terminal statuses (Completed, Rejected, PublishFailed, TimedOut) this is misleading because the status will not change
-  - [ ] 2.2 Fix: Make `Retry-After` conditional. Only include for non-terminal statuses (Received, Processing, EventsStored, EventsPublished). Terminal status responses should NOT include `Retry-After` — the consumer should stop polling
-  - [ ] 2.3 Terminal statuses are those with `CommandStatus >= CommandStatus.Completed` (values 4-7). Non-terminal are values 0-3.
+- [x] Task 2: Verify and fix `Retry-After` header behavior (AC: #1)
+  - [x] 2.1 Current code ALWAYS sets `Retry-After: 1` on 200 responses (line 93). For terminal statuses (Completed, Rejected, PublishFailed, TimedOut) this is misleading because the status will not change
+  - [x] 2.2 Fix: Make `Retry-After` conditional. Only include for non-terminal statuses (Received, Processing, EventsStored, EventsPublished). Terminal status responses should NOT include `Retry-After` — the consumer should stop polling
+  - [x] 2.3 Terminal statuses are those with `CommandStatus >= CommandStatus.Completed` (values 4-7). Non-terminal are values 0-3.
 
-- [ ] Task 3: Verify tenant-scoped queries (SEC-3) (AC: #1, #2)
-  - [ ] 3.1 Confirm controller extracts `eventstore:tenant` claims from JWT
-  - [ ] 3.2 Confirm controller iterates all authorized tenants, querying `ICommandStatusStore.ReadStatusAsync()` for each
-  - [ ] 3.3 Confirm tenant mismatch returns 404 (not 403) — per SEC-3, unauthorized tenants see "not found" not "forbidden"
-  - [ ] 3.4 Confirm no tenant claims returns 403 Forbidden
+- [x] Task 3: Verify tenant-scoped queries (SEC-3) (AC: #1, #2)
+  - [x] 3.1 Confirm controller extracts `eventstore:tenant` claims from JWT
+  - [x] 3.2 Confirm controller iterates all authorized tenants, querying `ICommandStatusStore.ReadStatusAsync()` for each
+  - [x] 3.3 Confirm tenant mismatch returns 404 (not 403) — per SEC-3, unauthorized tenants see "not found" not "forbidden"
+  - [x] 3.4 Confirm no tenant claims returns 403 Forbidden
 
 ### Part B: Align ProblemDetails to project standards
 
-- [ ] Task 4: Fix ProblemDetails `type` URIs (E3)
-  - [ ] 4.1 Read `CommandStatusController.CreateProblemDetails()` helper. Currently uses `"https://tools.ietf.org/html/rfc9457#section-3"` for all errors
-  - [ ] 4.2 Change the 404 `type` to `"https://hexalith.io/problems/command-status-not-found"` — specific URI that uniquely identifies this error category per E3
-  - [ ] 4.3 Change the 403 `type` to `"https://hexalith.io/problems/forbidden"` — standard forbidden category
-  - [ ] 4.4 Change the 400 `type` to `"https://hexalith.io/problems/bad-request"` — standard bad request category
-  - [ ] 4.5 **Do NOT change ConcurrencyConflictExceptionHandler type URI** — that is Story 3.5 scope
+- [x] Task 4: Fix ProblemDetails `type` URIs (E3)
+  - [x] 4.1 Read `CommandStatusController.CreateProblemDetails()` helper. Currently uses `"https://tools.ietf.org/html/rfc9457#section-3"` for all errors
+  - [x] 4.2 Change the 404 `type` to `"https://hexalith.io/problems/command-status-not-found"` — specific URI that uniquely identifies this error category per E3
+  - [x] 4.3 Change the 403 `type` to `"https://hexalith.io/problems/forbidden"` — standard forbidden category
+  - [x] 4.4 Change the 400 `type` to `"https://hexalith.io/problems/bad-request"` — standard bad request category
+  - [x] 4.5 **Do NOT change ConcurrencyConflictExceptionHandler type URI** — that is Story 3.5 scope
 
-- [ ] Task 5: Confirm `tenantId` omission from ProblemDetails is correct (D5)
-  - [ ] 5.1 The `CreateProblemDetails` helper currently only includes `correlationId`. D5 says both `correlationId` and `tenantId` should be present in ProblemDetails extensions.
-  - [ ] 5.2 **Decision (from party-mode review):** `tenantId` is correctly OMITTED from all CommandStatusController error responses. Rationale: the status controller iterates multiple tenant claims to find a match — there is no single tenant context at query time. Specifically: 400 = pre-validation (no tenant), 403 = no tenant claims exist, 404 = status not found in any authorized tenant. No single tenant to report.
-  - [ ] 5.3 **D5 Exception Documentation (REQUIRED in Completion Notes):** Record that `tenantId` is intentionally absent from all CommandStatusController ProblemDetails as a documented D5 exception. Reason: status queries iterate multiple tenant claims with no single tenant context. Unlike command submission errors (which have a known tenant from the request body), status queries cannot attribute errors to a specific tenant. This prevents future reviewers from flagging the omission as a bug.
-  - [ ] 5.4 No code change needed — verify current behavior matches the decision and document the rationale.
+- [x] Task 5: Confirm `tenantId` omission from ProblemDetails is correct (D5)
+  - [x] 5.1 The `CreateProblemDetails` helper currently only includes `correlationId`. D5 says both `correlationId` and `tenantId` should be present in ProblemDetails extensions.
+  - [x] 5.2 **Decision (from party-mode review):** `tenantId` is correctly OMITTED from all CommandStatusController error responses. Rationale: the status controller iterates multiple tenant claims to find a match — there is no single tenant context at query time. Specifically: 400 = pre-validation (no tenant), 403 = no tenant claims exist, 404 = status not found in any authorized tenant. No single tenant to report.
+  - [x] 5.3 **D5 Exception Documentation (REQUIRED in Completion Notes):** Record that `tenantId` is intentionally absent from all CommandStatusController ProblemDetails as a documented D5 exception. Reason: status queries iterate multiple tenant claims with no single tenant context. Unlike command submission errors (which have a known tenant from the request body), status queries cannot attribute errors to a specific tenant. This prevents future reviewers from flagging the omission as a bug.
+  - [x] 5.4 No code change needed — verify current behavior matches the decision and document the rationale.
 
-- [ ] Task 6: Verify no event sourcing terminology (E6)
-  - [ ] 6.1 Scan all error messages in `CommandStatusController` for forbidden terms: "aggregate", "event stream", "actor", "DAPR", "sidecar"
-  - [ ] 6.2 Scan `CommandStatusResponse` property names and values — `aggregateId` is intentional in the response (it's the domain concept), but verify error messages never reference internal implementation
-  - [ ] 6.3 Verify structured log messages use parameterized templates (no interpolation that could leak terms into responses)
+- [x] Task 6: Verify no event sourcing terminology (E6)
+  - [x] 6.1 Scan all error messages in `CommandStatusController` for forbidden terms: "aggregate", "event stream", "actor", "DAPR", "sidecar"
+  - [x] 6.2 Scan `CommandStatusResponse` property names and values — `aggregateId` is intentional in the response (it's the domain concept), but verify error messages never reference internal implementation
+  - [x] 6.3 Verify structured log messages use parameterized templates (no interpolation that could leak terms into responses)
 
 ### Part C: Verify and extend test coverage
 
-- [ ] Task 7: Establish test baseline (AC: #3)
-  - [ ] 7.1 Run ALL Tier 1 tests (`Contracts.Tests`, `Client.Tests`, `Sample.Tests`, `Testing.Tests`) + ALL Tier 2 tests (`Server.Tests`) BEFORE any code changes and record exact pass/fail counts per project
-  - [ ] 7.2 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter "FullyQualifiedName~CommandStatus"` specifically to get focused baseline
-  - [ ] 7.3 Save both full and filtered baselines for diff comparison after changes
+- [x] Task 7: Establish test baseline (AC: #3)
+  - [x] 7.1 Run ALL Tier 1 tests (`Contracts.Tests`, `Client.Tests`, `Sample.Tests`, `Testing.Tests`) + ALL Tier 2 tests (`Server.Tests`) BEFORE any code changes and record exact pass/fail counts per project
+  - [x] 7.2 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter "FullyQualifiedName~CommandStatus"` specifically to get focused baseline
+  - [x] 7.3 Save both full and filtered baselines for diff comparison after changes
 
-- [ ] Task 8: Update existing Tier 2 tests for ProblemDetails format (AC: #2, #3)
-  - [ ] 8.1 Read `tests/Hexalith.EventStore.Server.Tests/Commands/CommandStatusControllerTests.cs`
-  - [ ] 8.2 Update `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails`: add assertions for `type` URI = `"https://hexalith.io/problems/command-status-not-found"` and `title` = `"Not Found"`
-  - [ ] 8.3 Update `GetStatus_NoTenantClaims_Returns403ProblemDetails`: add assertion for `type` URI = `"https://hexalith.io/problems/forbidden"`
-  - [ ] 8.4 Update `GetStatus_WhitespaceCorrelationId_Returns400`: add assertion for `type` URI = `"https://hexalith.io/problems/bad-request"`
-  - [ ] 8.5 Add assertion: `correlationId` extension is present in all ProblemDetails responses
+- [x] Task 8: Update existing Tier 2 tests for ProblemDetails format (AC: #2, #3)
+  - [x] 8.1 Read `tests/Hexalith.EventStore.Server.Tests/Commands/CommandStatusControllerTests.cs`
+  - [x] 8.2 Update `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails`: add assertions for `type` URI = `"https://hexalith.io/problems/command-status-not-found"` and `title` = `"Not Found"`
+  - [x] 8.3 Update `GetStatus_NoTenantClaims_Returns403ProblemDetails`: add assertion for `type` URI = `"https://hexalith.io/problems/forbidden"`
+  - [x] 8.4 Update `GetStatus_WhitespaceCorrelationId_Returns400`: add assertion for `type` URI = `"https://hexalith.io/problems/bad-request"`
+  - [x] 8.5 Add assertion: `correlationId` extension is present in all ProblemDetails responses
 
-- [ ] Task 9: Add Tier 2 tests for `Retry-After` conditionality (AC: #1)
-  - [ ] 9.1 Add test: non-terminal status (e.g., `Received`) → 200 with `Retry-After: 1` header
-  - [ ] 9.2 Add test: terminal status (e.g., `Completed`) → 200 WITHOUT `Retry-After` header
-  - [ ] 9.3 Add test: terminal status `Rejected` → 200 WITHOUT `Retry-After` header
-  - [ ] 9.4 Add test: terminal status `TimedOut` → 200 WITHOUT `Retry-After` header
-  - [ ] 9.5 Add test: terminal status `PublishFailed` → 200 WITHOUT `Retry-After` header (covers all 4 terminal states)
+- [x] Task 9: Add Tier 2 tests for `Retry-After` conditionality (AC: #1)
+  - [x] 9.1 Add test: non-terminal status (e.g., `Received`) → 200 with `Retry-After: 1` header
+  - [x] 9.2 Add test: terminal status (e.g., `Completed`) → 200 WITHOUT `Retry-After` header
+  - [x] 9.3 Add test: terminal status `Rejected` → 200 WITHOUT `Retry-After` header
+  - [x] 9.4 Add test: terminal status `TimedOut` → 200 WITHOUT `Retry-After` header
+  - [x] 9.5 Add test: terminal status `PublishFailed` → 200 WITHOUT `Retry-After` header (covers all 4 terminal states)
   - **Header assertion pattern:** The existing `SetupHttpContext` helper wires `DefaultHttpContext` to the controller via `ControllerContext`. Response headers are accessible at `_controller.HttpContext.Response.Headers["Retry-After"]`. Assert `.ToString()` equals `"1"` for presence, and use `ContainsKey("Retry-After").ShouldBeFalse()` for absence.
 
-- [ ] Task 10: Verify Tier 3 integration tests still pass (AC: #3)
-  - [ ] 10.1 Read `tests/Hexalith.EventStore.IntegrationTests/CommandApi/CommandStatusIntegrationTests.cs`
-  - [ ] 10.2 If Tier 3 tests assert on `Retry-After` header presence for terminal statuses, update them to reflect conditional behavior
-  - [ ] 10.3 Verify `GetStatus_ResponseIncludesCorrelationIdInProblemDetails` test passes with new `type` URI
-  - [ ] 10.4 Update Tier 3 tests to assert new `type` URIs if they currently assert on the old RFC URI
+- [x] Task 10: Verify Tier 3 integration tests still pass (AC: #3)
+  - [x] 10.1 Read `tests/Hexalith.EventStore.IntegrationTests/CommandApi/CommandStatusIntegrationTests.cs`
+  - [x] 10.2 If Tier 3 tests assert on `Retry-After` header presence for terminal statuses, update them to reflect conditional behavior
+  - [x] 10.3 Verify `GetStatus_ResponseIncludesCorrelationIdInProblemDetails` test passes with new `type` URI
+  - [x] 10.4 Update Tier 3 tests to assert new `type` URIs if they currently assert on the old RFC URI
 
-- [ ] Task 11: Run full test suite (AC: #3)
-  - [ ] 11.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
-  - [ ] 11.2 Tier 1: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` + `Client.Tests` + `Sample.Tests` + `Testing.Tests`
-  - [ ] 11.3 Tier 2: `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter "FullyQualifiedName~CommandStatus"`
-  - [ ] 11.4 Tier 3 (if Docker available): `dotnet test tests/Hexalith.EventStore.IntegrationTests/ --filter "FullyQualifiedName~CommandStatus"`
-  - [ ] 11.5 Diff results against pre-change baseline to confirm zero regressions
+- [x] Task 11: Run full test suite (AC: #3)
+  - [x] 11.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
+  - [x] 11.2 Tier 1: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` + `Client.Tests` + `Sample.Tests` + `Testing.Tests`
+  - [x] 11.3 Tier 2: `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter "FullyQualifiedName~CommandStatus"`
+  - [x] 11.4 Tier 3 (if Docker available): `dotnet test tests/Hexalith.EventStore.IntegrationTests/ --filter "FullyQualifiedName~CommandStatus"`
+  - [x] 11.5 Diff results against pre-change baseline to confirm zero regressions
 
 ## Dev Notes
 
@@ -358,8 +358,68 @@ Recent commits:
 
 ### Agent Model Used
 
+Claude Opus 4.6 (1M context)
+
 ### Debug Log References
+
+None — clean implementation with no debugging needed.
 
 ### Completion Notes List
 
+**Task 1 — PASS:** 200 OK response format verified. `CommandStatusController.GetStatus` returns `OkObjectResult` with `CommandStatusResponse.FromRecord()`. All 8 lifecycle states confirmed in `CommandStatus` enum (Received=0 through TimedOut=7). Response includes all required fields. `timeoutDuration` serialized via `XmlConvert.ToString()` as ISO 8601 (e.g., "PT30S").
+
+**Task 2 — FIXED:** `Retry-After` header was unconditionally set on ALL 200 responses. Fixed to be conditional: only included for non-terminal statuses (`record.Status < CommandStatus.Completed`). Terminal statuses (Completed, Rejected, PublishFailed, TimedOut) no longer include `Retry-After`, signaling consumers to stop polling.
+
+**Task 3 — PASS:** Tenant-scoped queries verified. Controller extracts `eventstore:tenant` claims (line 60-63), iterates all authorized tenants (line 81), returns 404 for tenant mismatch (SEC-3), and returns 403 for missing tenant claims.
+
+**Task 4 — FIXED:** `CreateProblemDetails` helper refactored to accept `type` parameter. All call sites now use project-standard `https://hexalith.io/problems/*` URIs:
+- 400: `https://hexalith.io/problems/bad-request`
+- 403: `https://hexalith.io/problems/forbidden`
+- 404: `https://hexalith.io/problems/command-status-not-found`
+ConcurrencyConflictExceptionHandler NOT modified (Story 3.5 scope).
+
+**Task 5 — PASS (D5 Exception Documented):** `tenantId` is intentionally ABSENT from all CommandStatusController ProblemDetails responses. This is a documented D5 exception. Rationale: status queries iterate multiple tenant claims — there is no single tenant context at query time. Specifically: 400 = pre-validation (no tenant), 403 = no tenant claims exist, 404 = not found in any authorized tenant. Unlike command submission errors (which have a known tenant from the request body), status queries cannot attribute errors to a specific tenant. This prevents future reviewers from flagging the omission as a bug.
+
+**Task 6 — PASS:** No event sourcing terminology found in error messages. Grep for "aggregate", "event stream", "actor", "DAPR", "sidecar" returned zero matches. `AggregateId` in `CommandStatusResponse` is intentional (domain concept, not error message). Log messages use parameterized templates.
+
+**Task 7 — PASS:** Pre-change baseline recorded: Tier 1: Contracts=267, Client=290, Sample=32, Testing=67 (Total 656, 0 failures). Tier 2 CommandStatus: 17 passed, 0 failed. Tier 2 Full: 1287 passed, 21 failed (pre-existing Dapr container failures).
+
+**Task 8 — PASS:** Updated 3 existing tests with new ProblemDetails assertions:
+- `GetStatus_NonExistentCorrelationId_Returns404ProblemDetails`: added `type` URI and `title` assertions
+- `GetStatus_NoTenantClaims_Returns403ProblemDetails`: added `type` URI assertion
+- `GetStatus_WhitespaceCorrelationId_Returns400`: added `type` URI assertion
+- All 3 tests now assert `correlationId` extension is present
+
+**Task 9 — PASS:** Added 5 new Retry-After conditionality tests:
+- `GetStatus_NonTerminalStatus_IncludesRetryAfterHeader` (Received)
+- `GetStatus_CompletedStatus_DoesNotIncludeRetryAfterHeader`
+- `GetStatus_RejectedStatus_DoesNotIncludeRetryAfterHeader`
+- `GetStatus_TimedOutStatus_DoesNotIncludeRetryAfterHeader`
+- `GetStatus_PublishFailedStatus_DoesNotIncludeRetryAfterHeader`
+
+**Task 10 — PASS:** Tier 3 CommandStatusIntegrationTests reviewed. No assertions on `type` URIs or `Retry-After` headers — no changes needed. `GetStatus_ResponseIncludesCorrelationIdInProblemDetails` only checks for `correlationId` presence (compatible with new format). Old `type` URI references in AuthorizationIntegrationTests and JwtAuthenticationIntegrationTests are out of scope (Story 3.5).
+
+**Task 11 — PASS (updated post-review):** Full test suite results after changes:
+- Release build: 0 warnings, 0 errors
+- Tier 1: Contracts=267, Client=290, Sample=32, Testing=67 (Total 656, 0 failures) — matches baseline
+- Tier 2 CommandStatus: 25 passed, 0 failed (+8 new tests vs 17 baseline)
+- Tier 3: Not run (Docker not available) — Tier 3 tests reviewed in Task 10, no changes needed
+- Diff: Zero regressions, +8 new tests
+
+**Code Review — 2 patches applied:**
+- **P1 (FIXED):** Added 3 missing non-terminal `Retry-After` tests for `Processing`, `EventsStored`, `EventsPublished` statuses. Previously only `Received` was tested.
+- **P2 (FIXED):** Added `application/problem+json` content-type assertions to the 400, 403, and 404 test methods (DoD #7, E1).
+- **5 deferred (pre-existing, not this diff):** Allman brace style (file-wide K&R), `ThrowIfNull` vs `IsNullOrWhiteSpace` ordering, tenant loop error handling, hardcoded `Retry-After` value, `ProducesResponseType` missing content type arg.
+- **5 rejected as noise:** enum forward-compatibility, non-resolvable type URIs, correlationId reflection, duplicate enum concern, pattern-match vs numeric comparison.
+
 ### File List
+
+- `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` — MODIFIED (conditional Retry-After, ProblemDetails type URIs, CreateProblemDetails signature)
+- `tests/Hexalith.EventStore.Server.Tests/Commands/CommandStatusControllerTests.cs` — MODIFIED (updated ProblemDetails assertions, added 8 tests: 5 Retry-After terminal, 3 Retry-After non-terminal, 3 content-type assertions)
+- `_bmad-output/implementation-artifacts/3-3-command-status-query-endpoint.md` — MODIFIED (task checkboxes, Dev Agent Record, status, code review notes)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED (story status: ready-for-dev -> in-progress -> review)
+
+## Change Log
+
+- 2026-03-16: Story 3.3 implementation complete. Fixed Retry-After header conditionality (non-terminal only). Aligned ProblemDetails type URIs to `https://hexalith.io/problems/*` pattern (E3). Added 5 new Retry-After conditionality tests. Updated 3 existing test assertions for RFC 7807 compliance. Zero regressions.
+- 2026-03-16: Code review (3-layer adversarial). 2 patch findings fixed: added 3 non-terminal Retry-After tests (Processing, EventsStored, EventsPublished) and added `application/problem+json` content-type assertions to 400/403/404 tests. 5 deferred (pre-existing). 5 rejected. Final: 25 CommandStatus tests, 0 failures.
