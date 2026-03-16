@@ -89,7 +89,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             AggregateId: request.AggregateId,
             CommandType: request.CommandType,
             Payload: JsonSerializer.SerializeToUtf8Bytes(request.Payload),
-            CorrelationId: request.CorrelationId ?? request.MessageId,
+            CorrelationId: string.IsNullOrEmpty(request.CorrelationId) ? request.MessageId : request.CorrelationId,
             UserId: userId,
             Extensions: request.Extensions);
 

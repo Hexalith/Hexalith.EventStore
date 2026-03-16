@@ -346,6 +346,51 @@ public class ConcurrencyConflictExceptionHandlerTests {
     }
 
     [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesConflictSourceExtension() {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme",
+            conflictSource: "StateStore");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldContainKey("conflictSource");
+        problemDetails.Extensions["conflictSource"]!.ToString().ShouldBe("StateStore");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_NullConflictSource_OmitsConflictSourceExtension() {
+        // Arrange
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme",
+            conflictSource: null);
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldNotContainKey("conflictSource");
+    }
+
+    [Fact]
     public async Task TryHandleAsync_Depth10Nesting_Returns409() {
         // Arrange - nest ConcurrencyConflictException at depth 10 (max depth limit)
         DefaultHttpContext httpContext = CreateHttpContextWithBody();

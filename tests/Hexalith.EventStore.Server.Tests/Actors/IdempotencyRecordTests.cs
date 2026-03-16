@@ -53,6 +53,30 @@ public class IdempotencyRecordTests {
     }
 
     [Fact]
+    public void ToResult_DoesNotPreserve_EventCountAndResultPayload() {
+        // Arrange — original result has non-default EventCount and ResultPayload
+        var original = new CommandProcessingResult(
+            Accepted: true,
+            ErrorMessage: null,
+            CorrelationId: "corr-1",
+            EventCount: 5,
+            ResultPayload: "{\"key\":\"value\"}");
+        var record = IdempotencyRecord.FromResult("cause-1", original);
+
+        // Act
+        CommandProcessingResult roundtripped = record.ToResult();
+
+        // Assert — EventCount and ResultPayload are NOT preserved (by design)
+        roundtripped.EventCount.ShouldBe(0);
+        roundtripped.ResultPayload.ShouldBeNull();
+
+        // But Accepted, ErrorMessage, CorrelationId ARE preserved
+        roundtripped.Accepted.ShouldBeTrue();
+        roundtripped.CorrelationId.ShouldBe("corr-1");
+        roundtripped.ErrorMessage.ShouldBeNull();
+    }
+
+    [Fact]
     public void JsonRoundtrip_PreservesAllFields() {
         // Arrange
         var original = new IdempotencyRecord(

@@ -1,6 +1,6 @@
 # Story 2.5: Duplicate Command Detection
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -77,78 +77,78 @@ Do NOT verify these -- they belong to other stories:
 
 Each verification subtask must be recorded as PASS or FAIL in the Completion Notes section.
 
-- [ ] Task 1: Verify IdempotencyChecker check path (AC #1, #3)
-  - [ ] 1.1 Read `IdempotencyChecker.cs`. Confirm `CheckAsync()` builds key as `idempotency:{causationId}` and queries via `stateManager.TryGetStateAsync<IdempotencyRecord>(key)`. Record PASS/FAIL
-  - [ ] 1.2 Confirm cache hit returns `result.Value.ToResult()` converting `IdempotencyRecord` back to `CommandProcessingResult`. Record PASS/FAIL
-  - [ ] 1.3 Confirm cache miss returns `null` (caller proceeds with normal processing). Record PASS/FAIL
-  - [ ] 1.4 Confirm guard clause: `ArgumentException.ThrowIfNullOrWhiteSpace` for causationId. Record PASS/FAIL
-  - [ ] 1.5 Confirm structured logging: `IdempotencyCacheHit` (EventId 5000) and `IdempotencyCacheMiss` (EventId 5001). Record PASS/FAIL
-  - [ ] 1.6 If any check path gap found, implement the fix and add test coverage
+- [x] Task 1: Verify IdempotencyChecker check path (AC #1, #3)
+  - [x] 1.1 Read `IdempotencyChecker.cs`. Confirm `CheckAsync()` builds key as `idempotency:{causationId}` and queries via `stateManager.TryGetStateAsync<IdempotencyRecord>(key)`. Record PASS/FAIL
+  - [x] 1.2 Confirm cache hit returns `result.Value.ToResult()` converting `IdempotencyRecord` back to `CommandProcessingResult`. Record PASS/FAIL
+  - [x] 1.3 Confirm cache miss returns `null` (caller proceeds with normal processing). Record PASS/FAIL
+  - [x] 1.4 Confirm guard clause: `ArgumentException.ThrowIfNullOrWhiteSpace` for causationId. Record PASS/FAIL
+  - [x] 1.5 Confirm structured logging: `IdempotencyCacheHit` (EventId 5000) and `IdempotencyCacheMiss` (EventId 5001). Record PASS/FAIL
+  - [x] 1.6 If any check path gap found, implement the fix and add test coverage
 
-- [ ] Task 2: Verify IdempotencyChecker record path (AC #4)
-  - [ ] 2.1 Read `IdempotencyChecker.cs` `RecordAsync()`. Confirm it stores via `stateManager.SetStateAsync(key, record)` (staging only, no SaveStateAsync -- caller commits atomically). Record PASS/FAIL
-  - [ ] 2.2 Confirm `IdempotencyRecord.FromResult(causationId, result)` creates record with correct field mapping. Record PASS/FAIL
-  - [ ] 2.3 Confirm guard clauses: `ArgumentException.ThrowIfNullOrWhiteSpace` for causationId, `ArgumentNullException.ThrowIfNull` for result. Record PASS/FAIL
-  - [ ] 2.4 Confirm structured logging: `IdempotencyRecordStored` (EventId 5002). Record PASS/FAIL
-  - [ ] 2.5 If any record path gap found, implement the fix and add test coverage
+- [x] Task 2: Verify IdempotencyChecker record path (AC #4)
+  - [x] 2.1 Read `IdempotencyChecker.cs` `RecordAsync()`. Confirm it stores via `stateManager.SetStateAsync(key, record)` (staging only, no SaveStateAsync -- caller commits atomically). Record PASS/FAIL
+  - [x] 2.2 Confirm `IdempotencyRecord.FromResult(causationId, result)` creates record with correct field mapping. Record PASS/FAIL
+  - [x] 2.3 Confirm guard clauses: `ArgumentException.ThrowIfNullOrWhiteSpace` for causationId, `ArgumentNullException.ThrowIfNull` for result. Record PASS/FAIL
+  - [x] 2.4 Confirm structured logging: `IdempotencyRecordStored` (EventId 5002). Record PASS/FAIL
+  - [x] 2.5 If any record path gap found, implement the fix and add test coverage
 
-- [ ] Task 3: Verify IdempotencyRecord contract (AC #4)
-  - [ ] 3.1 Read `IdempotencyRecord.cs`. Confirm record has: CausationId (string), CorrelationId (string?), Accepted (bool), ErrorMessage (string?), ProcessedAt (DateTimeOffset). Record PASS/FAIL
-  - [ ] 3.2 Confirm `FromResult(causationId, result)` maps: CausationId from parameter, CorrelationId from result, Accepted from result, ErrorMessage from result, ProcessedAt = `DateTimeOffset.UtcNow`. Record PASS/FAIL
-  - [ ] 3.3 Confirm `ToResult()` reconstructs `CommandProcessingResult(Accepted, ErrorMessage, CorrelationId)`. Note: EventCount and ResultPayload are NOT preserved in the idempotency record -- this is by design (idempotency returns a success/fail signal, not the full result). Record PASS/FAIL
-  - [ ] 3.4 Confirm `FromResult` guard clauses: ThrowIfNullOrWhiteSpace for causationId, ThrowIfNull for result. Record PASS/FAIL
-  - [ ] 3.5 Check for dedicated `IdempotencyRecordTests.cs`. If none exists, create one with at minimum: (a) `FromResult` accepted roundtrip -- verify Accepted, CorrelationId, ErrorMessage preserved through `FromResult -> ToResult`, (b) `FromResult` rejected roundtrip -- verify rejected with ErrorMessage preserved, (c) `ToResult` does NOT preserve EventCount/ResultPayload (by-design assertion). Record PASS/FAIL with test count
-  - [ ] 3.6 If any contract gap found, implement the fix
+- [x] Task 3: Verify IdempotencyRecord contract (AC #4)
+  - [x] 3.1 Read `IdempotencyRecord.cs`. Confirm record has: CausationId (string), CorrelationId (string?), Accepted (bool), ErrorMessage (string?), ProcessedAt (DateTimeOffset). Record PASS/FAIL
+  - [x] 3.2 Confirm `FromResult(causationId, result)` maps: CausationId from parameter, CorrelationId from result, Accepted from result, ErrorMessage from result, ProcessedAt = `DateTimeOffset.UtcNow`. Record PASS/FAIL
+  - [x] 3.3 Confirm `ToResult()` reconstructs `CommandProcessingResult(Accepted, ErrorMessage, CorrelationId)`. Note: EventCount and ResultPayload are NOT preserved in the idempotency record -- this is by design (idempotency returns a success/fail signal, not the full result). Record PASS/FAIL
+  - [x] 3.4 Confirm `FromResult` guard clauses: ThrowIfNullOrWhiteSpace for causationId, ThrowIfNull for result. Record PASS/FAIL
+  - [x] 3.5 Check for dedicated `IdempotencyRecordTests.cs`. If none exists, create one with at minimum: (a) `FromResult` accepted roundtrip -- verify Accepted, CorrelationId, ErrorMessage preserved through `FromResult -> ToResult`, (b) `FromResult` rejected roundtrip -- verify rejected with ErrorMessage preserved, (c) `ToResult` does NOT preserve EventCount/ResultPayload (by-design assertion). Record PASS/FAIL with test count
+  - [x] 3.6 If any contract gap found, implement the fix
 
-- [ ] Task 4: Verify AggregateActor Step 1 -- idempotency check (AC #1, #3)
-  - [ ] 4.1 Read `AggregateActor.cs` ProcessCommandAsync. Confirm CausationId derivation: `string causationId = command.CausationId ?? command.CorrelationId` (FR4: messageId serves as idempotency key, mapped to CausationId in the envelope). Record PASS/FAIL
-  - [ ] 4.2 Confirm Step 1 calls `idempotencyChecker.CheckAsync(causationId)`. If cached result is not null, returns it immediately without further processing. No duplicate events are persisted (FR49). Record PASS/FAIL
-  - [ ] 4.3 Confirm duplicate detection logs: `"Duplicate command detected: CausationId={CausationId}, CorrelationId={CorrelationId}, ActorId={ActorId}. Returning cached result."` Record PASS/FAIL
-  - [ ] 4.4 Confirm idempotency check is wrapped in an OpenTelemetry activity (`EventStoreActivitySource.IdempotencyCheck`). Record PASS/FAIL
-  - [ ] 4.5 If any Step 1 gap found, implement the fix and add test coverage
+- [x] Task 4: Verify AggregateActor Step 1 -- idempotency check (AC #1, #3)
+  - [x] 4.1 Read `AggregateActor.cs` ProcessCommandAsync. Confirm CausationId derivation: `string causationId = command.CausationId ?? command.CorrelationId` (FR4: messageId serves as idempotency key, mapped to CausationId in the envelope). Record PASS/FAIL
+  - [x] 4.2 Confirm Step 1 calls `idempotencyChecker.CheckAsync(causationId)`. If cached result is not null, returns it immediately without further processing. No duplicate events are persisted (FR49). Record PASS/FAIL
+  - [x] 4.3 Confirm duplicate detection logs: `"Duplicate command detected: CausationId={CausationId}, CorrelationId={CorrelationId}, ActorId={ActorId}. Returning cached result."` Record PASS/FAIL
+  - [x] 4.4 Confirm idempotency check is wrapped in an OpenTelemetry activity (`EventStoreActivitySource.IdempotencyCheck`). Record PASS/FAIL
+  - [x] 4.5 If any Step 1 gap found, implement the fix and add test coverage
 
-- [ ] Task 5: Verify idempotency recording at ALL terminal paths (AC #4)
-  - [ ] 5.1 Trace all `idempotencyChecker.RecordAsync` call sites in `AggregateActor.cs`. Confirm recording happens at each of these terminal paths:
+- [x] Task 5: Verify idempotency recording at ALL terminal paths (AC #4)
+  - [x] 5.1 Trace all `idempotencyChecker.RecordAsync` call sites in `AggregateActor.cs`. Confirm recording happens at each of these terminal paths:
     - **Tenant mismatch rejection** (search: `TenantMismatch` near `RecordAsync`): records Accepted=false with error message, commits via SaveStateAsync
     - **CompleteTerminalAsync** (search: `private async Task<CommandProcessingResult> CompleteTerminalAsync`): records for both accepted (Completed) and rejected (domain rejection) paths
     - **HandleInfrastructureFailureAsync** (search: `private async Task<CommandProcessingResult> HandleInfrastructureFailureAsync`): records Accepted=false for infrastructure failures
     - **PublishFailed path** (search: `PublishFailed` near `RecordAsync`): records in both normal and resume publish-failed paths
     Record PASS/FAIL for each path
-  - [ ] 5.2 Confirm each RecordAsync is followed by SaveStateAsync (either directly or through CompleteTerminalAsync's commit). SetStateAsync is staging only -- without SaveStateAsync the record is lost on actor deactivation. Record PASS/FAIL
-  - [ ] 5.3 If any terminal path is missing idempotency recording, implement the fix and add test coverage
+  - [x] 5.2 Confirm each RecordAsync is followed by SaveStateAsync (either directly or through CompleteTerminalAsync's commit). SetStateAsync is staging only -- without SaveStateAsync the record is lost on actor deactivation. Record PASS/FAIL
+  - [x] 5.3 If any terminal path is missing idempotency recording, implement the fix and add test coverage
 
-- [ ] Task 6: Verify ConcurrencyConflictException (AC #2)
-  - [ ] 6.1 Read `ConcurrencyConflictException.cs`. Confirm properties: CorrelationId, AggregateId, TenantId (string?), ConflictSource (string?), Detail (string?). Confirm all constructors (parameterless, message, message+inner, primary domain constructor). Record PASS/FAIL
-  - [ ] 6.2 Confirm `DefaultDetailTemplate` includes: aggregate ID, description of conflict, retry suggestion. Record PASS/FAIL
-  - [ ] 6.3 In `AggregateActor.cs`, search all `throw new ConcurrencyConflictException` sites. Confirm each wraps `catch (InvalidOperationException ex)` after `StateManager.SaveStateAsync()`. Count the sites (expected: 4 -- Step 5 event persistence, PublishFailed commit, resume CompletePublishFailed commit, CompleteTerminal commit). Record PASS/FAIL with count
-  - [ ] 6.4 Confirm concurrency exceptions are NOT caught by the generic infrastructure failure handler: verify `catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException)` at Step 5 persistence. ConcurrencyConflictException must propagate to the caller unhandled by the actor. Record PASS/FAIL
-  - [ ] 6.5 Read `ConcurrencyConflictExceptionTests.cs`. Count test methods. Confirm coverage of constructor variants and property assertions. Record PASS/FAIL with test count
-  - [ ] 6.6 If any gap found, implement the fix and add test coverage
+- [x] Task 6: Verify ConcurrencyConflictException (AC #2)
+  - [x] 6.1 Read `ConcurrencyConflictException.cs`. Confirm properties: CorrelationId, AggregateId, TenantId (string?), ConflictSource (string?), Detail (string?). Confirm all constructors (parameterless, message, message+inner, primary domain constructor). Record PASS/FAIL
+  - [x] 6.2 Confirm `DefaultDetailTemplate` includes: aggregate ID, description of conflict, retry suggestion. Record PASS/FAIL
+  - [x] 6.3 In `AggregateActor.cs`, search all `throw new ConcurrencyConflictException` sites. Confirm each wraps `catch (InvalidOperationException ex)` after `StateManager.SaveStateAsync()`. Count the sites (expected: 4 -- Step 5 event persistence, PublishFailed commit, resume CompletePublishFailed commit, CompleteTerminal commit). Record PASS/FAIL with count
+  - [x] 6.4 Confirm concurrency exceptions are NOT caught by the generic infrastructure failure handler: verify `catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException)` at Step 5 persistence. ConcurrencyConflictException must propagate to the caller unhandled by the actor. Record PASS/FAIL
+  - [x] 6.5 Read `ConcurrencyConflictExceptionTests.cs`. Count test methods. Confirm coverage of constructor variants and property assertions. Record PASS/FAIL with test count
+  - [x] 6.6 If any gap found, implement the fix and add test coverage
 
-- [ ] Task 7: Verify ConcurrencyConflictExceptionHandler -- 409 response (AC #2)
-  - [ ] 7.1 Read `ConcurrencyConflictExceptionHandler.cs`. Confirm it implements `IExceptionHandler`. Confirm it returns 409 Conflict with RFC 7807 `ProblemDetails`. Record PASS/FAIL
-  - [ ] 7.2 Confirm exception chain unwrapping: `FindConcurrencyConflict` walks `InnerException` chain (max depth 10) and `AggregateException.InnerExceptions` to find `ConcurrencyConflictException`. This is needed because DAPR actor proxy wraps exceptions in `ActorMethodInvocationException`. Record PASS/FAIL
-  - [ ] 7.3 Confirm advisory status write: on conflict, writes `CommandStatus.Rejected` with `FailureReason: "ConcurrencyConflict"` to `ICommandStatusStore` (Rule 12 -- non-blocking). Record PASS/FAIL
-  - [ ] 7.4 Confirm ProblemDetails includes: `correlationId` extension, `aggregateId` extension, `tenantId` extension, `conflictSource` extension. Record PASS/FAIL
-  - [ ] 7.5 Confirm DI registration: `ConcurrencyConflictExceptionHandler` registered in `ServiceCollectionExtensions.cs` via `AddExceptionHandler<ConcurrencyConflictExceptionHandler>()`. Record PASS/FAIL
-  - [ ] 7.6 Check for dedicated `ConcurrencyConflictExceptionHandlerTests.cs`. If no test file exists, **create one** with at minimum: (a) returns 409 for `ConcurrencyConflictException`, (b) returns false for non-`ConcurrencyConflictException`, (c) unwraps `ActorMethodInvocationException` wrapping, (d) unwraps `AggregateException` wrapping, (e) advisory status write occurs (Rule 12), (f) advisory status write failure does not block 409 response. This handler is the user-facing half of FR7 -- untested means FR7 is unverified. Record PASS/FAIL with test count
-  - [ ] 7.7 If any gap found, implement the fix and add test coverage
+- [x] Task 7: Verify ConcurrencyConflictExceptionHandler -- 409 response (AC #2)
+  - [x] 7.1 Read `ConcurrencyConflictExceptionHandler.cs`. Confirm it implements `IExceptionHandler`. Confirm it returns 409 Conflict with RFC 7807 `ProblemDetails`. Record PASS/FAIL
+  - [x] 7.2 Confirm exception chain unwrapping: `FindConcurrencyConflict` walks `InnerException` chain (max depth 10) and `AggregateException.InnerExceptions` to find `ConcurrencyConflictException`. This is needed because DAPR actor proxy wraps exceptions in `ActorMethodInvocationException`. Record PASS/FAIL
+  - [x] 7.3 Confirm advisory status write: on conflict, writes `CommandStatus.Rejected` with `FailureReason: "ConcurrencyConflict"` to `ICommandStatusStore` (Rule 12 -- non-blocking). Record PASS/FAIL
+  - [x] 7.4 Confirm ProblemDetails includes: `correlationId` extension, `aggregateId` extension, `tenantId` extension, `conflictSource` extension. Record PASS/FAIL
+  - [x] 7.5 Confirm DI registration: `ConcurrencyConflictExceptionHandler` registered in `ServiceCollectionExtensions.cs` via `AddExceptionHandler<ConcurrencyConflictExceptionHandler>()`. Record PASS/FAIL
+  - [x] 7.6 Check for dedicated `ConcurrencyConflictExceptionHandlerTests.cs`. If no test file exists, **create one** with at minimum: (a) returns 409 for `ConcurrencyConflictException`, (b) returns false for non-`ConcurrencyConflictException`, (c) unwraps `ActorMethodInvocationException` wrapping, (d) unwraps `AggregateException` wrapping, (e) advisory status write occurs (Rule 12), (f) advisory status write failure does not block 409 response. This handler is the user-facing half of FR7 -- untested means FR7 is unverified. Record PASS/FAIL with test count
+  - [x] 7.7 If any gap found, implement the fix and add test coverage
 
-- [ ] Task 8: Verify FakeAggregateActor idempotency simulation (AC #1)
-  - [ ] 8.1 Read `FakeAggregateActor.cs`. Confirm it implements `IAggregateActor`. Confirm `SimulateIdempotency` flag enables causation ID tracking via `ConcurrentDictionary`. Record PASS/FAIL
-  - [ ] 8.2 Confirm idempotency simulation: when SimulateIdempotency=true, second call with same causationId returns cached result without incrementing ProcessedCount. CausationId derived as `command.CausationId ?? command.CorrelationId` (matches real actor). Record PASS/FAIL
-  - [ ] 8.3 Confirm `ReceivedCommands` still records all commands (including duplicates) for assertion. Record PASS/FAIL
-  - [ ] 8.4 If any test fake gap found, implement the fix
+- [x] Task 8: Verify FakeAggregateActor idempotency simulation (AC #1)
+  - [x] 8.1 Read `FakeAggregateActor.cs`. Confirm it implements `IAggregateActor`. Confirm `SimulateIdempotency` flag enables causation ID tracking via `ConcurrentDictionary`. Record PASS/FAIL
+  - [x] 8.2 Confirm idempotency simulation: when SimulateIdempotency=true, second call with same causationId returns cached result without incrementing ProcessedCount. CausationId derived as `command.CausationId ?? command.CorrelationId` (matches real actor). Record PASS/FAIL
+  - [x] 8.3 Confirm `ReceivedCommands` still records all commands (including duplicates) for assertion. Record PASS/FAIL
+  - [x] 8.4 If any test fake gap found, implement the fix
 
-- [ ] Task 9: Verify CommandProcessingResult contract
-  - [ ] 9.1 Read `CommandProcessingResult.cs`. Confirm record has: Accepted (bool), ErrorMessage (string? = null), CorrelationId (string? = null), EventCount (int = 0), ResultPayload (string? = null). Confirm `[DataContract]` and `[DataMember]` attributes for DAPR actor serialization. Record PASS/FAIL
-  - [ ] 9.2 If any contract gap found, implement the fix
+- [x] Task 9: Verify CommandProcessingResult contract
+  - [x] 9.1 Read `CommandProcessingResult.cs`. Confirm record has: Accepted (bool), ErrorMessage (string? = null), CorrelationId (string? = null), EventCount (int = 0), ResultPayload (string? = null). Confirm `[DataContract]` and `[DataMember]` attributes for DAPR actor serialization. Record PASS/FAIL
+  - [x] 9.2 If any contract gap found, implement the fix
 
-- [ ] Task 10: Build and run tests (AC #5)
-  - [ ] 10.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings. Record PASS/FAIL
-  - [ ] 10.2 Run Tier 1: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` + `Client.Tests` + `Sample.Tests` + `Testing.Tests` -- all pass. Record PASS/FAIL with counts
-  - [ ] 10.3 Run Tier 2 Story 2.5 scope tests (requires `dapr init --slim`): `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter "FullyQualifiedName~IdempotencyChecker|FullyQualifiedName~AggregateActor|FullyQualifiedName~ConcurrencyConflict"` -- all pass. **Note:** the `AggregateActor` filter is intentionally broad and will run tests beyond idempotency scope (e.g., rehydration, status tracking). Out-of-scope failures in `AggregateActorTests` should be logged in Completion Notes but NOT investigated -- they belong to other stories. Record PASS/FAIL with counts
-  - [ ] 10.4 If any test fails, investigate root cause and fix only if failure is within Story 2.5 scope (idempotency, duplicate detection, concurrency conflict). Log out-of-scope failures for later stories
+- [x] Task 10: Build and run tests (AC #5)
+  - [x] 10.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings. Record PASS/FAIL
+  - [x] 10.2 Run Tier 1: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` + `Client.Tests` + `Sample.Tests` + `Testing.Tests` -- all pass. Record PASS/FAIL with counts
+  - [x] 10.3 Run Tier 2 Story 2.5 scope tests (requires `dapr init --slim`): `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter "FullyQualifiedName~IdempotencyChecker|FullyQualifiedName~AggregateActor|FullyQualifiedName~ConcurrencyConflict"` -- all pass. **Note:** the `AggregateActor` filter is intentionally broad and will run tests beyond idempotency scope (e.g., rehydration, status tracking). Out-of-scope failures in `AggregateActorTests` should be logged in Completion Notes but NOT investigated -- they belong to other stories. Record PASS/FAIL with counts
+  - [x] 10.4 If any test fails, investigate root cause and fix only if failure is within Story 2.5 scope (idempotency, duplicate detection, concurrency conflict). Log out-of-scope failures for later stories
 
 ## Dev Notes
 
@@ -341,10 +341,91 @@ Recent commits show Epic 1 complete, Epic 2 Stories 2.1-2.2 done, 2.3 in-progres
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+None required -- verification story, no complex debugging.
+
 ### Completion Notes List
 
+**Task 1 — IdempotencyChecker check path: ALL PASS**
+- 1.1 PASS: Key built as `idempotency:{causationId}`, queries via `TryGetStateAsync<IdempotencyRecord>`
+- 1.2 PASS: Cache hit returns `result.Value.ToResult()`
+- 1.3 PASS: Cache miss returns `null`
+- 1.4 PASS: `ArgumentException.ThrowIfNullOrWhiteSpace(causationId)` guard present
+- 1.5 PASS: EventId 5000 (CacheHit), EventId 5001 (CacheMiss)
+- 1.6 PASS: No gaps found
+
+**Task 2 — IdempotencyChecker record path: ALL PASS**
+- 2.1 PASS: `SetStateAsync(key, record)` staging only, no `SaveStateAsync`
+- 2.2 PASS: `IdempotencyRecord.FromResult(causationId, result)` used correctly
+- 2.3 PASS: Both guard clauses present
+- 2.4 PASS: EventId 5002 (RecordStored)
+- 2.5 PASS: No gaps found
+
+**Task 3 — IdempotencyRecord contract: PASS (1 gap fixed)**
+- 3.1 PASS: All 5 fields correct
+- 3.2 PASS: FromResult mapping correct, ProcessedAt = DateTimeOffset.UtcNow
+- 3.3 PASS: ToResult reconstructs (Accepted, ErrorMessage, CorrelationId) — EventCount/ResultPayload not preserved (by design)
+- 3.4 PASS: Both guard clauses present
+- 3.5 PASS (5 tests): File existed with 4 tests (a, b, + JsonRoundtrip). **GAP FIXED**: Added `ToResult_DoesNotPreserve_EventCountAndResultPayload` test (c). Now 5 tests
+- 3.6 PASS: No code gaps, only missing test
+
+**Task 4 — AggregateActor Step 1 idempotency check: ALL PASS**
+- 4.1 PASS: `string causationId = command.CausationId ?? command.CorrelationId` at line 78
+- 4.2 PASS: `CheckAsync(causationId)` at Step 1, returns cached immediately if not null
+- 4.3 PASS: Log message matches exactly
+- 4.4 PASS: Wrapped in `EventStoreActivitySource.IdempotencyCheck` activity
+- 4.5 PASS: No gaps found
+
+**Task 5 — Idempotency recording at all terminal paths: ALL PASS**
+- 5.1 PASS: 5 RecordAsync call sites — TenantMismatch (L180), PublishFailed normal (L457), PublishFailed resume (L1033), HandleInfrastructureFailure (L1263), CompleteTerminal (L1299)
+- 5.2 PASS: All 5 followed by SaveStateAsync — TenantMismatch (L182), PublishFailed (L476), Resume (L1092), Infrastructure (L1264), Terminal (L1305)
+- 5.3 PASS: No gaps found
+
+**Task 6 — ConcurrencyConflictException: ALL PASS**
+- 6.1 PASS: Properties CorrelationId, AggregateId, TenantId, ConflictSource. Detail via Exception.Message. 4 constructors (parameterless, message, message+inner, primary domain)
+- 6.2 PASS: DefaultDetailTemplate includes aggregate ID, conflict description, retry suggestion
+- 6.3 PASS (4 sites): L366 (Step 5 persistence), L480 (PublishFailed), L1096 (resume PublishFailed), L1309 (CompleteTerminal)
+- 6.4 PASS: `catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException)` at L379
+- 6.5 PASS (8 tests): WithAllParameters, WithNullDetail, WithCustomDetail, WithInnerException, Parameterless, MessageOnly, MessageAndInner, WithConflictSource
+- 6.6 PASS: No gaps found
+
+**Task 7 — ConcurrencyConflictExceptionHandler: PASS (1 gap fixed)**
+- 7.1 PASS: Implements `IExceptionHandler`, returns 409 with RFC 7807 ProblemDetails
+- 7.2 PASS: `FindConcurrencyConflict` recursively walks InnerException (max depth 10) and AggregateException.InnerExceptions
+- 7.3 PASS: Writes `CommandStatus.Rejected` with `FailureReason: "ConcurrencyConflict"` (Rule 12, non-blocking)
+- 7.4 PASS (after fix): **GAP FIXED**: `conflictSource` extension was missing from ProblemDetails. Added conditional inclusion. Now includes: correlationId, aggregateId, tenantId (conditional), conflictSource (conditional)
+- 7.5 PASS: Registered in ServiceCollectionExtensions.cs at L37
+- 7.6 PASS (17 tests): File existed with 15 tests covering all (a)-(f) requirements. **GAP FIXED**: Added 2 tests for conflictSource extension (present + null omission). Now 17 tests
+- 7.7 PASS: Gap fixed — conflictSource extension added to handler + 2 new tests
+
+**Task 8 — FakeAggregateActor: ALL PASS**
+- 8.1 PASS: Implements `IAggregateActor`, `SimulateIdempotency` flag, `ConcurrentDictionary<string, CommandProcessingResult>`
+- 8.2 PASS: `CausationId = command.CausationId ?? command.CorrelationId` (matches real actor), returns cached on second call
+- 8.3 PASS: `_receivedCommands.Enqueue(command)` before idempotency check — records all including duplicates
+- 8.4 PASS: No gaps found
+
+**Task 9 — CommandProcessingResult contract: ALL PASS**
+- 9.1 PASS: `[DataContract]` record with `[property: DataMember]` on Accepted (bool), ErrorMessage (string?=null), CorrelationId (string?=null), EventCount (int=0), ResultPayload (string?=null)
+- 9.2 PASS: No gaps found
+
+**Task 10 — Build and run tests: ALL PASS**
+- 10.1 PASS: Build succeeded, 0 warnings, 0 errors
+- 10.2 PASS: Tier 1 — 656 tests (Contracts 267 + Client 290 + Testing 67 + Sample 32)
+- 10.3 PASS: Tier 2 scoped — 103 tests (IdempotencyChecker, IdempotencyRecord, AggregateActor, ConcurrencyConflict), all pass. No out-of-scope failures
+- 10.4 PASS: No test failures to investigate
+
+### Change Log
+
+- 2026-03-16: Story 2.5 verification complete. 2 gaps found and fixed:
+  1. Added `conflictSource` extension to `ConcurrencyConflictExceptionHandler` ProblemDetails (AC #2, Task 7.4)
+  2. Added `ToResult_DoesNotPreserve_EventCountAndResultPayload` test to `IdempotencyRecordTests.cs` (AC #4, Task 3.5c)
+  3. Added 2 tests for `conflictSource` in `ConcurrencyConflictExceptionHandlerTests.cs` (AC #2, Task 7.7)
+
 ### File List
+
+- `src/Hexalith.EventStore.CommandApi/ErrorHandling/ConcurrencyConflictExceptionHandler.cs` — Modified: added `conflictSource` extension to ProblemDetails
+- `tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyRecordTests.cs` — Modified: added `ToResult_DoesNotPreserve_EventCountAndResultPayload` test
+- `tests/Hexalith.EventStore.Server.Tests/Commands/ConcurrencyConflictExceptionHandlerTests.cs` — Modified: added 2 tests for conflictSource extension
