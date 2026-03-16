@@ -1,6 +1,6 @@
 ---
 name: bmad-advanced-elicitation
-description: Push the LLM to reconsider refine and improve its recent output. Use when the user asks for advanced elicitation.
+description: 'Push the LLM to reconsider, refine, and improve its recent output.'
 ---
 
-IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: LOAD the FULL {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md, READ its entire contents and follow its directions exactly!
+Follow the instructions in ./workflow.md.
