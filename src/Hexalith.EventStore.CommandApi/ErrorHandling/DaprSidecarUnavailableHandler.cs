@@ -113,21 +113,34 @@ public class DaprSidecarUnavailableHandler(
 
     /// <summary>
     /// Walks an inner exception chain looking for a <see cref="SocketException"/>.
-    /// Handles the common .NET HTTP stack chain: HttpRequestException -> IOException -> SocketException.
+    /// Handles the common .NET HTTP stack chain: HttpRequestException -> IOException -> SocketException,
+    /// as well as AggregateException wrappers.
     /// </summary>
     private static bool ContainsConnectionRefusedSocketException(Exception? exception) {
-        const int maxDepth = 5;
-        for (int i = 0; i < maxDepth && exception is not null; i++) {
-            if (exception is SocketException socketException
-                && (socketException.SocketErrorCode == SocketError.ConnectionRefused
-                    || socketException.SocketErrorCode == SocketError.ConnectionReset)) {
-                return true;
-            }
+        return ContainsConnectionRefusedSocketExceptionRecursive(exception, 5);
+    }
 
-            exception = exception.InnerException;
+    private static bool ContainsConnectionRefusedSocketExceptionRecursive(Exception? exception, int remainingDepth) {
+        if (exception is null || remainingDepth <= 0) {
+            return false;
         }
 
-        return false;
+        if (exception is SocketException socketException
+            && (socketException.SocketErrorCode == SocketError.ConnectionRefused
+                || socketException.SocketErrorCode == SocketError.ConnectionReset)) {
+            return true;
+        }
+
+        if (exception is AggregateException agg) {
+            foreach (Exception inner in agg.InnerExceptions) {
+                if (ContainsConnectionRefusedSocketExceptionRecursive(inner, remainingDepth - 1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return ContainsConnectionRefusedSocketExceptionRecursive(exception.InnerException, remainingDepth - 1);
     }
 
     private static bool IsDaprException(Exception exception) => exception is DaprException;

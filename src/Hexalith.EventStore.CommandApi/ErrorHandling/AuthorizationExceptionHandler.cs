@@ -103,6 +103,10 @@ public partial class AuthorizationExceptionHandler(ILogger<AuthorizationExceptio
     private static partial Regex MultiSpacePattern();
 
     internal static string SanitizeForbiddenTerms(string text) {
+        if (string.IsNullOrEmpty(text)) {
+            return string.Empty;
+        }
+
         // Remove " by actor" / " by Actor" suffix (common in actor validator denial reasons)
         text = ByActorPattern().Replace(text, "");
 

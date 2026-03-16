@@ -141,7 +141,8 @@ public class ConfigureJwtBearerOptions(
                 await context.Response.WriteAsJsonAsync(
                     problemDetails,
                     options: null,
-                    contentType: "application/problem+json").ConfigureAwait(false);
+                    contentType: "application/problem+json",
+                    cancellationToken: CancellationToken.None).ConfigureAwait(false);
             },
         };
     }
@@ -169,7 +170,7 @@ public class ConfigureJwtBearerOptions(
     private static string GetChallengeReason(string? error, ChallengeKind challengeKind) {
         return challengeKind switch {
             ChallengeKind.ExpiredToken => "TokenExpired",
-            ChallengeKind.InvalidToken => error ?? "InvalidToken",
+            ChallengeKind.InvalidToken => string.Equals(error, "invalid_token", StringComparison.OrdinalIgnoreCase) ? "InvalidToken" : (error ?? "InvalidToken"),
             _ => string.IsNullOrWhiteSpace(error) ? "MissingToken" : error,
         };
     }

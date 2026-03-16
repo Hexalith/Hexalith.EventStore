@@ -74,7 +74,7 @@ development_status:
   3-2-command-validation-and-400-error-responses: done
   3-3-command-status-query-endpoint: done
   3-4-dead-letter-routing-and-command-replay: done
-  3-5-concurrency-auth-and-infrastructure-error-responses: review
+  3-5-concurrency-auth-and-infrastructure-error-responses: done
   3-6-openapi-specification-and-swagger-ui: backlog
   epic-3-retrospective: optional
 

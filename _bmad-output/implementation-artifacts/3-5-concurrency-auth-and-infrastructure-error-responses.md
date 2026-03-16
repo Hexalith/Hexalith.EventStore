@@ -1,6 +1,6 @@
 # Story 3.5: Concurrency, Auth & Infrastructure Error Responses
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -336,7 +336,7 @@ Claude Opus 4.6 (1M context)
 - QueryNotFoundExceptionHandler kept as `ProblemTypeUris.NotFound` (not `CommandStatusNotFound`) since the handler is generic; `CommandStatusNotFound` used only in the controller-specific 404
 - ✅ Resolved review finding [Med]: 403 detail sanitization — `SanitizeForbiddenTerms` strips actor/DAPR/aggregate/etc. from validator reason strings before client exposure
 - ✅ Resolved review finding [Low]: 429 fallback Retry-After — catch block now sets Retry-After header from options or default 60s
-- ✅ Resolved review finding [Med]: JWT challenge classification hardened — any non-empty error string → InvalidToken, not just "invalid_token"
+- ✅ Resolved review finding [Med]: JWT challenge classification hardened — only "invalid_token" maps to InvalidToken; other error strings fallback to MissingToken per RFC 6750
 
 ### File List
 
@@ -373,7 +373,7 @@ Claude Opus 4.6 (1M context)
 **Review follow-up (R1-R3):**
 - `src/Hexalith.EventStore.CommandApi/ErrorHandling/AuthorizationExceptionHandler.cs` — added `SanitizeForbiddenTerms` to strip internal terminology from 403 client detail
 - `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` — added Retry-After header in 429 fallback catch block
-- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs` — hardened `GetChallengeKind` to classify any non-empty error string as InvalidToken
+- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs` — hardened `GetChallengeKind` to classify falling back to MissingToken, with exception of invalid_token.
 - `tests/Hexalith.EventStore.Server.Tests/ErrorHandling/AuthorizationExceptionHandlerTests.cs` — 3 new sanitization tests
 - `tests/Hexalith.EventStore.Server.Tests/ErrorHandling/ProblemTypeUriComplianceTests.cs` — 1 new compliance test for 403 with actor terminology
 - `tests/Hexalith.EventStore.Server.Tests/Authentication/ConfigureJwtBearerOptionsTests.cs` — 1 new test for non-exception error-only challenge
