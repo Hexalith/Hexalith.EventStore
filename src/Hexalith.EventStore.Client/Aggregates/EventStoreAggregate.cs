@@ -73,7 +73,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
             }
 
             ParameterInfo[] parameters = method.GetParameters();
-            if (parameters.Length != 2) {
+            if (parameters.Length < 2 || parameters.Length > 3) {
                 continue;
             }
 
@@ -86,6 +86,13 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
                 continue;
             }
 
+            // If 3 parameters, verify the third is CommandEnvelope
+            bool hasEnvelope = parameters.Length == 3
+                && parameters[2].ParameterType == typeof(CommandEnvelope);
+            if (parameters.Length == 3 && !hasEnvelope) {
+                continue;
+            }
+
             bool isAsync = method.ReturnType == typeof(Task<DomainResult>);
             bool isSync = method.ReturnType == typeof(DomainResult);
             if (!isAsync && !isSync) {
@@ -93,7 +100,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
             }
 
             string commandTypeName = commandType.Name;
-            methods[commandTypeName] = new HandleMethodInfo(method, commandType, isAsync, method.IsStatic);
+            methods[commandTypeName] = new HandleMethodInfo(method, commandType, isAsync, method.IsStatic, hasEnvelope);
         }
 
         return methods;
@@ -115,7 +122,10 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
               ?? throw new InvalidOperationException(
                   $"Failed to deserialize payload for command '{command.CommandType}' to {handleInfo.CommandType.Name}.");
 
-        object? result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, [commandPayload, state]);
+        object?[] args = handleInfo.HasEnvelope
+            ? [commandPayload, state, command]
+            : [commandPayload, state];
+        object? result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
         return result switch {
             Task<DomainResult> asyncResult => await asyncResult.ConfigureAwait(false),
             DomainResult syncResult => syncResult,
@@ -132,5 +142,6 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
         MethodInfo Method,
         Type CommandType,
         bool IsAsync,
-        bool IsStatic);
+        bool IsStatic,
+        bool HasEnvelope);
 }

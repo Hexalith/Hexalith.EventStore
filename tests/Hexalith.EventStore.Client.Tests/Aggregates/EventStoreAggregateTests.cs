@@ -136,6 +136,19 @@ public class EventStoreAggregateTests : IDisposable {
             Task.FromResult(DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } }));
     }
 
+    // --- Test Aggregate with 3-param Handle method (Command, State?, CommandEnvelope) ---
+    private sealed record EnvelopeAwareCommand(string Name);
+
+    private sealed class EnvelopeAwareAggregate : EventStoreAggregate<TestState> {
+        // 3-param Handle: receives CommandEnvelope as third parameter
+        public static DomainResult Handle(EnvelopeAwareCommand command, TestState? state, CommandEnvelope envelope)
+            => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = $"{envelope.UserId}:{command.Name}" } });
+
+        // 2-param Handle: backward compatibility — existing commands still work
+        public static DomainResult Handle(AddItem command, TestState? state)
+            => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
+    }
+
     // --- Test Aggregate with INSTANCE (non-static) Handle methods ---
     private sealed class InstanceHandleAggregate : EventStoreAggregate<TestState> {
         private readonly string _prefix = "instance";
@@ -962,5 +975,33 @@ public class EventStoreAggregateTests : IDisposable {
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
         Assert.True(result.IsSuccess);
+    }
+
+    // --- Story 3.2: 3-param Handle method discovery and dispatch ---
+
+    [Fact]
+    public async Task ProcessAsync_ThreeParamHandle_ReceivesCommandEnvelope() {
+        var aggregate = new EnvelopeAwareAggregate();
+        CommandEnvelope command = CreateCommand(new EnvelopeAwareCommand("test-item"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        ItemAdded evt = Assert.IsType<ItemAdded>(result.Events[0]);
+        // Verify the Handle method received the envelope (UserId was prepended to Name)
+        Assert.Equal("user-1:test-item", evt.Name);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ThreeParamHandle_BackwardCompatibleWithTwoParam() {
+        var aggregate = new EnvelopeAwareAggregate();
+        // AddItem uses a 2-param Handle — should still work alongside the 3-param EnvelopeAwareCommand
+        CommandEnvelope command = CreateCommand(new AddItem("two-param"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        ItemAdded evt = Assert.IsType<ItemAdded>(result.Events[0]);
+        Assert.Equal("two-param", evt.Name);
     }
 }
