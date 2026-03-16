@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Validation;
@@ -66,20 +67,17 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
                 request.Domain,
                 sanitizeResult.RejectionReason);
 
-            return new ObjectResult(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Bad Request",
-                Type = "https://tools.ietf.org/html/rfc9457#section-3",
-                Detail = $"Extension metadata validation failed: {sanitizeResult.RejectionReason}",
-                Instance = HttpContext?.Request.Path,
-                Extensions =
-                {
-                    ["correlationId"] = correlationId,
-                    ["tenantId"] = request.Tenant,
-                },
-            })
+            ProblemDetails problemDetails = ValidationProblemDetailsFactory.Create(
+                sanitizeResult.RejectionReason!,
+                new Dictionary<string, string> { ["extensions"] = sanitizeResult.RejectionReason! },
+                correlationId,
+                request.Tenant);
+            problemDetails.Instance = HttpContext?.Request.Path;
+
+            var sanitizationResponse = new ObjectResult(problemDetails)
             { StatusCode = StatusCodes.Status400BadRequest };
+            sanitizationResponse.ContentTypes.Add("application/problem+json");
+            return sanitizationResponse;
         }
 
         var command = new SubmitCommand(

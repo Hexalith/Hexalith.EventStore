@@ -298,11 +298,13 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
-        // Verify this is a FluentValidation error with proper structure
+        // Verify this is a FluentValidation error with proper RFC 7807 structure
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        problemDetails.GetProperty("title").GetString().ShouldBe("Validation Failed");
+        problemDetails.GetProperty("title").GetString().ShouldBe("Command Validation Failed");
+        problemDetails.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/validation-error");
         problemDetails.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
-        problemDetails.GetProperty("validationErrors").GetArrayLength().ShouldBeGreaterThan(0);
+        problemDetails.TryGetProperty("errors", out JsonElement errors).ShouldBeTrue();
+        errors.EnumerateObject().Count().ShouldBeGreaterThan(0);
     }
 
     private static HttpClient CreateAuthenticatedClient(JwtAuthenticatedWebApplicationFactory factory) {

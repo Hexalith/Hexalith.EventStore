@@ -15,16 +15,11 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         string? tenantId = httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string t && !string.IsNullOrEmpty(t) ? t : null;
 
-        bool isDevelopment = httpContext.RequestServices
-            .GetService<IHostEnvironment>()?.IsDevelopment() == true;
-
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status500InternalServerError,
             Title = "Internal Server Error",
             Type = "https://tools.ietf.org/html/rfc9457#section-3",
-            Detail = isDevelopment
-                ? $"[{exception.GetType().Name}] {exception.Message}"
-                : "An unexpected error occurred while processing your request.",
+            Detail = "An unexpected error occurred while processing your request.",
             Instance = httpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
         };
