@@ -48,7 +48,7 @@ public class AuthorizationExceptionHandlerTests {
         _ = problemDetails.ShouldNotBeNull();
         problemDetails.Status.ShouldBe(403);
         problemDetails.Title.ShouldBe("Forbidden");
-        problemDetails.Type.ShouldBe("https://tools.ietf.org/html/rfc9457#section-3");
+        problemDetails.Type.ShouldBe(ProblemTypeUris.Forbidden);
         problemDetails.Detail.ShouldBe("Not authorized for domain 'test-domain'.");
         problemDetails.Instance.ShouldBe("/api/v1/commands");
         problemDetails.Extensions.ShouldContainKey("correlationId");

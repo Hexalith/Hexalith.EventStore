@@ -30,7 +30,7 @@ public class AuthorizationExceptionHandler(ILogger<AuthorizationExceptionHandler
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status403Forbidden,
             Title = "Forbidden",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
+            Type = ProblemTypeUris.Forbidden,
             Detail = authException.Reason,
             Instance = httpContext.Request.Path,
             Extensions =

@@ -8,6 +8,8 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,7 +50,7 @@ public class CommandStatusController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
-                    "https://hexalith.io/problems/bad-request",
+                    ProblemTypeUris.BadRequest,
                     "Bad Request",
                     "Correlation ID is required.",
                     requestCorrelationId);
@@ -71,7 +73,7 @@ public class CommandStatusController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
                 return CreateProblemDetails(
                     StatusCodes.Status403Forbidden,
-                    "https://hexalith.io/problems/forbidden",
+                    ProblemTypeUris.Forbidden,
                     "Forbidden",
                     "No tenant authorization claims found. Access denied.",
                     requestCorrelationId);
@@ -111,7 +113,7 @@ public class CommandStatusController(
             _ = (activity?.SetStatus(ActivityStatusCode.Error, "NotFound"));
             return CreateProblemDetails(
                 StatusCodes.Status404NotFound,
-                "https://hexalith.io/problems/command-status-not-found",
+                ProblemTypeUris.CommandStatusNotFound,
                 "Not Found",
                 $"No command status found for correlation ID '{correlationId}'.",
                 requestCorrelationId);

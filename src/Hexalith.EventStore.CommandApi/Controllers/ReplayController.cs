@@ -11,6 +11,8 @@ using Hexalith.EventStore.Server.Telemetry;
 
 using MediatR;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -63,6 +65,7 @@ public class ReplayController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
+                    ProblemTypeUris.BadRequest,
                     "Bad Request",
                     $"Correlation ID '{correlationId}' is not a valid GUID format.",
                     requestCorrelationId);
@@ -86,6 +89,7 @@ public class ReplayController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "NoTenantClaims"));
                 return CreateProblemDetails(
                     StatusCodes.Status403Forbidden,
+                    ProblemTypeUris.Forbidden,
                     "Forbidden",
                     "No tenant authorization claims found. Access denied.",
                     requestCorrelationId);
@@ -118,6 +122,7 @@ public class ReplayController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "NotFound"));
                 return CreateProblemDetails(
                     StatusCodes.Status404NotFound,
+                    ProblemTypeUris.NotFound,
                     "Not Found",
                     $"No command found for correlation ID '{correlationId}'.",
                     requestCorrelationId);
@@ -173,6 +178,7 @@ public class ReplayController(
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "CorruptedArchive"));
                 return CreateProblemDetails(
                     StatusCodes.Status409Conflict,
+                    ProblemTypeUris.ConcurrencyConflict,
                     "Conflict",
                     $"Archived command for '{correlationId}' is corrupted and cannot be replayed. {ex.Message}",
                     requestCorrelationId);
@@ -202,11 +208,11 @@ public class ReplayController(
         }
     }
 
-    private ObjectResult CreateProblemDetails(int statusCode, string title, string detail, string correlationId) {
+    private ObjectResult CreateProblemDetails(int statusCode, string type, string title, string detail, string correlationId) {
         var problemDetails = new ProblemDetails {
             Status = statusCode,
             Title = title,
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
+            Type = type,
             Detail = detail,
             Instance = HttpContext?.Request.Path,
             Extensions =
@@ -226,7 +232,7 @@ public class ReplayController(
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status409Conflict,
             Title = "Conflict",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
+            Type = ProblemTypeUris.ConcurrencyConflict,
             Detail = detail,
             Instance = HttpContext?.Request.Path,
             Extensions =

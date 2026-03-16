@@ -28,8 +28,8 @@ public class QueryNotFoundExceptionHandler(ILogger<QueryNotFoundExceptionHandler
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status404NotFound,
             Title = "Not Found",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
-            Detail = "No projection found for the requested aggregate.",
+            Type = ProblemTypeUris.NotFound,
+            Detail = "No projection found for the requested resource.",
             Instance = httpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
         };

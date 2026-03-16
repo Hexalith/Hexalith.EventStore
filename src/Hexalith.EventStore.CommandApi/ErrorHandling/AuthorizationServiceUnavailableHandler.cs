@@ -36,19 +36,21 @@ public class AuthorizationServiceUnavailableHandler(
             unavailable.Reason);
 
         httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-        httpContext.Response.Headers.RetryAfter = unavailable.RetryAfterSeconds.ToString();
+        httpContext.Response.Headers.RetryAfter = "30"; // UX-DR5: fixed 30s for 503
 
         // SECURITY: Generic message only — no actor type, actor ID, or internal details
+        // UX-DR11: "command processing pipeline" — never name internal components
+        // UX-DR2: No correlationId on 503 (pre-pipeline rejection)
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status503ServiceUnavailable,
             Title = "Service Unavailable",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
-            Detail = "Authorization service is temporarily unavailable. Please retry.",
+            Type = ProblemTypeUris.ServiceUnavailable,
+            Detail = "The command processing pipeline is temporarily unavailable. Please retry after the specified interval.",
             Instance = httpContext.Request.Path,
-            Extensions = { ["correlationId"] = correlationId },
         };
 
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, ProblemJsonContentType, cancellationToken).ConfigureAwait(false);
+        // Use CancellationToken.None to ensure the full ProblemDetails response is always written
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, ProblemJsonContentType, CancellationToken.None).ConfigureAwait(false);
 
         return true;
     }

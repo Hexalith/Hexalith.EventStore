@@ -57,7 +57,7 @@ public class ConcurrencyConflictExceptionHandlerTests {
         _ = problemDetails.ShouldNotBeNull();
         problemDetails.Status.ShouldBe(409);
         problemDetails.Title.ShouldBe("Conflict");
-        problemDetails.Type.ShouldBe("https://tools.ietf.org/html/rfc9457#section-3");
+        problemDetails.Type.ShouldBe(ProblemTypeUris.ConcurrencyConflict);
         problemDetails.Instance.ShouldBe("/api/v1/commands");
     }
 
@@ -84,8 +84,8 @@ public class ConcurrencyConflictExceptionHandlerTests {
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesAggregateIdExtension() {
-        // Arrange
+    public async Task TryHandleAsync_ConcurrencyConflictException_DoesNotIncludeAggregateIdExtension() {
+        // Arrange (UX-DR10: No aggregateId in client response)
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
         httpContext.Request.Path = "/api/v1/commands";
@@ -101,13 +101,12 @@ public class ConcurrencyConflictExceptionHandlerTests {
         _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
         _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions.ShouldContainKey("aggregateId");
-        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-456");
+        problemDetails.Extensions.ShouldNotContainKey("aggregateId");
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesTenantIdExtension() {
-        // Arrange
+    public async Task TryHandleAsync_ConcurrencyConflictException_DoesNotIncludeTenantIdExtension() {
+        // Arrange (UX-DR10: No tenantId in 409 client response)
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
         httpContext.Request.Path = "/api/v1/commands";
@@ -123,8 +122,54 @@ public class ConcurrencyConflictExceptionHandlerTests {
         _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
         _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions.ShouldContainKey("tenantId");
-        problemDetails.Extensions["tenantId"]!.ToString().ShouldBe("acme");
+        problemDetails.Extensions.ShouldNotContainKey("tenantId");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_DoesNotIncludeConflictSourceExtension() {
+        // Arrange (UX-DR10: No conflictSource in client response)
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme",
+            conflictSource: "StateStore");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Extensions.ShouldNotContainKey("conflictSource");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ConcurrencyConflictException_DetailDoesNotContainAggregate() {
+        // Arrange (UX-DR6: No event sourcing terminology in error responses)
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items["CorrelationId"] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/commands";
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        // Act
+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        // Assert
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Detail.ShouldNotBeNull();
+        problemDetails.Detail.ShouldNotContain("aggregate", Case.Insensitive);
+        problemDetails.Detail.ShouldNotContain("actor", Case.Insensitive);
+        problemDetails.Detail.ShouldNotContain("DAPR", Case.Insensitive);
+        problemDetails.Detail.ShouldNotContain("sidecar", Case.Insensitive);
     }
 
     [Fact]
@@ -264,11 +309,6 @@ public class ConcurrencyConflictExceptionHandlerTests {
         // Assert
         handled.ShouldBeTrue();
         httpContext.Response.StatusCode.ShouldBe(409);
-
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-123");
     }
 
     [Fact]
@@ -291,11 +331,6 @@ public class ConcurrencyConflictExceptionHandlerTests {
         // Assert
         handled.ShouldBeTrue();
         httpContext.Response.StatusCode.ShouldBe(409);
-
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-789");
     }
 
     [Fact]
@@ -337,57 +372,6 @@ public class ConcurrencyConflictExceptionHandlerTests {
         // Verify status was NOT written (null tenantId means no state store key)
         CommandStatusRecord? status = await _statusStore.ReadStatusAsync("any-tenant", "cmd-corr-id");
         status.ShouldBeNull();
-
-        // Verify tenantId is NOT in ProblemDetails extensions
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions.ShouldNotContainKey("tenantId");
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_ConcurrencyConflictException_IncludesConflictSourceExtension() {
-        // Arrange
-        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
-        httpContext.Request.Path = "/api/v1/commands";
-        var exception = new ConcurrencyConflictException(
-            correlationId: "cmd-corr-id",
-            aggregateId: "order-123",
-            tenantId: "acme",
-            conflictSource: "StateStore");
-
-        // Act
-        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-
-        // Assert
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions.ShouldContainKey("conflictSource");
-        problemDetails.Extensions["conflictSource"]!.ToString().ShouldBe("StateStore");
-    }
-
-    [Fact]
-    public async Task TryHandleAsync_NullConflictSource_OmitsConflictSourceExtension() {
-        // Arrange
-        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-        httpContext.Items["CorrelationId"] = "test-correlation-id";
-        httpContext.Request.Path = "/api/v1/commands";
-        var exception = new ConcurrencyConflictException(
-            correlationId: "cmd-corr-id",
-            aggregateId: "order-123",
-            tenantId: "acme",
-            conflictSource: null);
-
-        // Act
-        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-
-        // Assert
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions.ShouldNotContainKey("conflictSource");
     }
 
     [Fact]
@@ -414,11 +398,6 @@ public class ConcurrencyConflictExceptionHandlerTests {
         // Assert - should still find the conflict at depth 10
         handled.ShouldBeTrue();
         httpContext.Response.StatusCode.ShouldBe(409);
-
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-depth10");
     }
 
     [Fact]
@@ -441,11 +420,6 @@ public class ConcurrencyConflictExceptionHandlerTests {
         // Assert
         handled.ShouldBeTrue();
         httpContext.Response.StatusCode.ShouldBe(409);
-
-        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-        _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Extensions["aggregateId"]!.ToString().ShouldBe("order-aggregate-multi");
     }
 
     [Fact]

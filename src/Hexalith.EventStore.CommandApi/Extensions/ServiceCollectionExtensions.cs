@@ -38,6 +38,7 @@ public static class CommandApiServiceCollectionExtensions
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
         _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
+        _ = services.AddExceptionHandler<DaprSidecarUnavailableHandler>();          // 503 (sidecar down)
         _ = services.AddExceptionHandler<GlobalExceptionHandler>();
 
         _ = services.AddHttpContextAccessor();
@@ -185,19 +186,24 @@ public static class CommandApiServiceCollectionExtensions
                     context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
                     context.HttpContext.Response.ContentType = "application/problem+json";
 
-                    var problemDetails = new
+                    var problemDetails = new ProblemDetails
                     {
-                        type = "https://tools.ietf.org/html/rfc6585#section-4",
-                        title = "Too Many Requests",
-                        status = 429,
-                        detail = $"Rate limit exceeded for tenant '{tenantId}'. Please retry after the specified interval.",
-                        instance = context.HttpContext.Request.Path.Value,
-                        correlationId,
-                        tenantId,
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = "Too Many Requests",
+                        Type = ErrorHandling.ProblemTypeUris.RateLimitExceeded,
+                        Detail = $"Rate limit exceeded for tenant '{tenantId}'. Please retry after the specified interval.",
+                        Instance = context.HttpContext.Request.Path.Value,
+                        Extensions =
+                        {
+                            ["correlationId"] = correlationId,
+                            ["tenantId"] = tenantId,
+                        },
                     };
 
-                    await context.HttpContext.Response.WriteAsync(
-                        JsonSerializer.Serialize(problemDetails),
+                    await context.HttpContext.Response.WriteAsJsonAsync(
+                        problemDetails,
+                        (JsonSerializerOptions?)null,
+                        "application/problem+json",
                         cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)

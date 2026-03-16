@@ -345,7 +345,7 @@ public class CommandsControllerTenantTests
         // Assert
         handled.ShouldBeTrue();
         httpContext.Response.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
-        httpContext.Response.Headers.RetryAfter.ToString().ShouldBe("42");
+        httpContext.Response.Headers.RetryAfter.ToString().ShouldBe("30");
     }
 
     [Fact]

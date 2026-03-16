@@ -34,8 +34,8 @@ public class AuthorizationServiceUnavailableHandlerTests {
     }
 
     [Fact]
-    public async Task TryHandleAsync_MatchingException_Returns503WithRetryAfter() {
-        // Arrange
+    public async Task TryHandleAsync_MatchingException_Returns503WithRetryAfter30() {
+        // Arrange (UX-DR5: fixed 30s for 503)
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext();
         var exception = new AuthorizationServiceUnavailableException(
@@ -47,7 +47,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         // Assert
         handled.ShouldBeTrue();
         context.Response.StatusCode.ShouldBe(503);
-        context.Response.Headers.RetryAfter.ToString().ShouldBe("15");
+        context.Response.Headers.RetryAfter.ToString().ShouldBe("30");
     }
 
     [Fact]
@@ -79,13 +79,15 @@ public class AuthorizationServiceUnavailableHandlerTests {
         ProblemDetails? problem = await ReadProblemDetails(context);
         _ = problem.ShouldNotBeNull();
         problem.Title.ShouldBe("Service Unavailable");
-        problem.Detail.ShouldBe("Authorization service is temporarily unavailable. Please retry.");
+        problem.Type.ShouldBe(ProblemTypeUris.ServiceUnavailable);
+        problem.Detail.ShouldBe("The command processing pipeline is temporarily unavailable. Please retry after the specified interval.");
 
         // Verify no actor details leaked
         string body = await ReadResponseBody(context);
         body.ShouldNotContain("SecretActorType");
         body.ShouldNotContain("secret-tenant-id");
         body.ShouldNotContain("Internal error details");
+        body.ShouldNotContain("Authorization service");
     }
 
     [Fact]
@@ -105,8 +107,8 @@ public class AuthorizationServiceUnavailableHandlerTests {
     }
 
     [Fact]
-    public async Task TryHandleAsync_IncludesCorrelationId() {
-        // Arrange
+    public async Task TryHandleAsync_DoesNotIncludeCorrelationId() {
+        // Arrange (UX-DR2: No correlationId on 503 — pre-pipeline rejection)
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext("my-correlation-123");
         var exception = new AuthorizationServiceUnavailableException(
@@ -116,23 +118,30 @@ public class AuthorizationServiceUnavailableHandlerTests {
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
 
         // Assert
-        string body = await ReadResponseBody(context);
-        body.ShouldContain("my-correlation-123");
+        ProblemDetails? problem = await ReadProblemDetails(context);
+        _ = problem.ShouldNotBeNull();
+        problem.Extensions.ShouldNotContainKey("correlationId");
     }
 
     [Fact]
-    public async Task TryHandleAsync_RetryAfterHeaderMatchesExceptionValue() {
-        // Arrange
+    public async Task TryHandleAsync_DetailContainsCommandProcessingPipeline() {
+        // Arrange (UX-DR11: "command processing pipeline" — never name internal components)
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext();
         var exception = new AuthorizationServiceUnavailableException(
-            "Actor", "id", "reason", 42, new Exception());
+            "Actor", "id", "reason", 5, new Exception());
 
         // Act
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
 
         // Assert
-        context.Response.Headers.RetryAfter.ToString().ShouldBe("42");
+        ProblemDetails? problem = await ReadProblemDetails(context);
+        _ = problem.ShouldNotBeNull();
+        problem.Detail.ShouldNotBeNull();
+        problem.Detail.ShouldContain("command processing pipeline");
+        problem.Detail.ShouldNotContain("Authorization service");
+        problem.Detail.ShouldNotContain("actor", Case.Insensitive);
+        problem.Detail.ShouldNotContain("DAPR", Case.Insensitive);
     }
 
     private static async Task<string> ReadResponseBody(HttpContext context) {

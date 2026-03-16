@@ -117,7 +117,8 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "mcp__MCP_DOCKER__microsoft_docs_search",
       "mcp__MCP_DOCKER__microsoft_docs_fetch",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(for proj:*)"
     ]
   }
 }

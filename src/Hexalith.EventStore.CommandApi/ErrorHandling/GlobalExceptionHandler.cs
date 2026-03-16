@@ -18,7 +18,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status500InternalServerError,
             Title = "Internal Server Error",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
+            Type = ProblemTypeUris.InternalServerError,
             Detail = "An unexpected error occurred while processing your request.",
             Instance = httpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },

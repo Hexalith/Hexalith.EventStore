@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Middleware;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -101,7 +102,7 @@ public class ConfigureJwtBearerOptions(
                     : context.Error;
 
                 // Log failed auth at Warning level with SecurityEvent field (AC #7, NFR11)
-                // NEVER log the JWT token itself
+                // NEVER log the JWT token itself — server-side logging retains all diagnostic details
                 _logger.LogWarning(
                     "Authentication challenge: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, SourceIp={SourceIp}, Path={RequestPath}, Tenant={TenantId}, CommandType={CommandType}, Reason={Reason}, FailureLayer={FailureLayer}",
                     "AuthenticationFailed",
@@ -113,21 +114,22 @@ public class ConfigureJwtBearerOptions(
                     challengeReason,
                     "JwtChallenge");
 
-                // Determine human-readable detail message based on error type
-                string detail = GetDetailMessage(context.Error, context.ErrorDescription, context.AuthenticateFailure);
+                // Determine human-readable detail message and type URI based on failure type
+                string detail = GetDetailMessage(context.AuthenticateFailure);
+                bool isExpired = context.AuthenticateFailure is SecurityTokenExpiredException;
+                string typeUri = isExpired ? ProblemTypeUris.TokenExpired : ProblemTypeUris.AuthenticationRequired;
 
+                // Set WWW-Authenticate header per RFC 6750 (UX-DR4)
+                context.Response.Headers.WWWAuthenticate = GetWwwAuthenticateHeader(context.AuthenticateFailure);
+
+                // UX-DR2: No correlationId or tenantId on 401 (pre-pipeline rejection)
                 var problemDetails = new ProblemDetails {
                     Status = StatusCodes.Status401Unauthorized,
                     Title = "Unauthorized",
-                    Type = "https://tools.ietf.org/html/rfc9457#section-3",
+                    Type = typeUri,
                     Detail = detail,
                     Instance = context.Request.Path,
-                    Extensions = { ["correlationId"] = correlationId },
                 };
-
-                // Best-effort: extract tenant from request for ProblemDetails extensions.
-                // During auth failure the controller hasn't run, so we try the request body directly.
-                await TryAddTenantExtensionAsync(context.HttpContext, problemDetails).ConfigureAwait(false);
 
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsJsonAsync(
@@ -140,28 +142,28 @@ public class ConfigureJwtBearerOptions(
 
     public void Configure(JwtBearerOptions options) => Configure(JwtBearerDefaults.AuthenticationScheme, options);
 
-    private static string GetDetailMessage(string? error, string? errorDescription, Exception? failure) {
+    private static string GetDetailMessage(Exception? failure) {
         if (failure is SecurityTokenExpiredException) {
             return "The provided authentication token has expired.";
-        }
-
-        if (failure is SecurityTokenInvalidIssuerException) {
-            return "The provided authentication token has an invalid issuer.";
-        }
-
-        if (failure is SecurityTokenInvalidSignatureException or SecurityTokenInvalidAudienceException) {
-            return "The provided authentication token is invalid.";
         }
 
         if (failure is not null) {
             return "The provided authentication token is invalid.";
         }
 
-        if (!string.IsNullOrEmpty(error)) {
-            return $"Authentication failed: {error}.";
+        return "Authentication is required to access this resource.";
+    }
+
+    private static string GetWwwAuthenticateHeader(Exception? failure) {
+        if (failure is SecurityTokenExpiredException) {
+            return "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token has expired\"";
         }
 
-        return "Authentication is required to access this resource.";
+        if (failure is not null) {
+            return "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token is invalid\"";
+        }
+
+        return "Bearer realm=\"hexalith-eventstore\"";
     }
 
     private static async Task TryAddTenantExtensionAsync(HttpContext httpContext, ProblemDetails problemDetails) {

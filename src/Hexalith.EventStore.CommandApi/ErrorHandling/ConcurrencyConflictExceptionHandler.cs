@@ -85,33 +85,20 @@ public class ConcurrencyConflictExceptionHandler(
             }
         }
 
+        // UX-DR10: No aggregateId, conflictSource, or tenantId in client response
+        // UX-DR6: No event sourcing terminology — use safe, generic detail message
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status409Conflict,
             Title = "Conflict",
-            Type = "https://tools.ietf.org/html/rfc9457#section-3",
-            Detail = conflict.Message,
+            Type = ProblemTypeUris.ConcurrencyConflict,
+            Detail = "A concurrency conflict occurred. Please retry the command.",
             Instance = httpContext.Request.Path,
             Extensions =
             {
                 ["correlationId"] = correlationId,
-                ["aggregateId"] = conflict.AggregateId,
             },
         };
-
-        string? tenantId = conflict.TenantId
-            ?? (httpContext.Items.TryGetValue("RequestTenantId", out object? t) && t is string ts
-                ? ts : null);
-
-        if (tenantId is not null)
-        {
-            problemDetails.Extensions["tenantId"] = tenantId;
-        }
-
-        if (conflict.ConflictSource is not null)
-        {
-            problemDetails.Extensions["conflictSource"] = conflict.ConflictSource;
-        }
 
         httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
         // Add Retry-After header to help consumers pace retries and avoid thundering herd

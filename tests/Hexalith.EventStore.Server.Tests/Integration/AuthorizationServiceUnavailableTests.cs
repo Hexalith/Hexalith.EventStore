@@ -50,7 +50,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         _ = response.Headers.RetryAfter.ShouldNotBeNull();
-        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
+        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(30);
 
         // Cleanup
         _factory.FakeTenantActor.ConfiguredException = null;
@@ -74,7 +74,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         _ = response.Headers.RetryAfter.ShouldNotBeNull();
-        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
+        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(30);
 
         // Cleanup
         _factory.FakeRbacActor.ConfiguredException = null;
@@ -134,7 +134,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         _ = response.Headers.RetryAfter.ShouldNotBeNull();
-        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
+        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(30);
 
         // Cleanup
         _factory.FakeTenantActor.ConfiguredException = null;
@@ -166,7 +166,7 @@ public class AuthorizationServiceUnavailableTests : IClassFixture<ActorBasedAuth
         contentType.ShouldContain("problem+json");
 
         _ = response.Headers.RetryAfter.ShouldNotBeNull();
-        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(5);
+        response.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBe(30);
 
         // Verify the exception was caught by 503 handler, NOT the 403 handler
         // (the 503 handler is registered before 403 in ServiceCollectionExtensions)

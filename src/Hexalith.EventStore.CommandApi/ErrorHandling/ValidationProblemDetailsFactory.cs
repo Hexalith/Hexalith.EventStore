@@ -17,7 +17,7 @@ public static class ValidationProblemDetailsFactory
     /// <summary>
     /// The stable URI identifying this error category.
     /// </summary>
-    public const string TypeUri = "https://hexalith.io/problems/validation-error";
+    public const string TypeUri = ProblemTypeUris.ValidationError;
 
     /// <summary>
     /// The human-readable title for validation errors.
