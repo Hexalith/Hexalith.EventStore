@@ -58,6 +58,10 @@ public class CommandStatusControllerTests {
         objResult.StatusCode.ShouldBe(404);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
         pd.Detail!.ShouldContain(correlationId);
+        pd.Type.ShouldBe("https://hexalith.io/problems/command-status-not-found");
+        pd.Title.ShouldBe("Not Found");
+        pd.Extensions.ShouldContainKey("correlationId");
+        _controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
     }
 
     [Fact]
@@ -94,6 +98,9 @@ public class CommandStatusControllerTests {
         objResult.StatusCode.ShouldBe(403);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
         pd.Detail!.ShouldContain("No tenant authorization claims found");
+        pd.Type.ShouldBe("https://hexalith.io/problems/forbidden");
+        pd.Extensions.ShouldContainKey("correlationId");
+        _controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
     }
 
     [Fact]
@@ -190,6 +197,9 @@ public class CommandStatusControllerTests {
         objResult.StatusCode.ShouldBe(400);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
         pd.Detail.ShouldBe("Correlation ID is required.");
+        pd.Type.ShouldBe("https://hexalith.io/problems/bad-request");
+        pd.Extensions.ShouldContainKey("correlationId");
+        _controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
     }
 
     [Fact]
@@ -210,6 +220,142 @@ public class CommandStatusControllerTests {
         CommandStatusResponse response = okResult.Value.ShouldBeOfType<CommandStatusResponse>();
         response.Status.ShouldBe("TimedOut");
         response.TimeoutDuration.ShouldBe("PT30S");
+    }
+
+    [Fact]
+    public async Task GetStatus_NonTerminalStatus_IncludesRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
+    }
+
+    [Fact]
+    public async Task GetStatus_ProcessingStatus_IncludesRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.Processing, DateTimeOffset.UtcNow, "agg-proc", null, null, null, null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
+    }
+
+    [Fact]
+    public async Task GetStatus_EventsStoredStatus_IncludesRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.EventsStored, DateTimeOffset.UtcNow, "agg-stored", null, null, null, null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
+    }
+
+    [Fact]
+    public async Task GetStatus_EventsPublishedStatus_IncludesRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.EventsPublished, DateTimeOffset.UtcNow, "agg-pub", null, null, null, null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
+    }
+
+    [Fact]
+    public async Task GetStatus_CompletedStatus_DoesNotIncludeRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow, "agg-done", 5, null, null, null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers.ContainsKey("Retry-After").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetStatus_RejectedStatus_DoesNotIncludeRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow, "agg-rej", null, "OrderRejected", null, null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers.ContainsKey("Retry-After").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetStatus_TimedOutStatus_DoesNotIncludeRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.TimedOut, DateTimeOffset.UtcNow, "agg-timeout", null, null, null, TimeSpan.FromSeconds(30)),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers.ContainsKey("Retry-After").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetStatus_PublishFailedStatus_DoesNotIncludeRetryAfterHeader() {
+        // Arrange
+        string correlationId = CorrelationId;
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", correlationId,
+            new CommandStatusRecord(CommandStatus.PublishFailed, DateTimeOffset.UtcNow, "agg-pubfail", null, null, "Pub/sub unavailable", null),
+            CancellationToken.None);
+
+        // Act
+        _ = await _controller.GetStatus(correlationId, CancellationToken.None);
+
+        // Assert
+        _controller.HttpContext.Response.Headers.ContainsKey("Retry-After").ShouldBeFalse();
     }
 
     private void SetupHttpContext(string tenantId) => SetupHttpContextWithClaims([tenantId]);
