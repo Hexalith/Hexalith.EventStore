@@ -1,0 +1,15 @@
+**/.git
+**/bin
+**/obj
+**/node_modules
+**/.vs
+**/TestResults
+tests/
+_bmad/
+_bmad-output/
+docs/
+deploy/
+.github/
+*.md
+!Directory.Build.props
+!Directory.Packages.props

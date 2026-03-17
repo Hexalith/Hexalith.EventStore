@@ -1,0 +1,50 @@
+name: Deploy Staging
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login registry.hexalith.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+
+      - name: Build and push commandapi
+        run: |
+          docker build -f src/Hexalith.EventStore.CommandApi/Dockerfile \
+            -t registry.hexalith.com/commandapi:staging-latest .
+          docker push registry.hexalith.com/commandapi:staging-latest
+
+      - name: Build and push sample
+        run: |
+          docker build -f samples/Hexalith.EventStore.Sample/Dockerfile \
+            -t registry.hexalith.com/sample:staging-latest .
+          docker push registry.hexalith.com/sample:staging-latest
+
+      - name: Deploy to staging
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            kubectl rollout restart deployment/commandapi -n eventstore-staging
+            kubectl rollout restart deployment/sample -n eventstore-staging
+            kubectl rollout status deployment/commandapi -n eventstore-staging --timeout=120s
+            kubectl rollout status deployment/sample -n eventstore-staging --timeout=120s
