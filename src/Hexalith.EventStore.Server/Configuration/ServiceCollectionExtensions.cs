@@ -49,6 +49,11 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:Publisher"));
         _ = services.AddOptions<EventDrainOptions>()
             .Bind(configuration.GetSection("EventStore:Drain"));
+        services.TryAddSingleton<IBackpressureTracker, InMemoryBackpressureTracker>();
+        services.TryAddSingleton<IValidateOptions<BackpressureOptions>, ValidateBackpressureOptions>();
+        _ = services.AddOptions<BackpressureOptions>()
+            .Bind(configuration.GetSection("EventStore:Backpressure"))
+            .ValidateOnStart();
         _ = services.AddOptions<SnapshotOptions>()
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")

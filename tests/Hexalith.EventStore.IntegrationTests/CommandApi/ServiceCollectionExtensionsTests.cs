@@ -50,4 +50,23 @@ public class ServiceCollectionExtensionsTests {
         authorizationIndex.ShouldBeLessThan(concurrencyIndex, "AuthorizationExceptionHandler should be before ConcurrencyConflictExceptionHandler");
         concurrencyIndex.ShouldBeLessThan(globalIndex, "ConcurrencyConflictExceptionHandler should be before GlobalExceptionHandler");
     }
+
+    [Fact]
+    public void AddCommandApi_RegistersBackpressureExceptionHandler() {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddLogging();
+        _ = services.AddSingleton<ICommandStatusStore>(new InMemoryCommandStatusStore());
+        _ = services.AddSingleton<ICommandArchiveStore>(new InMemoryCommandArchiveStore());
+
+        // Act
+        _ = services.AddCommandApi();
+
+        // Assert
+        bool hasBackpressureHandler = services
+            .Where(d => d.ServiceType == typeof(IExceptionHandler))
+            .Any(d => d.ImplementationType == typeof(BackpressureExceptionHandler));
+
+        hasBackpressureHandler.ShouldBeTrue();
+    }
 }

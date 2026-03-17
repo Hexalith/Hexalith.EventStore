@@ -13,6 +13,7 @@ public static class ProblemTypeUris {
     public const string NotFound = "https://hexalith.io/problems/not-found";
     public const string ConcurrencyConflict = "https://hexalith.io/problems/concurrency-conflict";
     public const string RateLimitExceeded = "https://hexalith.io/problems/rate-limit-exceeded";
+    public const string BackpressureExceeded = "https://hexalith.io/problems/backpressure-exceeded";
     public const string ServiceUnavailable = "https://hexalith.io/problems/service-unavailable";
     public const string CommandStatusNotFound = "https://hexalith.io/problems/command-status-not-found";
     public const string InternalServerError = "https://hexalith.io/problems/internal-server-error";
