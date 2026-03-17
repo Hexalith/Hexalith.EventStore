@@ -36,6 +36,7 @@ public static class CommandApiServiceCollectionExtensions
         _ = services.AddExceptionHandler<ValidationExceptionHandler>();
         _ = services.AddExceptionHandler<AuthorizationServiceUnavailableHandler>();  // 503 — BEFORE 403
         _ = services.AddExceptionHandler<AuthorizationExceptionHandler>();           // 403
+        _ = services.AddExceptionHandler<BackpressureExceptionHandler>();
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
         _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404

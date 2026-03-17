@@ -136,7 +136,7 @@ public class SecurityAuditLoggingTests {
 
         var actor = new AggregateActor(
             actorHost, actorLogger, domainInvoker, snapshotManager, new NoOpEventPayloadProtectionService(),
-            statusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+            statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         // Inject mock state manager via public property (established pattern from DataPathIsolationTests)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);

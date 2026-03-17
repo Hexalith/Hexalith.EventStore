@@ -50,7 +50,7 @@ public class MultiTenantPublicationTests {
         var fakePublisher = new FakeEventPublisher();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggregateId}") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -122,7 +122,7 @@ public class MultiTenantPublicationTests {
             ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
             var host = ActorHost.CreateForTest<AggregateActor>(
                 new ActorTestOptions { ActorId = new ActorId($"{tenant}:orders:order-1") });
-            var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
+            var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
             PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
             prop?.SetValue(actor, stateManager);
@@ -164,7 +164,7 @@ public class MultiTenantPublicationTests {
             ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
             var host = ActorHost.CreateForTest<AggregateActor>(
                 new ActorTestOptions { ActorId = new ActorId($"acme:{domain}:agg-1") });
-            var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
+            var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
             PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
             prop?.SetValue(actor, stateManager);
@@ -212,7 +212,7 @@ public class MultiTenantPublicationTests {
             ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
             var host = ActorHost.CreateForTest<AggregateActor>(
                 new ActorTestOptions { ActorId = new ActorId($"{tenant}:{domain}:agg-1") });
-            var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
+            var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
             PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
             prop?.SetValue(actor, stateManager);

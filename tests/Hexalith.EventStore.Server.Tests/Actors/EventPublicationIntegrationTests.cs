@@ -27,8 +27,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// Story 4.1 Task 7: AggregateActor publication integration tests.
 /// Verifies state machine transitions with EventPublisher integration.
 /// </summary>
-public class EventPublicationIntegrationTests
-{
+public class EventPublicationIntegrationTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -44,8 +43,7 @@ public class EventPublicationIntegrationTests
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor()
-    {
+    private static (AggregateActor Actor, IActorStateManager StateManager, IDomainServiceInvoker Invoker, IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -54,7 +52,7 @@ public class EventPublicationIntegrationTests
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -89,8 +87,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.1: Happy path transitions ---
 
     [Fact]
-    public async Task ProcessCommand_Success_TransitionsEventStored_EventsPublished_Completed()
-    {
+    public async Task ProcessCommand_Success_TransitionsEventStored_EventsPublished_Completed() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
@@ -126,8 +123,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.2: Publication fails ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFails_TransitionsToPublishFailedAndReturnsAcceptedResult()
-    {
+    public async Task ProcessCommand_PublishFails_TransitionsToPublishFailedAndReturnsAcceptedResult() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
@@ -159,8 +155,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.3: No-op skips publication ---
 
     [Fact]
-    public async Task ProcessCommand_NoOp_SkipsPublication_TransitionsDirectlyToCompleted()
-    {
+    public async Task ProcessCommand_NoOp_SkipsPublication_TransitionsDirectlyToCompleted() {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
@@ -184,8 +179,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.4: Rejection events are published ---
 
     [Fact]
-    public async Task ProcessCommand_Rejection_PublishesRejectionEvents_ThenCompleted()
-    {
+    public async Task ProcessCommand_Rejection_PublishesRejectionEvents_ThenCompleted() {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
         var rejectionResult = DomainResult.Rejection(new IRejectionEvent[] { new TestRejectionEvent() });
@@ -210,8 +204,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.5: PublishFailed pipeline cleanup ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_PipelineStateCleaned()
-    {
+    public async Task ProcessCommand_PublishFailed_PipelineStateCleaned() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
@@ -238,8 +231,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.6: EventsPublished advisory status ---
 
     [Fact]
-    public async Task ProcessCommand_EventsPublished_StatusWrittenAdvisory()
-    {
+    public async Task ProcessCommand_EventsPublished_StatusWrittenAdvisory() {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
@@ -259,8 +251,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.7: PublishFailed advisory status ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_StatusWrittenAdvisory()
-    {
+    public async Task ProcessCommand_PublishFailed_StatusWrittenAdvisory() {
         // Arrange
         (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
@@ -288,8 +279,7 @@ public class EventPublicationIntegrationTests
     // --- Task 7.8: EventsPublished checkpoint atomicity ---
 
     [Fact]
-    public async Task ProcessCommand_PublishSuccess_EventsPublishedCheckpointAtomic()
-    {
+    public async Task ProcessCommand_PublishSuccess_EventsPublishedCheckpointAtomic() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _) = CreateActor();
         var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
@@ -315,9 +305,9 @@ public class EventPublicationIntegrationTests
         stageCheckpoints.IndexOf(CommandStatus.EventsStored).ShouldBeGreaterThan(stageCheckpoints.IndexOf(CommandStatus.Processing));
         stageCheckpoints.IndexOf(CommandStatus.EventsPublished).ShouldBeGreaterThan(stageCheckpoints.IndexOf(CommandStatus.EventsStored));
 
-        // SaveStateAsync was called (to commit the checkpoint)
-        // Story 4.1: 3 saves = Processing + EventsStored + (EventsPublished checkpoint batched with terminal)
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // SaveStateAsync was called (to commit the checkpoints and the final pending-count decrement)
+        // Story 4.3 adds one final save after terminal completion.
+        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // Test event types

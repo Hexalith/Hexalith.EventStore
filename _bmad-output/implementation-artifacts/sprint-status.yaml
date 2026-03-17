@@ -79,15 +79,15 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Event Distribution & Pub/Sub
-  epic-4: in-progress
+  epic-4: done
   4-1-cloudevents-publication-and-topic-routing: done
   4-2-resilient-publication-and-backlog-draining: done
   4-3-per-aggregate-backpressure: done
   epic-4-retrospective: optional
 
   # Epic 5: Security & Multi-Tenant Isolation
-  epic-5: backlog
-  5-1-jwt-authentication-and-claims-transformation: backlog
+  epic-5: in-progress
+  5-1-jwt-authentication-and-claims-transformation: ready-for-dev
   5-2-claims-based-command-authorization: backlog
   5-3-three-layer-multi-tenant-data-isolation: backlog
   5-4-dapr-service-to-service-access-control: backlog
