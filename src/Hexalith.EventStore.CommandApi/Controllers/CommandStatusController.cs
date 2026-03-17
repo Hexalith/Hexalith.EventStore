@@ -21,13 +21,39 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/commands/status")]
+[Tags("Commands")]
 public class CommandStatusController(
     ICommandStatusStore statusStore,
     ILogger<CommandStatusController> logger) : ControllerBase {
     /// <summary>
     /// Gets the current processing status of a command by correlation ID.
-    /// Tenant-scoped: only returns status for the authenticated user's authorized tenants (SEC-3).
     /// </summary>
+    /// <remarks>
+    /// Tenant-scoped: only returns status for the authenticated user's authorized tenants (SEC-3).
+    ///
+    /// **Command Lifecycle States:**
+    ///
+    /// *In-flight states* (continue polling with the Retry-After interval from the 202 response):
+    /// - **Received**: Command accepted, queued for processing
+    /// - **Processing**: Domain service invocation in progress
+    /// - **EventsStored**: Events persisted to state store
+    /// - **EventsPublished**: Events published to pub/sub topics
+    ///
+    /// *Terminal states* (polling should stop):
+    /// - **Completed**: Full pipeline completed successfully
+    /// - **Rejected**: Domain business rule rejection
+    /// - **PublishFailed**: Event publication failed after retry exhaustion
+    /// - **TimedOut**: Processing exceeded timeout threshold
+    ///
+    /// Terminal states mean the command has reached its final outcome. In-flight states indicate
+    /// the consumer should continue polling with the Retry-After interval.
+    /// </remarks>
+    /// <response code="200">Command status found. See response body for current state.</response>
+    /// <response code="400">Bad request. Invalid correlation ID format.</response>
+    /// <response code="401">Authentication required.</response>
+    /// <response code="403">Forbidden. No tenant authorization claims found.</response>
+    /// <response code="404">No command status found for the given correlation ID.</response>
+    /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
     [HttpGet("{correlationId}")]
     [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -18,10 +18,28 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Authorize]
 [Route("api/v1/commands")]
 [Consumes("application/json")]
+[Tags("Commands")]
 public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase
 {
     private const string GlobalAdminExtensionKey = "actor:globalAdmin";
 
+    /// <summary>
+    /// Submits a command for asynchronous processing.
+    /// </summary>
+    /// <remarks>
+    /// The command is validated and routed to the appropriate domain aggregate for processing.
+    /// On success, returns 202 Accepted with a Location header pointing to the status polling endpoint.
+    /// The consumer should poll the status endpoint using the correlation ID until a terminal status is reached.
+    /// </remarks>
+    /// <response code="202">Command accepted for processing. Check status at the Location header URL.</response>
+    /// <response code="400">Validation failed. See errors object for field-level details.</response>
+    /// <response code="401">Authentication required. Provide a valid JWT Bearer token.</response>
+    /// <response code="403">Forbidden. Valid JWT but not authorized for the requested tenant.</response>
+    /// <response code="404">Not found. The specified domain or aggregate does not exist.</response>
+    /// <response code="409">Concurrency conflict. Retry after the interval in the Retry-After header.</response>
+    /// <response code="422">Unprocessable entity. The command was rejected by domain business rules.</response>
+    /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
+    /// <response code="503">Service unavailable. The processing pipeline is temporarily down.</response>
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]

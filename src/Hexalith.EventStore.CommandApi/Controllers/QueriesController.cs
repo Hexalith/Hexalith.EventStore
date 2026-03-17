@@ -17,6 +17,7 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Authorize]
 [Route("api/v1/queries")]
 [Consumes("application/json")]
+[Tags("Queries")]
 public partial class QueriesController(IMediator mediator, IETagService eTagService, ILogger<QueriesController> logger) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
