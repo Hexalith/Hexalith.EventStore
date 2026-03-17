@@ -177,4 +177,58 @@ public class EventStoreClaimsTransformationTests {
         // Act & Assert
         await Should.ThrowAsync<ArgumentNullException>(
             () => _sut.TransformAsync(null!));
+
+    // --- Story 5.1 Gap-Closure Tests (5.3.6) ---
+
+    [Fact]
+    public async Task TransformAsync_TidFallbackClaim_AddsEventStoreTenantClaim() {
+        // Arrange (5.3.6 — singular "tid" claim fallback when "tenants" is absent)
+        var identity = new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim("tid", "tenant-from-tid"),
+        ], "Bearer");
+        var principal = new ClaimsPrincipal(identity);
+
+        // Act
+        ClaimsPrincipal result = await _sut.TransformAsync(principal);
+
+        // Assert
+        result.FindAll(TenantClaimType).Select(c => c.Value)
+            .ShouldBe(["tenant-from-tid"]);
+    }
+
+    [Fact]
+    public async Task TransformAsync_TenantIdAndTidBothPresent_TenantIdTakesPrecedence() {
+        // Arrange — tenant_id and tid both present; tenant_id takes precedence via ?? operator
+        var identity = new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim("tenant_id", "tenant-a"),
+            new Claim("tid", "tenant-b"),
+        ], "Bearer");
+        var principal = new ClaimsPrincipal(identity);
+
+        // Act
+        ClaimsPrincipal result = await _sut.TransformAsync(principal);
+
+        // Assert — only tenant_id extracted (tid is fallback only)
+        result.FindAll(TenantClaimType).Select(c => c.Value)
+            .ShouldBe(["tenant-a"]);
+    }
+
+    [Fact]
+    public async Task TransformAsync_SpaceDelimitedDomains_ParsesCorrectly() {
+        // Arrange — space-delimited string format (not JSON array)
+        var identity = new ClaimsIdentity([
+            new Claim("sub", "user-1"),
+            new Claim("domains", "orders inventory shipping"),
+        ], "Bearer");
+        var principal = new ClaimsPrincipal(identity);
+
+        // Act
+        ClaimsPrincipal result = await _sut.TransformAsync(principal);
+
+        // Assert
+        result.FindAll(DomainClaimType).Select(c => c.Value)
+            .ShouldBe(["orders", "inventory", "shipping"]);
+    }
 }

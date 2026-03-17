@@ -72,11 +72,6 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/rate-limit-exceeded","title":"Too Many Requests","status":429,"detail":"Rate limit exceeded for tenant 'tenant-a'. Please retry after the specified interval."}""",
             ["Wait for the interval specified in the Retry-After response header before retrying.", "Consider reducing request frequency or batching commands."]),
 
-        new("backpressure-exceeded", "Backpressure Exceeded", 429,
-            "The targeted entity has too many pending commands in its processing queue. Per-aggregate backpressure has been triggered to prevent queue buildup.",
-            """{"type":"https://hexalith.io/problems/backpressure-exceeded","title":"Too Many Requests","status":429,"detail":"Too many pending commands for this entity. Please retry after the specified interval.","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
-            ["Wait for the interval specified in the Retry-After response header.", "The targeted entity is processing a large number of commands. Spread commands across time or entities."]),
-
         new("service-unavailable", "Service Unavailable", 503,
             "The command processing pipeline is temporarily unavailable (e.g., DAPR sidecar unreachable).",
             """{"type":"https://hexalith.io/problems/service-unavailable","title":"Service Unavailable","status":503,"detail":"The command processing service is temporarily unavailable. Please retry after the specified interval."}""",

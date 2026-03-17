@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-17 # story 4-3 done
+last_updated: 2026-03-17 # story 5-1 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -87,8 +87,8 @@ development_status:
 
   # Epic 5: Security & Multi-Tenant Isolation
   epic-5: in-progress
-  5-1-jwt-authentication-and-claims-transformation: ready-for-dev
-  5-2-claims-based-command-authorization: backlog
+  5-1-jwt-authentication-and-claims-transformation: done
+  5-2-claims-based-command-authorization: ready-for-dev
   5-3-three-layer-multi-tenant-data-isolation: backlog
   5-4-dapr-service-to-service-access-control: backlog
   5-5-e2e-security-testing-with-keycloak: backlog
