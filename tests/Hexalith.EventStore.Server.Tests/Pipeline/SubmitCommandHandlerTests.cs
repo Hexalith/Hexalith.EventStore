@@ -14,6 +14,12 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class SubmitCommandHandlerTests {
+    private static IBackpressureTracker CreateMockTracker() {
+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
+        return tracker;
+    }
+
     private static ICommandRouter CreateMockRouter() {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
@@ -27,7 +33,7 @@ public class SubmitCommandHandlerTests {
         string expectedCorrelationId = Guid.NewGuid().ToString();
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
-        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
         var command = new SubmitCommand(
             MessageId: "msg-1",
             Tenant: "test-tenant",

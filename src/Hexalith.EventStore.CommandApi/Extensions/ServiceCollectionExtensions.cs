@@ -39,6 +39,7 @@ public static class CommandApiServiceCollectionExtensions
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
         _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
+        _ = services.AddExceptionHandler<BackpressureExceptionHandler>();             // 429 (per-aggregate backpressure)
         _ = services.AddExceptionHandler<DaprSidecarUnavailableHandler>();          // 503 (sidecar down)
         _ = services.AddExceptionHandler<GlobalExceptionHandler>();
 

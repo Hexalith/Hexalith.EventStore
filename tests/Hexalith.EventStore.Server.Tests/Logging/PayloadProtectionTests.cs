@@ -57,7 +57,9 @@ public class PayloadProtectionTests : IDisposable {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
-        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, logger);
         var command = new SubmitCommand(
             MessageId: "msg-payload-submit-1",
             Tenant: "test-tenant",

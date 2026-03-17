@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -19,11 +20,15 @@ public partial class SubmitCommandHandler(
     ICommandStatusStore statusStore,
     ICommandArchiveStore archiveStore,
     ICommandRouter commandRouter,
+    IBackpressureTracker backpressureTracker,
     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
 {
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        // Compute canonical actor ID for backpressure tracking (same as CommandRouter line 28)
+        string actorId = new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId).ActorId;
 
         string causationId = request.MessageId; // CausationId traces from the specific command (MessageId) that caused the events
 
@@ -31,74 +36,94 @@ public partial class SubmitCommandHandler(
 
         var result = new SubmitCommandResult(request.CorrelationId);
 
-        // Write "Received" status before returning (advisory per rule #12)
+        // CRITICAL: Acquire INSIDE try block to prevent cancellation leak (Story 4.3)
+        bool acquired = false;
         try
         {
-            await statusStore.WriteStatusAsync(
-                request.Tenant,
-                request.CorrelationId,
-                new CommandStatusRecord(
-                    CommandStatus.Received,
-                    DateTimeOffset.UtcNow,
-                    request.AggregateId,
-                    EventCount: null,
-                    RejectionEventType: null,
-                    FailureReason: null,
-                    TimeoutDuration: null),
-                cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
-        }
-
-        // Archive original command for replay (advisory per rule #12)
-        try
-        {
-            await archiveStore.WriteCommandAsync(
-                request.Tenant,
-                request.CorrelationId,
-                request.ToArchivedCommand(),
-                cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
-        }
-
-        // Route to aggregate actor (NOT advisory -- failure must propagate)
-        CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (!processingResult.Accepted)
-        {
-            CommandStatusRecord? status = await statusStore
-                .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (status is { RejectionEventType: not null })
+            acquired = backpressureTracker.TryAcquire(actorId);
+            if (!acquired)
             {
-                throw new DomainCommandRejectedException(
-                    request.CorrelationId,
-                    request.Tenant,
-                    status.RejectionEventType,
-                    processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
+                Log.BackpressureExceeded(logger, request.CorrelationId, request.MessageId, request.Tenant, request.Domain, request.AggregateId, request.CommandType, actorId);
+                int currentDepth = backpressureTracker.GetCurrentDepth(actorId);
+                throw new BackpressureExceededException(actorId, request.Tenant, request.CorrelationId, currentDepth);
             }
 
-            throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
+            // Write "Received" status before returning (advisory per rule #12)
+            try
+            {
+                await statusStore.WriteStatusAsync(
+                    request.Tenant,
+                    request.CorrelationId,
+                    new CommandStatusRecord(
+                        CommandStatus.Received,
+                        DateTimeOffset.UtcNow,
+                        request.AggregateId,
+                        EventCount: null,
+                        RejectionEventType: null,
+                        FailureReason: null,
+                        TimeoutDuration: null),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+
+            // Archive original command for replay (advisory per rule #12)
+            try
+            {
+                await archiveStore.WriteCommandAsync(
+                    request.Tenant,
+                    request.CorrelationId,
+                    request.ToArchivedCommand(),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+
+            // Route to aggregate actor (NOT advisory -- failure must propagate)
+            CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!processingResult.Accepted)
+            {
+                CommandStatusRecord? status = await statusStore
+                    .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (status is { RejectionEventType: not null })
+                {
+                    throw new DomainCommandRejectedException(
+                        request.CorrelationId,
+                        request.Tenant,
+                        status.RejectionEventType,
+                        processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
+                }
+
+                throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
+            }
+
+            Log.CommandRouted(logger, request.CorrelationId);
+
+            return result;
         }
-
-        Log.CommandRouted(logger, request.CorrelationId);
-
-        return result;
+        finally
+        {
+            if (acquired)
+            {
+                backpressureTracker.Release(actorId);
+            }
+        }
     }
 
     private static partial class Log
@@ -144,5 +169,19 @@ public partial class SubmitCommandHandler(
         public static partial void CommandRouted(
             ILogger logger,
             string correlationId);
+
+        [LoggerMessage(
+            EventId = 1110,
+            Level = LogLevel.Warning,
+            Message = "Backpressure exceeded: CorrelationId={CorrelationId}, MessageId={MessageId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, ActorId={ActorId}, Stage=BackpressureExceeded")]
+        public static partial void BackpressureExceeded(
+            ILogger logger,
+            string correlationId,
+            string messageId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            string actorId);
     }
 }
