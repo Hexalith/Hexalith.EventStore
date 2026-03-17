@@ -19,6 +19,19 @@ public partial class QueryValidationController(
     ITenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     ILogger<QueryValidationController> logger) : ControllerBase {
+    /// <summary>
+    /// Pre-flight validation for a query submission.
+    /// </summary>
+    /// <remarks>
+    /// Validates tenant authorization and RBAC permissions without executing the query.
+    /// Returns a result indicating whether the query would be accepted.
+    /// </remarks>
+    /// <response code="200">Validation result returned. Check the IsAuthorized property.</response>
+    /// <response code="400">Malformed request body.</response>
+    /// <response code="401">Authentication required. Provide a valid JWT Bearer token.</response>
+    /// <response code="403">Forbidden. Valid JWT but not authorized for the requested tenant.</response>
+    /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
+    /// <response code="503">Service unavailable. The processing pipeline is temporarily down.</response>
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(PreflightValidationResult), StatusCodes.Status200OK)]

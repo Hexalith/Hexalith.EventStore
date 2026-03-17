@@ -37,10 +37,10 @@ public sealed class CommandExampleTransformer : IOpenApiOperationTransformer {
                 Description = "A valid Counter domain IncrementCounter command. Generate a unique ULID for messageId on each submission. Reusing the same messageId triggers idempotency detection and returns a silent success without processing a new command. Replace 'tenant-a' with your actual tenant identifier. If JWT authentication is disabled for local development (EventStore:Auth:Enabled = false), you can test without obtaining a token first.",
                 Value = JsonNode.Parse("""
                     {
-                      "messageId": "01JAXYZ1234567890ABCDEFGH",
+                      "messageId": "01JAXYZ1234567890ABCDEFGHJ",
                       "tenant": "tenant-a",
                       "domain": "counter",
-                      "aggregateId": "01JAXYZ1234567890ABCDEFJK",
+                      "aggregateId": "01JAXYZ1234567890ABCDEFJKM",
                       "commandType": "IncrementCounter",
                       "payload": {}
                     }

@@ -17,38 +17,47 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
         _factory = factory;
     }
 
-    [Fact]
-    public async Task OpenApiDocument_ContainsCommandsTag() {
+    private async Task<JsonElement> GetOpenApiDocumentAsync() {
         HttpClient client = _factory.CreateClient();
 
-        HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
+        HttpResponseMessage response = await client.GetAsync("/openapi/v1.json").ConfigureAwait(false);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        string content = await response.Content.ReadAsStringAsync();
-        JsonElement doc = JsonSerializer.Deserialize<JsonElement>(content);
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<JsonElement>(content);
+    }
+
+    [Fact]
+    public async Task OpenApiDocument_ContainsExpectedTopLevelTags() {
+        JsonElement doc = await GetOpenApiDocumentAsync();
 
         doc.TryGetProperty("tags", out JsonElement tags).ShouldBeTrue("OpenAPI document should have tags array");
-        bool hasCommandsTag = false;
-        foreach (JsonElement tag in tags.EnumerateArray()) {
-            if (tag.TryGetProperty("name", out JsonElement name)
-                && string.Equals(name.GetString(), "Commands", StringComparison.Ordinal)) {
-                hasCommandsTag = true;
-                break;
-            }
-        }
+        string[] tagNames = tags.EnumerateArray()
+            .Select(tag => tag.GetProperty("name").GetString())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .ToArray();
 
-        hasCommandsTag.ShouldBeTrue("Tags should contain 'Commands'");
+        tagNames.ShouldContain("Commands");
+        tagNames.ShouldContain("Queries");
+        tagNames.ShouldContain("Validation");
+    }
+
+    [Fact]
+    public async Task OpenApiDocument_Operations_AreGroupedUnderExpectedTags() {
+        JsonElement doc = await GetOpenApiDocumentAsync();
+
+        JsonElement paths = doc.GetProperty("paths");
+        OperationHasTag(paths, "/api/v1/commands", "post", "Commands").ShouldBeTrue();
+        OperationHasTag(paths, "/api/v1/commands/status/{correlationId}", "get", "Commands").ShouldBeTrue();
+        OperationHasTag(paths, "/api/v1/queries", "post", "Queries").ShouldBeTrue();
+        OperationHasTag(paths, "/api/v1/commands/validate", "post", "Validation").ShouldBeTrue();
+        OperationHasTag(paths, "/api/v1/queries/validate", "post", "Validation").ShouldBeTrue();
     }
 
     [Fact]
     public async Task OpenApiDocument_ContainsCommandExamplePayload() {
-        HttpClient client = _factory.CreateClient();
-
-        HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-
-        string content = await response.Content.ReadAsStringAsync();
-        JsonElement doc = JsonSerializer.Deserialize<JsonElement>(content);
+        JsonElement doc = await GetOpenApiDocumentAsync();
 
         // Navigate to paths -> /api/v1/commands -> post -> requestBody -> content -> application/json -> examples
         doc.TryGetProperty("paths", out JsonElement paths).ShouldBeTrue();
@@ -62,7 +71,7 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
 
         counterExample.TryGetProperty("value", out JsonElement value).ShouldBeTrue();
         value.TryGetProperty("messageId", out JsonElement messageId).ShouldBeTrue();
-        messageId.GetString().ShouldBe("01JAXYZ1234567890ABCDEFGH");
+        messageId.GetString().ShouldBe("01JAXYZ1234567890ABCDEFGHJ");
 
         value.TryGetProperty("tenant", out JsonElement tenant).ShouldBeTrue();
         tenant.GetString().ShouldBe("tenant-a");
@@ -71,13 +80,36 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
         domain.GetString().ShouldBe("counter");
 
         value.TryGetProperty("aggregateId", out JsonElement aggregateId).ShouldBeTrue();
-        aggregateId.GetString().ShouldBe("01JAXYZ1234567890ABCDEFJK");
+        aggregateId.GetString().ShouldBe("01JAXYZ1234567890ABCDEFJKM");
 
         value.TryGetProperty("commandType", out JsonElement commandType).ShouldBeTrue();
         commandType.GetString().ShouldBe("IncrementCounter");
 
         value.TryGetProperty("payload", out JsonElement payload).ShouldBeTrue();
         payload.ValueKind.ShouldBe(JsonValueKind.Object);
+    }
+
+    [Fact]
+    public async Task OpenApiDocument_CommandEndpoints_ContainXmlDocumentationDescriptions() {
+        JsonElement doc = await GetOpenApiDocumentAsync();
+
+        JsonElement paths = doc.GetProperty("paths");
+        JsonElement submitOperation = paths.GetProperty("/api/v1/commands").GetProperty("post");
+        JsonElement statusOperation = paths.GetProperty("/api/v1/commands/status/{correlationId}").GetProperty("get");
+
+        string? submitDescription = submitOperation.GetProperty("description").GetString();
+        string? statusDescription = statusOperation.GetProperty("description").GetString();
+
+        submitOperation.GetProperty("summary").GetString().ShouldBe("Submits a command for asynchronous processing.");
+        submitDescription.ShouldNotBeNull();
+        submitDescription.ShouldContain("Location header pointing to the status polling endpoint");
+        submitOperation.GetProperty("responses").GetProperty("202").GetProperty("description").GetString().ShouldBe("Command accepted for processing. Check status at the Location header URL.");
+
+        statusOperation.GetProperty("summary").GetString().ShouldBe("Gets the current processing status of a command by correlation ID.");
+        statusDescription.ShouldNotBeNull();
+        statusDescription.ShouldContain("Command Lifecycle States");
+        statusDescription.ShouldContain("Terminal states mean the command has reached its final outcome");
+        statusOperation.GetProperty("responses").GetProperty("404").GetProperty("description").GetString().ShouldBe("No command status found for the given correlation ID.");
     }
 
     [Fact]
@@ -90,5 +122,25 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
 
         string body = await response.Content.ReadAsStringAsync();
         body.ShouldContain("swagger", Case.Insensitive);
+
+        HttpResponseMessage initializerResponse = await client.GetAsync("/swagger/swagger-initializer.js");
+        initializerResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        initializerResponse.Content.Headers.ContentType?.MediaType.ShouldBeOneOf("text/javascript", "application/javascript");
+
+        string initializerBody = await initializerResponse.Content.ReadAsStringAsync();
+        initializerBody.ShouldContain("SwaggerUIBundle");
+        initializerBody.ShouldContain("window.ui");
+    }
+
+    private static bool OperationHasTag(JsonElement paths, string path, string method, string expectedTag) {
+        if (!paths.TryGetProperty(path, out JsonElement pathElement)
+            || !pathElement.TryGetProperty(method, out JsonElement operation)
+            || !operation.TryGetProperty("tags", out JsonElement tags)) {
+            return false;
+        }
+
+        return tags.EnumerateArray()
+            .Select(tag => tag.GetString())
+            .Any(tag => string.Equals(tag, expectedTag, StringComparison.Ordinal));
     }
 }

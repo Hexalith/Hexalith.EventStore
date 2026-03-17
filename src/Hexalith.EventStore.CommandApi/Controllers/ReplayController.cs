@@ -41,6 +41,19 @@ public class ReplayController(
     /// <summary>
     /// Replays a previously failed command by correlation ID.
     /// </summary>
+    /// <remarks>
+    /// Retrieves the archived command and resubmits it through the full processing pipeline
+    /// with a new correlation ID. Only commands in terminal failure states (Rejected, PublishFailed,
+    /// TimedOut) can be replayed.
+    /// </remarks>
+    /// <response code="202">Replay accepted. Check status at the Location header URL.</response>
+    /// <response code="400">Invalid correlation ID format.</response>
+    /// <response code="401">Authentication required. Provide a valid JWT Bearer token.</response>
+    /// <response code="403">Forbidden. No tenant authorization claims found.</response>
+    /// <response code="404">No archived command found for the given correlation ID.</response>
+    /// <response code="409">Conflict. Command is not in a replayable state.</response>
+    /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
+    /// <response code="500">Internal server error. Archived command data is corrupted.</response>
     [HttpPost("{correlationId}")]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(ReplayCommandResponse), StatusCodes.Status202Accepted)]
