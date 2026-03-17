@@ -42,7 +42,7 @@ This story is complete when: all 10 ACs are verified as implemented and tested, 
 
 - [ ] Task 0: Verify prerequisites and baseline (BLOCKING)
   - [ ] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
-  - [ ] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- confirm pass count (baseline: >= 1447)
+  - [ ] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- confirm pass count (baseline: >= 1447). **Baseline note:** Tier 2 baseline is 1447 if Story 5.1 is merged, or 1427 if not. Check actual count here and use that as your baseline for Task 8.3.
   - [ ] 0.3 Read `AuthorizationBehavior.cs` -- verify tenant-then-RBAC sequential flow, ClaimsPrincipal extraction, `CommandAuthorizationException` throwing (AC #1, #2, #3, #5, #6)
   - [ ] 0.4 Read `ClaimsTenantValidator.cs` -- verify case-SENSITIVE tenant matching, no-tenant-claims denial (AC #1)
   - [ ] 0.5 Read `ClaimsRbacValidator.cs` -- verify domain (case-insensitive) + permission (wildcard/category/exact) checks (AC #2)
@@ -95,7 +95,7 @@ This story is complete when: all 10 ACs are verified as implemented and tested, 
 
 - [ ] Task 5: Verify audit logging (AC: #5, #6)
   - [ ] 5.1 Confirm `AuthorizationBehavior.Log.AuthorizationFailed` (EventId 1021, Warning) includes: SecurityEvent, CorrelationId, CausationId, TenantClaims, Tenant, Domain, MessageType, Reason, SourceIp, FailureLayer
-  - [ ] 5.2 Confirm `AuthorizationBehavior.Log.AuthorizationPassed` (EventId 1020, Debug) includes: CorrelationId, CausationId, Tenant, Domain, MessageType
+  - [ ] 5.2 Confirm `AuthorizationBehavior.Log.AuthorizationPassed` (EventId 1020, Debug) includes: CorrelationId, CausationId, Tenant, Domain, MessageType. Verify this is emitted on EVERY successful authorization pass (AC #6 -- explicit verification required).
   - [ ] 5.3 Confirm JWT token content never appears in any log message (SEC-5)
   - [ ] 5.4 Confirm `AuthorizationExceptionHandler` logs Warning with SecurityEvent=AuthorizationDenied, correlation ID, tenant, domain, command type
   - [ ] 5.5 If any logging is missing or incorrect, fix it
@@ -111,12 +111,15 @@ This story is complete when: all 10 ACs are verified as implemented and tested, 
 - [ ] Task 7: Verify and extend test coverage (AC: #10)
   - [ ] 7.1 Review all existing authorization test files (listed in Task 0.9) for completeness against ACs
   - [ ] 7.2 Identify test gaps. Known potential gaps to check:
-    - [ ] 7.2.1 `AuthorizationBehavior` unauthenticated user test: verify `user.Identity?.IsAuthenticated != true` throws `CommandAuthorizationException` with "User is not authenticated."
-    - [ ] 7.2.2 `SanitizeForbiddenTerms` unit tests for ALL 9 patterns: "by actor", "actor", "aggregate", "event stream", "event store", "DAPR", "sidecar", "state store", "pub/sub" -- some may be missing (check existing coverage)
+    - [ ] 7.2.1 `AuthorizationBehavior` unauthenticated user test: verify `user.Identity?.IsAuthenticated != true` throws `CommandAuthorizationException` with "User is not authenticated." Test TWO paths: (a) identity exists but `IsAuthenticated=false` (use `new ClaimsIdentity()` without authenticationType), (b) behavior when `HttpContext.User` is set but has no authenticated identity. Both must throw `CommandAuthorizationException`, not `NullReferenceException`.
+    - [ ] 7.2.2 `SanitizeForbiddenTerms` unit tests for ALL 9 patterns: "by actor", "actor", "aggregate", "event stream", "event store", "DAPR", "sidecar", "state store", "pub/sub" -- some may be missing (check existing coverage). Gap-closure tests should assert both REMOVAL of the forbidden term AND the correct REPLACEMENT value (e.g., "actor" -> "service", "aggregate" -> "entity").
     - [ ] 7.2.3 `CommandAuthorizationException` constructor variants: parameterless, message-only, message+innerException -- verify property defaults
     - [ ] 7.2.4 `AuthorizationBehavior` authorization success Debug log test: verify EventId 1020 emitted on successful authorization
     - [ ] 7.2.5 MediatR pipeline ordering test: verify behaviors resolve in correct order from DI
     - [ ] 7.2.6 `EnsureReasonNamesTenant` edge cases: null/empty tenant, null/empty reason, reason already containing tenant
+    - [ ] 7.2.7 Open-by-default design intent test: explicitly verify that a principal with tenant claims but NO domain claims AND NO permission claims is authorized for any domain and any command type. This documents the intentional open-by-default authorization model as code. Name it `ValidateAsync_NoDomainOrPermissionClaims_OpenByDefault_Allowed`.
+    - [ ] 7.2.8 RBAC validator null-return test: verify that when `IRbacValidator.ValidateAsync` returns null, `AuthorizationBehavior` throws `InvalidOperationException` with "server bug" message (not `NullReferenceException`). The tenant null-return IS tested (`CommandApiAuthorizationRegistrationTests.cs:157`), but the RBAC equivalent is missing -- same defensive pattern, same risk.
+    - [ ] 7.2.9 Whitespace-padded tenant claim test: verify that `ClaimsTenantValidator` with claim value `" tenant-a "` (leading/trailing spaces) returns Denied for tenant `"tenant-a"`. This documents strict Ordinal matching as intentional -- whitespace in tenant IDs indicates an IdP configuration error, not a bug.
   - [ ] 7.3 Add any missing test scenarios identified in 7.2
   - [ ] 7.4 Verify all 9 existing authorization test files pass
 
@@ -157,6 +160,14 @@ The claims-based command authorization infrastructure is **already fully impleme
 - **SEC-5 Compliance:** JWT token content and event payload data NEVER appear in logs. Only correlation IDs, tenant names, domains, message types, and claim counts.
 
 - **UX-DR6 Compliance:** `AuthorizationExceptionHandler.SanitizeForbiddenTerms` strips internal architecture terms (actor, aggregate, DAPR, etc.) from client-facing ProblemDetails responses.
+
+- **Non-Command/Query Pass-Through (architectural constraint):** `AuthorizationBehavior` only authorizes `SubmitCommand` and `SubmitQuery` request types. All other MediatR request types pass through without authorization checks (line 31). This is by design -- internal requests (health checks, etc.) don't require command authorization. If a new command-like request type is added in the future, it MUST use `SubmitCommand` or the behavior must be updated to recognize it. The existing `NonSubmitCommandRequest_PassesThrough` test documents this as intended behavior.
+
+- **Strict Claim Value Matching (no trimming):** `ClaimsTenantValidator`, `ClaimsRbacValidator`, and the `eventstore:*` claim filters all use exact string comparison without `.Trim()`. A claim value of `" tenant-a "` (whitespace-padded) will NOT match `"tenant-a"`. This is intentional -- tenant IDs are system-assigned and should never have whitespace. Whitespace in claim values indicates an IdP configuration error. Domain and permission claims follow the same strict-match principle (though comparison is case-insensitive).
+
+- **Actor Reachability Not Validated at Startup:** `CommandApiAuthorizationStartupValidator` validates that actor-based configuration is syntactically correct (non-empty actor names), but does NOT ping actors to verify they are reachable. First-request failures return 503 with `Retry-After: 30`. This is by design -- DAPR actors are lazy-activated and may not be available until the first invocation.
+
+- **`AuthorizationExceptionHandler` Missing `HasStarted` Guard:** Unlike the rate limiting `OnRejected` handler (which checks `Response.HasStarted` before writing), `AuthorizationExceptionHandler.TryHandleAsync` does not. If another middleware starts the response before the exception handler runs, `WriteAsJsonAsync` will throw. Low probability in practice (exception handlers run early), but inconsistent with the project's own patterns. Fix is optional -- document if found but do not block the story on it.
 
 ### Key Source Files
 
@@ -205,12 +216,13 @@ The claims-based command authorization infrastructure is **already fully impleme
 
 ### Previous Story Intelligence
 
-**Story 5.1 (JWT Authentication & Claims Transformation)** -- status: review:
+**Story 5.1 (JWT Authentication & Claims Transformation)** -- status: done:
 - Added 20 gap-closure tests across 3 test files.
 - Fixed pre-existing duplicate `backpressure-exceeded` entry in `ErrorReferenceEndpoints.cs`.
 - Test baseline after 5.1: Tier 1: 659, Tier 2: 1447 (1427+20 new).
 - **Pattern to follow:** Verification-style tasks with clear baseline checks, reading existing code before modifying, structured test additions.
 - **Key learning:** Claims transformation produces `eventstore:*` claims that feed directly into the validators verified in this story.
+- **Baseline note:** Tier 2 baseline is 1447 if Story 5.1 is merged, or 1427 if not. Check actual count in Task 0.2 and use that as your baseline.
 
 ### Git Intelligence
 
@@ -218,12 +230,12 @@ Recent commits (relevant context):
 - `687a7e0` -- Merge PR #108: per-aggregate backpressure fix
 - `0748651` -- Implement backpressure handling in command API
 - Authorization infrastructure was built in Story 17-1 (old numbering)
-- Story 5.1 is currently in review status (added 20 auth tests, not yet merged to main)
+- Story 5.1 is now done (added 20 auth tests, merged to main)
 
 ### Anti-Patterns to Avoid
 
 - **DO NOT rewrite existing authorization code.** Verify and fix gaps only. The authorization infrastructure is production-ready and well-tested.
-- **DO NOT modify claims transformation.** That is Story 5.1's scope.
+- **DO NOT modify claims transformation or any Layer 1-2 code.** That is Story 5.1's scope. If you find issues in claims transformation or JWT validation code during verification, document them in Completion Notes and escalate to the user. Do NOT fix them inline -- cross-story changes risk breaking completed verifications.
 - **DO NOT add Keycloak or real OIDC testing.** That is Story 5.5 (D11). This story uses claims-based unit tests.
 - **DO NOT add new NuGet dependencies.** All authorization packages are already referenced.
 - **DO NOT create new authorization middleware or handler classes.** All authorization components exist.
@@ -238,6 +250,7 @@ Recent commits (relevant context):
 - **Existing authorization tests span 9 test files** across Pipeline/, Authorization/, ErrorHandling/, Configuration/ directories
 - **Tier separation:** Tier 1 (unit, no DAPR) for validator tests. Tier 2 (DAPR slim) for server tests including AuthorizationBehavior. Tier 3 (full Aspire) for integration tests with real HTTP pipeline.
 - **LogEntry assertion pattern:** Use `TestLogger<T>` to capture log entries, assert on Level + Message content. Verify absence of JWT/sensitive data.
+- **Claim names in tests:** Test principals MUST use post-transformation claim names (`eventstore:tenant`, `eventstore:domain`, `eventstore:permission`), NOT raw JWT claim names (`tenants`, `domains`, `permissions`). The claims transformation (Story 5.1) converts raw -> normalized before authorization runs. All existing test helpers (`CreatePrincipal`) already use the correct `eventstore:*` names -- follow this pattern.
 
 ### Project Structure Notes
 
