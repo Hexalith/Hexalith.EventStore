@@ -49,7 +49,6 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:Publisher"));
         _ = services.AddOptions<EventDrainOptions>()
             .Bind(configuration.GetSection("EventStore:Drain"));
-        services.TryAddSingleton<IBackpressureTracker, InMemoryBackpressureTracker>();
         services.TryAddSingleton<IValidateOptions<BackpressureOptions>, ValidateBackpressureOptions>();
         _ = services.AddOptions<BackpressureOptions>()
             .Bind(configuration.GetSection("EventStore:Backpressure"))

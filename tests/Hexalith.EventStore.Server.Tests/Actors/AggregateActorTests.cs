@@ -56,7 +56,7 @@ public class AggregateActorTests {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -202,8 +202,8 @@ public class AggregateActorTests {
         // Act
         _ = await actor.ProcessCommandAsync(envelope);
 
-        // Assert -- Story 3.11: 2 SaveStateAsync calls for no-op (Processing checkpoint + terminal)
-        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Assert -- Story 4.3 adds a final save for the persisted pending-count decrement.
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -707,8 +707,8 @@ public class AggregateActorTests {
         // Act
         _ = await actor.ProcessCommandAsync(envelope);
 
-        // Assert -- 3 SaveStateAsync calls: Processing checkpoint, EventsStored+events, terminal
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Assert -- 4 SaveStateAsync calls: Processing checkpoint, EventsStored+events, terminal, pending-count decrement
+        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -722,8 +722,8 @@ public class AggregateActorTests {
         // Act
         _ = await actor.ProcessCommandAsync(envelope);
 
-        // Assert -- Story 3.11: 2 SaveStateAsync calls for no-op (Processing checkpoint + terminal)
-        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Assert -- Story 4.3 adds a final save for the persisted pending-count decrement.
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -866,7 +866,7 @@ public class AggregateActorTests {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -1020,7 +1020,7 @@ public class AggregateActorTests {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);

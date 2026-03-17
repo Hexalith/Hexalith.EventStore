@@ -66,6 +66,7 @@ public class DeadLetterMessageCompletenessTests {
         var actor = new AggregateActor(
             host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
             fakeDeadLetter);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);

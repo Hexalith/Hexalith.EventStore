@@ -29,6 +29,8 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// and pipeline state cleanup during command processing.
 /// </summary>
 public class StateMachineIntegrationTests {
+    private const string PendingCommandCountKey = "pending_command_count";
+
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
@@ -53,7 +55,7 @@ public class StateMachineIntegrationTests {
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -119,8 +121,8 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":pipeline:") && s.Contains(envelope.CorrelationId)),
             Arg.Any<CancellationToken>());
 
-        // 3 SaveStateAsync calls: Processing, EventsStored+events, terminal
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // 4 SaveStateAsync calls: Processing (with pending count), EventsStored+events, terminal, pending-count decrement
+        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.2: Rejection path ---
@@ -186,8 +188,8 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
 
-        // 2 SaveStateAsync calls: Processing checkpoint + terminal
-        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // 3 SaveStateAsync calls: Processing checkpoint + terminal + pending-count decrement
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.4: Crash recovery from EventsStored (NFR25) ---
@@ -260,6 +262,9 @@ public class StateMachineIntegrationTests {
                     [2],
                     null)));
 
+        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, 1));
+
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act
@@ -289,6 +294,8 @@ public class StateMachineIntegrationTests {
         _ = await stateManager.Received().TryRemoveStateAsync(
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
+
+        await stateManager.Received().SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -305,6 +312,9 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+
+        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, 1));
 
         var metadata = new AggregateMetadata(2, DateTimeOffset.UtcNow, null);
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(
@@ -392,6 +402,9 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
+        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, 1));
+
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -409,6 +422,9 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":events:")),
             Arg.Any<EventEnvelope>(),
             Arg.Any<CancellationToken>());
+
+        await stateManager.DidNotReceive().SetStateAsync(PendingCommandCountKey, 2, Arg.Any<CancellationToken>());
+        await stateManager.Received().SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.6: Advisory status write failure ---

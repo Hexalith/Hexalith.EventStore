@@ -87,6 +87,11 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/command-status-not-found","title":"Not Found","status":404,"detail":"No command status found for correlation ID '01JAXYZ1234567890ABCDEFGH'."}""",
             ["Verify the correlation ID from the original 202 Accepted response.", "Status records may expire after the configured retention period."]),
 
+        new("backpressure-exceeded", "Backpressure Exceeded", 429,
+            "The target aggregate has too many pending commands (processing or awaiting drain recovery). Per-aggregate backpressure has rejected the command to prevent saga storms.",
+            """{"type":"https://hexalith.io/problems/backpressure-exceeded","title":"Too Many Requests","status":429,"detail":"The target aggregate is under backpressure due to excessive pending commands. Please retry after the specified interval.","correlationId":"01JAXYZ1234567890ABCDEFGH","tenantId":"tenant-a"}""",
+            ["Wait for the interval specified in the Retry-After response header before retrying.", "If the error persists, the aggregate may have a large drain backlog — check system health."]),
+
         new("internal-server-error", "Internal Server Error", 500,
             "An unexpected server error occurred during processing.",
             """{"type":"https://hexalith.io/problems/internal-server-error","title":"Internal Server Error","status":500,"detail":"An unexpected error occurred. Please retry or contact support."}""",

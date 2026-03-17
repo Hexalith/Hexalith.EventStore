@@ -38,6 +38,9 @@ public static class EventStoreActivitySource {
     /// <summary>Dead-letter publication stage (Story 4.5).</summary>
     public const string EventsPublishDeadLetter = "EventStore.Events.PublishDeadLetter";
 
+    /// <summary>Backpressure check stage (Story 4.3).</summary>
+    public const string BackpressureCheck = "EventStore.Actor.BackpressureCheck";
+
     /// <summary>State machine transition stage.</summary>
     public const string StateMachineTransition = "EventStore.Actor.StateMachineTransition";
 

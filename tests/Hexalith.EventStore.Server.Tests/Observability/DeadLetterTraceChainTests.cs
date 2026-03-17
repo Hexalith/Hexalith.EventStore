@@ -71,6 +71,7 @@ public class DeadLetterTraceChainTests {
         var actor = new AggregateActor(
             host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
             fakeDeadLetter);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -131,6 +132,7 @@ public class DeadLetterTraceChainTests {
         var actor = new AggregateActor(
             host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
             deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
@@ -183,6 +185,7 @@ public class DeadLetterTraceChainTests {
         var actor = new AggregateActor(
             host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore,
             eventPublisher, Options.Create(new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
             deadLetterPublisher);
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);

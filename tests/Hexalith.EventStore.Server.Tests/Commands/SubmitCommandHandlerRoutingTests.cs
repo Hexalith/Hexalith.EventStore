@@ -76,4 +76,36 @@ public class SubmitCommandHandlerRoutingTests {
         _ = await Should.ThrowAsync<InvalidOperationException>(
             () => handler.Handle(command, CancellationToken.None));
     }
+
+    [Fact]
+    public async Task Handle_BackpressureRejected_ThrowsBackpressureExceptionWithActualMetrics() {
+        // Arrange
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(
+                Accepted: false,
+                ErrorMessage: "Backpressure exceeded",
+                CorrelationId: "corr-backpressure",
+                BackpressureExceeded: true,
+                BackpressurePendingCount: 150,
+                BackpressureThreshold: 100));
+
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            router,
+            NullLogger<SubmitCommandHandler>.Instance);
+
+        SubmitCommand command = CreateTestCommand("corr-backpressure");
+
+        // Act
+        Hexalith.EventStore.Server.Actors.BackpressureExceededException ex = await Should.ThrowAsync<Hexalith.EventStore.Server.Actors.BackpressureExceededException>(
+            () => handler.Handle(command, CancellationToken.None));
+
+        // Assert
+        ex.PendingCount.ShouldBe(150);
+        ex.Threshold.ShouldBe(100);
+        ex.Domain.ShouldBe(command.Domain);
+        ex.AggregateId.ShouldBe(command.AggregateId);
+    }
 }
