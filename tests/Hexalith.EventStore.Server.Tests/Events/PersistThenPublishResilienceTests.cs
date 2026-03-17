@@ -53,7 +53,7 @@ public class PersistThenPublishResilienceTests
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher, ActorTimerManager TimerManager)
-        CreateActorWithTimerManager()
+        CreateActorWithTimerManager(EventDrainOptions? drainOptions = null)
     {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
@@ -64,7 +64,7 @@ public class PersistThenPublishResilienceTests
         ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001"), TimerManager = timerManager });
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(drainOptions ?? new EventDrainOptions()), Substitute.For<IDeadLetterPublisher>());
 
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
         prop?.SetValue(actor, stateManager);
@@ -172,6 +172,158 @@ public class PersistThenPublishResilienceTests
         await timerManager.Received().RegisterReminderAsync(
             Arg.Is<ActorReminder>(r =>
                 r.Name == UnpublishedEventsRecord.GetReminderName(envelope.CorrelationId)));
+    }
+
+    // --- Story 4.2 Task 7.1: Drain reminder uses configured timing values ---
+
+    [Fact]
+    public async Task ProcessCommand_PublishFailed_DrainReminderUsesConfiguredTiming()
+    {
+        // Arrange -- create actor with custom EventDrainOptions
+        var customOptions = new EventDrainOptions
+        {
+            InitialDrainDelay = TimeSpan.FromSeconds(45),
+            DrainPeriod = TimeSpan.FromMinutes(2),
+        };
+        (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
+            CreateActorWithTimerManager(customOptions);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- publish was attempted and failed (confirming drain path was triggered)
+        result.Accepted.ShouldBeTrue();
+        await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+
+        // Assert -- reminder name is correct
+        await timerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r =>
+                r.Name == UnpublishedEventsRecord.GetReminderName(envelope.CorrelationId)));
+
+        // Assert -- reminder dueTime matches configured InitialDrainDelay
+        await timerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r =>
+                r.DueTime == TimeSpan.FromSeconds(45)));
+
+        // Assert -- reminder period matches configured DrainPeriod
+        await timerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r =>
+                r.Period == TimeSpan.FromMinutes(2)));
+    }
+
+    // --- Story 4.2 Task 7.1 Patch: MaxDrainPeriod clamping enforced ---
+
+    [Fact]
+    public async Task ProcessCommand_PublishFailed_DrainReminderClampsToMaxPeriod()
+    {
+        // Arrange -- create actor with DrainPeriod exceeding MaxDrainPeriod
+        var customOptions = new EventDrainOptions
+        {
+            InitialDrainDelay = TimeSpan.FromSeconds(30),
+            DrainPeriod = TimeSpan.FromMinutes(45),  // Exceeds default MaxDrainPeriod (30 min)
+            MaxDrainPeriod = TimeSpan.FromMinutes(30),
+        };
+        (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
+            CreateActorWithTimerManager(customOptions);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- reminder period should be clamped to MaxDrainPeriod (30 min), not 45 min
+        result.Accepted.ShouldBeTrue();
+        await timerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r =>
+                r.Period == TimeSpan.FromMinutes(30)));
+    }
+
+    // --- Story 4.2 Task 7.1 Patch: InitialDrainDelay boundary values ---
+
+    [Theory]
+    [InlineData(0)]      // TimeSpan.Zero — immediate drain
+    [InlineData(-1)]     // Negative — should clamp to Zero
+    public async Task ProcessCommand_PublishFailed_DrainReminderWithBoundaryInitialDelay(int delaySeconds)
+    {
+        // Arrange
+        var customOptions = new EventDrainOptions
+        {
+            InitialDrainDelay = TimeSpan.FromSeconds(delaySeconds),
+            DrainPeriod = TimeSpan.FromMinutes(1),
+        };
+        (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
+            CreateActorWithTimerManager(customOptions);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- dueTime should be clamped to >= Zero
+        var expectedDueTime = delaySeconds < 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(delaySeconds);
+        result.Accepted.ShouldBeTrue();
+        await timerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r =>
+                r.DueTime == expectedDueTime));
+    }
+
+    // --- Story 4.2 Task 7.1 Patch: DrainPeriod boundary values ---
+
+    [Theory]
+    [InlineData(0)]      // Zero — should fall back to 1 min
+    [InlineData(-1)]     // Negative — should fall back to 1 min
+    public async Task ProcessCommand_PublishFailed_DrainReminderWithBoundaryPeriod(int periodSeconds)
+    {
+        // Arrange
+        var customOptions = new EventDrainOptions
+        {
+            InitialDrainDelay = TimeSpan.FromSeconds(30),
+            DrainPeriod = TimeSpan.FromSeconds(periodSeconds),
+        };
+        (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
+            CreateActorWithTimerManager(customOptions);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- period should fall back to 1 min if invalid
+        var expectedPeriod = periodSeconds <= 0 ? TimeSpan.FromMinutes(1) : TimeSpan.FromSeconds(periodSeconds);
+        result.Accepted.ShouldBeTrue();
+        await timerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r =>
+                r.Period == expectedPeriod));
     }
 
     // --- Task 8.5: Events still in state store after PublishFailed ---
