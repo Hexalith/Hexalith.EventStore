@@ -80,7 +80,7 @@ public class DaprSidecarUnavailableHandler(
 
         if (exception is RpcException rpcEx
             && rpcEx.StatusCode == Grpc.Core.StatusCode.Unavailable
-            && (currentHasDaprContext || HasSidecarUnavailableMessage(rpcEx.Status.Detail))) {
+            && (currentHasDaprContext || HasDaprSidecarHint(rpcEx.Status.Detail))) {
             return true;
         }
 
@@ -150,6 +150,14 @@ public class DaprSidecarUnavailableHandler(
         && (message.Contains("sidecar", StringComparison.OrdinalIgnoreCase)
             || message.Contains("connect", StringComparison.OrdinalIgnoreCase)
             || message.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasDaprSidecarHint(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && (message.Contains("dapr", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("sidecar", StringComparison.OrdinalIgnoreCase)
+            || message.Contains(":50001", StringComparison.OrdinalIgnoreCase)
+            || message.Contains(":3500", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("/v1.0/", StringComparison.OrdinalIgnoreCase));
 
     private static bool HasSidecarEndpointHint(string? message) =>
         !string.IsNullOrWhiteSpace(message)

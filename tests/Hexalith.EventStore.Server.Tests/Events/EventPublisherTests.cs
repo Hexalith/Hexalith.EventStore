@@ -337,6 +337,103 @@ public class EventPublisherTests {
             Arg.Any<Func<object, Exception?, string>>());
     }
 
+    // --- Story 4.1 Gap 6.1: Multi-tenant topic derivation ---
+
+    [Fact]
+    public async Task PublishEventsAsync_DifferentTenants_ProduceDifferentTopics() {
+        // Arrange
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        var acmeIdentity = new AggregateIdentity("acme", "orders", "order-1");
+        var contosoIdentity = new AggregateIdentity("contoso", "orders", "order-1");
+        EventEnvelope acmeEnvelope = new(
+            "msg-1", "order-1", "test-aggregate", "acme", "orders", 1, 0, DateTimeOffset.UtcNow,
+            "corr-acme", "cause-1", "user-1", "1.0.0", "OrderCreated", 1, "json", [1], null);
+        EventEnvelope contosoEnvelope = new(
+            "msg-2", "order-1", "test-aggregate", "contoso", "orders", 1, 0, DateTimeOffset.UtcNow,
+            "corr-contoso", "cause-1", "user-1", "1.0.0", "OrderCreated", 1, "json", [1], null);
+
+        // Act
+        _ = await publisher.PublishEventsAsync(acmeIdentity, [acmeEnvelope], "corr-acme");
+        _ = await publisher.PublishEventsAsync(contosoIdentity, [contosoEnvelope], "corr-contoso");
+
+        // Assert -- different tenants produce different topics
+        await daprClient.Received(1).PublishEventAsync(
+            Arg.Any<string>(),
+            "acme.orders.events",
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<Dictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+        await daprClient.Received(1).PublishEventAsync(
+            Arg.Any<string>(),
+            "contoso.orders.events",
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<Dictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- Story 4.1 Gap 6.2: Multi-domain topic derivation ---
+
+    [Fact]
+    public async Task PublishEventsAsync_DifferentDomains_ProduceDifferentTopics() {
+        // Arrange
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        var paymentsIdentity = new AggregateIdentity("acme", "payments", "pay-1");
+        var ordersIdentity = new AggregateIdentity("acme", "orders", "order-1");
+        EventEnvelope paymentsEnvelope = new(
+            "msg-1", "pay-1", "test-aggregate", "acme", "payments", 1, 0, DateTimeOffset.UtcNow,
+            "corr-pay", "cause-1", "user-1", "1.0.0", "PaymentReceived", 1, "json", [1], null);
+        EventEnvelope ordersEnvelope = new(
+            "msg-2", "order-1", "test-aggregate", "acme", "orders", 1, 0, DateTimeOffset.UtcNow,
+            "corr-ord", "cause-1", "user-1", "1.0.0", "OrderCreated", 1, "json", [1], null);
+
+        // Act
+        _ = await publisher.PublishEventsAsync(paymentsIdentity, [paymentsEnvelope], "corr-pay");
+        _ = await publisher.PublishEventsAsync(ordersIdentity, [ordersEnvelope], "corr-ord");
+
+        // Assert -- same tenant, different domains produce different topics
+        await daprClient.Received(1).PublishEventAsync(
+            Arg.Any<string>(),
+            "acme.payments.events",
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<Dictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+        await daprClient.Received(1).PublishEventAsync(
+            Arg.Any<string>(),
+            "acme.orders.events",
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<Dictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- Story 4.1 Gap 6.5: Boundary tenant IDs through publisher flow ---
+
+    [Theory]
+    [InlineData("a", "x", "a.x.events")]                                             // shortest valid tenant + domain
+    [InlineData("my-tenant", "my-domain", "my-tenant.my-domain.events")]              // hyphenated
+    [InlineData("abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz01",    // 64-char tenant (max)
+                "orders",
+                "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz01.orders.events")]
+    public async Task PublishEventsAsync_BoundaryTenantIds_ProducesValidTopics(string tenantId, string domain, string expectedTopic) {
+        // Arrange
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        var identity = new AggregateIdentity(tenantId, domain, "agg-1");
+        EventEnvelope envelope = new(
+            "msg-1", "agg-1", "test-aggregate", tenantId, domain, 1, 0, DateTimeOffset.UtcNow,
+            "corr-boundary", "cause-1", "user-1", "1.0.0", "TestEvent", 1, "json", [1], null);
+
+        // Act
+        EventPublishResult result = await publisher.PublishEventsAsync(identity, [envelope], "corr-boundary");
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        await daprClient.Received(1).PublishEventAsync(
+            Arg.Any<string>(),
+            expectedTopic,
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<Dictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
     // --- Task 6.13: Structured logging -- failure ---
 
     [Fact]
