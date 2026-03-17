@@ -25,6 +25,7 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Authorize]
 [Route("api/v1/commands/replay")]
 [Consumes("application/json")]
+[Tags("Commands")]
 public class ReplayController(
     ICommandArchiveStore archiveStore,
     ICommandStatusStore statusStore,

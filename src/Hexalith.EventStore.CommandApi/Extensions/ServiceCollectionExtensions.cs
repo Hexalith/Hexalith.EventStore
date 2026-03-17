@@ -10,6 +10,7 @@ using Hexalith.EventStore.CommandApi.Configuration;
 using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Filters;
 using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.CommandApi.OpenApi;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.CommandApi.Validation;
 using Hexalith.EventStore.Server.Commands;
@@ -260,7 +261,7 @@ public static class CommandApiServiceCollectionExtensions
                 {
                     Title = "Hexalith EventStore Command API",
                     Version = "v1",
-                    Description = "Event Sourcing infrastructure server for multi-tenant command processing with per-tenant rate limiting, JWT authentication, and comprehensive status tracking.",
+                    Description = "Event Sourcing infrastructure server for multi-tenant command processing with per-tenant rate limiting, JWT authentication, and comprehensive status tracking. Error reference documentation is available at `/problems/{error-type}` on this server. In production, error type URIs resolve at `https://hexalith.io/problems/{error-type}`.",
                 };
 
                 // Add JWT Bearer security scheme
@@ -295,6 +296,9 @@ public static class CommandApiServiceCollectionExtensions
 
                 return Task.CompletedTask;
             });
+
+            // Add pre-populated example payloads (Story 3.6, UX-DR13)
+            _ = options.AddOperationTransformer<CommandExampleTransformer>();
         });
 
         _ = services.AddMediatR(cfg =>

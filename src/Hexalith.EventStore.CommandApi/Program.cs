@@ -1,6 +1,7 @@
 using Hexalith.EventStore.CommandApi.Extensions;
 using Hexalith.EventStore.CommandApi.HealthChecks;
 using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.CommandApi.OpenApi;
 using Hexalith.EventStore.CommandApi.SignalR;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.ServiceDefaults;
@@ -38,6 +39,7 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 }
 
 app.MapControllers();
+app.MapErrorReferences();
 app.MapSubscribeHandler();
 app.MapActorsHandlers();
 

@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Authorize]
 [Route("api/v1/commands/validate")]
 [Consumes("application/json")]
+[Tags("Validation")]
 public partial class CommandValidationController(
     ITenantValidator tenantValidator,
     IRbacValidator rbacValidator,

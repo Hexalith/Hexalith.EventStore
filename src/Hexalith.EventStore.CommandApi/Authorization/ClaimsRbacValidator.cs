@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.CommandApi.Authorization;
 /// Used as the default when <c>EventStoreAuthorizationOptions.RbacValidatorActorName</c> is null.
 /// </summary>
 /// <remarks>
-/// The <paramref name="messageCategory"/> parameter determines which permission set is checked.
+/// The <c>messageCategory</c> parameter determines which permission set is checked.
 /// For "command" category: accepts <c>commands:*</c> (wildcard) or <c>command:submit</c>.
 /// For "query" category: accepts <c>queries:*</c> (wildcard), <c>query:read</c>,
 /// or the legacy <c>command:query</c> permission still used by the local Keycloak realm.
