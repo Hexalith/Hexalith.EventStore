@@ -33,7 +33,7 @@ public class SnapshotManagerTests {
     public async Task ShouldCreateSnapshot_AtDefaultInterval_ReturnsTrue() {
         (SnapshotManager manager, _) = CreateManager();
 
-        bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 100, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", 100, 0);
 
         result.ShouldBeTrue();
     }
@@ -44,7 +44,7 @@ public class SnapshotManagerTests {
     public async Task ShouldCreateSnapshot_BelowInterval_ReturnsFalse() {
         (SnapshotManager manager, _) = CreateManager();
 
-        bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 50, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", 50, 0);
 
         result.ShouldBeFalse();
     }
@@ -58,7 +58,7 @@ public class SnapshotManagerTests {
     public async Task ShouldCreateSnapshot_AtMultipleOfInterval_ReturnsTrue(long currentSequence, long lastSnapshotSequence) {
         (SnapshotManager manager, _) = CreateManager();
 
-        bool result = await manager.ShouldCreateSnapshotAsync("test-domain", currentSequence, lastSnapshotSequence);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", currentSequence, lastSnapshotSequence);
 
         result.ShouldBeTrue();
     }
@@ -74,7 +74,7 @@ public class SnapshotManagerTests {
         (SnapshotManager manager, _) = CreateManager(options);
 
         // 50 events since last snapshot -- should trigger with domain interval of 50
-        bool result = await manager.ShouldCreateSnapshotAsync("fast-domain", 50, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "fast-domain", 50, 0);
 
         result.ShouldBeTrue();
     }
@@ -88,7 +88,7 @@ public class SnapshotManagerTests {
         (SnapshotManager manager, _) = CreateManager(options);
 
         // 50 events -- below default interval of 100
-        bool result = await manager.ShouldCreateSnapshotAsync("other-domain", 50, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "other-domain", 50, 0);
 
         result.ShouldBeFalse();
     }
@@ -256,7 +256,7 @@ public class SnapshotManagerTests {
         (SnapshotManager manager, _) = CreateManager();
 
         // Exactly 100 events since last snapshot at 0
-        bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 100, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", 100, 0);
 
         result.ShouldBeTrue();
     }
@@ -265,7 +265,7 @@ public class SnapshotManagerTests {
     public async Task ShouldCreateSnapshot_OneBeforeInterval_ReturnsFalse() {
         (SnapshotManager manager, _) = CreateManager();
 
-        bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 99, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", 99, 0);
 
         result.ShouldBeFalse();
     }
@@ -274,7 +274,7 @@ public class SnapshotManagerTests {
     public async Task ShouldCreateSnapshot_OneAfterInterval_ReturnsTrue() {
         (SnapshotManager manager, _) = CreateManager();
 
-        bool result = await manager.ShouldCreateSnapshotAsync("test-domain", 101, 0);
+        bool result = await manager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", 101, 0);
 
         result.ShouldBeTrue();
     }
@@ -311,6 +311,104 @@ public class SnapshotManagerTests {
     public async Task ShouldCreateSnapshot_NullDomain_ThrowsArgumentException() {
         (SnapshotManager manager, _) = CreateManager();
         _ = await Should.ThrowAsync<ArgumentException>(() =>
-            manager.ShouldCreateSnapshotAsync(null!, 100, 0));
+            manager.ShouldCreateSnapshotAsync("test-tenant", null!, 100, 0));
+    }
+
+    // === Per-tenant-domain interval override tests (Story 7.1) ===
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_WithTenantDomainOverride_UsesTenantDomainInterval() {
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            DomainIntervals = new Dictionary<string, int> { ["payments"] = 50 },
+            TenantDomainIntervals = new Dictionary<string, int> { ["acme:payments"] = 25 }
+        };
+        (SnapshotManager manager, _) = CreateManager(options);
+
+        // 25 events -- should trigger with tenant-domain interval of 25
+        bool result = await manager.ShouldCreateSnapshotAsync("acme", "payments", 25, 0);
+
+        result.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_TenantDomainOverrideWinsOverDomainOverride() {
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            DomainIntervals = new Dictionary<string, int> { ["payments"] = 50 },
+            TenantDomainIntervals = new Dictionary<string, int> { ["acme:payments"] = 25 }
+        };
+        (SnapshotManager manager, _) = CreateManager(options);
+
+        // 30 events -- above tenant-domain (25) but below domain (50) -- should trigger
+        bool result = await manager.ShouldCreateSnapshotAsync("acme", "payments", 30, 0);
+
+        result.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_NoTenantDomainOverride_UsesDomainOverride() {
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            DomainIntervals = new Dictionary<string, int> { ["payments"] = 50 },
+            TenantDomainIntervals = new Dictionary<string, int> { ["acme:payments"] = 25 }
+        };
+        (SnapshotManager manager, _) = CreateManager(options);
+
+        // Different tenant, no tenant-domain override -- uses domain override of 50
+        bool result = await manager.ShouldCreateSnapshotAsync("other-tenant", "payments", 50, 0);
+
+        result.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_NoOverrides_UsesDefaultInterval() {
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            DomainIntervals = new Dictionary<string, int> { ["payments"] = 50 },
+            TenantDomainIntervals = new Dictionary<string, int> { ["acme:payments"] = 25 }
+        };
+        (SnapshotManager manager, _) = CreateManager(options);
+
+        // Different tenant and domain, no overrides -- uses default of 100
+        bool result = await manager.ShouldCreateSnapshotAsync("other-tenant", "other-domain", 99, 0);
+
+        result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SnapshotOptions_TenantDomainIntervalBelowMinimum_ValidationFails() {
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            TenantDomainIntervals = new Dictionary<string, int> { ["bad-tenant:bad-domain"] = 5 }
+        };
+
+        Should.Throw<InvalidOperationException>(options.Validate)
+            .Message.ShouldContain("bad-tenant:bad-domain");
+    }
+
+    [Fact]
+    public void SnapshotOptions_ValidTenantDomainIntervals_ValidationPasses() {
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            DomainIntervals = new Dictionary<string, int> { ["payments"] = 50 },
+            TenantDomainIntervals = new Dictionary<string, int> { ["acme:payments"] = 25, ["big-corp:audit"] = 200 }
+        };
+
+        Should.NotThrow(options.Validate);
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_NullTenantId_ThrowsArgumentException() {
+        (SnapshotManager manager, _) = CreateManager();
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
+            manager.ShouldCreateSnapshotAsync(null!, "test-domain", 100, 0));
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_EmptyTenantId_ThrowsArgumentException() {
+        (SnapshotManager manager, _) = CreateManager();
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
+            manager.ShouldCreateSnapshotAsync("", "test-domain", 100, 0));
     }
 }

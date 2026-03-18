@@ -83,7 +83,7 @@ public class SnapshotCreationIntegrationTests {
         long newSequence = await PersistEventsAsync(stateManager, TestIdentity, 100);
         var state = new { EventCount = 100 };
 
-        bool shouldSnapshot = await snapshotManager.ShouldCreateSnapshotAsync("test-domain", newSequence, 0);
+        bool shouldSnapshot = await snapshotManager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", newSequence, 0);
         shouldSnapshot.ShouldBeTrue();
 
         await snapshotManager.CreateSnapshotAsync(TestIdentity, newSequence, state, stateManager);
@@ -107,7 +107,7 @@ public class SnapshotCreationIntegrationTests {
         long seq = await PersistEventsAsync(stateManager, TestIdentity, 100);
         var state100 = new { Seq = 100 };
 
-        bool should100 = await snapshotManager.ShouldCreateSnapshotAsync("test-domain", seq, 0);
+        bool should100 = await snapshotManager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", seq, 0);
         should100.ShouldBeTrue();
         await snapshotManager.CreateSnapshotAsync(TestIdentity, seq, state100, stateManager);
         await stateManager.SaveStateAsync();
@@ -116,14 +116,14 @@ public class SnapshotCreationIntegrationTests {
         seq = await PersistEventsAsync(stateManager, TestIdentity, 100, startingSequence: 100);
         var state200 = new { Seq = 200 };
 
-        bool should200 = await snapshotManager.ShouldCreateSnapshotAsync("test-domain", seq, 100);
+        bool should200 = await snapshotManager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", seq, 100);
         should200.ShouldBeTrue();
         await snapshotManager.CreateSnapshotAsync(TestIdentity, seq, state200, stateManager);
         await stateManager.SaveStateAsync();
 
         // Persist 50 more events (201-250) → no new snapshot
         seq = await PersistEventsAsync(stateManager, TestIdentity, 50, startingSequence: 200);
-        bool should250 = await snapshotManager.ShouldCreateSnapshotAsync("test-domain", seq, 200);
+        bool should250 = await snapshotManager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", seq, 200);
         should250.ShouldBeFalse();
         await stateManager.SaveStateAsync();
 
@@ -144,7 +144,7 @@ public class SnapshotCreationIntegrationTests {
         // Act: persist 50 events
         long seq = await PersistEventsAsync(stateManager, TestIdentity, 50);
 
-        bool shouldSnapshot = await snapshotManager.ShouldCreateSnapshotAsync("test-domain", seq, 0);
+        bool shouldSnapshot = await snapshotManager.ShouldCreateSnapshotAsync("test-tenant", "test-domain", seq, 0);
         shouldSnapshot.ShouldBeFalse();
         await stateManager.SaveStateAsync();
 

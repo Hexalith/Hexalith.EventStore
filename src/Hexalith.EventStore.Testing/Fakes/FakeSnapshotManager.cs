@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// </summary>
 public sealed class FakeSnapshotManager : ISnapshotManager {
     private readonly Dictionary<string, SnapshotRecord> _snapshots = [];
-    private readonly List<(string Domain, long CurrentSequence, long LastSnapshotSequence)> _shouldCreateCalls = [];
+    private readonly List<(string TenantId, string Domain, long CurrentSequence, long LastSnapshotSequence)> _shouldCreateCalls = [];
     private readonly List<(AggregateIdentity Identity, long SequenceNumber, object State)> _createCalls = [];
     private readonly List<AggregateIdentity> _loadCalls = [];
 
@@ -19,7 +19,7 @@ public sealed class FakeSnapshotManager : ISnapshotManager {
     public IReadOnlyDictionary<string, SnapshotRecord> Snapshots => _snapshots;
 
     /// <summary>Gets the recorded ShouldCreateSnapshotAsync calls.</summary>
-    public IReadOnlyList<(string Domain, long CurrentSequence, long LastSnapshotSequence)> ShouldCreateCalls => _shouldCreateCalls;
+    public IReadOnlyList<(string TenantId, string Domain, long CurrentSequence, long LastSnapshotSequence)> ShouldCreateCalls => _shouldCreateCalls;
 
     /// <summary>Gets the recorded CreateSnapshotAsync calls.</summary>
     public IReadOnlyList<(AggregateIdentity Identity, long SequenceNumber, object State)> CreateCalls => _createCalls;
@@ -38,9 +38,24 @@ public sealed class FakeSnapshotManager : ISnapshotManager {
     /// </summary>
     public Dictionary<string, int> DomainIntervals { get; set; } = [];
 
+    /// <summary>
+    /// Gets or sets per-tenant-domain interval overrides for <see cref="ShouldCreateSnapshotAsync"/>.
+    /// Key: "tenantId:domain" (lowercase, colon-separated). Resolution order: tenant-domain > domain > default.
+    /// </summary>
+    public Dictionary<string, int> TenantDomainIntervals { get; set; } = [];
+
     /// <inheritdoc/>
-    public Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence) {
-        _shouldCreateCalls.Add((domain, currentSequence, lastSnapshotSequence));
+    public Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, long currentSequence, long lastSnapshotSequence) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+
+        _shouldCreateCalls.Add((tenantId, domain, currentSequence, lastSnapshotSequence));
+
+        // Three-tier resolution: tenant-domain > domain > default
+        string tenantDomainKey = $"{tenantId}:{domain}".ToLowerInvariant();
+        if (TenantDomainIntervals.TryGetValue(tenantDomainKey, out int tenantDomainInterval)) {
+            return Task.FromResult((currentSequence - lastSnapshotSequence) >= tenantDomainInterval);
+        }
 
         int interval = DomainIntervals.TryGetValue(domain, out int domainInterval)
             ? domainInterval

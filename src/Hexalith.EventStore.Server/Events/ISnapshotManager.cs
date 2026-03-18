@@ -11,12 +11,14 @@ namespace Hexalith.EventStore.Server.Events;
 public interface ISnapshotManager {
     /// <summary>
     /// Determines whether a snapshot should be created based on the configured interval.
+    /// Uses three-tier resolution: tenant-domain override > domain override > system default.
     /// </summary>
+    /// <param name="tenantId">The tenant ID (used with domain for per-tenant-domain interval overrides).</param>
     /// <param name="domain">The domain name (used to resolve per-domain interval overrides).</param>
     /// <param name="currentSequence">The current event sequence number after persistence.</param>
     /// <param name="lastSnapshotSequence">The sequence number of the last snapshot (0 if none).</param>
     /// <returns><c>true</c> if a snapshot should be created; otherwise <c>false</c>.</returns>
-    Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence);
+    Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, long currentSequence, long lastSnapshotSequence);
 
     /// <summary>
     /// Creates a snapshot by staging it via IActorStateManager.SetStateAsync.

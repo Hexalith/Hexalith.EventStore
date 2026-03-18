@@ -34,6 +34,13 @@ public record SnapshotOptions {
     public Dictionary<string, int> DomainIntervals { get; init; } = [];
 
     /// <summary>
+    /// Gets per-tenant-domain snapshot interval overrides.
+    /// Key: "tenantId:domain" (lowercase, colon-separated). Value: snapshot interval for that tenant-domain pair.
+    /// Resolution order: <see cref="TenantDomainIntervals"/> > <see cref="DomainIntervals"/> > <see cref="DefaultInterval"/>.
+    /// </summary>
+    public Dictionary<string, int> TenantDomainIntervals { get; init; } = [];
+
+    /// <summary>
     /// Validates that all configured intervals meet the minimum threshold.
     /// </summary>
     /// <exception cref="InvalidOperationException">Thrown when any interval is below <see cref="MinimumInterval"/>.</exception>
@@ -47,6 +54,13 @@ public record SnapshotOptions {
             if (entry.Value < MinimumInterval) {
                 throw new InvalidOperationException(
                     $"Snapshot interval for domain '{entry.Key}' must be >= {MinimumInterval}. Got {entry.Value}.");
+            }
+        }
+
+        foreach (KeyValuePair<string, int> entry in TenantDomainIntervals) {
+            if (entry.Value < MinimumInterval) {
+                throw new InvalidOperationException(
+                    $"Snapshot interval for tenant-domain '{entry.Key}' must be >= {MinimumInterval}. Got {entry.Value}.");
             }
         }
     }
