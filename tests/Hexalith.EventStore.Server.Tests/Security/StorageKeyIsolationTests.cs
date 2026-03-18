@@ -387,4 +387,44 @@ public class StorageKeyIsolationTests {
     [Fact]
     public void AggregateIdentity_RejectsDelCharacterInAggregateId() => Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", "order\u007F001"));
+
+    // --- Story 5.3 gap-closure: CommandStatusKey includes tenant prefix (SEC-3) ---
+
+    [Fact]
+    public void CommandStatusKey_IncludesTenantPrefix_PreventsCrossTenantLeakage() {
+        // Arrange -- same correlationId, different tenants
+        string correlationId = "corr-shared-001";
+
+        // Act
+        string keyA = Hexalith.EventStore.Server.Commands.CommandStatusConstants.BuildKey("tenant-a", correlationId);
+        string keyB = Hexalith.EventStore.Server.Commands.CommandStatusConstants.BuildKey("tenant-b", correlationId);
+
+        // Assert -- disjoint keys prevent cross-tenant info leakage
+        keyA.ShouldNotBe(keyB);
+        keyA.ShouldStartWith("tenant-a:");
+        keyB.ShouldStartWith("tenant-b:");
+        keyA.ShouldEndWith(":status");
+        keyB.ShouldEndWith(":status");
+    }
+
+    // --- Story 5.3 gap-closure: PipelineKeyPrefix tenant-scoped (NFR13) ---
+
+    [Fact]
+    public void PipelineKeyPrefix_DifferentTenants_DisjointKeys() {
+        // Arrange
+        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+
+        // Act
+        string prefixA = identityA.PipelineKeyPrefix;
+        string prefixB = identityB.PipelineKeyPrefix;
+
+        // Assert
+        prefixA.ShouldNotBe(prefixB);
+        prefixA.ShouldStartWith("tenant-a:");
+        prefixB.ShouldStartWith("tenant-b:");
+        prefixA.ShouldEndWith(":pipeline:");
+        prefixB.ShouldEndWith(":pipeline:");
+        StorageKeyIsolationAssertions.AssertKeysDisjoint(prefixA, prefixB);
+    }
 }

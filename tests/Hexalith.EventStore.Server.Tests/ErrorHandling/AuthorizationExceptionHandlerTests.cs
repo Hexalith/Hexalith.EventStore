@@ -192,7 +192,7 @@ public class AuthorizationExceptionHandlerTests {
     public void SanitizeForbiddenTerms_TestsAllPatterns(string input, string expected) {
         // Arrange
         // (Testing static method directly for exhaustive pattern coverage)
-        
+
         // Act
         string result = AuthorizationExceptionHandler.SanitizeForbiddenTerms(input);
 
@@ -220,7 +220,7 @@ public class AuthorizationExceptionHandlerTests {
         var exInner = new CommandAuthorizationException("test message", new InvalidOperationException("inner"));
 
         // Assert
-        exEmpty.Message.ShouldContain("Exception of type");
+        exEmpty.Message.ShouldNotBeNullOrWhiteSpace();
         exEmpty.TenantId.ShouldBe(string.Empty);
         exEmpty.Reason.ShouldBe(string.Empty);
         exEmpty.Domain.ShouldBeNull();

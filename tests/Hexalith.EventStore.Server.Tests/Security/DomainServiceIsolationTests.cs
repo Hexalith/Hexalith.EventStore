@@ -216,5 +216,24 @@ public class DomainServiceIsolationTests {
         capturedKeys[0].ShouldNotBe(capturedKeys[1]);
     }
 
+    // --- Story 5.3 gap-closure: IDomainServiceInvoker does not accept metadata parameters (SEC-1) ---
+
+    [Fact]
+    public void DomainServiceInvoker_InvokeAsync_DoesNotAcceptMetadataParameters() {
+        // Guard test: if someone adds metadata parameters to InvokeAsync, domain services
+        // could influence event metadata, breaking SEC-1 ownership guarantee.
+        System.Reflection.MethodInfo method = typeof(IDomainServiceInvoker)
+            .GetMethod(nameof(IDomainServiceInvoker.InvokeAsync))!;
+
+        method.ShouldNotBeNull();
+        System.Reflection.ParameterInfo[] parameters = method.GetParameters();
+
+        // Expected: (CommandEnvelope command, object? currentState, CancellationToken cancellationToken)
+        parameters.Length.ShouldBe(3, "InvokeAsync should only accept command, state, and cancellation token");
+        parameters[0].ParameterType.ShouldBe(typeof(CommandEnvelope));
+        parameters[1].ParameterType.ShouldBe(typeof(object));
+        parameters[2].ParameterType.ShouldBe(typeof(CancellationToken));
+    }
+
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
 }

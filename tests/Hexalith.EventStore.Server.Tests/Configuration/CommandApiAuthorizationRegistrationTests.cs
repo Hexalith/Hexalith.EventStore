@@ -2,6 +2,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.CommandApi.Authorization;
 using Hexalith.EventStore.CommandApi.Extensions;
+using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Pipeline;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -9,19 +10,25 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
+
+using System.Security.Claims;
 
 using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 public class CommandApiAuthorizationRegistrationTests {
-    private static ServiceProvider BuildProvider(Dictionary<string, string?>? configValues = null) {
+    private static ServiceProvider BuildProvider(
+        Dictionary<string, string?>? configValues = null,
+        Action<IServiceCollection>? configureServices = null) {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configValues ?? [])
             .Build();
@@ -36,6 +43,7 @@ public class CommandApiAuthorizationRegistrationTests {
         _ = services.AddSingleton(Substitute.For<IActorProxyFactory>());
 
         _ = services.AddCommandApi();
+        configureServices?.Invoke(services);
 
         return services.BuildServiceProvider();
     }
@@ -204,22 +212,91 @@ public class CommandApiAuthorizationRegistrationTests {
     }
 
     [Fact]
-    public void AddCommandApi_MediatRPipelineOrdering_IsCorrect() {
+    public async Task AddCommandApi_MediatRPipelineOrdering_ExecutesInCorrectOrderAsync() {
         // Arrange
-        using ServiceProvider provider = BuildProvider();
+        List<string> executionOrder = [];
+        using ServiceProvider provider = BuildProvider(
+            configureServices: services => {
+                _ = services.AddLogging(builder => {
+                    builder.ClearProviders();
+                    builder.SetMinimumLevel(LogLevel.Debug);
+                    builder.AddProvider(new PipelineOrderLoggerProvider(executionOrder));
+                });
+
+                services.RemoveAll<IRequestHandler<SubmitCommand, SubmitCommandResult>>();
+                _ = services.AddScoped<IRequestHandler<SubmitCommand, SubmitCommandResult>>(_ => new PipelineOrderSubmitCommandHandler(executionOrder));
+            });
         using IServiceScope scope = provider.CreateScope();
 
+        IHttpContextAccessor httpContextAccessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
+        httpContextAccessor.HttpContext = new DefaultHttpContext {
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                    [
+                        new Claim("sub", "test-user"),
+                        new Claim("eventstore:tenant", "test-tenant"),
+                    ],
+                    "test")),
+        };
+        httpContextAccessor.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+
+        IMediator mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var command = new SubmitCommand(
+            "msg-1",
+            "test-tenant",
+            "test-domain",
+            "agg-1",
+            "CreateOrder",
+            [0x01],
+            "test-correlation-id",
+            "test-user");
+
         // Act
-        var behaviors = scope.ServiceProvider.GetServices<IPipelineBehavior<SubmitCommand, SubmitCommandResult>>().ToList();
+        SubmitCommandResult result = await mediator.Send(command, CancellationToken.None);
 
         // Assert
-        // Behaviors should be ordered as added in AddOpenBehavior: Logging -> Validation -> Authorization
-        int loggingIndex = behaviors.FindIndex(b => b.GetType().Name.Contains("LoggingBehavior"));
-        int validationIndex = behaviors.FindIndex(b => b.GetType().Name.Contains("ValidationBehavior"));
-        int authorizationIndex = behaviors.FindIndex(b => b.GetType().Name.Contains("AuthorizationBehavior"));
+        result.CorrelationId.ShouldBe("test-correlation-id");
+        executionOrder.ShouldBe([
+            "LoggingBehavior.Entry",
+            "ValidationBehavior.Passed",
+            "AuthorizationBehavior.Passed",
+            "Handler.Execute",
+            "LoggingBehavior.Exit",
+        ]);
+    }
 
-        loggingIndex.ShouldBeGreaterThan(-1);
-        validationIndex.ShouldBeGreaterThan(loggingIndex);
-        authorizationIndex.ShouldBeGreaterThan(validationIndex);
+    private sealed class PipelineOrderSubmitCommandHandler(List<string> executionOrder)
+        : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+        public Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
+            executionOrder.Add("Handler.Execute");
+            return Task.FromResult(new SubmitCommandResult(request.CorrelationId));
+        }
+    }
+
+    private sealed class PipelineOrderLoggerProvider(List<string> executionOrder) : ILoggerProvider {
+        public ILogger CreateLogger(string categoryName) => new PipelineOrderLogger(executionOrder);
+
+        public void Dispose() {
+        }
+    }
+
+    private sealed class PipelineOrderLogger(List<string> executionOrder) : ILogger {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
+            string? marker = eventId.Id switch {
+                1000 => "LoggingBehavior.Entry",
+                1010 => "ValidationBehavior.Passed",
+                1020 => "AuthorizationBehavior.Passed",
+                1001 => "LoggingBehavior.Exit",
+                _ => null,
+            };
+
+            if (marker is not null) {
+                executionOrder.Add(marker);
+            }
+        }
     }
 }

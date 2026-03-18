@@ -204,6 +204,22 @@ public class PayloadProtectionTests {
         logOutput.ShouldNotContain("System.Byte[]");
     }
 
+    // --- Story 5.3 gap-closure: null payload still shows [REDACTED] (SEC-5) ---
+
+    [Fact]
+    public void ServerEventEnvelope_ToString_NullPayload_StillRedacts() {
+        // Server EventEnvelope accepts null payload (no guard) -- ToString must still redact
+        var envelope = new ServerEventEnvelope(
+            "msg-1", "aggregate-1", "test-aggregate", "tenant-a", "billing", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "OrderPlaced", 1, "json",
+            null!, null);
+
+        string result = envelope.ToString();
+
+        result.ShouldContain("[REDACTED]");
+        result.ShouldNotContain("System.Byte[]");
+    }
+
     private static void VerifyNoPayloadInLogStatements(string sourcePath, string className) {
         string content = File.ReadAllText(sourcePath);
         string[] lines = content.Split('\n');

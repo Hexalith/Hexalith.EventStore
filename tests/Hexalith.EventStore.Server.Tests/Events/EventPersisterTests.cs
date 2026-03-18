@@ -387,4 +387,45 @@ public class EventPersisterTests {
         _ = await Should.ThrowAsync<ArgumentException>(() =>
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), "  "));
     }
+
+    // === Story 5.3 gap-closure: MessageId uniqueness across multiple events (SEC-1) ===
+
+    [Fact]
+    public async Task PersistEventsAsync_MultipleEvents_UniqueMessageIds() {
+        // Arrange
+        (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
+        ConfigureNoMetadata(stateManager);
+        CommandEnvelope command = CreateTestCommand();
+        var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent("a"), new TestEvent("b"), new TestEvent("c") });
+
+        // Act
+        EventPersistResult result = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+
+        // Assert -- each event gets a distinct MessageId
+        result.PersistedEnvelopes.Count.ShouldBe(3);
+        HashSet<string> messageIds = [.. result.PersistedEnvelopes.Select(e => e.MessageId)];
+        messageIds.Count.ShouldBe(3, "Each event should have a unique MessageId");
+    }
+
+    // === Story 5.3 gap-closure: Timestamp is UTC with zero offset (SEC-1) ===
+
+    [Fact]
+    public async Task PersistEventsAsync_Timestamp_IsUtcWithZeroOffset() {
+        // Arrange
+        (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
+        ConfigureNoMetadata(stateManager);
+        CommandEnvelope command = CreateTestCommand();
+        DateTimeOffset before = DateTimeOffset.UtcNow;
+        var domainResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
+
+        // Act
+        EventPersistResult result = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        DateTimeOffset after = DateTimeOffset.UtcNow;
+
+        // Assert -- timestamp should be UTC (offset == TimeSpan.Zero) and within test execution window
+        EventEnvelope envelope = result.PersistedEnvelopes.ShouldHaveSingleItem();
+        envelope.Timestamp.Offset.ShouldBe(TimeSpan.Zero, "Timestamp should be UTC (offset == TimeSpan.Zero)");
+        envelope.Timestamp.ShouldBeGreaterThanOrEqualTo(before);
+        envelope.Timestamp.ShouldBeLessThanOrEqualTo(after);
+    }
 }

@@ -20,7 +20,7 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class AuthorizationBehaviorTests {
-    private readonly List<LogEntry> _logEntries = [];
+    private readonly List<AuthorizationLogEntry> _logEntries = [];
     private readonly TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>> _logger;
 
     public AuthorizationBehaviorTests() => _logger = new TestLogger<AuthorizationBehavior<SubmitCommand, SubmitCommandResult>>(_logEntries);
@@ -111,7 +111,7 @@ public class AuthorizationBehaviorTests {
     [Fact]
     public async Task AuthorizationBehavior_NoIdentity_ThrowsCommandAuthorizationException() {
         // Arrange - User has no Identity
-        var principal = new ClaimsPrincipal(); 
+        var principal = new ClaimsPrincipal();
         AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
         SubmitCommand command = CreateTestCommand();
 
@@ -150,6 +150,7 @@ public class AuthorizationBehaviorTests {
         // Assert
         var logs = _logEntries.Where(e => e.Level == LogLevel.Debug && e.Message.Contains("Authorization succeeded")).ToList();
         logs.ShouldNotBeEmpty();
+        logs[0].EventId.Id.ShouldBe(1020);
         logs[0].Message.ShouldContain("Authorization succeeded");
         logs[0].Message.ShouldContain("test-tenant");
         logs[0].Message.ShouldContain("test-domain");
@@ -180,7 +181,7 @@ public class AuthorizationBehaviorTests {
         // Act & Assert
         InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
-            
+
         ex.Message.ShouldContain("server bug");
         ex.Message.ShouldContain("IRbacValidator.ValidateAsync returned null");
     }
@@ -189,7 +190,7 @@ public class AuthorizationBehaviorTests {
     public async Task AuthorizationBehavior_EnsureReasonNamesTenant_DoesNotDuplicate() {
         // Arrange
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["wrong-domain"]);
-        
+
         IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
         _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(RbacValidationResult.Denied("Not authorized for tenant 'test-tenant'."));
@@ -214,8 +215,8 @@ public class AuthorizationBehaviorTests {
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_NullTenant_ReturnsReasonUnchanged() {
-        // Arrange — null tenant should return reason unchanged
+    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_EmptyTenant_ReturnsReasonUnchanged() {
+        // Arrange — empty tenant should return reason unchanged
         var httpContext = new DefaultHttpContext {
             User = CreatePrincipal(tenants: ["test-tenant"]),
         };
@@ -245,8 +246,8 @@ public class AuthorizationBehaviorTests {
     }
 
     [Fact]
-    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_NullReason_ReturnsReasonUnchanged() {
-        // Arrange — null/empty reason should be returned unchanged
+    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_NullReason_UsesFallbackAndPrefixesTenant() {
+        // Arrange — null/empty reason should use the fallback reason and include tenant context
         var httpContext = new DefaultHttpContext {
             User = CreatePrincipal(tenants: ["test-tenant"]),
         };
@@ -408,13 +409,13 @@ public class AuthorizationBehaviorTests {
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
         // Assert
-        LogEntry warningLog = _logEntries.First(e => e.Level == LogLevel.Warning);
+        AuthorizationLogEntry warningLog = _logEntries.First(e => e.Level == LogLevel.Warning);
         warningLog.Message.ShouldContain("test-correlation-id");
         warningLog.Message.ShouldContain("test-tenant");
         warningLog.Message.ShouldContain("test-domain");
 
         // JWT token content must never appear in logs (NFR11)
-        foreach (LogEntry entry in _logEntries) {
+        foreach (AuthorizationLogEntry entry in _logEntries) {
             entry.Message.ShouldNotContain("Bearer");
             entry.Message.ShouldNotContain("eyJ"); // JWT prefix
         }
@@ -661,11 +662,13 @@ public class AuthorizationBehaviorTests {
 
     public record PingResponse;
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
+    private sealed class TestLogger<T>(List<AuthorizationLogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new AuthorizationLogEntry(logLevel, eventId, formatter(state, exception)));
     }
+
+    private sealed record AuthorizationLogEntry(LogLevel Level, EventId EventId, string Message);
 }
