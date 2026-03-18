@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-18 # story 5-5 done
+last_updated: 2026-03-18 # story 6-1 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -69,7 +69,7 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Command REST API & Error Experience
-  epic-3: in-progress
+  epic-3: done
   3-1-command-submission-endpoint: done
   3-2-command-validation-and-400-error-responses: done
   3-3-command-status-query-endpoint: done
@@ -86,7 +86,7 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Security & Multi-Tenant Isolation
-  epic-5: in-progress
+  epic-5: done
   5-1-jwt-authentication-and-claims-transformation: done
   5-2-claims-based-command-authorization: done
   5-3-three-layer-multi-tenant-data-isolation: done
@@ -95,8 +95,8 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: Observability & Operations
-  epic-6: backlog
-  6-1-opentelemetry-tracing-across-command-lifecycle: backlog
+  epic-6: in-progress
+  6-1-opentelemetry-tracing-across-command-lifecycle: done
   6-2-structured-logging-with-correlation-and-causation-ids: backlog
   6-3-health-and-readiness-endpoints: backlog
   epic-6-retrospective: optional
