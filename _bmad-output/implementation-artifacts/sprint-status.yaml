@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-18 # story 6-1 done
+last_updated: 2026-03-18 # story 6-2 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -97,7 +97,7 @@ development_status:
   # Epic 6: Observability & Operations
   epic-6: in-progress
   6-1-opentelemetry-tracing-across-command-lifecycle: done
-  6-2-structured-logging-with-correlation-and-causation-ids: backlog
+  6-2-structured-logging-with-correlation-and-causation-ids: done
   6-3-health-and-readiness-endpoints: backlog
   epic-6-retrospective: optional
 
