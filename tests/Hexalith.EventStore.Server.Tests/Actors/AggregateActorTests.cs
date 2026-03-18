@@ -904,7 +904,7 @@ public class AggregateActorTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called with newSequence=4 (3 existing + 1 new), lastSnapshotSequence=0
-        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 0);
+        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", 4, 0);
     }
 
     [Fact]
@@ -916,7 +916,7 @@ public class AggregateActorTests {
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-        _ = snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+        _ = snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
             .Returns(true);
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -942,7 +942,7 @@ public class AggregateActorTests {
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-        _ = snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+        _ = snapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
             .Returns(false);
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -981,7 +981,7 @@ public class AggregateActorTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called with lastSnapshotSequence=100 from loaded snapshot
-        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", 4, 100);
+        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", 4, 100);
     }
 
     [Fact]
@@ -999,7 +999,7 @@ public class AggregateActorTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called on rejection path
-        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-domain", Arg.Any<long>(), Arg.Is<long>(0));
+        _ = await snapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", Arg.Any<long>(), Arg.Is<long>(0));
     }
 
     // === Story 2.4: Advisory Status Write Rule 12 Tests ===

@@ -19,10 +19,11 @@ public class SnapshotManager(
     ILogger<SnapshotManager> logger,
     IEventPayloadProtectionService payloadProtectionService) : ISnapshotManager {
     /// <inheritdoc/>
-    public Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence) {
+    public Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, long currentSequence, long lastSnapshotSequence) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
 
-        int interval = GetIntervalForDomain(domain);
+        int interval = GetInterval(tenantId, domain);
         bool shouldCreate = (currentSequence - lastSnapshotSequence) >= interval;
         return Task.FromResult(shouldCreate);
     }
@@ -132,8 +133,14 @@ public class SnapshotManager(
         }
     }
 
-    private int GetIntervalForDomain(string domain) {
+    private int GetInterval(string tenantId, string domain) {
         SnapshotOptions opts = options.Value;
+
+        // Three-tier resolution: tenant-domain > domain > default
+        string tenantDomainKey = $"{tenantId}:{domain}".ToLowerInvariant();
+        if (opts.TenantDomainIntervals.TryGetValue(tenantDomainKey, out int tenantDomainInterval)) {
+            return tenantDomainInterval;
+        }
 
         if (opts.DomainIntervals.TryGetValue(domain, out int domainInterval)) {
             return domainInterval;

@@ -368,7 +368,7 @@ public partial class AggregateActor(
                         // Step 5b: Snapshot creation (Story 3.9)
                         if (persistResult.NewSequenceNumber > 0 && currentState is not null) {
                             bool shouldSnapshot = await snapshotManager
-                                .ShouldCreateSnapshotAsync(command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)
+                                .ShouldCreateSnapshotAsync(command.TenantId, command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)
                                 .ConfigureAwait(false);
 
                             if (shouldSnapshot) {
