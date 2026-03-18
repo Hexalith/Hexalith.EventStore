@@ -228,6 +228,11 @@ public class CommandApiAuthorizationRegistrationTests {
             });
         using IServiceScope scope = provider.CreateScope();
 
+        Type[] behaviorOrder = scope.ServiceProvider
+            .GetServices<IPipelineBehavior<SubmitCommand, SubmitCommandResult>>()
+            .Select(b => b.GetType().GetGenericTypeDefinition())
+            .ToArray();
+
         IHttpContextAccessor httpContextAccessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
         httpContextAccessor.HttpContext = new DefaultHttpContext {
             User = new ClaimsPrincipal(
@@ -256,6 +261,11 @@ public class CommandApiAuthorizationRegistrationTests {
 
         // Assert
         result.CorrelationId.ShouldBe("test-correlation-id");
+        behaviorOrder.ShouldBe([
+            typeof(LoggingBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+        ]);
         executionOrder.ShouldBe([
             "LoggingBehavior.Entry",
             "ValidationBehavior.Passed",
@@ -274,23 +284,27 @@ public class CommandApiAuthorizationRegistrationTests {
     }
 
     private sealed class PipelineOrderLoggerProvider(List<string> executionOrder) : ILoggerProvider {
-        public ILogger CreateLogger(string categoryName) => new PipelineOrderLogger(executionOrder);
+        public ILogger CreateLogger(string categoryName) => new PipelineOrderLogger(categoryName, executionOrder);
 
         public void Dispose() {
         }
     }
 
-    private sealed class PipelineOrderLogger(List<string> executionOrder) : ILogger {
+    private sealed class PipelineOrderLogger(string categoryName, List<string> executionOrder) : ILogger {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            string? marker = eventId.Id switch {
-                1000 => "LoggingBehavior.Entry",
-                1010 => "ValidationBehavior.Passed",
-                1020 => "AuthorizationBehavior.Passed",
-                1001 => "LoggingBehavior.Exit",
+            string? marker = categoryName switch {
+                var value when value.Contains(nameof(LoggingBehavior<object, object>), StringComparison.Ordinal)
+                    && eventId.Id == 1000 => "LoggingBehavior.Entry",
+                var value when value.Contains(nameof(LoggingBehavior<object, object>), StringComparison.Ordinal)
+                    && eventId.Id == 1001 => "LoggingBehavior.Exit",
+                var value when value.Contains(nameof(ValidationBehavior<object, object>), StringComparison.Ordinal)
+                    && eventId.Id == 1010 => "ValidationBehavior.Passed",
+                var value when value.Contains(nameof(AuthorizationBehavior<object, object>), StringComparison.Ordinal)
+                    && eventId.Id == 1020 => "AuthorizationBehavior.Passed",
                 _ => null,
             };
 

@@ -152,6 +152,8 @@ public class AuthorizationBehaviorTests {
         logs.ShouldNotBeEmpty();
         logs[0].EventId.Id.ShouldBe(1020);
         logs[0].Message.ShouldContain("Authorization succeeded");
+        logs[0].Message.ShouldContain("CorrelationId=test-correlation-id");
+        logs[0].Message.ShouldContain("CausationId=test-correlation-id");
         logs[0].Message.ShouldContain("test-tenant");
         logs[0].Message.ShouldContain("test-domain");
         logs[0].Message.ShouldContain("CreateOrder");
