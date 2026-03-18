@@ -1,6 +1,9 @@
 using CommunityToolkit.Aspire.Hosting.Dapr;
 
+using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
+
+PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
