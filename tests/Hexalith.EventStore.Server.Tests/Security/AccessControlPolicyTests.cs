@@ -360,8 +360,10 @@ public class AccessControlPolicyTests {
         // appear in the policy -- their presence would widen the attack surface.
         Dictionary<string, object> localDoc = LoadYaml(LocalAccessControlPath);
         Dictionary<object, object> commandApiPolicy = FindPolicy(localDoc, "commandapi")!;
-        Dictionary<object, object> wildcardOp = GetPolicyOperations(commandApiPolicy)
-            .First(op => GetString(op, "name") == "/**");
+        Dictionary<object, object>? wildcardOp = GetPolicyOperations(commandApiPolicy)
+            .FirstOrDefault(op => GetString(op, "name") == "/**");
+        _ = wildcardOp.ShouldNotBeNull(
+            "Local commandapi policy must contain wildcard operation (/**) for domain service invocation (D7)");
 
         List<object> httpVerbs = GetList(wildcardOp, "httpVerb")!;
         httpVerbs.Count.ShouldBe(1,
@@ -372,8 +374,10 @@ public class AccessControlPolicyTests {
         // Same check for production
         Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
         Dictionary<object, object> prodPolicy = FindPolicy(prodDoc, "commandapi")!;
-        Dictionary<object, object> prodWildcardOp = GetPolicyOperations(prodPolicy)
-            .First(op => GetString(op, "name") == "/**");
+        Dictionary<object, object>? prodWildcardOp = GetPolicyOperations(prodPolicy)
+            .FirstOrDefault(op => GetString(op, "name") == "/**");
+        _ = prodWildcardOp.ShouldNotBeNull(
+            "Production commandapi policy must contain wildcard operation (/**) for domain service invocation (D7)");
 
         List<object> prodHttpVerbs = GetList(prodWildcardOp, "httpVerb")!;
         prodHttpVerbs.Count.ShouldBe(1,

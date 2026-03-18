@@ -1,6 +1,6 @@
 # Story 5.4: DAPR Service-to-Service Access Control
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -35,56 +35,56 @@ This story is complete when: all 7 ACs are verified as implemented and tested, a
 ## Tasks / Subtasks
 
 - [x] Task 0: Verify prerequisites and baseline (BLOCKING)
-  - [x] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
-  - [x] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- record actual pass count as baseline. **Baseline note:** Use the actual count from this run as your baseline for Task 5.3. Do NOT reconcile with historical baselines from other stories.
-  - [x] 0.3 Inventory existing access control test files and counts:
-    - `AccessControlPolicyTests.cs` -- count tests (expected: 13)
-    - `DaprComponentValidationTests.cs` -- count tests
-    - `ProductionDaprComponentValidationTests.cs` -- count tests
-    - `DaprAccessControlE2ETests.cs` -- count tests (expected: 2, Tier 3)
-  - [x] 0.4 Read `accesscontrol.yaml` (local) -- verify structure matches AC #1, #2, #3
-  - [x] 0.5 Read `accesscontrol.yaml` (production) -- verify deny-by-default, SPIFFE trust domain (AC #4)
+    - [x] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
+    - [x] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- record actual pass count as baseline. **Baseline note:** Use the actual count from this run as your baseline for Task 5.3. Do NOT reconcile with historical baselines from other stories.
+    - [x] 0.3 Inventory existing access control test files and counts:
+        - `AccessControlPolicyTests.cs` -- count tests (expected: 13)
+        - `DaprComponentValidationTests.cs` -- count tests
+        - `ProductionDaprComponentValidationTests.cs` -- count tests
+        - `DaprAccessControlE2ETests.cs` -- count tests (expected: 2, Tier 3)
+    - [x] 0.4 Read `accesscontrol.yaml` (local) -- verify structure matches AC #1, #2, #3
+    - [x] 0.5 Read `accesscontrol.yaml` (production) -- verify deny-by-default, SPIFFE trust domain (AC #4)
 
 - [x] Task 1: Verify commandapi policy (AC: #1, #3)
-  - [x] 1.1 Confirm local `accesscontrol.yaml`: commandapi entry has `defaultAction: deny`, wildcard `/**` path, `httpVerb: ['POST']`, `action: allow`
-  - [x] 1.2 Confirm production `accesscontrol.yaml`: same commandapi policy structure with env-parameterized `trustDomain` and `namespace`
-  - [x] 1.3 Review `AccessControlPolicyTests.LocalAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations` -- verify it checks wildcard path, POST verb, allow action
-  - [x] 1.4 Review `AccessControlPolicyTests.AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent` -- verify local-production consistency is tested
-  - [x] 1.5 Identify test gaps for commandapi policy. Potential gaps:
-    - [x] 1.5.1 Test: `CommandApiPolicy_OnlyAllowsPOST_OtherVerbsBlocked` -- verify the policy does NOT list GET/PUT/DELETE in httpVerb (defense-in-depth: DaprClient.InvokeMethodAsync uses POST only)
-    - [x] 1.5.2 Test: `ProductionAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations` -- verify production commandapi policy mirrors local. LIKELY COVERED by test #9 (`AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent`) which checks production commandapi wildcard POST. Verify test #9 covers this and mark as covered if so -- do NOT write a duplicate test.
-    - [x] 1.5.3 Test: `AccessControlYaml_LocalAllowAndProductionDeny_IntentionalDivergence` -- verify in a SINGLE test that local `defaultAction` is `allow` AND production `defaultAction` is `deny`. This is stronger than checking each separately (tests #2 and #6 do that). A single assertion guards against accidental synchronization -- if someone copies production config to local (or vice versa), this catches it. (RT-2 finding)
+    - [x] 1.1 Confirm local `accesscontrol.yaml`: commandapi entry has `defaultAction: deny`, wildcard `/**` path, `httpVerb: ['POST']`, `action: allow`
+    - [x] 1.2 Confirm production `accesscontrol.yaml`: same commandapi policy structure with env-parameterized `trustDomain` and `namespace`
+    - [x] 1.3 Review `AccessControlPolicyTests.LocalAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations` -- verify it checks wildcard path, POST verb, allow action
+    - [x] 1.4 Review `AccessControlPolicyTests.AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent` -- verify local-production consistency is tested
+    - [x] 1.5 Identify test gaps for commandapi policy. Potential gaps:
+        - [x] 1.5.1 Test: `CommandApiPolicy_OnlyAllowsPOST_OtherVerbsBlocked` -- verify the policy does NOT list GET/PUT/DELETE in httpVerb (defense-in-depth: DaprClient.InvokeMethodAsync uses POST only)
+        - [x] 1.5.2 Test: `ProductionAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations` -- verify production commandapi policy mirrors local. LIKELY COVERED by test #9 (`AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent`) which checks production commandapi wildcard POST. Verify test #9 covers this and mark as covered if so -- do NOT write a duplicate test.
+        - [x] 1.5.3 Test: `AccessControlYaml_LocalAllowAndProductionDeny_IntentionalDivergence` -- verify in a SINGLE test that local `defaultAction` is `allow` AND production `defaultAction` is `deny`. This is stronger than checking each separately (tests #2 and #6 do that). A single assertion guards against accidental synchronization -- if someone copies production config to local (or vice versa), this catches it. (RT-2 finding)
 
 - [x] Task 2: Verify domain service denial (AC: #2)
-  - [x] 2.1 Confirm local `accesscontrol.yaml`: sample entry has `defaultAction: deny`, no `operations` key
-  - [x] 2.2 Confirm production `accesscontrol.yaml`: sample is omitted (relies on global deny-by-default)
-  - [x] 2.3 Review `AccessControlPolicyTests.LocalAccessControlYaml_SamplePolicy_DeniesDirectInvocation` -- verify deny + no operations
-  - [x] 2.4 Review `AccessControlPolicyTests.DomainServicePolicy_ZeroInfrastructureAccess_AllDenied` -- verify scoping exclusions
-  - [x] 2.5 Identify test gaps for domain service denial. Potential gaps:
-    - [x] 2.5.1 Test: `ProductionAccessControlYaml_OnlyCommandApiHasAllowedOperations` -- verify that in production accesscontrol.yaml, ONLY the commandapi policy has allowed operations. Any other policy entry with `operations` defined is a regression. This is a forward-looking guard: if a future developer adds a domain service policy with operations, this test catches it.
-    - [x] 2.5.2 CODE REVIEW (not a test): Verify `AppHost/Program.cs:62-70` -- sample sidecar is configured WITHOUT `.WithReference(stateStore)` or `.WithReference(pubSub)`. This validates "zero infrastructure access" beyond component scoping. Confirm by reading the code -- do NOT write a unit test for this (it's an Aspire builder API call, not testable without integration test infrastructure).
+    - [x] 2.1 Confirm local `accesscontrol.yaml`: sample entry has `defaultAction: deny`, no `operations` key
+    - [x] 2.2 Confirm production `accesscontrol.yaml`: sample is omitted (relies on global deny-by-default)
+    - [x] 2.3 Review `AccessControlPolicyTests.LocalAccessControlYaml_SamplePolicy_DeniesDirectInvocation` -- verify deny + no operations
+    - [x] 2.4 Review `AccessControlPolicyTests.DomainServicePolicy_ZeroInfrastructureAccess_AllDenied` -- verify scoping exclusions
+    - [x] 2.5 Identify test gaps for domain service denial. Potential gaps:
+        - [x] 2.5.1 Test: `ProductionAccessControlYaml_OnlyCommandApiHasAllowedOperations` -- verify that in production accesscontrol.yaml, ONLY the commandapi policy has allowed operations. Any other policy entry with `operations` defined is a regression. This is a forward-looking guard: if a future developer adds a domain service policy with operations, this test catches it.
+        - [x] 2.5.2 CODE REVIEW (not a test): Verify `AppHost/Program.cs:62-70` -- sample sidecar is configured WITHOUT `.WithReference(stateStore)` or `.WithReference(pubSub)`. This validates "zero infrastructure access" beyond component scoping. Confirm by reading the code -- do NOT write a unit test for this (it's an Aspire builder API call, not testable without integration test infrastructure).
 
 - [x] Task 3: Verify Aspire topology wiring (AC: #5)
-  - [x] 3.1 CODE REVIEW: Read `AppHost/Program.cs` and `HexalithEventStoreExtensions.cs` -- confirm: (a) `accessControlConfigPath` is resolved and validated with `File.Exists` + `FileNotFoundException` guard (lines 9-20), (b) commandapi sidecar loads config via `AddHexalithEventStore` -> `Config = daprConfigPath` (HexalithEventStoreExtensions.cs:50), (c) sample sidecar loads config via `WithDaprSidecar` -> `Config = accessControlConfigPath` (Program.cs:69), (d) `AddHexalithEventStore` accepts nullable `daprConfigPath` parameter and passes it to sidecar options. This is a single code-review pass over 2 files -- do NOT write tests for Aspire builder wiring.
-  - [x] 3.2 Identify test gaps for Aspire wiring. Potential gaps:
-    - [x] 3.2.1 CODE REVIEW (not a test): The `File.Exists` guard (Program.cs:9-20) is a 6-line runtime check with obvious correctness. Confirm by reading -- do NOT write a test (requires mocking file system for negligible risk).
+    - [x] 3.1 CODE REVIEW: Read `AppHost/Program.cs` and `HexalithEventStoreExtensions.cs` -- confirm: (a) `accessControlConfigPath` is resolved and validated with `File.Exists` + `FileNotFoundException` guard (lines 9-20), (b) commandapi sidecar loads config via `AddHexalithEventStore` -> `Config = daprConfigPath` (HexalithEventStoreExtensions.cs:50), (c) sample sidecar loads config via `WithDaprSidecar` -> `Config = accessControlConfigPath` (Program.cs:69), (d) `AddHexalithEventStore` accepts nullable `daprConfigPath` parameter and passes it to sidecar options. This is a single code-review pass over 2 files -- do NOT write tests for Aspire builder wiring.
+    - [x] 3.2 Identify test gaps for Aspire wiring. Potential gaps:
+        - [x] 3.2.1 CODE REVIEW (not a test): The `File.Exists` guard (Program.cs:9-20) is a 6-line runtime check with obvious correctness. Confirm by reading -- do NOT write a test (requires mocking file system for negligible risk).
 
 - [x] Task 4: Verify DaprDomainServiceInvoker compliance (AC: #6)
-  - [x] 4.1 Read `DaprDomainServiceInvoker.cs` -- confirm `InvokeMethodAsync<TRequest, TResponse>` usage (POST by default)
-  - [x] 4.2 Confirm no GET/PUT/DELETE overloads used for service invocation
-  - [x] 4.3 Confirm error handling catches access control denials -- `DaprDomainServiceInvoker.cs:62-76` has a generic `catch (Exception ex) when (ex is not OperationCanceledException)` that wraps failures in `DomainServiceException`. Verify this path handles DAPR access control denials (`DaprApiException` with `PermissionDenied` or `Grpc.Core.RpcException` with `StatusCode.PermissionDenied`) gracefully. Check if `DaprDomainServiceInvokerTests` has a test for the exception path -- if not, note as a gap.
-  - [x] 4.4 Identify test gaps for invoker compliance. Potential gaps:
-    - [x] 4.4.1 Test: `DaprDomainServiceInvoker_UsesPostHttpVerb_ConsistentWithAccessControlPolicy` -- verify InvokeMethodAsync is called (mocked) confirming POST-only invocation pattern. NOTE: `DaprClient.InvokeMethodAsync<TReq, TRes>(appId, method, request)` uses POST by default. This is a design-documentation test rather than a behavioral gap. If existing `DaprDomainServiceInvokerTests` already verify the call pattern, mark as covered.
-    - [x] 4.4.2 Verify: `DaprDomainServiceInvoker_AccessControlDenial_WrappedInDomainServiceException` -- confirm that when DAPR returns a permission-denied error (access control policy blocks the call), the invoker catches it and wraps it in `DomainServiceException` with meaningful context (tenant, domain, appId). If existing tests cover this exception path, mark as covered. If not, add a test using NSubstitute to mock `DaprClient.InvokeMethodAsync` throwing an exception.
-    - [x] 4.4.3 Review: Check whether `DaprDomainServiceInvoker` error logging (line 63-70) should distinguish access control denials from transient failures. Currently logged as generic "Domain service invocation failed" without a `SecurityEvent` tag. Compare with `AuthorizationBehavior` which emits `SecurityEvent=AuthorizationDenied`. If DAPR denials can be identified by exception type (e.g., `Grpc.Core.RpcException` with `StatusCode.PermissionDenied`), consider logging them with `SecurityEvent=DaprAccessControlDenied` for security audit trail. NOTE: This is an ENHANCEMENT -- if the exception type is not reliably distinguishable, document as accepted and move on. Do NOT spend more than 15 minutes on this. (SA-2 finding)
+    - [x] 4.1 Read `DaprDomainServiceInvoker.cs` -- confirm `InvokeMethodAsync<TRequest, TResponse>` usage (POST by default)
+    - [x] 4.2 Confirm no GET/PUT/DELETE overloads used for service invocation
+    - [x] 4.3 Confirm error handling catches access control denials -- `DaprDomainServiceInvoker.cs:62-76` has a generic `catch (Exception ex) when (ex is not OperationCanceledException)` that wraps failures in `DomainServiceException`. Verify this path handles DAPR access control denials (`DaprApiException` with `PermissionDenied` or `Grpc.Core.RpcException` with `StatusCode.PermissionDenied`) gracefully. Check if `DaprDomainServiceInvokerTests` has a test for the exception path -- if not, note as a gap.
+    - [x] 4.4 Identify test gaps for invoker compliance. Potential gaps:
+        - [x] 4.4.1 Test: `DaprDomainServiceInvoker_UsesPostHttpVerb_ConsistentWithAccessControlPolicy` -- verify InvokeMethodAsync is called (mocked) confirming POST-only invocation pattern. NOTE: `DaprClient.InvokeMethodAsync<TReq, TRes>(appId, method, request)` uses POST by default. This is a design-documentation test rather than a behavioral gap. If existing `DaprDomainServiceInvokerTests` already verify the call pattern, mark as covered.
+        - [x] 4.4.2 Verify: `DaprDomainServiceInvoker_AccessControlDenial_WrappedInDomainServiceException` -- confirm that when DAPR returns a permission-denied error (access control policy blocks the call), the invoker catches it and wraps it in `DomainServiceException` with meaningful context (tenant, domain, appId). If existing tests cover this exception path, mark as covered. If not, add a test using NSubstitute to mock `DaprClient.InvokeMethodAsync` throwing an exception.
+        - [x] 4.4.3 Review: Check whether `DaprDomainServiceInvoker` error logging (line 63-70) should distinguish access control denials from transient failures. Currently logged as generic "Domain service invocation failed" without a `SecurityEvent` tag. Compare with `AuthorizationBehavior` which emits `SecurityEvent=AuthorizationDenied`. If DAPR denials can be identified by exception type (e.g., `Grpc.Core.RpcException` with `StatusCode.PermissionDenied`), consider logging them with `SecurityEvent=DaprAccessControlDenied` for security audit trail. NOTE: This is an ENHANCEMENT -- if the exception type is not reliably distinguishable, document as accepted and move on. Do NOT spend more than 15 minutes on this. (SA-2 finding)
 
 - [x] Task 5: Final verification
-  - [x] 5.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings, zero errors
-  - [x] 5.2 Run all Tier 1 tests -- confirm pass count (baseline: >= 659)
-  - [x] 5.3 Run all Tier 2 tests -- confirm pass count (baseline: use actual count from Task 0.2)
-  - [x] 5.4 Confirm all 7 acceptance criteria are satisfied
-  - [x] 5.5 Report final test count delta
-  - [x] 5.6 Write verification report in Completion Notes (test inventory per file, gaps found, new tests added, deviations observed)
+    - [x] 5.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings, zero errors
+    - [x] 5.2 Run all Tier 1 tests -- confirm pass count (baseline: >= 659)
+    - [x] 5.3 Run all Tier 2 tests -- confirm pass count (baseline: use actual count from Task 0.2)
+    - [x] 5.4 Confirm all 7 acceptance criteria are satisfied
+    - [x] 5.5 Report final test count delta
+    - [x] 5.6 Write verification report in Completion Notes (test inventory per file, gaps found, new tests added, deviations observed)
 
 **Effort guidance:** The access control infrastructure and tests are already comprehensive (13 unit tests + 2 E2E tests). Expect ~1-2 hours for verification and minor gap-closure. Most work is reading and confirming existing tests cover the ACs. Expected new tests: 1-3 max (POST-only verb guard, production operations guard, possibly invoker exception path). Several tasks are CODE REVIEW only (no test needed) -- these are explicitly marked. Do NOT write tests for code-review-only tasks.
 
@@ -93,6 +93,7 @@ This story is complete when: all 7 ACs are verified as implemented and tested, a
 ### CRITICAL: This is a Verification Story
 
 The DAPR service-to-service access control infrastructure is **already fully implemented** across previous stories:
+
 - **Old Story 5.1** created `accesscontrol.yaml` (local + production), configured Aspire wiring, and added 13 tests in `AccessControlPolicyTests.cs` covering YAML structure, deny-by-default, commandapi policy, sample policy, pub/sub scoping, state store scoping, topology consistency, mTLS trust domain, dead-letter scoping, namespace, and zero-infrastructure-access for domain services.
 - **Old Story 5.5** added 2 E2E tests in `DaprAccessControlE2ETests.cs` verifying: (1) unauthorized service-to-service invocation returns 403, (2) denial response contains error context (PermissionDenied, target app-id, operation path, HTTP verb).
 - **DaprComponentValidationTests.cs** and **ProductionDaprComponentValidationTests.cs** validate component YAML structure.
@@ -102,66 +103,67 @@ This story formally verifies the COMPLETE access control model against the new E
 ### Architecture Compliance
 
 - **Six-Layer Auth Pipeline (Layer 6 -- this story):**
-  - **Layer 6 (DAPR Access Control):** Access control policies restrict which app-ids can invoke which services (D4, FR34, NFR15).
-  - Layers 1-3 (JWT, Claims, Endpoint): Story 5.1
-  - Layer 4 (MediatR Authorization): Story 5.2
-  - Layer 5 (Actor Tenant Validation): Story 5.3
+    - **Layer 6 (DAPR Access Control):** Access control policies restrict which app-ids can invoke which services (D4, FR34, NFR15).
+    - Layers 1-3 (JWT, Claims, Endpoint): Story 5.1
+    - Layer 4 (MediatR Authorization): Story 5.2
+    - Layer 5 (Actor Tenant Validation): Story 5.3
 
 - **D4 (DAPR Access Control -- Per-App-ID Allow List):**
-  - **Policy:** CommandApi can invoke actor services and domain services. Domain services can invoke nothing directly.
-  - **Enforcement:** DAPR access control Configuration CRD with per-app-id policies and `allowedOperations`.
-  - **Local:** `defaultAction: allow` (self-hosted without mTLS; policies still defined for structural validation).
-  - **Production:** `defaultAction: deny` (Kubernetes with mTLS + Sentry; unlisted app-ids blocked).
+    - **Policy:** CommandApi can invoke actor services and domain services. Domain services can invoke nothing directly.
+    - **Enforcement:** DAPR access control Configuration CRD with per-app-id policies and `allowedOperations`.
+    - **Local:** `defaultAction: allow` (self-hosted without mTLS; policies still defined for structural validation).
+    - **Production:** `defaultAction: deny` (Kubernetes with mTLS + Sentry; unlisted app-ids blocked).
 
 - **D7 (Domain Service Invocation -- DAPR Service Invocation):**
-  - `DaprClient.InvokeMethodAsync<TRequest, TResponse>` uses POST by default.
-  - Domain service endpoint resolved from DAPR config store registration.
-  - mTLS between sidecars is automatic with DAPR.
-  - DAPR resiliency policies (retry, circuit breaker, timeout) applied at sidecar level.
+    - `DaprClient.InvokeMethodAsync<TRequest, TResponse>` uses POST by default.
+    - Domain service endpoint resolved from DAPR config store registration.
+    - mTLS between sidecars is automatic with DAPR.
+    - DAPR resiliency policies (retry, circuit breaker, timeout) applied at sidecar level.
 
-- **Why Wildcard Path `/**` (ADR rationale):**
-  - Domain service method names are dynamically resolved from the DAPR config store registration (`tenant:domain:version -> appId + method`). Listing specific paths in `accesscontrol.yaml` would require YAML updates every time a domain service changes or adds endpoints.
-  - Wildcard + POST-only is sufficient because: (1) `DaprClient.InvokeMethodAsync` uses POST exclusively, (2) GET/PUT/DELETE are blocked by the httpVerb restriction, (3) domain services are developer-controlled (not untrusted external services).
-  - Do NOT question or change the wildcard -- it is an intentional architectural decision (D4).
+- **Why Wildcard Path `/**` (ADR rationale):\*\*
+    - Domain service method names are dynamically resolved from the DAPR config store registration (`tenant:domain:version -> appId + method`). Listing specific paths in `accesscontrol.yaml` would require YAML updates every time a domain service changes or adds endpoints.
+    - Wildcard + POST-only is sufficient because: (1) `DaprClient.InvokeMethodAsync` uses POST exclusively, (2) GET/PUT/DELETE are blocked by the httpVerb restriction, (3) domain services are developer-controlled (not untrusted external services).
+    - Do NOT question or change the wildcard -- it is an intentional architectural decision (D4).
 
 - **Component Scoping (3-layer defense-in-depth):**
-  - **Layer 1 (Component Scopes):** `scopes` field on state store/pub/sub YAML restricts which app-ids can access the component.
-  - **Layer 2 (Publishing Scopes):** `publishingScopes` metadata controls which app-ids can publish to topics.
-  - **Layer 3 (Subscription Scopes):** `subscriptionScopes` metadata controls which app-ids can subscribe to topics.
-  - Domain services are excluded from ALL three layers.
+    - **Layer 1 (Component Scopes):** `scopes` field on state store/pub/sub YAML restricts which app-ids can access the component.
+    - **Layer 2 (Publishing Scopes):** `publishingScopes` metadata controls which app-ids can publish to topics.
+    - **Layer 3 (Subscription Scopes):** `subscriptionScopes` metadata controls which app-ids can subscribe to topics.
+    - Domain services are excluded from ALL three layers.
 
 - **Zero Infrastructure Access (D4, AC #13 from Story 5.1):**
-  - Domain services have: no state store access (excluded from scopes), no pub/sub access (excluded from scopes + denied in publishingScopes/subscriptionScopes), no outbound service invocation (defaultAction: deny, no operations).
-  - In AppHost: sample sidecar does NOT reference StateStore or PubSub components (stronger isolation than scoping alone).
+    - Domain services have: no state store access (excluded from scopes), no pub/sub access (excluded from scopes + denied in publishingScopes/subscriptionScopes), no outbound service invocation (defaultAction: deny, no operations).
+    - In AppHost: sample sidecar does NOT reference StateStore or PubSub components (stronger isolation than scoping alone).
 
 - **Enforcement Rules (relevant):**
-  - #4: No custom retry logic -- DAPR resiliency only
-  - #5: Never log event payload data -- envelope metadata only
+    - #4: No custom retry logic -- DAPR resiliency only
+    - #5: Never log event payload data -- envelope metadata only
 
 ### Key Source Files
 
-| File | Purpose |
-|------|---------|
-| `src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml` | Local access control Configuration CRD (D4) |
-| `deploy/dapr/accesscontrol.yaml` | Production access control Configuration CRD (D4) |
-| `src/Hexalith.EventStore.AppHost/Program.cs` | Aspire topology: resolves and validates accesscontrol.yaml, wires to both sidecars |
-| `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` | Aspire extension: wires commandapi sidecar with config path |
-| `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs` | DAPR service invocation (D7): POST-only InvokeMethodAsync |
-| `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml` | Local pub/sub component (scoping, publishing/subscription scopes) |
-| `src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml` | Local state store component (scoping) |
-| `deploy/dapr/pubsub-rabbitmq.yaml` | Production RabbitMQ pub/sub (scoping) |
-| `deploy/dapr/pubsub-kafka.yaml` | Production Kafka pub/sub (scoping) |
-| `deploy/dapr/statestore-postgresql.yaml` | Production PostgreSQL state store (scoping) |
-| `deploy/dapr/statestore-cosmosdb.yaml` | Production Cosmos DB state store (scoping) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/AccessControlPolicyTests.cs` | 13 YAML validation tests (Story 5.1) |
-| `tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprComponentValidationTests.cs` | Component YAML validation |
-| `tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs` | Production component validation |
-| `tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprYamlTestHelper.cs` | YAML test utilities (YamlDotNet-based) |
-| `tests/Hexalith.EventStore.IntegrationTests/Security/DaprAccessControlE2ETests.cs` | 2 E2E tests (Tier 3) |
+| File                                                                                              | Purpose                                                                            |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml`                               | Local access control Configuration CRD (D4)                                        |
+| `deploy/dapr/accesscontrol.yaml`                                                                  | Production access control Configuration CRD (D4)                                   |
+| `src/Hexalith.EventStore.AppHost/Program.cs`                                                      | Aspire topology: resolves and validates accesscontrol.yaml, wires to both sidecars |
+| `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs`                                  | Aspire extension: wires commandapi sidecar with config path                        |
+| `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs`                       | DAPR service invocation (D7): POST-only InvokeMethodAsync                          |
+| `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`                                      | Local pub/sub component (scoping, publishing/subscription scopes)                  |
+| `src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml`                                  | Local state store component (scoping)                                              |
+| `deploy/dapr/pubsub-rabbitmq.yaml`                                                                | Production RabbitMQ pub/sub (scoping)                                              |
+| `deploy/dapr/pubsub-kafka.yaml`                                                                   | Production Kafka pub/sub (scoping)                                                 |
+| `deploy/dapr/statestore-postgresql.yaml`                                                          | Production PostgreSQL state store (scoping)                                        |
+| `deploy/dapr/statestore-cosmosdb.yaml`                                                            | Production Cosmos DB state store (scoping)                                         |
+| `tests/Hexalith.EventStore.Server.Tests/Security/AccessControlPolicyTests.cs`                     | 13 YAML validation tests (Story 5.1)                                               |
+| `tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprComponentValidationTests.cs`           | Component YAML validation                                                          |
+| `tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs` | Production component validation                                                    |
+| `tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprYamlTestHelper.cs`                     | YAML test utilities (YamlDotNet-based)                                             |
+| `tests/Hexalith.EventStore.IntegrationTests/Security/DaprAccessControlE2ETests.cs`                | 2 E2E tests (Tier 3)                                                               |
 
 ### Existing Test Coverage Summary
 
 **AccessControlPolicyTests.cs (13 tests, all YAML-based):**
+
 1. `LocalAccessControlYaml_IsValidYaml_ParsesCorrectly` -- CRD structure
 2. `LocalAccessControlYaml_HasDenyDefault_SecureByDefault` -- local default=allow (no mTLS)
 3. `LocalAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations` -- wildcard POST
@@ -178,6 +180,7 @@ This story formally verifies the COMPLETE access control model against the new E
 14. `AccessControlYaml_HasNamespace_IdentityConfigured` -- namespace validation
 
 **DaprAccessControlE2ETests.cs (2 tests, Tier 3):**
+
 1. `SampleSidecar_InvokeCommandApi_DeniedByAccessControl` -- 403 on unauthorized invocation
 2. `SampleSidecar_DeniedInvocation_ResponseContainsErrorContext` -- error body contains PermissionDenied, target app-id, path, verb
 
@@ -201,17 +204,20 @@ This story formally verifies the COMPLETE access control model against the new E
 ### Previous Story Intelligence
 
 **Story 5.3 (Three-Layer Multi-Tenant Data Isolation)** -- status: review:
+
 - Added 6 gap-closure tests across 4 test files.
 - Tier 2 tests: 1469 -> 1475.
 - Verified pub/sub topic isolation, storage key isolation, metadata ownership.
 - Pattern: Verification-style with clear baseline, read-then-verify-then-fill approach.
 
 **Story 5.2 (Claims-Based Command Authorization)** -- status: review:
+
 - Verified 10 acceptance criteria for claims-based authorization.
 - Confirmed test baselines: Tier 1 659, Tier 2 1466.
 - Added tests for AuthorizationBehavior, ClaimsTenantValidator, AuthorizationExceptionHandler.
 
 **Old Story 5.1** -- created the access control YAML and Aspire wiring:
+
 - 13 tests in AccessControlPolicyTests.cs using YamlDotNet parsing via DaprYamlTestHelper.
 - Comprehensive coverage: YAML structure, policies, scoping, topology consistency, trust domain, dead-letter, zero-infrastructure-access.
 - **Key learning:** DAPR access control policy matching requires mTLS to extract caller identity. Without mTLS (self-hosted), `defaultAction: allow` is required because policies cannot verify callers.
@@ -219,6 +225,7 @@ This story formally verifies the COMPLETE access control model against the new E
 ### Git Intelligence
 
 Recent commits (relevant context):
+
 - `61e05d3` -- Update sprint status and implement various tests for command authorization and event persistence (Story 5.2/5.3)
 - `fe3d99b` -- Add comprehensive tests for AuthorizationBehavior and document three-layer multi-tenant data isolation
 - `91fd854` -- Enhance verification tasks for claims-based command authorization
@@ -231,6 +238,7 @@ Recent commits (relevant context):
 ### Local vs Production Security Posture
 
 **Important distinction** the dev agent must understand:
+
 - **Local (self-hosted):** `defaultAction: allow`. DAPR self-hosted mode does not enable mTLS by default, so caller identity (SPIFFE) is unavailable. Policies are structurally validated but cannot be enforced at runtime without mTLS. The policies exist for: (1) structural validation in tests, (2) documentation of intended behavior, (3) consistency with production.
 - **Production (Kubernetes):** `defaultAction: deny`. DAPR Kubernetes with Sentry enables mTLS, allowing SPIFFE-based caller identity. Policies are enforced at runtime. Unlisted app-ids are blocked.
 
@@ -241,6 +249,7 @@ This means the unit tests in AccessControlPolicyTests validate YAML **structure*
 ### Adding New Domain Services (Operational Procedure)
 
 When a new domain service is added to the EventStore topology, the following access control checklist MUST be followed:
+
 1. Add a policy entry in BOTH `accesscontrol.yaml` files (local + production) with `defaultAction: deny` and NO allowed operations.
 2. Do NOT add the new app-id to state store scopes, pub/sub scopes, publishingScopes, or subscriptionScopes (zero infrastructure access, D4).
 3. In AppHost, do NOT wire `.WithReference(stateStore)` or `.WithReference(pubSub)` to the new sidecar.
@@ -326,16 +335,19 @@ Claude Opus 4.6 (1M context)
 **Verification Report — Story 5.4: DAPR Service-to-Service Access Control**
 
 **Baselines:**
+
 - Tier 1: 659 passed (267 Contracts + 293 Client + 32 Sample + 67 Testing)
 - Tier 2: 1479 passed
 
 **Test Inventory (pre-verification):**
+
 - `AccessControlPolicyTests.cs`: 14 tests (story expected 13; 14th is `AccessControlYaml_HasNamespace_IdentityConfigured`)
 - `DaprComponentValidationTests.cs`: 12 methods / 19 test cases (Theory data)
 - `ProductionDaprComponentValidationTests.cs`: 13 methods / 19 test cases (Theory data)
 - `DaprAccessControlE2ETests.cs`: 2 tests (Tier 3)
 
 **Gaps Found & Resolution:**
+
 1. **Task 1.5.1** — ADDED: `CommandApiPolicy_OnlyAllowsPOST_OtherVerbsBlocked` — verifies commandapi wildcard lists exactly 1 verb (POST) in both local and production configs. Defense-in-depth guard.
 2. **Task 1.5.2** — COVERED by test #9 (`AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent`) + `ProductionAccessControl_CommandApiCanPostOnly`. No duplicate test written.
 3. **Task 1.5.3** — ADDED: `AccessControlYaml_LocalAllowAndProductionDeny_IntentionalDivergence` — single test asserting local=allow AND production=deny with explicit divergence guard (RT-2 finding).
@@ -346,11 +358,13 @@ Claude Opus 4.6 (1M context)
 8. **Task 4.4.3** — ACCEPTED enhancement: DAPR access control denial exception type (`InvocationException`/`DaprApiException`) is not reliably distinguishable from transient failures without adding DAPR gRPC dependency. Logged as generic "Domain service invocation failed." Future enhancement if DAPR SDK exposes typed denial exceptions.
 
 **Final Counts:**
+
 - Tier 1: 659 passed (unchanged)
 - Tier 2: 1482 passed (+3 new tests)
 - Build: 0 warnings, 0 errors
 
 **AC Satisfaction:**
+
 - AC #1: Verified — commandapi policy in both configs has `defaultAction: deny`, wildcard `/**`, POST-only, `action: allow`
 - AC #2: Verified — sample has `defaultAction: deny`, no operations (local); omitted (production, global deny)
 - AC #3: Verified — both configs are `Configuration` CRD (`apiVersion: dapr.io/v1alpha1`, `kind: Configuration`) with per-app-id policies and `allowedOperations`
@@ -360,6 +374,7 @@ Claude Opus 4.6 (1M context)
 - AC #7: Verified — state store scopes contain only `commandapi`; pub/sub scopes include `commandapi` + authorized subscribers; publishingScopes/subscriptionScopes deny sample; production configs consistent
 
 **Deviations:**
+
 - AccessControlPolicyTests count was 14 (not 13 as story expected) — the 14th test (`AccessControlYaml_HasNamespace_IdentityConfigured`) was present pre-verification.
 
 ### Change Log
@@ -369,3 +384,4 @@ Claude Opus 4.6 (1M context)
 ### File List
 
 - `tests/Hexalith.EventStore.Server.Tests/Security/AccessControlPolicyTests.cs` (modified — 3 new tests added)
+
