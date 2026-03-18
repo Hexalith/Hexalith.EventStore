@@ -10,7 +10,7 @@ public record RateLimitingOptions {
     /// <summary>
     /// Gets the maximum number of requests permitted per window per tenant.
     /// </summary>
-    public int PermitLimit { get; init; } = 100;
+    public int PermitLimit { get; init; } = 1000;
 
     /// <summary>
     /// Gets the sliding window duration in seconds.
@@ -27,6 +27,12 @@ public record RateLimitingOptions {
     /// 0 means immediate rejection (no queuing).
     /// </summary>
     public int QueueLimit { get; init; } = 0;
+
+    /// <summary>
+    /// Gets per-tenant permit limit overrides. Tenants listed here use their specific limit
+    /// instead of <see cref="PermitLimit"/>. Resolution: TenantPermitLimits[tenantId] > PermitLimit.
+    /// </summary>
+    public Dictionary<string, int> TenantPermitLimits { get; init; } = [];
 }
 
 /// <summary>
@@ -55,6 +61,13 @@ public class ValidateRateLimitingOptions : IValidateOptions<RateLimitingOptions>
         if (options.QueueLimit < 0) {
             return ValidateOptionsResult.Fail(
                 "EventStore:RateLimiting:QueueLimit must be 0 or greater.");
+        }
+
+        foreach (KeyValuePair<string, int> entry in options.TenantPermitLimits) {
+            if (entry.Value <= 0) {
+                return ValidateOptionsResult.Fail(
+                    $"EventStore:RateLimiting:TenantPermitLimits['{entry.Key}'] must be greater than 0, but was {entry.Value}.");
+            }
         }
 
         return ValidateOptionsResult.Success;

@@ -14,7 +14,7 @@ public class RateLimitingOptionsTests {
         var options = new RateLimitingOptions();
 
         // Assert
-        options.PermitLimit.ShouldBe(100);
+        options.PermitLimit.ShouldBe(1000);
         options.WindowSeconds.ShouldBe(60);
         options.SegmentsPerWindow.ShouldBe(6);
         options.QueueLimit.ShouldBe(0);

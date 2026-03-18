@@ -127,6 +127,9 @@ public static class CommandApiServiceCollectionExtensions
 
         _ = services.AddSingleton<IValidateOptions<RateLimitingOptions>, ValidateRateLimitingOptions>();
 
+        // DAPR config store sync for per-tenant rate limit overrides (optional, graceful fallback)
+        _ = services.AddHostedService<DaprRateLimitConfigSync>();
+
         _ = services.AddRateLimiter(rateLimiterOptions =>
         {
             rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -145,13 +148,22 @@ public static class CommandApiServiceCollectionExtensions
                 // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1)
                 string tenantId = context.User?.FindFirst("eventstore:tenant")?.Value ?? "anonymous";
 
-                IOptions<RateLimitingOptions> options = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>();
-                RateLimitingOptions rateLimitOptions = options.Value;
+                IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
+                RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;
+
+                // Per-tenant resolution: TenantPermitLimits[tenantId] > PermitLimit (default).
+                // Note: PartitionedRateLimiter caches SlidingWindowRateLimiter instances per partition key.
+                // Updated options only affect partitions created after the change. Existing active partitions
+                // keep their old limits until they expire from idle timeout (~60 seconds). This eventual-
+                // consistency is acceptable by design.
+                int permitLimit = rateLimitOptions.TenantPermitLimits.TryGetValue(tenantId, out int tenantLimit)
+                    ? tenantLimit
+                    : rateLimitOptions.PermitLimit;
 
                 return RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ =>
                     new SlidingWindowRateLimiterOptions
                     {
-                        PermitLimit = rateLimitOptions.PermitLimit,
+                        PermitLimit = permitLimit,
                         Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
                         SegmentsPerWindow = rateLimitOptions.SegmentsPerWindow,
                         QueueLimit = rateLimitOptions.QueueLimit,
@@ -164,7 +176,7 @@ public static class CommandApiServiceCollectionExtensions
                 // H10: Wrap entire OnRejected body in try/catch for resilience
                 try
                 {
-                    IOptions<RateLimitingOptions> options = context.HttpContext.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>();
+                    IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
                     ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
 
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
@@ -174,7 +186,7 @@ public static class CommandApiServiceCollectionExtensions
                     string? sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
 
                     // H11: Use RetryAfter metadata if available, fall back to WindowSeconds
-                    int retryAfterSeconds = options.Value.WindowSeconds;
+                    int retryAfterSeconds = optionsMonitor.CurrentValue.WindowSeconds;
                     if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
                     {
                         retryAfterSeconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
@@ -231,7 +243,7 @@ public static class CommandApiServiceCollectionExtensions
                     try
                     {
                         RateLimitingOptions? opts = context.HttpContext.RequestServices
-                            .GetService<IOptions<RateLimitingOptions>>()?.Value;
+                            .GetService<IOptionsMonitor<RateLimitingOptions>>()?.CurrentValue;
                         if (opts is not null)
                         {
                             fallbackRetryAfter = opts.WindowSeconds;
