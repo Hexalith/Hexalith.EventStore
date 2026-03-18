@@ -351,6 +351,84 @@ public class AccessControlPolicyTests {
             "Production Kafka pub/sub must have active subscriptionScopes for defense-in-depth");
     }
 
+    // --- Story 5.4 Task 1.5.1: POST-only verb guard ---
+
+    [Fact]
+    public void CommandApiPolicy_OnlyAllowsPOST_OtherVerbsBlocked() {
+        // Defense-in-depth: verify the commandapi wildcard operation lists ONLY POST.
+        // DaprClient.InvokeMethodAsync uses POST by default (D7). GET/PUT/DELETE must NOT
+        // appear in the policy -- their presence would widen the attack surface.
+        Dictionary<string, object> localDoc = LoadYaml(LocalAccessControlPath);
+        Dictionary<object, object> commandApiPolicy = FindPolicy(localDoc, "commandapi")!;
+        Dictionary<object, object> wildcardOp = GetPolicyOperations(commandApiPolicy)
+            .First(op => GetString(op, "name") == "/**");
+
+        List<object> httpVerbs = GetList(wildcardOp, "httpVerb")!;
+        httpVerbs.Count.ShouldBe(1,
+            "commandapi wildcard operation must list exactly one HTTP verb (POST only)");
+        httpVerbs[0]?.ToString().ShouldBe("POST",
+            "commandapi wildcard operation must allow POST only -- GET/PUT/DELETE are not permitted (D7)");
+
+        // Same check for production
+        Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
+        Dictionary<object, object> prodPolicy = FindPolicy(prodDoc, "commandapi")!;
+        Dictionary<object, object> prodWildcardOp = GetPolicyOperations(prodPolicy)
+            .First(op => GetString(op, "name") == "/**");
+
+        List<object> prodHttpVerbs = GetList(prodWildcardOp, "httpVerb")!;
+        prodHttpVerbs.Count.ShouldBe(1,
+            "Production commandapi wildcard operation must list exactly one HTTP verb (POST only)");
+        prodHttpVerbs[0]?.ToString().ShouldBe("POST",
+            "Production commandapi wildcard operation must allow POST only (D7)");
+    }
+
+    // --- Story 5.4 Task 1.5.3: Local allow vs production deny intentional divergence guard (RT-2) ---
+
+    [Fact]
+    public void AccessControlYaml_LocalAllowAndProductionDeny_IntentionalDivergence() {
+        // Single test asserting BOTH: local is allow AND production is deny.
+        // Stronger than separate tests (#2, #6) -- catches accidental synchronization
+        // if someone copies one config over the other (RT-2 finding).
+        Dictionary<string, object> localDoc = LoadYaml(LocalAccessControlPath);
+        Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
+
+        string localDefault = Nav(localDoc, "spec", "accessControl", "defaultAction")?.ToString() ?? "";
+        string prodDefault = Nav(prodDoc, "spec", "accessControl", "defaultAction")?.ToString() ?? "";
+
+        localDefault.ShouldBe("allow",
+            "Local defaultAction must be 'allow' (self-hosted without mTLS)");
+        prodDefault.ShouldBe("deny",
+            "Production defaultAction must be 'deny' (Kubernetes with mTLS)");
+
+        // Guard: the two must differ -- if they match, config was accidentally synchronized
+        localDefault.ShouldNotBe(prodDefault,
+            "Local and production defaultAction must intentionally diverge (local=allow, production=deny). "
+            + "If they match, someone may have copied one config over the other (RT-2 guard).");
+    }
+
+    // --- Story 5.4 Task 2.5.1: Production operations guard ---
+
+    [Fact]
+    public void ProductionAccessControlYaml_OnlyCommandApiHasAllowedOperations() {
+        // Forward-looking guard: in production accesscontrol.yaml, ONLY commandapi may have
+        // allowed operations. If a future developer adds a domain service policy with operations,
+        // this test catches the regression.
+        Dictionary<string, object> doc = LoadYaml(ProductionAccessControlPath);
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull("Production access control must have policies");
+
+        foreach (Dictionary<object, object> policy in policies.Cast<Dictionary<object, object>>()) {
+            string appId = GetString(policy, "appId");
+            bool hasOperations = policy.ContainsKey("operations");
+
+            if (appId != "commandapi") {
+                hasOperations.ShouldBeFalse(
+                    $"Production policy for '{appId}' must NOT have allowed operations. "
+                    + "Only commandapi may have operations defined (D4 zero-trust posture).");
+            }
+        }
+    }
+
     // --- Helpers (LoadYaml, Nav, NavList, GetString, GetComponentMetadataValue imported from DaprYamlTestHelper) ---
 
     /// <summary>

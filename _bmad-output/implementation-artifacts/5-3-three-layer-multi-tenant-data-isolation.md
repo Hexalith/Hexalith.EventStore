@@ -1,6 +1,6 @@
 # Story 5.3: Three-Layer Multi-Tenant Data Isolation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -35,136 +35,136 @@ This story is complete when: all 7 ACs are verified as implemented and tested, t
 ## Tasks / Subtasks
 
 - [x] Task 0: Verify prerequisites and baseline (BLOCKING)
-  - [x] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
-  - [x] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- record actual pass count as baseline. **Baseline note:** Use the actual count from this run as your baseline for Task 7.3. Do NOT attempt to reconcile with historical baselines from old stories (929, 607, 1448) -- those were recorded at different points in development history and do not form a linear progression.
-  - [x] 0.3 Inventory existing security test files and counts:
-    - `StorageKeyIsolationTests.cs` -- count tests (expected: ~17)
-    - `DataPathIsolationTests.cs` -- count tests (expected: ~8 cases)
-    - `DomainServiceIsolationTests.cs` -- count tests (expected: ~9 cases)
-    - `TenantInjectionPreventionTests.cs` -- count tests (expected: ~19 cases)
-    - `PubSubTopicIsolationEnforcementTests.cs` -- count tests (expected: ~8)
-    - `SubscriptionScopingDocumentationTests.cs` -- count tests (expected: ~4)
-    - `TopicIsolationTests.cs` -- count tests
-    - `MultiTenantPublicationTests.cs` -- count tests
-    - `ExtensionMetadataSanitizerTests.cs` -- count tests
-    - `ActorTenantIsolationTests.cs` -- count tests
-  - [x] 0.4 Read `EventPersister.cs` -- verify all metadata fields populated by EventStore (AC #5, SEC-1)
-  - [x] 0.5 Read `ExtensionMetadataSanitizer.cs` -- verify sanitization rules (AC #6, SEC-4)
-  - [x] 0.6 Read `EventEnvelope.cs` (both Contracts and Server versions) -- verify `ToString()` redacts payload (AC #7, SEC-5)
-  - [x] 0.7 Read `CommandsController.cs` -- verify UserId from JWT `sub` claim, extension sanitization call, logging (AC #5, #6)
+    - [x] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
+    - [x] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- record actual pass count as baseline. **Baseline note:** Use the actual count from this run as your baseline for Task 7.3. Do NOT attempt to reconcile with historical baselines from old stories (929, 607, 1448) -- those were recorded at different points in development history and do not form a linear progression.
+    - [x] 0.3 Inventory existing security test files and counts:
+        - `StorageKeyIsolationTests.cs` -- count tests (expected: ~17)
+        - `DataPathIsolationTests.cs` -- count tests (expected: ~8 cases)
+        - `DomainServiceIsolationTests.cs` -- count tests (expected: ~9 cases)
+        - `TenantInjectionPreventionTests.cs` -- count tests (expected: ~19 cases)
+        - `PubSubTopicIsolationEnforcementTests.cs` -- count tests (expected: ~8)
+        - `SubscriptionScopingDocumentationTests.cs` -- count tests (expected: ~4)
+        - `TopicIsolationTests.cs` -- count tests
+        - `MultiTenantPublicationTests.cs` -- count tests
+        - `ExtensionMetadataSanitizerTests.cs` -- count tests
+        - `ActorTenantIsolationTests.cs` -- count tests
+    - [x] 0.4 Read `EventPersister.cs` -- verify all metadata fields populated by EventStore (AC #5, SEC-1)
+    - [x] 0.5 Read `ExtensionMetadataSanitizer.cs` -- verify sanitization rules (AC #6, SEC-4)
+    - [x] 0.6 Read `EventEnvelope.cs` (both Contracts and Server versions) -- verify `ToString()` redacts payload (AC #7, SEC-5)
+    - [x] 0.7 Read `CommandsController.cs` -- verify UserId from JWT `sub` claim, extension sanitization call, logging (AC #5, #6)
 
 - [x] Task 1: Verify data path isolation (AC: #1, #4)
-  - [x] 1.1 Confirm `CommandRouter` derives actor ID from `AggregateIdentity(command.Tenant, command.Domain, command.AggregateId).ActorId`
-  - [x] 1.2 Confirm actor ID format is `{tenant}:{domain}:{aggregateId}` (colon-separated)
-  - [x] 1.3 Confirm `TenantValidator.Validate` runs at actor Step 2, BEFORE `EventStreamReader` at Step 3 (SEC-2)
-  - [x] 1.4 Confirm `TenantValidator` uses `StringComparison.Ordinal` (case-sensitive)
-  - [x] 1.5 Review existing `DataPathIsolationTests.cs` coverage -- confirm routing, concurrent processing, three-layer, and TenantId flow tests exist
-  - [x] 1.6 If any data path isolation logic is missing or incorrect, fix it
+    - [x] 1.1 Confirm `CommandRouter` derives actor ID from `AggregateIdentity(command.Tenant, command.Domain, command.AggregateId).ActorId`
+    - [x] 1.2 Confirm actor ID format is `{tenant}:{domain}:{aggregateId}` (colon-separated)
+    - [x] 1.3 Confirm `TenantValidator.Validate` runs at actor Step 2, BEFORE `EventStreamReader` at Step 3 (SEC-2)
+    - [x] 1.4 Confirm `TenantValidator` uses `StringComparison.Ordinal` (case-sensitive)
+    - [x] 1.5 Review existing `DataPathIsolationTests.cs` coverage -- confirm routing, concurrent processing, three-layer, and TenantId flow tests exist
+    - [x] 1.6 If any data path isolation logic is missing or incorrect, fix it
 
 - [x] Task 2: Verify storage key isolation (AC: #2, #4)
-  - [x] 2.1 Confirm `AggregateIdentity` derives all storage keys with tenant prefix:
-    - `EventStreamKeyPrefix` = `{tenant}:{domain}:{aggId}:events:`
-    - `MetadataKey` = `{tenant}:{domain}:{aggId}:metadata`
-    - `SnapshotKey` = `{tenant}:{domain}:{aggId}:snapshot`
-    - `PipelineKeyPrefix` = `{tenant}:{domain}:{aggId}:pipeline:`
-  - [x] 2.2 Confirm tenant ID validation rejects colons, control chars (<0x20), non-ASCII (>=0x7F), URL-encoded colons (%3A), dots
-  - [x] 2.3 Confirm tenant ID regex: `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, max 64 chars
-  - [x] 2.4 Review existing `StorageKeyIsolationTests.cs` -- confirm key disjointness, injection prevention, and shared state manager tests exist
-  - [x] 2.5 Confirm event store keys are write-once (Enforcement #11) -- `EventPersister` never updates existing event keys
-  - [x] 2.6 Verify `CommandStatusKey` includes tenant: confirm pattern is `{tenant}:{correlationId}:status` (SEC-3 -- prevents cross-tenant info leakage via correlation ID collision)
-  - [x] 2.7 Verify `PipelineKeyPrefix` includes tenant: confirm pattern is `{tenant}:{domain}:{aggId}:pipeline:` and different tenants produce disjoint pipeline keys
-  - [x] 2.8 Identify test gaps for command status and pipeline key isolation:
-    - [x] 2.8.1 Test: `CommandStatusKey_IncludesTenantPrefix_PreventsCrossTenantLeakage` -- verify status key for tenant-a is disjoint from tenant-b even with same correlationId (SEC-3)
-    - [x] 2.8.2 Test: `PipelineKeyPrefix_DifferentTenants_DisjointKeys` -- verify pipeline checkpoint keys are tenant-scoped
-  - [x] 2.9 If any storage key isolation logic is missing or incorrect, fix it
+    - [x] 2.1 Confirm `AggregateIdentity` derives all storage keys with tenant prefix:
+        - `EventStreamKeyPrefix` = `{tenant}:{domain}:{aggId}:events:`
+        - `MetadataKey` = `{tenant}:{domain}:{aggId}:metadata`
+        - `SnapshotKey` = `{tenant}:{domain}:{aggId}:snapshot`
+        - `PipelineKeyPrefix` = `{tenant}:{domain}:{aggId}:pipeline:`
+    - [x] 2.2 Confirm tenant ID validation rejects colons, control chars (<0x20), non-ASCII (>=0x7F), URL-encoded colons (%3A), dots
+    - [x] 2.3 Confirm tenant ID regex: `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, max 64 chars
+    - [x] 2.4 Review existing `StorageKeyIsolationTests.cs` -- confirm key disjointness, injection prevention, and shared state manager tests exist
+    - [x] 2.5 Confirm event store keys are write-once (Enforcement #11) -- `EventPersister` never updates existing event keys
+    - [x] 2.6 Verify `CommandStatusKey` includes tenant: confirm pattern is `{tenant}:{correlationId}:status` (SEC-3 -- prevents cross-tenant info leakage via correlation ID collision)
+    - [x] 2.7 Verify `PipelineKeyPrefix` includes tenant: confirm pattern is `{tenant}:{domain}:{aggId}:pipeline:` and different tenants produce disjoint pipeline keys
+    - [x] 2.8 Identify test gaps for command status and pipeline key isolation:
+        - [x] 2.8.1 Test: `CommandStatusKey_IncludesTenantPrefix_PreventsCrossTenantLeakage` -- verify status key for tenant-a is disjoint from tenant-b even with same correlationId (SEC-3)
+        - [x] 2.8.2 Test: `PipelineKeyPrefix_DifferentTenants_DisjointKeys` -- verify pipeline checkpoint keys are tenant-scoped
+    - [x] 2.9 If any storage key isolation logic is missing or incorrect, fix it
 
 - [x] Task 3: Verify pub/sub topic isolation (AC: #3, #4)
-  - [x] 3.1 Confirm `AggregateIdentity.PubSubTopic` produces `{tenant}.{domain}.events` (D6 pattern, dot-separated)
-  - [x] 3.2 Confirm `TopicNameValidator` enforces D6 pattern regex
-  - [x] 3.3 Confirm `EventPublisher` publishes to `identity.PubSubTopic` with CloudEvents metadata
-  - [x] 3.4 Confirm `DeadLetterPublisher` uses `deadletter.{tenant}.{domain}.events` pattern
-  - [x] 3.5 Review pub/sub YAML configs (local, RabbitMQ, Kafka) for:
-    - `publishingScopes`: only `commandapi` can publish (Story 5.1)
-    - `subscriptionScopes`: subscriber-side scoping configured (old Story 5.3)
-    - Dead-letter topics scoped separately
-  - [x] 3.6 Review existing `PubSubTopicIsolationEnforcementTests.cs` and `SubscriptionScopingDocumentationTests.cs` -- confirm coverage
-  - [x] 3.7 If any pub/sub topic isolation logic is missing or incorrect, fix it
+    - [x] 3.1 Confirm `AggregateIdentity.PubSubTopic` produces `{tenant}.{domain}.events` (D6 pattern, dot-separated)
+    - [x] 3.2 Confirm `TopicNameValidator` enforces D6 pattern regex
+    - [x] 3.3 Confirm `EventPublisher` publishes to `identity.PubSubTopic` with CloudEvents metadata
+    - [x] 3.4 Confirm `DeadLetterPublisher` uses `deadletter.{tenant}.{domain}.events` pattern
+    - [x] 3.5 Review pub/sub YAML configs (local, RabbitMQ, Kafka) for:
+        - `publishingScopes`: only `commandapi` can publish (Story 5.1)
+        - `subscriptionScopes`: subscriber-side scoping configured (old Story 5.3)
+        - Dead-letter topics scoped separately
+    - [x] 3.6 Review existing `PubSubTopicIsolationEnforcementTests.cs` and `SubscriptionScopingDocumentationTests.cs` -- confirm coverage
+    - [x] 3.7 If any pub/sub topic isolation logic is missing or incorrect, fix it
 
 - [x] Task 4: Verify metadata ownership (AC: #5, SEC-1)
-  - [x] 4.1 Read `EventPersister.PersistEventsAsync` -- verify ALL metadata fields are populated by EventStore:
-    - `MessageId` = `UniqueIdHelper.GenerateSortableUniqueStringId()` (ULID)
-    - `AggregateId` = from `identity.AggregateId`
-    - `AggregateType` (Domain) = from `identity.Domain`
-    - `TenantId` = from `identity.TenantId`
-    - `SequenceNumber` = gapless `currentSequence + 1 + i`
-    - `CorrelationId` = from `command.CorrelationId`
-    - `CausationId` = from `command.CausationId ?? command.CorrelationId`
-    - `UserId` = from `command.UserId`
-    - `DomainServiceVersion` = from method parameter
-    - `EventTypeName` = from event payload type
-    - `MetadataVersion` = hardcoded to 1
-    - `SerializationFormat` = from protection service (default "json")
-    - `Timestamp` = `DateTimeOffset.UtcNow`
-    - `GlobalPosition` = set to 0 (populated by event store)
-  - [x] 4.2 Confirm domain services return `DomainResult` containing only event payloads (no metadata control)
-  - [x] 4.3 Confirm `DomainResult` and `DomainEvent` types do not expose metadata setters
-  - [x] 4.4 Check if `EventEnvelopeAssertions.ShouldHaveValidMetadata` actually checks all 15 fields -- read the assertion method and verify it asserts non-null/non-default on EACH field. If it only checks a subset, the metadata ownership verification has a false-positive risk. Fix or document any missing field checks.
-  - [x] 4.5 Identify test gaps for metadata ownership. Known potential gaps:
-    - [x] 4.5.1 Test: `PersistEventsAsync_PopulatesAllMetadataFields_FromIdentityAndCommand` -- verify all 15 fields are populated (not null/default) in the persisted EventEnvelope
-    - [x] 4.5.2 Test: `PersistEventsAsync_SequenceNumbers_AreGapless` -- verify N events produce sequences currentSeq+1 through currentSeq+N
-    - [x] 4.5.3 Test: `PersistEventsAsync_MessageId_IsUniqueSortableULID` -- verify each event gets a distinct MessageId
-    - [x] 4.5.4 Test: `PersistEventsAsync_CausationId_FallsBackToCorrelationId` -- verify fallback when command.CausationId is null
-    - [x] 4.5.5 Test: `PersistEventsAsync_Timestamp_IsUtcNow` -- verify timestamp offset is UTC (offset == TimeSpan.Zero) and value is within 5 seconds of test execution time. Do NOT assert exact equality -- `DateTimeOffset.UtcNow` is inherently racy in tests.
-    - [x] 4.5.6 Test: `DomainResult_DoesNotExposeMetadataSetters` -- this is structurally guaranteed by C# records, so treat as a design-documentation test, not a security gap. The more valuable regression guardrail is verifying `IDomainServiceInvoker.InvokeAsync` method signature does not accept metadata parameters -- if someone adds metadata to the invocation contract in the future, this test catches it.
-    - [x] 4.5.7 Test: `EventEnvelope_SerializedFormat_SeparatesMetadataFromPayload` -- verify that when an EventEnvelope is serialized (JSON), metadata fields and payload are structurally separated (not flattened into one object). A naive subscriber deserializing `{metadata + payload}` as a flat object must NOT be able to shadow metadata fields (e.g., a payload containing a `TenantId` property must not override the envelope's `TenantId`). This prevents metadata poisoning via malicious domain service payloads.
-    - [x] 4.5.8 Test: `PersistEventsAsync_ZeroEvents_SkipsGracefully` -- verify that if `DomainResult` contains zero events (empty list), `EventPersister` handles it gracefully without creating empty metadata entries or throwing. The domain service contract expects events, but a buggy domain service could return empty.
-    - [x] 4.5.9 Test: `EventMetadata_Validation_AcceptsMetadataVersionGreaterThanOne` -- verify `EventMetadata` validation accepts `MetadataVersion >= 1`, not just `== 1`. If validation rejects version 2+, future metadata schema migration is blocked. `MetadataVersion` is currently hardcoded to 1, but the validation constraint must allow forward compatibility.
-  - [x] 4.6 Add any missing metadata ownership tests
+    - [x] 4.1 Read `EventPersister.PersistEventsAsync` -- verify ALL metadata fields are populated by EventStore:
+        - `MessageId` = `UniqueIdHelper.GenerateSortableUniqueStringId()` (ULID)
+        - `AggregateId` = from `identity.AggregateId`
+        - `AggregateType` (Domain) = from `identity.Domain`
+        - `TenantId` = from `identity.TenantId`
+        - `SequenceNumber` = gapless `currentSequence + 1 + i`
+        - `CorrelationId` = from `command.CorrelationId`
+        - `CausationId` = from `command.CausationId ?? command.CorrelationId`
+        - `UserId` = from `command.UserId`
+        - `DomainServiceVersion` = from method parameter
+        - `EventTypeName` = from event payload type
+        - `MetadataVersion` = hardcoded to 1
+        - `SerializationFormat` = from protection service (default "json")
+        - `Timestamp` = `DateTimeOffset.UtcNow`
+        - `GlobalPosition` = set to 0 (populated by event store)
+    - [x] 4.2 Confirm domain services return `DomainResult` containing only event payloads (no metadata control)
+    - [x] 4.3 Confirm `DomainResult` and `DomainEvent` types do not expose metadata setters
+    - [x] 4.4 Check if `EventEnvelopeAssertions.ShouldHaveValidMetadata` actually checks all 15 fields -- read the assertion method and verify it asserts non-null/non-default on EACH field. If it only checks a subset, the metadata ownership verification has a false-positive risk. Fix or document any missing field checks.
+    - [x] 4.5 Identify test gaps for metadata ownership. Known potential gaps:
+        - [x] 4.5.1 Test: `PersistEventsAsync_PopulatesAllMetadataFields_FromIdentityAndCommand` -- verify all 15 fields are populated (not null/default) in the persisted EventEnvelope
+        - [x] 4.5.2 Test: `PersistEventsAsync_SequenceNumbers_AreGapless` -- verify N events produce sequences currentSeq+1 through currentSeq+N
+        - [x] 4.5.3 Test: `PersistEventsAsync_MessageId_IsUniqueSortableULID` -- verify each event gets a distinct MessageId
+        - [x] 4.5.4 Test: `PersistEventsAsync_CausationId_FallsBackToCorrelationId` -- verify fallback when command.CausationId is null
+        - [x] 4.5.5 Test: `PersistEventsAsync_Timestamp_IsUtcNow` -- verify timestamp offset is UTC (offset == TimeSpan.Zero) and value is within 5 seconds of test execution time. Do NOT assert exact equality -- `DateTimeOffset.UtcNow` is inherently racy in tests.
+        - [x] 4.5.6 Test: `DomainResult_DoesNotExposeMetadataSetters` -- this is structurally guaranteed by C# records, so treat as a design-documentation test, not a security gap. The more valuable regression guardrail is verifying `IDomainServiceInvoker.InvokeAsync` method signature does not accept metadata parameters -- if someone adds metadata to the invocation contract in the future, this test catches it.
+        - [x] 4.5.7 Test: `EventEnvelope_SerializedFormat_SeparatesMetadataFromPayload` -- verify that when an EventEnvelope is serialized (JSON), metadata fields and payload are structurally separated (not flattened into one object). A naive subscriber deserializing `{metadata + payload}` as a flat object must NOT be able to shadow metadata fields (e.g., a payload containing a `TenantId` property must not override the envelope's `TenantId`). This prevents metadata poisoning via malicious domain service payloads.
+        - [x] 4.5.8 Test: `PersistEventsAsync_ZeroEvents_SkipsGracefully` -- verify that if `DomainResult` contains zero events (empty list), `EventPersister` handles it gracefully without creating empty metadata entries or throwing. The domain service contract expects events, but a buggy domain service could return empty.
+        - [x] 4.5.9 Test: `EventMetadata_Validation_AcceptsMetadataVersionGreaterThanOne` -- verify `EventMetadata` validation accepts `MetadataVersion >= 1`, not just `== 1`. If validation rejects version 2+, future metadata schema migration is blocked. `MetadataVersion` is currently hardcoded to 1, but the validation constraint must allow forward compatibility.
+    - [x] 4.6 Add any missing metadata ownership tests
 
 - [x] Task 5: Verify extension metadata sanitization (AC: #6, SEC-4)
-  - [x] 5.1 Read `ExtensionMetadataSanitizer.cs` -- verify all sanitization rules:
-    - Max 32 extensions, max key 128 chars, max value 2048 chars, max total 4096 bytes
-    - Key pattern: `^[a-zA-Z0-9][a-zA-Z0-9._-]*$`
-    - Control chars rejected (0x00-0x1F except \t \n \r)
-    - XSS injection patterns blocked
-    - SQL injection patterns blocked
-    - LDAP injection patterns blocked
-    - Path traversal patterns blocked
-  - [x] 5.2 Confirm `CommandsController.Submit` calls `ExtensionMetadataSanitizer.Sanitize` BEFORE routing to MediatR
-  - [x] 5.3 Confirm sanitization failure returns 400 with ProblemDetails (not 500)
-  - [x] 5.4 Review existing `ExtensionMetadataSanitizerTests.cs` -- inventory coverage
-  - [x] 5.5 Identify test gaps for extension sanitization. Known potential gaps:
-    - [x] 5.5.1 Test: XSS injection via `<script>alert(1)</script>` in extension value
-    - [x] 5.5.2 Test: SQL injection via `'; DROP TABLE events; --` in extension value
-    - [x] 5.5.3 Test: LDAP injection via `)(cn=*))(objectClass=*` in extension value
-    - [x] 5.5.4 Test: Path traversal via `../../etc/passwd` in extension value
-    - [x] 5.5.5 Test: Control char 0x00 (null byte) in extension key or value
-    - [x] 5.5.6 Test: Extension key starting with non-alphanumeric char
-    - [x] 5.5.7 Test: Total size exactly at 4096 byte limit (boundary)
-    - [x] 5.5.8 Test: 33 extensions (one over limit)
-  - [x] 5.6 Add any missing sanitization tests (only if gaps found in existing `ExtensionMetadataSanitizerTests.cs`)
+    - [x] 5.1 Read `ExtensionMetadataSanitizer.cs` -- verify all sanitization rules:
+        - Max 32 extensions, max key 128 chars, max value 2048 chars, max total 4096 bytes
+        - Key pattern: `^[a-zA-Z0-9][a-zA-Z0-9._-]*$`
+        - Control chars rejected (0x00-0x1F except \t \n \r)
+        - XSS injection patterns blocked
+        - SQL injection patterns blocked
+        - LDAP injection patterns blocked
+        - Path traversal patterns blocked
+    - [x] 5.2 Confirm `CommandsController.Submit` calls `ExtensionMetadataSanitizer.Sanitize` BEFORE routing to MediatR
+    - [x] 5.3 Confirm sanitization failure returns 400 with ProblemDetails (not 500)
+    - [x] 5.4 Review existing `ExtensionMetadataSanitizerTests.cs` -- inventory coverage
+    - [x] 5.5 Identify test gaps for extension sanitization. Known potential gaps:
+        - [x] 5.5.1 Test: XSS injection via `<script>alert(1)</script>` in extension value
+        - [x] 5.5.2 Test: SQL injection via `'; DROP TABLE events; --` in extension value
+        - [x] 5.5.3 Test: LDAP injection via `)(cn=*))(objectClass=*` in extension value
+        - [x] 5.5.4 Test: Path traversal via `../../etc/passwd` in extension value
+        - [x] 5.5.5 Test: Control char 0x00 (null byte) in extension key or value
+        - [x] 5.5.6 Test: Extension key starting with non-alphanumeric char
+        - [x] 5.5.7 Test: Total size exactly at 4096 byte limit (boundary)
+        - [x] 5.5.8 Test: 33 extensions (one over limit)
+    - [x] 5.6 Add any missing sanitization tests (only if gaps found in existing `ExtensionMetadataSanitizerTests.cs`)
 
 - [x] Task 6: Verify payload redaction and logging compliance (AC: #7, SEC-5)
-  - [x] 6.1 Read `EventEnvelope.cs` (Contracts) -- confirm `ToString()` redacts payload with `[REDACTED]`
-  - [x] 6.2 Read `EventEnvelope.cs` (Server) -- confirm same redaction pattern
-  - [x] 6.3 Use Grep tool to search for `Payload` or `payload` in all `*.cs` files under `src/` that contain `Log` or `logger` -- specifically search for structured log templates containing `{Payload}`, `{EventPayload}`, or `{payload}` in `LoggerMessage`, `_logger.Log*`, or `Log.*` calls. This is a codebase scan, not a unit test.
-  - [x] 6.4 Verify `LoggingBehavior` does NOT log command or event payloads
-  - [x] 6.5 Verify `EventPersister` structured logging does NOT include payload data
-  - [x] 6.6 Verify `EventPublisher` structured logging does NOT include payload data
-  - [x] 6.7 Identify test gaps for payload redaction. Known potential gaps:
-    - [x] 6.7.1 Test: `EventEnvelope_ToString_RedactsPayload` -- verify payload is `[REDACTED]` in string representation
-    - [x] 6.7.2 Test: `EventEnvelope_ToString_IncludesMetadataFields` -- verify metadata IS included in string output
-    - [x] 6.7.3 Test: `StructuredLogging_NeverIncludesPayloadData` -- grep-style verification that no structured log template in the codebase references `{Payload}` or `{EventPayload}`
-    - [x] 6.7.4 Test: `EventEnvelope_ToString_NullPayload_StillRedacts` -- verify that when `Payload` is null (e.g., rejection event with no payload data), `ToString()` still produces `[REDACTED]` and does not print "null", empty string, or throw NullReferenceException.
-  - [x] 6.8 Add any missing payload redaction tests
+    - [x] 6.1 Read `EventEnvelope.cs` (Contracts) -- confirm `ToString()` redacts payload with `[REDACTED]`
+    - [x] 6.2 Read `EventEnvelope.cs` (Server) -- confirm same redaction pattern
+    - [x] 6.3 Use Grep tool to search for `Payload` or `payload` in all `*.cs` files under `src/` that contain `Log` or `logger` -- specifically search for structured log templates containing `{Payload}`, `{EventPayload}`, or `{payload}` in `LoggerMessage`, `_logger.Log*`, or `Log.*` calls. This is a codebase scan, not a unit test.
+    - [x] 6.4 Verify `LoggingBehavior` does NOT log command or event payloads
+    - [x] 6.5 Verify `EventPersister` structured logging does NOT include payload data
+    - [x] 6.6 Verify `EventPublisher` structured logging does NOT include payload data
+    - [x] 6.7 Identify test gaps for payload redaction. Known potential gaps:
+        - [x] 6.7.1 Test: `EventEnvelope_ToString_RedactsPayload` -- verify payload is `[REDACTED]` in string representation
+        - [x] 6.7.2 Test: `EventEnvelope_ToString_IncludesMetadataFields` -- verify metadata IS included in string output
+        - [x] 6.7.3 Test: `StructuredLogging_NeverIncludesPayloadData` -- grep-style verification that no structured log template in the codebase references `{Payload}` or `{EventPayload}`
+        - [x] 6.7.4 Test: `EventEnvelope_ToString_NullPayload_StillRedacts` -- verify that when `Payload` is null (e.g., rejection event with no payload data), `ToString()` still produces `[REDACTED]` and does not print "null", empty string, or throw NullReferenceException.
+    - [x] 6.8 Add any missing payload redaction tests
 
 - [x] Task 7: Final verification
-  - [x] 7.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings, zero errors
-  - [x] 7.2 Run all Tier 1 tests -- confirm pass count (baseline: >= 659)
-  - [x] 7.3 Run all Tier 2 tests -- confirm pass count (baseline: use actual count from Task 0.2)
-  - [x] 7.4 Confirm all 7 acceptance criteria are satisfied
-  - [x] 7.5 Report final test count delta
-  - [x] 7.6 Write verification report in Completion Notes (test inventory per file, gaps found, new tests added, deviations observed)
+    - [x] 7.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings, zero errors
+    - [x] 7.2 Run all Tier 1 tests -- confirm pass count (baseline: >= 659)
+    - [x] 7.3 Run all Tier 2 tests -- confirm pass count (baseline: use actual count from Task 0.2)
+    - [x] 7.4 Confirm all 7 acceptance criteria are satisfied
+    - [x] 7.5 Report final test count delta
+    - [x] 7.6 Write verification report in Completion Notes (test inventory per file, gaps found, new tests added, deviations observed)
 
 **Effort guidance:** If Tasks 1-6 pass verification with no issues found and test coverage is comprehensive, expect ~2-3 hours (verification + gap-closure tests). If SEC-1 metadata ownership or SEC-5 payload redaction tests are sparse, additional test creation may be needed. Escalate non-trivial issues per the story note above.
 
@@ -181,15 +181,15 @@ The three-layer multi-tenant data isolation infrastructure is **already fully im
 ### Architecture Compliance
 
 - **Six-Layer Auth Pipeline (layers relevant to this story):**
-  - **Layer 4 (MediatR Authorization):** `AuthorizationBehavior` -- tenant validation at pipeline level (Story 5.2)
-  - **Layer 5 (Actor Tenant Validation):** `TenantValidator` at actor Step 2 -- SEC-2 defense-in-depth, validates before state access
-  - **Layer 6 (DAPR Access Control):** Access control policies, state store scoping, pub/sub scoping (old Story 5.1)
-  - Layers 1-3 (JWT, Claims, Endpoint) verified in new Stories 5.1 and 5.2
+    - **Layer 4 (MediatR Authorization):** `AuthorizationBehavior` -- tenant validation at pipeline level (Story 5.2)
+    - **Layer 5 (Actor Tenant Validation):** `TenantValidator` at actor Step 2 -- SEC-2 defense-in-depth, validates before state access
+    - **Layer 6 (DAPR Access Control):** Access control policies, state store scoping, pub/sub scoping (old Story 5.1)
+    - Layers 1-3 (JWT, Claims, Endpoint) verified in new Stories 5.1 and 5.2
 
 - **Triple-Layer Isolation Enforcement (NFR13):**
-  - **Layer 1 (Actor Identity):** `AggregateIdentity.ActorId` = `{tenant}:{domain}:{aggId}` -- `CommandRouter` derives from command metadata
-  - **Layer 2 (DAPR Policies):** Access control (`accesscontrol.yaml`), state store scoping, pub/sub scoping (`pubsub.yaml`)
-  - **Layer 3 (Command Metadata):** `TenantValidator` at actor Step 2 validates command tenant matches actor identity
+    - **Layer 1 (Actor Identity):** `AggregateIdentity.ActorId` = `{tenant}:{domain}:{aggId}` -- `CommandRouter` derives from command metadata
+    - **Layer 2 (DAPR Policies):** Access control (`accesscontrol.yaml`), state store scoping, pub/sub scoping (`pubsub.yaml`)
+    - **Layer 3 (Command Metadata):** `TenantValidator` at actor Step 2 validates command tenant matches actor identity
 
 - **SEC-1 (Metadata Ownership):** `EventPersister` is the SOLE point where envelope metadata is created. Domain services return `DomainResult` with event payloads only. All 15 metadata fields are populated from trusted sources (AggregateIdentity, CommandEnvelope, system clock, ULID generator). Domain services CANNOT set or override any metadata field.
 
@@ -198,48 +198,48 @@ The three-layer multi-tenant data isolation infrastructure is **already fully im
 - **SEC-5 (Payload Redaction):** Both `EventEnvelope` types (Contracts + Server) override `ToString()` to redact `Payload` with `[REDACTED]`. Structured logging must NEVER include `{Payload}` template parameters. Only metadata fields may appear in logs.
 
 - **State Store Key Patterns (D1):**
-  - Event: `{tenant}:{domain}:{aggId}:events:{seq}` (write-once)
-  - Metadata: `{tenant}:{domain}:{aggId}:metadata` (ETag concurrency)
-  - Snapshot: `{tenant}:{domain}:{aggId}:snapshot` (interval-based)
-  - Pipeline: `{tenant}:{domain}:{aggId}:pipeline:{stage}` (crash recovery)
-  - Command status: `{tenant}:{correlationId}:status` (tenant-scoped)
+    - Event: `{tenant}:{domain}:{aggId}:events:{seq}` (write-once)
+    - Metadata: `{tenant}:{domain}:{aggId}:metadata` (ETag concurrency)
+    - Snapshot: `{tenant}:{domain}:{aggId}:snapshot` (interval-based)
+    - Pipeline: `{tenant}:{domain}:{aggId}:pipeline:{stage}` (crash recovery)
+    - Command status: `{tenant}:{correlationId}:status` (tenant-scoped)
 
 - **Pub/Sub Topic Pattern (D6):** `{tenant}.{domain}.events` (dot-separated). Dead-letter: `deadletter.{tenant}.{domain}.events`. TopicNameValidator enforces pattern.
 
 - **Enforcement Rules (relevant):**
-  - #4: No custom retry logic -- DAPR resiliency only
-  - #5: Never log event payload data -- envelope metadata only
-  - #6: IActorStateManager for all actor state operations
-  - #11: Event store keys are write-once
-  - #14: DAPR sidecar call timeout is 5 seconds
+    - #4: No custom retry logic -- DAPR resiliency only
+    - #5: Never log event payload data -- envelope metadata only
+    - #6: IActorStateManager for all actor state operations
+    - #11: Event store keys are write-once
+    - #14: DAPR sidecar call timeout is 5 seconds
 
 ### Key Source Files
 
-| File | Purpose |
-|------|---------|
-| `src/Hexalith.EventStore.Contracts/Identity/AggregateIdentity.cs` | Canonical identity: ActorId, key patterns, PubSubTopic, validation |
-| `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` | 5-step orchestrator with tenant validation at Step 2 |
-| `src/Hexalith.EventStore.Server/Actors/TenantValidator.cs` | Actor-level SEC-2 tenant validation |
-| `src/Hexalith.EventStore.Server/Events/EventPersister.cs` | Metadata ownership -- populates all 15 fields (SEC-1) |
-| `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` | Pub/sub publication with CloudEvents metadata |
-| `src/Hexalith.EventStore.Server/Events/TopicNameValidator.cs` | D6 topic pattern enforcement |
-| `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs` | Dead-letter publication with tenant-scoped topics |
-| `src/Hexalith.EventStore.Server/Commands/CommandRouter.cs` | Actor ID derivation from AggregateIdentity |
-| `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` | API gateway: UserId extraction, extension sanitization |
-| `src/Hexalith.EventStore.CommandApi/Validation/ExtensionMetadataSanitizer.cs` | SEC-4 extension sanitization |
-| `src/Hexalith.EventStore.CommandApi/Configuration/ExtensionMetadataOptions.cs` | Sanitization config defaults |
-| `src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs` | Contract EventEnvelope with ToString() redaction |
-| `src/Hexalith.EventStore.Server/Events/EventEnvelope.cs` | Server EventEnvelope with ToString() redaction |
-| `src/Hexalith.EventStore.Contracts/Events/EventMetadata.cs` | 15-field metadata record with validation |
-| `src/Hexalith.EventStore.Testing/Assertions/EventEnvelopeAssertions.cs` | ShouldHaveValidMetadata assertion helper |
-| `tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs` | Storage key disjointness tests (~17) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/DataPathIsolationTests.cs` | Routing isolation tests (~8 cases) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/DomainServiceIsolationTests.cs` | Domain service tenant context tests (~9 cases) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs` | Injection prevention tests (~19 cases) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs` | Subscriber scoping tests (~8) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/SubscriptionScopingDocumentationTests.cs` | Documentation presence tests (~4) |
-| `tests/Hexalith.EventStore.Server.Tests/Security/ExtensionMetadataSanitizerTests.cs` | Extension sanitization tests |
-| `tests/Hexalith.EventStore.Server.Tests/Actors/ActorTenantIsolationTests.cs` | Actor-level tenant isolation |
+| File                                                                                       | Purpose                                                            |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `src/Hexalith.EventStore.Contracts/Identity/AggregateIdentity.cs`                          | Canonical identity: ActorId, key patterns, PubSubTopic, validation |
+| `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`                                  | 5-step orchestrator with tenant validation at Step 2               |
+| `src/Hexalith.EventStore.Server/Actors/TenantValidator.cs`                                 | Actor-level SEC-2 tenant validation                                |
+| `src/Hexalith.EventStore.Server/Events/EventPersister.cs`                                  | Metadata ownership -- populates all 15 fields (SEC-1)              |
+| `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`                                  | Pub/sub publication with CloudEvents metadata                      |
+| `src/Hexalith.EventStore.Server/Events/TopicNameValidator.cs`                              | D6 topic pattern enforcement                                       |
+| `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs`                             | Dead-letter publication with tenant-scoped topics                  |
+| `src/Hexalith.EventStore.Server/Commands/CommandRouter.cs`                                 | Actor ID derivation from AggregateIdentity                         |
+| `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs`                     | API gateway: UserId extraction, extension sanitization             |
+| `src/Hexalith.EventStore.CommandApi/Validation/ExtensionMetadataSanitizer.cs`              | SEC-4 extension sanitization                                       |
+| `src/Hexalith.EventStore.CommandApi/Configuration/ExtensionMetadataOptions.cs`             | Sanitization config defaults                                       |
+| `src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs`                                | Contract EventEnvelope with ToString() redaction                   |
+| `src/Hexalith.EventStore.Server/Events/EventEnvelope.cs`                                   | Server EventEnvelope with ToString() redaction                     |
+| `src/Hexalith.EventStore.Contracts/Events/EventMetadata.cs`                                | 15-field metadata record with validation                           |
+| `src/Hexalith.EventStore.Testing/Assertions/EventEnvelopeAssertions.cs`                    | ShouldHaveValidMetadata assertion helper                           |
+| `tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs`              | Storage key disjointness tests (~17)                               |
+| `tests/Hexalith.EventStore.Server.Tests/Security/DataPathIsolationTests.cs`                | Routing isolation tests (~8 cases)                                 |
+| `tests/Hexalith.EventStore.Server.Tests/Security/DomainServiceIsolationTests.cs`           | Domain service tenant context tests (~9 cases)                     |
+| `tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs`        | Injection prevention tests (~19 cases)                             |
+| `tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs`  | Subscriber scoping tests (~8)                                      |
+| `tests/Hexalith.EventStore.Server.Tests/Security/SubscriptionScopingDocumentationTests.cs` | Documentation presence tests (~4)                                  |
+| `tests/Hexalith.EventStore.Server.Tests/Security/ExtensionMetadataSanitizerTests.cs`       | Extension sanitization tests                                       |
+| `tests/Hexalith.EventStore.Server.Tests/Actors/ActorTenantIsolationTests.cs`               | Actor-level tenant isolation                                       |
 
 ### Existing Patterns to Follow
 
@@ -262,23 +262,27 @@ The three-layer multi-tenant data isolation infrastructure is **already fully im
 ### Previous Story Intelligence
 
 **Story 5.1 (JWT Authentication & Claims Transformation, new numbering)** -- status: done:
+
 - Added 21 gap-closure tests across 3 test files.
 - Fixed pre-existing duplicate `backpressure-exceeded` entry.
 - Test baseline after 5.1: Tier 1: 659, Tier 2: 1448.
 - Pattern: Verification-style tasks with clear baseline checks, reading existing code before modifying.
 
 **Story 5.2 (Claims-Based Command Authorization, new numbering)** -- status: review (HARD BLOCKING prerequisite):
+
 - 10 acceptance criteria covering tenant validation, RBAC, 403 responses, actor defense-in-depth.
 - Currently in code review -- must reach `done` before this story begins.
 - Critical for this story: Tenant authorization at MediatR Layer 4 feeds into Layer 1 data path isolation. Without confirmed Layer 4, AC #4 ("all three layers enforced simultaneously") cannot be fully verified.
 
 **Old Story 5.2 (Data Path Isolation Verification)** -- status: done:
+
 - 36 new test cases across 3 test files: DataPathIsolationTests (8 cases), DomainServiceIsolationTests (9 cases), TenantInjectionPreventionTests (19 cases).
 - Final count: 929 tests (893 existing + 36 new).
 - Verified: CommandRouter routing, TenantValidator SEC-2, AggregateIdentity injection prevention, Unicode homoglyphs, concurrent processing, domain service tenant scoping, config key isolation.
 - Key learning: Actor test setup uses reflection for StateManager injection. DaprClient.InvokeMethodAsync is difficult to mock directly -- verify via resolver instead.
 
 **Old Story 5.3 (Pub/Sub Topic Isolation Enforcement)** -- status: done:
+
 - 12 new tests across 2 test files: PubSubTopicIsolationEnforcementTests (8), SubscriptionScopingDocumentationTests (4).
 - Final count: 607 server tests at time of completion.
 - Fixed production YAML bug: `commandapi=*` was literal string not wildcard (DAPR doesn't support wildcards).
@@ -288,6 +292,7 @@ The three-layer multi-tenant data isolation infrastructure is **already fully im
 ### Git Intelligence
 
 Recent commits (relevant context):
+
 - `91fd854` -- Enhance verification tasks for claims-based command authorization (Story 5.2 prep)
 - `6ae83e1` -- Update sprint status and implement claims-based command authorization
 - `687a7e0` -- Merge PR #108: per-aggregate backpressure fix
@@ -381,6 +386,7 @@ Claude Opus 4.6 (1M context)
 **Build:** Release -- 0 warnings, 0 errors
 
 **Test Inventory (security-related files):**
+
 - StorageKeyIsolationTests.cs: 25 methods (23 existing + 2 new)
 - DataPathIsolationTests.cs: 6 methods
 - DomainServiceIsolationTests.cs: 8 methods (7 existing + 1 new)
@@ -393,6 +399,7 @@ Claude Opus 4.6 (1M context)
 - EventPersisterTests.cs: +2 new (MessageId uniqueness, timestamp UTC)
 
 **Gaps Found & Closed (6 new tests):**
+
 1. `CommandStatusKey_IncludesTenantPrefix_PreventsCrossTenantLeakage` -- SEC-3 status key isolation
 2. `PipelineKeyPrefix_DifferentTenants_DisjointKeys` -- NFR13 pipeline key isolation
 3. `PersistEventsAsync_MultipleEvents_UniqueMessageIds` -- SEC-1 ULID uniqueness
@@ -401,6 +408,7 @@ Claude Opus 4.6 (1M context)
 6. `ServerEventEnvelope_ToString_NullPayload_StillRedacts` -- SEC-5 edge case
 
 **Already Covered (no new tests needed):**
+
 - 4.5.1: `PersistEventsAsync_Populates11MetadataFields` (all 15 fields)
 - 4.5.2: `PersistEventsAsync_MultipleEvents_GaplessSequences`
 - 4.5.4: `PersistEventsAsync_NullCausationId_UseCorrelationIdAsFallback`
@@ -413,6 +421,7 @@ Claude Opus 4.6 (1M context)
 **Deviations:** None. All three isolation layers verified as implemented per ACs. No production code changes required.
 
 **AC Satisfaction:**
+
 1. Data path isolation (FR27): CommandRouter + AggregateIdentity.ActorId + TenantValidator at Step 2 ✓
 2. Storage key isolation (FR28): All 5 key patterns tenant-prefixed, colon injection prevented ✓
 3. Pub/sub topic isolation (FR29): D6 pattern + TopicNameValidator + YAML scoping ✓
