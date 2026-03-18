@@ -1,6 +1,6 @@
 # Story 5.5: E2E Security Testing with Keycloak
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -49,83 +49,83 @@ This story is complete when: all 7 ACs are verified as implemented and tested, K
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites and baseline (BLOCKING)
-  - [ ] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
-  - [ ] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- record actual pass count as baseline. **Baseline note:** Use the actual count from this run as your baseline for Task 5.3. Do NOT reconcile with historical baselines from other stories.
-  - [ ] 0.3 Inventory existing Keycloak E2E test files and counts:
+- [x] Task 0: Verify prerequisites and baseline (BLOCKING)
+  - [x] 0.1 Run all Tier 1 tests -- confirm all pass (baseline: >= 659)
+  - [x] 0.2 Run Tier 2 tests `Hexalith.EventStore.Server.Tests` -- record actual pass count as baseline. **Baseline note:** Use the actual count from this run as your baseline for Task 5.3. Do NOT reconcile with historical baselines from other stories.
+  - [x] 0.3 Inventory existing Keycloak E2E test files and counts:
     - `KeycloakE2ESmokeTests.cs` -- count tests (expected: 2)
     - `KeycloakE2ESecurityTests.cs` -- count tests (expected: 6)
     - `DaprAccessControlE2ETests.cs` -- count tests (expected: 2)
     - `AspireTopologyFixture.cs` -- verify present and functional
     - `KeycloakE2ETestBase.cs` -- verify base class structure
     - `KeycloakTokenHelper.cs` -- verify ROPG flow
-  - [ ] 0.4 Read `hexalith-realm.json` -- verify 5 test users with correct attributes (AC #2)
-  - [ ] 0.5 Read `AppHost/Program.cs` -- verify Keycloak configuration matches D11 (port 8180, realm import, env var overrides)
+  - [x] 0.4 Read `hexalith-realm.json` -- verify 5 test users with correct attributes (AC #2)
+  - [x] 0.5 Read `AppHost/Program.cs` -- verify Keycloak configuration matches D11 (port 8180, realm import, env var overrides)
 
-- [ ] Task 1: Verify AppHost Keycloak integration (AC: #1)
-  - [ ] 1.1 Confirm `Hexalith.EventStore.AppHost.csproj` references `Aspire.Hosting.Keycloak`
-  - [ ] 1.2 Confirm `Program.cs` configures Keycloak on port 8180 (not conflicting with CommandApi 8080)
-  - [ ] 1.3 Confirm realm import path points to `./KeycloakRealms` directory with `hexalith-realm.json`
-  - [ ] 1.4 Confirm environment variable overrides set: `Authentication__JwtBearer__Authority` (Keycloak realm URL), `Authentication__JwtBearer__Issuer` (same), `Authentication__JwtBearer__Audience` (`hexalith-eventstore`), `Authentication__JwtBearer__RequireHttpsMetadata` (`false`), `Authentication__JwtBearer__SigningKey` (cleared)
-  - [ ] 1.5 Confirm `ConfigureJwtBearerOptions.cs` OIDC discovery path is triggered when Authority is set (lines 50-54 or equivalent) -- verify that no auth code changes are needed for Keycloak (D11 rationale: zero auth code changes)
+- [x] Task 1: Verify AppHost Keycloak integration (AC: #1)
+  - [x] 1.1 Confirm `Hexalith.EventStore.AppHost.csproj` references `Aspire.Hosting.Keycloak`
+  - [x] 1.2 Confirm `Program.cs` configures Keycloak on port 8180 (not conflicting with CommandApi 8080)
+  - [x] 1.3 Confirm realm import path points to `./KeycloakRealms` directory with `hexalith-realm.json`
+  - [x] 1.4 Confirm environment variable overrides set: `Authentication__JwtBearer__Authority` (Keycloak realm URL), `Authentication__JwtBearer__Issuer` (same), `Authentication__JwtBearer__Audience` (`hexalith-eventstore`), `Authentication__JwtBearer__RequireHttpsMetadata` (`false`), `Authentication__JwtBearer__SigningKey` (cleared)
+  - [x] 1.5 Confirm `ConfigureJwtBearerOptions.cs` OIDC discovery path is triggered when Authority is set (lines 52-55) -- verify that no auth code changes are needed for Keycloak (D11 rationale: zero auth code changes)
 
-- [ ] Task 2: Verify realm configuration and test users (AC: #2)
-  - [ ] 2.1 Confirm `hexalith-realm.json` defines realm `hexalith` with `enabled: true`
-  - [ ] 2.2 Confirm client `hexalith-eventstore` is configured as public client with direct access grants enabled (needed for ROPG)
-  - [ ] 2.3 Confirm 3 protocol mappers exist for custom claims:
+- [x] Task 2: Verify realm configuration and test users (AC: #2)
+  - [x] 2.1 Confirm `hexalith-realm.json` defines realm `hexalith` with `enabled: true`
+  - [x] 2.2 Confirm client `hexalith-eventstore` is configured as public client with direct access grants enabled (needed for ROPG)
+  - [x] 2.3 Confirm 3 protocol mappers exist for custom claims:
     - `tenants-mapper` -> `eventstore:tenant` (JSON array, user attribute)
     - `domains-mapper` -> `eventstore:domain` (JSON array, user attribute)
     - `permissions-mapper` -> `eventstore:permission` (JSON array, user attribute)
-  - [ ] 2.4 Confirm all 5 test users have correct attributes per AC #2 table:
-    - [ ] 2.4.1 `admin-user`: tenants `["tenant-a","tenant-b"]`, domains `["orders","inventory","counter"]`, permissions `["command:submit","command:replay","command:query"]`
-    - [ ] 2.4.2 `tenant-a-user`: tenants `["tenant-a"]`, domains `["orders"]`, permissions `["command:submit","command:query"]`
-    - [ ] 2.4.3 `tenant-b-user`: tenants `["tenant-b"]`, domains `["inventory"]`, permissions `["command:submit"]`
-    - [ ] 2.4.4 `readonly-user`: tenants `["tenant-a"]`, domains `["orders"]`, permissions `["command:query"]`
-    - [ ] 2.4.5 `no-tenant-user`: tenants `[]` (empty), domains `["orders"]`, permissions `["command:submit"]`
-  - [ ] 2.5 Confirm audience mapper adds `hexalith-eventstore` to access token (needed for audience validation)
-  - [ ] 2.6 Identify test gaps for realm configuration. Potential gaps:
-    - [ ] 2.6.1 ~~Test: `KeycloakRealm_HasFiveTestUsers_WithCorrectClaims`~~ -- **NOT WARRANTED.** Realm JSON is checked-in, version-controlled, and Keycloak-generated (not hand-edited YAML). Existing E2E tests (`KeycloakE2ESecurityTests`) are the real guard: if a user attribute breaks, `GetTokenAsync` or security assertions fail immediately. Adding a parse-the-JSON test would test the test infrastructure, not the system. Risk-to-maintenance ratio is poor. ACCEPTED.
-    - [ ] 2.6.2 Review: Confirm protocol mapper `claimType` values match `EventStoreClaimsTransformation` expected claim names. Read `EventStoreClaimsTransformation.cs` and cross-reference with mapper `claim.name` values in realm JSON.
+  - [x] 2.4 Confirm all 5 test users have correct attributes per AC #2 table:
+    - [x] 2.4.1 `admin-user`: tenants `["tenant-a","tenant-b"]`, domains `["orders","inventory","counter"]`, permissions `["command:submit","command:replay","command:query"]`
+    - [x] 2.4.2 `tenant-a-user`: tenants `["tenant-a"]`, domains `["orders"]`, permissions `["command:submit","command:query"]`
+    - [x] 2.4.3 `tenant-b-user`: tenants `["tenant-b"]`, domains `["inventory"]`, permissions `["command:submit"]`
+    - [x] 2.4.4 `readonly-user`: tenants `["tenant-a"]`, domains `["orders"]`, permissions `["command:query"]`
+    - [x] 2.4.5 `no-tenant-user`: tenants `[]` (empty), domains `["orders"]`, permissions `["command:submit"]`
+  - [x] 2.5 Confirm audience mapper adds `hexalith-eventstore` to access token (needed for audience validation)
+  - [x] 2.6 Identify test gaps for realm configuration. Potential gaps:
+    - [x] 2.6.1 ~~Test: `KeycloakRealm_HasFiveTestUsers_WithCorrectClaims`~~ -- **NOT WARRANTED.** Realm JSON is checked-in, version-controlled, and Keycloak-generated (not hand-edited YAML). Existing E2E tests (`KeycloakE2ESecurityTests`) are the real guard: if a user attribute breaks, `GetTokenAsync` or security assertions fail immediately. Adding a parse-the-JSON test would test the test infrastructure, not the system. Risk-to-maintenance ratio is poor. ACCEPTED.
+    - [x] 2.6.2 Review: Confirm protocol mapper `claimType` values match `EventStoreClaimsTransformation` expected claim names. Read `EventStoreClaimsTransformation.cs` and cross-reference with mapper `claim.name` values in realm JSON. **VERIFIED:** `eventstore:tenant` matches `TenantClaimType`, `eventstore:domain` matches `DomainClaimType`, `eventstore:permission` matches `PermissionClaimType`. Keycloak mappers use `claim.name` which directly produces these claim types in the JWT -- the `hasEventStoreClaims` idempotency check (line 21) correctly short-circuits transformation.
 
-- [ ] Task 3: Verify token acquisition infrastructure (AC: #3)
-  - [ ] 3.1 Read `KeycloakTokenHelper.cs` -- confirm ROPG flow: POST to `/realms/hexalith/protocol/openid-connect/token` with `grant_type=password`, `client_id=hexalith-eventstore`, `username`, `password`. Response parses `access_token`.
-  - [ ] 3.2 Confirm `KeycloakTokenHelper` uses static `HttpClient` for thread safety and socket reuse
-  - [ ] 3.3 Confirm error handling throws meaningful exception with endpoint and response body on failure
-  - [ ] 3.4 CODE REVIEW: Verify `KeycloakTokenHelper` endpoint URL uses port 8180 matching AppHost config (AC #1)
+- [x] Task 3: Verify token acquisition infrastructure (AC: #3)
+  - [x] 3.1 Read `KeycloakTokenHelper.cs` -- confirm ROPG flow: POST to `/realms/hexalith/protocol/openid-connect/token` with `grant_type=password`, `client_id=hexalith-eventstore`, `username`, `password`. Response parses `access_token`.
+  - [x] 3.2 Confirm `KeycloakTokenHelper` uses static `HttpClient` for thread safety and socket reuse
+  - [x] 3.3 Confirm error handling throws meaningful exception with endpoint and response body on failure
+  - [x] 3.4 CODE REVIEW: Verify `KeycloakTokenHelper` endpoint URL uses port 8180 matching AppHost config (AC #1). **VERIFIED:** Token endpoint URL constructed in `AspireTopologyFixture.GetTokenAsync()` using `KeycloakBaseUrl` from `_app.GetEndpoint("keycloak", "http")` which resolves to the Keycloak resource configured on port 8180.
 
-- [ ] Task 4: Verify E2E test coverage for all 5 D11 scenarios (AC: #4)
-  - [ ] 4.1 Map each D11 scenario to an existing test:
-    - [ ] 4.1.1 Multi-tenant admin access: `AdminUser_SubmitCommand_ReturnsAcceptedAsync` -- admin-user submits for tenant-a/orders -> 202
-    - [ ] 4.1.2 Cross-tenant isolation proof: `TenantAUser_SubmitCommandForTenantB_Returns403Async` -- tenant-a-user submits for tenant-b -> 403
-    - [ ] 4.1.3 Lateral isolation proof: `TenantBUser_SubmitCommandForTenantA_Returns403Async` -- tenant-b-user submits for tenant-a -> 403
-    - [ ] 4.1.4 Permission enforcement: `ReadonlyUser_SubmitCommand_Returns403Async` -- readonly-user (query-only) submits -> 403
-    - [ ] 4.1.5 Tenant validation rejection: `NoTenantUser_SubmitCommand_Returns403Async` -- no-tenant-user submits -> 403
-  - [ ] 4.2 Verify smoke tests: `AuthenticatedCommandSubmission_WithKeycloakToken_ReturnsAccepted` and `UnauthenticatedRequest_Returns401`
-  - [ ] 4.3 Identify test gaps for E2E coverage. Potential gaps:
-    - [ ] 4.3.1 Test: `TenantAUser_SubmitCommandForOwnTenant_ReturnsAcceptedAsync` -- scoped user within authorized tenant. Verify this test exists (expected in KeycloakE2ESecurityTests).
-    - [ ] 4.3.2 Review: Does `AdminUser_SubmitCommand_ReturnsAcceptedAsync` verify `Location` header? **PRE-VERIFIED:** Line 53 asserts `response.Headers.Location.ShouldNotBeNull()`. Smoke test (`KeycloakE2ESmokeTests`) may omit Location assertion -- acceptable, smoke tests are lighter by design. Confirm and mark done.
-    - [ ] 4.3.3 Review: Domain-level authorization E2E. **NO GAP.** `ClaimsRbacValidator.cs` domain enforcement is optional (current behavior). No E2E test needed for optional enforcement. ACCEPTED.
+- [x] Task 4: Verify E2E test coverage for all 5 D11 scenarios (AC: #4)
+  - [x] 4.1 Map each D11 scenario to an existing test:
+    - [x] 4.1.1 Multi-tenant admin access: `AdminUser_SubmitCommand_ReturnsAcceptedAsync` -- admin-user submits for tenant-a/orders -> 202
+    - [x] 4.1.2 Cross-tenant isolation proof: `TenantAUser_SubmitCommandForTenantB_Returns403Async` -- tenant-a-user submits for tenant-b -> 403
+    - [x] 4.1.3 Lateral isolation proof: `TenantBUser_SubmitCommandForTenantA_Returns403Async` -- tenant-b-user submits for tenant-a -> 403
+    - [x] 4.1.4 Permission enforcement: `ReadonlyUser_SubmitCommand_Returns403Async` -- readonly-user (query-only) submits -> 403
+    - [x] 4.1.5 Tenant validation rejection: `NoTenantUser_SubmitCommand_Returns403Async` -- no-tenant-user submits -> 403
+  - [x] 4.2 Verify smoke tests: `AuthenticatedCommandSubmission_WithKeycloakToken_ReturnsAccepted` and `UnauthenticatedRequest_Returns401`
+  - [x] 4.3 Identify test gaps for E2E coverage. Potential gaps:
+    - [x] 4.3.1 Test: `TenantAUser_SubmitCommandForOwnTenant_ReturnsAcceptedAsync` -- scoped user within authorized tenant. **VERIFIED:** Test exists at KeycloakE2ESecurityTests.cs line 61.
+    - [x] 4.3.2 Review: Does `AdminUser_SubmitCommand_ReturnsAcceptedAsync` verify `Location` header? **VERIFIED:** Line 53 asserts `response.Headers.Location.ShouldNotBeNull()`. Smoke test omits Location assertion -- acceptable by design.
+    - [x] 4.3.3 Review: Domain-level authorization E2E. **NO GAP.** `ClaimsRbacValidator.cs` domain enforcement is optional (current behavior). No E2E test needed for optional enforcement. ACCEPTED.
 
-- [ ] Task 5: Verify test trait separation (AC: #5, Rule 16)
-  - [ ] 5.1 Confirm `KeycloakE2ESmokeTests` has `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`
-  - [ ] 5.2 Confirm `KeycloakE2ESecurityTests` has `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`
-  - [ ] 5.3 Confirm `DaprAccessControlE2ETests` has `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`
-  - [ ] 5.4 Confirm `MultiTenantStorageIsolationTests` and `CommandStatusIsolationTests` do NOT have E2E trait (they use in-memory fakes, not Keycloak -- correct classification as component-level tests)
-  - [ ] 5.5 Confirm `KeycloakE2ETestBase` documents the trait requirement in its XML doc comment
+- [x] Task 5: Verify test trait separation (AC: #5, Rule 16)
+  - [x] 5.1 Confirm `KeycloakE2ESmokeTests` has `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`
+  - [x] 5.2 Confirm `KeycloakE2ESecurityTests` has `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`
+  - [x] 5.3 Confirm `DaprAccessControlE2ETests` has `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`
+  - [x] 5.4 Confirm `MultiTenantStorageIsolationTests` and `CommandStatusIsolationTests` do NOT have E2E trait (they use in-memory fakes, not Keycloak -- correct classification as component-level tests)
+  - [x] 5.5 Confirm `KeycloakE2ETestBase` documents the trait requirement in its XML doc comment
 
-- [ ] Task 6: Verify Aspire topology fixture (AC: #6)
-  - [ ] 6.1 Read `AspireTopologyFixture.cs` -- confirm: (a) implements `IAsyncLifetime`, (b) starts full topology via `DistributedApplicationTestingBuilder`, (c) enables Keycloak via `EnableKeycloak` env var, (d) has adequate startup timeout (expected: >= 5 minutes)
-  - [ ] 6.2 Confirm health check sequence: CommandApi endpoint, Keycloak OIDC discovery, token acquisition retry, CommandApi health, sample service health
-  - [ ] 6.3 Confirm shared fixture pattern via `[Collection("AspireTopology")]` and `AspireTopologyCollection` -- topology starts ONCE per test collection, not per test
-  - [ ] 6.4 Confirm error diagnostics: container log capture on timeout failure (Docker ps + logs)
+- [x] Task 6: Verify Aspire topology fixture (AC: #6)
+  - [x] 6.1 Read `AspireTopologyFixture.cs` -- confirm: (a) implements `IAsyncLifetime`, (b) starts full topology via `DistributedApplicationTestingBuilder`, (c) enables Keycloak via `EnableKeycloak` env var, (d) has adequate startup timeout (expected: >= 5 minutes)
+  - [x] 6.2 Confirm health check sequence: CommandApi endpoint, Keycloak OIDC discovery, token acquisition retry, CommandApi health, sample service health
+  - [x] 6.3 Confirm shared fixture pattern via `[Collection("AspireTopology")]` and `AspireTopologyCollection` -- topology starts ONCE per test collection, not per test
+  - [x] 6.4 Confirm error diagnostics: container log capture on timeout failure (Docker ps + logs)
 
-- [ ] Task 7: Final verification
-  - [ ] 7.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings, zero errors
-  - [ ] 7.2 Run all Tier 1 tests -- confirm pass count (baseline: >= 659)
-  - [ ] 7.3 Run all Tier 2 tests -- confirm pass count (baseline: use actual count from Task 0.2)
-  - [ ] 7.4 Confirm all 7 acceptance criteria are satisfied
-  - [ ] 7.5 Report final test count delta
-  - [ ] 7.6 Write verification report in Completion Notes (test inventory per file, gaps found, new tests added, deviations observed)
+- [x] Task 7: Final verification
+  - [x] 7.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- zero warnings, zero errors
+  - [x] 7.2 Run all Tier 1 tests -- confirm pass count (baseline: >= 659)
+  - [x] 7.3 Run all Tier 2 tests -- confirm pass count (baseline: use actual count from Task 0.2)
+  - [x] 7.4 Confirm all 7 acceptance criteria are satisfied
+  - [x] 7.5 Report final test count delta
+  - [x] 7.6 Write verification report in Completion Notes (test inventory per file, gaps found, new tests added, deviations observed)
 
 **Effort guidance:** The Keycloak E2E infrastructure and tests are already comprehensive (2 smoke tests + 6 security tests + 2 DAPR access control tests = 10 E2E tests, plus fixture, base class, and token helper). Expect ~45-60 minutes for verification. This is a pure read-verify story -- **expected new tests: 0**. Realm JSON structural test not warranted (party mode review consensus: E2E tests are the real guard). Domain-level auth E2E not needed (optional enforcement). Most tasks are file reads confirming existing code matches ACs. Write zero code, document verification in Completion Notes. Several tasks are CODE REVIEW only (no test needed) -- these are explicitly marked. Do NOT write tests for code-review-only tasks.
 
@@ -322,10 +322,54 @@ E2E tests in `Hexalith.EventStore.IntegrationTests` are Tier 3 (full Aspire topo
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+No debug issues encountered. Pure verification story completed in a single session.
+
 ### Completion Notes List
 
+**Verification Report — Story 5.5: E2E Security Testing with Keycloak**
+
+**Test Inventory (Existing — No New Tests Added):**
+| File | Tests | Status |
+|------|-------|--------|
+| `KeycloakE2ESmokeTests.cs` | 2 | Verified |
+| `KeycloakE2ESecurityTests.cs` | 6 | Verified |
+| `DaprAccessControlE2ETests.cs` | 2 | Verified |
+| `AspireTopologyFixture.cs` | (fixture) | Verified (287 lines, IAsyncLifetime, 5-min timeout) |
+| `KeycloakE2ETestBase.cs` | (base class) | Verified (CommandApiClient, GetTokenAsync, App) |
+| `KeycloakTokenHelper.cs` | (helper) | Verified (ROPG flow, static HttpClient, error handling) |
+| `AspireTopologyCollection.cs` | (collection) | Verified (shared fixture pattern) |
+| **Total E2E tests** | **10** | **All verified against ACs** |
+
+**Gaps Found:** 0. All 10 existing E2E tests comprehensively cover the 5 D11 security scenarios plus smoke tests and DAPR access control. No test gaps identified.
+
+**New Tests Added:** 0 (pure verification story as expected).
+
+**Test Count Delta:** Tier 1: 659 -> 659 (0). Tier 2: 1482 -> 1482 (0). No regressions.
+
+**AC Verification Summary:**
+- AC #1 (AppHost Keycloak): `Aspire.Hosting.Keycloak` referenced, port 8180, realm import `./KeycloakRealms`, all 5 env var overrides set, SigningKey cleared.
+- AC #2 (Test Users): 5 users with correct attributes, 3 protocol mappers (`eventstore:tenant/domain/permission`), audience mapper. Claim names cross-referenced with `EventStoreClaimsTransformation` constants — exact match.
+- AC #3 (ROPG): `KeycloakTokenHelper` uses ROPG with `grant_type=password`, `client_id=hexalith-eventstore`. Static HttpClient, proper error handling.
+- AC #4 (5 D11 Scenarios): All 5 scenarios mapped to existing tests: admin access (202), cross-tenant isolation (403), lateral isolation (403), permission enforcement (403), tenant validation rejection (403). Plus scoped user test and 2 smoke tests.
+- AC #5 (Trait Separation): All 3 E2E test classes have `[Trait("Category", "E2E")]` and `[Collection("AspireTopology")]`. Component-level tests correctly lack E2E trait. Base class documents requirement in XML doc.
+- AC #6 (Aspire Fixture): IAsyncLifetime, DistributedApplicationTestingBuilder, EnableKeycloak=true, 5-min timeout, 5-step health check sequence, shared fixture via collection, container log capture on failure.
+- AC #7 (No Synthetic JWTs): Grep for `TestJwtTokenGenerator` in Security/ returned 0 matches. All E2E token acquisition flows through `KeycloakTokenHelper`.
+
+**Deviations Observed:** None. The existing Keycloak E2E testing infrastructure is comprehensive and fully compliant with D11, Rule 16, and all 7 acceptance criteria.
+
 ### File List
+
+Modified files (metadata/process only):
+- `_bmad-output/implementation-artifacts/5-5-e2e-security-testing-with-keycloak.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `.claude/settings.local.json`
+
+No runtime/product source files were created, modified, or deleted. This remained a verification story with read/verify work only.
+
+### Change Log
+
+- **2026-03-18:** Story 5.5 verification completed. All 7 ACs verified. 10 existing E2E tests confirmed. 0 new tests, 0 gaps, 0 code changes. Tier 1: 659, Tier 2: 1482 (no delta).
