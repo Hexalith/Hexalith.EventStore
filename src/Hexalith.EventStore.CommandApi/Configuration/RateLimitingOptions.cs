@@ -33,6 +33,34 @@ public record RateLimitingOptions {
     /// instead of <see cref="PermitLimit"/>. Resolution: TenantPermitLimits[tenantId] > PermitLimit.
     /// </summary>
     public Dictionary<string, int> TenantPermitLimits { get; init; } = [];
+
+    /// <summary>
+    /// Gets the maximum number of requests permitted per window per consumer.
+    /// Consumer identity is derived from the JWT "sub" claim.
+    /// </summary>
+    public int ConsumerPermitLimit { get; init; } = 100;
+
+    /// <summary>
+    /// Gets the per-consumer sliding window duration in seconds.
+    /// Default is 1 second per NFR34 (100 commands/second/consumer).
+    /// </summary>
+    public int ConsumerWindowSeconds { get; init; } = 1;
+
+    /// <summary>
+    /// Gets the number of segments for the per-consumer sliding window.
+    /// With SegmentsPerWindow=1 this is effectively a fixed window (not truly sliding).
+    /// This is intentional for the "per second" NFR34 requirement — users who want smoother
+    /// sliding behavior can increase segments (e.g., ConsumerWindowSeconds=10,
+    /// ConsumerSegmentsPerWindow=10, ConsumerPermitLimit=1000).
+    /// </summary>
+    public int ConsumerSegmentsPerWindow { get; init; } = 1;
+
+    /// <summary>
+    /// Gets per-consumer permit limit overrides. Consumers listed here use their specific limit
+    /// instead of <see cref="ConsumerPermitLimit"/>. Resolution: ConsumerPermitLimits[consumerId] > ConsumerPermitLimit.
+    /// Usage example: { "anonymous": 10 } to explicitly throttle unauthenticated traffic.
+    /// </summary>
+    public Dictionary<string, int> ConsumerPermitLimits { get; init; } = [];
 }
 
 /// <summary>
@@ -67,6 +95,28 @@ public class ValidateRateLimitingOptions : IValidateOptions<RateLimitingOptions>
             if (entry.Value <= 0) {
                 return ValidateOptionsResult.Fail(
                     $"EventStore:RateLimiting:TenantPermitLimits['{entry.Key}'] must be greater than 0, but was {entry.Value}.");
+            }
+        }
+
+        if (options.ConsumerPermitLimit <= 0) {
+            return ValidateOptionsResult.Fail(
+                "EventStore:RateLimiting:ConsumerPermitLimit must be greater than 0.");
+        }
+
+        if (options.ConsumerWindowSeconds <= 0) {
+            return ValidateOptionsResult.Fail(
+                "EventStore:RateLimiting:ConsumerWindowSeconds must be greater than 0.");
+        }
+
+        if (options.ConsumerSegmentsPerWindow < 1) {
+            return ValidateOptionsResult.Fail(
+                "EventStore:RateLimiting:ConsumerSegmentsPerWindow must be at least 1.");
+        }
+
+        foreach (KeyValuePair<string, int> entry in options.ConsumerPermitLimits) {
+            if (entry.Value <= 0) {
+                return ValidateOptionsResult.Fail(
+                    $"EventStore:RateLimiting:ConsumerPermitLimits['{entry.Key}'] must be greater than 0, but was {entry.Value}.");
             }
         }
 

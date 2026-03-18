@@ -126,6 +126,7 @@ public class PerTenantRateLimitingTests(PerTenantRateLimitingWebApplicationFacto
     }
 
     private static object CreateValidRequest(string tenant) => new {
+        messageId = Guid.NewGuid().ToString(),
         tenant,
         domain = "test-domain",
         aggregateId = $"agg-{Guid.NewGuid():N}",

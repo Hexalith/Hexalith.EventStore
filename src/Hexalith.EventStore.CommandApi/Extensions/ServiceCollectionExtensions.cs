@@ -26,10 +26,8 @@ using ExtensionMetadataSanitizer = Hexalith.EventStore.CommandApi.Validation.Ext
 
 namespace Hexalith.EventStore.CommandApi.Extensions;
 
-public static class CommandApiServiceCollectionExtensions
-{
-    public static IServiceCollection AddCommandApi(this IServiceCollection services)
-    {
+public static class CommandApiServiceCollectionExtensions {
+    public static IServiceCollection AddCommandApi(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
 
         _ = services.AddProblemDetails();
@@ -77,22 +75,18 @@ public static class CommandApiServiceCollectionExtensions
         _ = services.AddScoped<ActorRbacValidator>();
 
         // Factory delegate selects implementation at resolve-time based on configuration
-        _ = services.AddScoped<ITenantValidator>(sp =>
-        {
+        _ = services.AddScoped<ITenantValidator>(sp => {
             EventStoreAuthorizationOptions opts = sp.GetRequiredService<IOptions<EventStoreAuthorizationOptions>>().Value;
-            if (opts.TenantValidatorActorName is null)
-            {
+            if (opts.TenantValidatorActorName is null) {
                 return sp.GetRequiredService<ClaimsTenantValidator>();
             }
 
             return sp.GetRequiredService<ActorTenantValidator>();
         });
 
-        _ = services.AddScoped<IRbacValidator>(sp =>
-        {
+        _ = services.AddScoped<IRbacValidator>(sp => {
             EventStoreAuthorizationOptions opts = sp.GetRequiredService<IOptions<EventStoreAuthorizationOptions>>().Value;
-            if (opts.RbacValidatorActorName is null)
-            {
+            if (opts.RbacValidatorActorName is null) {
                 return sp.GetRequiredService<ClaimsRbacValidator>();
             }
 
@@ -130,18 +124,16 @@ public static class CommandApiServiceCollectionExtensions
         // DAPR config store sync for per-tenant rate limit overrides (optional, graceful fallback)
         _ = services.AddHostedService<DaprRateLimitConfigSync>();
 
-        _ = services.AddRateLimiter(rateLimiterOptions =>
-        {
+        _ = services.AddRateLimiter(rateLimiterOptions => {
             rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            {
+            // Per-tenant limiter (existing, unchanged logic)
+            PartitionedRateLimiter<HttpContext> tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
                 // Health endpoints must never be rate limited (H2)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
                     path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
-                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase))
-                {
+                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
                     return RateLimitPartition.GetNoLimiter<string>("__health");
                 }
 
@@ -161,8 +153,7 @@ public static class CommandApiServiceCollectionExtensions
                     : rateLimitOptions.PermitLimit;
 
                 return RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ =>
-                    new SlidingWindowRateLimiterOptions
-                    {
+                    new SlidingWindowRateLimiterOptions {
                         PermitLimit = permitLimit,
                         Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
                         SegmentsPerWindow = rateLimitOptions.SegmentsPerWindow,
@@ -171,11 +162,48 @@ public static class CommandApiServiceCollectionExtensions
                     });
             });
 
-            rateLimiterOptions.OnRejected = async (context, cancellationToken) =>
-            {
+            // Per-consumer limiter keyed by JWT "sub" claim (Story 7.3)
+            PartitionedRateLimiter<HttpContext> consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+                // Health endpoints must never be rate limited (same exemption as per-tenant)
+                string path = context.Request.Path.Value ?? string.Empty;
+                if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
+                    return RateLimitPartition.GetNoLimiter<string>("__health");
+                }
+
+                // Consumer identity from JWT "sub" claim. All anonymous traffic shares one consumer bucket.
+                string? rawConsumerId = context.User?.FindFirst("sub")?.Value;
+                string consumerId = string.IsNullOrWhiteSpace(rawConsumerId) ? "anonymous" : rawConsumerId;
+
+                IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
+                RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;
+
+                // Per-consumer resolution: ConsumerPermitLimits[consumerId] > ConsumerPermitLimit (default)
+                int permitLimit = rateLimitOptions.ConsumerPermitLimits.TryGetValue(consumerId, out int consumerLimit)
+                    ? consumerLimit
+                    : rateLimitOptions.ConsumerPermitLimit;
+
+                return RateLimitPartition.GetSlidingWindowLimiter(consumerId, _ =>
+                    new SlidingWindowRateLimiterOptions {
+                        PermitLimit = permitLimit,
+                        Window = TimeSpan.FromSeconds(rateLimitOptions.ConsumerWindowSeconds),
+                        SegmentsPerWindow = rateLimitOptions.ConsumerSegmentsPerWindow,
+                        // QueueLimit is intentionally shared — if per-consumer queuing is ever needed,
+                        // it would require a separate ConsumerQueueLimit property
+                        QueueLimit = rateLimitOptions.QueueLimit,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    });
+            });
+
+            // CreateChained short-circuits on first rejection — Retry-After reflects the rejecting
+            // limiter's window (tenant=60s, consumer=1s). This is correct: clients should retry based
+            // on the limit they actually hit.
+            rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.CreateChained(tenantLimiter, consumerLimiter);
+
+            rateLimiterOptions.OnRejected = async (context, cancellationToken) => {
                 // H10: Wrap entire OnRejected body in try/catch for resilience
-                try
-                {
+                try {
                     IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
                     ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
 
@@ -183,36 +211,38 @@ public static class CommandApiServiceCollectionExtensions
                     string tenantId = context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
                         ?? context.HttpContext.Items["RequestTenantId"]?.ToString()
                         ?? "unknown";
+                    string? rawConsumerId = context.HttpContext.User?.FindFirst("sub")?.Value;
+                    string consumerId = string.IsNullOrWhiteSpace(rawConsumerId) ? "anonymous" : rawConsumerId;
                     string? sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
 
                     // H11: Use RetryAfter metadata if available, fall back to WindowSeconds
                     int retryAfterSeconds = optionsMonitor.CurrentValue.WindowSeconds;
-                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
-                    {
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter)) {
                         retryAfterSeconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
                     }
 
                     logger.LogWarning(
-                        "Rate limit exceeded: CorrelationId={CorrelationId}, TenantId={TenantId}, SourceIP={SourceIP}",
+                        "Rate limit exceeded: CorrelationId={CorrelationId}, TenantId={TenantId}, ConsumerId={ConsumerId}, SourceIP={SourceIP}",
                         correlationId,
                         tenantId,
+                        consumerId,
                         sourceIp);
 
                     context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                     context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
                     context.HttpContext.Response.ContentType = "application/problem+json";
 
-                    var problemDetails = new ProblemDetails
-                    {
+                    var problemDetails = new ProblemDetails {
                         Status = StatusCodes.Status429TooManyRequests,
                         Title = "Too Many Requests",
                         Type = ErrorHandling.ProblemTypeUris.RateLimitExceeded,
-                        Detail = $"Rate limit exceeded for tenant '{tenantId}'. Please retry after the specified interval.",
+                        Detail = "Rate limit exceeded. Please retry after the specified interval.",
                         Instance = context.HttpContext.Request.Path.Value,
                         Extensions =
                         {
                             ["correlationId"] = correlationId,
                             ["tenantId"] = tenantId,
+                            ["consumerId"] = consumerId,
                         },
                     };
 
@@ -222,16 +252,14 @@ public static class CommandApiServiceCollectionExtensions
                         "application/problem+json",
                         cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) {
                     // Fallback: if OnRejected throws, ASP.NET Core returns bare 500. Write minimal 429 instead.
                     // Use GetService (not GetRequiredService) to avoid a secondary throw if DI is unavailable.
                     ILogger? logger = context.HttpContext.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.RateLimiting");
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
                     logger?.LogError(ex, "OnRejected callback failed: CorrelationId={CorrelationId}", correlationId);
 
-                    if (context.HttpContext.Response.HasStarted)
-                    {
+                    if (context.HttpContext.Response.HasStarted) {
                         return;
                     }
 
@@ -240,24 +268,20 @@ public static class CommandApiServiceCollectionExtensions
 
                     // Preserve Retry-After in fallback: try to read from options, default to 60s
                     int fallbackRetryAfter = 60;
-                    try
-                    {
+                    try {
                         RateLimitingOptions? opts = context.HttpContext.RequestServices
                             .GetService<IOptionsMonitor<RateLimitingOptions>>()?.CurrentValue;
-                        if (opts is not null)
-                        {
+                        if (opts is not null) {
                             fallbackRetryAfter = opts.WindowSeconds;
                         }
                     }
-                    catch (Exception)
-                    {
+                    catch (Exception) {
                         // Best-effort: keep default if DI fails
                     }
 
                     context.HttpContext.Response.Headers.RetryAfter = fallbackRetryAfter.ToString();
 
-                    var fallbackProblemDetails = new ProblemDetails
-                    {
+                    var fallbackProblemDetails = new ProblemDetails {
                         Status = StatusCodes.Status429TooManyRequests,
                         Title = "Too Many Requests",
                         Type = ErrorHandling.ProblemTypeUris.RateLimitExceeded,
@@ -272,12 +296,9 @@ public static class CommandApiServiceCollectionExtensions
         });
 
         // OpenAPI document generation (Story 2.9)
-        _ = services.AddOpenApi(options =>
-        {
-            _ = options.AddDocumentTransformer((document, context, ct) =>
-            {
-                document.Info = new OpenApiInfo
-                {
+        _ = services.AddOpenApi(options => {
+            _ = options.AddDocumentTransformer((document, context, ct) => {
+                document.Info = new OpenApiInfo {
                     Title = "Hexalith EventStore Command API",
                     Version = "v1",
                     Description = "Event Sourcing infrastructure server for multi-tenant command processing with per-tenant rate limiting, JWT authentication, and comprehensive status tracking. Error reference documentation is available at `/problems/{error-type}` on this server. In production, error type URIs resolve at `https://hexalith.io/problems/{error-type}`.",
@@ -286,8 +307,7 @@ public static class CommandApiServiceCollectionExtensions
                 // Add JWT Bearer security scheme
                 OpenApiComponents components = document.Components ??= new OpenApiComponents();
                 components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-                {
+                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme {
                     Type = SecuritySchemeType.Http,
                     Scheme = "bearer",
                     BearerFormat = "JWT",
@@ -305,11 +325,9 @@ public static class CommandApiServiceCollectionExtensions
             });
 
             // Add 429 response documentation to all operations (H14)
-            _ = options.AddOperationTransformer((operation, context, ct) =>
-            {
+            _ = options.AddOperationTransformer((operation, context, ct) => {
                 operation.Responses ??= [];
-                _ = operation.Responses.TryAdd("429", new OpenApiResponse
-                {
+                _ = operation.Responses.TryAdd("429", new OpenApiResponse {
                     Description = "Too Many Requests - Rate limit exceeded. See Retry-After header for when to retry.",
                 });
 
@@ -320,8 +338,7 @@ public static class CommandApiServiceCollectionExtensions
             _ = options.AddOperationTransformer<CommandExampleTransformer>();
         });
 
-        _ = services.AddMediatR(cfg =>
-        {
+        _ = services.AddMediatR(cfg => {
             _ = cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
             _ = cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             _ = cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
@@ -332,10 +349,8 @@ public static class CommandApiServiceCollectionExtensions
 
         _ = services.AddControllers(options => options.Filters.Add<ValidateModelFilter>());
 
-        _ = services.Configure<ApiBehaviorOptions>(options =>
-        {
-            options.InvalidModelStateResponseFactory = context =>
-            {
+        _ = services.Configure<ApiBehaviorOptions>(options => {
+            options.InvalidModelStateResponseFactory = context => {
                 string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
                 string? tenantId = context.HttpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
                     && tenantObj is string tenant
@@ -345,8 +360,7 @@ public static class CommandApiServiceCollectionExtensions
 
                 List<(string Key, string Message)> failures = context.ModelState
                     .Where(kvp => kvp.Value is { Errors.Count: > 0 })
-                    .SelectMany(kvp => kvp.Value!.Errors.Select(err =>
-                    {
+                    .SelectMany(kvp => kvp.Value!.Errors.Select(err => {
                         string message = string.IsNullOrWhiteSpace(err.ErrorMessage)
                             ? "Invalid value."
                             : err.ErrorMessage;
@@ -375,30 +389,24 @@ public static class CommandApiServiceCollectionExtensions
         return services;
     }
 
-    private static string NormalizeModelStateKey(string key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
+    private static string NormalizeModelStateKey(string key) {
+        if (string.IsNullOrWhiteSpace(key)) {
             return "request";
         }
 
         string normalized = key.Trim();
-        if (normalized.StartsWith("$.", StringComparison.Ordinal))
-        {
+        if (normalized.StartsWith("$.", StringComparison.Ordinal)) {
             normalized = normalized[2..];
         }
-        else if (normalized.StartsWith("$", StringComparison.Ordinal))
-        {
+        else if (normalized.StartsWith("$", StringComparison.Ordinal)) {
             normalized = normalized[1..];
         }
 
-        if (normalized.StartsWith(".", StringComparison.Ordinal))
-        {
+        if (normalized.StartsWith(".", StringComparison.Ordinal)) {
             normalized = normalized[1..];
         }
 
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
+        if (string.IsNullOrWhiteSpace(normalized)) {
             return "request";
         }
 
