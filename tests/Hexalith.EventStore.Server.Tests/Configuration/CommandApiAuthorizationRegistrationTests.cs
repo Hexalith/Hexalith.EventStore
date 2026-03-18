@@ -202,4 +202,24 @@ public class CommandApiAuthorizationRegistrationTests {
         _ = tenantValidator.ShouldBeOfType<ActorTenantValidator>();
         _ = rbacValidator.ShouldBeOfType<ClaimsRbacValidator>();
     }
+
+    [Fact]
+    public void AddCommandApi_MediatRPipelineOrdering_IsCorrect() {
+        // Arrange
+        using ServiceProvider provider = BuildProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        // Act
+        var behaviors = scope.ServiceProvider.GetServices<IPipelineBehavior<SubmitCommand, SubmitCommandResult>>().ToList();
+
+        // Assert
+        // Behaviors should be ordered as added in AddOpenBehavior: Logging -> Validation -> Authorization
+        int loggingIndex = behaviors.FindIndex(b => b.GetType().Name.Contains("LoggingBehavior"));
+        int validationIndex = behaviors.FindIndex(b => b.GetType().Name.Contains("ValidationBehavior"));
+        int authorizationIndex = behaviors.FindIndex(b => b.GetType().Name.Contains("AuthorizationBehavior"));
+
+        loggingIndex.ShouldBeGreaterThan(-1);
+        validationIndex.ShouldBeGreaterThan(loggingIndex);
+        authorizationIndex.ShouldBeGreaterThan(validationIndex);
+    }
 }

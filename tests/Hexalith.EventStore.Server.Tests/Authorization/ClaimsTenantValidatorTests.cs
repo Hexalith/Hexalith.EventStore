@@ -104,6 +104,22 @@ public class ClaimsTenantValidatorTests {
     }
 
     [Fact]
+    public async Task ValidateAsync_WhitespacePaddedTenantClaim_Denied() {
+        // Arrange
+        var claims = new List<Claim> {
+            new("eventstore:tenant", " test-tenant "),
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        TenantValidationResult result = await _validator.ValidateAsync(principal, "test-tenant", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for tenant 'test-tenant'.");
+    }
+
+    [Fact]
     public async Task ValidateAsync_NullUser_ThrowsArgumentNullException() =>
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentNullException>(

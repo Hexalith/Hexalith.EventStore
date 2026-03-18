@@ -94,6 +94,187 @@ public class AuthorizationBehaviorTests {
     }
 
     [Fact]
+    public async Task AuthorizationBehavior_UnauthenticatedUser_ThrowsCommandAuthorizationException() {
+        // Arrange - User has Identity but IsAuthenticated = false
+        var identity = new ClaimsIdentity(); // No authenticationType -> IsAuthenticated is false
+        var principal = new ClaimsPrincipal(identity);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand();
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        ex.Reason.ShouldBe("User is not authenticated.");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_NoIdentity_ThrowsCommandAuthorizationException() {
+        // Arrange - User has no Identity
+        var principal = new ClaimsPrincipal(); 
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand();
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        ex.Reason.ShouldBe("User is not authenticated.");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_NoDomainOrPermissionClaims_OpenByDefault_Allowed() {
+        // Arrange - Open-by-default design intent test
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand(domain: "any-random-domain", commandType: "AnyRandomCommand");
+
+        // Act
+        SubmitCommandResult result = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.CorrelationId.ShouldBe("test-correlation-id");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_SuccessLogsDebugMessage() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant", domain: "test-domain", commandType: "CreateOrder");
+
+        // Act
+        _ = await behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None);
+
+        // Assert
+        var logs = _logEntries.Where(e => e.Level == LogLevel.Debug && e.Message.Contains("Authorization succeeded")).ToList();
+        logs.ShouldNotBeEmpty();
+        logs[0].Message.ShouldContain("Authorization succeeded");
+        logs[0].Message.ShouldContain("test-tenant");
+        logs[0].Message.ShouldContain("test-domain");
+        logs[0].Message.ShouldContain("CreateOrder");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_RbacValidatorReturnsNull_ThrowsInvalidOperationException() {
+        // Arrange
+        var httpContext = new DefaultHttpContext {
+            User = CreatePrincipal(tenants: ["test-tenant"]),
+        };
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns((RbacValidationResult)null!);
+
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant");
+
+        // Act & Assert
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+            
+        ex.Message.ShouldContain("server bug");
+        ex.Message.ShouldContain("IRbacValidator.ValidateAsync returned null");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_DoesNotDuplicate() {
+        // Arrange
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"], domains: ["wrong-domain"]);
+        
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(RbacValidationResult.Denied("Not authorized for tenant 'test-tenant'."));
+
+        var httpContext = new DefaultHttpContext { User = principal };
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant");
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        ex.Reason.ShouldBe("Not authorized for tenant 'test-tenant'."); // Not duplicated
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_NullTenant_ReturnsReasonUnchanged() {
+        // Arrange — null tenant should return reason unchanged
+        var httpContext = new DefaultHttpContext {
+            User = CreatePrincipal(tenants: ["test-tenant"]),
+        };
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(RbacValidationResult.Denied("Domain mismatch."));
+
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
+
+        // Use empty tenant to trigger null/whitespace path in EnsureReasonNamesTenant
+        SubmitCommand command = CreateTestCommand(tenant: "");
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        // When tenant is empty, EnsureReasonNamesTenant returns reason unchanged
+        ex.Reason.ShouldBe("Domain mismatch.");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_EnsureReasonNamesTenant_NullReason_ReturnsReasonUnchanged() {
+        // Arrange — null/empty reason should be returned unchanged
+        var httpContext = new DefaultHttpContext {
+            User = CreatePrincipal(tenants: ["test-tenant"]),
+        };
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(new RbacValidationResult(false, null));
+
+        var behavior = new AuthorizationBehavior<SubmitCommand, SubmitCommandResult>(accessor, tenantValidator, rbacValidator, _logger);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant");
+
+        // Act & Assert
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
+
+        // When reason is null, the behavior uses "RBAC check failed." fallback, then EnsureReasonNamesTenant prepends tenant
+        ex.Reason.ShouldContain("tenant 'test-tenant'");
+        ex.Reason.ShouldContain("RBAC check failed.");
+    }
+
+    [Fact]
     public async Task AuthorizationBehavior_UserWithNoDomainClaims_Succeeds() {
         // Arrange - no domain claims means all domains authorized (AC #5)
         ClaimsPrincipal principal = CreatePrincipal(tenants: ["test-tenant"]);

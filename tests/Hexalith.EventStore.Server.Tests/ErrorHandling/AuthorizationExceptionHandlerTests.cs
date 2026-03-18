@@ -178,6 +178,28 @@ public class AuthorizationExceptionHandlerTests {
         detail.ShouldNotContain("aggregate", Case.Insensitive);
     }
 
+    [Theory]
+    [InlineData("Denied by actor", "Denied")]
+    [InlineData("actor denied", "service denied")]
+    [InlineData("Invalid aggregate", "Invalid entity")]
+    [InlineData("event stream error", "data error")]
+    [InlineData("event store unavailable", "service unavailable")]
+    [InlineData("DAPR failed", "infrastructure failed")]
+    [InlineData("sidecar missing", "service missing")]
+    [InlineData("state store isolated", "storage isolated")]
+    [InlineData("pub/sub topic unknown", "messaging topic unknown")]
+    [InlineData("Denied  by  multiple  spaces", "Denied by multiple spaces")]
+    public void SanitizeForbiddenTerms_TestsAllPatterns(string input, string expected) {
+        // Arrange
+        // (Testing static method directly for exhaustive pattern coverage)
+        
+        // Act
+        string result = AuthorizationExceptionHandler.SanitizeForbiddenTerms(input);
+
+        // Assert
+        result.ShouldBe(expected, StringCompareShould.IgnoreCase);
+    }
+
     [Fact]
     public void CommandAuthorizationException_Properties_SetCorrectly() {
         // Arrange & Act
@@ -188,6 +210,33 @@ public class AuthorizationExceptionHandlerTests {
         ex.Domain.ShouldBe("orders");
         ex.CommandType.ShouldBe("PlaceOrder");
         ex.Reason.ShouldBe("Not authorized for domain 'orders'.");
+    }
+
+    [Fact]
+    public void CommandAuthorizationException_Constructors_VerifyDefaults() {
+        // Arrange & Act
+        var exEmpty = new CommandAuthorizationException();
+        var exMessage = new CommandAuthorizationException("test message");
+        var exInner = new CommandAuthorizationException("test message", new InvalidOperationException("inner"));
+
+        // Assert
+        exEmpty.Message.ShouldContain("Exception of type");
+        exEmpty.TenantId.ShouldBe(string.Empty);
+        exEmpty.Reason.ShouldBe(string.Empty);
+        exEmpty.Domain.ShouldBeNull();
+        exEmpty.CommandType.ShouldBeNull();
+
+        exMessage.Message.ShouldBe("test message");
+        exMessage.TenantId.ShouldBe(string.Empty);
+        exMessage.Reason.ShouldBe("test message");
+        exMessage.Domain.ShouldBeNull();
+        exMessage.CommandType.ShouldBeNull();
+
+        exInner.Message.ShouldBe("test message");
+        _ = exInner.InnerException.ShouldNotBeNull();
+        exInner.InnerException.Message.ShouldBe("inner");
+        exInner.TenantId.ShouldBe(string.Empty);
+        exInner.Reason.ShouldBe("test message");
     }
 
     [Fact]
