@@ -40,6 +40,7 @@ public static class CommandApiServiceCollectionExtensions
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
         _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
+        _ = services.AddExceptionHandler<QueryExecutionFailedExceptionHandler>();    // 403 / 501 query failures
         _ = services.AddExceptionHandler<BackpressureExceptionHandler>();             // 429 (per-aggregate backpressure)
         _ = services.AddExceptionHandler<DaprSidecarUnavailableHandler>();          // 503 (sidecar down)
         _ = services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -217,7 +218,8 @@ public static class CommandApiServiceCollectionExtensions
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
                     logger?.LogError(ex, "OnRejected callback failed: CorrelationId={CorrelationId}", correlationId);
 
-                    if (context.HttpContext.Response.HasStarted) {
+                    if (context.HttpContext.Response.HasStarted)
+                    {
                         return;
                     }
 
@@ -226,14 +228,17 @@ public static class CommandApiServiceCollectionExtensions
 
                     // Preserve Retry-After in fallback: try to read from options, default to 60s
                     int fallbackRetryAfter = 60;
-                    try {
+                    try
+                    {
                         RateLimitingOptions? opts = context.HttpContext.RequestServices
                             .GetService<IOptions<RateLimitingOptions>>()?.Value;
-                        if (opts is not null) {
+                        if (opts is not null)
+                        {
                             fallbackRetryAfter = opts.WindowSeconds;
                         }
                     }
-                    catch (Exception) {
+                    catch (Exception)
+                    {
                         // Best-effort: keep default if DI fails
                     }
 
