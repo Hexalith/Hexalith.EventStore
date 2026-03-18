@@ -87,4 +87,31 @@ public class DaprStateStoreHealthCheckTests {
         await daprClient.DidNotReceive().DeleteStateAsync(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task CheckHealth_PropagatesCancellationToken() {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((string)null!);
+        var healthCheck = new DaprStateStoreHealthCheck(daprClient, StoreName);
+
+        // Act
+        _ = await healthCheck.CheckHealthAsync(CreateContext(), cts.Token);
+
+        // Assert
+        await daprClient.Received(1).GetStateAsync<string>(StoreName, "__health_check__", cancellationToken: cts.Token);
+    }
+
+    [Fact]
+    public void Constructor_NullDaprClient_ThrowsArgumentNullException() {
+        Should.Throw<ArgumentNullException>(() => new DaprStateStoreHealthCheck(null!, StoreName));
+    }
+
+    [Fact]
+    public void Constructor_NullStoreName_ThrowsArgumentNullException() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        Should.Throw<ArgumentNullException>(() => new DaprStateStoreHealthCheck(daprClient, null!));
+    }
 }
