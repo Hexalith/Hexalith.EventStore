@@ -2,6 +2,10 @@
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
+
 using Shouldly;
 
 using ContractsEventEnvelope = Hexalith.EventStore.Contracts.Events.EventEnvelope;
@@ -9,13 +13,12 @@ using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
-/// Story 5.4, Task 7: Payload protection tests (AC #2, #5, #11).
-/// Validates that ToString() overrides redact payload and that no log statements reference payload.
+/// Story 5.3 review follow-up tests for payload redaction and log-message hygiene.
 /// </summary>
 public class PayloadProtectionTests {
     private static readonly byte[] SamplePayload = [0x01, 0x02, 0x03, 0xFF];
 
-    // --- Task 7.2: EventEnvelope (Contracts) ToString excludes payload ---
+    // --- Contracts EventEnvelope ToString excludes payload ---
 
     [Fact]
     public void EventEnvelope_ToString_DoesNotContainPayload() {
@@ -27,13 +30,10 @@ public class PayloadProtectionTests {
 
         string result = envelope.ToString();
 
-        result.ShouldContain("[REDACTED]");
-        result.ShouldNotContain("System.Byte[]");
-        // Verify the actual byte values don't appear
-        result.ShouldNotContain("\x01");
+        AssertPayloadIsRedacted(result);
     }
 
-    // --- Task 7.3: CommandEnvelope ToString excludes payload ---
+    // --- CommandEnvelope ToString excludes payload ---
 
     [Fact]
     public void CommandEnvelope_ToString_DoesNotContainPayload() {
@@ -43,11 +43,10 @@ public class PayloadProtectionTests {
 
         string result = envelope.ToString();
 
-        result.ShouldContain("[REDACTED]");
-        result.ShouldNotContain("System.Byte[]");
+        AssertPayloadIsRedacted(result);
     }
 
-    // --- Task 7.4: EventEnvelope ToString contains all metadata fields ---
+    // --- EventEnvelope ToString contains the expected metadata fields ---
 
     [Fact]
     public void EventEnvelope_ToString_ContainsAllMetadataFields() {
@@ -59,7 +58,7 @@ public class PayloadProtectionTests {
 
         string result = envelope.ToString();
 
-        // All 11 metadata fields should be present
+        // Key metadata fields should remain visible while the payload stays redacted.
         result.ShouldContain("aggregate-1");
         result.ShouldContain("tenant-a");
         result.ShouldContain("billing");
@@ -70,6 +69,7 @@ public class PayloadProtectionTests {
         result.ShouldContain("2.1.0");
         result.ShouldContain("OrderPlaced");
         result.ShouldContain("json");
+        AssertPayloadIsRedacted(result);
     }
 
     [Fact]
@@ -87,10 +87,10 @@ public class PayloadProtectionTests {
         result.ShouldContain("corr-123");
         result.ShouldContain("cause-456");
         result.ShouldContain("user-bob");
+        AssertPayloadIsRedacted(result);
     }
 
-    // --- Task 7.5: LoggingBehavior never logs payload ---
-    // (Static analysis: verify LoggingBehavior.cs source doesn't reference Payload)
+    // --- LoggingBehavior log templates and direct log calls never reference payload ---
 
     [Fact]
     public void LoggingBehavior_AllLogStatements_NeverReferencePayload() {
@@ -99,28 +99,11 @@ public class PayloadProtectionTests {
             "src", "Hexalith.EventStore.CommandApi", "Pipeline", "LoggingBehavior.cs"));
 
         File.Exists(sourcePath).ShouldBeTrue($"Source file not found: {sourcePath}");
-        string content = File.ReadAllText(sourcePath);
 
-        // Verify no log statements reference Payload
-        // Allow references in comments but not in actual logger.Log calls
-        string[] lines = content.Split('\n');
-        foreach (string line in lines) {
-            string trimmed = line.Trim();
-            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal)) {
-                continue;
-            }
-
-            if (trimmed.Contains("logger.Log", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogInformation", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogWarning", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogError", StringComparison.OrdinalIgnoreCase)) {
-                trimmed.ShouldNotContain("Payload", Case.Insensitive,
-                    $"LoggingBehavior log statement references Payload: {trimmed}");
-            }
-        }
+        VerifyNoPayloadInLogStatements(sourcePath, "LoggingBehavior");
     }
 
-    // --- Task 7.6: AggregateActor source scan ---
+    // --- AggregateActor source scan ---
 
     [Fact]
     public void AggregateActor_AllLogStatements_NeverReferencePayload() {
@@ -133,7 +116,7 @@ public class PayloadProtectionTests {
         VerifyNoPayloadInLogStatements(sourcePath, "AggregateActor");
     }
 
-    // --- Task 7.7: EventPublisher source scan ---
+    // --- EventPublisher source scan ---
 
     [Fact]
     public void EventPublisher_AllLogStatements_NeverReferencePayload() {
@@ -146,7 +129,7 @@ public class PayloadProtectionTests {
         VerifyNoPayloadInLogStatements(sourcePath, "EventPublisher");
     }
 
-    // --- Task 7.8: DeadLetterPublisher source scan ---
+    // --- DeadLetterPublisher source scan ---
 
     [Fact]
     public void DeadLetterPublisher_AllLogStatements_NeverReferencePayload() {
@@ -170,8 +153,7 @@ public class PayloadProtectionTests {
 
         string result = envelope.ToString();
 
-        result.ShouldContain("[REDACTED]");
-        result.ShouldNotContain("System.Byte[]");
+        AssertPayloadIsRedacted(result);
     }
 
     // --- Framework-level enforcement: even explicit logging is safe ---
@@ -188,8 +170,7 @@ public class PayloadProtectionTests {
         // The {Event} placeholder calls ToString()
         string logOutput = $"Event: {envelope}";
 
-        logOutput.ShouldContain("[REDACTED]");
-        logOutput.ShouldNotContain("System.Byte[]");
+        AssertPayloadIsRedacted(logOutput);
     }
 
     [Fact]
@@ -200,11 +181,10 @@ public class PayloadProtectionTests {
 
         string logOutput = $"Command: {envelope}";
 
-        logOutput.ShouldContain("[REDACTED]");
-        logOutput.ShouldNotContain("System.Byte[]");
+        AssertPayloadIsRedacted(logOutput);
     }
 
-    // --- Story 5.3 gap-closure: null payload still shows [REDACTED] (SEC-5) ---
+    // --- Null payload still renders as redacted ---
 
     [Fact]
     public void ServerEventEnvelope_ToString_NullPayload_StillRedacts() {
@@ -216,28 +196,207 @@ public class PayloadProtectionTests {
 
         string result = envelope.ToString();
 
-        result.ShouldContain("[REDACTED]");
-        result.ShouldNotContain("System.Byte[]");
+        AssertPayloadIsRedacted(result);
+    }
+
+    private static void AssertPayloadIsRedacted(string renderedValue) {
+        renderedValue.ShouldContain("[REDACTED]");
+
+        foreach (string representation in GetCommonPayloadRepresentations(SamplePayload)) {
+            renderedValue.ShouldNotContain(
+                representation,
+                Case.Sensitive,
+                $"Rendered value leaked payload representation '{representation}': {renderedValue}");
+        }
     }
 
     private static void VerifyNoPayloadInLogStatements(string sourcePath, string className) {
-        string content = File.ReadAllText(sourcePath);
-        string[] lines = content.Split('\n');
+        string sanitizedContent = StripComments(File.ReadAllText(sourcePath));
+
+        foreach (string candidate in EnumerateLogStatements(sanitizedContent)) {
+            candidate.ShouldNotContain(
+                "Payload",
+                Case.Insensitive,
+                $"{className} log statement references payload: {candidate}");
+        }
+    }
+
+    private static IEnumerable<string> GetCommonPayloadRepresentations(byte[] payload) {
+        yield return "System.Byte[]";
+        yield return Convert.ToBase64String(payload);
+        yield return Convert.ToHexString(payload);
+        yield return Convert.ToHexString(payload).ToLowerInvariant();
+
+        string[] decimalValues = [.. payload.Select(static b => b.ToString(CultureInfo.InvariantCulture))];
+        yield return string.Join(",", decimalValues);
+        yield return string.Join(", ", decimalValues);
+
+        string[] hexValues = [.. payload.Select(static b => b.ToString("X2", CultureInfo.InvariantCulture))];
+        yield return string.Join("-", hexValues);
+        yield return string.Join(" ", hexValues);
+
+        string utf8Payload = Encoding.UTF8.GetString(payload);
+        if (!string.IsNullOrWhiteSpace(utf8Payload)) {
+            yield return utf8Payload;
+        }
+    }
+
+    private static IEnumerable<string> EnumerateLogStatements(string source) {
+        string[] lines = source.Split(["\r\n", "\n"], StringSplitOptions.None);
+        var builder = new StringBuilder();
+        bool capturing = false;
+        bool loggerMessageAttribute = false;
+        int parenthesisBalance = 0;
 
         foreach (string line in lines) {
             string trimmed = line.Trim();
-            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal)) {
+            if (string.IsNullOrWhiteSpace(trimmed)) {
                 continue;
             }
 
-            if (trimmed.Contains("logger.Log", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogInformation", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogWarning", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogError", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Contains("LogDebug", StringComparison.OrdinalIgnoreCase)) {
-                trimmed.ShouldNotContain("Payload", Case.Insensitive,
-                    $"{className} log statement references Payload: {trimmed}");
+            if (!capturing && IsLogStatementStart(trimmed, out loggerMessageAttribute)) {
+                builder.Clear();
+                builder.Append(trimmed);
+                parenthesisBalance = CountParenthesisBalance(trimmed);
+                capturing = true;
+
+                if (IsLogStatementComplete(trimmed, loggerMessageAttribute, parenthesisBalance)) {
+                    yield return builder.ToString();
+                    builder.Clear();
+                    capturing = false;
+                }
+
+                continue;
+            }
+
+            if (!capturing) {
+                continue;
+            }
+
+            builder.Append(' ').Append(trimmed);
+            parenthesisBalance += CountParenthesisBalance(trimmed);
+
+            if (IsLogStatementComplete(trimmed, loggerMessageAttribute, parenthesisBalance)) {
+                yield return builder.ToString();
+                builder.Clear();
+                capturing = false;
             }
         }
+    }
+
+    private static bool IsLogStatementStart(string trimmedLine, out bool loggerMessageAttribute) {
+        loggerMessageAttribute = trimmedLine.Contains("[LoggerMessage(", StringComparison.Ordinal);
+        if (loggerMessageAttribute) {
+            return true;
+        }
+
+        return trimmedLine.Contains(".LogDebug(", StringComparison.Ordinal)
+            || trimmedLine.Contains(".LogInformation(", StringComparison.Ordinal)
+            || trimmedLine.Contains(".LogWarning(", StringComparison.Ordinal)
+            || trimmedLine.Contains(".LogError(", StringComparison.Ordinal)
+            || trimmedLine.Contains(".LogCritical(", StringComparison.Ordinal)
+            || trimmedLine.Contains(".LogTrace(", StringComparison.Ordinal)
+            || trimmedLine.Contains(".Log(", StringComparison.Ordinal);
+    }
+
+    private static bool IsLogStatementComplete(string trimmedLine, bool loggerMessageAttribute, int parenthesisBalance) =>
+        loggerMessageAttribute
+            ? trimmedLine.Contains(")]", StringComparison.Ordinal) || parenthesisBalance <= 0
+            : trimmedLine.Contains(");", StringComparison.Ordinal) && parenthesisBalance <= 0;
+
+    private static int CountParenthesisBalance(string value) =>
+        value.Count(static c => c == '(') - value.Count(static c => c == ')');
+
+    private static string StripComments(string source) {
+        var builder = new StringBuilder(source.Length);
+        bool inLineComment = false;
+        bool inBlockComment = false;
+        bool inString = false;
+        bool inVerbatimString = false;
+        bool escaping = false;
+
+        for (int i = 0; i < source.Length; i++) {
+            char current = source[i];
+            char next = i + 1 < source.Length ? source[i + 1] : '\0';
+
+            if (inLineComment) {
+                if (current == '\r' || current == '\n') {
+                    inLineComment = false;
+                    builder.Append(current);
+                }
+
+                continue;
+            }
+
+            if (inBlockComment) {
+                if (current == '*' && next == '/') {
+                    inBlockComment = false;
+                    i++;
+                }
+
+                continue;
+            }
+
+            if (inString) {
+                builder.Append(current);
+
+                if (inVerbatimString) {
+                    if (current == '"' && next == '"') {
+                        builder.Append(next);
+                        i++;
+                        continue;
+                    }
+
+                    if (current == '"') {
+                        inString = false;
+                        inVerbatimString = false;
+                    }
+                }
+                else {
+                    if (!escaping && current == '"') {
+                        inString = false;
+                    }
+
+                    escaping = !escaping && current == '\\';
+                    if (current != '\\') {
+                        escaping = false;
+                    }
+                }
+
+                continue;
+            }
+
+            if (current == '@' && next == '"') {
+                inString = true;
+                inVerbatimString = true;
+                builder.Append(current);
+                builder.Append(next);
+                i++;
+                continue;
+            }
+
+            if (current == '"') {
+                inString = true;
+                escaping = false;
+                builder.Append(current);
+                continue;
+            }
+
+            if (current == '/' && next == '/') {
+                inLineComment = true;
+                i++;
+                continue;
+            }
+
+            if (current == '/' && next == '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+
+            builder.Append(current);
+        }
+
+        return Regex.Replace(builder.ToString(), @"^\s+$", string.Empty, RegexOptions.Multiline);
     }
 }

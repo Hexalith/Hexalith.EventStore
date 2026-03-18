@@ -145,10 +145,10 @@ public class EventPersisterTests {
             Arg.Any<CancellationToken>());
     }
 
-    // === 6.4: All 11 metadata fields populated correctly (SEC-1) ===
+    // === Persisted event metadata fields are populated correctly ===
 
     [Fact]
-    public async Task PersistEventsAsync_Populates11MetadataFields() {
+    public async Task PersistEventsAsync_PopulatesAllPersistedMetadataFields() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
         ConfigureNoMetadata(stateManager);
@@ -158,7 +158,7 @@ public class EventPersisterTests {
         // Act
         EventPersistResult result = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
 
-        // Assert -- verify all 15 metadata fields (FR11 + SerializationFormat)
+        // Assert -- verify the persisted envelope exposes the full metadata set plus payload bytes.
         EventEnvelope envelope = result.PersistedEnvelopes.ShouldHaveSingleItem();
         envelope.MessageId.ShouldNotBeNullOrWhiteSpace();       // 1. MessageId (ULID)
         envelope.AggregateId.ShouldBe("agg-001");               // 2. AggregateId
@@ -388,7 +388,7 @@ public class EventPersisterTests {
             persister.PersistEventsAsync(TestIdentity, CreateTestCommand(), DomainResult.NoOp(), "  "));
     }
 
-    // === Story 5.3 gap-closure: MessageId uniqueness across multiple events (SEC-1) ===
+    // === MessageId uniqueness across multiple events ===
 
     [Fact]
     public async Task PersistEventsAsync_MultipleEvents_UniqueMessageIds() {
@@ -407,7 +407,7 @@ public class EventPersisterTests {
         messageIds.Count.ShouldBe(3, "Each event should have a unique MessageId");
     }
 
-    // === Story 5.3 gap-closure: Timestamp is UTC with zero offset (SEC-1) ===
+    // === Timestamp is UTC with zero offset ===
 
     [Fact]
     public async Task PersistEventsAsync_Timestamp_IsUtcWithZeroOffset() {

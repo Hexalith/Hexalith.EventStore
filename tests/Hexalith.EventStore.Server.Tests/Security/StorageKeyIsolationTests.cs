@@ -19,7 +19,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
-/// Comprehensive unit tests verifying storage key isolation between tenants (AC: #1, #2, #3, #4, #6, #9, #10).
+/// Story 5.3 verification tests for tenant-scoped storage keys and related key-derivation invariants.
 /// </summary>
 public class StorageKeyIsolationTests {
     // --- 2.2: Two different tenants produce structurally disjoint event stream key prefixes ---
@@ -300,34 +300,35 @@ public class StorageKeyIsolationTests {
         Should.Throw<ArgumentException>(
             () => new AggregateIdentity("tenant-a", "orders", maliciousAggId));
 
-    // --- 2.16: NEGATIVE -- reading key for tenantB returns null from tenantA's actor state manager ---
+    // --- Separate actor state managers isolate state even when the same key is used ---
 
     [Fact]
-    public async Task CrossTenantRead_ReturnsNull_WhenQueried_FromDifferentActorStateManager() {
-        // Arrange - two separate state managers representing two different actor instances
+    public async Task DifferentActorStateManagers_DoNotShareState_ForSameStorageKey() {
+        // Arrange - two separate state managers representing different actor instances.
+        // This proves actor-state-manager isolation only; the shared-state test below remains
+        // the actual composite-key isolation proof.
         var stateManagerA = new InMemoryStateManager();
         var stateManagerB = new InMemoryStateManager();
-        _ = new AggregateIdentity("tenant-a", "orders", "order-001");
-        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-001");
 
-        // Write event to tenantB's state manager
-        string tenantBKey = $"{identityB.EventStreamKeyPrefix}1";
-        await stateManagerB.SetStateAsync(tenantBKey, "tenantB-event-data");
+        // Write state using the same key shape that the other actor instance will query.
+        string eventKey = $"{identity.EventStreamKeyPrefix}1";
+        await stateManagerB.SetStateAsync(eventKey, "event-data");
         await stateManagerB.SaveStateAsync();
 
-        // Act - attempt to read tenantB's key from tenantA's state manager
-        ConditionalValue<string> result = await stateManagerA.TryGetStateAsync<string>(tenantBKey);
+        // Act - attempt to read the same key from the other actor instance's isolated store.
+        ConditionalValue<string> result = await stateManagerA.TryGetStateAsync<string>(eventKey);
 
-        // Assert - tenantA's state manager should NOT have tenantB's data
+        // Assert - state does not cross actor-instance boundaries.
         result.HasValue.ShouldBeFalse();
 
-        // Verify tenantB's state manager DOES have the data
-        ConditionalValue<string> tenantBResult = await stateManagerB.TryGetStateAsync<string>(tenantBKey);
-        tenantBResult.HasValue.ShouldBeTrue();
-        tenantBResult.Value.ShouldBe("tenantB-event-data");
+        // Verify the writer's state manager still has the data.
+        ConditionalValue<string> writerResult = await stateManagerB.TryGetStateAsync<string>(eventKey);
+        writerResult.HasValue.ShouldBeTrue();
+        writerResult.Value.ShouldBe("event-data");
     }
 
-    // --- Review fix H1: Shared state manager test validates Layer 2 (composite key prefixing) independently ---
+    // --- Shared state manager test validates tenant-prefixed key isolation directly ---
 
     [Fact]
     public async Task SharedStateManager_TenantPrefixedKeys_PreventCrossTenantRead() {

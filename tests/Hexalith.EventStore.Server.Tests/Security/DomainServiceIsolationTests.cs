@@ -17,9 +17,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
-/// Domain service tenant isolation tests verifying tenant-scoped config lookup
-/// and correct tenant context in invocations.
-/// (AC: #2, #7)
+/// Story 5.3 review follow-up tests for tenant-scoped domain service lookup and routing behavior.
 /// </summary>
 public class DomainServiceIsolationTests {
     private static DomainServiceOptions DefaultOptions => new() {
@@ -28,21 +26,25 @@ public class DomainServiceIsolationTests {
         MaxEventSizeBytes = 1_048_576,
     };
 
-    // --- Task 2.2: AC #7 ---
+    // --- Resolver requests the exact tenant/domain/version config key ---
 
     [Theory]
-    [InlineData("tenant-a", "orders", "v1")]
-    [InlineData("tenant-b", "orders", "v1")]
-    [InlineData("acme", "inventory", "v2")]
-    public async Task DomainServiceResolver_TenantScopedLookup_UsesCorrectConfigKey(string tenantId, string domain, string version) {
+    [InlineData("tenant-a", "orders", "v1", "tenant-a:orders:v1")]
+    [InlineData("tenant-b", "orders", "v1", "tenant-b:orders:v1")]
+    [InlineData("acme", "inventory", "v2", "acme:inventory:v2")]
+    [InlineData("tenant-a", "orders", "V1", "tenant-a:orders:v1")]
+    public async Task DomainServiceResolver_TenantScopedLookup_UsesCorrectConfigKey(
+        string tenantId,
+        string domain,
+        string version,
+        string expectedConfigKey) {
         // Arrange
-        string expectedConfigKey = $"{tenantId}:{domain}:{version}";
-        string? capturedConfigKey = null;
+        IReadOnlyList<string>? capturedKeys = null;
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
-            Arg.Do<IReadOnlyList<string>>(keys => capturedConfigKey = keys.FirstOrDefault()),
+            Arg.Do<IReadOnlyList<string>>(keys => capturedKeys = [.. keys]),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
             .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>()));
@@ -53,10 +55,12 @@ public class DomainServiceIsolationTests {
         _ = await resolver.ResolveAsync(tenantId, domain, version);
 
         // Assert
-        capturedConfigKey.ShouldBe(expectedConfigKey);
+        _ = capturedKeys.ShouldNotBeNull();
+        capturedKeys.Count.ShouldBe(1);
+        capturedKeys[0].ShouldBe(expectedConfigKey);
     }
 
-    // --- Task 2.3: AC #7 ---
+    // --- Different tenants resolve different registrations ---
 
     [Fact]
     public async Task DomainServiceResolver_DifferentTenants_ResolveDifferentRegistrations() {
@@ -98,13 +102,13 @@ public class DomainServiceIsolationTests {
         resultA.AppId.ShouldNotBe(resultB.AppId);
     }
 
-    // --- Task 2.4: AC #2 ---
+    // --- Invoker passes tenant, domain, and default version to the resolver ---
 
     [Fact]
-    public async Task DaprDomainServiceInvoker_PassesTenantContextToResolver() {
-        // Arrange -- verify the invoker passes the correct tenant to the resolver
+    public async Task DaprDomainServiceInvoker_PassesTenantDomainAndDefaultVersionToResolver() {
+        // Arrange -- verify the invoker passes the command routing context through unchanged.
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
-        _ = resolver.ResolveAsync("tenant-a", "orders", Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = resolver.ResolveAsync("tenant-a", "orders", "v1", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
 
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -116,44 +120,78 @@ public class DomainServiceIsolationTests {
         _ = await Should.ThrowAsync<DomainServiceNotFoundException>(
             () => invoker.InvokeAsync(command, null));
 
-        // Verify resolver was called with the command's tenant
-        _ = await resolver.Received(1).ResolveAsync("tenant-a", "orders", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Verify resolver was called with the command's tenant, domain, and default version.
+        _ = await resolver.Received(1).ResolveAsync("tenant-a", "orders", "v1", Arg.Any<CancellationToken>());
     }
 
-    // --- Task 2.5: AC #2 ---
+    // --- Tenant+domain routing stays scoped to the configured combination ---
 
     [Fact]
-    public async Task FakeDomainServiceInvoker_TenantDomainResponses_RoutedCorrectly() {
+    public async Task FakeDomainServiceInvoker_TenantAndDomainResponses_RouteToExactConfiguredCombination() {
         // Arrange
         var fakeInvoker = new FakeDomainServiceInvoker();
-        var resultA = DomainResult.NoOp();
-        var resultB = DomainResult.Success([new TestEvent()]);
+        var tenantAOrders = DomainResult.NoOp();
+        var tenantAInventory = DomainResult.Success([new TestEvent()]);
+        var tenantBOrders = DomainResult.Rejection([new TestRejectionEvent()]);
 
-        fakeInvoker.SetupResponse("tenant-a", "orders", resultA);
-        fakeInvoker.SetupResponse("tenant-b", "orders", resultB);
+        fakeInvoker.SetupResponse("tenant-a", "orders", tenantAOrders);
+        fakeInvoker.SetupResponse("tenant-a", "inventory", tenantAInventory);
+        fakeInvoker.SetupResponse("tenant-b", "orders", tenantBOrders);
 
         var commandA = new CommandEnvelope("msg-iso-2", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
-        var commandB = new CommandEnvelope("msg-iso-3", "tenant-b", "orders", "order-001", "CreateOrder", [1],
+        var commandB = new CommandEnvelope("msg-iso-3", "tenant-a", "inventory", "item-001", "AdjustInventory", [1],
+            Guid.NewGuid().ToString(), null, "system", null);
+        var commandC = new CommandEnvelope("msg-iso-4", "tenant-b", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
         // Act
         DomainResult actualA = await fakeInvoker.InvokeAsync(commandA, null);
         DomainResult actualB = await fakeInvoker.InvokeAsync(commandB, null);
+        DomainResult actualC = await fakeInvoker.InvokeAsync(commandC, null);
 
         // Assert
         actualA.IsNoOp.ShouldBeTrue();
         actualB.IsSuccess.ShouldBeTrue();
-        fakeInvoker.Invocations.Count.ShouldBe(2);
+        actualC.IsRejection.ShouldBeTrue();
+        fakeInvoker.Invocations.Count.ShouldBe(3);
         fakeInvoker.Invocations[0].TenantId.ShouldBe("tenant-a");
-        fakeInvoker.Invocations[1].TenantId.ShouldBe("tenant-b");
+        fakeInvoker.Invocations[0].Domain.ShouldBe("orders");
+        fakeInvoker.Invocations[1].TenantId.ShouldBe("tenant-a");
+        fakeInvoker.Invocations[1].Domain.ShouldBe("inventory");
+        fakeInvoker.Invocations[2].TenantId.ShouldBe("tenant-b");
+        fakeInvoker.Invocations[2].Domain.ShouldBe("orders");
     }
 
-    // --- Task 2.6: GAP-F2 ---
+    [Fact]
+    public async Task FakeDomainServiceInvoker_UnconfiguredTenantAndDomain_ThrowsInvalidOperationException() {
+        // Arrange
+        var fakeInvoker = new FakeDomainServiceInvoker();
+        fakeInvoker.SetupResponse("tenant-a", "orders", DomainResult.NoOp());
+
+        var unconfiguredCommand = new CommandEnvelope(
+            "msg-iso-unconfigured",
+            "tenant-b",
+            "inventory",
+            "item-404",
+            "AdjustInventory",
+            [1],
+            Guid.NewGuid().ToString(),
+            null,
+            "system",
+            null);
+
+        // Act / Assert
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => fakeInvoker.InvokeAsync(unconfiguredCommand, null));
+        exception.Message.ShouldContain("No response configured");
+    }
+
+    // --- Empty config response means no registration was found ---
 
     [Fact]
-    public async Task DomainServiceResolver_ConfigStoreUnavailable_ReturnsNull() {
-        // Arrange -- config store returns empty items for a valid tenant+domain
+    public async Task DomainServiceResolver_EmptyConfigResponse_ReturnsNull() {
+        // Arrange -- config store responds successfully but has no matching registration.
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
@@ -169,6 +207,50 @@ public class DomainServiceIsolationTests {
 
         // Assert -- returns null (no silent fallback to shared/default service)
         result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task DomainServiceResolver_ConfigStoreUnavailable_PropagatesException() {
+        // Arrange -- config store is unavailable, which differs from a clean miss.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetConfiguration(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<GetConfigurationResponse>(new InvalidOperationException("config store unavailable")));
+
+        var resolver = new DomainServiceResolver(daprClient, Options.Create(DefaultOptions), NullLogger<DomainServiceResolver>.Instance);
+
+        // Act / Assert
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => resolver.ResolveAsync("tenant-a", "orders", "v1"));
+        exception.Message.ShouldContain("config store unavailable");
+    }
+
+    [Fact]
+    public async Task DomainServiceResolver_MalformedRegistration_ThrowsDomainServiceException() {
+        // Arrange
+        const string configKey = "tenant-a:orders:v1";
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetConfiguration(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new GetConfigurationResponse(
+                new Dictionary<string, ConfigurationItem> {
+                    [configKey] = new("{ not-json }", "1", new Dictionary<string, string>()),
+                }));
+
+        var resolver = new DomainServiceResolver(daprClient, Options.Create(DefaultOptions), NullLogger<DomainServiceResolver>.Instance);
+
+        // Act / Assert
+        DomainServiceException exception = await Should.ThrowAsync<DomainServiceException>(
+            () => resolver.ResolveAsync("tenant-a", "orders", "v1"));
+        exception.Message.ShouldContain("tenant 'tenant-a'");
+        exception.Message.ShouldContain("domain 'orders'");
+        exception.Message.ShouldContain(configKey);
     }
 
     [Fact]
@@ -189,16 +271,20 @@ public class DomainServiceIsolationTests {
             () => invoker.InvokeAsync(command, null));
     }
 
-    // --- Task 2.7: AC #7, GAP-PM1 ---
+    // --- Repeated tenant lookups request only the exact keyed registration each time ---
 
     [Fact]
     public async Task DomainServiceResolver_SameDomainDifferentTenants_QueriesDifferentConfigKeys() {
         // Arrange
-        var capturedKeys = new List<string>();
+        var capturedKeyRequests = new List<string[]>();
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
-            Arg.Do<IReadOnlyList<string>>(keys => { lock (capturedKeys) { capturedKeys.AddRange(keys); } }),
+            Arg.Do<IReadOnlyList<string>>(keys => {
+                lock (capturedKeyRequests) {
+                    capturedKeyRequests.Add([.. keys]);
+                }
+            }),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
             .Returns(new GetConfigurationResponse(new Dictionary<string, ConfigurationItem>()));
@@ -210,13 +296,12 @@ public class DomainServiceIsolationTests {
         _ = await resolver.ResolveAsync("tenant-b", "orders", "v1");
 
         // Assert
-        capturedKeys.Count.ShouldBe(2);
-        capturedKeys.ShouldContain("tenant-a:orders:v1");
-        capturedKeys.ShouldContain("tenant-b:orders:v1");
-        capturedKeys[0].ShouldNotBe(capturedKeys[1]);
+        capturedKeyRequests.Count.ShouldBe(2);
+        capturedKeyRequests[0].ShouldBe(["tenant-a:orders:v1"]);
+        capturedKeyRequests[1].ShouldBe(["tenant-b:orders:v1"]);
     }
 
-    // --- Story 5.3 gap-closure: IDomainServiceInvoker does not accept metadata parameters (SEC-1) ---
+    // --- IDomainServiceInvoker does not accept metadata parameters ---
 
     [Fact]
     public void DomainServiceInvoker_InvokeAsync_DoesNotAcceptMetadataParameters() {
@@ -236,4 +321,6 @@ public class DomainServiceIsolationTests {
     }
 
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
+
+    private sealed record TestRejectionEvent : Hexalith.EventStore.Contracts.Events.IRejectionEvent;
 }
