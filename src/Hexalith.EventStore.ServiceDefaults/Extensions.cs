@@ -105,7 +105,7 @@ public static class Extensions {
     /// <summary>
     /// Writes a detailed JSON health check response for development environments.
     /// </summary>
-    internal static Task WriteHealthCheckJsonResponse(HttpContext httpContext, HealthReport healthReport) {
+    internal static async Task WriteHealthCheckJsonResponse(HttpContext httpContext, HealthReport healthReport) {
         httpContext.Response.ContentType = "application/json; charset=utf-8";
 
         using var stream = new MemoryStream();
@@ -122,10 +122,15 @@ public static class Extensions {
                 writer.WriteStartObject("data");
                 foreach (KeyValuePair<string, object> dataEntry in entry.Value.Data) {
                     writer.WritePropertyName(dataEntry.Key);
-                    System.Text.Json.JsonSerializer.Serialize(
-                        writer,
-                        dataEntry.Value,
-                        dataEntry.Value?.GetType() ?? typeof(object));
+                    try {
+                        byte[] json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                            dataEntry.Value,
+                            dataEntry.Value?.GetType() ?? typeof(object));
+                        writer.WriteRawValue(json);
+                    }
+                    catch (Exception ex) when (ex is NotSupportedException or System.Text.Json.JsonException or InvalidOperationException) {
+                        writer.WriteStringValue($"[non-serializable: {dataEntry.Value?.GetType().Name ?? "null"}]");
+                    }
                 }
 
                 writer.WriteEndObject();
@@ -136,8 +141,8 @@ public static class Extensions {
             writer.WriteEndObject();
         }
 
-        return httpContext.Response.WriteAsync(
-            System.Text.Encoding.UTF8.GetString(stream.ToArray()));
+        stream.Position = 0;
+        await stream.CopyToAsync(httpContext.Response.Body).ConfigureAwait(false);
     }
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app) {

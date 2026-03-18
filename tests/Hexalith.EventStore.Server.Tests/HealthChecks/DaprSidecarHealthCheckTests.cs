@@ -84,4 +84,24 @@ public class DaprSidecarHealthCheckTests {
         result.Status.ShouldBe(HealthStatus.Unhealthy);
         result.Description!.ShouldContain("DaprException");
     }
+
+    [Fact]
+    public async Task CheckHealth_PropagatesCancellationToken() {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.CheckHealthAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var healthCheck = new DaprSidecarHealthCheck(daprClient);
+
+        // Act
+        _ = await healthCheck.CheckHealthAsync(CreateContext(), cts.Token);
+
+        // Assert
+        await daprClient.Received(1).CheckHealthAsync(cts.Token);
+    }
+
+    [Fact]
+    public void Constructor_NullDaprClient_ThrowsArgumentNullException() {
+        Should.Throw<ArgumentNullException>(() => new DaprSidecarHealthCheck(null!));
+    }
 }

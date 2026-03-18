@@ -96,4 +96,31 @@ public class DaprPubSubHealthCheckTests {
         result.Status.ShouldBe(HealthStatus.Degraded);
         result.Description!.ShouldContain("not found");
     }
+
+    [Fact]
+    public async Task CheckHealth_PropagatesCancellationToken() {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata metadata = CreateMetadata(new DaprComponentsMetadata(PubSubName, "pubsub.redis", "v1", []));
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        var healthCheck = new DaprPubSubHealthCheck(daprClient, PubSubName);
+
+        // Act
+        _ = await healthCheck.CheckHealthAsync(CreateContext(), cts.Token);
+
+        // Assert
+        await daprClient.Received(1).GetMetadataAsync(cts.Token);
+    }
+
+    [Fact]
+    public void Constructor_NullDaprClient_ThrowsArgumentNullException() {
+        Should.Throw<ArgumentNullException>(() => new DaprPubSubHealthCheck(null!, PubSubName));
+    }
+
+    [Fact]
+    public void Constructor_NullPubSubName_ThrowsArgumentNullException() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        Should.Throw<ArgumentNullException>(() => new DaprPubSubHealthCheck(daprClient, null!));
+    }
 }
