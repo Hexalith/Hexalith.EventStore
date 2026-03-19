@@ -119,6 +119,7 @@ The system follows a command-event architecture with a built-in read-model refre
 - [Upgrade Path](docs/guides/upgrade-path.md) — migrating between versions
 - [DAPR FAQ Deep Dive](docs/guides/dapr-faq.md) — honest answers about DAPR dependency, risks, and operational costs
 - [Deployment Guides](docs/guides/) — Docker Compose, Kubernetes, Azure Container Apps
+- [Production Deployment Configuration](deploy/README.md) — DAPR component configs, backend swap, secret management
 
 ### Reference
 
