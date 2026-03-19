@@ -486,6 +486,122 @@ public class CachingProjectionActorTests {
         deserialized.ProjectionType.ShouldBeNull();
     }
 
+    // ===== Story 9-4: Gap-filling tests =====
+
+    [Fact]
+    public async Task QueryAsync_DeactivationReactivation_FreshInstanceHasNullCachedState() {
+        // Arrange — simulate actor deactivation by creating a new instance (DAPR destroys the old one).
+        // Use a domain/projection mismatch so we can verify mapping reset + relearn on the fresh instance.
+        string domainETag = GenerateTestETag("orders");
+        string projectionETag = GenerateTestETag("order-list");
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(domainETag, domainETag);
+        _ = eTagService.GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(projectionETag, projectionETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: "order-list");
+        QueryEnvelope envelope = CreateEnvelope(domain: "orders");
+
+        var host1 = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor1 = new TestCachingProjectionActor(host1, eTagService, expected);
+
+        // Warm/discover on first actor instance
+        _ = await actor1.QueryAsync(envelope); // learns projection type
+        _ = await actor1.QueryAsync(envelope); // now uses learned type
+        actor1.ExecuteCallCount.ShouldBe(2);
+
+        // Act — simulate deactivation: create a fresh actor instance (new object = cleared fields)
+        var host2 = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor2 = new TestCachingProjectionActor(host2, eTagService, expected);
+        QueryResult first = await actor2.QueryAsync(envelope); // should fallback to domain again
+        QueryResult second = await actor2.QueryAsync(envelope); // should use re-learned projection type
+
+        // Assert — fresh instance starts with null mapping and re-learns projection type
+        actor2.ExecuteCallCount.ShouldBe(2);
+        first.Success.ShouldBeTrue();
+        second.Success.ShouldBeTrue();
+        first.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        second.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        _ = await eTagService.Received(2).GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(2).GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QueryAsync_FullCacheLifecycle_MissHitInvalidationMiss() {
+        // Arrange — full cycle: cold miss → warm hit → ETag changes → cache miss (re-query)
+        string etag1 = GenerateTestETag();
+        string etag2 = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(etag1, etag1, etag2, etag2);
+
+        JsonElement payload1 = JsonDocument.Parse("{\"count\":1}").RootElement;
+        JsonElement payload2 = JsonDocument.Parse("{\"count\":2}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            new QueryResult(true, payload1), new QueryResult(true, payload2));
+
+        // Act 1: Cold miss — first call, nothing cached
+        QueryResult miss1 = await actor.QueryAsync(CreateEnvelope());
+        miss1.Payload.GetProperty("count").GetInt32().ShouldBe(1);
+        actor.ExecuteCallCount.ShouldBe(1);
+
+        // Act 2: Warm hit — same ETag, cached payload returned
+        QueryResult hit = await actor.QueryAsync(CreateEnvelope());
+        hit.Payload.GetProperty("count").GetInt32().ShouldBe(1); // cached data
+        actor.ExecuteCallCount.ShouldBe(1); // NOT called again
+
+        // Act 3: ETag changes (projection updated) — cache invalidation, re-query
+        QueryResult miss2 = await actor.QueryAsync(CreateEnvelope());
+        miss2.Payload.GetProperty("count").GetInt32().ShouldBe(2); // fresh data
+        actor.ExecuteCallCount.ShouldBe(2); // called again on cache miss
+
+        // Act 4: Same refreshed ETag — cached fresh data should now be reused
+        QueryResult hit2 = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — cache is re-warmed after invalidation miss
+        hit2.Payload.GetProperty("count").GetInt32().ShouldBe(2);
+        actor.ExecuteCallCount.ShouldBe(2); // still 2 = no extra microservice call
+    }
+
+    [Fact]
+    public async Task QueryAsync_InvalidThenValidProjectionType_DiscoverySucceedsOnSecondCall() {
+        // Arrange — first response has invalid ProjectionType (contains colon),
+        // second response has valid ProjectionType. Force cache miss between calls
+        // by changing ETag so second ExecuteQueryAsync fires.
+        string counterETag1 = GenerateTestETag();
+        string counterETag2 = GenerateTestETag();
+        string validETag = GenerateTestETag("valid-type");
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag1, counterETag2); // different ETags → cache miss on second call
+        _ = eTagService.GetCurrentETagAsync("valid-type", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(validETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var result1 = new QueryResult(true, payload, ProjectionType: "evil:type"); // invalid (colon)
+        var result2 = new QueryResult(true, payload, ProjectionType: "valid-type"); // valid
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
+
+        // Act — first call: invalid projection type rejected, no discovery, caches normally
+        _ = await actor.QueryAsync(CreateEnvelope());
+        actor.ExecuteCallCount.ShouldBe(1);
+
+        // Second call: ETag changed → cache miss → ExecuteQueryAsync returns valid type → discovered
+        // Discovery mismatch (valid-type != counter) → first call with discovery skips cache
+        _ = await actor.QueryAsync(CreateEnvelope());
+        actor.ExecuteCallCount.ShouldBe(2);
+
+        // Assert — third call uses discovered "valid-type" for ETag lookup
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await eTagService.Received(1).GetCurrentETagAsync("valid-type", "tenant1", Arg.Any<CancellationToken>());
+    }
+
     /// <summary>
     /// Concrete test implementation of <see cref="CachingProjectionActor"/>.
     /// Returns preconfigured results in sequence.
