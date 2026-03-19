@@ -72,4 +72,56 @@ public class DaprProjectionChangeNotifierSignalRTests {
         await Should.NotThrowAsync(() =>
             sut.NotifyProjectionChangedAsync("order-list", "acme"));
     }
+
+    [Fact]
+    public async Task NotifyProjectionChangedAsync_DirectTransport_RegenerateCompletesBeforeBroadcast() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
+        ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
+        IOptions<ProjectionChangeNotifierOptions> options = Options.Create(
+            new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
+
+        bool regenerateCalled = false;
+        bool regenerateCompletedBeforeBroadcast = false;
+
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+            .Returns(actor);
+        _ = actor.RegenerateAsync().Returns(_ => {
+            regenerateCalled = true;
+            return "new-etag";
+        });
+        _ = broadcaster.BroadcastChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                regenerateCompletedBeforeBroadcast = regenerateCalled;
+                return Task.CompletedTask;
+            });
+
+        await sut.NotifyProjectionChangedAsync("order-list", "acme");
+
+        regenerateCompletedBeforeBroadcast.ShouldBeTrue("BroadcastChangedAsync must be called after RegenerateAsync completes");
+    }
+
+    [Fact]
+    public async Task NotifyProjectionChangedAsync_DirectTransport_WithNoOpBroadcaster_RegeneratesETagSuccessfully() {
+        // Simulates disabled-state: NoOpProjectionChangedBroadcaster is injected (as when SignalR Enabled=false)
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        var broadcaster = new NoOpProjectionChangedBroadcaster();
+        ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
+        IOptions<ProjectionChangeNotifierOptions> options = Options.Create(
+            new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
+
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+            .Returns(actor);
+
+        await sut.NotifyProjectionChangedAsync("order-list", "acme");
+
+        // ETag regeneration must still occur even when broadcast is NoOp
+        _ = await actor.Received(1).RegenerateAsync();
+    }
 }
