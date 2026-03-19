@@ -186,6 +186,8 @@ public class SelfRoutingETagTests {
     [InlineData("user-profile")]
     [InlineData("a")]
     [InlineData("very-long-projection-type-name-for-testing")]
+    [InlineData("données")]
+    [InlineData("日本語")]
     public void Roundtrip_EncodeDecodePreservesProjectionType(string projectionType) {
         string etag = SelfRoutingETag.GenerateNew(projectionType);
 
