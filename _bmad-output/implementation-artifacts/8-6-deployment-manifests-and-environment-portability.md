@@ -1,6 +1,6 @@
 # Story 8.6: Deployment Manifests & Environment Portability
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -93,16 +93,16 @@ Installed publisher packages in `AppHost.csproj`:
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Build solution to verify no build errors (AC: #1, #2)
-  - [ ] 0.1 Run full solution build:
+- [x] Task 0: Build solution to verify no build errors (AC: #1, #2)
+  - [x] 0.1 Run full solution build:
     ```bash
     dotnet build Hexalith.EventStore.slnx --configuration Release
     ```
-  - [ ] 0.2 If build fails, fix build errors before proceeding. Publisher validation and Dockerfile builds depend on a clean build.
+  - [x] 0.2 If build fails, fix build errors before proceeding. Publisher validation and Dockerfile builds depend on a clean build.
 
-- [ ] Task 1: Validate Aspire publisher output for Docker Compose (AC: #1)
+- [x] Task 1: Validate Aspire publisher output for Docker Compose (AC: #1)
   **Timebox: 15 minutes.** If publisher generation fails after troubleshooting, document the failure and skip to Task 4. Publisher validation is not a blocker for portability (Task 4) or documentation (Task 5) validation.
-  - [ ] 1.1 Run `aspire publish` with Docker target:
+  - [x] 1.1 Run `aspire publish` with Docker target:
     ```bash
     cd D:/Hexalith.EventStore
     PUBLISH_TARGET=docker EnableKeycloak=false dotnet run --project src/Hexalith.EventStore.AppHost/ -- publish -o ./publish-output/docker
@@ -111,87 +111,87 @@ Installed publisher packages in `AppHost.csproj`:
     1. `dotnet aspire publish --project src/Hexalith.EventStore.AppHost/ -o ./publish-output/docker`
     2. `dotnet publish src/Hexalith.EventStore.AppHost/ -p:PublishingTarget=docker -o ./publish-output/docker`
     3. Check `dotnet aspire --help` or Context7 for Aspire 13.1.2 publisher docs.
-  - [ ] 1.2 List the output directory (`ls -R ./publish-output/docker`) to see what was actually generated. Aspire versions may produce different structures — adapt validation to actual output.
-  - [ ] 1.3 Verify output is **non-empty** and contains a compose file (`docker-compose.yaml`, `docker-compose.yml`, or `compose.yaml`) with service definitions for `commandapi` and `sample`.
-  - [ ] 1.4 Verify environment variables, port mappings, and network configuration are present.
-  - [ ] 1.5 Document any gaps in Docker Compose output (e.g., missing DAPR sidecar containers — Aspire publishers may not auto-generate DAPR sidecars). This is a known limitation to document, not fix.
-  - [ ] 1.6 Clean up `publish-output/` directory after validation.
+  - [x] 1.2 List the output directory (`ls -R ./publish-output/docker`) to see what was actually generated. Aspire versions may produce different structures — adapt validation to actual output.
+  - [x] 1.3 Verify output is **non-empty** and contains a compose file (`docker-compose.yaml`, `docker-compose.yml`, or `compose.yaml`) with service definitions for `commandapi` and `sample`.
+  - [x] 1.4 Verify environment variables, port mappings, and network configuration are present.
+  - [x] 1.5 Document any gaps in Docker Compose output (e.g., missing DAPR sidecar containers — Aspire publishers may not auto-generate DAPR sidecars). This is a known limitation to document, not fix.
+  - [x] 1.6 Clean up `publish-output/` directory after validation.
 
-- [ ] Task 2: Validate Aspire publisher output for Kubernetes (AC: #1)
+- [x] Task 2: Validate Aspire publisher output for Kubernetes (AC: #1)
   **Timebox: 15 minutes.** Same fallback as Task 1 — skip to Task 4 if publisher fails.
-  - [ ] 2.1 Run `aspire publish` with Kubernetes target (use CLI fallback from Task 1 if needed):
+  - [x] 2.1 Run `aspire publish` with Kubernetes target (use CLI fallback from Task 1 if needed):
     ```bash
     PUBLISH_TARGET=k8s EnableKeycloak=false dotnet run --project src/Hexalith.EventStore.AppHost/ -- publish -o ./publish-output/k8s
     ```
-  - [ ] 2.2 List the output directory (`ls -R ./publish-output/k8s`) to see actual structure.
-  - [ ] 2.3 Verify output is **non-empty** and contains Helm chart structure (`Chart.yaml`, `values.yaml`, Deployments, Services).
-  - [ ] 2.4 Verify container image references and resource configurations are present.
-  - [ ] 2.5 If `values.yaml` exists, verify key fields are parameterized (not hardcoded in templates): `replicaCount`, `image.repository`, `image.tag`, `resources.limits`. Hardcoded values make the Helm chart unusable for real deployments.
-  - [ ] 2.6 Document any gaps (e.g., missing DAPR pod annotations `dapr.io/enabled`, `dapr.io/app-id`). DAPR annotations must be manually added in production — this is expected and should be documented. Note: `EnableKeycloak=true` is expected to fail for K8s (bind mounts not supported).
-  - [ ] 2.7 Clean up `publish-output/` directory after validation.
+  - [x] 2.2 List the output directory (`ls -R ./publish-output/k8s`) to see actual structure.
+  - [x] 2.3 Verify output is **non-empty** and contains Helm chart structure (`Chart.yaml`, `values.yaml`, Deployments, Services).
+  - [x] 2.4 Verify container image references and resource configurations are present.
+  - [x] 2.5 If `values.yaml` exists, verify key fields are parameterized (not hardcoded in templates): `replicaCount`, `image.repository`, `image.tag`, `resources.limits`. Hardcoded values make the Helm chart unusable for real deployments.
+  - [x] 2.6 Document any gaps (e.g., missing DAPR pod annotations `dapr.io/enabled`, `dapr.io/app-id`). DAPR annotations must be manually added in production — this is expected and should be documented. Note: `EnableKeycloak=true` is expected to fail for K8s (bind mounts not supported).
+  - [x] 2.7 Clean up `publish-output/` directory after validation.
 
-- [ ] Task 3: Validate Aspire publisher output for Azure Container Apps (AC: #1)
+- [x] Task 3: Validate Aspire publisher output for Azure Container Apps (AC: #1)
   **Timebox: 15 minutes.** Same fallback as Task 1 — skip to Task 4 if publisher fails.
-  - [ ] 3.1 Run `aspire publish` with ACA target (use CLI fallback from Task 1 if needed):
+  - [x] 3.1 Run `aspire publish` with ACA target (use CLI fallback from Task 1 if needed):
     ```bash
     PUBLISH_TARGET=aca EnableKeycloak=false dotnet run --project src/Hexalith.EventStore.AppHost/ -- publish -o ./publish-output/azure
     ```
-  - [ ] 3.2 List the output directory (`ls -R ./publish-output/azure`) to see actual structure.
-  - [ ] 3.3 Verify output is **non-empty** and contains Bicep modules (`main.bicep`, per-service modules).
-  - [ ] 3.4 Verify managed identity, ACR, and Container Apps Environment are configured.
-  - [ ] 3.5 Verify Bicep accepts parameters for resource group, location, and container SKU — hardcoded values force forking. Check if Container Apps Environment module includes `daprEnabled: true` — the one line everyone forgets.
-  - [ ] 3.6 Document any gaps (e.g., DAPR enablement in Container Apps Environment must be done manually). Note: `EnableKeycloak=true` is expected to fail for ACA (bind mounts not supported).
-  - [ ] 3.7 Clean up `publish-output/` directory after validation.
+  - [x] 3.2 List the output directory (`ls -R ./publish-output/azure`) to see actual structure.
+  - [x] 3.3 Verify output is **non-empty** and contains Bicep modules (`main.bicep`, per-service modules).
+  - [x] 3.4 Verify managed identity, ACR, and Container Apps Environment are configured.
+  - [x] 3.5 Verify Bicep accepts parameters for resource group, location, and container SKU — hardcoded values force forking. Check if Container Apps Environment module includes `daprEnabled: true` — the one line everyone forgets.
+  - [x] 3.6 Document any gaps (e.g., DAPR enablement in Container Apps Environment must be done manually). Note: `EnableKeycloak=true` is expected to fail for ACA (bind mounts not supported).
+  - [x] 3.7 Clean up `publish-output/` directory after validation.
 
-- [ ] Task 4: Validate DAPR component portability — backend swap (AC: #2)
-  - [ ] 4.1 Verify that `deploy/dapr/` contains production-grade state store configs for at least 2 backends (PostgreSQL and Cosmos DB). Each MUST include mandatory metadata:
+- [x] Task 4: Validate DAPR component portability — backend swap (AC: #2)
+  - [x] 4.1 Verify that `deploy/dapr/` contains production-grade state store configs for at least 2 backends (PostgreSQL and Cosmos DB). Each MUST include mandatory metadata:
     - `actorStateStore: "true"` (required for DAPR actors)
     - ETag concurrency support (implicit in PostgreSQL/Cosmos — verify component type supports it)
     - Connection string uses environment variable reference (`$POSTGRES_CONNECTION_STRING`), never hardcoded
-  - [ ] 4.2 Verify that `deploy/dapr/` contains production-grade pub/sub configs for at least 2 backends (RabbitMQ and Kafka — Service Bus is a bonus). Each MUST include:
+  - [x] 4.2 Verify that `deploy/dapr/` contains production-grade pub/sub configs for at least 2 backends (RabbitMQ and Kafka — Service Bus is a bonus). Each MUST include:
     - Dead-letter topic configuration (`deadLetterTopic` or backend equivalent)
     - CloudEvents content type enabled
     - At-least-once delivery guarantee (backend-specific config)
-  - [ ] 4.3 Verify that production access control (`deploy/dapr/accesscontrol.yaml`) uses `defaultAction: deny` with mTLS (SPIFFE trust domain). Note: mTLS trust domain must match the DAPR deployment namespace in production.
-  - [ ] 4.4 Verify that production resiliency (`deploy/dapr/resiliency.yaml`) has exponential backoff, circuit breakers, and timeouts. **Note:** resiliency.yaml is REQUIRED, not optional — its absence means no circuit breakers, no timeout, no backoff. First transient failure cascades.
-  - [ ] 4.5 Verify scopes on EVERY production DAPR component file **individually** — enumerate each file and confirm `scopes: ["commandapi"]` (D4 requirement). Do not batch-assert; check each file explicitly to catch a single missing scope.
-  - [ ] 4.6 Verify the DAPR component **name** (the `metadata.name` field inside YAML, not the filename) matches what the application code expects. The application references state store and pub/sub by component name. A renamed component = broken deployment. Check: what name does `AppHost/DaprComponents/statestore.yaml` use? Production YAMLs must use the same name.
-  - [ ] 4.7 Verify that switching from local Redis to production PostgreSQL requires ONLY changing the DAPR component YAML — no code changes, no recompilation.
-  - [ ] 4.8 Grep the application code for hard-coded backend references. Search for:
+  - [x] 4.3 Verify that production access control (`deploy/dapr/accesscontrol.yaml`) uses `defaultAction: deny` with mTLS (SPIFFE trust domain). Note: mTLS trust domain must match the DAPR deployment namespace in production.
+  - [x] 4.4 Verify that production resiliency (`deploy/dapr/resiliency.yaml`) has exponential backoff, circuit breakers, and timeouts. **Note:** resiliency.yaml is REQUIRED, not optional — its absence means no circuit breakers, no timeout, no backoff. First transient failure cascades.
+  - [x] 4.5 Verify scopes on EVERY production DAPR component file **individually** — enumerate each file and confirm `scopes: ["commandapi"]` (D4 requirement). Do not batch-assert; check each file explicitly to catch a single missing scope.
+  - [x] 4.6 Verify the DAPR component **name** (the `metadata.name` field inside YAML, not the filename) matches what the application code expects. The application references state store and pub/sub by component name. A renamed component = broken deployment. Check: what name does `AppHost/DaprComponents/statestore.yaml` use? Production YAMLs must use the same name.
+  - [x] 4.7 Verify that switching from local Redis to production PostgreSQL requires ONLY changing the DAPR component YAML — no code changes, no recompilation.
+  - [x] 4.8 Grep the application code for hard-coded backend references. Search for:
     - Backend names: `Redis`, `PostgreSQL`, `Cosmos`, `RabbitMQ`, `Kafka`, `ServiceBus`
     - Port numbers: `6379`, `5432`, `27017`, `5672`, `9092`
     - Connection string patterns: `ConnectionString`, `server=`, `host=`
     - Backend-specific NuGet package imports: `StackExchange.Redis`, `Npgsql`, `Microsoft.Azure.Cosmos`
     The only allowed references are in DAPR component YAML files, `deploy/`, and test fixtures. Any backend reference in `src/` code is a portability violation.
-  - [ ] 4.8 Specifically check `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` for backend-specific references. This is a **published NuGet package** — any Redis-specific code baked in there is a portability violation for consumers, not just local dev.
-  - [ ] 4.9 Verify `deploy/dapr/statestore-cosmosdb.yaml` has correct partition key configuration aligned with the actor ID pattern `{tenant}:{domain}:{aggId}`. Misconfigured partition keys cause cross-partition queries that blow RU budgets. ETag-based optimistic concurrency (D1 hard requirement) must work with the chosen partition strategy.
+  - [x] 4.8 Specifically check `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` for backend-specific references. This is a **published NuGet package** — any Redis-specific code baked in there is a portability violation for consumers, not just local dev.
+  - [x] 4.9 Verify `deploy/dapr/statestore-cosmosdb.yaml` has correct partition key configuration aligned with the actor ID pattern `{tenant}:{domain}:{aggId}`. Misconfigured partition keys cause cross-partition queries that blow RU budgets. ETag-based optimistic concurrency (D1 hard requirement) must work with the chosen partition strategy.
 
-- [ ] Task 5: Validate deploy/README.md completeness (AC: #1, #2)
-  - [ ] 5.1 Verify `deploy/README.md` documents all three publisher targets (Docker Compose, Kubernetes, Azure Container Apps).
-  - [ ] 5.2 Verify it documents the Backend Compatibility Matrix (state stores and pub/sub backends with their features).
-  - [ ] 5.3 Verify it documents environment variables for production (connection strings, DAPR config).
-  - [ ] 5.4 Verify it documents the security posture difference (local allow-by-default vs. production deny-by-default).
-  - [ ] 5.5 Verify it documents secret management guidance (never hardcode, use K8s Secrets / Azure Key Vault).
-  - [ ] 5.6 Verify it documents the **manual DAPR sidecar injection steps** for each publisher target. This is the #1 thing a DevOps engineer will hit — Aspire publishers don't generate DAPR sidecars. For each target, README must explain: (a) Docker Compose: how to add sidecar containers alongside each service, (b) Kubernetes: how to add DAPR pod annotations (`dapr.io/enabled`, `dapr.io/app-id`, `dapr.io/app-port`), (c) Azure Container Apps: how to enable DAPR in the Container Apps Environment and configure components.
-  - [ ] 5.7 Verify README includes guidance for **adding a new backend** (e.g., Azure Table Storage, DynamoDB). The NFR29 portability promise means "any DAPR-compatible backend" — not just the 5 pre-built configs. At minimum, point to DAPR component docs and explain what metadata fields are required.
-  - [ ] 5.8 Verify README recommends **GitOps or sealed-secrets** for production DAPR component deployment — not manual `kubectl apply`. Component YAMLs contain infrastructure routing; unauthorized modification redirects all events.
-  - [ ] 5.9 Verify README includes (or links to) a **reference `docker-compose.override.yml`** showing DAPR sidecar containers alongside application services. This is the #1 DX win for Docker Compose users who need a working local-to-staging path.
-  - [ ] 5.10 Verify the main project `README.md` links to `deploy/README.md`. If the deployment guide exists but nobody can find it, it's invisible.
-  - [ ] 5.11 Verify `deploy-staging.yml` workflow references correct Dockerfile paths, build context (must match repo root for COPY commands), and image tags. Flag any `latest`-style tags as a security concern — production should use immutable tags (SHA digest or SemVer).
-  - [ ] 5.12 If any section is missing or inaccurate, update `deploy/README.md`.
+- [x] Task 5: Validate deploy/README.md completeness (AC: #1, #2)
+  - [x] 5.1 Verify `deploy/README.md` documents all three publisher targets (Docker Compose, Kubernetes, Azure Container Apps).
+  - [x] 5.2 Verify it documents the Backend Compatibility Matrix (state stores and pub/sub backends with their features).
+  - [x] 5.3 Verify it documents environment variables for production (connection strings, DAPR config).
+  - [x] 5.4 Verify it documents the security posture difference (local allow-by-default vs. production deny-by-default).
+  - [x] 5.5 Verify it documents secret management guidance (never hardcode, use K8s Secrets / Azure Key Vault).
+  - [x] 5.6 Verify it documents the **manual DAPR sidecar injection steps** for each publisher target. This is the #1 thing a DevOps engineer will hit — Aspire publishers don't generate DAPR sidecars. For each target, README must explain: (a) Docker Compose: how to add sidecar containers alongside each service, (b) Kubernetes: how to add DAPR pod annotations (`dapr.io/enabled`, `dapr.io/app-id`, `dapr.io/app-port`), (c) Azure Container Apps: how to enable DAPR in the Container Apps Environment and configure components.
+  - [x] 5.7 Verify README includes guidance for **adding a new backend** (e.g., Azure Table Storage, DynamoDB). The NFR29 portability promise means "any DAPR-compatible backend" — not just the 5 pre-built configs. At minimum, point to DAPR component docs and explain what metadata fields are required.
+  - [x] 5.8 Verify README recommends **GitOps or sealed-secrets** for production DAPR component deployment — not manual `kubectl apply`. Component YAMLs contain infrastructure routing; unauthorized modification redirects all events.
+  - [x] 5.9 Verify README includes (or links to) a **reference `docker-compose.override.yml`** showing DAPR sidecar containers alongside application services. This is the #1 DX win for Docker Compose users who need a working local-to-staging path.
+  - [x] 5.10 Verify the main project `README.md` links to `deploy/README.md`. If the deployment guide exists but nobody can find it, it's invisible.
+  - [x] 5.11 Verify `deploy-staging.yml` workflow references correct Dockerfile paths, build context (must match repo root for COPY commands), and image tags. Flag any `latest`-style tags as a security concern — production should use immutable tags (SHA digest or SemVer).
+  - [x] 5.12 If any section is missing or inaccurate, update `deploy/README.md`.
 
-- [ ] Task 6: Validate Dockerfiles (AC: #1)
-  - [ ] 6.1 Verify `src/Hexalith.EventStore.CommandApi/Dockerfile` exists and builds correctly:
+- [x] Task 6: Validate Dockerfiles (AC: #1)
+  - [x] 6.1 Verify `src/Hexalith.EventStore.CommandApi/Dockerfile` exists and builds correctly:
     ```bash
     docker build -f src/Hexalith.EventStore.CommandApi/Dockerfile -t hexalith-commandapi:test .
     ```
     **If Docker is unavailable** (common on Windows without Docker Desktop running), structural validation is sufficient — do NOT block the story on Docker availability. Verify: multi-stage build pattern, correct .NET 10 base images, correct COPY paths referencing the solution structure, correct EXPOSE ports, and correct ENTRYPOINT.
-  - [ ] 6.2 Verify `samples/Hexalith.EventStore.Sample/Dockerfile` exists and is structurally correct.
-  - [ ] 6.3 Both Dockerfiles should use .NET 10 base images (`mcr.microsoft.com/dotnet/aspnet:10.0` and `/sdk:10.0`).
-  - [ ] 6.4 Verify Dockerfile `COPY` paths are correct when built from repo root (the standard CI build context). If `docker build -f src/.../Dockerfile .` is run from repo root, the COPY commands must reference paths relative to repo root, not relative to the Dockerfile location.
-  - [ ] 6.5 Note: Dockerfile `EXPOSE` is informational only — DAPR sidecar connects via `--app-port`, not Docker EXPOSE. Check that EXPOSE is reasonable (e.g., 8080) but don't block on port mismatch with AppHost.
+  - [x] 6.2 Verify `samples/Hexalith.EventStore.Sample/Dockerfile` exists and is structurally correct.
+  - [x] 6.3 Both Dockerfiles should use .NET 10 base images (`mcr.microsoft.com/dotnet/aspnet:10.0` and `/sdk:10.0`).
+  - [x] 6.4 Verify Dockerfile `COPY` paths are correct when built from repo root (the standard CI build context). If `docker build -f src/.../Dockerfile .` is run from repo root, the COPY commands must reference paths relative to repo root, not relative to the Dockerfile location.
+  - [x] 6.5 Note: Dockerfile `EXPOSE` is informational only — DAPR sidecar connects via `--app-port`, not Docker EXPOSE. Check that EXPOSE is reasonable (e.g., 8080) but don't block on port mismatch with AppHost.
 
-- [ ] Task 7: Validate all Tier 1 tests pass — zero regressions (AC: #1, #2)
+- [x] Task 7: Validate all Tier 1 tests pass — zero regressions (AC: #1, #2)
   **Conditional:** Run only if any `src/` or `samples/` files were modified during Tasks 1-8. If this story makes zero source code changes, skip and document "No src changes — Tier 1 skipped" in Completion Notes.
   - [ ] 7.1 Run ALL Tier 1 test suites:
     ```bash
@@ -201,15 +201,15 @@ Installed publisher packages in `AppHost.csproj`:
     dotnet test tests/Hexalith.EventStore.Testing.Tests/ --configuration Release
     dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --configuration Release
     ```
-  - [ ] 7.2 Document total test count and any failures in Completion Notes.
+  - [x] 7.2 Document execution outcome in Completion Notes (test totals if run, skip rationale if not run).
 
-- [ ] Task 8: Fill critical gaps (if any found) (AC: #1, #2)
+- [x] Task 8: Fill critical gaps (if any found) (AC: #1, #2)
   **Scope:** Fixes target `deploy/`, `deploy/README.md`, Dockerfiles, and AppHost publisher config ONLY. Never modify local dev components in `AppHost/DaprComponents/`.
   - [ ] 8.1 If any publisher target fails to generate output, investigate and fix the AppHost publisher configuration.
   - [ ] 8.2 If any production DAPR component is missing or structurally invalid, create/fix it in `deploy/dapr/`.
   - [ ] 8.3 If a backend-specific reference is found in application code, refactor to use DAPR abstractions.
   - [ ] 8.4 If Dockerfiles are missing or broken, fix them.
-  - [ ] 8.5 If NO critical gaps are found, document "Deployment infrastructure complete" in Completion Notes.
+  - [x] 8.5 If NO critical gaps are found, document "Deployment infrastructure complete" in Completion Notes.
 
 ## Dev Notes
 
@@ -412,10 +412,36 @@ All Epic 8 work has been validation/completion pattern — minimal changes to wo
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No issues encountered. All three Aspire publishers succeeded on first attempt using `aspire publish` CLI (13.1.2).
+
 ### Completion Notes List
 
+- **Task 0:** Build succeeded — 0 warnings, 0 errors, all 18 projects compiled
+- **Task 1 (Docker Compose):** Publisher generated `docker-compose.yaml` with services for `commandapi`, `sample`, `sample-blazor-ui`, and `docker-dashboard`. Parameterized env vars (`${COMMANDAPI_IMAGE}`, `${COMMANDAPI_PORT}`), bridge network. No DAPR sidecar containers (expected — documented in deploy/README.md)
+- **Task 2 (Kubernetes):** Publisher generated Helm chart with `Chart.yaml`, `values.yaml`, Deployments/Services/ConfigMaps for 3 services. Image refs parameterized in `values.yaml`. Note: `replicas` hardcoded to 1 in deployment template (not parameterized), `resources.limits` not generated. No DAPR pod annotations (expected — documented in deploy/README.md)
+- **Task 3 (Azure Container Apps):** Publisher generated Bicep modules — `main.bicep` (subscription-scoped), ACR, Container Apps Environment, per-service modules. Managed identity configured (UserAssigned). `main.bicep` accepts `resourceGroupName`, `location`, `principalId` parameters. No `daprEnabled` in Container Apps Environment (expected — documented in deploy/README.md)
+- **Task 4 (DAPR Portability):** All 9 production YAMLs validated. Component names match local dev (`statestore`, `pubsub`). All files have correct scopes. Env var references for all secrets. Resiliency policies complete (retries, circuit breakers, timeouts). Access control deny-by-default with mTLS trust domain. Cosmos DB uses default DAPR partition strategy (state key as partition key value). Only backend-specific reference in src/ is SignalR Redis backplane (`CommandApi/SignalR/`), which is separate from DAPR abstractions — not a DAPR portability violation. `HexalithEventStoreExtensions.cs` (published NuGet) has zero backend-specific references.
+- **Task 5 (Deploy README):** Gaps found and fixed: (1) Added missing `subscription-projection-changed.yaml` to directory listing, (2) Added "Security Posture: Local vs. Production" comparison table, (3) Added GitOps/sealed-secrets production deployment recommendation, (4) Added "Adding a New Backend" section with state store and pub/sub guidance, (5) Added link to `deploy/README.md` from main `README.md`, (6) Fixed Aspire SDK version from 13.1.1 to 13.1.2, (7) Added "CI/CD Image Tagging" section flagging `staging-latest` mutable tags. Docker Compose sidecar inline example serves as reference (5.9).
+- **Task 6 (Dockerfiles):** Both Dockerfiles validated structurally — multi-stage build, .NET 10 alpine images, correct COPY paths for repo root build context, EXPOSE 8080, non-root user (`appuser`). Docker Desktop not running — structural validation sufficient per story guidance.
+- **Task 7 (Tier 1 Tests):** SKIPPED (conditional gate not met) — no `src/` or `samples/` files modified. Only `deploy/README.md` and root `README.md` changed.
+- **Task 8 (Gap Fixes):** 8.1-8.4 not triggered (no corresponding critical gaps found). 8.5 completed: Deployment infrastructure complete — documentation gaps filled in deploy/README.md and main README.md.
+
+### Change Log
+
+- 2026-03-19: Validated all three Aspire publisher targets (Docker Compose, Kubernetes, Azure Container Apps) — all succeed
+- 2026-03-19: Validated all 9 production DAPR component YAMLs — scopes, env vars, component names, resiliency, access control all correct
+- 2026-03-19: Updated deploy/README.md — added security posture table, GitOps recommendation, new backend guidance, CI/CD image tagging note, fixed Aspire version, added missing subscription file to listing
+- 2026-03-19: Updated README.md — added link to deploy/README.md in Guides section
+- 2026-03-19: Validated both Dockerfiles — structurally correct for .NET 10, multi-stage build, repo root context
+- 2026-03-19: Code review completed (3-layer adversarial review). 8 patches applied: pinned DAPR sidecar to 1.16.1, added missing -app-port for sample, separated -config from -components-path, fixed indentation, corrected security posture table (resiliency + scoping rows), fixed env var scope docs, added explicit pub/sub scopes guidance, consolidated duplicate sidecar blocks
+
 ### File List
+
+- `deploy/README.md` — added security posture table, GitOps recommendation, new backend guidance, CI/CD image tagging, fixed Aspire version, added missing subscription file (modified)
+- `README.md` — added link to deploy/README.md in Guides section (modified)
+- `_bmad-output/implementation-artifacts/8-6-deployment-manifests-and-environment-portability.md` — task checkboxes, completion notes, status (modified)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — story status updated (modified)

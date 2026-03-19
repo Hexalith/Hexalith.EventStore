@@ -14,7 +14,8 @@ deploy/
     pubsub-servicebus.yaml        # Azure Service Bus pub/sub (production)
     resiliency.yaml               # Production resiliency policies
     accesscontrol.yaml            # Production access control (deny-by-default)
-    subscription-sample-counter.yaml  # Sample subscription template
+    subscription-sample-counter.yaml       # Sample subscription template
+    subscription-projection-changed.yaml   # Projection change subscription
 ```
 
 ## Backend Compatibility Matrix
@@ -104,10 +105,20 @@ Some production templates use environment variable placeholders for environment-
 
 - `DAPR_TRUST_DOMAIN` (used in `accesscontrol.yaml`): SPIFFE trust domain for mTLS identity validation.
 - `DAPR_NAMESPACE` (used in `accesscontrol.yaml`): Kubernetes namespace where `commandapi` runs.
-- `SUBSCRIBER_APP_ID` (used in `pubsub-servicebus.yaml`): Authorized external subscriber app-id.
-- `OPS_MONITOR_APP_ID` (used in `pubsub-servicebus.yaml`): Operational/monitoring subscriber app-id for dead-letter topics.
+- `SUBSCRIBER_APP_ID` (used in all pub/sub configs): Authorized external subscriber app-id.
+- `OPS_MONITOR_APP_ID` (used in all pub/sub configs): Operational/monitoring subscriber app-id for dead-letter topics.
 
 Set these before applying production templates to avoid unresolved/literal placeholder values.
+
+## Security Posture: Local vs. Production
+
+| Aspect | Local Dev (`AppHost/DaprComponents/`) | Production (`deploy/dapr/`) |
+|--------|---------------------------------------|---------------------------|
+| Access Control | `defaultAction: allow` (no mTLS) | `defaultAction: deny` + mTLS (SPIFFE trust domain) |
+| Component Scoping | Explicit scopes (e.g., `commandapi`) | Explicit `scopes: ["commandapi"]` on every component |
+| Secrets | `appsettings.json` / env vars | K8s Secrets / Azure Key Vault |
+| TLS | None (local loopback) | mTLS via DAPR sidecar (NFR9) |
+| Resiliency | Constant retry (3 retries, 1s), shorter intervals | Exponential retry (10 retries, 15s max), longer intervals |
 
 ## Secret Management
 
@@ -119,23 +130,16 @@ Recommended approaches by platform:
 - **Azure Container Apps:** Use managed identity with Azure Key Vault references
 - **Docker Compose:** Use `.env` files (excluded from source control) with environment variable substitution
 
+**Production deployment recommendation:** Use GitOps (Argo CD, Flux) or Sealed Secrets to manage DAPR component YAMLs in production. Manual `kubectl apply` of component files is acceptable for staging, but production environments should track component configuration as versioned, reviewed infrastructure-as-code. DAPR component YAMLs contain infrastructure routing — unauthorized modification redirects all events.
+
 ## Deployment Steps
 
 ### Docker Compose
 
 1. Choose one state store config and one pub/sub config
-2. Copy chosen files plus `resiliency.yaml` and `accesscontrol.yaml` to your DAPR components directory
+2. Copy chosen files plus `resiliency.yaml` to a `dapr-components/` directory, and `accesscontrol.yaml` to a separate `dapr-config/` directory (see [Docker Compose Publisher](#docker-compose-publisher) for why)
 3. Set required environment variables in your `.env` file
-4. Mount the components directory in your `docker-compose.yaml`:
-
-   ```yaml
-   services:
-     commandapi-dapr:
-       image: "daprio/daprd:latest"
-       volumes:
-         - ./dapr-components:/components
-       command: ["./daprd", "-app-id", "commandapi", "-components-path", "/components"]
-   ```
+4. Add DAPR sidecar containers — see the [reference override file pattern](#docker-compose-publisher) for a complete example
 
 
 ### Kubernetes
@@ -174,7 +178,7 @@ The AppHost supports three Aspire publisher targets for generating deployment ma
 
 **Prerequisites:** Install the Aspire CLI as a global tool: `dotnet tool install -g Aspire.Cli`
 
-**Generated manifests are version-tied:** Publisher output format is specific to the Aspire SDK version (currently 13.1.1). When upgrading Aspire, regenerate manifests via `aspire publish` -- do not manually edit previously generated files.
+**Generated manifests are version-tied:** Publisher output format is specific to the Aspire SDK version (currently 13.1.2). When upgrading Aspire, regenerate manifests via `aspire publish` -- do not manually edit previously generated files.
 
 ### Docker Compose Publisher
 
@@ -197,26 +201,31 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **DAPR sidecar handling:** `CommunityToolkit.Aspire.Hosting.Dapr` is a local dev orchestration tool. The Docker Compose publisher does **NOT** generate DAPR sidecar containers. To add DAPR support:
 
-1. Add sidecar container definitions for each service in `docker-compose.yaml`:
+1. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume. Place the `accesscontrol.yaml` (a DAPR Configuration resource, `kind: Configuration`) in a separate `dapr-config/` directory to avoid DAPR loading it as both a config and a component.
+2. Resolve environment variable placeholders in the `.env` file with production values.
+3. Add sidecar containers via a `docker-compose.override.yml` file (keeps Aspire-generated `docker-compose.yaml` unchanged and reviewable):
 
-   ```yaml
-   services:
-     commandapi-dapr:
-       image: "daprio/daprd:latest"
-       network_mode: "service:commandapi"
-       volumes:
-         - ./dapr-components:/components
-       command: ["./daprd", "-app-id", "commandapi", "-app-port", "8080", "-components-path", "/components", "-config", "/components/accesscontrol.yaml"]
-     sample-dapr:
-       image: "daprio/daprd:latest"
-       network_mode: "service:sample"
-       volumes:
-         - ./dapr-components:/components
-       command: ["./daprd", "-app-id", "sample", "-components-path", "/components", "-config", "/components/accesscontrol.yaml"]
-   ```
+**Reference override file pattern (`docker-compose.override.yml`):**
 
-2. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume.
-3. Resolve environment variable placeholders in the `.env` file with production values.
+```yaml
+services:
+  commandapi-dapr:
+    image: "daprio/daprd:1.16.1"
+    network_mode: "service:commandapi"
+    volumes:
+      - ./dapr-components:/components
+      - ./dapr-config:/config
+    command: ["./daprd", "-app-id", "commandapi", "-app-port", "8080", "-components-path", "/components", "-config", "/config/accesscontrol.yaml"]
+  sample-dapr:
+    image: "daprio/daprd:1.16.1"
+    network_mode: "service:sample"
+    volumes:
+      - ./dapr-components:/components
+      - ./dapr-config:/config
+    command: ["./daprd", "-app-id", "sample", "-app-port", "8080", "-components-path", "/components", "-config", "/config/accesscontrol.yaml"]
+```
+
+Pin the DAPR sidecar image to a specific version (e.g., `1.16.1`) — avoid mutable tags like `latest` (see [CI/CD Image Tagging](#cicd-image-tagging)).
 
 ### Kubernetes Publisher
 
@@ -305,6 +314,10 @@ Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production
 
 When `Authentication__JwtBearer__Authority` is set, the application uses OIDC discovery to validate tokens. When it is not set, it falls back to symmetric key validation via `Authentication__JwtBearer__SigningKey`.
 
+## CI/CD Image Tagging
+
+The `deploy-staging.yml` workflow uses `staging-latest` mutable tags for staging deployments. For production, use immutable tags — either a SemVer tag (e.g., `v1.2.3`) or a SHA digest (e.g., `@sha256:abc123...`). Mutable tags like `latest` or `staging-latest` mean rollbacks may silently pick up a different image than the one originally deployed.
+
 ## Validating Configuration
 
 After deployment, verify the configuration:
@@ -337,3 +350,30 @@ When adding a new external event subscriber:
 5. Update access control if the subscriber needs to invoke other services
 
 See inline documentation in each pub/sub config file for detailed step-by-step instructions.
+
+## Adding a New Backend
+
+The NFR29 portability guarantee means any DAPR-compatible backend works — not just the pre-built configs in `deploy/dapr/`. To add a new backend (e.g., Azure Table Storage, DynamoDB, NATS):
+
+### State Store
+
+1. Find the DAPR component spec for your backend at [DAPR State Store Components](https://docs.dapr.io/reference/components-reference/supported-state-stores/)
+2. Create a new YAML file in `deploy/dapr/` following the pattern in `statestore-postgresql.yaml`
+3. Required metadata fields:
+   - `actorStateStore: "true"` (required for DAPR actors)
+   - Connection credentials via `{env:VAR_NAME}` references (never hardcode)
+4. The component `metadata.name` **must** be `statestore` (matches what the application code references)
+5. Add `scopes: ["commandapi"]` (D4 requirement — only commandapi accesses the state store)
+6. Verify the backend supports ETag-based optimistic concurrency (D1 hard requirement)
+
+### Pub/Sub
+
+1. Find the DAPR component spec at [DAPR Pub/Sub Components](https://docs.dapr.io/reference/components-reference/supported-pubsub/)
+2. Create a new YAML file following the pattern in `pubsub-rabbitmq.yaml`
+3. Required metadata fields:
+   - Configure dead-letter handling using backend-supported metadata (for example: `enableDeadLetter` + `deadLetterTopic` where supported)
+   - `publishingScopes` and `subscriptionScopes` (copy from existing pub/sub configs)
+   - Connection credentials via `{env:VAR_NAME}` references
+4. The component `metadata.name` **must** be `pubsub` (matches what the application code references)
+5. Add `scopes` list: `["commandapi", "{env:SUBSCRIBER_APP_ID}", "{env:OPS_MONITOR_APP_ID}"]` — must include `commandapi` (publisher) plus any authorized subscriber app-ids
+6. Verify the backend supports CloudEvents 1.0 and at-least-once delivery
