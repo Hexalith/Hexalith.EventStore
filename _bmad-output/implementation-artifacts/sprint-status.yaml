@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-19 # story 8-2 done
+last_updated: 2026-03-19 # story 8-3 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -112,8 +112,8 @@ development_status:
   epic-8: in-progress
   8-1-aspire-apphost-and-dapr-topology: done
   8-2-counter-sample-domain-service: done
-  8-3-nuget-client-package-and-zero-config-registration: ready-for-dev
-  8-4-domain-service-hot-reload: backlog
+  8-3-nuget-client-package-and-zero-config-registration: done
+  8-4-domain-service-hot-reload: ready-for-dev
   8-5-three-tier-test-pyramid: backlog
   8-6-deployment-manifests-and-environment-portability: backlog
   8-7-cicd-pipeline: backlog

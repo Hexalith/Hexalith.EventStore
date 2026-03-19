@@ -1,6 +1,6 @@
 # Story 8.3: NuGet Client Package & Zero-Config Registration
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -73,39 +73,39 @@ The Client NuGet package is **already substantially implemented** with a mature 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Audit public API surface for minimal exposure (AC: #3)
-  - [ ] 1.1 Scan all `.cs` files in `src/Hexalith.EventStore.Client/` for all public type declarations: `public class`, `public record`, `public struct`, `public enum`, `public interface`, `public static class`, and `public delegate`. Identify types that should be `internal` because they are NOT needed by domain service developers. The following MUST be public: `EventStoreAggregate<T>`, `EventStoreProjection<T>`, `IDomainProcessor`, `DomainProcessorBase<T>`, `EventStoreDomainAttribute`, `DomainResult` (Contracts), `IEventPayload` (Contracts), `IRejectionEvent` (Contracts), `CommandEnvelope` (Contracts), `EventStoreOptions`, `EventStoreDomainOptions`, `AddEventStore()` extensions, `UseEventStore()` extensions, `NamingConventionEngine` (public for advanced users), `IProjectionChangeNotifier`, `IProjectionChangedBroadcaster`, `IEventStoreProjection`, `DiscoveryResult`, `DiscoveredDomain`, `DomainKind`, `EventStoreActivationContext`, `EventStoreDomainActivation`, `QueryContractResolver`
-  - [ ] 1.2 For any internal-only types found `public`, follow this **strict order of operations**: (1) Check if the type is already `internal` — if so, document in Completion Notes and proceed, no changes needed. (2) Grep `src/Hexalith.EventStore.Server/` and `tests/Hexalith.EventStore.Sample.Tests/` for direct references to the type. (3) If referenced by Server, add `<InternalsVisibleTo Include="Hexalith.EventStore.Server" />` to Client.csproj FIRST. Verify existing `InternalsVisibleTo` for `Hexalith.EventStore.Client.Tests` is present. (4) THEN change visibility to `internal`. (5) Build to verify no breaks. **Safety rule: when in doubt, leave the type `public` — making a public type internal is a breaking change for external NuGet consumers. Err on the side of caution.** Candidates — these are the **ONLY two candidates** for `internal`; do not make any other types `internal` (the MUST-be-public list in Task 1.1 is comprehensive): `DomainProcessorStateRehydrator` (implementation detail, consumed only by base classes), `AssemblyScanner` (consumed only by `AddEventStore()`)
+- [x] Task 1: Audit public API surface for minimal exposure (AC: #3)
+  - [x] 1.1 Scan all `.cs` files in `src/Hexalith.EventStore.Client/` for all public type declarations: `public class`, `public record`, `public struct`, `public enum`, `public interface`, `public static class`, and `public delegate`. Identify types that should be `internal` because they are NOT needed by domain service developers. The following MUST be public: `EventStoreAggregate<T>`, `EventStoreProjection<T>`, `IDomainProcessor`, `DomainProcessorBase<T>`, `EventStoreDomainAttribute`, `DomainResult` (Contracts), `IEventPayload` (Contracts), `IRejectionEvent` (Contracts), `CommandEnvelope` (Contracts), `EventStoreOptions`, `EventStoreDomainOptions`, `AddEventStore()` extensions, `UseEventStore()` extensions, `NamingConventionEngine` (public for advanced users), `IProjectionChangeNotifier`, `IProjectionChangedBroadcaster`, `IEventStoreProjection`, `DiscoveryResult`, `DiscoveredDomain`, `DomainKind`, `EventStoreActivationContext`, `EventStoreDomainActivation`, `QueryContractResolver`
+  - [x] 1.2 For any internal-only types found `public`, follow this **strict order of operations**: (1) Check if the type is already `internal` — if so, document in Completion Notes and proceed, no changes needed. (2) Grep `src/Hexalith.EventStore.Server/` and `tests/Hexalith.EventStore.Sample.Tests/` for direct references to the type. (3) If referenced by Server, add `<InternalsVisibleTo Include="Hexalith.EventStore.Server" />` to Client.csproj FIRST. Verify existing `InternalsVisibleTo` for `Hexalith.EventStore.Client.Tests` is present. (4) THEN change visibility to `internal`. (5) Build to verify no breaks. **Safety rule: when in doubt, leave the type `public` — making a public type internal is a breaking change for external NuGet consumers. Err on the side of caution.** Candidates — these are the **ONLY two candidates** for `internal`; do not make any other types `internal` (the MUST-be-public list in Task 1.1 is comprehensive): `DomainProcessorStateRehydrator` (implementation detail, consumed only by base classes), `AssemblyScanner` (consumed only by `AddEventStore()`)
 
-- [ ] Task 2: Audit XML documentation on public types (AC: #2)
-  - [ ] 2.1 Verify `<GenerateDocumentationFile>true</GenerateDocumentationFile>` is set in BOTH `Hexalith.EventStore.Client.csproj` (already present) AND `Hexalith.EventStore.Contracts.csproj`. **If missing from Contracts.csproj, add it NOW** — the build-based validation in 2.3 depends on this being present in both packages.
-  - [ ] 2.2 **Before trusting the build as XML doc validation**, verify CS1591 is NOT suppressed in `<NoWarn>` for the default (non-`ApiReferenceBuild`) build configuration. Check `.editorconfig`, `Directory.Build.props`, and individual `.csproj` files. `Directory.Build.props` only suppresses CS1591 when `ApiReferenceBuild=true` — confirm that condition is NOT set by default.
-  - [ ] 2.3 Run `dotnet build src/Hexalith.EventStore.Client/ --configuration Release` and `dotnet build src/Hexalith.EventStore.Contracts/ --configuration Release`. If CS1591 warnings/errors appear, add missing XML docs. If build succeeds with zero warnings, XML docs are complete.
-  - [ ] 2.4 For any public types missing XML docs, add concise `<summary>` tags that describe the type's purpose for a domain service developer consuming the NuGet package
+- [x] Task 2: Audit XML documentation on public types (AC: #2)
+  - [x] 2.1 Verify `<GenerateDocumentationFile>true</GenerateDocumentationFile>` is set in BOTH `Hexalith.EventStore.Client.csproj` (already present) AND `Hexalith.EventStore.Contracts.csproj`. **If missing from Contracts.csproj, add it NOW** — the build-based validation in 2.3 depends on this being present in both packages.
+  - [x] 2.2 **Before trusting the build as XML doc validation**, verify CS1591 is NOT suppressed in `<NoWarn>` for the default (non-`ApiReferenceBuild`) build configuration. Check `.editorconfig`, `Directory.Build.props`, and individual `.csproj` files. `Directory.Build.props` only suppresses CS1591 when `ApiReferenceBuild=true` — confirm that condition is NOT set by default.
+  - [x] 2.3 Run `dotnet build src/Hexalith.EventStore.Client/ --configuration Release` and `dotnet build src/Hexalith.EventStore.Contracts/ --configuration Release`. If CS1591 warnings/errors appear, add missing XML docs. If build succeeds with zero warnings, XML docs are complete.
+  - [x] 2.4 For any public types missing XML docs, add concise `<summary>` tags that describe the type's purpose for a domain service developer consuming the NuGet package
 
-- [ ] Task 3: Validate NuGet package configuration (AC: #1, #2)
-  - [ ] 3.1 Run `dotnet pack src/Hexalith.EventStore.Client/ --configuration Release` and `dotnet pack src/Hexalith.EventStore.Contracts/ --configuration Release`. If both produce `.nupkg` files successfully, the NuGet metadata (Authors, License, Description, README, XML docs) is validated — these are already configured in `Directory.Build.props` and individual `.csproj` files. The CI/CD pipeline (`release.yml`) validates package count on every release.
-  - [ ] 3.2 Spot-check: verify `README.md` exists at repo root (already confirmed in `Directory.Build.props` via `<PackageReadmeFile>`) and both `.csproj` files have meaningful `<Description>` tags.
+- [x] Task 3: Validate NuGet package configuration (AC: #1, #2)
+  - [x] 3.1 Run `dotnet pack src/Hexalith.EventStore.Client/ --configuration Release` and `dotnet pack src/Hexalith.EventStore.Contracts/ --configuration Release`. If both produce `.nupkg` files successfully, the NuGet metadata (Authors, License, Description, README, XML docs) is validated — these are already configured in `Directory.Build.props` and individual `.csproj` files. The CI/CD pipeline (`release.yml`) validates package count on every release.
+  - [x] 3.2 Spot-check: verify `README.md` exists at repo root (already confirmed in `Directory.Build.props` via `<PackageReadmeFile>`) and both `.csproj` files have meaningful `<Description>` tags.
 
-- [ ] Task 4: Add zero-config quickstart validation tests IF NOT ALREADY COVERED (AC: #1, #4)
-  - [ ] 4.1 **FIRST:** Review existing tests in `AddEventStoreTests.cs` and `FluentApiRegistrationIntegrationTests.cs` to determine which zero-config scenarios are already covered. Only add tests for scenarios NOT already tested. If the zero-config path (no-arg discovery → activation → keyed resolution) is fully covered, document the existing coverage in Completion Notes and skip new test creation.
-  - [ ] 4.2 If gaps exist, add test `tests/Hexalith.EventStore.Client.Tests/Registration/ZeroConfigQuickstartTests.cs` with ONLY the uncovered scenarios from:
+- [x] Task 4: Add zero-config quickstart validation tests IF NOT ALREADY COVERED (AC: #1, #4)
+  - [x] 4.1 **FIRST:** Review existing tests in `AddEventStoreTests.cs` and `FluentApiRegistrationIntegrationTests.cs` to determine which zero-config scenarios are already covered. Only add tests for scenarios NOT already tested. If the zero-config path (no-arg discovery → activation → keyed resolution) is fully covered, document the existing coverage in Completion Notes and skip new test creation.
+  - [x] 4.2 If gaps exist, add test `tests/Hexalith.EventStore.Client.Tests/Registration/ZeroConfigQuickstartTests.cs` with ONLY the uncovered scenarios from:
     - `AddEventStore_NoArgs_DiscoversTypesInCallingAssembly` — verify that `AddEventStore()` with no arguments finds domain types defined in the test assembly (use test stub aggregates already in `AssemblyScannerSmokeStubs.cs`)
     - `AddEventStore_ThenUseEventStore_ProducesActivationContext` — verify the full `AddEventStore()` → build host → `UseEventStore()` flow produces a populated `EventStoreActivationContext` with correct domain names and DAPR resource names
     - `AddEventStore_ThenResolveKeyedService_ReturnsDomainProcessor` — verify `GetRequiredKeyedService<IDomainProcessor>(domainName)` returns the correct aggregate type
-  - [ ] 4.3 If `AssemblyScannerSmokeStubs.cs` already contains suitable test aggregate types, reuse them. If not, add a minimal `TestAggregate : EventStoreAggregate<TestState>` stub in the same file.
+  - [x] 4.3 If `AssemblyScannerSmokeStubs.cs` already contains suitable test aggregate types, reuse them. If not, add a minimal `TestAggregate : EventStoreAggregate<TestState>` stub in the same file.
 
-- [ ] Task 5: Validate existing tests — zero regressions (AC: #4)
-  - [ ] 5.1 Run `dotnet test tests/Hexalith.EventStore.Client.Tests/` — all tests must pass
-  - [ ] 5.2 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — all tests must pass
-  - [ ] 5.3 Run `dotnet test tests/Hexalith.EventStore.Sample.Tests/` — all tests must pass (including Story 8.2 changes if merged)
-  - [ ] 5.4 Run `dotnet test tests/Hexalith.EventStore.Testing.Tests/` — all tests must pass
-  - [ ] 5.5 If any test failures are caused by this story's changes (e.g., visibility changes from Task 1), fix them. Pre-existing failures unrelated to this story should be documented but NOT fixed.
+- [x] Task 5: Validate existing tests — zero regressions (AC: #4)
+  - [x] 5.1 Run `dotnet test tests/Hexalith.EventStore.Client.Tests/` — all tests must pass
+  - [x] 5.2 Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — all tests must pass
+  - [x] 5.3 Run `dotnet test tests/Hexalith.EventStore.Sample.Tests/` — all tests must pass (including Story 8.2 changes if merged)
+  - [x] 5.4 Run `dotnet test tests/Hexalith.EventStore.Testing.Tests/` — all tests must pass
+  - [x] 5.5 If any test failures are caused by this story's changes (e.g., visibility changes from Task 1), fix them. Pre-existing failures unrelated to this story should be documented but NOT fixed.
 
-- [ ] Task 6: Verify Contracts package public API (AC: #2, #3)
-  - [ ] 6.1 `GenerateDocumentationFile` for Contracts is already handled in Task 2.1. Verify that Task 2.3's Contracts build passed with zero CS1591 warnings — if so, Contracts XML docs are complete.
-  - [ ] 6.2 Verify Contracts has zero dependencies on other Hexalith.EventStore packages (only depends on `Hexalith.Commons.UniqueIds`) — this is the architectural boundary rule
-  - [ ] 6.3 Scan Contracts public types using same methodology as Task 1.1. All Contracts types are developer-facing by design — no visibility changes expected, but verify no internal implementation types leaked into the public API.
+- [x] Task 6: Verify Contracts package public API (AC: #2, #3)
+  - [x] 6.1 `GenerateDocumentationFile` for Contracts is already handled in Task 2.1. Verify that Task 2.3's Contracts build passed with zero CS1591 warnings — if so, Contracts XML docs are complete.
+  - [x] 6.2 Verify Contracts has zero dependencies on other Hexalith.EventStore packages (only depends on `Hexalith.Commons.UniqueIds`) — this is the architectural boundary rule
+  - [x] 6.3 Scan Contracts public types using same methodology as Task 1.1. All Contracts types are developer-facing by design — no visibility changes expected, but verify no internal implementation types leaked into the public API.
 
 ## Dev Notes
 
@@ -289,10 +289,34 @@ All Epic 8 work has been validation/completion pattern — minimal changes to wo
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+None — clean execution, no halts or retries needed.
+
 ### Completion Notes List
 
+- **Task 1 (Public API surface):** All 20 public types in Client are correctly public and on the must-be-public list. Both candidates for `internal` (`DomainProcessorStateRehydrator`, `AssemblyScanner`) were already `internal`. `IEventStoreProjection` was also already `internal`. No visibility changes needed.
+- **Task 2 (XML documentation):** Client.csproj already had `GenerateDocumentationFile=true` and built clean. Contracts.csproj was MISSING `GenerateDocumentationFile` — added it, which revealed 28 CS1591 errors in 5 files. Added XML `<summary>` and `<param>` docs to: `SubmitQueryRequest`, `SubmitQueryResponse`, `PreflightValidationResult`, `ValidateCommandRequest`, `ValidateQueryRequest`. After fix, both packages build with 0 warnings. Verified CS1591 is NOT suppressed in default builds (only under `ApiReferenceBuild=true`).
+- **Task 3 (NuGet packaging):** Both Client and Contracts `dotnet pack` succeed. Both .csproj files have meaningful `<Description>` tags. README.md exists at repo root. NuGet metadata inherited from Directory.Build.props (Authors, License, PackageReadmeFile).
+- **Task 4 (Zero-config tests):** All three zero-config scenarios are ALREADY COVERED by existing tests — no new tests needed:
+  - Scenario A (no-arg discovery): `AddEventStoreTests.AddEventStore_ZeroConfigOverload_DiscoversAndRegistersAggregatesFromCallingAssembly`
+  - Scenario B (full flow → activation context): `FluentApiRegistrationIntegrationTests.UseEventStore_SampleAssembly_ActivationContextHasCorrectProperties`
+  - Scenario C (keyed resolution): `AddEventStoreTests.AddEventStore_KeyedServiceRegistration_ResolvesCorrectAggregateByDomainName` and `FluentApiRegistrationIntegrationTests.UseEventStore_SampleAssembly_KeyedDomainProcessorResolvesCounterAggregate`
+- **Task 5 (Regression tests):** All Tier 1 tests pass: Contracts.Tests (267), Client.Tests (293), Sample.Tests (43), Testing.Tests (67). Total: 670 tests, 0 failures, 0 regressions.
+- **Task 6 (Contracts API):** All 31 public types are developer-facing domain contracts. Only internal type is `KebabConverter` (correctly internal). Only dependency is `Hexalith.Commons.UniqueIds` — architectural boundary rule satisfied. After XML doc fix, Contracts builds clean with 0 CS1591 warnings.
+
+### Change Log
+
+- 2026-03-19: Added `<GenerateDocumentationFile>true</GenerateDocumentationFile>` to Contracts.csproj
+- 2026-03-19: Added XML documentation to 5 Contracts files: SubmitQueryRequest.cs, SubmitQueryResponse.cs, PreflightValidationResult.cs, ValidateCommandRequest.cs, ValidateQueryRequest.cs
+
 ### File List
+
+- `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj` (modified — added GenerateDocumentationFile)
+- `src/Hexalith.EventStore.Contracts/Queries/SubmitQueryRequest.cs` (modified — added XML docs)
+- `src/Hexalith.EventStore.Contracts/Queries/SubmitQueryResponse.cs` (modified — added XML docs)
+- `src/Hexalith.EventStore.Contracts/Validation/PreflightValidationResult.cs` (modified — added XML docs)
+- `src/Hexalith.EventStore.Contracts/Validation/ValidateCommandRequest.cs` (modified — added XML docs)
+- `src/Hexalith.EventStore.Contracts/Validation/ValidateQueryRequest.cs` (modified — added XML docs)
