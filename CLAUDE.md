@@ -24,6 +24,7 @@ dotnet test tests/Hexalith.EventStore.Contracts.Tests/
 dotnet test tests/Hexalith.EventStore.Client.Tests/
 dotnet test tests/Hexalith.EventStore.Sample.Tests/
 dotnet test tests/Hexalith.EventStore.Testing.Tests/
+dotnet test tests/Hexalith.EventStore.SignalR.Tests/
 
 # Tier 2 — Integration tests (requires DAPR slim init)
 dapr init --slim
@@ -41,6 +42,7 @@ src/
   Hexalith.EventStore.Contracts      # Domain types: commands, events, results, identities
   Hexalith.EventStore.Client         # Client abstractions and DI registration
   Hexalith.EventStore.Server         # Server-side domain processors, DAPR integration
+  Hexalith.EventStore.SignalR        # SignalR real-time notifications
   Hexalith.EventStore.CommandApi     # REST/gRPC API gateway, auth, validation
   Hexalith.EventStore.Aspire         # .NET Aspire hosting extensions
   Hexalith.EventStore.AppHost        # Aspire AppHost (DAPR topology orchestrator)
@@ -52,6 +54,7 @@ tests/
   Hexalith.EventStore.Client.Tests      # Tier 1
   Hexalith.EventStore.Sample.Tests      # Tier 1
   Hexalith.EventStore.Testing.Tests     # Tier 1
+  Hexalith.EventStore.SignalR.Tests     # Tier 1
   Hexalith.EventStore.Server.Tests      # Tier 2
   Hexalith.EventStore.IntegrationTests  # Tier 3
 
@@ -59,9 +62,9 @@ samples/
   Hexalith.EventStore.Sample         # Counter domain example
 ```
 
-## NuGet Packages (5 published)
+## NuGet Packages (6 published)
 
-Hexalith.EventStore.Contracts, Client, Server, Testing, Aspire
+Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Aspire
 
 Versioning: MinVer 7.0.0 (git tag-based SemVer, prefix `v`). Centralized package management via `Directory.Packages.props`.
 
@@ -107,7 +110,7 @@ Defined in `.editorconfig`:
 ## CI/CD
 
 - **CI:** GitHub Actions on push/PR to main — restore, build (Release), Tier 1+2 tests, optional Tier 3
-- **Release:** Triggered by `v*` tags — tests, pack, validate 5 expected packages, push to NuGet.org
+- **Release:** Triggered by `v*` tags — tests, pack, validate 6 expected packages, push to NuGet.org
 
 ## Key Dependencies
 
