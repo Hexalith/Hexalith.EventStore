@@ -573,6 +573,74 @@ public class QueriesControllerTests {
     }
 
     [Fact]
+    public void AnalyzeHeaderProjectionTypes_WeakETagPrefix_FailsDecodeReturnsNull() {
+        // Arrange — W/"etag" per RFC 7232 §2.3; our ETags are strong validators
+        string validETag = GenerateTestETag("orders");
+
+        // Control case: a strong validator decodes as expected.
+        HeaderProjectionTypeAnalysis strongResult = AnalyzeHeader($"\"{validETag}\"");
+        strongResult.ProjectionType.ShouldBe("orders");
+        strongResult.HasMixedProjectionTypes.ShouldBeFalse();
+
+        // W/ prefix outside quotes: the quote stripping only removes outer quotes,
+        // leaving "W/" prefix on the value → TryDecode fails → null projection type
+        HeaderProjectionTypeAnalysis result = AnalyzeHeader($"W/\"{validETag}\"");
+
+        result.ProjectionType.ShouldBeNull();
+        result.HasMixedProjectionTypes.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Submit_NonAsciiProjectionTypeInIfNoneMatch_RoutesUsingDecodedProjectionType() {
+        // Arrange — routing should follow decoded projection type, not request.Domain
+        string projectionType = "données";
+        string nonAsciiETag = GenerateTestETag(projectionType);
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync(projectionType, "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(nonAsciiETag);
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act
+        IActionResult actionResult = await controller.Submit(
+            CreateTestRequest(), $"\"{nonAsciiETag}\"", CancellationToken.None);
+
+        // Assert — Gate 1 uses decoded non-ASCII projection and returns 304 on match
+        StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
+        statusResult.StatusCode.ShouldBe(304);
+        _ = await eTagService.Received(1).GetCurrentETagAsync(projectionType, "test-tenant", Arg.Any<CancellationToken>());
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_WeakETagPrefix_CacheMissReturns200() {
+        // Arrange — W/ prefix causes decode failure → cache miss → full query
+        string serverETag = GenerateTestETag();
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(serverETag);
+
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Act — W/ prefix on If-None-Match
+        IActionResult actionResult = await controller.Submit(
+            CreateTestRequest(), $"W/\"{serverETag}\"", CancellationToken.None);
+
+        // Assert — W/ causes decode failure → cache miss → 200 with new ETag
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{serverETag}\"");
+        // Verify no W/ prefix in response ETag
+        controller.Response.Headers.ETag.ToString().ShouldNotStartWith("W/");
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public void AnalyzeHeaderProjectionTypes_MixedProjectionTypes_ReturnsSkipSignal() {
         string ordersETag = GenerateTestETag("orders");
         string countersETag = GenerateTestETag("counter");

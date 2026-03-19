@@ -87,6 +87,11 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/backpressure-exceeded","title":"Too Many Requests","status":429,"detail":"The target aggregate is under backpressure due to excessive pending commands. Please retry after the specified interval.","correlationId":"01JAXYZ1234567890ABCDEFGH","tenantId":"tenant-a"}""",
             ["Wait for the interval specified in the Retry-After response header before retrying.", "If the error persists, the aggregate may have a large drain backlog — check system health."]),
 
+        new("not-implemented", "Not Implemented", 501,
+            "The requested operation is recognized but not yet implemented by the server.",
+            """{"type":"https://hexalith.io/problems/not-implemented","title":"Not Implemented","status":501,"detail":"The requested operation is not yet implemented."}""",
+            ["Check the API documentation for supported operations.", "This feature may be available in a future release."]),
+
         new("internal-server-error", "Internal Server Error", 500,
             "An unexpected server error occurred during processing.",
             """{"type":"https://hexalith.io/problems/internal-server-error","title":"Internal Server Error","status":500,"detail":"An unexpected error occurred. Please retry or contact support."}""",
