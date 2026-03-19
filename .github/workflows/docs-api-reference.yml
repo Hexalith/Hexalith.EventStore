@@ -37,7 +37,7 @@ jobs:
 
       - name: Generate API documentation
         run: |
-          for assembly in Contracts Client Server Testing Aspire; do
+          for assembly in Contracts Client Server SignalR Testing Aspire; do
             echo "Generating docs for Hexalith.EventStore.$assembly..."
             dotnet defaultdocumentation \
               --AssemblyFilePath "src/Hexalith.EventStore.$assembly/bin/Release/net10.0/Hexalith.EventStore.$assembly.dll" \
@@ -70,6 +70,7 @@ jobs:
             - Hexalith.EventStore.Contracts
             - Hexalith.EventStore.Client
             - Hexalith.EventStore.Server
+            - Hexalith.EventStore.SignalR
             - Hexalith.EventStore.Testing
             - Hexalith.EventStore.Aspire
           branch: docs/api-reference-${{ github.ref_name }}
