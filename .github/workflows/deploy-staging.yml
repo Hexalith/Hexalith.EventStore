@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Login to registry
         run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login registry.hexalith.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
@@ -38,7 +38,7 @@ jobs:
           docker push registry.hexalith.com/sample:staging-latest
 
       - name: Deploy to staging
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}

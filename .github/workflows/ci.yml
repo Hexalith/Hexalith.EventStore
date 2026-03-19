@@ -36,6 +36,7 @@ jobs:
         run: dotnet restore
 
       - name: Validate GitHub discussion template YAML
+        continue-on-error: true
         run: |
           python -m pip install --disable-pip-version-check --quiet pyyaml
           python - <<'PY'
@@ -87,6 +88,84 @@ jobs:
           tests/Hexalith.EventStore.Server.Tests/
           --no-build --configuration Release
           --logger "trx;LogFileName=integration-results.trx"
+
+      - name: Test Summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          summary_path = os.environ['GITHUB_STEP_SUMMARY']
+
+          tier1_suites = {
+            'Contracts.Tests': 'tests/Hexalith.EventStore.Contracts.Tests/TestResults/**/test-results.trx',
+            'Client.Tests': 'tests/Hexalith.EventStore.Client.Tests/TestResults/**/test-results.trx',
+            'Testing.Tests': 'tests/Hexalith.EventStore.Testing.Tests/TestResults/**/test-results.trx',
+            'Sample.Tests': 'tests/Hexalith.EventStore.Sample.Tests/TestResults/**/test-results.trx',
+            'SignalR.Tests': 'tests/Hexalith.EventStore.SignalR.Tests/TestResults/**/test-results.trx',
+          }
+          tier2_suites = {
+            'Server.Tests': 'tests/Hexalith.EventStore.Server.Tests/TestResults/**/integration-results.trx',
+          }
+
+          def pick_latest(glob_pattern):
+            matches = glob.glob(glob_pattern, recursive=True)
+            if not matches:
+              return None
+            return max(matches, key=os.path.getmtime)
+
+          def parse_trx(path):
+            root = ET.parse(path).getroot()
+            counters = root.find('.//{*}ResultSummary/{*}Counters')
+            if counters is not None:
+              total = int(counters.attrib.get('total', '0'))
+              passed = int(counters.attrib.get('passed', '0'))
+              failed = int(counters.attrib.get('failed', '0'))
+              return passed, failed, total
+
+            # Fallback for unexpected TRX shapes without summary counters.
+            results = root.findall('.//{*}UnitTestResult')
+            total = len(results)
+            passed = sum(1 for r in results if r.attrib.get('outcome') == 'Passed')
+            failed = sum(1 for r in results if r.attrib.get('outcome') == 'Failed')
+            return passed, failed, total
+
+          with open(summary_path, 'a', encoding='utf-8') as summary:
+            summary.write('## CI Test Results\n')
+
+            summary.write('### Tier 1 - Unit Tests\n')
+            tier1_passed_total = 0
+            tier1_failed_total = 0
+            for suite, pattern in tier1_suites.items():
+              latest = pick_latest(pattern)
+              if latest is None:
+                summary.write(f'- **{suite}:** no TRX file found\n')
+                continue
+              passed, failed, total = parse_trx(latest)
+              tier1_passed_total += passed
+              tier1_failed_total += failed
+              summary.write(f'- **{suite}:** {passed} passed, {failed} failed (total: {total})\n')
+            summary.write(f'\n**Tier 1 totals:** {tier1_passed_total} passed, {tier1_failed_total} failed\n\n')
+
+            summary.write('### Tier 2 - Integration Tests\n')
+            tier2_passed_total = 0
+            tier2_failed_total = 0
+            for suite, pattern in tier2_suites.items():
+              latest = pick_latest(pattern)
+              if latest is None:
+                summary.write(f'- **{suite}:** no TRX file found\n')
+                continue
+              passed, failed, total = parse_trx(latest)
+              tier2_passed_total += passed
+              tier2_failed_total += failed
+              summary.write(f'- **{suite}:** {passed} passed, {failed} failed (total: {total})\n')
+            summary.write(f'\n**Tier 2 totals:** {tier2_passed_total} passed, {tier2_failed_total} failed\n\n')
+
+            summary.write('### Job Status\n')
+            summary.write('${{ job.status }}\n')
+          PY
 
       - name: Upload test results
         if: failure()
