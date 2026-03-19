@@ -26,4 +26,18 @@ public class SignalRHubEndpointTests : IClassFixture<SignalRHubWebApplicationFac
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task NegotiateEndpoint_WhenSignalRDisabled_IsNotAccessible() {
+        using var disabledFactory = new SignalRDisabledWebApplicationFactory();
+        using HttpClient client = disabledFactory.CreateClient();
+        using HttpRequestMessage request = new(HttpMethod.Post, $"{ProjectionChangedHub.HubPath}/negotiate?negotiateVersion=1") {
+            Content = new StringContent(string.Empty),
+        };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        HttpResponseMessage response = await client.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
 }
