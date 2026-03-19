@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Events;
 
 namespace Hexalith.EventStore.Client.Tests.Aggregates;
@@ -259,4 +260,88 @@ public class EventStoreProjectionTests : IDisposable {
     }
 
     private sealed class UnknownProjectionEvent;
+
+    // --- Story 9-3: FireProjectionChangeNotification auto-notify tests ---
+
+    [Fact]
+    public void Project_WithNotifierAndTenantId_CallsNotifyProjectionChangedAsync() {
+        // Arrange
+        var notifier = new SpyProjectionChangeNotifier();
+        var projection = new TestProjection {
+            Notifier = notifier,
+            TenantId = "acme",
+        };
+
+        // Act
+        _ = projection.Project(new object[] { new ItemAdded { Name = "test" } });
+
+        // Assert — auto-notification was fired
+        Assert.Equal(1, notifier.CallCount);
+        Assert.Equal("acme", notifier.LastTenantId);
+        Assert.NotNull(notifier.LastProjectionType);
+    }
+
+    [Fact]
+    public void Project_WithoutNotifier_DoesNotThrow() {
+        // Arrange — Notifier is null (FM-5: silent fail, logs warning)
+        var projection = new TestProjection { TenantId = "acme" };
+
+        // Act & Assert — no exception, just a warning log
+        TestReadModel model = projection.Project(new object[] { new ItemAdded { Name = "ok" } });
+        Assert.Equal(1, model.Count);
+    }
+
+    [Fact]
+    public void Project_WithNotifierButNoTenantId_SkipsNotification() {
+        // Arrange — TenantId is null; notification should be skipped silently
+        var notifier = new SpyProjectionChangeNotifier();
+        var projection = new TestProjection { Notifier = notifier };
+
+        // Act
+        _ = projection.Project(new object[] { new ItemAdded { Name = "x" } });
+
+        // Assert
+        Assert.Equal(0, notifier.CallCount);
+    }
+
+    [Fact]
+    public void ProjectFromJson_WithNotifier_CallsNotifyProjectionChangedAsync() {
+        // Arrange
+        var notifier = new SpyProjectionChangeNotifier();
+        var projection = new TestProjection {
+            Notifier = notifier,
+            TenantId = "tenant-1",
+        };
+        string json = """[{"eventTypeName":"ItemAdded","payload":{"Name":"json-test"}}]""";
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(json);
+
+        // Act
+        _ = projection.ProjectFromJson(jsonArray);
+
+        // Assert
+        Assert.Equal(1, notifier.CallCount);
+        Assert.Equal("tenant-1", notifier.LastTenantId);
+    }
+
+    /// <summary>
+    /// Manual spy for IProjectionChangeNotifier since Client.Tests does not reference NSubstitute.
+    /// </summary>
+    private sealed class SpyProjectionChangeNotifier : IProjectionChangeNotifier {
+        public int CallCount { get; private set; }
+        public string? LastProjectionType { get; private set; }
+        public string? LastTenantId { get; private set; }
+        public string? LastEntityId { get; private set; }
+
+        public Task NotifyProjectionChangedAsync(
+            string projectionType,
+            string tenantId,
+            string? entityId = null,
+            CancellationToken cancellationToken = default) {
+            CallCount++;
+            LastProjectionType = projectionType;
+            LastTenantId = tenantId;
+            LastEntityId = entityId;
+            return Task.CompletedTask;
+        }
+    }
 }

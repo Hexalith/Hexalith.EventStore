@@ -276,6 +276,31 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     [Fact]
     [Trait("Category", "Integration")]
     [Trait("Tier", "2")]
+    public async Task NotificationCausesETagStaleness_OldETagNoLongerMatches() {
+        // Arrange — set initial ETag so Gate 1 has something to compare against
+        string initialETag = await _factory.FakeETagActor.RegenerateAsync();
+        string? before = await _factory.FakeETagActor.GetCurrentETagAsync();
+        before.ShouldBe(initialETag);
+
+        // Act — send cross-process notification which regenerates the ETag
+        var notification = new ProjectionChangedNotification("test-projection", "acme");
+        HttpResponseMessage response = await _client.PostAsJsonAsync(
+            "/projections/changed", notification);
+
+        // Assert — ETag was regenerated, old ETag is now stale
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        _ = _factory.MockProxyFactory.Received().CreateActorProxy<IETagActor>(
+            Arg.Is<ActorId>(id => id.GetId() == "test-projection:acme"),
+            Arg.Is(ETagActor.ETagActorTypeName));
+        string? after = await _factory.FakeETagActor.GetCurrentETagAsync();
+        _ = after.ShouldNotBeNull();
+        after.ShouldNotBe(initialETag, "ETag should have been regenerated, making the previous one stale");
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(2); // 1 initial + 1 from notification
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
     public async Task ETagActor_OnActivateAsync_OldFormatMigrationFailure_LeavesCacheNull() {
         string oldFormat = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
             .Replace('+', '-')

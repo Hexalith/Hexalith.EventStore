@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-03-19 (story 9-1 done)
+# last_updated: 2026-03-19 (story 9-3 done)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-19 # story 9-2 done
+last_updated: 2026-03-19 # story 9-3 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -123,7 +123,7 @@ development_status:
   epic-9: in-progress
   9-1-query-contracts-and-routing-model: done
   9-2-self-routing-etag-encode-decode: done
-  9-3-etag-actor-and-projection-change-notification: backlog
+  9-3-etag-actor-and-projection-change-notification: done
   9-4-query-actor-in-memory-page-cache: backlog
   9-5-iqueryresponse-compile-time-enforcement: backlog
   epic-9-retrospective: optional
