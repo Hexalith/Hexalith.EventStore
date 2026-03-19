@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-19 # story 9-4 done
+last_updated: 2026-03-19 # story 9-5 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -125,7 +125,7 @@ development_status:
   9-2-self-routing-etag-encode-decode: done
   9-3-etag-actor-and-projection-change-notification: done
   9-4-query-actor-in-memory-page-cache: done
-  9-5-iqueryresponse-compile-time-enforcement: backlog
+  9-5-iqueryresponse-compile-time-enforcement: done
   epic-9-retrospective: optional
 
   # Epic 10: SignalR Real-Time Notifications

@@ -8,6 +8,7 @@ using Dapr.Actors.Runtime;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Queries;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -486,6 +487,70 @@ public class CachingProjectionActorTests {
         deserialized.ProjectionType.ShouldBeNull();
     }
 
+    // ===== Story 9-5: Audit gap-filling tests — log assertion on empty/whitespace ProjectionType =====
+
+    [Fact]
+    public async Task QueryAsync_EmptyProjectionType_FallsBackToEnvelopeDomainAndLogsWarning() {
+        // Arrange — empty ProjectionType should log InvalidProjectionType warning (EventId 1076)
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: "");
+
+        var logEntries = new List<LogEntry>();
+        var testLogger = new TestLoggerInstance(logEntries);
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, testLogger, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — behavioral: fallback to envelope.Domain, caching works
+        _ = await eTagService.Received(2).GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(1);
+
+        // Assert — observability: warning logged with EventId 1076 and reason "empty or whitespace"
+        logEntries.ShouldContain(e =>
+            e.Level == LogLevel.Warning
+            && e.EventId.Id == 1076
+            && e.Message.Contains("empty or whitespace", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhitespaceOnlyProjectionType_FallsBackToEnvelopeDomainAndLogsWarning() {
+        // Arrange — whitespace-only ProjectionType treated same as empty
+        string counterETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(counterETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
+        var expected = new QueryResult(true, payload, ProjectionType: "   ");
+
+        var logEntries = new List<LogEntry>();
+        var testLogger = new TestLoggerInstance(logEntries);
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, testLogger, expected);
+
+        // Act
+        _ = await actor.QueryAsync(CreateEnvelope());
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert — behavioral: fallback to envelope.Domain, caching works
+        _ = await eTagService.Received(2).GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(1);
+
+        // Assert — observability: warning logged with EventId 1076 and reason "empty or whitespace"
+        logEntries.ShouldContain(e =>
+            e.Level == LogLevel.Warning
+            && e.EventId.Id == 1076
+            && e.Message.Contains("empty or whitespace", StringComparison.OrdinalIgnoreCase));
+    }
+
     // ===== Story 9-4: Gap-filling tests =====
 
     [Fact]
@@ -615,6 +680,13 @@ public class CachingProjectionActorTests {
             params QueryResult[] results)
             : base(host, eTagService, NullLogger<TestCachingProjectionActor>.Instance) => _results = results;
 
+        public TestCachingProjectionActor(
+            ActorHost host,
+            IETagService eTagService,
+            ILogger logger,
+            params QueryResult[] results)
+            : base(host, eTagService, logger) => _results = results;
+
         public int ExecuteCallCount { get; private set; }
 
         protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope) {
@@ -623,4 +695,15 @@ public class CachingProjectionActorTests {
             return Task.FromResult(_results[index]);
         }
     }
+
+    private sealed class TestLoggerInstance(List<LogEntry> entries) : ILogger {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
+    }
+
+    private record LogEntry(LogLevel Level, EventId EventId, string Message);
 }
