@@ -1,6 +1,6 @@
 # Story 10.2: Redis Backplane for Multi-Instance SignalR
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -65,86 +65,77 @@ Story is complete when:
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Audit Redis Backplane Configuration Path (AC: #1)
-  - [ ] Create branch `feat/story-10-2-redis-backplane-for-multi-instance-signalr` before any code or test changes
-  - [ ] Verify `SignalROptions.BackplaneRedisConnectionString` in `CommandApi/SignalR/SignalROptions.cs`:
+- [x] Task 0: Audit Redis Backplane Configuration Path (AC: #1)
+  - [x] Create branch `feat/story-10-2-redis-backplane-for-multi-instance-signalr` before any code or test changes
+  - [x] Verify `SignalROptions.BackplaneRedisConnectionString` in `CommandApi/SignalR/SignalROptions.cs`:
     - Property is `string?`, nullable, defaults to `null` (line 21)
     - XML doc mentions env var fallback `EVENTSTORE_SIGNALR_REDIS` (line 18-19)
-  - [ ] Verify `ValidateSignalROptions.Validate()` in `CommandApi/SignalR/SignalROptions.cs`:
+  - [x] Verify `ValidateSignalROptions.Validate()` in `CommandApi/SignalR/SignalROptions.cs`:
     - BackplaneRedisConnectionString must be `null` or a non-whitespace string (lines 42-45)
     - Whitespace-only strings rejected with descriptive error message
-  - [ ] Verify `ConfigureBackplane()` in `CommandApi/SignalR/SignalRServiceCollectionExtensions.cs`:
+  - [x] Verify `ConfigureBackplane()` in `CommandApi/SignalR/SignalRServiceCollectionExtensions.cs`:
     - Resolves connection string: `options.BackplaneRedisConnectionString ?? Environment.GetEnvironmentVariable("EVENTSTORE_SIGNALR_REDIS")` (lines 46-47)
-    - If non-null/non-whitespace: calls `builder.AddStackExchangeRedis(redis)` (line 50)
+    - If non-null/non-whitespace: calls `builder.AddStackExchangeRedis(...)` with `Action<RedisOptions>` overload (line 50)
     - If null/empty: backplane NOT configured (single-instance mode, no Redis dependency)
-  - [ ] Verify `AddEventStoreSignalR()` calls `ConfigureBackplane()` when Enabled=true (line 37)
-  - [ ] Verify `ConfigureBackplane()` is NOT called when Enabled=false (early return at line 33)
-  - [ ] Verify `Microsoft.AspNetCore.SignalR.StackExchangeRedis` package is referenced:
+  - [x] Verify `AddEventStoreSignalR()` calls `ConfigureBackplane()` when Enabled=true (line 37)
+  - [x] Verify `ConfigureBackplane()` is NOT called when Enabled=false (early return at line 33)
+  - [x] Verify `Microsoft.AspNetCore.SignalR.StackExchangeRedis` package is referenced:
     - `Directory.Packages.props`: `<PackageVersion Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.5" />` (line 47)
     - `CommandApi.csproj`: `<PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />` (line 26)
-  - [ ] Verify that `AddStackExchangeRedis()` registers `RedisHubLifetimeManager<THub>` as `IHubLifetimeManager<THub>` — this is the mechanism that distributes hub messages via Redis pub/sub to all connected server instances
-  - [ ] **[ELICITATION #1 — AddStackExchangeRedis Idempotency]** Check: what happens if `AddEventStoreSignalR()` is called twice (e.g., by a misconfigured host or test helper)? Does `AddStackExchangeRedis()` register duplicate `RedisHubLifetimeManager` instances or overwrite? Document finding — if additive, note as a future hardening item.
-  - [ ] **[ELICITATION #2 — Connection String Format Validation]** Check: `ValidateSignalROptions` only validates null-or-non-whitespace. It does NOT validate the connection string is parseable by `StackExchange.Redis.ConfigurationOptions.Parse()`. A typo like `redis-host:abc` passes validation but fails at runtime. **Audit decision:** Is adding `ConfigurationOptions.Parse()` validation worth a gap slot? If yes, add to Task 4. If no, document as a future hardening item. Note: startup failure is already visible via health checks, so this is low-severity.
-  - [ ] **[ELICITATION #3 — `abortConnect=false` for Fail-Open Startup] (HIGH)** Check: `StackExchange.Redis` defaults to `abortConnect=true`, meaning if Redis is unreachable at startup, the application **crashes**. This contradicts ADR-18.5f (fail-open). The `ConfigureBackplane` method passes the raw connection string to `AddStackExchangeRedis(redis)` — it does NOT force `AbortOnConnectFail = false`. **Audit decision:** Verify whether `AddStackExchangeRedis` uses the `string` overload (passes to `ConnectionMultiplexer.Connect()`) or the `Action<ConfigurationOptions>` overload. If string overload: evaluate whether `ConfigureBackplane` should switch to `Action<RedisOptions>` overload and set `options.Configuration.AbortOnConnectFail = false`. This would make the backplane degrade gracefully instead of crashing the server when Redis is temporarily unavailable during deployment. **If this requires a code change, it counts as a gap slot in Task 4.**
+  - [x] Verify that `AddStackExchangeRedis()` registers `RedisHubLifetimeManager<THub>` as `HubLifetimeManager<THub>` — this is the mechanism that distributes hub messages via Redis pub/sub to all connected server instances
+  - [x] **[ELICITATION #1 — AddStackExchangeRedis Idempotency]** Finding: `AddStackExchangeRedis()` uses `AddSingleton` (not `TryAdd`), so duplicate calls register multiple descriptors. DI resolves the last one — harmless, but produces extra Redis connections. Document as future hardening item.
+  - [x] **[ELICITATION #2 — Connection String Format Validation]** Finding: Low-severity. Startup failure from invalid connection string is visible via health checks/crash logs. Not worth a gap slot. Document as future hardening item.
+  - [x] **[ELICITATION #3 — `abortConnect=false` for Fail-Open Startup] (HIGH)** Finding: Confirmed — `StackExchange.Redis` defaults `abortConnect=true`. **Code change applied** in Task 4: switched `ConfigureBackplane` to `Action<RedisOptions>` overload with `AbortOnConnectFail = false`. Server now degrades gracefully when Redis is unreachable at startup.
 
-- [ ] Task 1: Confirm AppHost Backplane Wiring Is Out of Scope (AC: #1)
-  - [ ] Verify `src/Hexalith.EventStore.AppHost/Program.cs` does NOT wire a Redis resource for SignalR backplane
-  - [ ] **This is correct and intentional:** Local Aspire dev uses in-memory DAPR components (`state.in-memory` in `HexalithEventStoreExtensions.cs:38`). Single-instance local dev does NOT need a Redis backplane. Adding a Redis container resource just for SignalR backplane would add Docker requirements to every local dev session for no benefit.
-  - [ ] **Document the production configuration path** in completion notes: set `EVENTSTORE_SIGNALR_REDIS` env var or `EventStore__SignalR__BackplaneRedisConnectionString` config to the Redis connection string for multi-instance deployments
-  - [ ] **Verify PM-9 mitigation:** Confirm `BackplaneRedisConnectionString` config allows pointing at a **separate** Redis instance from DAPR's Redis (config key is independent, env var is independent) — this is the contention mitigation
-  - [ ] **[ELICITATION #4 — Redis Channel Prefix for Multi-Deployment Isolation]** Check: `AddStackExchangeRedis()` uses a default Redis channel prefix based on the hub type name. If two deployments (e.g., staging and production) share the same Redis instance, they would receive each other's SignalR messages — cross-environment signal leakage. **Audit decision:** Is a deployment-specific `ChannelPrefix` needed via `Action<RedisOptions>` overload? Or is separate Redis instances the assumed isolation model? Document the finding. If `ConfigureBackplane` is already being modified for Elicitation #3 (`abortConnect`), adding a configurable `ChannelPrefix` option to `SignalROptions` is minimal incremental work — evaluate as a combined gap.
-  - [ ] No AppHost changes in this story — if multi-instance local testing is needed, that's a separate story
+- [x] Task 1: Confirm AppHost Backplane Wiring Is Out of Scope (AC: #1)
+  - [x] Verify `src/Hexalith.EventStore.AppHost/Program.cs` does NOT wire a Redis resource for SignalR backplane
+  - [x] **This is correct and intentional:** Local Aspire dev uses in-memory DAPR components (`state.in-memory` in `HexalithEventStoreExtensions.cs:38`). Single-instance local dev does NOT need a Redis backplane. Adding a Redis container resource just for SignalR backplane would add Docker requirements to every local dev session for no benefit.
+  - [x] **Document the production configuration path** in completion notes: set `EVENTSTORE_SIGNALR_REDIS` env var or `EventStore__SignalR__BackplaneRedisConnectionString` config to the Redis connection string for multi-instance deployments
+  - [x] **Verify PM-9 mitigation:** Confirmed — `BackplaneRedisConnectionString` config is independent from DAPR's Redis. Env var `EVENTSTORE_SIGNALR_REDIS` is also independent. Production can use separate Redis for backplane to avoid contention.
+  - [x] **[ELICITATION #4 — Redis Channel Prefix for Multi-Deployment Isolation]** Finding: Default channel prefix is based on hub type name (`ProjectionChangedHub`). If staging and production share Redis, cross-environment leakage would occur. **Decision:** Separate Redis instances per environment is the assumed isolation model. Adding `ChannelPrefix` config would require new `SignalROptions` property — scope creep. Documented as known limitation for follow-up.
+  - [x] No AppHost changes in this story — if multi-instance local testing is needed, that's a separate story
 
-- [ ] Task 2: Audit Existing Test Coverage for Redis Backplane (AC: #1, #2)
-  - [ ] Verify `SignalROptionsValidationTests` covers (4 tests):
+- [x] Task 2: Audit Existing Test Coverage for Redis Backplane (AC: #1, #2)
+  - [x] Verify `SignalROptionsValidationTests` covers (4 tests):
     - DefaultValues_AreCorrect: BackplaneRedisConnectionString is null by default — covered
     - Validation_WithPositiveGroupLimit_Succeeds — covered
     - Validation_WithNonPositiveGroupLimit_Fails — covered
     - Validation_WithWhitespaceBackplaneConnectionString_Fails — covered
-  - [ ] Verify `SignalRProjectionChangedBroadcasterTests` covers (3 tests):
-    - BroadcastChangedAsync_WithValidGroupName_SendsToCorrectGroup — covered
-    - BroadcastChangedAsync_WhenHubThrows_DoesNotPropagate — covered (fail-open)
-    - BroadcastChangedAsync_Performance_CompletesWithinP99Budget — covered (NFR38 dispatch budget)
-  - [ ] Check for GAP: no test verifying `ConfigureBackplane()` actually calls `AddStackExchangeRedis()` when connection string is provided
-  - [ ] Check for GAP: no test verifying `ConfigureBackplane()` does NOT call `AddStackExchangeRedis()` when connection string is null/empty
-  - [ ] Check for GAP: no test verifying env var `EVENTSTORE_SIGNALR_REDIS` fallback is respected. Note: env var mutation in tests is fragile (requires `IDisposable` cleanup or process-level isolation). Evaluate whether this is worth a gap slot vs. code-review-level verification.
-  - [ ] **Multi-instance integration test is OUT OF SCOPE:** True multi-instance testing requires two `WebApplicationFactory` instances sharing a live Redis backplane — that's Tier 3 (Docker + Redis container). Document as a future Tier 3 test case, do not attempt in this story.
+  - [x] Verify `SignalRProjectionChangedBroadcasterTests` covers (3 tests):
+    - BroadcastChangedAsync_ValidInput_ForwardsToGroupClient — covered
+    - BroadcastChangedAsync_ClientFailure_DoesNotThrow — covered (fail-open)
+    - BroadcastChangedAsync_P99Dispatch_RemainsUnder100Milliseconds — covered (NFR38 dispatch budget)
+  - [x] Check for GAP: confirmed — no test for `ConfigureBackplane()` activating Redis. Filled in Task 4.
+  - [x] Check for GAP: confirmed — no test for backplane NOT activated when no connection string. Filled in Task 4.
+  - [x] Check for GAP: env var fallback test — not worth gap slot. Code inspection confirms `?? Environment.GetEnvironmentVariable("EVENTSTORE_SIGNALR_REDIS")` at line 47. Env var mutation in tests is fragile.
+  - [x] **Multi-instance integration test is OUT OF SCOPE:** Documented as future Tier 3 test case.
 
-- [ ] Task 3: Audit NFR38 Latency Compliance (AC: #2)
-  - [ ] Verify existing p99 benchmark test in `SignalRProjectionChangedBroadcasterTests`:
+- [x] Task 3: Audit NFR38 Latency Compliance (AC: #2)
+  - [x] Verify existing p99 benchmark test in `SignalRProjectionChangedBroadcasterTests`:
     - Measures time for `BroadcastChangedAsync()` against mock `IHubContext`
     - Verifies dispatch completes within 100ms at p99
     - Note: this measures **local dispatch**, not end-to-end including Redis network hop
-  - [ ] Document latency boundary:
+  - [x] Document latency boundary:
     - **In-scope (testable in CI):** Broadcaster dispatch time (projectionType/tenantId → `hubContext.Clients.Group(...).ProjectionChanged(...)`)
     - **Out-of-scope (deployment-dependent):** Redis network RTT, SignalR WebSocket delivery to client, Blazor circuit rendering
     - The existing test validates the controllable portion. True end-to-end latency depends on infrastructure and is verified via observability (OpenTelemetry traces, NFR38 monitoring)
-  - [ ] Verify that PM-9 (Redis contention) mitigation is documented: production deployments MAY use a dedicated Redis instance for SignalR backplane via separate connection string
-  - [ ] **[ELICITATION #5 — RedisHubLifetimeManager Failure Mode] (HIGH)** Determine: when `RedisHubLifetimeManager` tries to publish to Redis and Redis is unreachable at runtime, does it throw an exception or silently drop the message?
-    - **If it throws:** The broadcaster's existing try/catch in `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` catches it — fail-open holds. The existing test `BroadcastChangedAsync_WhenHubThrows_DoesNotPropagate` covers this path. Document confirmation.
-    - **If it silently drops:** The broadcaster logs success but the message never reaches other instances — **silent failure with no log trace**. This would mean the fail-open test only covers hub-level exceptions, not backplane-level failures. Document as a known limitation and recommend adding a Redis health check or connectivity logging in a follow-up.
-    - **How to verify:** Check `RedisHubLifetimeManager` source (MIT-licensed in `dotnet/aspnetcore` repo) or test empirically by examining the `SendGroupAsync` method's error handling. The Microsoft docs or source code for `Microsoft.AspNetCore.SignalR.StackExchangeRedis` will clarify.
+  - [x] Verify that PM-9 (Redis contention) mitigation is documented: production deployments MAY use a dedicated Redis instance for SignalR backplane via separate connection string
+  - [x] **[ELICITATION #5 — RedisHubLifetimeManager Failure Mode] (HIGH)** Finding: `RedisHubLifetimeManager.SendGroupAsync()` throws `RedisConnectionException` when Redis is unreachable at runtime. The broadcaster's existing try/catch in `BroadcastChangedAsync()` (lines 20-30) catches all exceptions — **fail-open holds**. The existing test `BroadcastChangedAsync_ClientFailure_DoesNotThrow` covers this path. Confirmed: no silent message drops.
 
-- [ ] Task 4: Fill any gaps identified during audit (bounded: up to 3 minor gaps, <1hr each)
-  - [ ] Priority 1: Add test verifying `ConfigureBackplane()` activates Redis when connection string is provided
-    - **Test approach:** Create a `WebApplicationFactory` subclass with in-memory config `EventStore:SignalR:Enabled = true` and `EventStore:SignalR:BackplaneRedisConnectionString = localhost:9999` (dummy value)
-    - **Assertion:** Build the service provider and resolve `IHubLifetimeManager<ProjectionChangedHub>` via `serviceProvider.GetRequiredService<>()`. Assert the resolved type is NOT `DefaultHubLifetimeManager<ProjectionChangedHub>` (it should be `RedisHubLifetimeManager<ProjectionChangedHub>`)
-    - **Redis connection risk:** `AddStackExchangeRedis()` may be lazy (connects on first hub operation) or eager (connects at startup). If eager, the `WebApplicationFactory` may throw on startup when no Redis is available. **Mitigation:** Wrap factory creation in try/catch — if startup fails with a Redis connection error, the test PASSES (it proves `AddStackExchangeRedis` was called). If startup succeeds, resolve and assert the type. Document which behavior was observed.
-  - [ ] Priority 2: Add test verifying backplane is NOT activated when connection string is absent
-    - **Test approach:** Use existing `SignalRHubWebApplicationFactory` (Enabled=true, no BackplaneRedisConnectionString)
-    - **Assertion:** Resolve `IHubLifetimeManager<ProjectionChangedHub>` and assert the type IS `DefaultHubLifetimeManager<ProjectionChangedHub>`
-    - **[ELICITATION #7 — Type Accessibility]** `DefaultHubLifetimeManager<T>` lives in `Microsoft.AspNetCore.SignalR.Core`. Verify its accessibility before writing the assertion. If it's `public`: use direct type comparison (`resolvedType.ShouldBe(typeof(DefaultHubLifetimeManager<ProjectionChangedHub>))`). If it's `internal`: use name-based assertion (`resolvedType.Name.ShouldContain("Default")`). Similarly, `RedisHubLifetimeManager<T>` is in `Microsoft.AspNetCore.SignalR.StackExchangeRedis` — verify it's `public`. Expected namespace imports: `Microsoft.AspNetCore.SignalR.Internal` (for Default) or `Microsoft.AspNetCore.SignalR.StackExchangeRedis` (for Redis).
-  - [ ] Priority 3: (open slot) Use for env var fallback test if feasible, or any other gap found during audit. If no third gap identified, leave unused.
-  - [ ] No more than 3 gaps — if more found, create follow-up story
-  - [ ] Build passes: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
-  - [ ] Full Tier 1+2 tests pass (if any src/test files modified)
+- [x] Task 4: Fill any gaps identified during audit (bounded: up to 3 minor gaps, <1hr each)
+  - [x] Priority 1: Added `AddEventStoreSignalR_WithRedisConnectionString_RegistersRedisHubLifetimeManager` test — uses direct `ServiceCollection` with in-memory config. Asserts `RedisHubLifetimeManager` is registered via service descriptor inspection. Approach avoids `WebApplicationFactory` timing issues.
+  - [x] Priority 2: Added `AddEventStoreSignalR_WithoutRedisConnectionString_UsesDefaultHubLifetimeManager` test — verifies `DefaultHubLifetimeManager` is the last registered `HubLifetimeManager<>` when no connection string is set. **[ELICITATION #7]** Both types are public — used name-based assertion (`FullName.ShouldContain(...)`) for clarity.
+  - [x] Priority 3: Code fix for Elicitation #3 — switched `ConfigureBackplane` from `builder.AddStackExchangeRedis(redis)` (string overload) to `builder.AddStackExchangeRedis(o => { o.Configuration = ConfigurationOptions.Parse(redis); o.Configuration.AbortOnConnectFail = false; })`. Server now degrades gracefully when Redis is unavailable at startup.
+  - [x] No more than 3 gaps — 3 gaps filled (2 tests + 1 code fix), within budget
+  - [x] Build passes: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+  - [x] Full Tier 1+2 tests pass (src and test files modified)
 
-- [ ] Task 5: Run Full Test Suite (conditional)
-  - [ ] If any `src/` or `tests/` files were modified during Tasks 0-4:
-    - Run Tier 1: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ && dotnet test tests/Hexalith.EventStore.Client.Tests/ && dotnet test tests/Hexalith.EventStore.Sample.Tests/ && dotnet test tests/Hexalith.EventStore.Testing.Tests/ && dotnet test tests/Hexalith.EventStore.SignalR.Tests/`
-    - Run Tier 2: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
-  - [ ] If no files modified: note "No source changes — audit-only, test run skipped"
-  - [ ] Report **actual** test counts in completion notes — do NOT assume Story 10-1's baseline (698/1531) is still current. Other stories may have been merged between 10-1 and 10-2. Report the before-and-after counts if gap-fill tests were added.
+- [x] Task 5: Run Full Test Suite (conditional)
+  - [x] Source and test files modified — full Tier 1+2 run required
+    - Tier 1: Contracts 267 + Client 297 + Sample 47 + Testing 67 + SignalR 20 = **698 passed**
+    - Tier 2: Server **1533 passed** (up from 1531 at Story 10-1 — +2 new backplane wiring tests)
+  - [x] All tests pass, no regressions
+  - [x] Actual test counts reported: Tier 1 = 698, Tier 2 = 1533 (total 2231)
 
 ## Dev Notes
 
@@ -326,10 +317,49 @@ From `Directory.Packages.props`:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+None required — audit story with straightforward gap fills.
+
 ### Completion Notes List
 
+**Audit Results Table:**
+
+| AC # | Expected | Actual | Pass/Fail |
+|------|----------|--------|-----------|
+| AC #1 (FR56) | Redis backplane configured via `AddStackExchangeRedis()` for multi-instance distribution | `ConfigureBackplane()` correctly calls `AddStackExchangeRedis()` when connection string provided, registers `RedisHubLifetimeManager<THub>`. Now uses `Action<RedisOptions>` overload with `AbortOnConnectFail = false` for fail-open. | **PASS** |
+| AC #2 (NFR38) | Dispatch completes within 100ms at p99 | Existing `BroadcastChangedAsync_P99Dispatch_RemainsUnder100Milliseconds` test validates controllable dispatch portion. Latency boundary documented. | **PASS** |
+
+**Gaps Filled (3/3 budget):**
+1. Test: `AddEventStoreSignalR_WithRedisConnectionString_RegistersRedisHubLifetimeManager` — verifies `RedisHubLifetimeManager` DI registration when connection string is provided
+2. Test: `AddEventStoreSignalR_WithoutRedisConnectionString_UsesDefaultHubLifetimeManager` — verifies `DefaultHubLifetimeManager` is used in single-instance mode
+3. Code fix: `ConfigureBackplane` switched from `AddStackExchangeRedis(string)` to `AddStackExchangeRedis(Action<RedisOptions>)` with `AbortOnConnectFail = false` — server no longer crashes when Redis is unavailable at startup
+
+**Elicitation Findings:**
+- #1 (Idempotency): Safe — last registration wins via DI. Future hardening item.
+- #2 (Connection string format): Low-severity — startup failure visible via health checks. Future hardening item.
+- #3 (abortConnect): **Fixed** — code change applied. Gap slot used.
+- #4 (Channel prefix): Known limitation — separate Redis per environment is the assumed model. Future hardening if shared Redis needed.
+- #5 (Failure mode): **Confirmed** — `RedisHubLifetimeManager` throws on publish failure. Broadcaster's try/catch catches it. Fail-open holds.
+- #7 (Type accessibility): Both `RedisHubLifetimeManager<T>` and `DefaultHubLifetimeManager<T>` are public. Name-based assertion used for clarity.
+
+**Production Configuration Path:**
+- Set `EventStore:SignalR:BackplaneRedisConnectionString` in config or `EVENTSTORE_SIGNALR_REDIS` env var
+- Can point at DAPR's Redis or a dedicated instance (PM-9 contention mitigation)
+
+**Test Counts:**
+- Tier 1: 698 passed (unchanged from Story 10-1)
+- Tier 2: 1533 passed (+2 new backplane wiring tests from 1531)
+- Total: 2231 passed, 0 failed
+
+### Change Log
+
+- 2026-03-20: Story 10-2 audit completed. 3 gaps filled: 2 DI wiring tests + `abortConnect=false` code fix. All Tier 1+2 tests pass.
+- 2026-03-20: BMAD code review completed (clean). Follow-up: backplane wiring tests now resolve `HubLifetimeManager<ProjectionChangedHub>` from DI instead of descriptor scanning. Status → **done**.
+
 ### File List
+
+- `src/Hexalith.EventStore.CommandApi/SignalR/SignalRServiceCollectionExtensions.cs` (modified — `ConfigureBackplane` switched to `Action<RedisOptions>` overload with `AbortOnConnectFail = false`)
+- `tests/Hexalith.EventStore.Server.Tests/Integration/SignalRBackplaneWiringTests.cs` (new — 2 DI wiring tests for backplane activation/deactivation)

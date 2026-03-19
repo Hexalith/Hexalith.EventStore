@@ -47,7 +47,10 @@ public static class SignalRServiceCollectionExtensions {
             ?? Environment.GetEnvironmentVariable("EVENTSTORE_SIGNALR_REDIS");
 
         if (!string.IsNullOrWhiteSpace(redis)) {
-            _ = builder.AddStackExchangeRedis(redis);
+            _ = builder.AddStackExchangeRedis(o => {
+                o.Configuration = StackExchange.Redis.ConfigurationOptions.Parse(redis);
+                o.Configuration.AbortOnConnectFail = false;
+            });
         }
     }
 }
