@@ -140,15 +140,13 @@ public class CounterAggregateTests {
     }
 
     [Fact]
-    public void AddEventStore_SampleAssembly_ResolvesCounterAggregateForUnkeyedAndKeyedDomainProcessor() {
+    public void AddEventStore_SampleAssembly_ResolvesCounterAggregateViaKeyedDomainProcessor() {
         ServiceCollection services = new();
         _ = services.AddEventStore(typeof(CounterAggregate).Assembly);
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        IDomainProcessor unkeyed = provider.GetRequiredService<IDomainProcessor>();
         IDomainProcessor keyed = provider.GetRequiredKeyedService<IDomainProcessor>("counter");
 
-        _ = Assert.IsType<CounterAggregate>(unkeyed);
         _ = Assert.IsType<CounterAggregate>(keyed);
     }
 

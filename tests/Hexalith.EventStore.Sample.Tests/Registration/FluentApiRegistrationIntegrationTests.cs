@@ -11,6 +11,8 @@ using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Counter.State;
+using Hexalith.EventStore.Sample.Greeting;
+using Hexalith.EventStore.Sample.Greeting.State;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,37 +32,52 @@ public sealed class FluentApiRegistrationIntegrationTests {
     // ── AC1: Discovery result validation ──
 
     [Fact]
-    public void AddEventStore_SampleAssembly_DiscoveryResultContainsExactlyOneCounterAggregate() {
+    public void AddEventStore_SampleAssembly_DiscoveryResultContainsBothAggregates() {
         using IHost host = BuildTestHost();
 
         DiscoveryResult discovery = host.Services.GetRequiredService<DiscoveryResult>();
 
-        Assert.Equal(1, discovery.TotalCount);
-        DiscoveredDomain aggregate = Assert.Single(discovery.Aggregates);
+        Assert.Equal(2, discovery.TotalCount);
+        Assert.Equal(2, discovery.Aggregates.Count);
         Assert.Empty(discovery.Projections);
-        Assert.Equal("counter", aggregate.DomainName);
-        Assert.Equal(typeof(CounterAggregate), aggregate.Type);
-        Assert.Equal(typeof(CounterState), aggregate.StateType);
-        Assert.Equal(DomainKind.Aggregate, aggregate.Kind);
+
+        DiscoveredDomain counter = Assert.Single(discovery.Aggregates, a => a.DomainName == "counter");
+        Assert.Equal(typeof(CounterAggregate), counter.Type);
+        Assert.Equal(typeof(CounterState), counter.StateType);
+        Assert.Equal(DomainKind.Aggregate, counter.Kind);
+
+        DiscoveredDomain greeting = Assert.Single(discovery.Aggregates, a => a.DomainName == "greeting");
+        Assert.Equal(typeof(GreetingAggregate), greeting.Type);
+        Assert.Equal(typeof(GreetingState), greeting.StateType);
+        Assert.Equal(DomainKind.Aggregate, greeting.Kind);
     }
 
     // ── AC2: Activation context validation ──
 
     [Fact]
-    public void UseEventStore_SampleAssembly_ActivationContextHasCorrectCounterProperties() {
+    public void UseEventStore_SampleAssembly_ActivationContextHasCorrectProperties() {
         using IHost host = BuildTestHost();
 
         EventStoreActivationContext context = host.Services.GetRequiredService<EventStoreActivationContext>();
 
         Assert.True(context.IsActivated);
-        EventStoreDomainActivation activation = Assert.Single(context.Activations);
-        Assert.Equal("counter", activation.DomainName);
-        Assert.Equal(DomainKind.Aggregate, activation.Kind);
-        Assert.Equal(typeof(CounterAggregate), activation.Type);
-        Assert.Equal(typeof(CounterState), activation.StateType);
-        Assert.Equal("counter-eventstore", activation.StateStoreName);
-        Assert.Equal("counter.events", activation.TopicPattern);
-        Assert.Equal("deadletter.counter.events", activation.DeadLetterTopicPattern);
+        Assert.Equal(2, context.Activations.Count);
+
+        EventStoreDomainActivation counter = Assert.Single(context.Activations, a => a.DomainName == "counter");
+        Assert.Equal(DomainKind.Aggregate, counter.Kind);
+        Assert.Equal(typeof(CounterAggregate), counter.Type);
+        Assert.Equal(typeof(CounterState), counter.StateType);
+        Assert.Equal("counter-eventstore", counter.StateStoreName);
+        Assert.Equal("counter.events", counter.TopicPattern);
+        Assert.Equal("deadletter.counter.events", counter.DeadLetterTopicPattern);
+
+        EventStoreDomainActivation greeting = Assert.Single(context.Activations, a => a.DomainName == "greeting");
+        Assert.Equal(DomainKind.Aggregate, greeting.Kind);
+        Assert.Equal(typeof(GreetingAggregate), greeting.Type);
+        Assert.Equal(typeof(GreetingState), greeting.StateType);
+        Assert.Equal("greeting-eventstore", greeting.StateStoreName);
+        Assert.Equal("greeting.events", greeting.TopicPattern);
+        Assert.Equal("deadletter.greeting.events", greeting.DeadLetterTopicPattern);
     }
 
     // ── AC3: Keyed service resolution ──
@@ -95,7 +112,7 @@ public sealed class FluentApiRegistrationIntegrationTests {
             options.ConfigureDomain("counter", o => o.StateStoreName = "custom-store"));
 
         EventStoreActivationContext context = host.Services.GetRequiredService<EventStoreActivationContext>();
-        EventStoreDomainActivation activation = Assert.Single(context.Activations);
+        EventStoreDomainActivation activation = Assert.Single(context.Activations, a => a.DomainName == "counter");
 
         Assert.Equal("custom-store", activation.StateStoreName);
         Assert.Equal("counter.events", activation.TopicPattern);
@@ -112,7 +129,7 @@ public sealed class FluentApiRegistrationIntegrationTests {
             });
 
         EventStoreActivationContext context = host.Services.GetRequiredService<EventStoreActivationContext>();
-        EventStoreDomainActivation activation = Assert.Single(context.Activations);
+        EventStoreDomainActivation activation = Assert.Single(context.Activations, a => a.DomainName == "counter");
 
         Assert.Equal("override.events", activation.TopicPattern);
         Assert.Equal("counter-eventstore", activation.StateStoreName);
@@ -200,7 +217,7 @@ public sealed class FluentApiRegistrationIntegrationTests {
         using IHost host = BuildTestHost(options => options.DefaultStateStoreSuffix = "store");
 
         EventStoreActivationContext context = host.Services.GetRequiredService<EventStoreActivationContext>();
-        EventStoreDomainActivation activation = Assert.Single(context.Activations);
+        EventStoreDomainActivation activation = Assert.Single(context.Activations, a => a.DomainName == "counter");
 
         Assert.Equal("counter-store", activation.StateStoreName);
         Assert.Equal("counter.events", activation.TopicPattern);

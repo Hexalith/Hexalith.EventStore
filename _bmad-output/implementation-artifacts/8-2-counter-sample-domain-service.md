@@ -1,6 +1,6 @@
 # Story 8.2: Counter Sample Domain Service
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -51,40 +51,40 @@ The Counter sample domain service is **already substantially implemented** from 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add a minimal second domain to demonstrate FR24 multi-domain (AC: #2)
-  - [ ] 1.1 Create `samples/Hexalith.EventStore.Sample/Greeting/Commands/SendGreeting.cs` — parameterless record implementing the command pattern
-  - [ ] 1.2 Create `samples/Hexalith.EventStore.Sample/Greeting/Events/GreetingSent.cs` — `IEventPayload` event
-  - [ ] 1.3 Create `samples/Hexalith.EventStore.Sample/Greeting/State/GreetingState.cs` — minimal state with `MessageCount` property and `Apply(GreetingSent)` method
-  - [ ] 1.4 Create `samples/Hexalith.EventStore.Sample/Greeting/GreetingAggregate.cs` — `EventStoreAggregate<GreetingState>` with single `Handle(SendGreeting, GreetingState?)` returning `DomainResult.Success`
-  - [ ] 1.5 Verify `AddEventStore()` auto-discovers both `CounterAggregate` and `GreetingAggregate` from the same assembly scan — no registration changes needed in `Program.cs`. Verification: run the sample and confirm `UseEventStore()` activation logs show both `counter` and `greeting` domains, or confirm via Task 2 test assertions.
+- [x] Task 1: Add a minimal second domain to demonstrate FR24 multi-domain (AC: #2)
+    - [x] 1.1 Create `samples/Hexalith.EventStore.Sample/Greeting/Commands/SendGreeting.cs` — parameterless record implementing the command pattern
+    - [x] 1.2 Create `samples/Hexalith.EventStore.Sample/Greeting/Events/GreetingSent.cs` — `IEventPayload` event
+    - [x] 1.3 Create `samples/Hexalith.EventStore.Sample/Greeting/State/GreetingState.cs` — minimal state with `MessageCount` property and `Apply(GreetingSent)` method
+    - [x] 1.4 Create `samples/Hexalith.EventStore.Sample/Greeting/GreetingAggregate.cs` — `EventStoreAggregate<GreetingState>` with single `Handle(SendGreeting, GreetingState?)` returning `DomainResult.Success`
+    - [x] 1.5 Verify `AddEventStore()` auto-discovers both `CounterAggregate` and `GreetingAggregate` from the same assembly scan — no registration changes needed in `Program.cs`. Verification: run the sample and confirm `UseEventStore()` activation logs show both `counter` and `greeting` domains, or confirm via Task 2 test assertions.
 
-- [ ] Task 2: Add multi-domain discovery and routing tests (AC: #2)
-  - [ ] 2.1 **REGRESSION FIX (CRITICAL):** Update `FluentApiRegistrationIntegrationTests` assertions that will break when GreetingAggregate is added to the assembly:
-    - `AddEventStore_SampleAssembly_DiscoveryResultContainsExactlyOneCounterAggregate` (line 33): change `Assert.Equal(1, discovery.TotalCount)` to `2`, replace `Assert.Single(discovery.Aggregates)` with `Assert.Equal(2, discovery.Aggregates.Count)`, and verify both `counter` and `greeting` are present
-    - `UseEventStore_SampleAssembly_ActivationContextHasCorrectCounterProperties` (line 50): change `Assert.Single(context.Activations)` to `Assert.Equal(2, context.Activations.Count)`, verify both domains are activated with correct resource names
-  - [ ] 2.2 Add test in `tests/Hexalith.EventStore.Sample.Tests/Registration/MultiDomainRegistrationTests.cs` verifying `AssemblyScanner.ScanForDomainTypes` discovers exactly 2 aggregates: `counter` and `greeting`
-  - [ ] 2.3 Add test verifying both domains are resolved via keyed DI: `GetRequiredKeyedService<IDomainProcessor>("counter")` and `GetRequiredKeyedService<IDomainProcessor>("greeting")`
-  - [ ] 2.4 Add test verifying `UseEventStore()` activates both domains with correct convention-derived DAPR resource names (`counter-eventstore`, `greeting-eventstore`)
-  - [ ] 2.5 Create `tests/Hexalith.EventStore.Sample.Tests/Greeting/GreetingAggregateTests.cs` containing:
-    - Test dispatching `SendGreeting` command through `GreetingAggregate.ProcessAsync` and verifying `GreetingSent` event is returned
-    - Test with null state returning `DomainResult.Success` — proves happy-path works under same conditions that trigger Counter's edge cases
-    - Test verifying `GreetingState.MessageCount` increments after applying `GreetingSent` event
+- [x] Task 2: Add multi-domain discovery and routing tests (AC: #2)
+    - [x] 2.1 **REGRESSION FIX (CRITICAL):** Update `FluentApiRegistrationIntegrationTests` assertions that will break when GreetingAggregate is added to the assembly:
+        - `AddEventStore_SampleAssembly_DiscoveryResultContainsExactlyOneCounterAggregate` (line 33): change `Assert.Equal(1, discovery.TotalCount)` to `2`, replace `Assert.Single(discovery.Aggregates)` with `Assert.Equal(2, discovery.Aggregates.Count)`, and verify both `counter` and `greeting` are present
+        - `UseEventStore_SampleAssembly_ActivationContextHasCorrectCounterProperties` (line 50): change `Assert.Single(context.Activations)` to `Assert.Equal(2, context.Activations.Count)`, verify both domains are activated with correct resource names
+    - [x] 2.2 Add test in `tests/Hexalith.EventStore.Sample.Tests/Registration/MultiDomainRegistrationTests.cs` verifying `AssemblyScanner.ScanForDomainTypes` discovers exactly 2 aggregates: `counter` and `greeting`
+    - [x] 2.3 Add test verifying both domains are resolved via keyed DI: `GetRequiredKeyedService<IDomainProcessor>("counter")` and `GetRequiredKeyedService<IDomainProcessor>("greeting")`
+    - [x] 2.4 Add test verifying `UseEventStore()` activates both domains with correct convention-derived DAPR resource names (`counter-eventstore`, `greeting-eventstore`)
+    - [x] 2.5 Create `tests/Hexalith.EventStore.Sample.Tests/Greeting/GreetingAggregateTests.cs` containing:
+        - Test dispatching `SendGreeting` command through `GreetingAggregate.ProcessAsync` and verifying `GreetingSent` event is returned
+        - Test with null state returning `DomainResult.Success` — proves happy-path works under same conditions that trigger Counter's edge cases
+        - Test verifying `GreetingState.MessageCount` increments after applying `GreetingSent` event
 
-- [ ] Task 3: Add multi-tenant isolation tests (AC: #2)
-  - [ ] 3.1 Add test verifying `CommandEnvelope` with `TenantId="tenant-a"` and `TenantId="tenant-b"` produce distinct `AggregateIdentity` values for the same domain and aggregate ID
-  - [ ] 3.2 Add test verifying `NamingConventionEngine.GetPubSubTopic` produces tenant-scoped topics: `tenant-a.counter.events` vs `tenant-b.counter.events`
-  - [ ] 3.3 Add test verifying state rehydration is tenant-independent — two CounterAggregates processing identical commands for different tenants produce identical DomainResults (pure function contract: same inputs = same outputs, tenant does not affect domain logic)
+- [x] Task 3: Add multi-tenant isolation tests (AC: #2)
+    - [x] 3.1 Add test verifying `CommandEnvelope` with `TenantId="tenant-a"` and `TenantId="tenant-b"` produce distinct `AggregateIdentity` values for the same domain and aggregate ID
+    - [x] 3.2 Add test verifying `NamingConventionEngine.GetPubSubTopic` produces tenant-scoped topics: `tenant-a.counter.events` vs `tenant-b.counter.events`
+    - [x] 3.3 Add test verifying state rehydration is tenant-independent — two CounterAggregates processing identical commands for different tenants produce identical DomainResults (pure function contract: same inputs = same outputs, tenant does not affect domain logic)
 
-- [ ] Task 4: Validate existing tests — zero regressions (AC: #1)
-  - [ ] 4.1 Run Tier 1 tests: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ && dotnet test tests/Hexalith.EventStore.Client.Tests/ && dotnet test tests/Hexalith.EventStore.Sample.Tests/ && dotnet test tests/Hexalith.EventStore.Testing.Tests/`
-  - [ ] 4.2 Run Tier 2 tests: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
-  - [ ] 4.3 If any test failures are caused by this story's changes, fix them. Pre-existing failures unrelated to this story should be documented but NOT fixed.
+- [x] Task 4: Validate existing tests — zero regressions (AC: #1)
+    - [x] 4.1 Run Tier 1 tests: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ && dotnet test tests/Hexalith.EventStore.Client.Tests/ && dotnet test tests/Hexalith.EventStore.Sample.Tests/ && dotnet test tests/Hexalith.EventStore.Testing.Tests/`
+    - [x] 4.2 Run Tier 2 tests: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
+    - [x] 4.3 If any test failures are caused by this story's changes, fix them. Pre-existing failures unrelated to this story should be documented but NOT fixed.
 
-- [ ] Task 5: Verify sample completeness as reference implementation (AC: #1)
-  - [ ] 5.1 Confirm existing `CounterAggregateTests` already cover all four DomainResult patterns: Success (IncrementCounter), Rejection (DecrementCounter at zero), NoOp (ResetCounter at zero), Tombstoning (CloseCounter + subsequent commands) — these tests ARE the proof, no new verification code needed
-  - [ ] 5.2 Confirm existing tests cover `IRejectionEvent` via `CounterCannotGoNegative` and `ITerminatable` via `CounterState.IsTerminated` + `AggregateTerminated` — already proven by existing test suite
-  - [ ] 5.3 Confirm Greeting domain tests (created in Task 2.5) cover null-state happy path — no additional test files needed
-  - [ ] 5.4 Record updated Tier 1 test count baseline in Dev Agent Record (previous: 659, expected increase from new tests)
+- [x] Task 5: Verify sample completeness as reference implementation (AC: #1)
+    - [x] 5.1 Confirm existing `CounterAggregateTests` already cover all four DomainResult patterns: Success (IncrementCounter), Rejection (DecrementCounter at zero), NoOp (ResetCounter at zero), Tombstoning (CloseCounter + subsequent commands) — these tests ARE the proof, no new verification code needed
+    - [x] 5.2 Confirm existing tests cover `IRejectionEvent` via `CounterCannotGoNegative` and `ITerminatable` via `CounterState.IsTerminated` + `AggregateTerminated` — already proven by existing test suite
+    - [x] 5.3 Confirm Greeting domain tests (created in Task 2.5) cover null-state happy path — no additional test files needed
+    - [x] 5.4 Record updated Tier 1 test count baseline in Dev Agent Record (previous: 659, expected increase from new tests)
 
 ## Dev Notes
 
@@ -100,6 +100,7 @@ Adding `GreetingAggregate` to the sample assembly means `AssemblyScanner` will d
 ### Critical: This Is a Validation & Completion Story, Not a Rewrite
 
 The Counter sample domain is already implemented and tested. Do NOT:
+
 - Rewrite existing Counter commands, events, state, or aggregate — they are correct
 - Change `CounterAggregate` Handle method signatures — they follow the fluent API convention
 - Change `CounterProcessor` — it provides backward compatibility
@@ -110,6 +111,7 @@ The Counter sample domain is already implemented and tested. Do NOT:
 ### Greeting Domain: Minimal by Design
 
 The second domain exists solely to demonstrate FR24 (multi-domain). Keep it intentionally minimal:
+
 - One command, one event, one state, one aggregate — no rejection events, no tombstoning
 - This contrasts with Counter which shows the full pattern repertoire
 - A developer should see: "Counter = comprehensive example, Greeting = minimal quickstart"
@@ -152,6 +154,7 @@ public sealed class GreetingAggregate : EventStoreAggregate<GreetingState>
 ```
 
 **Convention-derived names** (via `NamingConventionEngine`):
+
 - Domain name: `greeting` (from `GreetingAggregate` → strip `Aggregate` suffix → kebab-case)
 - State store: `greeting-eventstore`
 - Topic: `{tenantId}.greeting.events`
@@ -161,6 +164,7 @@ public sealed class GreetingAggregate : EventStoreAggregate<GreetingState>
 Multi-tenant isolation is enforced at the **server layer** (actor state keys, DAPR component scoping), NOT at the domain service layer. Domain services are pure functions — they receive `(Command, State?)` and return events. Tenant routing is transparent to domain logic.
 
 At this story's scope, verify:
+
 1. `AggregateIdentity` correctly differentiates tenants (contract-level)
 2. `NamingConventionEngine.GetPubSubTopic` produces tenant-scoped topic names (convention-level)
 3. Pure function contract: domain logic is tenant-agnostic (same command + same state = same result regardless of tenant)
@@ -202,13 +206,13 @@ public void AddEventStore_SampleAssembly_ResolvesBothDomainsViaKeyedDI()
 
 ### Key Package Versions (from Directory.Packages.props)
 
-| Package | Version |
-|---|---|
-| xUnit | 2.9.3 |
-| Shouldly | 4.3.0 |
-| NSubstitute | 5.3.0 |
-| coverlet.collector | 6.0.4 |
-| .NET SDK | 10.0.103 |
+| Package            | Version  |
+| ------------------ | -------- |
+| xUnit              | 2.9.3    |
+| Shouldly           | 4.3.0    |
+| NSubstitute        | 5.3.0    |
+| coverlet.collector | 6.0.4    |
+| .NET SDK           | 10.0.103 |
 
 ### WARNING: 75 Pre-Existing Tier 3 Test Failures
 
@@ -235,31 +239,31 @@ There are 75 pre-existing Tier 3 test failures on `main`. These existed BEFORE t
 
 ### Existing Files to MODIFY (assertion updates only)
 
-| File | Change |
-|---|---|
+| File                                                                                           | Change                                                             |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `tests/Hexalith.EventStore.Sample.Tests/Registration/FluentApiRegistrationIntegrationTests.cs` | Update aggregate count assertions from 1 to 2 in AC1 and AC2 tests |
 
 ### Existing Files — DO NOT MODIFY
 
-| File | Reason |
-|---|---|
-| `samples/Hexalith.EventStore.Sample/Counter/**/*` | Counter domain is complete and correct |
-| `samples/Hexalith.EventStore.Sample/Program.cs` | `AddEventStore()` auto-discovers — no changes needed |
-| `src/Hexalith.EventStore.AppHost/Program.cs` | AppHost wiring is correct |
-| `src/Hexalith.EventStore.Client/**/*` | Client framework is complete |
-| `src/Hexalith.EventStore.Contracts/**/*` | Contracts are stable |
+| File                                              | Reason                                               |
+| ------------------------------------------------- | ---------------------------------------------------- |
+| `samples/Hexalith.EventStore.Sample/Counter/**/*` | Counter domain is complete and correct               |
+| `samples/Hexalith.EventStore.Sample/Program.cs`   | `AddEventStore()` auto-discovers — no changes needed |
+| `src/Hexalith.EventStore.AppHost/Program.cs`      | AppHost wiring is correct                            |
+| `src/Hexalith.EventStore.Client/**/*`             | Client framework is complete                         |
+| `src/Hexalith.EventStore.Contracts/**/*`          | Contracts are stable                                 |
 
 ### New Files to Create
 
-| File | Purpose |
-|---|---|
-| `samples/Hexalith.EventStore.Sample/Greeting/Commands/SendGreeting.cs` | Minimal command |
-| `samples/Hexalith.EventStore.Sample/Greeting/Events/GreetingSent.cs` | Minimal event |
-| `samples/Hexalith.EventStore.Sample/Greeting/State/GreetingState.cs` | Minimal state |
-| `samples/Hexalith.EventStore.Sample/Greeting/GreetingAggregate.cs` | Minimal fluent aggregate |
-| `tests/Hexalith.EventStore.Sample.Tests/Greeting/GreetingAggregateTests.cs` | Greeting domain tests |
-| `tests/Hexalith.EventStore.Sample.Tests/Registration/MultiDomainRegistrationTests.cs` | FR24 multi-domain tests |
-| `tests/Hexalith.EventStore.Sample.Tests/MultiTenant/MultiTenantIsolationTests.cs` | FR22/FR25 tests |
+| File                                                                                  | Purpose                  |
+| ------------------------------------------------------------------------------------- | ------------------------ |
+| `samples/Hexalith.EventStore.Sample/Greeting/Commands/SendGreeting.cs`                | Minimal command          |
+| `samples/Hexalith.EventStore.Sample/Greeting/Events/GreetingSent.cs`                  | Minimal event            |
+| `samples/Hexalith.EventStore.Sample/Greeting/State/GreetingState.cs`                  | Minimal state            |
+| `samples/Hexalith.EventStore.Sample/Greeting/GreetingAggregate.cs`                    | Minimal fluent aggregate |
+| `tests/Hexalith.EventStore.Sample.Tests/Greeting/GreetingAggregateTests.cs`           | Greeting domain tests    |
+| `tests/Hexalith.EventStore.Sample.Tests/Registration/MultiDomainRegistrationTests.cs` | FR24 multi-domain tests  |
+| `tests/Hexalith.EventStore.Sample.Tests/MultiTenant/MultiTenantIsolationTests.cs`     | FR22/FR25 tests          |
 
 ### Previous Story Intelligence (Story 8.1)
 
@@ -272,6 +276,7 @@ There are 75 pre-existing Tier 3 test failures on `main`. These existed BEFORE t
 ### Git Intelligence
 
 Recent commits (2026-03-18):
+
 - `96e725f` feat: Complete Story 8.1 Aspire AppHost & DAPR topology with prerequisite validation
 - `93d0230` Implement per-consumer rate limiting (Story 7.3)
 - `3edd174` feat: Implement per-consumer rate limiting alongside existing per-tenant limits
@@ -294,10 +299,47 @@ Recent commits (2026-03-18):
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- All Tier 1 tests pass: 668 total (267 Contracts + 293 Client + 41 Sample + 67 Testing)
+- Tier 2: 1504/1505 pass — 1 pre-existing failure (ErrorReferenceEndpointTests.AllProblemTypeUris_HaveCorrespondingErrorModel) NOT caused by this story
+
+### Implementation Plan
+
+- Created minimal Greeting domain (1 command, 1 event, 1 state, 1 aggregate) following exact Counter patterns
+- Updated all `Assert.Single(context.Activations)` assertions in FluentApiRegistrationIntegrationTests to use predicate filtering for counter domain (AC1-AC2 as specified + AC5, AC6, AC11 which also broke)
+- Updated CounterAggregateTests unkeyed resolution test to keyed-only (unkeyed returns last-registered, non-deterministic with 2 domains)
+- Created MultiDomainRegistrationTests (3 tests: discovery, keyed DI, activation)
+- Created GreetingAggregateTests (3 tests: command dispatch, null state success, state Apply)
+- Created MultiTenantIsolationTests (3 tests: AggregateIdentity differentiation, tenant-scoped topics, pure function tenant independence)
+
 ### Completion Notes List
 
+- ✅ Task 1: Greeting domain created (4 files) — follows exact Counter patterns, auto-discovered by AddEventStore()
+- ✅ Task 2: Multi-domain tests added — 6 existing tests updated (regression fix), 9 new tests created across 3 files
+- ✅ Task 3: Multi-tenant isolation tests — 3 tests verify contract-level and convention-level tenant scoping
+- ✅ Task 4: Zero regressions — Tier 1: 668/668 pass, Tier 2: 1504/1505 (1 pre-existing failure)
+- ✅ Task 5: Sample completeness verified — Counter covers all 4 DomainResult patterns, Greeting covers minimal quickstart, updated baseline: 668 Tier 1 tests (was 659)
+
 ### File List
+
+**New Files:**
+
+- `samples/Hexalith.EventStore.Sample/Greeting/Commands/SendGreeting.cs`
+- `samples/Hexalith.EventStore.Sample/Greeting/Events/GreetingSent.cs`
+- `samples/Hexalith.EventStore.Sample/Greeting/State/GreetingState.cs`
+- `samples/Hexalith.EventStore.Sample/Greeting/GreetingAggregate.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/Registration/MultiDomainRegistrationTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/Greeting/GreetingAggregateTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/MultiTenant/MultiTenantIsolationTests.cs`
+
+**Modified Files:**
+
+- `tests/Hexalith.EventStore.Sample.Tests/Registration/FluentApiRegistrationIntegrationTests.cs` — Updated 5 tests for 2-aggregate assertions
+- `tests/Hexalith.EventStore.Sample.Tests/Counter/CounterAggregateTests.cs` — Updated unkeyed resolution test to keyed-only
+
+## Change Log
+
+- 2026-03-19: Story 8.2 implementation complete — Added Greeting domain (FR24 multi-domain), multi-tenant isolation tests (FR22/FR25), updated regression assertions, 9 new tests added (668 Tier 1 total)
