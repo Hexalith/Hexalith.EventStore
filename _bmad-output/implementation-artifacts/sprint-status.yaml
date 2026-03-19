@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-03-19 (story 9-4 done)
+# last_updated: 2026-03-20 (story 10-2 done)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-19 # story 10-1 done
+last_updated: 2026-03-20 # story 10-2 done (code review complete)
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -131,8 +131,8 @@ development_status:
   # Epic 10: SignalR Real-Time Notifications
   epic-10: in-progress
   10-1-signalr-hub-and-projection-change-broadcasting: done
-  10-2-redis-backplane-for-multi-instance-signalr: ready-for-dev
-  10-3-automatic-signalr-group-rejoining-on-reconnection: backlog
+  10-2-redis-backplane-for-multi-instance-signalr: done
+  10-3-automatic-signalr-group-rejoining-on-reconnection: ready-for-dev
   epic-10-retrospective: optional
 
   # Epic 11: Server-Managed Projection Builder
