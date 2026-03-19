@@ -84,24 +84,15 @@ public class DaprProjectionChangeNotifierSignalRTests {
             new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
         var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
 
-        bool regenerateCalled = false;
-        bool regenerateCompletedBeforeBroadcast = false;
-
         _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
             .Returns(actor);
-        _ = actor.RegenerateAsync().Returns(_ => {
-            regenerateCalled = true;
-            return "new-etag";
-        });
-        _ = broadcaster.BroadcastChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                regenerateCompletedBeforeBroadcast = regenerateCalled;
-                return Task.CompletedTask;
-            });
 
         await sut.NotifyProjectionChangedAsync("order-list", "acme");
 
-        regenerateCompletedBeforeBroadcast.ShouldBeTrue("BroadcastChangedAsync must be called after RegenerateAsync completes");
+        Received.InOrder(() => {
+            actor.RegenerateAsync();
+            broadcaster.BroadcastChangedAsync("order-list", "acme", Arg.Any<CancellationToken>());
+        });
     }
 
     [Fact]
