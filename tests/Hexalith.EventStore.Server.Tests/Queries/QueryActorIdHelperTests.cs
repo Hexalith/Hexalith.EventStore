@@ -177,4 +177,25 @@ public class QueryActorIdHelperTests {
         generic.ShouldBe(stringBased);
         generic.ShouldBe("get-test-data:tenant1");
     }
+
+    // ============================================================================
+    // Story 9-1: Probabilistic checksum collision test (Task 5)
+    // ============================================================================
+
+    [Fact]
+    public void ComputeChecksum_1000RandomPayloads_NoCollisions() {
+        var checksums = new HashSet<string>(1000);
+        var random = new Random(42); // Fixed seed for determinism
+
+        for (int i = 0; i < 1000; i++) {
+            byte[] payload = new byte[random.Next(1, 512)];
+            random.NextBytes(payload);
+
+            string checksum = QueryActorIdHelper.ComputeChecksum(payload);
+            checksum.Length.ShouldBe(11);
+            checksums.Add(checksum).ShouldBeTrue($"Collision detected at iteration {i} with checksum '{checksum}'");
+        }
+
+        checksums.Count.ShouldBe(1000);
+    }
 }
