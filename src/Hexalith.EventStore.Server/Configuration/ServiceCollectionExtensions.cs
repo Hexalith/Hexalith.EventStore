@@ -11,6 +11,7 @@ using Hexalith.EventStore.Server.Queries;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Configuration;
@@ -62,6 +63,7 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:Projections"))
             .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
             .ValidateOnStart();
+        _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
         services.AddActors(options => {
             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
             if (!string.IsNullOrEmpty(daprHttpPort)) {

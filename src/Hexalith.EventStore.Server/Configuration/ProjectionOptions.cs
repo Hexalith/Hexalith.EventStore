@@ -23,10 +23,19 @@ public record ProjectionOptions {
     /// </summary>
     /// <param name="domain">The domain name.</param>
     /// <returns>The refresh interval in milliseconds for the specified domain.</returns>
-    public int GetRefreshIntervalMs(string domain)
-        => Domains.TryGetValue(domain, out DomainProjectionOptions? domainOptions)
-            ? domainOptions.RefreshIntervalMs
-            : DefaultRefreshIntervalMs;
+    public int GetRefreshIntervalMs(string domain) {
+        if (Domains.TryGetValue(domain, out DomainProjectionOptions? domainOptions)) {
+            return domainOptions.RefreshIntervalMs;
+        }
+
+        foreach ((string key, DomainProjectionOptions value) in Domains) {
+            if (string.Equals(key, domain, StringComparison.OrdinalIgnoreCase)) {
+                return value.RefreshIntervalMs;
+            }
+        }
+
+        return DefaultRefreshIntervalMs;
+    }
 
     /// <summary>
     /// Validates projection options and throws if configuration is invalid.
