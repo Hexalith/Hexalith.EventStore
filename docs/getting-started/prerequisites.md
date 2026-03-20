@@ -22,6 +22,22 @@ $ dotnet --version
 
 Expected output: `10.0.103` or later (any 10.0.x patch version works).
 
+## .NET Aspire CLI
+
+The quickstart uses the Aspire CLI to launch the full application topology. Install the Aspire CLI as a global .NET tool:
+
+```bash
+$ dotnet tool install -g Aspire.Cli
+```
+
+**Verify installation:**
+
+```bash
+$ aspire --version
+```
+
+Expected output: a version string (e.g., `9.2.0` or later).
+
 ## Docker Desktop
 
 DAPR uses Docker containers for local development infrastructure — a state store (Redis), a pub/sub broker, and a placement service for actors. Docker Desktop provides the container runtime.
@@ -135,13 +151,14 @@ Run these commands to confirm everything is set up correctly:
 
 ```bash
 $ dotnet --version    # 10.0.103 or later
+$ aspire --version    # Version string (e.g., 9.2.0)
 $ docker --version    # Output starts with "Docker version"
 $ docker info         # Returns Docker server information (daemon running)
 $ dapr --version      # CLI version 1.16.x, Runtime version 1.16.x
 $ docker ps --filter "name=dapr_"  # Three dapr containers running
 ```
 
-If all five commands produce the expected output, your environment is ready for the quickstart.
+If all six commands produce the expected output, your environment is ready for the quickstart.
 
 ## Common Issues
 

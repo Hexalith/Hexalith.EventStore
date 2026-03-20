@@ -73,6 +73,7 @@ Expand the **POST /api/v1/commands** endpoint, click **Try it out**, and use thi
 
 ```json
 {
+    "messageId": "increment-01",
     "tenant": "tenant-a",
     "domain": "counter",
     "aggregateId": "counter-1",
@@ -80,6 +81,8 @@ Expand the **POST /api/v1/commands** endpoint, click **Try it out**, and use thi
     "payload": {}
 }
 ```
+
+The `messageId` is the idempotency key. Reuse the same value only when retrying the same logical command, and use a new value for a new command.
 
 Click **Execute**. The API returns `202 Accepted` with a response containing the correlation ID:
 
