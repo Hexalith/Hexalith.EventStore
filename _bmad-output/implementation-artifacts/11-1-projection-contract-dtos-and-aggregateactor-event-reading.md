@@ -1,6 +1,6 @@
 # Story 11.1: Projection Contract DTOs & AggregateActor Event Reading
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -41,22 +41,22 @@ so that the projection builder can deliver events without coupling to DAPR inter
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create Projection Contract DTOs (AC: 1, 2, 3)
-  - [ ] Create `src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs`
-  - [ ] Create `src/Hexalith.EventStore.Contracts/Projections/ProjectionRequest.cs`
-  - [ ] Create `src/Hexalith.EventStore.Contracts/Projections/ProjectionResponse.cs`
-  - [ ] Create `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionContractTests.cs` with JSON round-trip tests (include empty Payload edge case)
-  - [ ] Run Tier 1 Contracts tests to verify green
-- [ ] Task 2: Add GetEventsAsync to IAggregateActor (AC: 4)
-  - [ ] Add `GetEventsAsync(long fromSequence)` to `IAggregateActor` interface
-  - [ ] Implement in `AggregateActor` — reuse `EventStreamReader` event-reading pattern (metadata lookup → batch state reads)
-  - [ ] Update `FakeAggregateActor` in Testing project with configurable event list
-  - [ ] Create `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs` (include batch boundary and future-sequence edge cases)
-  - [ ] Run Tier 2 Server tests to verify no regression
-- [ ] Task 3: Full build and test verification
-  - [ ] `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
-  - [ ] All Tier 1 tests pass (Contracts + Client + Sample + Testing + SignalR)
-  - [ ] Tier 2 Server tests pass (requires DAPR slim init)
+- [x] Task 1: Create Projection Contract DTOs (AC: 1, 2, 3)
+    - [x] Create `src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs`
+    - [x] Create `src/Hexalith.EventStore.Contracts/Projections/ProjectionRequest.cs`
+    - [x] Create `src/Hexalith.EventStore.Contracts/Projections/ProjectionResponse.cs`
+    - [x] Create `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionContractTests.cs` with JSON round-trip tests (include empty Payload edge case)
+    - [x] Run Tier 1 Contracts tests to verify green
+- [x] Task 2: Add GetEventsAsync to IAggregateActor (AC: 4)
+    - [x] Add `GetEventsAsync(long fromSequence)` to `IAggregateActor` interface
+    - [x] Implement in `AggregateActor` — reuse `EventStreamReader` event-reading pattern (metadata lookup → batch state reads)
+    - [x] Update `FakeAggregateActor` in Testing project with configurable event list
+    - [x] Create `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs` (include batch boundary and future-sequence edge cases)
+    - [x] Run Tier 2 Server tests to verify no regression
+- [x] Task 3: Full build and test verification
+    - [x] `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+    - [x] All Tier 1 tests pass (Contracts + Client + Sample + Testing + SignalR)
+    - [x] Tier 2 Server tests pass (requires DAPR slim init)
 
 ## Dev Notes
 
@@ -83,16 +83,16 @@ The `Projections/` directory already exists with `ProjectionChangedNotification.
 
 Wire-format event sent to domain services. **Deliberately excludes** Server-internal fields to maintain security boundary:
 
-| Include | Exclude (Server-internal) |
-|---------|---------------------------|
-| EventTypeName | CausationId |
-| Payload (byte[]) | UserId |
-| SerializationFormat | DomainServiceVersion |
-| SequenceNumber | GlobalPosition |
-| Timestamp | MetadataVersion |
-| CorrelationId | Extensions |
-|  | MessageId |
-|  | AggregateId/Type/TenantId/Domain (already in ProjectionRequest) |
+| Include             | Exclude (Server-internal)                                       |
+| ------------------- | --------------------------------------------------------------- |
+| EventTypeName       | CausationId                                                     |
+| Payload (byte[])    | UserId                                                          |
+| SerializationFormat | DomainServiceVersion                                            |
+| SequenceNumber      | GlobalPosition                                                  |
+| Timestamp           | MetadataVersion                                                 |
+| CorrelationId       | Extensions                                                      |
+|                     | MessageId                                                       |
+|                     | AggregateId/Type/TenantId/Domain (already in ProjectionRequest) |
 
 ```csharp
 // src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs
@@ -140,6 +140,7 @@ public record ProjectionResponse(
 #### Tests
 
 Create `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionContractTests.cs` with:
+
 - `ProjectionEventDto_RoundTrips_Json` — serialize/deserialize, verify all 6 fields survive
 - `ProjectionRequest_RoundTrips_Json` — verify TenantId, Domain, AggregateId, Events[] survive
 - `ProjectionResponse_RoundTrips_Json` — verify ProjectionType and opaque State survive
@@ -147,6 +148,7 @@ Create `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionContract
 Follow existing test pattern in `ProjectionChangedNotificationTests.cs`. Use **Shouldly** for assertions.
 
 Additional edge case test:
+
 - `ProjectionEventDto_EmptyPayload_RoundTripsJson` — verify `byte[] Payload = []` survives JSON round-trip (marker events with no payload data)
 
 ### Task 2: AggregateActor.GetEventsAsync
@@ -170,6 +172,7 @@ The implementation follows the existing `EventStreamReader.RehydrateAsync` patte
 3. **Read events** → Batch reads using `identity.EventStreamKeyPrefix + seq` (existing pattern in `EventStreamReader.cs` lines 96-128)
 
 **Key facts from the existing code:**
+
 - `AggregateMetadata` record: `(long CurrentSequence, DateTimeOffset LastModified, string? ETag)` — at `src/Hexalith.EventStore.Server/Events/AggregateMetadata.cs`
 - Event state key pattern: `{tenant}:{domain}:{aggId}:events:{seq}` — from `AggregateIdentity.EventStreamKeyPrefix` + sequence number
 - Metadata state key: `{tenant}:{domain}:{aggId}:metadata` — from `AggregateIdentity.MetadataKey`
@@ -227,6 +230,7 @@ public async Task<EventEnvelope[]> GetEventsAsync(long fromSequence)
 ```
 
 **Error handling contract:** `GetEventsAsync` follows the same error semantics as `EventStreamReader`:
+
 - **Negative `fromSequence`** → clamp to 0 (defensive — only trusted internal code calls this, but prevents accidental `MissingEventException` from reading key `{prefix}0`)
 - **No metadata** → return empty array (new aggregate)
 - **`fromSequence >= currentSequence`** → return empty array (no new events, including future sequence values)
@@ -239,6 +243,7 @@ public async Task<EventEnvelope[]> GetEventsAsync(long fromSequence)
 **Null Extensions warning:** `EventEnvelope.Extensions` is `IDictionary<string, string>?` — it can be null. The mapping layer in Story 11-3 must handle this when converting to `ProjectionEventDto` (which excludes Extensions entirely). Not a concern for this story, but documented for cross-story awareness.
 
 **Concurrency note:** DAPR actors are single-threaded. `GetEventsAsync` blocks command processing while executing. Mitigated by:
+
 - Only reads events since `fromSequence` (typically small batch)
 - For high-throughput aggregates, Stories 11-3/11-4 add RefreshIntervalMs > 0 to batch reads
 
@@ -276,6 +281,7 @@ Create `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTes
 - `GetEventsAsync_NegativeFromSequence_ClampsToZero` — call with `fromSequence = -1`, verify it returns all events (same as `fromSequence = 0`) without throwing
 
 Follow existing test setup pattern from `AggregateActorTests.cs` in the same folder. The AggregateActor constructor requires:
+
 - `ActorHost` — use `ActorHost.CreateForTest<AggregateActor>()`
 - `ILogger<AggregateActor>` — use `NullLogger`
 - `IDomainServiceInvoker` — NSubstitute mock
@@ -292,12 +298,14 @@ Set actor ID to `"tenant-a:counter:counter-1"` format (3 colon-separated parts).
 ### CRITICAL: Scope Boundaries
 
 **This story ONLY creates:**
+
 - 3 new record types in Contracts/Projections/
 - 1 new method on IAggregateActor + AggregateActor implementation
 - 1 update to FakeAggregateActor
 - Test files for both
 
 **Do NOT create or modify:**
+
 - `EventReplayProjectionActor` — that's Story 11-2
 - `IProjectionWriteActor` — that's Story 11-2
 - `IProjectionUpdateOrchestrator` — that's Story 11-3
@@ -318,6 +326,7 @@ Set actor ID to `"tenant-a:counter:counter-1"` format (3 colon-separated parts).
 ### Existing Code Patterns to Follow
 
 **Record definition style** (from `ProjectionChangedNotification.cs`):
+
 ```csharp
 namespace Hexalith.EventStore.Contracts.Projections;
 
@@ -327,11 +336,13 @@ public record TypeName(params...);
 ```
 
 **Test style** (from existing Contracts.Tests):
+
 - xUnit `[Fact]` attributes
 - Shouldly assertions (`result.ShouldBe(...)`, `result.ShouldNotBeNull()`)
 - No test base class needed for simple record tests
 
 **Actor test style** (from existing Server.Tests):
+
 - `ActorHost.CreateForTest<T>()` for actor instantiation
 - NSubstitute for mocking `IActorStateManager` and dependencies
 - Tier 2 — requires DAPR slim init for full test run
@@ -363,6 +374,7 @@ tests/Hexalith.EventStore.Server.Tests/Actors/
 ### Previous Story Intelligence (Story 10-2)
 
 Key learnings from the most recent story:
+
 - **Branch naming:** `feat/story-11-1-projection-contract-dtos-and-aggregateactor-event-reading`
 - **Commit message pattern:** `feat: <description for Story 11-1>`
 - **Audit/gap-fill pattern works well:** Previous stories used structured task checklists with pass/fail tracking
@@ -373,6 +385,7 @@ Key learnings from the most recent story:
 ### Git Intelligence
 
 Recent commits (last 5):
+
 - `31cd5b2` Story 10-2 merge (Redis backplane for SignalR)
 - `c61948a` Mark story 10-2 done
 - `9258ff9` Story 10-2 PR merge
@@ -410,10 +423,45 @@ Pattern: feature branches merged via PRs, conventional commit messages (`feat: .
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Build: `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 warnings, 0 errors (9s)
+- Tier 1 tests: Contracts 271, Client 297, Sample 47, Testing 67, SignalR 27 = 709 passed
+- Tier 2 tests: Server 1541 passed
+- Total: 2250 passed, 0 failed, 0 regressions
+- No existing IAggregateActor implementations missed — only AggregateActor and FakeAggregateActor
+
 ### Completion Notes List
 
+- Created 3 projection contract DTOs in `Hexalith.EventStore.Contracts.Projections` namespace following existing `ProjectionChangedNotification` record pattern
+- `ProjectionEventDto`: 6 wire-format fields, deliberately excludes 11 Server-internal fields (CausationId, UserId, DomainServiceVersion, GlobalPosition, MetadataVersion, Extensions, MessageId, AggregateId/Type/TenantId/Domain)
+- `ProjectionRequest`: per-aggregate granularity with TenantId, Domain, AggregateId, Events[]
+- `ProjectionResponse`: opaque `JsonElement State` — CommandApi never interprets schema
+- Added `GetEventsAsync(long fromSequence)` to `IAggregateActor` interface returning `EventEnvelope[]`
+- Implementation in `AggregateActor` reuses `EventStreamReader` batch-read pattern with `MaxConcurrentStateReads = 32`
+- Error handling: negative fromSequence clamped to 0, no metadata returns empty, fromSequence >= current returns empty, missing key throws `MissingEventException`, deserialization failure throws `EventDeserializationException`
+- Updated `FakeAggregateActor` with `ConfiguredEvents` property and filtering/ordering implementation
+- 4 contract JSON round-trip tests (including empty payload edge case)
+- 8 actor tests covering: new aggregate, events after sequence, at-current, beyond-current, exact batch size (32), multi-batch (33), missing event key, negative fromSequence
+
+### Change Log
+
+- 2026-03-20: Created `ProjectionEventDto.cs`, `ProjectionRequest.cs`, `ProjectionResponse.cs` in Contracts/Projections
+- 2026-03-20: Created `ProjectionContractTests.cs` with 4 JSON round-trip tests
+- 2026-03-20: Added `GetEventsAsync(long)` to `IAggregateActor` interface
+- 2026-03-20: Implemented `GetEventsAsync` in `AggregateActor` with batch-read pattern
+- 2026-03-20: Updated `FakeAggregateActor` with `ConfiguredEvents` property and `GetEventsAsync` implementation
+- 2026-03-20: Created `AggregateActorGetEventsTests.cs` with 8 tests
+
 ### File List
+
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs` (NEW)
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionRequest.cs` (NEW)
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionResponse.cs` (NEW)
+- `src/Hexalith.EventStore.Server/Actors/IAggregateActor.cs` (MODIFIED — added GetEventsAsync)
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (MODIFIED — implemented GetEventsAsync)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeAggregateActor.cs` (MODIFIED — added ConfiguredEvents + GetEventsAsync)
+- `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionContractTests.cs` (NEW)
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs` (NEW)

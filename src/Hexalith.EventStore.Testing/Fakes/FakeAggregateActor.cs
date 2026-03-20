@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Events;
 
 namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
@@ -27,6 +28,16 @@ public class FakeAggregateActor : IAggregateActor {
 
     /// <summary>Gets the number of commands that were actually processed (not short-circuited by idempotency).</summary>
     public int ProcessedCount => _processedCausationIds.Count;
+
+    /// <summary>Gets or sets the configurable events for GetEventsAsync.</summary>
+    public EventEnvelope[] ConfiguredEvents { get; set; } = [];
+
+    /// <inheritdoc/>
+    public Task<EventEnvelope[]> GetEventsAsync(long fromSequence)
+        => Task.FromResult(ConfiguredEvents
+            .Where(e => e.SequenceNumber > fromSequence)
+            .OrderBy(e => e.SequenceNumber)
+            .ToArray());
 
     /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
