@@ -6,6 +6,8 @@ This page covers common errors you may encounter during quickstart setup, DAPR i
 
 > **Prerequisites:** [Prerequisites and Local Dev Environment](../getting-started/prerequisites.md), [Quickstart Guide](../getting-started/quickstart.md)
 
+> **See also:** [API Error Reference](../reference/problems/index.md) -- for HTTP error responses (400, 401, 403, 404, 409, 429, 500, 501, 503) returned by the Command and Query APIs.
+
 ## Quickstart Errors
 
 These issues typically occur when setting up the project for the first time or running the sample application locally.

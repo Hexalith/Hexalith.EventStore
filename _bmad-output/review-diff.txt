@@ -1,1426 +1,1440 @@
-﻿diff --git a/src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs b/src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs
-index 3a6df15..e5f41c4 100644
---- a/src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs
-+++ b/src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs
-@@ -13,6 +13,7 @@ public static class ProblemTypeUris {
-     public const string NotFound = "https://hexalith.io/problems/not-found";
-     public const string ConcurrencyConflict = "https://hexalith.io/problems/concurrency-conflict";
-     public const string RateLimitExceeded = "https://hexalith.io/problems/rate-limit-exceeded";
-+    public const string BackpressureExceeded = "https://hexalith.io/problems/backpressure-exceeded";
-     public const string ServiceUnavailable = "https://hexalith.io/problems/service-unavailable";
-     public const string CommandStatusNotFound = "https://hexalith.io/problems/command-status-not-found";
-     public const string InternalServerError = "https://hexalith.io/problems/internal-server-error";
-diff --git a/src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs
-index 02ffc94..12c7acf 100644
---- a/src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs
-+++ b/src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs
-@@ -39,6 +39,7 @@ public static class CommandApiServiceCollectionExtensions
-         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
-         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
-         _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
-+        _ = services.AddExceptionHandler<BackpressureExceptionHandler>();             // 429 (per-aggregate backpressure)
-         _ = services.AddExceptionHandler<DaprSidecarUnavailableHandler>();          // 503 (sidecar down)
-         _ = services.AddExceptionHandler<GlobalExceptionHandler>();
+
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 1645049..c9e9a46 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -42,7 +42,7 @@
+ # under the old structure. Story statuses will be updated as stories are created/implemented.
  
-diff --git a/src/Hexalith.EventStore.CommandApi/OpenApi/ErrorReferenceEndpoints.cs b/src/Hexalith.EventStore.CommandApi/OpenApi/ErrorReferenceEndpoints.cs
-index 6ddca23..48c4324 100644
---- a/src/Hexalith.EventStore.CommandApi/OpenApi/ErrorReferenceEndpoints.cs
-+++ b/src/Hexalith.EventStore.CommandApi/OpenApi/ErrorReferenceEndpoints.cs
-@@ -72,6 +72,11 @@ public static class ErrorReferenceEndpoints {
-             """{"type":"https://hexalith.io/problems/rate-limit-exceeded","title":"Too Many Requests","status":429,"detail":"Rate limit exceeded for tenant 'tenant-a'. Please retry after the specified interval."}""",
-             ["Wait for the interval specified in the Retry-After response header before retrying.", "Consider reducing request frequency or batching commands."]),
+ generated: 2026-03-15
+-last_updated: 2026-03-20 # story 13-1 done
++last_updated: 2026-03-20 # story 13-2 review
+ project: Hexalith.EventStore
+ # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
+ project_key: NOKEY
+@@ -153,7 +153,7 @@ development_status:
+   # Epic 13: Documentation & Developer Onboarding
+   epic-13: in-progress
+   13-1-quick-start-guide: done
+-  13-2-error-reference-pages-at-type-uris: backlog
++  13-2-error-reference-pages-at-type-uris: review
+   13-3-progressive-documentation-structure: backlog
+   13-4-repository-documentation-refresh: backlog
+   epic-13-retrospective: optional
+diff --git a/docs/guides/troubleshooting.md b/docs/guides/troubleshooting.md
+index dd999b6..f83f828 100644
+--- a/docs/guides/troubleshooting.md
++++ b/docs/guides/troubleshooting.md
+@@ -6,6 +6,8 @@ This page covers common errors you may encounter during quickstart setup, DAPR i
  
-+        new("backpressure-exceeded", "Backpressure Exceeded", 429,
-+            "The targeted entity has too many pending commands in its processing queue. Per-aggregate backpressure has been triggered to prevent queue buildup.",
-+            """{"type":"https://hexalith.io/problems/backpressure-exceeded","title":"Too Many Requests","status":429,"detail":"Too many pending commands for this entity. Please retry after the specified interval.","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
-+            ["Wait for the interval specified in the Retry-After response header.", "The targeted entity is processing a large number of commands. Spread commands across time or entities."]),
+ > **Prerequisites:** [Prerequisites and Local Dev Environment](../getting-started/prerequisites.md), [Quickstart Guide](../getting-started/quickstart.md)
+ 
++> **See also:** [API Error Reference](../reference/problems/index.md) -- for HTTP error responses (400, 401, 403, 404, 409, 429, 500, 501, 503) returned by the Command and Query APIs.
 +
-         new("service-unavailable", "Service Unavailable", 503,
-             "The command processing pipeline is temporarily unavailable (e.g., DAPR sidecar unreachable).",
-             """{"type":"https://hexalith.io/problems/service-unavailable","title":"Service Unavailable","status":503,"detail":"The command processing service is temporarily unavailable. Please retry after the specified interval."}""",
-diff --git a/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs b/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
-index a48b14b..2beffa4 100644
---- a/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
-+++ b/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
-@@ -49,6 +49,11 @@ public static class EventStoreServerServiceCollectionExtensions {
-             .Bind(configuration.GetSection("EventStore:Publisher"));
-         _ = services.AddOptions<EventDrainOptions>()
-             .Bind(configuration.GetSection("EventStore:Drain"));
-+        services.TryAddSingleton<IBackpressureTracker, InMemoryBackpressureTracker>();
-+        services.TryAddSingleton<IValidateOptions<BackpressureOptions>, ValidateBackpressureOptions>();
-+        _ = services.AddOptions<BackpressureOptions>()
-+            .Bind(configuration.GetSection("EventStore:Backpressure"))
-+            .ValidateOnStart();
-         _ = services.AddOptions<SnapshotOptions>()
-             .Bind(configuration.GetSection("EventStore:Snapshots"))
-             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
-diff --git a/src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs b/src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
-index 8a589c7..3b532c8 100644
---- a/src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
-+++ b/src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
-@@ -1,5 +1,6 @@
+ ## Quickstart Errors
  
- using Hexalith.EventStore.Contracts.Commands;
-+using Hexalith.EventStore.Contracts.Identity;
- using Hexalith.EventStore.Server.Actors;
- using Hexalith.EventStore.Server.Commands;
- using Hexalith.EventStore.Server.Pipeline.Commands;
-@@ -19,86 +20,109 @@ public partial class SubmitCommandHandler(
-     ICommandStatusStore statusStore,
-     ICommandArchiveStore archiveStore,
-     ICommandRouter commandRouter,
-+    IBackpressureTracker backpressureTracker,
-     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult>
- {
-     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken)
-     {
-         ArgumentNullException.ThrowIfNull(request);
+ These issues typically occur when setting up the project for the first time or running the sample application locally.
+diff --git a/docs/reference/command-api.md b/docs/reference/command-api.md
+index 008e31c..b0659a2 100644
+--- a/docs/reference/command-api.md
++++ b/docs/reference/command-api.md
+@@ -153,6 +153,8 @@ Content-Type: application/json
  
-+        // Compute canonical actor ID for backpressure tracking (same as CommandRouter line 28)
-+        string actorId = new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId).ActorId;
+ ### Error Responses
+ 
++> **See also:** [Error Reference](./problems/index.md) for detailed documentation on each error type, including example requests/responses and resolution steps.
 +
-         string causationId = request.MessageId; // CausationId traces from the specific command (MessageId) that caused the events
- 
-         Log.CommandReceived(logger, request.MessageId, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
- 
-         var result = new SubmitCommandResult(request.CorrelationId);
- 
--        // Write "Received" status before returning (advisory per rule #12)
-+        // CRITICAL: Acquire INSIDE try block to prevent cancellation leak (Story 4.3)
-+        bool acquired = false;
-         try
-         {
--            await statusStore.WriteStatusAsync(
--                request.Tenant,
--                request.CorrelationId,
--                new CommandStatusRecord(
--                    CommandStatus.Received,
--                    DateTimeOffset.UtcNow,
--                    request.AggregateId,
--                    EventCount: null,
--                    RejectionEventType: null,
--                    FailureReason: null,
--                    TimeoutDuration: null),
--                cancellationToken).ConfigureAwait(false);
--        }
--        catch (OperationCanceledException)
--        {
--            throw;
--        }
--        catch (Exception ex)
--        {
--            Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
--        }
-+            acquired = backpressureTracker.TryAcquire(actorId);
-+            if (!acquired)
-+            {
-+                Log.BackpressureExceeded(logger, request.CorrelationId, request.MessageId, request.Tenant, request.Domain, request.AggregateId, request.CommandType, actorId);
-+                throw new BackpressureExceededException(actorId, request.Tenant, request.CorrelationId, currentDepth: 0);
-+            }
- 
--        // Archive original command for replay (advisory per rule #12)
--        try
--        {
--            await archiveStore.WriteCommandAsync(
--                request.Tenant,
--                request.CorrelationId,
--                request.ToArchivedCommand(),
--                cancellationToken).ConfigureAwait(false);
--        }
--        catch (OperationCanceledException)
--        {
--            throw;
--        }
--        catch (Exception ex)
--        {
--            Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
--        }
-+            // Write "Received" status before returning (advisory per rule #12)
-+            try
-+            {
-+                await statusStore.WriteStatusAsync(
-+                    request.Tenant,
-+                    request.CorrelationId,
-+                    new CommandStatusRecord(
-+                        CommandStatus.Received,
-+                        DateTimeOffset.UtcNow,
-+                        request.AggregateId,
-+                        EventCount: null,
-+                        RejectionEventType: null,
-+                        FailureReason: null,
-+                        TimeoutDuration: null),
-+                    cancellationToken).ConfigureAwait(false);
-+            }
-+            catch (OperationCanceledException)
-+            {
-+                throw;
-+            }
-+            catch (Exception ex)
-+            {
-+                Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
-+            }
- 
--        // Route to aggregate actor (NOT advisory -- failure must propagate)
--        CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
--            .ConfigureAwait(false);
-+            // Archive original command for replay (advisory per rule #12)
-+            try
-+            {
-+                await archiveStore.WriteCommandAsync(
-+                    request.Tenant,
-+                    request.CorrelationId,
-+                    request.ToArchivedCommand(),
-+                    cancellationToken).ConfigureAwait(false);
-+            }
-+            catch (OperationCanceledException)
-+            {
-+                throw;
-+            }
-+            catch (Exception ex)
-+            {
-+                Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
-+            }
- 
--        if (!processingResult.Accepted)
--        {
--            CommandStatusRecord? status = await statusStore
--                .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
-+            // Route to aggregate actor (NOT advisory -- failure must propagate)
-+            CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
-                 .ConfigureAwait(false);
- 
--            if (status is { RejectionEventType: not null })
-+            if (!processingResult.Accepted)
-             {
--                throw new DomainCommandRejectedException(
--                    request.CorrelationId,
--                    request.Tenant,
--                    status.RejectionEventType,
--                    processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
-+                CommandStatusRecord? status = await statusStore
-+                    .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
-+                    .ConfigureAwait(false);
-+
-+                if (status is { RejectionEventType: not null })
-+                {
-+                    throw new DomainCommandRejectedException(
-+                        request.CorrelationId,
-+                        request.Tenant,
-+                        status.RejectionEventType,
-+                        processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
-+                }
-+
-+                throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
-             }
- 
--            throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
--        }
--
--        Log.CommandRouted(logger, request.CorrelationId);
-+            Log.CommandRouted(logger, request.CorrelationId);
- 
--        return result;
-+            return result;
-+        }
-+        finally
-+        {
-+            if (acquired)
-+            {
-+                backpressureTracker.Release(actorId);
-+            }
-+        }
-     }
- 
-     private static partial class Log
-@@ -144,5 +168,19 @@ public partial class SubmitCommandHandler(
-         public static partial void CommandRouted(
-             ILogger logger,
-             string correlationId);
-+
-+        [LoggerMessage(
-+            EventId = 1110,
-+            Level = LogLevel.Warning,
-+            Message = "Backpressure exceeded: CorrelationId={CorrelationId}, MessageId={MessageId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, ActorId={ActorId}, Stage=BackpressureExceeded")]
-+        public static partial void BackpressureExceeded(
-+            ILogger logger,
-+            string correlationId,
-+            string messageId,
-+            string tenantId,
-+            string domain,
-+            string aggregateId,
-+            string commandType,
-+            string actorId);
-     }
- }
-diff --git a/tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs b/tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs
-index af4b459..a3d8621 100644
---- a/tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs
-+++ b/tests/Hexalith.EventStore.IntegrationTests/CommandApi/ConcurrencyConflictIntegrationTests.cs
-@@ -279,7 +279,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
-         ICommandArchiveStore archiveStore,
-         ICommandRouter commandRouter,
-         ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
--        private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, commandRouter, logger);
-+        private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, commandRouter, new InMemoryBackpressureTracker(Microsoft.Extensions.Options.Options.Create(new Hexalith.EventStore.Server.Configuration.BackpressureOptions())), logger);
- 
-         public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
-             if (request.CommandType == ConflictTriggerCommandType) {
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs b/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs
-index 1e49df4..854d6ea 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs
-@@ -17,6 +17,12 @@ using Shouldly;
- namespace Hexalith.EventStore.Server.Tests.Commands;
- 
- public class SubmitCommandHandlerArchiveTests {
-+    private static IBackpressureTracker CreateMockTracker() {
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        return tracker;
-+    }
-+
-     private static ICommandRouter CreateMockRouter() {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-@@ -40,7 +46,7 @@ public class SubmitCommandHandlerArchiveTests {
-         // Arrange
-         var statusStore = new InMemoryCommandStatusStore();
-         var archiveStore = new InMemoryCommandArchiveStore();
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-@@ -67,7 +73,7 @@ public class SubmitCommandHandlerArchiveTests {
-             Arg.Any<CancellationToken>())
-             .ThrowsAsync(new InvalidOperationException("Archive store unavailable"));
- 
--        var handler = new SubmitCommandHandler(statusStore, mockArchiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
-+        var handler = new SubmitCommandHandler(statusStore, mockArchiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-@@ -92,7 +98,7 @@ public class SubmitCommandHandlerArchiveTests {
- 
-         ILogger<SubmitCommandHandler> logger = Substitute.For<ILogger<SubmitCommandHandler>>();
-         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
--        var handler = new SubmitCommandHandler(statusStore, mockArchiveStore, CreateMockRouter(), logger);
-+        var handler = new SubmitCommandHandler(statusStore, mockArchiveStore, CreateMockRouter(), CreateMockTracker(), logger);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-@@ -112,7 +118,7 @@ public class SubmitCommandHandlerArchiveTests {
-         // Arrange
-         var statusStore = new InMemoryCommandStatusStore();
-         var archiveStore = new InMemoryCommandArchiveStore();
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerRoutingTests.cs b/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerRoutingTests.cs
-index ae7a555..8392e71 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerRoutingTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerRoutingTests.cs
-@@ -15,6 +15,12 @@ using Shouldly;
- namespace Hexalith.EventStore.Server.Tests.Commands;
- 
- public class SubmitCommandHandlerRoutingTests {
-+    private static IBackpressureTracker CreateMockTracker() {
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        return tracker;
-+    }
-+
-     private static SubmitCommand CreateTestCommand(string? correlationId = null) => new(
-         MessageId: Guid.NewGuid().ToString(),
-         Tenant: "test-tenant",
-@@ -36,6 +42,7 @@ public class SubmitCommandHandlerRoutingTests {
-             new InMemoryCommandStatusStore(),
-             new InMemoryCommandArchiveStore(),
-             router,
-+            CreateMockTracker(),
-             NullLogger<SubmitCommandHandler>.Instance);
- 
-         SubmitCommand command = CreateTestCommand();
-@@ -60,6 +67,7 @@ public class SubmitCommandHandlerRoutingTests {
-             new InMemoryCommandStatusStore(),
-             new InMemoryCommandArchiveStore(),
-             router,
-+            CreateMockTracker(),
-             NullLogger<SubmitCommandHandler>.Instance);
- 
-         SubmitCommand command = CreateTestCommand();
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs b/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
-index df20588..a5659c3 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
-@@ -17,6 +17,12 @@ using Shouldly;
- namespace Hexalith.EventStore.Server.Tests.Commands;
- 
- public class SubmitCommandHandlerStatusTests {
-+    private static IBackpressureTracker CreateMockTracker() {
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        return tracker;
-+    }
-+
-     private static ICommandRouter CreateMockRouter() {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-@@ -39,7 +45,7 @@ public class SubmitCommandHandlerStatusTests {
-         // Arrange
-         var statusStore = new InMemoryCommandStatusStore();
-         var archiveStore = new InMemoryCommandArchiveStore();
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-@@ -66,7 +72,7 @@ public class SubmitCommandHandlerStatusTests {
-             .ThrowsAsync(new InvalidOperationException("Store unavailable"));
- 
-         var archiveStore = new InMemoryCommandArchiveStore();
--        var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
-+        var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-@@ -91,7 +97,7 @@ public class SubmitCommandHandlerStatusTests {
-         var archiveStore = new InMemoryCommandArchiveStore();
-         ILogger<SubmitCommandHandler> logger = Substitute.For<ILogger<SubmitCommandHandler>>();
-         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
--        var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), logger);
-+        var handler = new SubmitCommandHandler(mockStore, archiveStore, CreateMockRouter(), CreateMockTracker(), logger);
-         SubmitCommand command = CreateTestCommand();
- 
-         // Act
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs b/tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs
-index ae0a176..27a550e 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Logging/CausationIdLoggingTests.cs
-@@ -57,7 +57,9 @@ public class CausationIdLoggingTests : IDisposable {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, logger);
-         SubmitCommand command = CreateSubmitCommand();
- 
-         // Act
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Logging/LogLevelConventionTests.cs b/tests/Hexalith.EventStore.Server.Tests/Logging/LogLevelConventionTests.cs
-index 68109e5..2b64a64 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Logging/LogLevelConventionTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Logging/LogLevelConventionTests.cs
-@@ -119,7 +119,9 @@ public class LogLevelConventionTests : IDisposable {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, logger);
-         SubmitCommand command = CreateSubmitCommand();
- 
-         // Act
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs b/tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs
-index 55e5d16..6d51c72 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs
-@@ -57,7 +57,9 @@ public class PayloadProtectionTests : IDisposable {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, logger);
-         var command = new SubmitCommand(
-             MessageId: "msg-payload-submit-1",
-             Tenant: "test-tenant",
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Logging/StructuredLoggingCompletenessTests.cs b/tests/Hexalith.EventStore.Server.Tests/Logging/StructuredLoggingCompletenessTests.cs
-index aff9cd3..63f39fd 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Logging/StructuredLoggingCompletenessTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Logging/StructuredLoggingCompletenessTests.cs
-@@ -58,7 +58,9 @@ public class StructuredLoggingCompletenessTests : IDisposable {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, logger);
-         SubmitCommand command = CreateSubmitCommand();
- 
-         // Act
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs b/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs
-index 708e356..cca3a1e 100644
---- a/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs
-+++ b/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs
-@@ -14,6 +14,12 @@ using Shouldly;
- namespace Hexalith.EventStore.Server.Tests.Pipeline;
- 
- public class SubmitCommandHandlerTests {
-+    private static IBackpressureTracker CreateMockTracker() {
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        return tracker;
-+    }
-+
-     private static ICommandRouter CreateMockRouter() {
-         ICommandRouter router = Substitute.For<ICommandRouter>();
-         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-@@ -27,7 +33,7 @@ public class SubmitCommandHandlerTests {
-         string expectedCorrelationId = Guid.NewGuid().ToString();
-         var statusStore = new InMemoryCommandStatusStore();
-         var archiveStore = new InMemoryCommandArchiveStore();
--        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
-+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
-         var command = new SubmitCommand(
-             MessageId: "msg-1",
-             Tenant: "test-tenant",
-diff --git a/src/Hexalith.EventStore.CommandApi/ErrorHandling/BackpressureExceptionHandler.cs b/src/Hexalith.EventStore.CommandApi/ErrorHandling/BackpressureExceptionHandler.cs
+ | Status                     | Condition                                                               | Body                                              |
+ | -------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- |
+ | 400 Bad Request            | Validation failure (missing fields, regex mismatch, injection patterns) | RFC 7807 ProblemDetails with `errors` dictionary  |
+diff --git a/_bmad-output/implementation-artifacts/13-2-error-reference-pages-at-type-uris.md b/_bmad-output/implementation-artifacts/13-2-error-reference-pages-at-type-uris.md
 new file mode 100644
-index 0000000..7806ce1
+index 0000000..f67c627
 --- /dev/null
-+++ b/src/Hexalith.EventStore.CommandApi/ErrorHandling/BackpressureExceptionHandler.cs
-@@ -0,0 +1,73 @@
++++ b/_bmad-output/implementation-artifacts/13-2-error-reference-pages-at-type-uris.md
+@@ -0,0 +1,418 @@
++# Story 13.2: Error Reference Pages at Type URIs
 +
-+using System.Text.Json;
++Status: review
 +
-+using Hexalith.EventStore.CommandApi.Middleware;
-+using Hexalith.EventStore.Server.Commands;
++## Story
 +
-+using Microsoft.AspNetCore.Diagnostics;
-+using Microsoft.AspNetCore.Mvc;
++As an API consumer,
++I want error `type` URIs to resolve to human-readable documentation,
++So that I can understand any error and find the resolution without support.
 +
-+namespace Hexalith.EventStore.CommandApi.ErrorHandling;
++## Acceptance Criteria
 +
-+/// <summary>
-+/// Handles <see cref="BackpressureExceededException"/> by returning HTTP 429 with ProblemDetails (FR67).
-+/// Unlike <see cref="ConcurrencyConflictExceptionHandler"/>, this handler does NOT:
-+/// - Unwrap DAPR exceptions (backpressure is thrown from MediatR pipeline, not from actor)
-+/// - Write advisory CommandStatusRecord (the command was never accepted into the pipeline)
-+/// Security: Does NOT expose aggregateId, actorId, tenantId, or currentDepth in the response (UX-DR10, Rule E6).
-+/// </summary>
-+public class BackpressureExceptionHandler(
-+    ILogger<BackpressureExceptionHandler> logger) : IExceptionHandler
++1. **Given** each error `type` URI (e.g., `https://hexalith.io/problems/validation-error`), **When** opened in a browser, **Then** a documentation page explains the error, shows an example request/response, and suggests resolution steps (UX-DR32).
++
++## Tasks / Subtasks
++
++- [x] Task 0: Prerequisites (AC: #1)
++  - [x] 0.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- confirm baseline compiles (0 errors, 0 warnings)
++  - [x] 0.2 Read `src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs` to confirm all 13 error type URIs (this is the source of truth)
++  - [x] 0.3 Verify no existing error reference pages exist at `docs/reference/problems/`
++
++- [x] Task 1: Create the error reference page template and index (AC: #1)
++  - [x] 1.1 Create `docs/reference/problems/` directory
++  - [x] 1.2 Create `docs/reference/problems/index.md` -- an index page listing all error types **grouped by HTTP status code family** (4xx Client Errors, 5xx Server Errors), with one-line descriptions and links to individual pages. This page itself explains the RFC 7807 ProblemDetails response format used by EventStore, including the standard fields (`type`, `title`, `status`, `detail`, `instance`) and Hexalith extensions (`correlationId`, `tenantId`, `errors`). Include a note at the bottom: "Domain services may define additional error types beyond the 13 listed here. If you receive an error `type` URI not listed on this page, consult the documentation for the specific domain service."
++
++- [x] Task 2: Create individual error reference pages (AC: #1)
++  - [x] 2.1 Create `docs/reference/problems/validation-error.md` -- 400 Bad Request, command validation failures
++  - [x] 2.2 Create `docs/reference/problems/authentication-required.md` -- 401 Unauthorized, missing or invalid JWT
++  - [x] 2.3 Create `docs/reference/problems/token-expired.md` -- 401 Unauthorized, expired JWT
++  - [x] 2.4 Create `docs/reference/problems/bad-request.md` -- 400 Bad Request, malformed request (e.g., invalid correlation ID format)
++  - [x] 2.5 Create `docs/reference/problems/forbidden.md` -- 403 Forbidden, tenant/domain authorization denied
++  - [x] 2.6 Create `docs/reference/problems/not-found.md` -- 404 Not Found, requested resource not found
++  - [x] 2.7 Create `docs/reference/problems/not-implemented.md` -- 501 Not Implemented, query endpoint not available
++  - [x] 2.8 Create `docs/reference/problems/concurrency-conflict.md` -- 409 Conflict, optimistic concurrency conflict
++  - [x] 2.9 Create `docs/reference/problems/rate-limit-exceeded.md` -- 429 Too Many Requests, per-tenant or per-consumer rate limit
++  - [x] 2.10 Create `docs/reference/problems/backpressure-exceeded.md` -- 429 Too Many Requests, per-aggregate backpressure
++  - [x] 2.11 Create `docs/reference/problems/service-unavailable.md` -- 503 Service Unavailable, processing pipeline temporarily down
++  - [x] 2.12 Create `docs/reference/problems/command-status-not-found.md` -- 404 Not Found, no command status for correlation ID
++  - [x] 2.13 Create `docs/reference/problems/internal-server-error.md` -- 500 Internal Server Error, unexpected failure
++
++- [x] Task 3: Cross-reference and link integration (AC: #1)
++  - [x] 3.1 Add a link to the error reference index from `docs/reference/command-api.md` (in the error handling section)
++  - [x] 3.2 Add a link to the error reference index from `docs/guides/troubleshooting.md` (at the top, as a "see also" reference)
++  - [x] 3.3 Verify all 13 `ProblemTypeUris` constants have a matching page by comparing filenames against the URI slugs
++
++- [x] Task 4: Validate content quality (AC: #1)
++  - [x] 4.1 Verify each page contains: (1) error explanation, (2) common causes list, (3) realistic example request that triggers it (actual endpoint calls, e.g., `POST /api/v1/commands` with a specific bad payload), (4) example response, (5) resolution steps
++  - [x] 4.2 Grep all new files for forbidden terms: "aggregate", "event stream", "actor", "DAPR", "sidecar" -- zero matches required (UX-DR6)
++  - [x] 4.3 Verify example responses match the actual ProblemDetails shape produced by the handlers (cross-reference handler source files)
++  - [x] 4.4 Verify Retry-After headers are documented on 409 (1s) and 503 (30s) pages (UX-DR5)
++  - [x] 4.5 Verify WWW-Authenticate header is documented on 401 pages (UX-DR4)
++
++- [x] Task 5: Build and test (AC: #1)
++  - [x] 5.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` -- 0 errors, 0 warnings
++  - [x] 5.2 Run all Tier 1 tests -- 0 regressions
++
++## Dev Notes
++
++### CRITICAL: This Is a Documentation-Only Story -- No Source Code Changes
++
++This story creates 14 new Markdown files (1 index + 13 error pages) in `docs/reference/problems/` and adds 2 cross-reference links to existing docs. No C# source code is modified.
++
++### Source of Truth: ProblemTypeUris.cs
++
++The authoritative list of all error type URIs is `src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs`. It defines exactly **13 constants**:
++
++| Constant | URI Slug | HTTP Status | Handler Source |
++|----------|----------|-------------|----------------|
++| `ValidationError` | `validation-error` | 400 | `ValidationExceptionHandler.cs`, `ValidationProblemDetailsFactory.cs` |
++| `AuthenticationRequired` | `authentication-required` | 401 | `ConfigureJwtBearerOptions.cs` (OnChallenge) |
++| `TokenExpired` | `token-expired` | 401 | `ConfigureJwtBearerOptions.cs` (OnChallenge) |
++| `BadRequest` | `bad-request` | 400 | `CommandStatusController.cs` |
++| `Forbidden` | `forbidden` | 403 | `AuthorizationExceptionHandler.cs`, `QueryExecutionFailedExceptionHandler.cs` |
++| `NotFound` | `not-found` | 404 | `QueryNotFoundExceptionHandler.cs` |
++| `NotImplemented` | `not-implemented` | 501 | `QueryExecutionFailedExceptionHandler.cs` |
++| `ConcurrencyConflict` | `concurrency-conflict` | 409 | `ConcurrencyConflictExceptionHandler.cs` |
++| `RateLimitExceeded` | `rate-limit-exceeded` | 429 | `ServiceCollectionExtensions.cs` (RateLimiter.OnRejected) |
++| `BackpressureExceeded` | `backpressure-exceeded` | 429 | `BackpressureExceptionHandler.cs` |
++| `ServiceUnavailable` | `service-unavailable` | 503 | `DaprSidecarUnavailableHandler.cs`, `AuthorizationServiceUnavailableHandler.cs` |
++| `CommandStatusNotFound` | `command-status-not-found` | 404 | `CommandStatusController.cs` |
++| `InternalServerError` | `internal-server-error` | 500 | `GlobalExceptionHandler.cs` |
++
++**IMPORTANT:** The `DomainCommandRejectedExceptionHandler.cs` uses dynamic `rejection.RejectionType` URIs from domain business rules -- these are NOT listed in `ProblemTypeUris.cs` and are NOT in scope for this story. Only the 13 constants above need documentation pages.
++
++### Exact ProblemDetails Response Shapes Per Error Type
++
++Use these as the source of truth for example responses on each page. Cross-reference the actual handler source files to confirm.
++
++**400 validation-error** (ValidationExceptionHandler + ValidationProblemDetailsFactory):
++- Title: `Command Validation Failed`
++- Detail: `The command has {N} validation error(s). See 'errors' for specifics.`
++- Extensions: `correlationId`, `tenantId` (if available), `errors` (property-to-message map, camelCase keys via `JsonNamingPolicy.CamelCase`)
++- **Example `errors` must show 2+ fields** to demonstrate the map structure (e.g., `"aggregateId": "Aggregate ID is required"`, `"commandType": "Command type is required"`). This helps API consumers build parsers for multi-field validation failures.
++
++**401 authentication-required** (ConfigureJwtBearerOptions OnChallenge):
++- Title: `Unauthorized`
++- Detail: `Authentication is required to access this resource.`
++- Extensions: none (pre-pipeline rejection, no correlationId per UX-DR2)
++- Headers: `WWW-Authenticate: Bearer realm="hexalith-eventstore"`
++
++**401 token-expired** (ConfigureJwtBearerOptions OnChallenge):
++- Title: `Unauthorized`
++- Detail: `The provided authentication token has expired.`
++- Extensions: none (pre-pipeline rejection)
++- Headers: `WWW-Authenticate: Bearer realm="hexalith-eventstore", error="invalid_token", error_description="The token has expired"`
++
++**400 bad-request** (CommandStatusController):
++- Title: `Bad Request`
++- Detail: `Correlation ID is required.`
++- Extensions: `correlationId`
++
++**403 forbidden** (AuthorizationExceptionHandler, QueryExecutionFailedExceptionHandler):
++- Title: `Forbidden`
++- Detail (command authorization): `Not authorized for tenant '{tenantId}'. {reason}` (sanitized -- no ES terminology)
++- Detail (query authorization): varies based on query failure type
++- **Two handler sources:** Use the command authorization case (tenant denial) as the primary example. Add a secondary note in "Common Causes" mentioning that query endpoint authorization failures also return this type.
++- Extensions: `correlationId`, `tenantId`
++
++**404 not-found** (QueryNotFoundExceptionHandler):
++- Title: `Not Found`
++- Detail: `The requested resource was not found.`
++- Extensions: `correlationId`
++
++**501 not-implemented** (QueryExecutionFailedExceptionHandler):
++- Title: `Not Implemented`
++- Detail: varies
++- Extensions: `correlationId`
++
++**409 concurrency-conflict** (ConcurrencyConflictExceptionHandler):
++- Title: `Conflict`
++- Detail: `A concurrency conflict occurred. Please retry the command.`
++- Extensions: `correlationId`
++- Headers: `Retry-After: 1`
++- **Retry strategy for "How to Fix":** Retry the exact same command payload after the `Retry-After` interval (1 second). The conflict is transient -- another command was processed first. Your command is still valid.
++
++**429 rate-limit-exceeded** (ServiceCollectionExtensions RateLimiter.OnRejected):
++- Title: `Too Many Requests`
++- Detail: `Rate limit exceeded for tenant '{tenantId}'. Try again later.` (representative -- actual detail varies based on rate limiter config; read the `OnRejected` callback in `ServiceCollectionExtensions.cs` for the exact string)
++- Extensions: `correlationId`, `tenantId`
++- **429 disambiguation:** The "What Happened" section must clearly state this is a **per-tenant or per-consumer rate limit** (too many requests from your tenant/client in a time window). Cross-link to [backpressure-exceeded](./backpressure-exceeded.md) which is a **per-resource capacity limit** (too many pending commands targeting the same resource). The first sentence should make the distinction immediately clear.
++
++**429 backpressure-exceeded** (BackpressureExceptionHandler):
++- Title: `Too Many Requests`
++- Detail (handler source): `The target aggregate is under backpressure due to excessive pending commands. Please retry after the specified interval.`
++- **UX-DR6 WARNING:** The handler detail contains "aggregate" -- the documentation page MUST rephrase this in prose. Use: `The target resource is under backpressure due to excessive pending commands. Please retry after the specified interval.` Verify the handler detail at runtime; if the handler itself has been updated, use the actual text.
++- Extensions: `correlationId`, `tenantId`, `domain`, `aggregateId`
++- Headers: `Retry-After: {configurable}`
++- **429 disambiguation:** The "What Happened" section must clearly state this is a **per-resource capacity limit** (too many pending commands targeting the same resource). Cross-link to [rate-limit-exceeded](./rate-limit-exceeded.md) which is a **per-tenant/per-consumer rate limit** (too many requests in a time window).
++
++**503 service-unavailable** (DaprSidecarUnavailableHandler, AuthorizationServiceUnavailableHandler):
++- Title: `Service Unavailable`
++- Detail: `The command processing pipeline is temporarily unavailable. Please retry after the specified interval.`
++- Extensions: none (pre-pipeline rejection, no correlationId per UX-DR2)
++- Headers: `Retry-After: 30`
++- **"How to Fix" must include both consumer and operator guidance:** For the consumer: retry after the Retry-After interval. For the operator: check infrastructure health endpoints, verify all service components are running, check the Aspire dashboard health page.
++
++**404 command-status-not-found** (CommandStatusController):
++- Title: `Not Found`
++- Detail: `No command status found for correlation ID '{correlationId}'.`
++- Extensions: `correlationId`
++
++**500 internal-server-error** (GlobalExceptionHandler):
++- Title: `Internal Server Error`
++- Detail: `An unexpected error occurred while processing your request.`
++- Extensions: `correlationId`, `tenantId` (if extractable from context)
++- **"How to Fix" must include correlationId log search tip:** Tell the consumer to save the `correlationId` from the response and provide it to the service operator. Tell operators to search structured logs by `correlationId` to find the full stack trace and error details (which are logged server-side per Enforcement Rule #13 but never exposed to clients).
++
++### Page Structure Template
++
++Every error reference page MUST follow this structure:
++
++```markdown
++# {Error Title}
++
++**HTTP Status:** {status code}
++**Problem Type:** `https://hexalith.io/problems/{slug}`
++
++## What Happened
++
++{1-3 sentences explaining what this error means in plain language. NO event sourcing terminology.}
++
++## Common Causes
++
++{Bulleted list of the most frequent triggers for this error. Helps the reader self-diagnose before reading the full example.}
++
++## Example
++
++### Request
++
++```http
++{Example HTTP request that triggers this error}
++```
++
++### Response
++
++```http
++HTTP/1.1 {status} {reason phrase}
++Content-Type: application/problem+json
++{any extra headers like Retry-After, WWW-Authenticate}
++
++{Exact JSON ProblemDetails body matching the handler output}
++```
++
++## How to Fix
++
++{Numbered resolution steps, written for the API consumer, actionable and specific.}
++
++## Related
++
++- [Error Reference Index](./index.md)
++- {Links to related error pages if applicable}
++```
++
++### Writing Guidelines (UX-DR6 Compliance)
++
++**NEVER use these terms** in any error reference page:
++- "aggregate" -- say "resource" or "entity" instead
++- "event stream" -- say "command history" or "processing record" instead
++- "actor" -- say "processor" or "handler" instead
++- "DAPR" -- say "infrastructure" or omit entirely
++- "sidecar" -- say "service component" or omit entirely
++- "event sourcing" -- say "command processing" or omit entirely
++
++**Stripe principle:** Write error messages and documentation for the reader (the API consumer who received the error), not for the developer who wrote the code. The reader wants to know: what went wrong, why, and how to fix it.
++
++**Example realism:** Example requests MUST be realistic endpoint calls against actual API paths. Do NOT use generic placeholder HTTP snippets. The reader should be able to reproduce the error by copying the example.
++
++**API endpoint paths for examples** (use these exact paths in example requests):
++
++| Endpoint | Method | Used By Error Types |
++|----------|--------|---------------------|
++| `/api/v1/commands` | POST | `validation-error`, `authentication-required`, `token-expired`, `forbidden`, `concurrency-conflict`, `rate-limit-exceeded`, `backpressure-exceeded`, `service-unavailable`, `internal-server-error` |
++| `/api/commands/status/{correlationId}` | GET | `bad-request`, `command-status-not-found`, `forbidden` (status query variant) |
++| `/api/v1/queries/{queryType}` | GET | `not-found`, `not-implemented`, `forbidden` (query variant) |
++
++For a valid command payload reference, see `docs/getting-started/quickstart.md` (the IncrementCounter example with `messageId`, `tenant`, `domain`, `aggregateId`, `commandType`, `payload`). Use this as the baseline and break specific fields to trigger each error.
++
++**JWT Authorization header for 401 examples:**
++- `authentication-required` example: omit the `Authorization` header entirely, OR send `Authorization: Bearer` with no token
++- `token-expired` example: send `Authorization: Bearer <expired-jwt-token>` (use a placeholder like `eyJhbGci...expired`)
++- For "How to Fix" on 401 pages, reference the quickstart token acquisition section: `docs/getting-started/quickstart.md` (Keycloak token endpoint at port 8180, realm `hexalith`, client ID `hexalith-eventstore`)
++
++**UX-DR6 scope clarification:** UX-DR6 (no event sourcing terminology) applies to **prose text only** -- the human-readable explanations, "What Happened", "Common Causes", and "How to Fix" sections. JSON field names in example responses are the **actual API contract** and MUST be shown verbatim (e.g., `aggregateId`, `domain` are real extension field names in the wire format). Do NOT rename JSON fields.
++
++**Page conciseness target:** Each error page should be **40-80 lines**. Scannable, not essays. The reader is debugging at 2am -- they need answers in under 30 seconds. Use short sentences, bullet points, and code blocks. No walls of text.
++
++### Editing Scope
++
++**Files you MUST create:**
++- `docs/reference/problems/index.md` -- error reference index page
++- `docs/reference/problems/validation-error.md`
++- `docs/reference/problems/authentication-required.md`
++- `docs/reference/problems/token-expired.md`
++- `docs/reference/problems/bad-request.md`
++- `docs/reference/problems/forbidden.md`
++- `docs/reference/problems/not-found.md`
++- `docs/reference/problems/not-implemented.md`
++- `docs/reference/problems/concurrency-conflict.md`
++- `docs/reference/problems/rate-limit-exceeded.md`
++- `docs/reference/problems/backpressure-exceeded.md`
++- `docs/reference/problems/service-unavailable.md`
++- `docs/reference/problems/command-status-not-found.md`
++- `docs/reference/problems/internal-server-error.md`
++
++**Files you MAY edit** (add cross-reference links only):
++- `docs/reference/command-api.md` -- add link to error reference index
++- `docs/guides/troubleshooting.md` -- add "see also" link to error reference index
++
++**Files you MUST NOT edit:**
++- Any C# source files
++- `ProblemTypeUris.cs` -- read only, do not modify
++- Any handler files -- read only for verification
++- Any files outside `docs/`
++
++### What NOT to Do
++
++- Do NOT modify any source code -- this is documentation only
++- Do NOT explain event sourcing concepts in error pages
++- Do NOT add unit tests -- there is no testable code change
++- Do NOT create a separate website or hosting -- these are Markdown files in the docs folder
++- Do NOT add error types beyond the 13 defined in `ProblemTypeUris.cs`
++- Do NOT document domain rejection types (dynamic `rejection.RejectionType` from `DomainCommandRejectedExceptionHandler`) -- those are domain-specific and out of scope
++- Do NOT restructure the existing docs folder -- Story 13-3 handles progressive documentation structure
++
++### Branch Base Guidance
++
++Branch from `main`. Branch name: `docs/story-13-2-error-reference-pages-at-type-uris`
++
++### Previous Story Intelligence
++
++**Story 13-1 (Quick Start Guide) learnings:**
++- Documentation verification story, similar approach to this story
++- Source of truth principle: the codebase is always right, docs must match code
++- Two gaps were found and fixed: missing `messageId` field in sample payload, missing Aspire CLI prerequisite
++- Build: 0 errors, 0 warnings. 724 Tier 1 tests pass (271 Contracts + 297 Client + 62 Sample + 67 Testing + 27 SignalR)
++- Branch naming convention: `docs/story-13-1-quick-start-guide`
++- Commit message style: `docs: <description> (Story 13-1)`
++
++### Git Intelligence
++
++Recent commits show Story 13-1 completed:
++- `b17d298` Merge PR #131: docs/story-13-1-quick-start-guide
++- `3eca00e` docs: Update quick start guide with Aspire CLI prerequisite and messageId field (Story 13-1)
++
++Previous epic (12) fully complete. Codebase stable on main.
++
++### Architecture Compliance
++
++- **File locations:** Error reference pages go in `docs/reference/problems/` -- consistent with the existing `docs/reference/` structure (which contains `command-api.md`, `query-api.md`, `nuget-packages.md`, and `api/`)
++- **Error format:** RFC 7807 ProblemDetails (Architecture Decision D5)
++- **Enforcement Rule #7:** ProblemDetails for all API error responses -- never custom shapes
++- **Enforcement Rule #13:** No stack traces in production error responses
++- **Solution file:** `Hexalith.EventStore.slnx` (modern XML format)
++- **Build command:** `dotnet build Hexalith.EventStore.slnx --configuration Release`
++- **Warnings as errors:** enabled -- build must produce 0 warnings
++
++### Testing Compliance
++
++There is an existing compliance test at `tests/Hexalith.EventStore.Server.Tests/ErrorHandling/ProblemTypeUriComplianceTests.cs` that validates:
++- All URIs start with `https://hexalith.io/problems/`
++- All URIs are unique per error category (UX-DR7)
++- Error messages don't contain event sourcing terminology (UX-DR6)
++- Rate limiter uses `ProblemTypeUris.RateLimitExceeded` constant
++
++This test suite validates the code side. The documentation pages created in this story are the human-readable side that these URIs should resolve to.
++
++### Project Structure Notes
++
++- Error reference pages at `docs/reference/problems/{slug}.md` align with URI path `https://hexalith.io/problems/{slug}`
++- The `docs/reference/` folder is the correct location for reference-level documentation (UX-DR33)
++- The existing `docs/guides/troubleshooting.md` (1048 lines) covers operational troubleshooting (Docker, DAPR, deployment) -- the new error reference pages cover API error responses (HTTP 4xx/5xx) -- these are complementary, not overlapping
++- No existing error reference pages or problems folder exists -- this is greenfield
++
++### References
++
++- [Source: src/Hexalith.EventStore.CommandApi/ErrorHandling/ProblemTypeUris.cs -- all 13 error type URI constants]
++- [Source: _bmad-output/planning-artifacts/epics.md, Epic 13, Story 13.2 (lines 1513-1523)]
++- [Source: _bmad-output/planning-artifacts/epics.md, Epic 3, Story 3.6 BDD scenario (lines 787-789)]
++- [Source: _bmad-output/planning-artifacts/ux-design-specification.md, UX-DR1 through UX-DR11 (lines 266-276)]
++- [Source: _bmad-output/planning-artifacts/ux-design-specification.md, UX-DR32 (line 312)]
++- [Source: _bmad-output/planning-artifacts/ux-design-specification.md, E10 enforcement rule (line 2023)]
++- [Source: _bmad-output/planning-artifacts/ux-design-specification.md, A11 acceptance (line 2043)]
++- [Source: _bmad-output/planning-artifacts/ux-design-specification.md, D3 deliverable (line 2080)]
++- [Source: _bmad-output/planning-artifacts/architecture.md, D5 error response format (line 403)]
++- [Source: _bmad-output/planning-artifacts/architecture.md, Enforcement Rule #7 (line 695)]
++- [Source: _bmad-output/planning-artifacts/architecture.md, Enforcement Rule #13 (line 701)]
++- [Source: src/Hexalith.EventStore.CommandApi/ErrorHandling/ -- all exception handler files]
++- [Source: src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs -- 401 responses]
++- [Source: src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs -- status query errors]
++- [Source: tests/Hexalith.EventStore.Server.Tests/ErrorHandling/ProblemTypeUriComplianceTests.cs -- existing compliance tests]
++
++### Definition of Done
++
++- AC #1 verified: all 13 error type URIs have a matching documentation page in `docs/reference/problems/`
++- Each page explains the error, shows example request/response, and suggests resolution steps
++- Index page lists all error types with HTTP status codes and links
++- Zero forbidden terms in any error reference page (UX-DR6)
++- Retry-After documented on 409 and 503 pages (UX-DR5)
++- WWW-Authenticate documented on 401 pages (UX-DR4)
++- Cross-reference links added to command-api.md and troubleshooting.md
++- Build: `dotnet build Hexalith.EventStore.slnx --configuration Release` -- 0 errors, 0 warnings
++- Tier 1 tests pass with 0 regressions
++
++## Dev Agent Record
++
++### Agent Model Used
++
++Claude Opus 4.6 (1M context)
++
++### Debug Log References
++
++- Baseline build: 0 errors, 0 warnings
++- ProblemTypeUris.cs confirmed 13 constants matching story spec
++- All 13 handler source files cross-referenced for exact ProblemDetails shapes
++- Forbidden term grep: 0 matches across all new files (UX-DR6)
++- Retry-After verified on 409 (1s) and 503 (30s) pages (UX-DR5)
++- WWW-Authenticate verified on both 401 pages (UX-DR4)
++- Tier 1 tests: 724 passed, 0 failed (271 Contracts + 297 Client + 62 Sample + 67 Testing + 27 SignalR)
++
++### Completion Notes List
++
++- Created 14 new Markdown files: 1 index + 13 error reference pages in `docs/reference/problems/`
++- Each page follows the prescribed template: What Happened, Common Causes, Example (Request + Response), How to Fix, Related
++- Example responses match actual handler output (verified against all 13 handler source files)
++- Index page groups errors by HTTP status family (4xx/5xx) with RFC 7807 ProblemDetails format explanation
++- Cross-reference links added to `docs/reference/command-api.md` (Error Responses section) and `docs/guides/troubleshooting.md` (top-level "see also")
++- Zero forbidden terms (aggregate, event stream, actor, DAPR, sidecar) in any documentation page
++- Backpressure page rephrases handler detail to avoid "aggregate" in prose while preserving JSON field names
++- 429 pages include cross-links to distinguish rate-limit vs backpressure
++- 503 page includes both consumer and operator guidance
++- 500 page includes correlationId log search tip for operators
++- No source code changes -- documentation only
++
++### Change Log
++
++- 2026-03-20: Created 14 error reference documentation pages and added cross-reference links (Story 13-2)
++
++### File List
++
++**New files:**
++- docs/reference/problems/index.md
++- docs/reference/problems/validation-error.md
++- docs/reference/problems/authentication-required.md
++- docs/reference/problems/token-expired.md
++- docs/reference/problems/bad-request.md
++- docs/reference/problems/forbidden.md
++- docs/reference/problems/not-found.md
++- docs/reference/problems/not-implemented.md
++- docs/reference/problems/concurrency-conflict.md
++- docs/reference/problems/rate-limit-exceeded.md
++- docs/reference/problems/backpressure-exceeded.md
++- docs/reference/problems/service-unavailable.md
++- docs/reference/problems/command-status-not-found.md
++- docs/reference/problems/internal-server-error.md
++
++**Modified files:**
++- docs/reference/command-api.md (added error reference cross-link)
++- docs/guides/troubleshooting.md (added error reference "see also" link)
+diff --git a/docs/reference/problems/authentication-required.md b/docs/reference/problems/authentication-required.md
+new file mode 100644
+index 0000000..1882fba
+--- /dev/null
++++ b/docs/reference/problems/authentication-required.md
+@@ -0,0 +1,77 @@
++[<- Back to Error Reference](./index.md)
++
++# Unauthorized
++
++**HTTP Status:** 401 Unauthorized
++**Problem Type:** `https://hexalith.io/problems/authentication-required`
++
++## What Happened
++
++Your request is missing a valid authentication token. The API requires a JWT Bearer token in the `Authorization` header for all requests.
++
++## Common Causes
++
++- The `Authorization` header is missing from the request
++- The `Authorization` header is present but contains no token (e.g., `Bearer` with nothing after it)
++- The token is malformed or was issued by an untrusted identity provider
++
++## Example
++
++### Request
++
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++
 +{
-+    private const string ProblemJsonContentType = "application/problem+json";
-+
-+    public async ValueTask<bool> TryHandleAsync(
-+        HttpContext httpContext,
-+        Exception exception,
-+        CancellationToken cancellationToken)
-+    {
-+        ArgumentNullException.ThrowIfNull(httpContext);
-+        ArgumentNullException.ThrowIfNull(exception);
-+
-+        // No DAPR unwrap needed ÔÇö this exception is thrown directly from SubmitCommandHandler
-+        if (exception is not BackpressureExceededException backpressure)
-+        {
-+            return false;
-+        }
-+
-+        // Prefer HTTP request correlation ID for API-level tracing
-+        string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
-+            ?? backpressure.CorrelationId;
-+
-+        logger.LogWarning(
-+            "Backpressure exceeded: CorrelationId={CorrelationId}, ActorId={ActorId}, TenantId={TenantId}, CurrentDepth={CurrentDepth}",
-+            correlationId,
-+            backpressure.AggregateActorId,
-+            backpressure.TenantId,
-+            backpressure.CurrentDepth);
-+
-+        // UX-DR10: No aggregateId, actorId, tenantId, or currentDepth in client response
-+        // UX-DR6: No event sourcing terminology ÔÇö use safe, generic detail message
-+        var problemDetails = new ProblemDetails
-+        {
-+            Status = StatusCodes.Status429TooManyRequests,
-+            Title = "Too Many Requests",
-+            Type = ProblemTypeUris.BackpressureExceeded,
-+            Detail = "Too many pending commands for this entity. Please retry after the specified interval.",
-+            Instance = httpContext.Request.Path,
-+            Extensions =
-+            {
-+                ["correlationId"] = correlationId,
-+            },
-+        };
-+
-+        httpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-+        // Short Retry-After ÔÇö backpressure is transient, in-flight commands complete quickly
-+        httpContext.Response.Headers["Retry-After"] = "1";
-+        // Use CancellationToken.None to ensure the full ProblemDetails response is always written completely
-+        await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, ProblemJsonContentType, CancellationToken.None)
-+            .ConfigureAwait(false);
-+
-+        return true;
-+    }
++    "messageId": "increment-01",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
 +}
-diff --git a/src/Hexalith.EventStore.Server/Commands/BackpressureExceededException.cs b/src/Hexalith.EventStore.Server/Commands/BackpressureExceededException.cs
++```
++
++### Response
++
++```http
++HTTP/1.1 401 Unauthorized
++Content-Type: application/problem+json
++WWW-Authenticate: Bearer realm="hexalith-eventstore"
++
++{
++    "type": "https://hexalith.io/problems/authentication-required",
++    "title": "Unauthorized",
++    "status": 401,
++    "detail": "Authentication is required to access this resource.",
++    "instance": "/api/v1/commands"
++}
++```
++
++## How to Fix
++
++1. Obtain a JWT token from the identity provider. For local development with Keycloak:
++
++    ```bash
++    curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
++      -d "client_id=hexalith-eventstore" \
++      -d "grant_type=client_credentials" \
++      -d "client_secret=<your-client-secret>"
++    ```
++
++2. Add the token to your request:
++
++    ```
++    Authorization: Bearer <access_token>
++    ```
++
++3. Retry the request.
++
++See the [Quickstart Guide](../../getting-started/quickstart.md) for full token acquisition steps.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [token-expired](./token-expired.md) -- if your token was valid but has expired
+diff --git a/docs/reference/problems/backpressure-exceeded.md b/docs/reference/problems/backpressure-exceeded.md
 new file mode 100644
-index 0000000..654f9fa
+index 0000000..eb865e6
 --- /dev/null
-+++ b/src/Hexalith.EventStore.Server/Commands/BackpressureExceededException.cs
-@@ -0,0 +1,62 @@
-+namespace Hexalith.EventStore.Server.Commands;
++++ b/docs/reference/problems/backpressure-exceeded.md
+@@ -0,0 +1,68 @@
++[<- Back to Error Reference](./index.md)
 +
-+/// <summary>
-+/// Thrown when an aggregate's in-flight command count exceeds the configured backpressure threshold (FR67).
-+/// Properties are for server-side structured logging only ÔÇö they must NEVER appear in the client-facing 429 response
-+/// (UX-DR10, Rule E6). This exception does NOT need serialization attributes since it is never serialized across
-+/// DAPR boundaries (thrown from SubmitCommandHandler inside the MediatR pipeline, not from the actor).
-+/// </summary>
-+public class BackpressureExceededException : Exception {
-+    private const string DefaultDetailTemplate =
-+        "Backpressure threshold exceeded for aggregate actor '{0}'. " +
-+        "Current depth: {1}. The command was rejected before entering the pipeline.";
++# Too Many Requests (Backpressure)
 +
-+    /// <summary>Standard parameterless constructor.</summary>
-+    public BackpressureExceededException()
-+        : base("Backpressure threshold exceeded.") {
-+        AggregateActorId = string.Empty;
-+        CorrelationId = string.Empty;
-+    }
++**HTTP Status:** 429 Too Many Requests
++**Problem Type:** `https://hexalith.io/problems/backpressure-exceeded`
 +
-+    /// <summary>Standard message-only constructor.</summary>
-+    public BackpressureExceededException(string message)
-+        : base(message) {
-+        AggregateActorId = string.Empty;
-+        CorrelationId = string.Empty;
-+    }
++## What Happened
 +
-+    /// <summary>Standard message+inner constructor.</summary>
-+    public BackpressureExceededException(string message, Exception innerException)
-+        : base(message, innerException) {
-+        AggregateActorId = string.Empty;
-+        CorrelationId = string.Empty;
-+    }
++The target resource has too many pending commands waiting to be processed. This is a **per-resource capacity limit** -- the specific resource you are targeting is overwhelmed. This is different from [rate-limit-exceeded](./rate-limit-exceeded.md), which is a per-tenant or per-consumer rate limit based on your request frequency.
 +
-+    /// <summary>Primary domain constructor with full context for structured logging.</summary>
-+    public BackpressureExceededException(
-+        string aggregateActorId,
-+        string? tenantId,
-+        string correlationId,
-+        int currentDepth)
-+        : base(string.Format(DefaultDetailTemplate, aggregateActorId, currentDepth)) {
-+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateActorId);
-+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
++## Common Causes
 +
-+        AggregateActorId = aggregateActorId;
-+        TenantId = tenantId;
-+        CorrelationId = correlationId;
-+        CurrentDepth = currentDepth;
-+    }
++- Many commands targeting the same resource in rapid succession
++- The resource's command processor is slower than the inbound command rate
++- A burst of commands from multiple clients all targeting the same resource
 +
-+    /// <summary>Gets the canonical actor ID of the aggregate that exceeded backpressure.</summary>
-+    public string AggregateActorId { get; }
++## Example
 +
-+    /// <summary>Gets the tenant ID associated with the rejected command.</summary>
-+    public string? TenantId { get; }
++### Request
 +
-+    /// <summary>Gets the correlation ID of the rejected command.</summary>
-+    public string CorrelationId { get; }
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
 +
-+    /// <summary>Gets the current in-flight command depth at the time of rejection.</summary>
-+    public int CurrentDepth { get; }
++{
++    "messageId": "increment-100",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
 +}
-diff --git a/src/Hexalith.EventStore.Server/Commands/IBackpressureTracker.cs b/src/Hexalith.EventStore.Server/Commands/IBackpressureTracker.cs
++```
++
++### Response
++
++```http
++HTTP/1.1 429 Too Many Requests
++Content-Type: application/problem+json
++Retry-After: 5
++
++{
++    "type": "https://hexalith.io/problems/backpressure-exceeded",
++    "title": "Too Many Requests",
++    "status": 429,
++    "detail": "The target resource is under backpressure due to excessive pending commands. Please retry after the specified interval.",
++    "instance": "/api/v1/commands",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++    "tenantId": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1"
++}
++```
++
++## How to Fix
++
++1. Wait for the duration specified in the `Retry-After` header.
++2. Retry the command after the interval -- the backpressure is temporary and will clear as pending commands are processed.
++3. If you are sending many commands to the same resource, space them out or batch them.
++4. Consider distributing work across different resources when possible.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [rate-limit-exceeded](./rate-limit-exceeded.md) -- per-tenant/per-consumer rate limit (different from backpressure)
+diff --git a/docs/reference/problems/bad-request.md b/docs/reference/problems/bad-request.md
 new file mode 100644
-index 0000000..c961fc0
+index 0000000..975c9fe
 --- /dev/null
-+++ b/src/Hexalith.EventStore.Server/Commands/IBackpressureTracker.cs
-@@ -0,0 +1,25 @@
-+namespace Hexalith.EventStore.Server.Commands;
++++ b/docs/reference/problems/bad-request.md
+@@ -0,0 +1,57 @@
++[<- Back to Error Reference](./index.md)
 +
-+/// <summary>
-+/// Tracks in-flight command counts per aggregate and enforces backpressure thresholds (FR67).
-+/// When the number of pending commands for an aggregate exceeds the configured limit,
-+/// new commands are rejected before entering the processing pipeline.
-+/// </summary>
-+public interface IBackpressureTracker {
-+    /// <summary>
-+    /// Attempts to acquire a slot for the given aggregate. Returns true if under the threshold,
-+    /// false if the aggregate has reached its backpressure limit. The caller MUST call
-+    /// <see cref="Release"/> when the command completes (success, failure, or exception)
-+    /// if and only if this method returned true.
-+    /// </summary>
-+    /// <param name="aggregateActorId">The canonical actor ID for the aggregate.</param>
-+    /// <returns>True if a slot was acquired; false if backpressure threshold is exceeded.</returns>
-+    bool TryAcquire(string aggregateActorId);
++# Bad Request
 +
-+    /// <summary>
-+    /// Releases a previously acquired slot for the given aggregate, decrementing the in-flight counter.
-+    /// Must only be called after a successful <see cref="TryAcquire"/> call (returned true).
-+    /// </summary>
-+    /// <param name="aggregateActorId">The canonical actor ID for the aggregate.</param>
-+    void Release(string aggregateActorId);
++**HTTP Status:** 400 Bad Request
++**Problem Type:** `https://hexalith.io/problems/bad-request`
++
++## What Happened
++
++The request is malformed or missing a required parameter. This differs from [validation-error](./validation-error.md) -- it applies to request-level issues rather than command payload validation.
++
++## Common Causes
++
++- The `correlationId` path parameter is missing or empty when querying command status
++- A required query parameter is absent
++
++## Example
++
++### Request
++
++```http
++GET /api/commands/status/ HTTP/1.1
++Host: localhost:7275
++Authorization: Bearer <your-jwt-token>
++```
++
++### Response
++
++```http
++HTTP/1.1 400 Bad Request
++Content-Type: application/problem+json
++
++{
++    "type": "https://hexalith.io/problems/bad-request",
++    "title": "Bad Request",
++    "status": 400,
++    "detail": "Correlation ID is required.",
++    "instance": "/api/commands/status/",
++    "correlationId": ""
 +}
-diff --git a/src/Hexalith.EventStore.Server/Commands/InMemoryBackpressureTracker.cs b/src/Hexalith.EventStore.Server/Commands/InMemoryBackpressureTracker.cs
++```
++
++## How to Fix
++
++1. Include the required `correlationId` in the request path:
++
++    ```
++    GET /api/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890
++    ```
++
++2. Use the `correlationId` returned in the `202 Accepted` response when you originally submitted the command.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [validation-error](./validation-error.md) -- for command payload validation failures
++- [command-status-not-found](./command-status-not-found.md) -- if the correlation ID is valid but no status exists
+diff --git a/docs/reference/problems/command-status-not-found.md b/docs/reference/problems/command-status-not-found.md
 new file mode 100644
-index 0000000..69b784d
+index 0000000..647c67d
 --- /dev/null
-+++ b/src/Hexalith.EventStore.Server/Commands/InMemoryBackpressureTracker.cs
-@@ -0,0 +1,93 @@
-+using System.Collections.Concurrent;
++++ b/docs/reference/problems/command-status-not-found.md
+@@ -0,0 +1,55 @@
++[<- Back to Error Reference](./index.md)
 +
-+using Hexalith.EventStore.Server.Configuration;
++# Command Status Not Found
 +
-+using Microsoft.Extensions.Options;
++**HTTP Status:** 404 Not Found
++**Problem Type:** `https://hexalith.io/problems/command-status-not-found`
 +
-+namespace Hexalith.EventStore.Server.Commands;
++## What Happened
 +
-+/// <summary>
-+/// In-memory implementation of <see cref="IBackpressureTracker"/> using a <see cref="ConcurrentDictionary{TKey,TValue}"/>
-+/// with atomic compare-and-swap operations for thread-safe counter management.
-+/// Each API instance tracks its own in-flight command counts (acceptable approximation for multi-instance deployments).
-+/// </summary>
-+public class InMemoryBackpressureTracker : IBackpressureTracker {
-+    private readonly ConcurrentDictionary<string, int> _counters = new(StringComparer.Ordinal);
-+    private readonly int _threshold;
++No command status record was found for the correlation ID you provided. The system has no record of a command with that identifier.
 +
-+    public InMemoryBackpressureTracker(IOptions<BackpressureOptions> options) {
-+        ArgumentNullException.ThrowIfNull(options);
-+        _threshold = options.Value.MaxPendingCommandsPerAggregate;
-+    }
++## Common Causes
 +
-+    /// <inheritdoc />
-+    public bool TryAcquire(string aggregateActorId) {
-+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateActorId);
++- The correlation ID is incorrect or contains a typo
++- The command was never submitted (the original submission may have failed before being recorded)
++- The correlation ID belongs to a different environment or service instance
++- Status records have been purged (if retention policies are configured)
 +
-+        // Threshold 0 = disabled ÔÇö always allow
-+        if (_threshold == 0) {
-+            return true;
-+        }
++## Example
 +
-+        // Spin-loop with compare-and-swap for thread-safe increment-check-rollback
-+        while (true) {
-+            int current = _counters.GetOrAdd(aggregateActorId, 0);
++### Request
 +
-+            if (current >= _threshold) {
-+                return false;
-+            }
++```http
++GET /api/commands/status/ffffffff-ffff-ffff-ffff-ffffffffffff HTTP/1.1
++Host: localhost:7275
++Authorization: Bearer <your-jwt-token>
++```
 +
-+            if (_counters.TryUpdate(aggregateActorId, current + 1, current)) {
-+                return true;
-+            }
++### Response
 +
-+            // Another thread changed the value ÔÇö retry
-+        }
-+    }
++```http
++HTTP/1.1 404 Not Found
++Content-Type: application/problem+json
 +
-+    /// <inheritdoc />
-+    public void Release(string aggregateActorId) {
-+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateActorId);
-+
-+        // Threshold 0 = disabled ÔÇö TryAcquire never touches dictionary, so nothing to release
-+        if (_threshold == 0) {
-+            return;
-+        }
-+
-+        // Decrement with floor at 0 and remove key when reaching 0
-+        while (true) {
-+            if (!_counters.TryGetValue(aggregateActorId, out int current)) {
-+                // Already removed or never existed ÔÇö floor at 0
-+                return;
-+            }
-+
-+            if (current <= 0) {
-+                // Floor at 0 ÔÇö try to remove the stale key
-+                ((ICollection<KeyValuePair<string, int>>)_counters).Remove(new KeyValuePair<string, int>(aggregateActorId, current));
-+                return;
-+            }
-+
-+            if (current == 1) {
-+                // Decrementing to 0 ÔÇö remove the key entirely to prevent unbounded growth
-+                if (((ICollection<KeyValuePair<string, int>>)_counters).Remove(new KeyValuePair<string, int>(aggregateActorId, current))) {
-+                    return;
-+                }
-+
-+                // Another thread changed the value ÔÇö retry
-+                continue;
-+            }
-+
-+            // Decrement atomically
-+            if (_counters.TryUpdate(aggregateActorId, current - 1, current)) {
-+                return;
-+            }
-+
-+            // Another thread changed the value ÔÇö retry
-+        }
-+    }
-+
-+    /// <summary>
-+    /// Exposes the internal counter count for testing purposes only.
-+    /// </summary>
-+    internal int GetEntryCount() => _counters.Count;
++{
++    "type": "https://hexalith.io/problems/command-status-not-found",
++    "title": "Not Found",
++    "status": 404,
++    "detail": "No command status found for correlation ID 'ffffffff-ffff-ffff-ffff-ffffffffffff'.",
++    "instance": "/api/commands/status/ffffffff-ffff-ffff-ffff-ffffffffffff",
++    "correlationId": "ffffffff-ffff-ffff-ffff-ffffffffffff"
 +}
-diff --git a/src/Hexalith.EventStore.Server/Configuration/BackpressureOptions.cs b/src/Hexalith.EventStore.Server/Configuration/BackpressureOptions.cs
++```
++
++## How to Fix
++
++1. Double-check the `correlationId` value -- use the exact value from the `202 Accepted` response when you submitted the command.
++2. Confirm the command was successfully submitted (received a `202` response).
++3. Verify you are querying the correct service instance and environment.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [bad-request](./bad-request.md) -- if the correlation ID parameter is missing entirely
++- [not-found](./not-found.md) -- for query endpoint resource lookups
+diff --git a/docs/reference/problems/concurrency-conflict.md b/docs/reference/problems/concurrency-conflict.md
 new file mode 100644
-index 0000000..7788b68
+index 0000000..36f6130
 --- /dev/null
-+++ b/src/Hexalith.EventStore.Server/Configuration/BackpressureOptions.cs
-@@ -0,0 +1,34 @@
++++ b/docs/reference/problems/concurrency-conflict.md
+@@ -0,0 +1,65 @@
++[<- Back to Error Reference](./index.md)
 +
-+using Microsoft.Extensions.Options;
++# Conflict
 +
-+namespace Hexalith.EventStore.Server.Configuration;
-+/// <summary>
-+/// Configuration options for per-aggregate backpressure (FR67).
-+/// Bound to configuration section "EventStore:Backpressure".
-+/// When an aggregate's in-flight command count exceeds <see cref="MaxPendingCommandsPerAggregate"/>,
-+/// new commands targeting that aggregate are rejected with HTTP 429 before entering the pipeline.
-+/// </summary>
-+public record BackpressureOptions {
-+    /// <summary>
-+    /// Gets the maximum number of pending (in-flight) commands allowed per aggregate before
-+    /// backpressure triggers an HTTP 429 rejection. Setting to 0 disables backpressure entirely.
-+    /// </summary>
-+    public int MaxPendingCommandsPerAggregate { get; init; } = 100;
++**HTTP Status:** 409 Conflict
++**Problem Type:** `https://hexalith.io/problems/concurrency-conflict`
++
++## What Happened
++
++Another command targeting the same resource was processed just before yours. This is a transient condition -- your command is still valid, but it needs to be retried.
++
++## Common Causes
++
++- Two clients submitted commands for the same resource at nearly the same time
++- A retry arrived while the original command was still being processed
++- High-frequency updates to a single resource from multiple consumers
++
++## Example
++
++### Request
++
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
++
++{
++    "messageId": "increment-02",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
 +}
++```
 +
-+/// <summary>
-+/// Validates that <see cref="BackpressureOptions"/> is properly configured at startup.
-+/// Fails fast with a clear error message for invalid configuration.
-+/// </summary>
-+public class ValidateBackpressureOptions : IValidateOptions<BackpressureOptions> {
-+    public ValidateOptionsResult Validate(string? name, BackpressureOptions options) {
-+        ArgumentNullException.ThrowIfNull(options);
++### Response
 +
-+        if (options.MaxPendingCommandsPerAggregate < 0) {
-+            return ValidateOptionsResult.Fail(
-+                "EventStore:Backpressure:MaxPendingCommandsPerAggregate must be 0 (disabled) or greater.");
-+        }
++```http
++HTTP/1.1 409 Conflict
++Content-Type: application/problem+json
++Retry-After: 1
 +
-+        return ValidateOptionsResult.Success;
-+    }
++{
++    "type": "https://hexalith.io/problems/concurrency-conflict",
++    "title": "Conflict",
++    "status": 409,
++    "detail": "A concurrency conflict occurred. Please retry the command.",
++    "instance": "/api/v1/commands",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 +}
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Commands/InMemoryBackpressureTrackerTests.cs b/tests/Hexalith.EventStore.Server.Tests/Commands/InMemoryBackpressureTrackerTests.cs
++```
++
++## How to Fix
++
++1. Wait for the duration specified in the `Retry-After` header (1 second).
++2. Resubmit the **exact same command** with the same payload.
++3. The conflict is transient -- the other command was processed first, but yours is still valid.
++4. For automated clients, implement exponential backoff starting from the `Retry-After` value.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [backpressure-exceeded](./backpressure-exceeded.md) -- if the resource has too many pending commands
+diff --git a/docs/reference/problems/forbidden.md b/docs/reference/problems/forbidden.md
 new file mode 100644
-index 0000000..2c579d2
+index 0000000..a4a2f23
 --- /dev/null
-+++ b/tests/Hexalith.EventStore.Server.Tests/Commands/InMemoryBackpressureTrackerTests.cs
-@@ -0,0 +1,204 @@
-+using Hexalith.EventStore.Server.Commands;
-+using Hexalith.EventStore.Server.Configuration;
++++ b/docs/reference/problems/forbidden.md
+@@ -0,0 +1,65 @@
++[<- Back to Error Reference](./index.md)
 +
-+using Microsoft.Extensions.Options;
++# Forbidden
 +
-+using Shouldly;
++**HTTP Status:** 403 Forbidden
++**Problem Type:** `https://hexalith.io/problems/forbidden`
 +
-+namespace Hexalith.EventStore.Server.Tests.Commands;
++## What Happened
 +
-+public class InMemoryBackpressureTrackerTests {
-+    private static InMemoryBackpressureTracker CreateTracker(int threshold = 100) {
-+        IOptions<BackpressureOptions> options = Options.Create(new BackpressureOptions { MaxPendingCommandsPerAggregate = threshold });
-+        return new InMemoryBackpressureTracker(options);
-+    }
++Your identity was authenticated successfully, but you do not have permission to perform the requested operation. This typically means your JWT token lacks the required tenant authorization claim.
 +
-+    [Fact]
-+    public void TryAcquire_UnderThreshold_ReturnsTrue() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 5);
++## Common Causes
 +
-+        // Act
-+        bool result = tracker.TryAcquire("tenant-a:domain:agg-001");
++- Your token does not include the `eventstore:tenant` claim for the requested tenant
++- The tenant ID in the command does not match any of your authorized tenants
++- Query endpoint authorization failed (insufficient permissions for the requested query type)
++- Command status query attempted without any tenant claims
 +
-+        // Assert
-+        result.ShouldBeTrue();
-+    }
++## Example
 +
-+    [Fact]
-+    public void TryAcquire_AtThreshold_ReturnsFalse() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 3);
-+        const string actorId = "tenant-a:domain:agg-001";
++### Request
 +
-+        // Fill to threshold
-+        for (int i = 0; i < 3; i++) {
-+            tracker.TryAcquire(actorId).ShouldBeTrue();
-+        }
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
 +
-+        // Act ÔÇö at threshold
-+        bool result = tracker.TryAcquire(actorId);
-+
-+        // Assert
-+        result.ShouldBeFalse();
-+    }
-+
-+    [Fact]
-+    public void TryAcquire_OverThreshold_ReturnsFalse() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 2);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+
-+        // Act ÔÇö over threshold (repeated calls)
-+        bool result1 = tracker.TryAcquire(actorId);
-+        bool result2 = tracker.TryAcquire(actorId);
-+
-+        // Assert
-+        result1.ShouldBeFalse();
-+        result2.ShouldBeFalse();
-+    }
-+
-+    [Fact]
-+    public void Release_DecrementsCounter_AllowsNewAcquire() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 2);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+        tracker.TryAcquire(actorId).ShouldBeFalse(); // At threshold
-+
-+        // Act ÔÇö release one slot
-+        tracker.Release(actorId);
-+
-+        // Assert ÔÇö can acquire again
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+    }
-+
-+    [Fact]
-+    public void TryAcquire_DifferentAggregates_Independent() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 1);
-+        const string actorIdA = "tenant-a:domain:agg-A";
-+        const string actorIdB = "tenant-a:domain:agg-B";
-+
-+        // Fill aggregate A to threshold
-+        tracker.TryAcquire(actorIdA).ShouldBeTrue();
-+        tracker.TryAcquire(actorIdA).ShouldBeFalse();
-+
-+        // Act ÔÇö aggregate B should be independent
-+        bool result = tracker.TryAcquire(actorIdB);
-+
-+        // Assert
-+        result.ShouldBeTrue();
-+    }
-+
-+    [Fact]
-+    public void Release_BelowZero_FloorsAtZero() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 5);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        // Act ÔÇö release without any acquire (should not throw or go negative)
-+        tracker.Release(actorId);
-+        tracker.Release(actorId);
-+
-+        // Assert ÔÇö can still acquire normally
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+    }
-+
-+    [Fact]
-+    public void TryAcquire_DefaultThreshold100_Allows100() {
-+        // Arrange ÔÇö default threshold is 100
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 100);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        // Act ÔÇö acquire 100 times
-+        int successCount = 0;
-+        for (int i = 0; i < 100; i++) {
-+            if (tracker.TryAcquire(actorId)) {
-+                successCount++;
-+            }
-+        }
-+
-+        // Assert
-+        successCount.ShouldBe(100);
-+        tracker.TryAcquire(actorId).ShouldBeFalse(); // 101st should fail
-+    }
-+
-+    [Fact]
-+    public void TryAcquire_CustomThreshold_Respected() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 50);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        // Act ÔÇö acquire up to custom threshold
-+        int successCount = 0;
-+        for (int i = 0; i < 51; i++) {
-+            if (tracker.TryAcquire(actorId)) {
-+                successCount++;
-+            }
-+        }
-+
-+        // Assert
-+        successCount.ShouldBe(50);
-+    }
-+
-+    [Fact]
-+    public async Task TryAcquire_ConcurrentAccess_ExactlyThresholdSucceed() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 50);
-+        const string actorId = "tenant-a:domain:agg-001";
-+        int totalAttempts = 100;
-+
-+        // Act ÔÇö fire 100 parallel TryAcquire calls
-+        Task<bool>[] tasks = Enumerable.Range(0, totalAttempts)
-+            .Select(_ => Task.Run(() => tracker.TryAcquire(actorId)))
-+            .ToArray();
-+
-+        bool[] results = await Task.WhenAll(tasks);
-+
-+        // Assert ÔÇö exactly 50 should return true
-+        int successCount = results.Count(r => r);
-+        successCount.ShouldBe(50);
-+    }
-+
-+    [Fact]
-+    public void Release_ToZero_RemovesDictionaryEntry() {
-+        // Arrange
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 5);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        tracker.TryAcquire(actorId).ShouldBeTrue();
-+
-+        // Act ÔÇö release back to 0
-+        tracker.Release(actorId);
-+
-+        // Assert ÔÇö dictionary entry should be removed (prevents unbounded growth)
-+        tracker.GetEntryCount().ShouldBe(0);
-+    }
-+
-+    [Fact]
-+    public void TryAcquire_ThresholdZero_AlwaysReturnsTrue() {
-+        // Arrange ÔÇö threshold 0 = disabled
-+        InMemoryBackpressureTracker tracker = CreateTracker(threshold: 0);
-+        const string actorId = "tenant-a:domain:agg-001";
-+
-+        // Act ÔÇö call many times
-+        bool result1 = tracker.TryAcquire(actorId);
-+        bool result2 = tracker.TryAcquire(actorId);
-+        bool result3 = tracker.TryAcquire(actorId);
-+
-+        // Also verify Release doesn't throw when disabled
-+        tracker.Release(actorId);
-+
-+        // Assert ÔÇö all should return true (disabled)
-+        result1.ShouldBeTrue();
-+        result2.ShouldBeTrue();
-+        result3.ShouldBeTrue();
-+        tracker.GetEntryCount().ShouldBe(0); // Dictionary should be empty (threshold 0 never touches it)
-+    }
++{
++    "messageId": "increment-01",
++    "tenant": "tenant-b",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
 +}
-diff --git a/tests/Hexalith.EventStore.Server.Tests/ErrorHandling/BackpressureExceptionHandlerTests.cs b/tests/Hexalith.EventStore.Server.Tests/ErrorHandling/BackpressureExceptionHandlerTests.cs
++```
++
++### Response
++
++```http
++HTTP/1.1 403 Forbidden
++Content-Type: application/problem+json
++
++{
++    "type": "https://hexalith.io/problems/forbidden",
++    "title": "Forbidden",
++    "status": 403,
++    "detail": "Not authorized for tenant 'tenant-b'. Access denied.",
++    "instance": "/api/v1/commands",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++    "tenantId": "tenant-b"
++}
++```
++
++## How to Fix
++
++1. Check your JWT token claims -- verify it includes `eventstore:tenant` for the target tenant.
++2. If you need access to a different tenant, request updated credentials from your identity provider administrator.
++3. Ensure the `tenant` field in your command matches a tenant you are authorized for.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [authentication-required](./authentication-required.md) -- if authentication itself is the issue
+diff --git a/docs/reference/problems/index.md b/docs/reference/problems/index.md
 new file mode 100644
-index 0000000..f2154a4
+index 0000000..c9d222e
 --- /dev/null
-+++ b/tests/Hexalith.EventStore.Server.Tests/ErrorHandling/BackpressureExceptionHandlerTests.cs
-@@ -0,0 +1,178 @@
-+using System.Text.Json;
++++ b/docs/reference/problems/index.md
+@@ -0,0 +1,46 @@
++[<- Back to Command API Reference](../command-api.md)
 +
-+using Hexalith.EventStore.CommandApi.ErrorHandling;
-+using Hexalith.EventStore.Server.Commands;
++# Error Reference
 +
-+using Microsoft.AspNetCore.Http;
-+using Microsoft.AspNetCore.Mvc;
-+using Microsoft.Extensions.Logging;
++Hexalith.EventStore uses [RFC 7807 Problem Details](https://www.rfc-editor.org/rfc/rfc7807) for all API error responses. Every error response has `Content-Type: application/problem+json` and includes the following standard fields:
 +
-+using NSubstitute;
++| Field      | Type   | Description                                                  |
++| ---------- | ------ | ------------------------------------------------------------ |
++| `type`     | string | A URI that identifies the error category (links to this reference) |
++| `title`    | string | A short human-readable summary                               |
++| `status`   | int    | The HTTP status code                                         |
++| `detail`   | string | A human-readable explanation specific to this occurrence      |
++| `instance` | string | The request path that produced the error                     |
 +
-+using Shouldly;
++Some responses include Hexalith-specific extension fields:
 +
-+namespace Hexalith.EventStore.Server.Tests.ErrorHandling;
++| Extension       | Type   | Description                                              |
++| --------------- | ------ | -------------------------------------------------------- |
++| `correlationId` | string | Unique identifier for the request (useful for log search) |
++| `tenantId`      | string | The tenant context of the request                        |
++| `errors`        | object | Property-level validation error messages                 |
 +
-+public class BackpressureExceptionHandlerTests {
-+    private readonly ILogger<BackpressureExceptionHandler> _logger;
-+    private readonly BackpressureExceptionHandler _handler;
++## 4xx Client Errors
 +
-+    public BackpressureExceptionHandlerTests() {
-+        _logger = Substitute.For<ILogger<BackpressureExceptionHandler>>();
-+        _handler = new BackpressureExceptionHandler(_logger);
-+    }
++| Status | Error Type | Description |
++| ------ | ---------- | ----------- |
++| 400    | [validation-error](./validation-error.md) | Command validation failed (missing or invalid fields) |
++| 400    | [bad-request](./bad-request.md) | Malformed request (e.g., missing correlation ID) |
++| 401    | [authentication-required](./authentication-required.md) | Missing or invalid JWT token |
++| 401    | [token-expired](./token-expired.md) | Expired JWT token |
++| 403    | [forbidden](./forbidden.md) | Tenant or domain authorization denied |
++| 404    | [not-found](./not-found.md) | Requested resource not found |
++| 404    | [command-status-not-found](./command-status-not-found.md) | No command status for the given correlation ID |
++| 409    | [concurrency-conflict](./concurrency-conflict.md) | Optimistic concurrency conflict (retry recommended) |
++| 429    | [rate-limit-exceeded](./rate-limit-exceeded.md) | Per-tenant or per-consumer rate limit exceeded |
++| 429    | [backpressure-exceeded](./backpressure-exceeded.md) | Per-resource capacity limit exceeded |
 +
-+    private static DefaultHttpContext CreateHttpContextWithBody() {
-+        var httpContext = new DefaultHttpContext();
-+        httpContext.Response.Body = new MemoryStream();
-+        return httpContext;
-+    }
++## 5xx Server Errors
 +
-+    [Fact]
-+    public async Task TryHandleAsync_BackpressureExceededException_Returns429WithProblemDetails() {
-+        // Arrange
-+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-+        httpContext.Items["CorrelationId"] = "test-correlation-id";
-+        httpContext.Request.Path = "/api/v1/commands";
-+        var exception = new BackpressureExceededException(
-+            aggregateActorId: "test-tenant:test-domain:agg-001",
-+            tenantId: "test-tenant",
-+            correlationId: "cmd-corr-id",
-+            currentDepth: 100);
++| Status | Error Type | Description |
++| ------ | ---------- | ----------- |
++| 500    | [internal-server-error](./internal-server-error.md) | Unexpected server failure |
++| 501    | [not-implemented](./not-implemented.md) | Query endpoint not available |
++| 503    | [service-unavailable](./service-unavailable.md) | Processing pipeline temporarily down |
 +
-+        // Act
-+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-+
-+        // Assert
-+        handled.ShouldBeTrue();
-+        httpContext.Response.StatusCode.ShouldBe(429);
-+
-+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-+        _ = problemDetails.ShouldNotBeNull();
-+        problemDetails.Status.ShouldBe(429);
-+        problemDetails.Title.ShouldBe("Too Many Requests");
-+        problemDetails.Type.ShouldBe(ProblemTypeUris.BackpressureExceeded);
-+        problemDetails.Instance.ShouldBe("/api/v1/commands");
-+        problemDetails.Detail.ShouldBe("Too many pending commands for this entity. Please retry after the specified interval.");
-+    }
-+
-+    [Fact]
-+    public async Task TryHandleAsync_BackpressureExceededException_IncludesRetryAfterHeader() {
-+        // Arrange
-+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-+        httpContext.Items["CorrelationId"] = "test-correlation-id";
-+        var exception = new BackpressureExceededException(
-+            aggregateActorId: "test-tenant:test-domain:agg-001",
-+            tenantId: "test-tenant",
-+            correlationId: "cmd-corr-id",
-+            currentDepth: 100);
-+
-+        // Act
-+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-+
-+        // Assert
-+        httpContext.Response.Headers["Retry-After"].ToString().ShouldBe("1");
-+    }
-+
-+    [Fact]
-+    public async Task TryHandleAsync_BackpressureExceededException_IncludesCorrelationId() {
-+        // Arrange
-+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-+        httpContext.Items["CorrelationId"] = "http-correlation-id";
-+        httpContext.Request.Path = "/api/v1/commands";
-+        var exception = new BackpressureExceededException(
-+            aggregateActorId: "test-tenant:test-domain:agg-001",
-+            tenantId: "test-tenant",
-+            correlationId: "cmd-corr-id",
-+            currentDepth: 100);
-+
-+        // Act
-+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-+
-+        // Assert ÔÇö prefers HTTP context correlation ID over exception's
-+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-+        _ = problemDetails.ShouldNotBeNull();
-+
-+        problemDetails.Extensions.ShouldContainKey("correlationId");
-+        problemDetails.Extensions["correlationId"]?.ToString().ShouldBe("http-correlation-id");
-+    }
-+
-+    [Fact]
-+    public async Task TryHandleAsync_BackpressureExceededException_DoesNotExposeInternalDetails() {
-+        // Arrange
-+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-+        httpContext.Items["CorrelationId"] = "test-correlation-id";
-+        var exception = new BackpressureExceededException(
-+            aggregateActorId: "test-tenant:test-domain:agg-001",
-+            tenantId: "test-tenant",
-+            correlationId: "cmd-corr-id",
-+            currentDepth: 100);
-+
-+        // Act
-+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-+
-+        // Assert ÔÇö response body must NOT contain internal details (UX-DR10)
-+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-+        using var reader = new StreamReader(httpContext.Response.Body);
-+        string responseBody = await reader.ReadToEndAsync();
-+
-+        responseBody.ShouldNotContain("agg-001");
-+        responseBody.ShouldNotContain("test-tenant:test-domain:agg-001"); // actorId
-+        responseBody.ShouldNotContain("test-tenant"); // tenantId
-+        responseBody.ShouldNotContain("100"); // currentDepth (as a string check ÔÇö note: this could false-positive on status code, so verify separately)
-+        responseBody.ShouldNotContain("CurrentDepth");
-+        responseBody.ShouldNotContain("actorId");
-+        responseBody.ShouldNotContain("aggregateId");
-+    }
-+
-+    [Fact]
-+    public async Task TryHandleAsync_NonBackpressureException_ReturnsFalse() {
-+        // Arrange
-+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-+        var exception = new InvalidOperationException("Not a backpressure exception");
-+
-+        // Act
-+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-+
-+        // Assert
-+        handled.ShouldBeFalse();
-+    }
-+
-+    [Fact]
-+    public void BackpressureExceptionHandler_HasNoStatusStoreDependency() {
-+        // Verify: BackpressureExceptionHandler constructor has NO ICommandStatusStore dependency
-+        // (unlike ConcurrencyConflictExceptionHandler which writes advisory status).
-+        // This is a design constraint ÔÇö the handler must not write any advisory status.
-+        System.Reflection.ConstructorInfo[] constructors = typeof(BackpressureExceptionHandler).GetConstructors();
-+        foreach (System.Reflection.ConstructorInfo ctor in constructors) {
-+            System.Reflection.ParameterInfo[] parameters = ctor.GetParameters();
-+            foreach (System.Reflection.ParameterInfo param in parameters) {
-+                param.ParameterType.Name.ShouldNotContain("CommandStatusStore");
-+            }
-+        }
-+    }
-+
-+    [Fact]
-+    public async Task TryHandleAsync_FallbackCorrelationId_UsesExceptionCorrelationId() {
-+        // Arrange ÔÇö HTTP context has no CorrelationId set
-+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
-+        // Don't set httpContext.Items["CorrelationId"]
-+        httpContext.Request.Path = "/api/v1/commands";
-+        var exception = new BackpressureExceededException(
-+            aggregateActorId: "test-tenant:test-domain:agg-001",
-+            tenantId: "test-tenant",
-+            correlationId: "fallback-corr-id",
-+            currentDepth: 50);
-+
-+        // Act
-+        _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
-+
-+        // Assert ÔÇö should fall back to exception's CorrelationId
-+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
-+        _ = problemDetails.ShouldNotBeNull();
-+        problemDetails.Extensions["correlationId"]?.ToString().ShouldBe("fallback-corr-id");
-+    }
-+}
-diff --git a/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerBackpressureTests.cs b/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerBackpressureTests.cs
++> **Note:** Domain services may define additional error types beyond the 13 listed here. If you receive an error `type` URI not listed on this page, consult the documentation for the specific domain service.
+diff --git a/docs/reference/problems/internal-server-error.md b/docs/reference/problems/internal-server-error.md
 new file mode 100644
-index 0000000..3241858
+index 0000000..9a74195
 --- /dev/null
-+++ b/tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerBackpressureTests.cs
-@@ -0,0 +1,226 @@
-+using Hexalith.EventStore.Contracts.Commands;
-+using Hexalith.EventStore.Server.Actors;
-+using Hexalith.EventStore.Server.Commands;
-+using Hexalith.EventStore.Server.Pipeline;
-+using Hexalith.EventStore.Server.Pipeline.Commands;
-+using Hexalith.EventStore.Testing.Fakes;
++++ b/docs/reference/problems/internal-server-error.md
+@@ -0,0 +1,72 @@
++[<- Back to Error Reference](./index.md)
 +
-+using Microsoft.Extensions.Logging.Abstractions;
++# Internal Server Error
 +
-+using NSubstitute;
-+using NSubstitute.ExceptionExtensions;
++**HTTP Status:** 500 Internal Server Error
++**Problem Type:** `https://hexalith.io/problems/internal-server-error`
 +
-+using Shouldly;
++## What Happened
 +
-+namespace Hexalith.EventStore.Server.Tests.Pipeline;
++An unexpected error occurred while processing your request. The server encountered a condition it was not designed to handle. No details about the internal failure are exposed for security reasons.
 +
-+public class SubmitCommandHandlerBackpressureTests {
-+    private static SubmitCommand CreateTestCommand(string? correlationId = null) => new(
-+        MessageId: Guid.NewGuid().ToString(),
-+        Tenant: "test-tenant",
-+        Domain: "test-domain",
-+        AggregateId: "agg-001",
-+        CommandType: "CreateOrder",
-+        Payload: [1, 2, 3],
-+        CorrelationId: correlationId ?? Guid.NewGuid().ToString(),
-+        UserId: "test-user");
++## Common Causes
 +
-+    private static ICommandRouter CreateMockRouter() {
-+        ICommandRouter router = Substitute.For<ICommandRouter>();
-+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-+            .Returns(new CommandProcessingResult(true));
-+        return router;
-+    }
++- An unhandled exception in the server-side processing pipeline
++- A transient infrastructure failure that was not caught by a specific handler
++- A bug in a domain service handler
 +
-+    [Fact]
-+    public async Task Handle_BackpressureExceeded_ThrowsBackpressureExceededException() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(false);
++## Example
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            new InMemoryCommandArchiveStore(),
-+            CreateMockRouter(),
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++### Request
 +
-+        SubmitCommand command = CreateTestCommand();
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
 +
-+        // Act & Assert
-+        _ = await Should.ThrowAsync<BackpressureExceededException>(
-+            () => handler.Handle(command, CancellationToken.None));
-+    }
++{
++    "messageId": "increment-01",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
++}
++```
 +
-+    [Fact]
-+    public async Task Handle_BackpressureExceeded_DoesNotCallCommandRouter() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(false);
-+        ICommandRouter router = Substitute.For<ICommandRouter>();
++### Response
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            new InMemoryCommandArchiveStore(),
-+            router,
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++```http
++HTTP/1.1 500 Internal Server Error
++Content-Type: application/problem+json
 +
-+        SubmitCommand command = CreateTestCommand();
++{
++    "type": "https://hexalith.io/problems/internal-server-error",
++    "title": "Internal Server Error",
++    "status": 500,
++    "detail": "An unexpected error occurred while processing your request.",
++    "instance": "/api/v1/commands",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++    "tenantId": "tenant-a"
++}
++```
 +
-+        // Act
-+        _ = await Should.ThrowAsync<BackpressureExceededException>(
-+            () => handler.Handle(command, CancellationToken.None));
++## How to Fix
 +
-+        // Assert ÔÇö router should never be called
-+        _ = await router.DidNotReceive().RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
-+    }
++**For API consumers:**
 +
-+    [Fact]
-+    public async Task Handle_BackpressureExceeded_DoesNotWriteStatus() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(false);
-+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
++1. Save the `correlationId` from the response -- it is the key to diagnosing the issue.
++2. Retry the request once. If the error was transient, it may succeed on retry.
++3. If the error persists, report it to the service operator and provide the `correlationId`.
 +
-+        var handler = new SubmitCommandHandler(
-+            statusStore,
-+            new InMemoryCommandArchiveStore(),
-+            CreateMockRouter(),
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++**For service operators:**
 +
-+        SubmitCommand command = CreateTestCommand();
++1. Search structured logs by the `correlationId` to find the full stack trace and error details (these are logged server-side but never exposed to clients).
++2. Check the Aspire dashboard or application logs for the time window of the request.
++3. Investigate and fix the root cause in the relevant handler or domain service.
 +
-+        // Act
-+        _ = await Should.ThrowAsync<BackpressureExceededException>(
-+            () => handler.Handle(command, CancellationToken.None));
++## Related
 +
-+        // Assert ÔÇö status store should never be called (AC #7)
-+        await statusStore.DidNotReceive().WriteStatusAsync(
-+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>());
-+    }
++- [Error Reference Index](./index.md)
++- [service-unavailable](./service-unavailable.md) -- for known infrastructure unavailability rather than unexpected failures
+diff --git a/docs/reference/problems/not-found.md b/docs/reference/problems/not-found.md
+new file mode 100644
+index 0000000..4815115
+--- /dev/null
++++ b/docs/reference/problems/not-found.md
+@@ -0,0 +1,53 @@
++[<- Back to Error Reference](./index.md)
 +
-+    [Fact]
-+    public async Task Handle_BackpressureExceeded_DoesNotArchiveCommand() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(false);
-+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
++# Not Found
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            archiveStore,
-+            CreateMockRouter(),
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++**HTTP Status:** 404 Not Found
++**Problem Type:** `https://hexalith.io/problems/not-found`
 +
-+        SubmitCommand command = CreateTestCommand();
++## What Happened
 +
-+        // Act
-+        _ = await Should.ThrowAsync<BackpressureExceededException>(
-+            () => handler.Handle(command, CancellationToken.None));
++The requested resource could not be found. This error is returned by query endpoints when the resource you are looking for does not exist.
 +
-+        // Assert ÔÇö archive should never be called
-+        await archiveStore.DidNotReceive().WriteCommandAsync(
-+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ArchivedCommand>(), Arg.Any<CancellationToken>());
-+    }
++## Common Causes
 +
-+    [Fact]
-+    public async Task Handle_Success_ReleasesBackpressure() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
++- The resource identifier does not match any existing resource
++- The resource was deleted or never created
++- A typo in the query type or resource identifier
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            new InMemoryCommandArchiveStore(),
-+            CreateMockRouter(),
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++## Example
 +
-+        SubmitCommand command = CreateTestCommand();
++### Request
 +
-+        // Act
-+        _ = await handler.Handle(command, CancellationToken.None);
++```http
++GET /api/v1/queries/CounterProjection?aggregateId=counter-999 HTTP/1.1
++Host: localhost:7275
++Authorization: Bearer <your-jwt-token>
++```
 +
-+        // Assert ÔÇö Release should be called exactly once
-+        tracker.Received(1).Release(Arg.Any<string>());
-+    }
++### Response
 +
-+    [Fact]
-+    public async Task Handle_RouterThrows_ReleasesBackpressure() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        ICommandRouter router = Substitute.For<ICommandRouter>();
-+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-+            .ThrowsAsync(new InvalidOperationException("Actor failed"));
++```http
++HTTP/1.1 404 Not Found
++Content-Type: application/problem+json
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            new InMemoryCommandArchiveStore(),
-+            router,
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++{
++    "type": "https://hexalith.io/problems/not-found",
++    "title": "Not Found",
++    "status": 404,
++    "detail": "The requested resource was not found.",
++    "instance": "/api/v1/queries/CounterProjection",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
++}
++```
 +
-+        SubmitCommand command = CreateTestCommand();
++## How to Fix
 +
-+        // Act
-+        _ = await Should.ThrowAsync<InvalidOperationException>(
-+            () => handler.Handle(command, CancellationToken.None));
++1. Verify the resource identifier is correct.
++2. Confirm the resource has been created by submitting the appropriate command first.
++3. Check that you are querying the correct query type for the resource.
 +
-+        // Assert ÔÇö Release should still be called even on failure
-+        tracker.Received(1).Release(Arg.Any<string>());
-+    }
++## Related
 +
-+    [Fact]
-+    public async Task Handle_UnderThreshold_CallsRouter() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        ICommandRouter router = CreateMockRouter();
++- [Error Reference Index](./index.md)
++- [command-status-not-found](./command-status-not-found.md) -- specifically for command status queries
+diff --git a/docs/reference/problems/not-implemented.md b/docs/reference/problems/not-implemented.md
+new file mode 100644
+index 0000000..2330059
+--- /dev/null
++++ b/docs/reference/problems/not-implemented.md
+@@ -0,0 +1,53 @@
++[<- Back to Error Reference](./index.md)
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            new InMemoryCommandArchiveStore(),
-+            router,
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++# Not Implemented
 +
-+        SubmitCommand command = CreateTestCommand();
++**HTTP Status:** 501 Not Implemented
++**Problem Type:** `https://hexalith.io/problems/not-implemented`
 +
-+        // Act
-+        _ = await handler.Handle(command, CancellationToken.None);
++## What Happened
 +
-+        // Assert ÔÇö normal flow proceeds
-+        _ = await router.Received(1).RouteCommandAsync(
-+            Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
-+    }
++The query endpoint you are trying to use is not available. The server recognized the request but does not support the functionality required to fulfill it.
 +
-+    [Fact]
-+    public async Task Handle_Cancelled_ReleasesBackpressure() {
-+        // Arrange
-+        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-+        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-+        ICommandRouter router = Substitute.For<ICommandRouter>();
-+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
-+            .ThrowsAsync(new OperationCanceledException("Cancelled"));
++## Common Causes
 +
-+        var handler = new SubmitCommandHandler(
-+            new InMemoryCommandStatusStore(),
-+            new InMemoryCommandArchiveStore(),
-+            router,
-+            tracker,
-+            NullLogger<SubmitCommandHandler>.Instance);
++- The query type is not registered in the current service configuration
++- The feature is planned but not yet implemented in this version
++- A typo in the query type name
 +
-+        SubmitCommand command = CreateTestCommand();
++## Example
 +
-+        // Act
-+        _ = await Should.ThrowAsync<OperationCanceledException>(
-+            () => handler.Handle(command, CancellationToken.None));
++### Request
 +
-+        // Assert ÔÇö Release should be called even on cancellation (acquired=true path in finally)
-+        tracker.Received(1).Release(Arg.Any<string>());
++```http
++GET /api/v1/queries/UnsupportedQueryType HTTP/1.1
++Host: localhost:7275
++Authorization: Bearer <your-jwt-token>
++```
++
++### Response
++
++```http
++HTTP/1.1 501 Not Implemented
++Content-Type: application/problem+json
++
++{
++    "type": "https://hexalith.io/problems/not-implemented",
++    "title": "Not Implemented",
++    "status": 501,
++    "detail": "The query type 'UnsupportedQueryType' is not implemented.",
++    "instance": "/api/v1/queries/UnsupportedQueryType",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
++}
++```
++
++## How to Fix
++
++1. Verify the query type name is spelled correctly.
++2. Check the API documentation for supported query types.
++3. If the query type should be available, confirm the domain service that provides it is registered and running.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [not-found](./not-found.md) -- for resources that exist but were not found
+diff --git a/docs/reference/problems/rate-limit-exceeded.md b/docs/reference/problems/rate-limit-exceeded.md
+new file mode 100644
+index 0000000..f86e698
+--- /dev/null
++++ b/docs/reference/problems/rate-limit-exceeded.md
+@@ -0,0 +1,67 @@
++[<- Back to Error Reference](./index.md)
++
++# Too Many Requests (Rate Limit)
++
++**HTTP Status:** 429 Too Many Requests
++**Problem Type:** `https://hexalith.io/problems/rate-limit-exceeded`
++
++## What Happened
++
++Your tenant or client has exceeded the allowed request rate. This is a **per-tenant or per-consumer rate limit** -- you sent too many requests within the configured time window. This is different from [backpressure-exceeded](./backpressure-exceeded.md), which is a per-resource capacity limit.
++
++## Common Causes
++
++- Submitting commands faster than the configured rate for your tenant
++- Multiple clients sharing the same tenant credentials and collectively exceeding the limit
++- Automated scripts or load tests without rate throttling
++
++## Example
++
++### Request
++
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
++
++{
++    "messageId": "increment-50",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
++}
++```
++
++### Response
++
++```http
++HTTP/1.1 429 Too Many Requests
++Content-Type: application/problem+json
++Retry-After: 60
++
++{
++    "type": "https://hexalith.io/problems/rate-limit-exceeded",
++    "title": "Too Many Requests",
++    "status": 429,
++    "detail": "Rate limit exceeded. Please retry after the specified interval.",
++    "instance": "/api/v1/commands",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++    "tenantId": "tenant-a",
++    "consumerId": "client-app-1"
++}
++```
++
++## How to Fix
++
++1. Wait for the duration specified in the `Retry-After` header before sending new requests.
++2. Implement client-side rate throttling to stay within your tenant's allowed request rate.
++3. If you consistently hit rate limits, contact your service administrator to discuss increasing the limit.
++4. Distribute commands over time rather than sending bursts.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [backpressure-exceeded](./backpressure-exceeded.md) -- per-resource capacity limit (different from rate limiting)
+diff --git a/docs/reference/problems/service-unavailable.md b/docs/reference/problems/service-unavailable.md
+new file mode 100644
+index 0000000..9ced2f2
+--- /dev/null
++++ b/docs/reference/problems/service-unavailable.md
+@@ -0,0 +1,73 @@
++[<- Back to Error Reference](./index.md)
++
++# Service Unavailable
++
++**HTTP Status:** 503 Service Unavailable
++**Problem Type:** `https://hexalith.io/problems/service-unavailable`
++
++## What Happened
++
++The command processing pipeline is temporarily unavailable. The API server received your request but cannot forward it for processing because one or more infrastructure components are down or unreachable.
++
++## Common Causes
++
++- The command processing infrastructure is starting up and not yet ready
++- A required service component is temporarily offline
++- Network connectivity issues between internal service components
++- The authorization service is unreachable
++
++## Example
++
++### Request
++
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
++
++{
++    "messageId": "increment-01",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
++}
++```
++
++### Response
++
++```http
++HTTP/1.1 503 Service Unavailable
++Content-Type: application/problem+json
++Retry-After: 30
++
++{
++    "type": "https://hexalith.io/problems/service-unavailable",
++    "title": "Service Unavailable",
++    "status": 503,
++    "detail": "The command processing pipeline is temporarily unavailable. Please retry after the specified interval.",
++    "instance": "/api/v1/commands"
++}
++```
++
++## How to Fix
++
++**For API consumers:**
++
++1. Wait for the duration specified in the `Retry-After` header (30 seconds).
++2. Retry the request. The condition is typically temporary.
++3. If the error persists after several retries, contact the service operator.
++
++**For service operators:**
++
++1. Check infrastructure health endpoints to identify which component is down.
++2. Verify all service components are running (use the Aspire dashboard if available).
++3. Check network connectivity between service components.
++4. Review structured logs for the specific infrastructure failure.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [internal-server-error](./internal-server-error.md) -- for unexpected failures rather than infrastructure unavailability
+diff --git a/docs/reference/problems/token-expired.md b/docs/reference/problems/token-expired.md
+new file mode 100644
+index 0000000..70d25d2
+--- /dev/null
++++ b/docs/reference/problems/token-expired.md
+@@ -0,0 +1,64 @@
++[<- Back to Error Reference](./index.md)
++
++# Unauthorized (Token Expired)
++
++**HTTP Status:** 401 Unauthorized
++**Problem Type:** `https://hexalith.io/problems/token-expired`
++
++## What Happened
++
++Your authentication token has expired. The JWT token included in the `Authorization` header was valid when issued but has passed its expiration time.
++
++## Common Causes
++
++- The token's `exp` (expiration) claim is in the past
++- Long-running scripts or sessions that do not refresh tokens
++- Clock skew between the client and the identity provider
++
++## Example
++
++### Request
++
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer eyJhbGci...expired
++
++{
++    "messageId": "increment-01",
++    "tenant": "tenant-a",
++    "domain": "counter",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
++}
++```
++
++### Response
++
++```http
++HTTP/1.1 401 Unauthorized
++Content-Type: application/problem+json
++WWW-Authenticate: Bearer realm="hexalith-eventstore", error="invalid_token", error_description="The token has expired"
++
++{
++    "type": "https://hexalith.io/problems/token-expired",
++    "title": "Unauthorized",
++    "status": 401,
++    "detail": "The provided authentication token has expired.",
++    "instance": "/api/v1/commands"
++}
++```
++
++## How to Fix
++
++1. Request a new token from the identity provider (see [Quickstart Guide](../../getting-started/quickstart.md)).
++2. Replace the expired token in your `Authorization` header.
++3. Retry the request.
++4. For automated clients, implement token refresh logic before the `exp` claim is reached.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [authentication-required](./authentication-required.md) -- if the token is missing entirely
+diff --git a/docs/reference/problems/validation-error.md b/docs/reference/problems/validation-error.md
+new file mode 100644
+index 0000000..80eed5d
+--- /dev/null
++++ b/docs/reference/problems/validation-error.md
+@@ -0,0 +1,68 @@
++[<- Back to Error Reference](./index.md)
++
++# Command Validation Failed
++
++**HTTP Status:** 400 Bad Request
++**Problem Type:** `https://hexalith.io/problems/validation-error`
++
++## What Happened
++
++The command you submitted failed validation. One or more fields in the request body are missing, empty, or have an invalid format. The command was not processed.
++
++## Common Causes
++
++- Required fields (`tenant`, `domain`, `aggregateId`, `commandType`) are missing or empty
++- Field values do not match expected formats (e.g., invalid characters in `aggregateId`)
++- The `payload` object is missing or malformed for the given `commandType`
++
++## Example
++
++### Request
++
++```http
++POST /api/v1/commands HTTP/1.1
++Host: localhost:7275
++Content-Type: application/json
++Authorization: Bearer <your-jwt-token>
++
++{
++    "messageId": "increment-01",
++    "tenant": "",
++    "domain": "",
++    "aggregateId": "counter-1",
++    "commandType": "IncrementCounter",
++    "payload": {}
++}
++```
++
++### Response
++
++```http
++HTTP/1.1 400 Bad Request
++Content-Type: application/problem+json
++
++{
++    "type": "https://hexalith.io/problems/validation-error",
++    "title": "Command Validation Failed",
++    "status": 400,
++    "detail": "The command has 2 validation error(s). See 'errors' for specifics.",
++    "instance": "/api/v1/commands",
++    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
++    "tenantId": null,
++    "errors": {
++        "tenant": "'Tenant' must not be empty.",
++        "domain": "'Domain' must not be empty."
 +    }
 +}
++```
++
++## How to Fix
++
++1. Check the `errors` object in the response -- each key is a field name and each value describes the validation rule that failed.
++2. Fix all listed fields in your request body.
++3. Resubmit the command.
++
++## Related
++
++- [Error Reference Index](./index.md)
++- [bad-request](./bad-request.md) -- for malformed requests outside command validation

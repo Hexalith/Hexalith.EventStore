@@ -153,6 +153,8 @@ Content-Type: application/json
 
 ### Error Responses
 
+> **See also:** [Error Reference](./problems/index.md) for detailed documentation on each error type, including example requests/responses and resolution steps.
+
 | Status                     | Condition                                                               | Body                                              |
 | -------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- |
 | 400 Bad Request            | Validation failure (missing fields, regex mismatch, injection patterns) | RFC 7807 ProblemDetails with `errors` dictionary  |
