@@ -3,6 +3,8 @@ using System.Threading;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Sample.Counter.Projections;
 using Hexalith.EventStore.ServiceDefaults;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -37,6 +39,11 @@ if (malformedProjectionResponse) {
     app.MapGet("/faults/project-hit-count", () => Results.Ok(new {
         Count = Volatile.Read(ref malformedProjectionResponseHitCount),
     }));
+} else {
+    // Real /project endpoint: replays events into counter projection state.
+    // DaprClient.InvokeMethodAsync round-trips ProjectionRequest/Response as JSON.
+    app.MapPost("/project", (ProjectionRequest request)
+        => Results.Ok(CounterProjectionHandler.Project(request)));
 }
 
 app.Run();

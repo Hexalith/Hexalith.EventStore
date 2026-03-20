@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-20 # story 11-4 done
+last_updated: 2026-03-20 # story 11-5 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -141,7 +141,7 @@ development_status:
   11-2-eventreplayprojectionactor-and-projection-state-storage: done
   11-3-immediate-projection-trigger-fire-and-forget: done
   11-4-convention-based-projection-discovery-and-configuration: done
-  11-5-counter-sample-project-endpoint: backlog
+  11-5-counter-sample-project-endpoint: done
   epic-11-retrospective: optional
 
   # Epic 12: Blazor Sample UI & Refresh Patterns
