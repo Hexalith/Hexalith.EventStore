@@ -8,11 +8,13 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Projections;
 
@@ -29,10 +31,18 @@ public partial class ProjectionUpdateOrchestrator(
     IActorProxyFactory actorProxyFactory,
     DaprClient daprClient,
     IDomainServiceResolver resolver,
+    IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator {
     /// <inheritdoc/>
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
+
+        int refreshIntervalMs = projectionOptions.Value.GetRefreshIntervalMs(identity.Domain);
+        if (refreshIntervalMs > 0)
+        {
+            Log.PollingModeDeferred(logger, identity.TenantId, identity.Domain, refreshIntervalMs);
+            return;
+        }
 
         try {
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
@@ -164,5 +174,11 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Warning,
             Message = "Invalid projection response: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}, Stage=InvalidProjectionResponse")]
         public static partial void InvalidProjectionResponse(ILogger logger, string tenantId, string domain, string aggregateId, string reason);
+
+        [LoggerMessage(
+            EventId = 1117,
+            Level = LogLevel.Debug,
+            Message = "Projection polling mode configured (RefreshIntervalMs={RefreshIntervalMs}), skipping immediate trigger: TenantId={TenantId}, Domain={Domain}, Stage=PollingModeDeferred")]
+        public static partial void PollingModeDeferred(ILogger logger, string tenantId, string domain, int refreshIntervalMs);
     }
 }
