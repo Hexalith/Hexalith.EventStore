@@ -561,6 +561,77 @@ public partial class AggregateActor(
     }
 
     /// <inheritdoc/>
+    public async Task<EventEnvelope[]> GetEventsAsync(long fromSequence) {
+        fromSequence = Math.Max(0, fromSequence);
+
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+
+        ConditionalValue<AggregateMetadata> metadataResult;
+        try {
+            metadataResult = await StateManager
+                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            throw new EventDeserializationException(-1, identity.ActorId, ex);
+        }
+
+        if (!metadataResult.HasValue) {
+            return [];
+        }
+
+        long currentSequence = metadataResult.Value.CurrentSequence;
+        if (currentSequence <= 0) {
+            throw new InvalidOperationException(
+                $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
+        }
+
+        if (currentSequence <= fromSequence) {
+            return [];
+        }
+
+        int startSequence = checked((int)(fromSequence + 1));
+        int eventCount = checked((int)(currentSequence - fromSequence));
+        string keyPrefix = identity.EventStreamKeyPrefix;
+
+        var events = new List<EventEnvelope>(eventCount);
+        int cursor = startSequence;
+        int endExclusive = startSequence + eventCount;
+
+        while (cursor < endExclusive) {
+            int batchSize = Math.Min(MaxConcurrentStateReads, endExclusive - cursor);
+            Task<(int Sequence, EventEnvelope Event)>[] loadTasks = Enumerable.Range(cursor, batchSize)
+                .Select(async seq => {
+                    ConditionalValue<EventEnvelope> eventResult;
+                    try {
+                        eventResult = await StateManager
+                            .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException) {
+                        throw new EventDeserializationException(seq, identity.ActorId, ex);
+                    }
+
+                    if (!eventResult.HasValue) {
+                        throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+                    }
+
+                    return (Sequence: seq, Event: eventResult.Value);
+                })
+                .ToArray();
+
+            (int Sequence, EventEnvelope Event)[] loadedBatch = await Task.WhenAll(loadTasks).ConfigureAwait(false);
+            foreach ((int _, EventEnvelope evt) in loadedBatch.OrderBy(x => x.Sequence)) {
+                events.Add(evt);
+            }
+
+            cursor += batchSize;
+        }
+
+        return [.. events];
+    }
+
+    /// <inheritdoc/>
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) {
         ArgumentNullException.ThrowIfNull(reminderName);
 

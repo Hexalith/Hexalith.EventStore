@@ -1,9 +1,0 @@
-  Identification des projets à restaurer...
-  Tous les projets sont à jour pour la restauration.
-  Hexalith.EventStore.Aspire -> d:\Hexalith.EventStore\src\Hexalith.EventStore.Aspire\bin\Debug\net10.0\Hexalith.EventStore.Aspire.dll
-
-La génération a réussi.
-    0 Avertissement(s)
-    0 Erreur(s)
-
-Temps écoulé 00:00:01.43
