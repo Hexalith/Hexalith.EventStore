@@ -1,6 +1,6 @@
 # Story 11.2: EventReplayProjectionActor & Projection State Storage
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -38,24 +38,24 @@ so that query actors can serve real projection data.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `IProjectionWriteActor` interface and `ProjectionState` DTO (AC: 2)
-  - [ ] Create `src/Hexalith.EventStore.Server/Actors/IProjectionWriteActor.cs`
-  - [ ] Create `src/Hexalith.EventStore.Server/Actors/ProjectionState.cs`
-- [ ] Task 2: Create `EventReplayProjectionActor` (AC: 1, 2, 3)
-  - [ ] Create `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs`
-  - [ ] Implement `UpdateProjectionAsync` -- persist state, trigger ETag regeneration + SignalR broadcast
-  - [ ] Implement `ExecuteQueryAsync` -- read persisted state from DAPR actor state
-- [ ] Task 3: Register actor in DI (AC: 1)
-  - [ ] Modify `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` -- add `RegisterActor<EventReplayProjectionActor>()`
-- [ ] Task 4: Update `FakeProjectionWriteActor` in Testing project
-  - [ ] Create `src/Hexalith.EventStore.Testing/Fakes/FakeProjectionWriteActor.cs`
-- [ ] Task 5: Create tests (AC: 1, 2, 3)
-  - [ ] Create `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs`
-  - [ ] Run Tier 2 Server tests to verify no regression
-- [ ] Task 6: Full build and test verification
-  - [ ] `dotnet build Hexalith.EventStore.slnx --configuration Release` -- 0 errors, 0 warnings
-  - [ ] All Tier 1 tests pass
-  - [ ] Tier 2 Server tests pass
+- [x] Task 1: Create `IProjectionWriteActor` interface and `ProjectionState` DTO (AC: 2)
+  - [x] Create `src/Hexalith.EventStore.Server/Actors/IProjectionWriteActor.cs`
+  - [x] Create `src/Hexalith.EventStore.Server/Actors/ProjectionState.cs`
+- [x] Task 2: Create `EventReplayProjectionActor` (AC: 1, 2, 3)
+  - [x] Create `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs`
+  - [x] Implement `UpdateProjectionAsync` -- persist state, trigger ETag regeneration + SignalR broadcast
+  - [x] Implement `ExecuteQueryAsync` -- read persisted state from DAPR actor state
+- [x] Task 3: Register actor in DI (AC: 1)
+  - [x] Modify `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` -- add `RegisterActor<EventReplayProjectionActor>()`
+- [x] Task 4: Update `FakeProjectionWriteActor` in Testing project
+  - [x] Create `src/Hexalith.EventStore.Testing/Fakes/FakeProjectionWriteActor.cs`
+- [x] Task 5: Create tests (AC: 1, 2, 3)
+  - [x] Create `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs`
+  - [x] Run Tier 2 Server tests to verify no regression
+- [x] Task 6: Full build and test verification
+  - [x] `dotnet build Hexalith.EventStore.slnx --configuration Release` -- 0 errors, 0 warnings
+  - [x] All Tier 1 tests pass
+  - [x] Tier 2 Server tests pass (1552 passed, 0 failed)
 
 ## Dev Notes
 
@@ -495,10 +495,36 @@ Pattern: feature branches merged via PRs, conventional commit messages (`feat: .
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- Build verified: 0 errors, 0 warnings
+- Tier 1: 709 tests passed (271+297+47+67+27)
+- Tier 2: 1552 tests passed, 0 failed (`dotnet test tests/Hexalith.EventStore.Server.Tests`)
+- 11 new EventReplayProjectionActor tests pass (`dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~EventReplayProjectionActorTests"`)
+
 ### Completion Notes List
 
+- Task 1: Created `IProjectionWriteActor` (DAPR actor interface with `UpdateProjectionAsync`) and `ProjectionState` record (DataContract-serializable DTO with ProjectionType, TenantId, JsonElement State)
+- Task 2: Created `EventReplayProjectionActor` extending `CachingProjectionActor`, implementing `IProjectionWriteActor`. `UpdateProjectionAsync` persists state then notifies (SaveState before Notify per design). `ExecuteQueryAsync` reads persisted state from DAPR actor state. LoggerMessage source-generated logging (event IDs 1090-1092).
+- Follow-up hardening: added guards for empty `ProjectionType`/`TenantId`, fail-open handling around notifier call after successful persistence, and warning log `EventId 1093` on notifier failure.
+- Task 3: Registered `EventReplayProjectionActor` with custom DAPR actor type name `"ProjectionActor"` using `RegisterActor<T>(string actorTypeName)` overload, matching `QueryRouter.ProjectionActorTypeName`.
+- Task 4: Created `FakeProjectionWriteActor` following `FakeAggregateActor` pattern (direct interface implementation, no Actor base).
+- Task 5: Created 11 tests covering all ACs plus hardening cases: state persistence, notification triggering, save-before-notify ordering, null/invalid guards, no-state failure, state retrieval, update-then-query round-trip, cache hit behavior, and notifier-failure fail-open behavior.
+- Task 6: Full build and all tests verified, including full Tier 2 server suite pass when local Dapr dependencies are up.
+
+### Change Log
+
+- 2026-03-20: Story 11-2 implemented — EventReplayProjectionActor, IProjectionWriteActor, ProjectionState, FakeProjectionWriteActor, actor DI registration, and 8 tests
+- 2026-03-20: Post-review hardening — input validation + fail-open notifier handling in `EventReplayProjectionActor`, plus 3 additional focused tests.
+
 ### File List
+
+- `src/Hexalith.EventStore.Server/Actors/IProjectionWriteActor.cs` (NEW)
+- `src/Hexalith.EventStore.Server/Actors/ProjectionState.cs` (NEW)
+- `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs` (NEW)
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` (MODIFIED)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeProjectionWriteActor.cs` (NEW)
+- `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs` (NEW)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED)

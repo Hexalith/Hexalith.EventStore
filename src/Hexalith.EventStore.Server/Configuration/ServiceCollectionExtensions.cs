@@ -65,6 +65,7 @@ public static class EventStoreServerServiceCollectionExtensions {
 
             options.Actors.RegisterActor<AggregateActor>();
             options.Actors.RegisterActor<ETagActor>();
+            options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);
         });
 
         return services;
