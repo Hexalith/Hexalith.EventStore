@@ -170,6 +170,7 @@ internal static class ContractTestHelpers {
             permissions: ["command:submit", "command:query"]);
 
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = domain,
             AggregateId = aggregateId,

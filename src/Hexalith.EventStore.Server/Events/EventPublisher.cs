@@ -6,6 +6,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,7 @@ public partial class EventPublisher(
     IOptions<EventPublisherOptions> options,
     ILogger<EventPublisher> logger,
     IEventPayloadProtectionService payloadProtectionService,
+    IProjectionUpdateOrchestrator projectionOrchestrator,
     ITopicNameValidator? topicNameValidator = null) : IEventPublisher {
     /// <inheritdoc/>
     public async Task<EventPublishResult> PublishEventsAsync(
@@ -119,6 +121,21 @@ public partial class EventPublisher(
             Log.EventsPublished(logger, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, events.Count, topic, durationMs);
 
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
+
+            // Fire-and-forget projection update (Mode B immediate trigger)
+            // NOTE: Unbounded concurrency -- high-throughput aggregates may spawn many concurrent tasks.
+            // Acceptable for current scope; checkpoint tracker + SemaphoreSlim would bound this in a follow-up.
+            _ = Task.Run(async () =>
+            {
+                try {
+                    await projectionOrchestrator.UpdateProjectionAsync(identity, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) {
+                    Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, correlationId);
+                }
+            }, CancellationToken.None);
+
             return new EventPublishResult(true, publishedCount, null);
         }
         catch (OperationCanceledException) {
@@ -166,5 +183,17 @@ public partial class EventPublisher(
             string topic,
             int publishedCount,
             int totalCount);
+
+        [LoggerMessage(
+            EventId = 3102,
+            Level = LogLevel.Warning,
+            Message = "Fire-and-forget projection update failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CorrelationId={CorrelationId}, Stage=ProjectionUpdateFailed")]
+        public static partial void ProjectionUpdateFailed(
+            ILogger logger,
+            Exception ex,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string correlationId);
     }
 }

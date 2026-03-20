@@ -6,6 +6,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
@@ -49,7 +50,7 @@ public class EventPublisherTests {
         IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
         ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
         return (publisher, daprClient, logger);
     }
 

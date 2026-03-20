@@ -13,6 +13,7 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using Microsoft.AspNetCore.Http;
@@ -190,7 +191,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
         var logger = new TestLogger<EventPublisher>(_logEntries);
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
-        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 
@@ -218,7 +219,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("pub/sub failure"));
         IOptions<EventPublisherOptions> options = Options.Create(new Server.Configuration.EventPublisherOptions());
-        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService());
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
         var events = new List<EventEnvelope> { CreateEventEnvelope() };
 
