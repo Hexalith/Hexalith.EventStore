@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-03-20 (story 12-2 done)
+# last_updated: 2026-03-20 (story 13-1 done)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-20 # story 12-2 done
+last_updated: 2026-03-20 # story 13-1 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -151,8 +151,8 @@ development_status:
   epic-12-retrospective: optional
 
   # Epic 13: Documentation & Developer Onboarding
-  epic-13: backlog
-  13-1-quick-start-guide: backlog
+  epic-13: in-progress
+  13-1-quick-start-guide: done
   13-2-error-reference-pages-at-type-uris: backlog
   13-3-progressive-documentation-structure: backlog
   13-4-repository-documentation-refresh: backlog
