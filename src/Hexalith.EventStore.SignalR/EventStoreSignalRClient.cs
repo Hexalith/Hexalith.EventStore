@@ -11,6 +11,8 @@ namespace Hexalith.EventStore.SignalR;
 /// Implements <see cref="IAsyncDisposable"/> — callers MUST dispose when done.
 /// </summary>
 public sealed class EventStoreSignalRClient : IAsyncDisposable {
+    private delegate void ReconnectConfigurator(HubConnectionBuilder builder, IRetryPolicy? retryPolicy);
+
     private readonly HubConnection _connection;
 
     private readonly CancellationTokenSource _disposeCts = new();
@@ -24,7 +26,14 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
     /// </summary>
     /// <param name="options">The SignalR client options containing the hub URL.</param>
     /// <param name="logger">Optional logger for diagnostic output.</param>
-    public EventStoreSignalRClient(EventStoreSignalRClientOptions options, ILogger<EventStoreSignalRClient>? logger = null) {
+    public EventStoreSignalRClient(EventStoreSignalRClientOptions options, ILogger<EventStoreSignalRClient>? logger = null)
+        : this(options, logger, null) {
+    }
+
+    private EventStoreSignalRClient(
+        EventStoreSignalRClientOptions options,
+        ILogger<EventStoreSignalRClient>? logger,
+        ReconnectConfigurator? reconnectConfigurator) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.HubUrl);
         if (!Uri.TryCreate(options.HubUrl, UriKind.Absolute, out _)) {
@@ -39,11 +48,12 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
                 connectionOptions.AccessTokenProvider = options.AccessTokenProvider;
             }
         });
-        _ = builder.WithAutomaticReconnect();
+        (reconnectConfigurator ?? ConfigureAutomaticReconnect)(builder, options.RetryPolicy);
 
         _connection = builder.Build();
 
         _connection.Reconnected += OnReconnectedAsync;
+        _connection.Closed += OnClosedAsync;
         _ = _connection.On<string, string>("ProjectionChanged", OnProjectionChanged);
     }
 
@@ -181,6 +191,12 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         }
     }
 
+    private static void ConfigureAutomaticReconnect(HubConnectionBuilder builder, IRetryPolicy? retryPolicy) {
+        _ = retryPolicy is not null
+            ? builder.WithAutomaticReconnect(retryPolicy)
+            : builder.WithAutomaticReconnect();
+    }
+
     private void OnProjectionChanged(string projectionType, string tenantId) {
         string groupName = $"{projectionType}:{tenantId}";
         if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
@@ -188,6 +204,18 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
                 callback();
             }
         }
+    }
+
+    /// <summary>
+    /// Logs a warning when the connection closes unexpectedly.
+    /// Consumers decide whether to restart the connection.
+    /// </summary>
+    private Task OnClosedAsync(Exception? exception) {
+        if (!_disposeCts.IsCancellationRequested && exception is not null) {
+            _logger?.LogWarning(exception, "SignalR connection closed unexpectedly.");
+        }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

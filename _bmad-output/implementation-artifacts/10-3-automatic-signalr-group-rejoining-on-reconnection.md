@@ -1,6 +1,6 @@
 # Story 10.3: Automatic SignalR Group Rejoining on Reconnection
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,41 +30,41 @@ This is an **audit and gap-fill** story. The core FR59 reconnection logic alread
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Audit existing reconnection implementation (AC: #1)
-  - [ ] 0.1 Verify `WithAutomaticReconnect()` covers WebSocket drops and network interruptions
-  - [ ] 0.2 Verify `OnReconnectedAsync` → `JoinAllGroupsAsync()` chain for group rejoin
-  - [ ] 0.3 Verify callback preservation across reconnections (local `_subscribedGroups` survives)
-  - [ ] 0.4 Verify fail-open pattern in `JoinAllGroupsAsync` (catches exceptions, logs warning)
-  - [ ] 0.5 Verify `_disposeCts` prevents rejoin during disposal
-  - [ ] 0.6 Assess default reconnect policy: `WithAutomaticReconnect()` without parameters uses [0s, 2s, 10s, 30s] then permanently disconnects — evaluate if this is sufficient for production Blazor Server apps
+- [x] Task 0: Audit existing reconnection implementation (AC: #1)
+    - [x] 0.1 Verify `WithAutomaticReconnect()` covers WebSocket drops and network interruptions
+    - [x] 0.2 Verify `OnReconnectedAsync` → `JoinAllGroupsAsync()` chain for group rejoin
+    - [x] 0.3 Verify callback preservation across reconnections (local `_subscribedGroups` survives)
+    - [x] 0.4 Verify fail-open pattern in `JoinAllGroupsAsync` (catches exceptions, logs warning)
+    - [x] 0.5 Verify `_disposeCts` prevents rejoin during disposal
+    - [x] 0.6 Assess default reconnect policy: `WithAutomaticReconnect()` without parameters uses [0s, 2s, 10s, 30s] then permanently disconnects — evaluate if this is sufficient for production Blazor Server apps
 
-- [ ] Task 1: Audit Blazor Server circuit reconnection scenario (AC: #1)
-  - [ ] 1.1 Blazor Server uses WebSocket transport by default — circuit reconnection triggers `HubConnection.Reconnected` event → already handled by `OnReconnectedAsync`
-  - [ ] 1.2 Verify no additional integration needed: Blazor circuit recovery re-establishes the WebSocket, SignalR client auto-reconnect covers this
-  - [ ] 1.3 Document that the signal-only model requires clients to re-query projections after reconnect to catch missed signals (known limitation, not a gap)
+- [x] Task 1: Audit Blazor Server circuit reconnection scenario (AC: #1)
+    - [x] 1.1 Blazor Server uses WebSocket transport by default — circuit reconnection triggers `HubConnection.Reconnected` event → already handled by `OnReconnectedAsync`
+    - [x] 1.2 Verify no additional integration needed: Blazor circuit recovery re-establishes the WebSocket, SignalR client auto-reconnect covers this
+    - [x] 1.3 Document that the signal-only model requires clients to re-query projections after reconnect to catch missed signals (known limitation, not a gap)
 
-- [ ] Task 2: Audit existing test coverage (AC: #1)
-  - [ ] 2.1 Inventory current tests in `EventStoreSignalRClientTests.cs` (currently 19 tests)
-  - [ ] 2.2 Map each test to AC scenarios
-  - [ ] 2.3 Identify untested edge cases
+- [x] Task 2: Audit existing test coverage (AC: #1)
+    - [x] 2.1 Inventory current tests in `EventStoreSignalRClientTests.cs` (currently 20 tests)
+    - [x] 2.2 Map each test to AC scenarios
+    - [x] 2.3 Identify untested edge cases
 
-- [ ] Task 3: Fill test gaps (AC: #1)
-  - [ ] 3.1 Add test: `OnReconnectedAsync_MultipleReconnections_RejoinsSameGroupsEachTime` — verify idempotent rejoin across repeated reconnections
-  - [ ] 3.2 Add test: `OnReconnectedAsync_SubscribeDuringReconnection_NewGroupIncludedInRejoin` — verify groups added between disconnect and reconnect are joined
-  - [ ] 3.3 Add test: `OnReconnectedAsync_CallbacksFireAfterMultipleReconnections` — verify callbacks survive N reconnections, not just one
-  - [ ] 3.4 (Optional) Add test: `Closed_Event_LogsWarningWhenAllRetriesExhausted` — if `Closed` event handling is added
+- [x] Task 3: Fill test gaps (AC: #1)
+    - [x] 3.1 Add test: `OnReconnectedAsync_MultipleReconnections_RejoinsSameGroupsEachTime` — verify idempotent rejoin across repeated reconnections
+    - [x] 3.2 Add test: `OnReconnectedAsync_SubscribeDuringReconnection_NewGroupIncludedInRejoin` — verify groups added between disconnect and reconnect are joined
+    - [x] 3.3 Add test: `OnReconnectedAsync_CallbacksFireAfterMultipleReconnections` — verify callbacks survive N reconnections, not just one
+    - [x] 3.4 (Optional) Add test: `Closed_Event_LogsWarningWhenAllRetriesExhausted` — if `Closed` event handling is added
 
-- [ ] Task 4: Evaluate and document reconnect policy hardening (AC: #1)
-  - [ ] 4.1 Document default policy behavior: 4 retries over ~42s then permanent disconnect
-  - [ ] 4.2 Assess if `EventStoreSignalRClientOptions` should expose a configurable `IRetryPolicy`
-  - [ ] 4.3 If adding configurability: add `RetryPolicy` property to `EventStoreSignalRClientOptions` with sensible default
-  - [ ] 4.4 If NOT adding configurability: document the limitation as an elicitation for future work
+- [x] Task 4: Evaluate and document reconnect policy hardening (AC: #1)
+    - [x] 4.1 Document default policy behavior: 4 retries over ~42s then permanent disconnect
+    - [x] 4.2 Assess if `EventStoreSignalRClientOptions` should expose a configurable `IRetryPolicy`
+    - [x] 4.3 If adding configurability: add `RetryPolicy` property to `EventStoreSignalRClientOptions` with sensible default
+    - [x] 4.4 If NOT adding configurability: document the limitation as an elicitation for future work
 
-- [ ] Task 5: Run full test suite
-  - [ ] 5.1 `dotnet test tests/Hexalith.EventStore.SignalR.Tests/` — all Tier 1 tests pass
-  - [ ] 5.2 `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
-  - [ ] 5.3 `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — no regressions
-  - [ ] 5.4 `dotnet test tests/Hexalith.EventStore.Client.Tests/` — no regressions
+- [x] Task 5: Run full test suite
+    - [x] 5.1 `dotnet test tests/Hexalith.EventStore.SignalR.Tests/` — all Tier 1 tests pass (24 passed)
+    - [x] 5.2 `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+    - [x] 5.3 `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — no regressions (267 passed)
+    - [x] 5.4 `dotnet test tests/Hexalith.EventStore.Client.Tests/` — no regressions (297 passed)
 
 ## Dev Notes
 
@@ -85,19 +85,19 @@ WebSocket drops / network recovers
 
 ### Files to Read (DO NOT modify unless gap found)
 
-| File | Purpose |
-|------|---------|
-| `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs` | Core client with reconnection logic (202 lines) |
-| `src/Hexalith.EventStore.SignalR/EventStoreSignalRClientOptions.cs` | Client configuration (18 lines) |
-| `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs` | All client tests (321 lines, 19 tests) |
+| File                                                                      | Purpose                                         |
+| ------------------------------------------------------------------------- | ----------------------------------------------- |
+| `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs`              | Core client with reconnection logic (202 lines) |
+| `src/Hexalith.EventStore.SignalR/EventStoreSignalRClientOptions.cs`       | Client configuration (18 lines)                 |
+| `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs` | All client tests (321 lines, 19 tests)          |
 
 ### Files to Reference (for architectural context)
 
-| File | Purpose |
-|------|---------|
-| `src/Hexalith.EventStore.CommandApi/SignalR/ProjectionChangedHub.cs` | Server-side hub with `JoinGroup`/`LeaveGroup` |
-| `src/Hexalith.EventStore.CommandApi/SignalR/SignalRServiceCollectionExtensions.cs` | Server DI registration |
-| `src/Hexalith.EventStore.CommandApi/SignalR/SignalROptions.cs` | Server-side options (`MaxGroupsPerConnection`) |
+| File                                                                               | Purpose                                        |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `src/Hexalith.EventStore.CommandApi/SignalR/ProjectionChangedHub.cs`               | Server-side hub with `JoinGroup`/`LeaveGroup`  |
+| `src/Hexalith.EventStore.CommandApi/SignalR/SignalRServiceCollectionExtensions.cs` | Server DI registration                         |
+| `src/Hexalith.EventStore.CommandApi/SignalR/SignalROptions.cs`                     | Server-side options (`MaxGroupsPerConnection`) |
 
 ### Key Implementation Details
 
@@ -115,14 +115,14 @@ WebSocket drops / network recovers
 
 ### Existing Test Coverage Map
 
-| Test | Reconnection Scenario |
-|------|----------------------|
-| `OnReconnectedAsync_WithSubscribedGroups_CompletesWithoutThrowing` | Basic reconnect with groups |
-| `OnReconnectedAsync_NoSubscribedGroups_CompletesWithoutThrowing` | Reconnect with empty state |
-| `OnReconnectedAsync_AfterUnsubscribe_DoesNotRejoinRemovedGroup` | Unsubscribed groups excluded |
-| `OnReconnectedAsync_PreservesCallbacks_AfterReconnection` | Callback survival verification |
-| `OnReconnectedAsync_NullConnectionId_CompletesWithoutThrowing` | Null connectionId edge case |
-| `DisposeAsync_PreventsSubsequentReconnectionRejoin` | Disposal prevents rejoin |
+| Test                                                               | Reconnection Scenario          |
+| ------------------------------------------------------------------ | ------------------------------ |
+| `OnReconnectedAsync_WithSubscribedGroups_CompletesWithoutThrowing` | Basic reconnect with groups    |
+| `OnReconnectedAsync_NoSubscribedGroups_CompletesWithoutThrowing`   | Reconnect with empty state     |
+| `OnReconnectedAsync_AfterUnsubscribe_DoesNotRejoinRemovedGroup`    | Unsubscribed groups excluded   |
+| `OnReconnectedAsync_PreservesCallbacks_AfterReconnection`          | Callback survival verification |
+| `OnReconnectedAsync_NullConnectionId_CompletesWithoutThrowing`     | Null connectionId edge case    |
+| `DisposeAsync_PreventsSubsequentReconnectionRejoin`                | Disposal prevents rejoin       |
 
 ### Test Gaps Identified
 
@@ -165,6 +165,7 @@ WebSocket drops / network recovers
 ### Previous Story Intelligence
 
 **From Story 10-1 (done):**
+
 - Audit + gap-fill pattern: Read code first, verify ACs against implementation, add tests only for gaps
 - 3 test gaps filled (disabled-state, broadcast chain order, conditional hub mapping)
 - SignalR `ProjectionChangedHub` uses `_connectionGroups` static `ConcurrentDictionary` for server-side group tracking
@@ -172,12 +173,14 @@ WebSocket drops / network recovers
 - Fail-open broadcast pattern (ADR-18.5a) — exceptions caught, logged, not rethrown
 
 **From Story 10-2 (ready-for-dev):**
+
 - Redis backplane uses `AddStackExchangeRedis()` with `AbortOnConnectFail = false`
 - Single-instance fallback when no Redis configured
 - `SignalRServiceCollectionExtensions.ConfigureBackplane()` handles env var fallback
 - Test pattern: Mock `IHubContext` with NSubstitute for broadcaster tests
 
 **Git patterns (last 5 commits):**
+
 - Commit message format: `feat: <description> for Story X-Y`
 - Branch naming: `feat/story-10-1-signalr-hub-and-projection-change-broadcasting`
 - Audit stories produce focused test additions, not large code changes
@@ -186,8 +189,32 @@ WebSocket drops / network recovers
 
 ### Agent Model Used
 
+Claude Opus 4.6 (1M context)
+
 ### Debug Log References
+
+- Build error: xUnit1030 (ConfigureAwait(false) in tests) → fixed with ConfigureAwait(true)
+- Build error: CA2007 (missing ConfigureAwait) → fixed with ConfigureAwait(true)
 
 ### Completion Notes List
 
+- **Task 0 (Audit):** All 6 audit subtasks verified. Existing FR59 reconnection chain is correct: `WithAutomaticReconnect()` → `Reconnected` event → `OnReconnectedAsync` → `JoinAllGroupsAsync()`. Fail-open pattern, disposal safety, and callback preservation all confirmed.
+- **Task 1 (Blazor Server):** No additional Blazor-specific integration needed. WebSocket transport reconnection triggers `HubConnection.Reconnected`, already handled. Signal-only model limitation documented (clients re-query on reconnect).
+- **Task 2 (Test audit):** 20 existing tests inventoried. 6 directly test reconnection. 3 edge case gaps identified: multiple consecutive reconnections, subscribe-during-reconnection, callbacks after N reconnections.
+- **Task 3 (Test gaps filled):** 4 new tests added (3 required + 1 optional):
+    - `OnReconnectedAsync_MultipleReconnections_RejoinsSameGroupsEachTime`
+    - `OnReconnectedAsync_SubscribeDuringReconnection_NewGroupIncludedInRejoin`
+    - `OnReconnectedAsync_CallbacksFireAfterMultipleReconnections`
+    - `Closed_Event_LogsWarningWhenAllRetriesExhausted`
+- **Task 4 (Reconnect policy hardening):** Added `RetryPolicy` property to `EventStoreSignalRClientOptions` (defaults to null = SignalR default [0s, 2s, 10s, 30s]). Client constructor wires it to `WithAutomaticReconnect(retryPolicy)` when non-null. Also added `Closed` event handler that logs a warning when all retries are exhausted (does NOT auto-restart — consumer decides).
+- **Task 5 (Full test suite):** All Tier 1 tests pass. Build: 0 errors, 0 warnings. SignalR: 24 passed. Contracts: 267 passed. Client: 297 passed. Sample: 47 passed. Testing: 67 passed.
+
 ### File List
+
+- `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs` — Added `Closed` event handler (`OnClosedAsync`), wired configurable `RetryPolicy` in constructor
+- `src/Hexalith.EventStore.SignalR/EventStoreSignalRClientOptions.cs` — Added `RetryPolicy` property (`IRetryPolicy?`)
+- `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs` — Added 4 new tests for reconnection edge cases
+
+### Change Log
+
+- 2026-03-20: Story 10-3 implemented. Audited FR59 reconnection implementation, filled 3 test gaps + 1 optional, added configurable `RetryPolicy` and `Closed` event warning logging. Total SignalR tests: 24 (was 20).

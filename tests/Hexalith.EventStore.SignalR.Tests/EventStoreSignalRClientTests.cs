@@ -1,5 +1,8 @@
 using System.Reflection;
 
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
+
 using Shouldly;
 
 namespace Hexalith.EventStore.SignalR.Tests;
@@ -32,6 +35,39 @@ public class EventStoreSignalRClientTests {
         var sut = new EventStoreSignalRClient(options);
 
         await sut.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Constructor_WithCustomRetryPolicy_PassesPolicyToReconnectConfigurator() {
+        var retryPolicy = new TestRetryPolicy();
+        var options = new EventStoreSignalRClientOptions {
+            HubUrl = "https://localhost/hubs/projection-changes",
+            RetryPolicy = retryPolicy,
+        };
+
+        IRetryPolicy? capturedPolicy = null;
+        var sut = CreateClientWithReconnectConfigurator(options, (_, policy) => capturedPolicy = policy);
+        try {
+            capturedPolicy.ShouldBeSameAs(retryPolicy);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Constructor_WithNullRetryPolicy_PassesNullToReconnectConfigurator() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+
+        var sentinel = new TestRetryPolicy();
+        IRetryPolicy? capturedPolicy = sentinel;
+        var sut = CreateClientWithReconnectConfigurator(options, (_, policy) => capturedPolicy = policy);
+        try {
+            capturedPolicy.ShouldBeNull();
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
     }
 
     [Fact]
@@ -299,6 +335,116 @@ public class EventStoreSignalRClientTests {
         // Cannot invoke OnReconnectedAsync after disposal — connection is disposed
     }
 
+    [Fact]
+    public async Task OnReconnectedAsync_MultipleReconnections_KeepsTrackedGroupsAvailable() {
+        // Verify tracked groups and callbacks survive repeated reconnection handling.
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            await sut.SubscribeAsync("counter", "acme", () => { });
+            await sut.SubscribeAsync("orders", "contoso", () => { });
+
+            // Simulate 3 consecutive reconnection callbacks.
+            await InvokeOnReconnectedAsync(sut, "conn-1");
+            await InvokeOnReconnectedAsync(sut, "conn-2");
+            await InvokeOnReconnectedAsync(sut, "conn-3");
+
+            // Callback dispatch should still work afterward.
+            int callbackCount = 0;
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            InvokeProjectionChanged(sut, "counter", "acme");
+            callbackCount.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_SubscribeAfterPriorReconnect_PreservesNewGroupCallback() {
+        // Verify a newly tracked group still dispatches callbacks after another reconnection callback.
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            await sut.SubscribeAsync("counter", "acme", () => { });
+
+            // Simulate first reconnection
+            await InvokeOnReconnectedAsync(sut, "conn-1");
+
+            // Subscribe to a new group while connected (simulating between disconnect/reconnect)
+            int newGroupCallbackCount = 0;
+            await sut.SubscribeAsync("orders", "contoso", () => newGroupCallbackCount++);
+
+            // Simulate second reconnection callback.
+            await InvokeOnReconnectedAsync(sut, "conn-2");
+
+            // Verify callback for the newly added group still works.
+            InvokeProjectionChanged(sut, "orders", "contoso");
+            newGroupCallbackCount.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_MultipleReconnections_PreservesCallbackDispatch() {
+        // Verify callbacks survive repeated reconnection handling.
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+
+            // Simulate 5 consecutive reconnection callbacks.
+            for (int i = 1; i <= 5; i++) {
+                await InvokeOnReconnectedAsync(sut, $"conn-{i}");
+
+                // Verify callback fires correctly after each cycle.
+                InvokeProjectionChanged(sut, "counter", "acme");
+            }
+
+            // Callback should have fired once per cycle.
+            callbackCount.ShouldBe(5);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Closed_Event_WithException_LogsNeutralWarning() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            await InvokeOnClosedAsync(sut, new InvalidOperationException("Connection lost")).ConfigureAwait(true);
+
+            logEntries.Count.ShouldBe(1);
+            logEntries[0].Level.ShouldBe(LogLevel.Warning);
+            logEntries[0].Message.ShouldContain("SignalR connection closed unexpectedly.");
+            logEntries[0].Message.ShouldNotContain("retries were exhausted");
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Closed_Event_WithNullException_DoesNotLogWarning() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            await InvokeOnClosedAsync(sut, null).ConfigureAwait(true);
+
+            logEntries.ShouldBeEmpty();
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
     private static void InvokeProjectionChanged(EventStoreSignalRClient client, string projectionType, string tenantId) {
         MethodInfo method = typeof(EventStoreSignalRClient)
             .GetMethod("OnProjectionChanged", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -317,4 +463,47 @@ public class EventStoreSignalRClientTests {
             await task.ConfigureAwait(false);
         }
     }
+
+    private static async Task InvokeOnClosedAsync(EventStoreSignalRClient client, Exception? exception) {
+        MethodInfo method = typeof(EventStoreSignalRClient)
+            .GetMethod("OnClosedAsync", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OnClosedAsync method not found.");
+
+        object? result = method.Invoke(client, [exception]);
+        if (result is Task task) {
+            await task.ConfigureAwait(true);
+        }
+    }
+
+    private static EventStoreSignalRClient CreateClientWithReconnectConfigurator(
+        EventStoreSignalRClientOptions options,
+        Action<HubConnectionBuilder, IRetryPolicy?> reconnectConfigurator) {
+        Type reconnectConfiguratorType = typeof(EventStoreSignalRClient)
+            .GetNestedType("ReconnectConfigurator", BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("ReconnectConfigurator delegate not found.");
+
+        object reconnectConfiguratorDelegate = Delegate.CreateDelegate(reconnectConfiguratorType, reconnectConfigurator.Target, reconnectConfigurator.Method);
+
+        ConstructorInfo constructor = typeof(EventStoreSignalRClient)
+            .GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, [typeof(EventStoreSignalRClientOptions), typeof(ILogger<EventStoreSignalRClient>), reconnectConfiguratorType], null)
+            ?? throw new InvalidOperationException("Reconnect-configurable constructor not found.");
+
+        return (EventStoreSignalRClient)constructor.Invoke([options, null!, reconnectConfiguratorDelegate]);
+    }
+
+    private sealed class TestRetryPolicy : IRetryPolicy {
+        public TimeSpan? NextRetryDelay(RetryContext retryContext) => TimeSpan.FromMilliseconds(250);
+    }
+
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message);
 }
