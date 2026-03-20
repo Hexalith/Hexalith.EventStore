@@ -36,6 +36,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
+        services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
@@ -56,6 +57,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddOptions<SnapshotOptions>()
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
+            .ValidateOnStart();
+        _ = services.AddOptions<ProjectionOptions>()
+            .Bind(configuration.GetSection("EventStore:Projections"))
+            .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
             .ValidateOnStart();
         services.AddActors(options => {
             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];

@@ -1,4 +1,6 @@
 
+using System.Runtime.Serialization;
+
 using Hexalith.EventStore.Contracts.Identity;
 
 namespace Hexalith.EventStore.Server.Events;
@@ -23,24 +25,25 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="SerializationFormat">The serialization format (e.g., "json").</param>
 /// <param name="Payload">The serialized event data.</param>
 /// <param name="Extensions">Optional extension metadata.</param>
+[DataContract]
 public record EventEnvelope(
-    string MessageId,
-    string AggregateId,
-    string AggregateType,
-    string TenantId,
-    string Domain,
-    long SequenceNumber,
-    long GlobalPosition,
-    DateTimeOffset Timestamp,
-    string CorrelationId,
-    string CausationId,
-    string UserId,
-    string DomainServiceVersion,
-    string EventTypeName,
-    int MetadataVersion,
-    string SerializationFormat,
-    byte[] Payload,
-    IDictionary<string, string>? Extensions) {
+    [property: DataMember] string MessageId,
+    [property: DataMember] string AggregateId,
+    [property: DataMember] string AggregateType,
+    [property: DataMember] string TenantId,
+    [property: DataMember] string Domain,
+    [property: DataMember] long SequenceNumber,
+    [property: DataMember] long GlobalPosition,
+    [property: DataMember] DateTimeOffset Timestamp,
+    [property: DataMember] string CorrelationId,
+    [property: DataMember] string CausationId,
+    [property: DataMember] string UserId,
+    [property: DataMember] string DomainServiceVersion,
+    [property: DataMember] string EventTypeName,
+    [property: DataMember] int MetadataVersion,
+    [property: DataMember] string SerializationFormat,
+    [property: DataMember] byte[] Payload,
+    [property: DataMember] IDictionary<string, string>? Extensions) {
     /// <summary>Gets the aggregate identity derived from this event's tenant, domain, and aggregate ID.</summary>
     public AggregateIdentity Identity => new(TenantId, Domain, AggregateId);
 
