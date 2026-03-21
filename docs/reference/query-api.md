@@ -230,6 +230,25 @@ A common pattern is:
 3. When `ProjectionChanged` fires, re-run the query with `If-None-Match`.
 4. Refresh only when the API returns `200 OK`; keep the cached UI when it returns `304 Not Modified`.
 
+## Projection Type Naming
+
+Projection type names are base64url-encoded inside self-routing ETags (format: `{base64url(projectionType)}.{guid}`). Longer names produce proportionally longer ETag tokens in HTTP headers. Use short, descriptive names to keep ETags compact.
+
+| Recommended | Avoid | Reason |
+|-------------|-------|--------|
+| `order-list` | `mycompany-sales-projections-order-list-projection` | Short name = compact ETag |
+| `product-catalog` | `ecommerce-inventory-readmodels-product-catalog-readmodel` | No namespace needed |
+| `user-profile` | `application-layer-identity-projections-user-profile-v2` | No version suffix needed |
+
+**Guidelines:**
+
+- Use short kebab-case names (e.g., `order-list`, `product-catalog`, `user-profile`) — the API validator enforces the pattern `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`
+- Omit namespace prefixes — projection type names are already scoped by tenant and domain
+- Omit suffixes like `-projection`, `-readmodel`, or version numbers — these add bytes without adding clarity
+- The `projectionType` field in `POST /projections/changed` and SignalR group names uses the same short name
+
+> **Reference:** FR64 — projection type names should be short for compact ETags.
+
 ## Next Steps
 
 **Next:** [NuGet Packages Guide](nuget-packages.md) — choose the packages needed for your host, domain service, tests, and real-time clients

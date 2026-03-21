@@ -183,7 +183,7 @@ $ dotnet add package Hexalith.EventStore.Server
 
 ### Hexalith.EventStore.SignalR
 
-Signal-only client helper for real-time projection change notifications. This package is designed for read-model consumers that want to refresh cached or displayed projection data when the server announces a change.
+Signal-only client helper for real-time projection change notifications. This package is designed for read-model consumers that want to refresh cached or displayed projection data when the server announces a change. When naming projection types, use short names for compact ETags — see [Projection Type Naming](query-api.md#projection-type-naming).
 
 **Key namespace and types:**
 

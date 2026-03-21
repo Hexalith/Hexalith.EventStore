@@ -103,6 +103,8 @@ The system follows a command-event architecture with a built-in read-model refre
 
 ## Documentation
 
+Full documentation index: [Documentation](docs/index.md)
+
 ### Getting Started
 
 - [Quickstart Guide](docs/getting-started/quickstart.md) — up and running in under 10 minutes
