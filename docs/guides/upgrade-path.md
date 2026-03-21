@@ -117,7 +117,7 @@ For major upgrades, review these areas of your codebase for compatibility:
 
 ## NuGet Package Updates
 
-Hexalith.EventStore publishes 6 NuGet packages, all versioned as a single unit via [MinVer](https://github.com/adamralph/minver) git tags (prefix `v`):
+Hexalith.EventStore publishes 6 NuGet packages, all versioned as a single unit via semantic-release using Conventional Commits. Each release is published under a `v`-prefixed Git tag:
 
 | Package                         | Purpose                                             |
 | ------------------------------- | --------------------------------------------------- |
@@ -130,11 +130,11 @@ Hexalith.EventStore publishes 6 NuGet packages, all versioned as a single unit v
 
 All packages use centralized version management via [`Directory.Packages.props`](../../Directory.Packages.props). To update, change the version in that single file.
 
-> **Warning:** All installed Hexalith packages **MUST** be updated together — mixed versions are unsupported and **WILL** cause runtime type mismatches. The packages are versioned as a single unit from one git tag. Mixing versions (for example, v1 Contracts with v2 Server) means serialized types will not match because packages share contract types such as `EventEnvelope`, `AggregateIdentity`, and `DomainResult` across Client, Server, SignalR, and Testing.
+> **Warning:** All installed Hexalith packages **MUST** be updated together — mixed versions are unsupported and **WILL** cause runtime type mismatches. The packages are versioned as a single release unit. Mixing versions (for example, v1 Contracts with v2 Server) means serialized types will not match because packages share contract types such as `EventEnvelope`, `AggregateIdentity`, and `DomainResult` across Client, Server, SignalR, and Testing.
 
 ## Dependency Compatibility Matrix
 
-The following table shows which dependency versions are required for each Hexalith major version. For the authoritative version pins for any release, check [`Directory.Packages.props`](../../Directory.Packages.props) at the corresponding git tag.
+The following table shows which dependency versions are required for each Hexalith major version. For the authoritative version pins for any release, check [`Directory.Packages.props`](../../Directory.Packages.props) at the corresponding release tag.
 
 | Hexalith Version | .NET SDK | DAPR SDK | .NET Aspire | MediatR | FluentValidation |
 | ---------------- | -------- | -------- | ----------- | ------- | ---------------- |

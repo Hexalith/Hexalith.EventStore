@@ -4,10 +4,6 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <ItemGroup Label="Build">
-    <PackageVersion Include="MinVer" Version="7.0.0" />
-  </ItemGroup>
-
   <ItemGroup Label="Dapr">
     <PackageVersion Include="Dapr.Client" Version="1.16.1" />
     <PackageVersion Include="Dapr.AspNetCore" Version="1.16.1" />

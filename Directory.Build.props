@@ -22,16 +22,6 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
-  <!-- MinVer: Git tag-based SemVer versioning -->
-  <PropertyGroup>
-    <MinVerTagPrefix>v</MinVerTagPrefix>
-    <MinVerDefaultPreReleaseIdentifiers>preview.0</MinVerDefaultPreReleaseIdentifiers>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="MinVer" PrivateAssets="All" />
-  </ItemGroup>
-
   <!-- XML documentation is generated only for explicit API reference builds on packable projects. -->
   <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(ApiReferenceBuild)' == 'true'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

@@ -16,7 +16,7 @@ RUN dotnet restore samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample
 COPY src/ src/
 COPY samples/ samples/
 RUN dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj \
-    -c Release -o /app/publish --no-restore /p:MinVerSkip=true
+    -c Release -o /app/publish --no-restore
 
 # Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime

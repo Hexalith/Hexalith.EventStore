@@ -1531,13 +1531,14 @@ Consistent across Events/Timeline page and ActivityChart:
 FluentSelect dropdown in the page header (Commands, Events pages):
 
 - Options: "All Tenants" (default) + list of registered tenants
+- Tenant list fetched from Hexalith.Tenants projection API (TenantIndexReadModel)
 - Changing tenant scope filters all data on the current page
 - URL query parameter updates: `?tenant=acme`
 - When navigated from sidebar tree, tenant scope is pre-set to the selected tenant
 
 ### Form & Configuration Patterns
 
-Configuration views (tenant settings, domain service registration, system settings) follow a consistent form layout:
+Configuration views (tenant settings via Hexalith.Tenants API, domain service registration, system settings) follow a consistent form layout:
 
 **Form structure:**
 - Section headers group related fields
@@ -2079,3 +2080,39 @@ Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor da
 | D2 | API reference embedded at `/swagger` | UX Pattern Analysis anti-pattern #2 | No separate docs site needed for API consumers. Swagger UI is the documentation |
 | D3 | Error reference pages at `type` URIs | Rule E10, Journey 6 | Each error `type` URI explains the error, shows an example, and suggests resolution |
 | D4 | Progressive documentation structure | Experience Principle "organized depth" | Quick start (assumes DDD knowledge), concepts (for newcomers), reference (deep dives). Levels never mixed |
+
+## v2 Administration Tooling UX Requirements
+
+### Admin Web UI (Blazor Fluent UI)
+
+| # | Requirement | Description |
+|---|-------------|-------------|
+| UX-DR41 | Command palette (Ctrl+K) | Global fuzzy search across streams, aggregates, projections, tenants, event types, and admin actions |
+| UX-DR42 | Deep linking | Every view, stream, event, projection, and filter has a unique shareable URL |
+| UX-DR43 | Context-aware breadcrumbs | Investigation path shown as navigation trail, shareable for incident collaboration |
+| UX-DR44 | Blame view | Per-field provenance for aggregate state — shows which event last changed each value, when, from which command, by which user |
+| UX-DR45 | State diff viewer | Side-by-side comparison between any two event positions with changed fields highlighted |
+| UX-DR46 | Projection lag visualization | Visual gap chart (Kafka UI-inspired) showing produced position vs consumed position over time |
+| UX-DR47 | Observability deep links | Every trace/metric/log summary includes a button linking to the detail view in the configured external tool (Zipkin, Grafana, Aspire). Missing tool URLs gracefully hide the link |
+| UX-DR48 | Virtualized rendering | Lazy-loaded infinite scroll for all lists — handles streams with millions of events without browser memory issues |
+| UX-DR49 | Keyboard navigation | Vim-style shortcuts (j/k navigation, / search, g go-to) and full ARIA accessibility with screen reader support |
+
+### Admin CLI (`eventstore-admin`)
+
+| # | Requirement | Description |
+|---|-------------|-------------|
+| UX-DR50 | Subcommand tree | Root command `eventstore-admin` with subcommands: `stream`, `projection`, `health`, `tenant`, `snapshot`, `backup`, `config` |
+| UX-DR51 | Global options | `--url` (Admin API URL), `--token` (auth), `--format json\|csv\|table` (output), `--output <file>` (redirect) |
+| UX-DR52 | Exit codes | 0 (success/healthy), 1 (degraded/warning), 2 (critical/error) — designed for CI/CD gates and monitoring scripts |
+| UX-DR53 | Dynamic shell completion | Tab-completion querying live event store for stream names, tenant IDs, projection names |
+| UX-DR54 | Connection profiles | `eventstore-admin profile add prod --url https://...`, `eventstore-admin use prod` — active profile shown in output header |
+| UX-DR55 | Interactive REPL | `eventstore-admin repl` with context persistence (`use tenant acme-corp` scopes subsequent commands) |
+
+### Admin MCP Server
+
+| # | Requirement | Description |
+|---|-------------|-------------|
+| UX-DR56 | Structured output | All read operations return structured JSON — no HTML or human-formatted output |
+| UX-DR57 | Approval-gated writes | Write operations (projection reset, backup trigger) require explicit `confirm: true` parameter — AI agent must present action to user for approval before executing |
+| UX-DR58 | Tenant context | Set tenant scope for subsequent queries, preventing cross-tenant data leakage in AI responses |
+| UX-DR59 | Investigation session state | MCP server maintains context across tool calls within a session, enabling progressive diagnosis without repeating parameters |

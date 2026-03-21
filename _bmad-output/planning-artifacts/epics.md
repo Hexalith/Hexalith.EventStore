@@ -194,8 +194,8 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - D6: Pub/Sub Topic Naming -- `{tenant}.{domain}.events` dot-separated pattern
 - D7: Domain Service Invocation -- DAPR service invocation (`DaprClient.InvokeMethodAsync`) with mTLS and resiliency policies
 - D8: Rate Limiting -- ASP.NET Core built-in `RateLimiting` middleware with `SlidingWindowRateLimiter`, per-tenant from JWT claims
-- D9: Package Versioning -- MinVer (version from Git tags, zero config, single `Directory.Build.props`)
-- D10: CI/CD Pipeline -- GitHub Actions (build+test on PR, pack+publish on release tag)
+- D9: Package Versioning -- semantic-release (automated SemVer from Conventional Commits, single version via `-p:Version=`)
+- D10: CI/CD Pipeline -- GitHub Actions (build+test+commitlint on PR, semantic-release on merge to main)
 - D11: E2E Security Testing Infrastructure -- Keycloak in Aspire with realm-as-code (`hexalith-realm.json`), 5 test users, port 8180, zero auth code changes. E2E tests acquire real OIDC tokens
 - D12: ULID Everywhere -- `Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId()` as single ULID generation mechanism. Contracts depends on `Hexalith.Commons.UniqueIds`, not raw ULID library. String-typed ULID fields throughout
 
@@ -393,6 +393,21 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 | FR65 | 1 | metadataVersion field in envelope |
 | FR66 | 1 | Aggregate tombstoning via terminal event |
 | FR67 | 4 | Per-aggregate backpressure (HTTP 429) |
+| FR68 | 15 | Recently active streams listing |
+| FR69 | 15 | Unified command/event/query timeline |
+| FR70 | 15 + 20 | Point-in-time state exploration |
+| FR71 | 15 + 20 | Aggregate state diff |
+| FR72 | 20 | Full causation chain tracing |
+| FR73 | 15 | Projection management with controls |
+| FR74 | 15 | Event/command/aggregate type catalog |
+| FR75 | 15 + 19 | Operational health + DAPR visibility |
+| FR76 | 16 | Storage management |
+| FR77 | 16 (via Hexalith.Tenants) | Tenant management — lifecycle, users, configuration managed by Hexalith.Tenants peer service; EventStore admin UI/CLI/MCP consume its API |
+| FR78 | 16 | Dead-letter queue management |
+| FR79 | 14 | Three-interface shared Admin API |
+| FR80 | 17 | CLI output formats, exit codes, completions |
+| FR81 | 18 | MCP structured tools with approval gates |
+| FR82 | 15 | Observability deep links |
 
 ## Epic List
 
@@ -460,6 +475,50 @@ The sample Blazor UI demonstrates 3 reference patterns for handling projection c
 Quick start guide (3 pages, clone to first command in 10 minutes), error reference pages at type URIs, progressive documentation structure, Swagger UI as embedded API reference, and repository-wide documentation refresh aligning with the implemented surface area.
 **FRs covered:** FR64
 **Also:** UX-DR30-DR33, SCP-Docs
+
+### Epic 14: Admin API Foundation & Abstractions
+Shared service interfaces, DTOs, and Admin.Server REST API backed by DAPR. The single backend consumed by Web UI (in-process), CLI (HTTP), and MCP (HTTP). Aspire integration with dedicated DAPR sidecar.
+**FRs covered:** FR79, FR82
+**NFRs covered:** NFR40, NFR44, NFR46
+**Also:** ADR-P4, ADR-P5
+**Dependencies:** Epics 1-2
+
+### Epic 15: Admin Web UI — Core Developer Experience
+Blazor Fluent UI shell with activity feed, stream browser, aggregate state inspector, projection dashboard, event type catalog, health dashboard with observability deep links, command palette, and dark mode.
+**FRs covered:** FR68, FR69, FR70, FR71, FR73, FR74, FR75
+**NFRs covered:** NFR41, NFR45
+**Also:** UX-DR34-DR49
+**Dependencies:** Epic 14
+
+### Epic 16: Admin Web UI — DBA Operations
+Storage management, snapshot controls, backup/restore, tenant management, dead-letter queue, consistency checker. Enables Journey 8 (Maria).
+**FRs covered:** FR76, FR77, FR78
+**Dependencies:** Epic 15
+
+### Epic 17: Admin CLI (`eventstore-admin`)
+.NET global tool calling Admin API over HTTP. Scriptable, pipe-friendly, CI/CD-ready with JSON/CSV/table output, exit codes, shell completions, and connection profiles.
+**FRs covered:** FR79, FR80
+**NFRs covered:** NFR42
+**Also:** UX-DR50-DR55
+**Dependencies:** Epic 14
+
+### Epic 18: Admin MCP Server
+MCP server exposing admin operations as AI-callable tools with structured JSON output, approval-gated writes, tenant context, and investigation session state. Enables Journey 9 (Claude).
+**FRs covered:** FR79, FR81
+**NFRs covered:** NFR43
+**Also:** UX-DR56-DR59
+**Dependencies:** Epic 14
+
+### Epic 19: Admin — DAPR Infrastructure Visibility
+DAPR-specific monitoring: sidecar health, actor inspector, pub/sub delivery metrics, resiliency policy viewer, component health history.
+**FRs covered:** FR75 (DAPR portion)
+**Dependencies:** Epics 14, 15
+
+### Epic 20: Admin — Advanced Debugging (Blame/Bisect/Replay)
+Breakthrough debugging features: blame view (per-field provenance), bisect tool (binary search for state divergence), step-through event debugger, command sandbox, and correlation ID trace map.
+**FRs covered:** FR70, FR71, FR72
+**Also:** UX-DR44, UX-DR45
+**Dependencies:** Epic 15
 
 ## Epic 1: Domain Contract Foundation
 
@@ -1146,10 +1205,10 @@ So that the same application runs across Redis, PostgreSQL, and cloud backends w
 **When** DAPR component YAML files are changed,
 **Then** the system functions correctly with zero application code changes, zero recompilation, zero redeployment (FR43, NFR29).
 
-### Story 8.7: CI/CD Pipeline
+### Story 8.7: CI/CD Pipeline (Historical — MinVer replaced by semantic-release in Story 8.8)
 
 As a platform maintainer,
-I want automated CI/CD with MinVer-based versioning,
+I want automated CI/CD with versioning,
 So that builds, tests, and NuGet publishing are consistent and hands-off.
 
 **Acceptance Criteria:**
@@ -1158,13 +1217,13 @@ So that builds, tests, and NuGet publishing are consistent and hands-off.
 **When** GitHub Actions runs,
 **Then** restore, build (Release), and Tier 1+2 tests execute (D10).
 
-**Given** a `v*` tag is pushed,
-**When** the release pipeline runs,
-**Then** all tests pass, NuGet packages are packed, the expected package count is validated, and packages are pushed to NuGet.org (D9, D10).
+**Given** a merge to main with Conventional Commits,
+**When** semantic-release runs,
+**Then** all tests pass, version is determined from commit messages, NuGet packages are packed and published to NuGet.org, and a GitHub Release is created (D9, D10).
 
-**Given** MinVer versioning,
-**When** a tag `v1.0.0` exists on a release commit,
-**Then** all packages receive version `1.0.0` with pre-release versions auto-calculated from tag + commit height (D9).
+**Given** semantic-release versioning,
+**When** a `feat:` commit is merged,
+**Then** all packages receive a minor version bump with the version injected via `-p:Version=` (D9).
 
 ## Epic 9: Query Pipeline & ETag Caching
 
