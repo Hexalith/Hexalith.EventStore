@@ -66,11 +66,11 @@ public partial class EventReplayProjectionActor(
 
         if (!result.HasValue) {
             Log.NoPersistedState(logger, Id.GetId());
-            return new QueryResult(false, default, "No projection state available for this aggregate");
+            return QueryResult.Failure("No projection state available for this aggregate");
         }
 
         Log.PersistedStateReturned(logger, Id.GetId(), result.Value.ProjectionType);
-        return new QueryResult(true, result.Value.State, ProjectionType: result.Value.ProjectionType);
+        return QueryResult.FromPayload(result.Value.GetState(), result.Value.ProjectionType);
     }
 
     private static partial class Log {

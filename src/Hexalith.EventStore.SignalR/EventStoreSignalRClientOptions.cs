@@ -24,4 +24,10 @@ public class EventStoreSignalRClientOptions {
     /// For long-running Blazor Server apps, consider providing an infinite-retry policy with exponential backoff.
     /// </summary>
     public IRetryPolicy? RetryPolicy { get; init; }
+
+    /// <summary>
+    /// Gets an optional configurator for the underlying HTTP connection options.
+    /// Use this to customize SSL certificate validation, proxy settings, etc.
+    /// </summary>
+    public Action<Microsoft.AspNetCore.Http.Connections.Client.HttpConnectionOptions>? ConfigureHttpConnection { get; init; }
 }

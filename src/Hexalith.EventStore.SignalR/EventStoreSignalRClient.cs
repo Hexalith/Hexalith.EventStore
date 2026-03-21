@@ -47,6 +47,8 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
             if (options.AccessTokenProvider is not null) {
                 connectionOptions.AccessTokenProvider = options.AccessTokenProvider;
             }
+
+            options.ConfigureHttpConnection?.Invoke(connectionOptions);
         });
         (reconnectConfigurator ?? ConfigureAutomaticReconnect)(builder, options.RetryPolicy);
 

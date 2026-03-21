@@ -78,6 +78,7 @@ _ = commandApi.WithEnvironment("EventStore__SignalR__Enabled", "true");
 EndpointReference commandApiHttps = commandApi.GetEndpoint("https");
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
     .WithReference(commandApi)
+    .WaitFor(commandApi)
     .WithExternalHttpEndpoints()
     // SignalR HubConnectionBuilder bypasses Aspire service discovery (it doesn't use HttpClientFactory),
     // so we must pass the resolved commandapi endpoint URL explicitly.

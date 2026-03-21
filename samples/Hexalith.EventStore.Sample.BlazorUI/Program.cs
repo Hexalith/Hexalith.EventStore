@@ -26,6 +26,25 @@ builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
     AccessTokenProvider = async () => await sp.GetRequiredService<EventStoreApiAccessTokenProvider>()
         .GetAccessTokenAsync()
         .ConfigureAwait(false),
+    ConfigureHttpConnection = connectionOptions => {
+        // In development, accept the CommandApi's dev certificate for SignalR hub connections.
+        // HttpMessageHandlerFactory covers HTTP negotiate/long-polling/SSE transports.
+        // WebSocketConfiguration covers the WebSocket transport (SignalR's default) — its TLS
+        // stack is separate and NOT affected by HttpMessageHandlerFactory.
+        if (builder.Environment.IsDevelopment()) {
+            connectionOptions.HttpMessageHandlerFactory = handler => {
+                if (handler is HttpClientHandler clientHandler) {
+                    clientHandler.ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                }
+
+                return handler;
+            };
+            connectionOptions.WebSocketConfiguration = ws => {
+                ws.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+            };
+        }
+    },
 });
 builder.Services.AddSingleton<EventStoreSignalRClient>();
 builder.Services.AddHostedService<SignalRClientStartup>();

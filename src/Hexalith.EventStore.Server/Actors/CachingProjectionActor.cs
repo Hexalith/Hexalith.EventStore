@@ -23,7 +23,7 @@ public abstract partial class CachingProjectionActor(
     ILogger logger)
     : Actor(host), IProjectionActor {
     private string? _cachedETag;
-    private JsonElement? _cachedPayload;
+    private byte[]? _cachedPayloadBytes;
     private string? _discoveredProjectionType;
 
     /// <inheritdoc/>
@@ -36,9 +36,9 @@ public abstract partial class CachingProjectionActor(
             .ConfigureAwait(false);
 
         // Cache hit: ETag is non-null, matches cached, and payload exists
-        if (currentETag is not null && currentETag == _cachedETag && _cachedPayload is not null) {
+        if (currentETag is not null && currentETag == _cachedETag && _cachedPayloadBytes is not null) {
             Log.CacheHit(logger, envelope.CorrelationId, Id.GetId(), _cachedETag[..Math.Min(8, _cachedETag.Length)]);
-            return new QueryResult(true, _cachedPayload.Value, ProjectionType: _discoveredProjectionType);
+            return new QueryResult(true, _cachedPayloadBytes, ProjectionType: _discoveredProjectionType);
         }
 
         // Cache miss: execute the actual query
@@ -75,9 +75,8 @@ public abstract partial class CachingProjectionActor(
                 }
             }
 
-            // CRITICAL: Clone() creates an independent copy safe for long-lived caching.
-            // Without it, the JsonElement becomes a dangling reference when the original JsonDocument is disposed.
-            _cachedPayload = result.Payload.Clone();
+            // Cache the serialized payload bytes (already safe for long-lived caching).
+            _cachedPayloadBytes = result.PayloadBytes;
             _cachedETag = currentETag;
             Log.CacheMiss(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
         }
