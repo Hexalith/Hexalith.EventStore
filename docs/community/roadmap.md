@@ -60,7 +60,7 @@ This roadmap is shaped by community feedback. If a planned feature matters to yo
 
 ## Versioning and Release Cadence
 
-Hexalith.EventStore uses [Semantic Versioning](https://semver.org/) via [MinVer](https://github.com/adamralph/minver). Releases are triggered by git tags (prefix `v`) and published to [NuGet.org](https://www.nuget.org/packages?q=Hexalith.EventStore).
+Hexalith.EventStore uses [Semantic Versioning](https://semver.org/) via semantic-release and Conventional Commits. Merges to `main` determine the next version automatically, create a `v`-prefixed Git tag, publish packages to [NuGet.org](https://www.nuget.org/packages?q=Hexalith.EventStore), and generate release notes.
 
 - **Current releases:** Breaking changes follow documented release notes and upgrade guidance in the [Changelog](../../CHANGELOG.md) and [Upgrade Path](../guides/upgrade-path.md).
 - **Forward compatibility goal:** Breaking changes should continue to follow SemVer major version increments with explicit migration guidance.

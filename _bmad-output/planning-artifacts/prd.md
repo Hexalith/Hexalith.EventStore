@@ -74,8 +74,10 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 - **Domain service developers** -- Build event-sourced DDD services using the pure function programming model via NuGet packages and REST Command API
 - **DevOps engineers** -- Deploy and configure EventStore across environments using Aspire publishers and DAPR component YAML files
 - **Support engineers** (v2) -- Monitor and resolve operational issues via the Blazor Fluent UI admin dashboard
+- **Database administrators** (v2) -- Manage event store health, storage, snapshots, backups, tenants, and operational lifecycle via the admin Web UI and CLI
+- **AI agents** (v2) -- Diagnose issues, query event store state, and propose remediation autonomously via the MCP server interface
 
-**Development Strategy:** Deliberate phasing -- the current release delivers the complete command-to-event pipeline plus the query/projection caching pipeline (self-routing ETag cache invalidation with runtime projection discovery, query actor routing, optional SignalR real-time notification, and query contract support) using DAPR actors with a workflow-ready state machine design. v2 now focuses on DAPR Workflow orchestration and the Blazor operational dashboard.
+**Development Strategy:** Deliberate phasing -- the current release delivers the complete command-to-event pipeline plus the query/projection caching pipeline (self-routing ETag cache invalidation with runtime projection discovery, query actor routing, optional SignalR real-time notification, and query contract support) using DAPR actors with a workflow-ready state machine design. v2 now focuses on DAPR Workflow orchestration and a comprehensive Administration Tooling layer — Blazor Web UI (event store-specific operational dashboard with developer debugging and DBA operations), CLI tool (`eventstore-admin` distributed as a .NET global tool), and MCP server (enabling AI agents to diagnose and manage the event store programmatically). The admin tooling provides event store domain-aware views (streams, aggregates, projections, sagas) with deep links to existing observability tools (Zipkin/Jaeger for traces, Prometheus/Grafana for metrics, Aspire Dashboard for structured logs) — it does not replicate their functionality.
 
 **Technology Stack:** .NET 10 LTS, DAPR 1.16.1, Aspire 13.1.x, C# 14
 
@@ -103,7 +105,7 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 **Operational Experience (v2 -- with Blazor UI, Alex persona):**
 
 - **Mean time to diagnosis**: Support engineer identifies the failure point for a stuck command in under 2 minutes using the Blazor dashboard
-- **Self-service resolution**: Common operational tasks (tenant suspension, domain version rollback, dead-letter inspection/replay) completable entirely through the UI without developer involvement
+- **Self-service resolution**: Common operational tasks (tenant suspension via Hexalith.Tenants UI integration, domain version rollback, dead-letter inspection/replay) completable entirely through the UI without developer involvement
 
 **Query Pipeline Experience (current release):**
 
@@ -111,6 +113,14 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 - **Zero-infrastructure caching**: A developer adds query caching to an existing projection without writing any caching infrastructure code -- one `NotifyProjectionChanged` call, one `IQueryResponse<T>` implementation, and one query contract definition. The client sends standard HTTP headers only -- zero projection knowledge required
 - **Cache effectiveness**: Under steady-state read-heavy workloads, 80%+ of query requests resolve as HTTP 304 at the ETag pre-check gate (single actor call, no query actor activation, no database query)
 - **Real-time UI update**: A connected Blazor/browser client receives a SignalR "changed" signal within 1 second of a projection update, triggering a UI refresh without polling
+
+**Administration Tooling Experience (v2):**
+
+- **Developer debugging time**: A developer identifies the root cause of a stale projection or incorrect aggregate state in under 5 minutes using the admin Web UI's blame view, state inspector, and projection error inspector
+- **DBA daily check**: A DBA completes their morning health assessment in under 2 minutes via the operational health dashboard — green means go, yellow means investigate, red means act
+- **CLI scriptability**: All admin read operations are scriptable via `eventstore-admin` with JSON/CSV/table output formats, exit codes suitable for CI/CD gates, and pipe-friendly streaming
+- **AI agent autonomy**: An MCP-connected AI agent can diagnose a reported issue (trace the causation chain, check projection health, compare aggregate state) without human navigation, proposing remediation with approval gates
+- **Observability integration**: Every trace, metric, and log view in the admin UI links to the corresponding detail in the configured observability tool (Zipkin/Jaeger, Prometheus/Grafana, Aspire Dashboard) — the admin tool never replicates their UIs
 
 ### Business Success
 
@@ -340,6 +350,38 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 **Resolution:** Marco's order history page handles 1M+ orders across tenants with sub-10ms cache hits, zero database load on unchanged data, and real-time UI updates via SignalR. He wrote zero caching infrastructure code -- one `NotifyProjectionChanged` call and one query contract definition. The ETag actor handles invalidation, the query actor handles caching, SignalR handles browser notification. When he accidentally deploys a domain service version that changes JSON serialization order, the checksum-based query actor IDs create duplicate cache entries -- but DAPR's idle timeout garbage-collects the orphans within an hour, and the ETag invalidation ensures fresh data is always served. The footgun stings but doesn't bite.
 
 **Capabilities Revealed:** 3-tier query actor routing, self-routing ETag cache invalidation (`{base64url(projectionType)}.{guid}` format), HTTP 304 pre-check at endpoint (decoded from opaque ETag, no client metadata), query actor as in-memory page cache with runtime projection discovery, `IQueryResponse<T>` compile-time contract enforcement, SignalR real-time notification, `NotifyProjectionChanged` one-line integration, query contract library (no ProjectionType on client side), coarse invalidation model, DAPR idle timeout as garbage collection.
+
+---
+
+### Journey 8: Maria, the Database Administrator (DBA Operations — v2)
+
+**Persona:** Maria is a database administrator responsible for the event store infrastructure across 3 production environments. She doesn't write domain code but manages storage, snapshots, backups, tenant quotas, and operational health. She uses both the admin Web UI for visual inspection and the CLI for scripted automation.
+
+**Opening Scene:** Tuesday morning. Maria opens the admin dashboard for her daily check. The operational health overview shows green across all tenants except one amber indicator: storage growth for tenant `logistics-corp` is trending toward the configured threshold. She clicks through and sees the Storage Growth Analyzer projecting disk capacity exceeded in 6 weeks at current rate.
+
+**Rising Action:** Maria drills into the storage breakdown — a treemap view shows that `logistics-corp`'s `ShipmentTracking` aggregate type consumes 60% of their storage. She clicks into the aggregate size monitor and finds 200+ aggregates with over 5,000 events each and no snapshots. The admin tool's proactive advisor recommends: "Create snapshots for ShipmentTracking aggregates exceeding 1,000 events — estimated storage savings: 40%, replay time improvement: 10x."
+
+**Climax:** Maria configures an auto-snapshot policy via the CLI: `eventstore-admin snapshot policy set --tenant logistics-corp --domain shipment --aggregate ShipmentTracking --interval 500 --confirm`. She then runs the consistency checker: `eventstore-admin consistency check --tenant logistics-corp --output report.json`. All streams pass. She schedules a compaction job for the weekend maintenance window via the admin Web UI.
+
+**Resolution:** Maria's daily check took 8 minutes. She identified a growing storage issue, applied a snapshot policy, verified consistency, and scheduled compaction — all without developer involvement. She exports the health certificate as PDF for the monthly ops report. The CLI commands are already in her team's runbook for the next DBA on rotation.
+
+**Capabilities Revealed:** Operational health dashboard, storage growth analyzer with projection, aggregate size monitor (anti-pattern detection), proactive optimization advisor, auto-snapshot policy engine, consistency checker, compaction scheduler, health certificate export, CLI scriptability, deep links to Grafana for detailed metrics.
+
+---
+
+### Journey 9: Claude Investigates a Stale Read Model (MCP Agent — v2)
+
+**Persona:** Claude is an AI agent connected to the event store via MCP. A developer asks: "Why is the customer order aggregate returning stale data for tenant acme-corp?"
+
+**Opening Scene:** Claude receives the developer's question and connects to the event store MCP server. It starts by querying the projection health scanner — all projections for `acme-corp` are running, but `OrderSummary` shows a lag of 15,000 events with the last processed position stuck at event #42,301.
+
+**Rising Action:** Claude queries the projection error inspector via MCP and finds the projection faulted at event #42,302 — a `OrderLineItemAdded` event with an unexpected null field. It retrieves the event's full causation chain: the event was produced by command `AddLineItem` sent by service `order-api` at 14:32, correlation ID `01JXYZ...`. Claude then reads the aggregate state at position #42,301 (before the fault) and at the current head position (replayed in sandbox) — confirming the projection is stale because it stopped processing, not because the aggregate state is wrong.
+
+**Climax:** Claude constructs a remediation proposal: "1. The OrderSummary projection faulted at event #42,302 due to a null `itemName` field in an OrderLineItemAdded event. 2. The aggregate state is correct — only the projection is stale. 3. Recommended action: reset the OrderSummary projection from position #42,302 after deploying a null-safe fix to the projection handler. 4. Alternative: skip event #42,302 (moves to dead letter) and continue processing — projection will be missing one line item but will catch up on the remaining 15,000 events."
+
+**Resolution:** The developer reviews Claude's analysis, deploys a null-safe projection handler fix, then approves the reset. Claude executes: `reset projection OrderSummary from position 42302 for tenant acme-corp`. The projection catches up within minutes. Total time from question to resolution: under 3 minutes of developer attention. Claude performed 6 MCP tool calls autonomously; the developer only reviewed and approved.
+
+**Capabilities Revealed:** MCP projection health scanner, MCP projection error inspector, MCP event causation chain resolver, MCP aggregate state reader (historical), MCP event replay sandbox, MCP automated remediation proposals with approval gates, MCP projection control actions.
 
 ---
 
@@ -694,11 +736,14 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 | Feature                           | Dependency                     | Value                                                             |
 | --------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
-| Blazor Fluent UI Dashboard        | v1 stable, Blazor Fluent UI V4 | Enables Alex's journey -- self-service operations                 |
+| Admin API Foundation              | v1 stable, Contracts types     | Shared service layer for Web UI, CLI, and MCP — all DAPR-abstracted |
+| Admin Web UI (Blazor Fluent UI)   | Admin API, Blazor Fluent UI V4 | Enables Alex's (Journey 3), Maria's (Journey 8) operational workflows — stream browsing, aggregate inspection, projection management, health dashboard with deep links to Zipkin/Grafana/Aspire |
+| Admin CLI (`eventstore-admin`)    | Admin API                      | Scriptable administration for CI/CD gates, cron jobs, and DBA automation — JSON/CSV/table output, exit codes, shell completions |
+| Admin MCP Server                  | Admin API                      | AI agent programmatic access — enables Claude's Journey 9: autonomous diagnosis, causation tracing, remediation proposals with approval gates |
+| Dead-Letter Management            | Admin API                      | Browse, search, retry, skip, archive failed events across all three interfaces |
+| Domain Service Version Management | Admin API + DAPR config        | Instant rollback via Web UI, CLI, or MCP                          |
 | DAPR Workflow Migration           | v1 workflow-ready actor design | Replaces direct actor lifecycle with orchestrated workflows       |
 | Saga/Process Manager              | DAPR Workflows                 | Multi-aggregate operations with compensation                      |
-| Dead-Letter Management UI         | Blazor Dashboard               | Visual inspect/fix/replay replacing topic + log approach          |
-| Domain Service Version Management | Blazor Dashboard + DAPR config | Instant rollback via UI                                           |
 | External Authorization Engine     | v1 JWT model stable            | OpenFGA/OPA extending claims-based model                          |
 | Max Causation Depth Guardrail     | Saga/Process Manager           | Saga loop prevention via configurable causation chain depth limit |
 
@@ -845,6 +890,24 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - FR63: A query actor can discover its projection type mapping at runtime from the microservice's `IQueryResponse<T>` response on its first (cold) call, storing the mapping in memory for subsequent ETag actor lookups. The mapping resets on actor deactivation (DAPR idle timeout), ensuring the next cold call re-learns the mapping from the microservice
 - FR64: The EventStore documentation can recommend short projection type names (e.g., `OrderList` rather than fully qualified type names) to keep self-routing ETags compact in HTTP headers, with guidance that projection type names are base64url-encoded in the ETag and longer names produce proportionally longer tokens
 
+### Administration Tooling — v2 (FR68-FR82)
+
+- FR68: The admin tool can list recently active streams (configurable count, default 1000) with stream type, last activity timestamp, and status indicator across all tenants
+- FR69: The admin tool can display a unified command/event/query timeline for any aggregate stream, with before/after state snapshots per event
+- FR70: The admin tool can show aggregate state at any historical event position or timestamp (point-in-time state exploration)
+- FR71: The admin tool can diff aggregate state between any two event positions, highlighting changed fields
+- FR72: The admin tool can trace the full causation chain for any event — originating command, sender identity, correlation ID, and downstream projections affected
+- FR73: The admin tool can list all projections with status, lag, throughput, error count, and last processed position — with controls to pause, resume, reset from position, or replay
+- FR74: The admin tool can browse all registered event types, command types, and aggregate types with their schemas, relationships, and version history
+- FR75: The admin tool can display an operational health dashboard with event count, throughput, error rate, DAPR component status, and deep links to configured observability tools (Zipkin/Jaeger, Prometheus/Grafana, Aspire Dashboard)
+- FR76: The admin tool can manage storage — show growth trends, hot streams, and trigger compaction, snapshot creation, and backup operations
+- FR77: The admin tool can manage tenants — quotas, onboarding, comparison, and isolation verification. Tenant lifecycle (create, enable/disable, users, roles, configuration) is managed by Hexalith.Tenants peer service; EventStore admin UI/CLI/MCP consume its API
+- FR78: The admin tool can manage dead-letter queues — browse, search, retry, skip, archive failed events with bulk operations
+- FR79: All admin read and write operations are accessible through three interfaces: Blazor Web UI, CLI (`eventstore-admin`), and MCP server — backed by a shared Admin API
+- FR80: The admin CLI supports JSON, CSV, and table output formats with pipe-friendly streaming, exit codes (0 healthy, 1 degraded, 2 critical), and shell completion scripts
+- FR81: The admin MCP server exposes all read operations as structured tools returning machine-readable JSON, with approval-gated write operations (pause/reset/replay projections, trigger backups)
+- FR82: Every trace, metric, and log view in the admin Web UI deep-links to the corresponding detail in the configured external observability tool rather than replicating its UI
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -906,3 +969,13 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - NFR37: Query actor cache miss (ETag mismatch, re-query projection via domain service, cache result) must complete within 200ms at p99
 - NFR38: SignalR "changed" signal delivery from ETag regeneration to connected client receipt must complete within 100ms at p99
 - NFR39: The query pipeline must support at least 1,000 concurrent query requests per second per EventStore instance without exceeding latency targets
+
+### Administration Tooling (NFR40-NFR46)
+
+- NFR40: Admin API responses must complete within 500ms at p99 for read operations and 2s at p99 for write operations (projection reset, backup trigger)
+- NFR41: Admin Web UI must render the operational health dashboard within 2 seconds on initial load, with subsequent SignalR-pushed updates within 200ms
+- NFR42: Admin CLI must start and return results for simple queries (health check, stream info) within 3 seconds including .NET runtime startup
+- NFR43: Admin MCP server must respond to tool calls within 1 second at p99 for single-resource queries
+- NFR44: All admin data access must go through DAPR abstractions exclusively — the admin tool must be state-store-backend-agnostic, inheriting DAPR's portability guarantee
+- NFR45: Admin Web UI must support at least 10 concurrent users with independent views without performance degradation
+- NFR46: Admin API must enforce role-based access control — read-only for developers, operator for DBAs (projection controls, snapshot/compaction), admin for infrastructure operations (tenant management, backup/restore)

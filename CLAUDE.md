@@ -66,7 +66,7 @@ samples/
 
 Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Aspire
 
-Versioning: MinVer 7.0.0 (git tag-based SemVer, prefix `v`). Centralized package management via `Directory.Packages.props`.
+Versioning: semantic-release (Conventional Commits, automated on merge to main). Centralized package management via `Directory.Packages.props`.
 
 ## Architecture Patterns
 
@@ -110,7 +110,7 @@ Defined in `.editorconfig`:
 ## CI/CD
 
 - **CI:** GitHub Actions on push/PR to main — restore, build (Release), Tier 1+2 tests, optional Tier 3
-- **Release:** Triggered by `v*` tags — tests, pack, validate 6 expected packages, push to NuGet.org
+- **Release:** Triggered on merge to main via semantic-release — determines version from Conventional Commits, tests, pack, publish 6 NuGet packages, creates GitHub Release, updates CHANGELOG.md
 
 ## Key Dependencies
 

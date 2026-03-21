@@ -249,7 +249,7 @@ $ dotnet add package Hexalith.EventStore.Aspire
 
 ## Versioning
 
-All 6 packages use [MinVer](https://github.com/adamralph/minver) for semantic versioning. Versions are derived from git tags with a `v` prefix (e.g., tag `v1.2.0` produces version `1.2.0`).
+All 6 packages use automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
 
 All package versions are centralized in `Directory.Packages.props` at the repository root. Every package always ships at the same version — there is no mix-and-match between package versions.
 

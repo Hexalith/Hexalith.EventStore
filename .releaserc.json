@@ -1,0 +1,29 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "dotnet build --configuration Release -p:Version=${nextRelease.version} && dotnet pack --no-build --configuration Release --output ./nupkgs -p:Version=${nextRelease.version}",
+        "publishCmd": "dotnet nuget push ./nupkgs/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate --verbosity quiet"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": ["nupkgs/*.nupkg"]
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]"
+      }
+    ]
+  ]
+}

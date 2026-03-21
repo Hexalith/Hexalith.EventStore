@@ -16,7 +16,7 @@ RUN dotnet restore src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.Comman
 # Copy source and publish
 COPY src/ src/
 RUN dotnet publish src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj \
-    -c Release -o /app/publish --no-restore /p:MinVerSkip=true
+    -c Release -o /app/publish --no-restore
 
 # Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
