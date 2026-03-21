@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using global::Aspire.Hosting.Testing;
@@ -36,7 +35,7 @@ public class ProjectionMalformedResponseE2ETests {
         using (HttpResponseMessage malformedResponse = await sampleClient.PostAsync("/project", content: null)) {
             malformedResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
             string body = await malformedResponse.Content.ReadAsStringAsync();
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProjectionResponse>(body));
+            _ = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProjectionResponse>(body));
         }
 
         string aggregateId = $"projection-fault-{Guid.NewGuid():N}";

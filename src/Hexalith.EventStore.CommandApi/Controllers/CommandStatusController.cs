@@ -1,14 +1,13 @@
 
 using System.Diagnostics;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Telemetry;
-
-using Hexalith.EventStore.CommandApi.ErrorHandling;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

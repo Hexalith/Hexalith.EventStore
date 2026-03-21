@@ -28,8 +28,7 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 /// Story 4.4 Task 8: Persist-then-publish resilience tests.
 /// Verifies UnpublishedEventsRecord storage on PublishFailed paths (AC: #2, #3, #7, #8).
 /// </summary>
-public class PersistThenPublishResilienceTests
-{
+public class PersistThenPublishResilienceTests {
     private static CommandEnvelope CreateTestEnvelope(
         string? correlationId = null,
         string? causationId = null) => new(
@@ -45,16 +44,14 @@ public class PersistThenPublishResilienceTests
         Extensions: null);
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher)
-        CreateActor()
-    {
+        CreateActor() {
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, _) =
             CreateActorWithTimerManager();
         return (actor, stateManager, eventPublisher);
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher, ActorTimerManager TimerManager)
-        CreateActorWithTimerManager(EventDrainOptions? drainOptions = null)
-    {
+        CreateActorWithTimerManager(EventDrainOptions? drainOptions = null) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -91,8 +88,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.2: PublishFailed stores UnpublishedEventsRecord ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_UnpublishedRecordStored()
-    {
+    public async Task ProcessCommand_PublishFailed_UnpublishedRecordStored() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -122,8 +118,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.3: Record contains correct sequence range ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_RecordContainsCorrectSequenceRange()
-    {
+    public async Task ProcessCommand_PublishFailed_RecordContainsCorrectSequenceRange() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -150,8 +145,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.4: Drain reminder registered after PublishFailed ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_DrainReminderRegistered()
-    {
+    public async Task ProcessCommand_PublishFailed_DrainReminderRegistered() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
             CreateActorWithTimerManager();
@@ -177,11 +171,9 @@ public class PersistThenPublishResilienceTests
     // --- Story 4.2 Task 7.1: Drain reminder uses configured timing values ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_DrainReminderUsesConfiguredTiming()
-    {
+    public async Task ProcessCommand_PublishFailed_DrainReminderUsesConfiguredTiming() {
         // Arrange -- create actor with custom EventDrainOptions
-        var customOptions = new EventDrainOptions
-        {
+        var customOptions = new EventDrainOptions {
             InitialDrainDelay = TimeSpan.FromSeconds(45),
             DrainPeriod = TimeSpan.FromMinutes(2),
         };
@@ -201,7 +193,7 @@ public class PersistThenPublishResilienceTests
 
         // Assert -- publish was attempted and failed (confirming drain path was triggered)
         result.Accepted.ShouldBeTrue();
-        await eventPublisher.Received(1).PublishEventsAsync(
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
@@ -226,11 +218,9 @@ public class PersistThenPublishResilienceTests
     // --- Story 4.2 Task 7.1 Patch: MaxDrainPeriod clamping enforced ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_DrainReminderClampsToMaxPeriod()
-    {
+    public async Task ProcessCommand_PublishFailed_DrainReminderClampsToMaxPeriod() {
         // Arrange -- create actor with DrainPeriod exceeding MaxDrainPeriod
-        var customOptions = new EventDrainOptions
-        {
+        var customOptions = new EventDrainOptions {
             InitialDrainDelay = TimeSpan.FromSeconds(30),
             DrainPeriod = TimeSpan.FromMinutes(45),  // Exceeds default MaxDrainPeriod (30 min)
             MaxDrainPeriod = TimeSpan.FromMinutes(30),
@@ -261,11 +251,9 @@ public class PersistThenPublishResilienceTests
     [Theory]
     [InlineData(0)]      // TimeSpan.Zero — immediate drain
     [InlineData(-1)]     // Negative — should clamp to Zero
-    public async Task ProcessCommand_PublishFailed_DrainReminderWithBoundaryInitialDelay(int delaySeconds)
-    {
+    public async Task ProcessCommand_PublishFailed_DrainReminderWithBoundaryInitialDelay(int delaySeconds) {
         // Arrange
-        var customOptions = new EventDrainOptions
-        {
+        var customOptions = new EventDrainOptions {
             InitialDrainDelay = TimeSpan.FromSeconds(delaySeconds),
             DrainPeriod = TimeSpan.FromMinutes(1),
         };
@@ -284,7 +272,7 @@ public class PersistThenPublishResilienceTests
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- dueTime should be clamped to >= Zero
-        var expectedDueTime = delaySeconds < 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(delaySeconds);
+        TimeSpan expectedDueTime = delaySeconds < 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(delaySeconds);
         result.Accepted.ShouldBeTrue();
         await timerManager.Received(1).RegisterReminderAsync(
             Arg.Is<ActorReminder>(r =>
@@ -296,11 +284,9 @@ public class PersistThenPublishResilienceTests
     [Theory]
     [InlineData(0)]      // Zero — should fall back to 1 min
     [InlineData(-1)]     // Negative — should fall back to 1 min
-    public async Task ProcessCommand_PublishFailed_DrainReminderWithBoundaryPeriod(int periodSeconds)
-    {
+    public async Task ProcessCommand_PublishFailed_DrainReminderWithBoundaryPeriod(int periodSeconds) {
         // Arrange
-        var customOptions = new EventDrainOptions
-        {
+        var customOptions = new EventDrainOptions {
             InitialDrainDelay = TimeSpan.FromSeconds(30),
             DrainPeriod = TimeSpan.FromSeconds(periodSeconds),
         };
@@ -319,7 +305,7 @@ public class PersistThenPublishResilienceTests
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
         // Assert -- period should fall back to 1 min if invalid
-        var expectedPeriod = periodSeconds <= 0 ? TimeSpan.FromMinutes(1) : TimeSpan.FromSeconds(periodSeconds);
+        TimeSpan expectedPeriod = periodSeconds <= 0 ? TimeSpan.FromMinutes(1) : TimeSpan.FromSeconds(periodSeconds);
         result.Accepted.ShouldBeTrue();
         await timerManager.Received(1).RegisterReminderAsync(
             Arg.Is<ActorReminder>(r =>
@@ -329,8 +315,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.5: Events still in state store after PublishFailed ---
 
     [Fact]
-    public async Task ProcessCommand_PublishFailed_EventsStillInStateStore()
-    {
+    public async Task ProcessCommand_PublishFailed_EventsStillInStateStore() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -355,8 +340,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.6: Success path has no drain record ---
 
     [Fact]
-    public async Task ProcessCommand_PublishSuccess_NoUnpublishedRecord()
-    {
+    public async Task ProcessCommand_PublishSuccess_NoUnpublishedRecord() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -382,8 +366,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.7: Resume path also stores drain record ---
 
     [Fact]
-    public async Task ResumeFromEventsStored_PublishFails_UnpublishedRecordStored()
-    {
+    public async Task ResumeFromEventsStored_PublishFails_UnpublishedRecordStored() {
         // Arrange -- simulate crash recovery with EventsStored pipeline state
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 
@@ -402,8 +385,7 @@ public class PersistThenPublishResilienceTests
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
-        for (int i = 1; i <= 2; i++)
-        {
+        for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
@@ -440,8 +422,7 @@ public class PersistThenPublishResilienceTests
     // --- Task 8.8: Resume path drain reminder registered ---
 
     [Fact]
-    public async Task ResumeFromEventsStored_PublishFails_DrainReminderRegistered()
-    {
+    public async Task ResumeFromEventsStored_PublishFails_DrainReminderRegistered() {
         // Arrange -- simulate crash recovery with EventsStored pipeline state
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, ActorTimerManager timerManager) =
             CreateActorWithTimerManager();
@@ -461,8 +442,7 @@ public class PersistThenPublishResilienceTests
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
 
-        for (int i = 1; i <= 2; i++)
-        {
+        for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
@@ -492,8 +472,7 @@ public class PersistThenPublishResilienceTests
     }
 
     [Fact]
-    public async Task ResumeFromEventsStored_PublishFails_MetadataMissingAfterLoad_StillStoresRecordFromLoadedEvents()
-    {
+    public async Task ResumeFromEventsStored_PublishFails_MetadataMissingAfterLoad_StillStoresRecordFromLoadedEvents() {
         // Arrange -- metadata is available for initial load, but unavailable afterward.
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 
@@ -513,8 +492,7 @@ public class PersistThenPublishResilienceTests
                 new ConditionalValue<AggregateMetadata>(true, metadata),
                 new ConditionalValue<AggregateMetadata>(false, default!));
 
-        for (int i = 1; i <= 2; i++)
-        {
+        for (int i = 1; i <= 2; i++) {
             int seq = i;
             var evt = new EventEnvelope(
                 "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
@@ -549,8 +527,7 @@ public class PersistThenPublishResilienceTests
     }
 
     [Fact]
-    public async Task ResumeFromEventsStored_PrepareFails_MetadataUnavailable_ThrowsInsteadOfSilentPublishFailed()
-    {
+    public async Task ResumeFromEventsStored_PrepareFails_MetadataUnavailable_ThrowsInsteadOfSilentPublishFailed() {
         // Arrange -- resume starts at EventsStored, but metadata is unavailable so range cannot be computed for drain.
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 

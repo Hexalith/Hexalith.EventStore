@@ -16,27 +16,23 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.ErrorHandling;
 
-public class ValidationExceptionHandlerTests
-{
+public class ValidationExceptionHandlerTests {
     private readonly ILogger<ValidationExceptionHandler> _logger;
     private readonly ValidationExceptionHandler _handler;
 
-    public ValidationExceptionHandlerTests()
-    {
+    public ValidationExceptionHandlerTests() {
         _logger = Substitute.For<ILogger<ValidationExceptionHandler>>();
         _handler = new ValidationExceptionHandler(_logger);
     }
 
-    private static DefaultHttpContext CreateHttpContextWithBody()
-    {
+    private static DefaultHttpContext CreateHttpContextWithBody() {
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
         return httpContext;
     }
 
     [Fact]
-    public async Task TryHandleAsync_SingleValidationError_Returns400WithCorrectTypeAndTitle()
-    {
+    public async Task TryHandleAsync_SingleValidationError_Returns400WithCorrectTypeAndTitle() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -65,8 +61,7 @@ public class ValidationExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_SingleValidationError_ErrorsKeyIsCamelCase()
-    {
+    public async Task TryHandleAsync_SingleValidationError_ErrorsKeyIsCamelCase() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -88,14 +83,13 @@ public class ValidationExceptionHandlerTests
         problemDetails.Extensions.ShouldContainKey("errors");
 
         // Deserialize the errors dictionary to verify camelCase keys
-        JsonElement errorsElement = (JsonElement)problemDetails.Extensions["errors"]!;
+        var errorsElement = (JsonElement)problemDetails.Extensions["errors"]!;
         errorsElement.TryGetProperty("messageId", out JsonElement messageIdError).ShouldBeTrue();
         messageIdError.GetString().ShouldBe("MessageId is required");
     }
 
     [Fact]
-    public async Task TryHandleAsync_MultipleErrorsSameProperty_JoinedWithSemicolon()
-    {
+    public async Task TryHandleAsync_MultipleErrorsSameProperty_JoinedWithSemicolon() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -116,14 +110,13 @@ public class ValidationExceptionHandlerTests
         ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
         _ = problemDetails.ShouldNotBeNull();
 
-        JsonElement errorsElement = (JsonElement)problemDetails.Extensions["errors"]!;
+        var errorsElement = (JsonElement)problemDetails.Extensions["errors"]!;
         errorsElement.TryGetProperty("tenant", out JsonElement tenantError).ShouldBeTrue();
         tenantError.GetString().ShouldBe("Tenant is required; Tenant cannot be empty");
     }
 
     [Fact]
-    public async Task TryHandleAsync_NonValidationException_ReturnsFalse()
-    {
+    public async Task TryHandleAsync_NonValidationException_ReturnsFalse() {
         // Arrange
         var httpContext = new DefaultHttpContext();
         var exception = new InvalidOperationException("some other error");
@@ -136,8 +129,7 @@ public class ValidationExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ValidationException_IncludesCorrelationIdAndTenantId()
-    {
+    public async Task TryHandleAsync_ValidationException_IncludesCorrelationIdAndTenantId() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "my-correlation-id";
@@ -164,8 +156,7 @@ public class ValidationExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ValidationException_DoesNotContainLegacyExtensions()
-    {
+    public async Task TryHandleAsync_ValidationException_DoesNotContainLegacyExtensions() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -191,8 +182,7 @@ public class ValidationExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_ValidationException_ContentTypeIsProblemJson()
-    {
+    public async Task TryHandleAsync_ValidationException_ContentTypeIsProblemJson() {
         // Arrange
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";
@@ -208,13 +198,12 @@ public class ValidationExceptionHandlerTests
         _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
 
         // Assert
-        httpContext.Response.ContentType.ShouldNotBeNull();
+        _ = httpContext.Response.ContentType.ShouldNotBeNull();
         httpContext.Response.ContentType!.ShouldContain("application/problem+json");
     }
 
     [Fact]
-    public async Task TryHandleAsync_NullTenantId_TenantIdExtensionPresentButNull()
-    {
+    public async Task TryHandleAsync_NullTenantId_TenantIdExtensionPresentButNull() {
         // Arrange - no RequestTenantId in HttpContext
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items["CorrelationId"] = "test-correlation-id";

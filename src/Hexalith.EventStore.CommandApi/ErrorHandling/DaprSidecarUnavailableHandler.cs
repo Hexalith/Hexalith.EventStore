@@ -1,5 +1,3 @@
-
-using System.Net.Http;
 using System.Net.Sockets;
 using System.Text.Json;
 
@@ -116,9 +114,7 @@ public class DaprSidecarUnavailableHandler(
     /// Handles the common .NET HTTP stack chain: HttpRequestException -> IOException -> SocketException,
     /// as well as AggregateException wrappers.
     /// </summary>
-    private static bool ContainsConnectionRefusedSocketException(Exception? exception) {
-        return ContainsConnectionRefusedSocketExceptionRecursive(exception, 5);
-    }
+    private static bool ContainsConnectionRefusedSocketException(Exception? exception) => ContainsConnectionRefusedSocketExceptionRecursive(exception, 5);
 
     private static bool ContainsConnectionRefusedSocketExceptionRecursive(Exception? exception, int remainingDepth) {
         if (exception is null || remainingDepth <= 0) {

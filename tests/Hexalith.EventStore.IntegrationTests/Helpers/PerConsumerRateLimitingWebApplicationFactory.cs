@@ -9,13 +9,10 @@ namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// WebApplicationFactory configured with per-consumer rate limit overrides for testing Story 7.3.
 /// Uses long window (60s) with SegmentsPerWindow=1 for test stability — short windows (1s) cause flaky CI tests.
 /// </summary>
-public class PerConsumerRateLimitingWebApplicationFactory : JwtAuthenticatedWebApplicationFactory
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
+public class PerConsumerRateLimitingWebApplicationFactory : JwtAuthenticatedWebApplicationFactory {
+    protected override void ConfigureWebHost(IWebHostBuilder builder) {
         base.ConfigureWebHost(builder);
-        _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?>
-        {
+        _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?> {
             // Set high tenant limit so per-tenant limiter doesn't interfere
             ["EventStore:RateLimiting:PermitLimit"] = "1000",
             // Per-consumer: low limit for testing, long window for stability

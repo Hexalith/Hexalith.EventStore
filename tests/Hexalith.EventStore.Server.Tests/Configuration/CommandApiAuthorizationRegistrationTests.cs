@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.CommandApi.Authorization;
@@ -18,8 +20,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
-
-using System.Security.Claims;
 
 using Shouldly;
 
@@ -218,12 +218,12 @@ public class CommandApiAuthorizationRegistrationTests {
         using ServiceProvider provider = BuildProvider(
             configureServices: services => {
                 _ = services.AddLogging(builder => {
-                    builder.ClearProviders();
-                    builder.SetMinimumLevel(LogLevel.Debug);
-                    builder.AddProvider(new PipelineOrderLoggerProvider(executionOrder));
+                    _ = builder.ClearProviders();
+                    _ = builder.SetMinimumLevel(LogLevel.Debug);
+                    _ = builder.AddProvider(new PipelineOrderLoggerProvider(executionOrder));
                 });
 
-                services.RemoveAll<IRequestHandler<SubmitCommand, SubmitCommandResult>>();
+                _ = services.RemoveAll<IRequestHandler<SubmitCommand, SubmitCommandResult>>();
                 _ = services.AddScoped<IRequestHandler<SubmitCommand, SubmitCommandResult>>(_ => new PipelineOrderSubmitCommandHandler(executionOrder));
             });
         using IServiceScope scope = provider.CreateScope();

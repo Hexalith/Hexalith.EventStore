@@ -43,10 +43,8 @@ public class ETagActorTests {
         await ((Task)method.Invoke(actor, null)!).ConfigureAwait(false);
     }
 
-    private static bool IsProjectionTypeETag(string value, string expectedProjectionType) {
-        return SelfRoutingETag.TryDecode(value, out string? projectionType, out _)
+    private static bool IsProjectionTypeETag(string value, string expectedProjectionType) => SelfRoutingETag.TryDecode(value, out string? projectionType, out _)
             && string.Equals(projectionType, expectedProjectionType, StringComparison.Ordinal);
-    }
 
     // ===== GetCurrentETagAsync tests =====
 
@@ -65,10 +63,9 @@ public class ETagActorTests {
     // ===== ETagActorTypeName constant test =====
 
     [Fact]
-    public void ETagActorTypeName_IsCorrectValue() {
+    public void ETagActorTypeName_IsCorrectValue() =>
         // Assert — must match the type name used in DaprETagService actor proxy creation
         ETagActor.ETagActorTypeName.ShouldBe("ETagActor");
-    }
 
     // ===== Old-format detection logic tests =====
     // These test the migration detection logic (no-dot = old format) that ETagActor.OnActivateAsync uses.
@@ -126,7 +123,7 @@ public class ETagActorTests {
             Arg.Any<CancellationToken>());
         await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
         string? cached = await actor.GetCurrentETagAsync();
-        cached.ShouldNotBeNull();
+        _ = cached.ShouldNotBeNull();
         cached!.Contains('.').ShouldBeTrue();
     }
 

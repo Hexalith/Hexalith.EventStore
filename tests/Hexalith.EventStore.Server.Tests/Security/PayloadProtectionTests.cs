@@ -1,10 +1,10 @@
 
-using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
-
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 
 using Shouldly;
 
@@ -255,14 +255,14 @@ public class PayloadProtectionTests {
             }
 
             if (!capturing && IsLogStatementStart(trimmed, out loggerMessageAttribute)) {
-                builder.Clear();
-                builder.Append(trimmed);
+                _ = builder.Clear();
+                _ = builder.Append(trimmed);
                 parenthesisBalance = CountParenthesisBalance(trimmed);
                 capturing = true;
 
                 if (IsLogStatementComplete(trimmed, loggerMessageAttribute, parenthesisBalance)) {
                     yield return builder.ToString();
-                    builder.Clear();
+                    _ = builder.Clear();
                     capturing = false;
                 }
 
@@ -273,12 +273,12 @@ public class PayloadProtectionTests {
                 continue;
             }
 
-            builder.Append(' ').Append(trimmed);
+            _ = builder.Append(' ').Append(trimmed);
             parenthesisBalance += CountParenthesisBalance(trimmed);
 
             if (IsLogStatementComplete(trimmed, loggerMessageAttribute, parenthesisBalance)) {
                 yield return builder.ToString();
-                builder.Clear();
+                _ = builder.Clear();
                 capturing = false;
             }
         }
@@ -320,9 +320,9 @@ public class PayloadProtectionTests {
             char next = i + 1 < source.Length ? source[i + 1] : '\0';
 
             if (inLineComment) {
-                if (current == '\r' || current == '\n') {
+                if (current is '\r' or '\n') {
                     inLineComment = false;
-                    builder.Append(current);
+                    _ = builder.Append(current);
                 }
 
                 continue;
@@ -338,11 +338,11 @@ public class PayloadProtectionTests {
             }
 
             if (inString) {
-                builder.Append(current);
+                _ = builder.Append(current);
 
                 if (inVerbatimString) {
                     if (current == '"' && next == '"') {
-                        builder.Append(next);
+                        _ = builder.Append(next);
                         i++;
                         continue;
                     }
@@ -369,8 +369,8 @@ public class PayloadProtectionTests {
             if (current == '@' && next == '"') {
                 inString = true;
                 inVerbatimString = true;
-                builder.Append(current);
-                builder.Append(next);
+                _ = builder.Append(current);
+                _ = builder.Append(next);
                 i++;
                 continue;
             }
@@ -378,7 +378,7 @@ public class PayloadProtectionTests {
             if (current == '"') {
                 inString = true;
                 escaping = false;
-                builder.Append(current);
+                _ = builder.Append(current);
                 continue;
             }
 
@@ -394,7 +394,7 @@ public class PayloadProtectionTests {
                 continue;
             }
 
-            builder.Append(current);
+            _ = builder.Append(current);
         }
 
         return Regex.Replace(builder.ToString(), @"^\s+$", string.Empty, RegexOptions.Multiline);

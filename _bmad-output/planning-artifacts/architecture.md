@@ -172,13 +172,16 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 - Pub/sub delivery is at-least-once; all subscribers must be idempotent
 - State store transaction support varies by backend -- architecture must handle both transactional and non-transactional stores
 
-**NuGet Package Architecture (5 packages):**
+**NuGet Package Architecture (6 packages):**
+
+> **Note:** This section was corrected to reflect 6 shipped packages (SignalR added post-initial architecture).
 
 | Package | Purpose | Consumers |
 |---------|---------|-----------|
 | `Hexalith.EventStore.Contracts` | Event envelope, command/event types, identity scheme | Domain service developers |
 | `Hexalith.EventStore.Client` | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
 | `Hexalith.EventStore.Server` | Core EventStore server with actor processing pipeline | Platform operators |
+| `Hexalith.EventStore.SignalR` | SignalR client helper for real-time projection change notifications | UI/integration clients |
 | `Hexalith.EventStore.Aspire` | Aspire AppHost integration and service defaults | Both |
 | `Hexalith.EventStore.Testing` | Test helpers, in-memory DAPR mocks, assertion utilities | Domain service developers |
 
@@ -219,22 +222,22 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 | .NET SDK | 10.0.103 | LTS, supported until November 2028 |
 | C# | 14 | Ships with .NET 10 |
 | DAPR Runtime | 1.16.6 | Latest stable (updated from PRD's 1.14+ minimum) |
-| DAPR .NET SDK | Dapr.Client 1.16.0, Dapr.AspNetCore 1.16.1 | Requires .NET 8+ |
-| Aspire | 13.1.0 | Polyglot platform, requires .NET 10 SDK |
-| CommunityToolkit.Aspire.Hosting.Dapr | 9.7.0 | Aspire + DAPR integration (replaces deprecated `Aspire.Hosting.Dapr`) |
+| DAPR .NET SDK | Dapr.Client 1.16.1, Dapr.AspNetCore 1.16.1 | Requires .NET 8+ |
+| Aspire | 13.1.2 | Polyglot platform, requires .NET 10 SDK |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.0.0 | Aspire + DAPR integration (replaces deprecated `Aspire.Hosting.Dapr`) |
 | Blazor Fluent UI | 4.13.2 | v5 in development; v4 supported until Nov 2026 (v2 reference) |
 
 ### Starter Options Considered
 
 | Option | Approach | Fit | Verdict |
 |--------|---------|-----|---------|
-| `dotnet new aspire-starter` | AppHost + ServiceDefaults + ApiService + Blazor Web | Poor -- includes Blazor (v2), 2-service topology doesn't match 5-package architecture | Reject |
-| Custom solution from individual templates | Precise match to 5-package NuGet architecture + AppHost + ServiceDefaults + sample | Excellent -- each project uses correct template, no dead code | **Selected** |
+| `dotnet new aspire-starter` | AppHost + ServiceDefaults + ApiService + Blazor Web | Poor -- includes Blazor (v2), 2-service topology doesn't match 6-package architecture | Reject |
+| Custom solution from individual templates | Precise match to 6-package NuGet architecture + AppHost + ServiceDefaults + sample | Excellent -- each project uses correct template, no dead code | **Selected** |
 | DAPR quickstart/sample as base | Single actor service with basic wiring | Poor -- educational, no Aspire integration, no NuGet structure | Reject |
 
 ### Selected Starter: Custom Solution from Individual Templates
 
-**Rationale:** Hexalith.EventStore's 5-package NuGet architecture, DAPR actor interface/implementation separation, and Aspire orchestration don't match any existing starter. Building from individual `dotnet new` templates provides precise control while leveraging .NET 10 / Aspire 13.1 scaffolding.
+**Rationale:** Hexalith.EventStore's 6-package NuGet architecture, DAPR actor interface/implementation separation, and Aspire orchestration don't match any existing starter. Building from individual `dotnet new` templates provides precise control while leveraging .NET 10 / Aspire 13.1 scaffolding.
 
 **Initialization Command:**
 
@@ -296,9 +299,9 @@ Hexalith.EventStore/
 | Package | Project(s) | Version |
 |---------|-----------|---------|
 | `Dapr.Actors.AspNetCore` | CommandApi, Server | 1.16.x |
-| `Dapr.Client` | Server, Client | 1.16.0 |
+| `Dapr.Client` | Server, Client | 1.16.1 |
 | `Dapr.AspNetCore` | CommandApi | 1.16.1 |
-| `CommunityToolkit.Aspire.Hosting.Dapr` | AppHost | 9.7.0 |
+| `CommunityToolkit.Aspire.Hosting.Dapr` | AppHost | 13.0.0 |
 | `MediatR` | Server, CommandApi | latest |
 | `Microsoft.AspNetCore.Authentication.JwtBearer` | CommandApi | 10.0.x |
 

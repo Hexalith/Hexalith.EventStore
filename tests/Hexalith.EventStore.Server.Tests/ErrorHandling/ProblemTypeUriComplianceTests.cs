@@ -9,10 +9,7 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-
-using NSubstitute;
 
 using Shouldly;
 
@@ -306,17 +303,13 @@ public class ProblemTypeUriComplianceTests {
 
     private static void AssertNoForbiddenTerms(ProblemDetails problem) {
         foreach (string term in ForbiddenTerms) {
-            if (problem.Title is not null) {
-                problem.Title.ShouldNotContain(term, Case.Insensitive,
+            problem.Title?.ShouldNotContain(term, Case.Insensitive,
                     $"Title contains forbidden term '{term}'");
-            }
 
-            if (problem.Detail is not null) {
-                problem.Detail.ShouldNotContain(term, Case.Insensitive,
+            problem.Detail?.ShouldNotContain(term, Case.Insensitive,
                     $"Detail contains forbidden term '{term}'");
-            }
 
-            foreach (var kvp in problem.Extensions) {
+            foreach (KeyValuePair<string, object?> kvp in problem.Extensions) {
                 kvp.Key.ShouldNotContain(term, Case.Insensitive,
                     $"Extension key '{kvp.Key}' contains forbidden term '{term}'");
             }

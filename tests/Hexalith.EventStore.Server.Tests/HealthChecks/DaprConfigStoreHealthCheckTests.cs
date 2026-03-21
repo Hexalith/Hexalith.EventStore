@@ -109,17 +109,15 @@ public class DaprConfigStoreHealthCheckTests {
         _ = await healthCheck.CheckHealthAsync(CreateContext(), cts.Token);
 
         // Assert
-        await daprClient.Received(1).GetMetadataAsync(cts.Token);
+        _ = await daprClient.Received(1).GetMetadataAsync(cts.Token);
     }
 
     [Fact]
-    public void Constructor_NullDaprClient_ThrowsArgumentNullException() {
-        Should.Throw<ArgumentNullException>(() => new DaprConfigStoreHealthCheck(null!, ConfigStoreName));
-    }
+    public void Constructor_NullDaprClient_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() => new DaprConfigStoreHealthCheck(null!, ConfigStoreName));
 
     [Fact]
     public void Constructor_NullConfigStoreName_ThrowsArgumentNullException() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        Should.Throw<ArgumentNullException>(() => new DaprConfigStoreHealthCheck(daprClient, null!));
+        _ = Should.Throw<ArgumentNullException>(() => new DaprConfigStoreHealthCheck(daprClient, null!));
     }
 }

@@ -29,8 +29,7 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 /// Story 4.3 Task 9: At-least-once delivery behavior tests.
 /// Verifies end-to-end delivery, partial failure, and state store safety (NFR22).
 /// </summary>
-public class AtLeastOnceDeliveryTests
-{
+public class AtLeastOnceDeliveryTests {
     private sealed class TestEvent : IEventPayload;
 
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
@@ -72,8 +71,7 @@ public class AtLeastOnceDeliveryTests
     // --- Task 9.2: Success path ---
 
     [Fact]
-    public async Task PublishEventsAsync_Success_EventsDeliveredAtLeastOnce()
-    {
+    public async Task PublishEventsAsync_Success_EventsDeliveredAtLeastOnce() {
         // Arrange
         var fakePublisher = new FakeEventPublisher();
         var events = new List<EventEnvelope>
@@ -97,8 +95,7 @@ public class AtLeastOnceDeliveryTests
     // --- Task 9.3: Partial failure ---
 
     [Fact]
-    public async Task PublishEventsAsync_PartialFailure_SomeEventsDelivered()
-    {
+    public async Task PublishEventsAsync_PartialFailure_SomeEventsDelivered() {
         // Arrange
         var fakePublisher = new FakeEventPublisher();
         fakePublisher.SetupPartialFailure(eventIndex: 2, "Broker connection lost");
@@ -126,8 +123,7 @@ public class AtLeastOnceDeliveryTests
     // --- Task 9.4: Total failure -- events safe in state store ---
 
     [Fact]
-    public async Task PublishEventsAsync_TotalFailure_EventsSafeInStateStore()
-    {
+    public async Task PublishEventsAsync_TotalFailure_EventsSafeInStateStore() {
         // Arrange -- events are "in state store" (simulated by the list)
         var events = new List<EventEnvelope>
         {
@@ -154,8 +150,7 @@ public class AtLeastOnceDeliveryTests
     // --- Task 9.5: Actor pipeline -- publish fails, events remain in state store ---
 
     [Fact]
-    public async Task AggregateActor_PublishFailed_EventsNotLostInStateStore()
-    {
+    public async Task AggregateActor_PublishFailed_EventsNotLostInStateStore() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker,
             IEventPublisher eventPublisher) = CreateActorWithMockState();
@@ -189,8 +184,7 @@ public class AtLeastOnceDeliveryTests
     // --- Task 9.6: Actor pipeline -- publish fails, status transitions to PublishFailed ---
 
     [Fact]
-    public async Task AggregateActor_PublishFailed_StatusTransitionsToPublishFailed()
-    {
+    public async Task AggregateActor_PublishFailed_StatusTransitionsToPublishFailed() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger,
             IDomainServiceInvoker invoker, IEventPublisher eventPublisher) = CreateActorWithMockState();
@@ -225,8 +219,7 @@ public class AtLeastOnceDeliveryTests
     // --- Task 9.7: Circuit breaker open -- fast-fail behavior ---
 
     [Fact]
-    public async Task CircuitBreaker_Open_PublisherReceivesImmediateFailure()
-    {
+    public async Task CircuitBreaker_Open_PublisherReceivesImmediateFailure() {
         // Arrange -- Simulate circuit breaker behavior via EventPublisher returning immediate failure
         (AggregateActor actor, IActorStateManager stateManager, _,
             IDomainServiceInvoker invoker, IEventPublisher eventPublisher) = CreateActorWithMockState();
@@ -260,8 +253,7 @@ public class AtLeastOnceDeliveryTests
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
-        IDomainServiceInvoker Invoker, IEventPublisher EventPublisher) CreateActorWithMockState()
-    {
+        IDomainServiceInvoker Invoker, IEventPublisher EventPublisher) CreateActorWithMockState() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -295,8 +287,7 @@ public class AtLeastOnceDeliveryTests
         return (actor, stateManager, logger, invoker, eventPublisher);
     }
 
-    private static void ConfigureNoDuplicate(IActorStateManager stateManager)
-    {
+    private static void ConfigureNoDuplicate(IActorStateManager stateManager) {
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
 

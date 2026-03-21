@@ -116,6 +116,29 @@ public class SubmitQueryHandlerTests {
     }
 
     [Fact]
+    public async Task Handle_MissingProjectionState_ThrowsQueryNotFoundException() {
+        // Arrange
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(
+                Success: false,
+                Payload: null,
+                NotFound: false,
+                ErrorMessage: "No projection state available for this aggregate"));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryNotFoundException ex = await Should.ThrowAsync<QueryNotFoundException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.Tenant.ShouldBe("test-tenant");
+        ex.Domain.ShouldBe("orders");
+        ex.AggregateId.ShouldBe("order-1");
+        ex.QueryType.ShouldBe("GetOrderStatus");
+    }
+
+    [Fact]
     public async Task Handle_SuccessWithoutPayload_ThrowsInvalidOperationException() {
         // Arrange
         IQueryRouter router = Substitute.For<IQueryRouter>();

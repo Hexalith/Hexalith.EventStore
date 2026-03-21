@@ -69,7 +69,7 @@ public class InMemoryBackpressureTracker : IBackpressureTracker {
 
             if (current <= 0) {
                 // Floor at 0 — try to remove the stale key
-                ((ICollection<KeyValuePair<string, int>>)_counters).Remove(new KeyValuePair<string, int>(aggregateActorId, current));
+                _ = ((ICollection<KeyValuePair<string, int>>)_counters).Remove(new KeyValuePair<string, int>(aggregateActorId, current));
                 return;
             }
 

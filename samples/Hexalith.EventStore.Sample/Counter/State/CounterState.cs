@@ -29,7 +29,6 @@ public sealed class CounterState : ITerminatable {
     public void Apply(CounterClosed e) => IsTerminated = true;
 
     /// <summary>No-op — required because rejection events are persisted to the event stream and replayed during rehydration.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Apply must be instance method for reflection-based event replay")]
     public void Apply(AggregateTerminated e) {
         // No-op — AggregateTerminated is a framework rejection event persisted after tombstoning
     }

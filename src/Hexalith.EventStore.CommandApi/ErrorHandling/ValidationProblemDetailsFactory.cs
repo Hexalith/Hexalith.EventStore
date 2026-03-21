@@ -12,8 +12,7 @@ namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 /// Single source of truth for validation error response shape across all three validation paths
 /// (ValidateModelFilter, ValidationExceptionHandler, Controller extension sanitization).
 /// </summary>
-public static class ValidationProblemDetailsFactory
-{
+public static class ValidationProblemDetailsFactory {
     /// <summary>
     /// The stable URI identifying this error category.
     /// </summary>
@@ -38,9 +37,8 @@ public static class ValidationProblemDetailsFactory
         string detail,
         IEnumerable<ValidationFailure> failures,
         string? correlationId,
-        string? tenantId)
-    {
-        Dictionary<string, string> errors = failures
+        string? tenantId) {
+        var errors = failures
             .GroupBy(e => JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName))
             .ToDictionary(
                 g => g.Key,
@@ -63,19 +61,13 @@ public static class ValidationProblemDetailsFactory
         string detail,
         Dictionary<string, string> errors,
         string? correlationId,
-        string? tenantId)
-    {
-        return CreateCore(detail, errors, correlationId, tenantId);
-    }
+        string? tenantId) => CreateCore(detail, errors, correlationId, tenantId);
 
     private static ProblemDetails CreateCore(
         string detail,
         Dictionary<string, string> errors,
         string? correlationId,
-        string? tenantId)
-    {
-        return new ProblemDetails
-        {
+        string? tenantId) => new() {
             Status = StatusCodes.Status400BadRequest,
             Title = Title,
             Type = TypeUri,
@@ -87,5 +79,4 @@ public static class ValidationProblemDetailsFactory
                 ["errors"] = errors,
             },
         };
-    }
 }

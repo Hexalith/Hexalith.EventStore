@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 /// Centralized constants for ProblemDetails type URIs (UX-DR7).
 /// Each URI identifies a unique error category and resolves to documentation.
 /// </summary>
-public static class ProblemTypeUris
-{
+public static class ProblemTypeUris {
     public const string ValidationError = "https://hexalith.io/problems/validation-error";
     public const string AuthenticationRequired = "https://hexalith.io/problems/authentication-required";
     public const string TokenExpired = "https://hexalith.io/problems/token-expired";

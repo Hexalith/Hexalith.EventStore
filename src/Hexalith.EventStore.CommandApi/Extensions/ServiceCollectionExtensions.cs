@@ -128,7 +128,7 @@ public static class CommandApiServiceCollectionExtensions {
             rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
             // Per-tenant limiter (existing, unchanged logic)
-            PartitionedRateLimiter<HttpContext> tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+            var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
                 // Health endpoints must never be rate limited (H2)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
@@ -163,7 +163,7 @@ public static class CommandApiServiceCollectionExtensions {
             });
 
             // Per-consumer limiter keyed by JWT "sub" claim (Story 7.3)
-            PartitionedRateLimiter<HttpContext> consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+            var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
                 // Health endpoints must never be rate limited (same exemption as per-tenant)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
@@ -349,41 +349,39 @@ public static class CommandApiServiceCollectionExtensions {
 
         _ = services.AddControllers(options => options.Filters.Add<ValidateModelFilter>());
 
-        _ = services.Configure<ApiBehaviorOptions>(options => {
-            options.InvalidModelStateResponseFactory = context => {
-                string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
-                string? tenantId = context.HttpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
-                    && tenantObj is string tenant
-                    && !string.IsNullOrWhiteSpace(tenant)
-                        ? tenant
-                        : null;
+        _ = services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context => {
+            string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
+            string? tenantId = context.HttpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
+                && tenantObj is string tenant
+                && !string.IsNullOrWhiteSpace(tenant)
+                    ? tenant
+                    : null;
 
-                List<(string Key, string Message)> failures = context.ModelState
-                    .Where(kvp => kvp.Value is { Errors.Count: > 0 })
-                    .SelectMany(kvp => kvp.Value!.Errors.Select(err => {
-                        string message = string.IsNullOrWhiteSpace(err.ErrorMessage)
-                            ? "Invalid value."
-                            : err.ErrorMessage;
-                        return (NormalizeModelStateKey(kvp.Key), message);
-                    }))
-                    .ToList();
+            List<(string Key, string Message)> failures = context.ModelState
+                .Where(kvp => kvp.Value is { Errors.Count: > 0 })
+                .SelectMany(kvp => kvp.Value!.Errors.Select(err => {
+                    string message = string.IsNullOrWhiteSpace(err.ErrorMessage)
+                        ? "Invalid value."
+                        : err.ErrorMessage;
+                    return (NormalizeModelStateKey(kvp.Key), message);
+                }))
+                .ToList();
 
-                Dictionary<string, string> errors = failures
-                    .GroupBy(f => f.Key)
-                    .ToDictionary(g => g.Key, g => string.Join("; ", g.Select(f => f.Message)));
+            var errors = failures
+                .GroupBy(f => f.Key)
+                .ToDictionary(g => g.Key, g => string.Join("; ", g.Select(f => f.Message)));
 
-                int errorCount = failures.Count;
-                ProblemDetails problemDetails = ValidationProblemDetailsFactory.Create(
-                    $"The command has {errorCount} validation error(s). See 'errors' for specifics.",
-                    errors,
-                    correlationId,
-                    tenantId);
-                problemDetails.Instance = context.HttpContext.Request.Path;
+            int errorCount = failures.Count;
+            ProblemDetails problemDetails = ValidationProblemDetailsFactory.Create(
+                $"The command has {errorCount} validation error(s). See 'errors' for specifics.",
+                errors,
+                correlationId,
+                tenantId);
+            problemDetails.Instance = context.HttpContext.Request.Path;
 
-                var result = new BadRequestObjectResult(problemDetails);
-                result.ContentTypes.Add("application/problem+json");
-                return result;
-            };
+            var result = new BadRequestObjectResult(problemDetails);
+            result.ContentTypes.Add("application/problem+json");
+            return result;
         });
 
         return services;

@@ -4,8 +4,6 @@ using System.Diagnostics;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
-using ContractEventEnvelope = Hexalith.EventStore.Contracts.Events.EventEnvelope;
-using ContractEventMetadata = Hexalith.EventStore.Contracts.Events.EventMetadata;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
@@ -17,6 +15,9 @@ using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+using ContractEventEnvelope = Hexalith.EventStore.Contracts.Events.EventEnvelope;
+using ContractEventMetadata = Hexalith.EventStore.Contracts.Events.EventMetadata;
 
 namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
@@ -186,53 +187,52 @@ public partial class AggregateActor(
                 // Runs after tenant validation to preserve the existing security invariant that
                 // no actor state is read before tenant isolation is confirmed.
                 if (!pendingCommandTracked) {
-                    using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
+                    using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
                         EventStoreActivitySource.BackpressureCheck,
-                        ActivityKind.Internal)) {
-                        SetActivityTags(activity, command);
+                        ActivityKind.Internal);
+                    SetActivityTags(activity, command);
 
-                        int pendingCount;
-                        try {
-                            pendingCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
-                        }
-                        catch (Exception ex) when (ex is not OperationCanceledException) {
-                            // Fail-open: if state read fails, allow command through (availability > backpressure)
-                            logger.LogWarning(
-                                ex,
-                                "Backpressure check state read failed (fail-open): ActorId={ActorId}, CorrelationId={CorrelationId}. Allowing command through.",
-                                Host.Id,
-                                command.CorrelationId);
-                            pendingCount = 0;
-                        }
-
-                        BackpressureOptions bpOptions = backpressureOptions.Value;
-                        if (pendingCount >= bpOptions.MaxPendingCommandsPerAggregate) {
-                            Log.BackpressureRejected(
-                                logger,
-                                Host.Id.GetId(),
-                                command.CorrelationId,
-                                command.TenantId,
-                                command.Domain,
-                                command.AggregateId,
-                                pendingCount,
-                                bpOptions.MaxPendingCommandsPerAggregate);
-
-                            _ = (activity?.SetStatus(ActivityStatusCode.Error, "BackpressureExceeded"));
-                            _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "BackpressureExceeded"));
-                            return new CommandProcessingResult(
-                                Accepted: false,
-                                ErrorMessage: $"Backpressure exceeded: {pendingCount} pending commands (threshold: {bpOptions.MaxPendingCommandsPerAggregate})",
-                                CorrelationId: command.CorrelationId,
-                                BackpressureExceeded: true,
-                                BackpressurePendingCount: pendingCount,
-                                BackpressureThreshold: bpOptions.MaxPendingCommandsPerAggregate);
-                        }
-
-                        await StagePendingCommandCountAsync(pendingCount + 1).ConfigureAwait(false);
-                        pendingCommandTracked = true;
-
-                        _ = (activity?.SetStatus(ActivityStatusCode.Ok));
+                    int pendingCount;
+                    try {
+                        pendingCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
                     }
+                    catch (Exception ex) when (ex is not OperationCanceledException) {
+                        // Fail-open: if state read fails, allow command through (availability > backpressure)
+                        logger.LogWarning(
+                            ex,
+                            "Backpressure check state read failed (fail-open): ActorId={ActorId}, CorrelationId={CorrelationId}. Allowing command through.",
+                            Host.Id,
+                            command.CorrelationId);
+                        pendingCount = 0;
+                    }
+
+                    BackpressureOptions bpOptions = backpressureOptions.Value;
+                    if (pendingCount >= bpOptions.MaxPendingCommandsPerAggregate) {
+                        Log.BackpressureRejected(
+                            logger,
+                            Host.Id.GetId(),
+                            command.CorrelationId,
+                            command.TenantId,
+                            command.Domain,
+                            command.AggregateId,
+                            pendingCount,
+                            bpOptions.MaxPendingCommandsPerAggregate);
+
+                        _ = (activity?.SetStatus(ActivityStatusCode.Error, "BackpressureExceeded"));
+                        _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "BackpressureExceeded"));
+                        return new CommandProcessingResult(
+                            Accepted: false,
+                            ErrorMessage: $"Backpressure exceeded: {pendingCount} pending commands (threshold: {bpOptions.MaxPendingCommandsPerAggregate})",
+                            CorrelationId: command.CorrelationId,
+                            BackpressureExceeded: true,
+                            BackpressurePendingCount: pendingCount,
+                            BackpressureThreshold: bpOptions.MaxPendingCommandsPerAggregate);
+                    }
+
+                    await StagePendingCommandCountAsync(pendingCount + 1).ConfigureAwait(false);
+                    pendingCommandTracked = true;
+
+                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                 }
 
                 // Checkpoint Processing stage (AC #1, #7)
@@ -820,9 +820,7 @@ public partial class AggregateActor(
         return result.HasValue ? result.Value : 0;
     }
 
-    private async Task StagePendingCommandCountAsync(int newCount) {
-        await StateManager.SetStateAsync(PendingCommandCountKey, newCount).ConfigureAwait(false);
-    }
+    private async Task StagePendingCommandCountAsync(int newCount) => await StateManager.SetStateAsync(PendingCommandCountKey, newCount).ConfigureAwait(false);
 
     private async Task<int> DecrementPendingCommandCountAsync() {
         int current = await ReadPendingCommandCountAsync().ConfigureAwait(false);

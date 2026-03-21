@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Server.Queries;
 /// <summary>
 /// Thrown when a projection query fails with a known HTTP-facing outcome.
 /// </summary>
-public sealed class QueryExecutionFailedException : Exception
-{
+public sealed class QueryExecutionFailedException : Exception {
     /// <summary>
     /// Initializes a new instance of the <see cref="QueryExecutionFailedException"/> class.
     /// </summary>
@@ -16,8 +15,7 @@ public sealed class QueryExecutionFailedException : Exception
         string queryType,
         int statusCode,
         string detail)
-        : base(detail)
-    {
+        : base(detail) {
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);

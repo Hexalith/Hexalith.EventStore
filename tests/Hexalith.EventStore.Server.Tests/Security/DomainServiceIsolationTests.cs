@@ -310,7 +310,7 @@ public class DomainServiceIsolationTests {
         System.Reflection.MethodInfo method = typeof(IDomainServiceInvoker)
             .GetMethod(nameof(IDomainServiceInvoker.InvokeAsync))!;
 
-        method.ShouldNotBeNull();
+        _ = method.ShouldNotBeNull();
         System.Reflection.ParameterInfo[] parameters = method.GetParameters();
 
         // Expected: (CommandEnvelope command, object? currentState, CancellationToken cancellationToken)

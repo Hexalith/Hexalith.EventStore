@@ -1,6 +1,5 @@
 
 using System.Collections.Concurrent;
-using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
@@ -18,8 +17,7 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
 public abstract class EventStoreAggregate<TState> : IDomainProcessor
-    where TState : class, new()
-{
+    where TState : class, new() {
     private static readonly ConcurrentDictionary<Type, AggregateMetadata> _metadataCache = new();
 
     /// <summary>
@@ -31,8 +29,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
     /// This method is called during <c>UseEventStore()</c> cascade resolution, NOT during command processing.
     /// It is invoked via <c>Activator.CreateInstance()</c> — the aggregate must have a parameterless constructor.
     /// </remarks>
-    protected virtual void OnConfiguring(EventStoreDomainOptions options)
-    {
+    protected virtual void OnConfiguring(EventStoreDomainOptions options) {
         // No-op by default. Subclasses override to set per-domain options.
     }
 
@@ -43,15 +40,13 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
     internal void InvokeOnConfiguring(EventStoreDomainOptions options) => OnConfiguring(options);
 
     /// <inheritdoc/>
-    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
-    {
+    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
         ArgumentNullException.ThrowIfNull(command);
 
         AggregateMetadata metadata = GetOrBuildMetadata();
         TState? state = RehydrateState(currentState, metadata);
 
-        if (state is ITerminatable { IsTerminated: true })
-        {
+        if (state is ITerminatable { IsTerminated: true }) {
             return DomainResult.Rejection(new IRejectionEvent[] {
                 new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId),
             });
@@ -61,28 +56,23 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
     }
 
     private AggregateMetadata GetOrBuildMetadata() =>
-        _metadataCache.GetOrAdd(GetType(), static aggregateType =>
-        {
+        _metadataCache.GetOrAdd(GetType(), static aggregateType => {
             Dictionary<string, HandleMethodInfo> handleMethods = DiscoverHandleMethods(aggregateType);
             Dictionary<string, MethodInfo> applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
             return new AggregateMetadata(handleMethods, applyMethods);
         });
 
-    private static Dictionary<string, HandleMethodInfo> DiscoverHandleMethods(Type aggregateType)
-    {
+    private static Dictionary<string, HandleMethodInfo> DiscoverHandleMethods(Type aggregateType) {
         var methods = new Dictionary<string, HandleMethodInfo>(StringComparer.Ordinal);
 
         foreach (MethodInfo method in aggregateType.GetMethods(
-            BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
-        {
-            if (!method.Name.Equals("Handle", StringComparison.Ordinal))
-            {
+            BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
+            if (!method.Name.Equals("Handle", StringComparison.Ordinal)) {
                 continue;
             }
 
             ParameterInfo[] parameters = method.GetParameters();
-            if (parameters.Length < 2 || parameters.Length > 3)
-            {
+            if (parameters.Length is < 2 or > 3) {
                 continue;
             }
 
@@ -91,29 +81,25 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
 
             // Verify second parameter is TState? (nullable TState)
             Type expectedStateType = typeof(TState);
-            if (stateParamType != expectedStateType)
-            {
+            if (stateParamType != expectedStateType) {
                 continue;
             }
 
             // If 3 parameters, verify the third is CommandEnvelope
             bool hasEnvelope = parameters.Length == 3
                 && parameters[2].ParameterType == typeof(CommandEnvelope);
-            if (parameters.Length == 3 && !hasEnvelope)
-            {
+            if (parameters.Length == 3 && !hasEnvelope) {
                 continue;
             }
 
             bool isAsync = method.ReturnType == typeof(Task<DomainResult>);
             bool isSync = method.ReturnType == typeof(DomainResult);
-            if (!isAsync && !isSync)
-            {
+            if (!isAsync && !isSync) {
                 continue;
             }
 
             string commandTypeName = commandType.Name;
-            if (methods.ContainsKey(commandTypeName))
-            {
+            if (methods.ContainsKey(commandTypeName)) {
                 throw new InvalidOperationException(
                     $"Multiple Handle methods found for command type '{commandTypeName}' on aggregate '{aggregateType.Name}'. "
                     + "Declare exactly one Handle overload per command type.");
@@ -128,10 +114,8 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
     private static TState? RehydrateState(object? currentState, AggregateMetadata metadata) =>
         DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods);
 
-    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateMetadata metadata)
-    {
-        if (!metadata.HandleMethods.TryGetValue(command.CommandType, out HandleMethodInfo? handleInfo))
-        {
+    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateMetadata metadata) {
+        if (!metadata.HandleMethods.TryGetValue(command.CommandType, out HandleMethodInfo? handleInfo)) {
             throw new InvalidOperationException(
                 $"No Handle method found for command type '{command.CommandType}' on aggregate '{GetType().Name}'.");
         }
@@ -147,8 +131,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
             ? [commandPayload, state, command]
             : [commandPayload, state];
         object? result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
-        return result switch
-        {
+        return result switch {
             Task<DomainResult> asyncResult => await asyncResult.ConfigureAwait(false),
             DomainResult syncResult => syncResult,
             _ => throw new InvalidOperationException(

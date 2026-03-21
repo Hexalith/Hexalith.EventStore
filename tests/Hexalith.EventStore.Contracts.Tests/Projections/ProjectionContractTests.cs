@@ -21,7 +21,7 @@ public class ProjectionContractTests {
         string json = JsonSerializer.Serialize(dto);
         ProjectionEventDto? deserialized = JsonSerializer.Deserialize<ProjectionEventDto>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.EventTypeName.ShouldBe("OrderCreated");
         deserialized.Payload.ShouldBe(new byte[] { 1, 2, 3, 4 });
         deserialized.SerializationFormat.ShouldBe("json");
@@ -43,13 +43,13 @@ public class ProjectionContractTests {
         string json = JsonSerializer.Serialize(dto);
         ProjectionEventDto? deserialized = JsonSerializer.Deserialize<ProjectionEventDto>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Payload.ShouldBeEmpty();
     }
 
     [Fact]
     public void ProjectionRequest_RoundTrips_Json() {
-        var events = new[] {
+        ProjectionEventDto[] events = new[] {
             new ProjectionEventDto("OrderCreated", [1, 2], "json", 1, DateTimeOffset.UtcNow, "corr-001"),
             new ProjectionEventDto("OrderUpdated", [3, 4], "json", 2, DateTimeOffset.UtcNow, "corr-001"),
         };
@@ -62,7 +62,7 @@ public class ProjectionContractTests {
         string json = JsonSerializer.Serialize(request);
         ProjectionRequest? deserialized = JsonSerializer.Deserialize<ProjectionRequest>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.TenantId.ShouldBe("acme");
         deserialized.Domain.ShouldBe("orders");
         deserialized.AggregateId.ShouldBe("order-123");
@@ -81,7 +81,7 @@ public class ProjectionContractTests {
         string json = JsonSerializer.Serialize(response);
         ProjectionResponse? deserialized = JsonSerializer.Deserialize<ProjectionResponse>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.ProjectionType.ShouldBe("counter-summary");
         deserialized.State.GetProperty("count").GetInt32().ShouldBe(42);
         deserialized.State.GetProperty("name").GetString().ShouldBe("test");

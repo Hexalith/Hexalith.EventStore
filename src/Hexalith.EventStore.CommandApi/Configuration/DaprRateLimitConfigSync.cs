@@ -1,10 +1,5 @@
 using Dapr.Client;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-
 namespace Hexalith.EventStore.CommandApi.Configuration;
 
 /// <summary>
@@ -170,7 +165,7 @@ public class DaprRateLimitConfigSync(
         DaprClient daprClient,
         string[] keys,
         CancellationToken cancellationToken) {
-        using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(DaprTimeout);
 
         return await daprClient
@@ -180,7 +175,7 @@ public class DaprRateLimitConfigSync(
 
     private static bool ContainsCancellation(Exception ex) =>
         ex is OperationCanceledException or TaskCanceledException
-        || ex.InnerException is not null && ContainsCancellation(ex.InnerException);
+        || (ex.InnerException is not null && ContainsCancellation(ex.InnerException));
 
     private static string GetTenantConfigPath(string tenantId) => $"EventStore:RateLimiting:TenantPermitLimits:{tenantId}";
 }

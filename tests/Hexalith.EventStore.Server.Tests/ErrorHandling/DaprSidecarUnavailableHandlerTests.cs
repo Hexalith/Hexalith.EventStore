@@ -10,7 +10,6 @@ using Hexalith.EventStore.CommandApi.Middleware;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
@@ -18,10 +17,8 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.ErrorHandling;
 
 public class DaprSidecarUnavailableHandlerTests {
-    private static DaprSidecarUnavailableHandler CreateHandler() {
-        return new DaprSidecarUnavailableHandler(
+    private static DaprSidecarUnavailableHandler CreateHandler() => new(
             NullLogger<DaprSidecarUnavailableHandler>.Instance);
-    }
 
     private static HttpContext CreateHttpContext(string correlationId = "test-correlation-id") {
         var context = new DefaultHttpContext();
@@ -56,7 +53,7 @@ public class DaprSidecarUnavailableHandlerTests {
         ProblemDetails? problem = await ReadProblemDetails(context);
         _ = problem.ShouldNotBeNull();
         problem.Type.ShouldBe(ProblemTypeUris.ServiceUnavailable);
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("command processing pipeline");
     }
 

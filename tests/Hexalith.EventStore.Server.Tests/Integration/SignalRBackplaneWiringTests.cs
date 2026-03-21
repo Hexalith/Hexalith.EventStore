@@ -1,9 +1,9 @@
+using Hexalith.EventStore.CommandApi.SignalR;
+
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
-using Hexalith.EventStore.CommandApi.SignalR;
 
 using Shouldly;
 
@@ -21,13 +21,13 @@ public class SignalRBackplaneWiringTests {
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddEventStoreSignalR(configuration);
+        _ = services.AddLogging();
+        _ = services.AddEventStoreSignalR(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         HubLifetimeManager<ProjectionChangedHub> manager =
             provider.GetRequiredService<HubLifetimeManager<ProjectionChangedHub>>();
-        manager.ShouldBeOfType<RedisHubLifetimeManager<ProjectionChangedHub>>();
+        _ = manager.ShouldBeOfType<RedisHubLifetimeManager<ProjectionChangedHub>>();
     }
 
     [Fact]
@@ -40,12 +40,12 @@ public class SignalRBackplaneWiringTests {
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddEventStoreSignalR(configuration);
+        _ = services.AddLogging();
+        _ = services.AddEventStoreSignalR(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         HubLifetimeManager<ProjectionChangedHub> manager =
             provider.GetRequiredService<HubLifetimeManager<ProjectionChangedHub>>();
-        manager.ShouldBeOfType<DefaultHubLifetimeManager<ProjectionChangedHub>>();
+        _ = manager.ShouldBeOfType<DefaultHubLifetimeManager<ProjectionChangedHub>>();
     }
 }

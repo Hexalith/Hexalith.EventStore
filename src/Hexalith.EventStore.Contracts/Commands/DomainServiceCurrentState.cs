@@ -13,8 +13,7 @@ public sealed record DomainServiceCurrentState(
     object? SnapshotState,
     IReadOnlyList<EventEnvelope> Events,
     long LastSnapshotSequence,
-    long CurrentSequence)
-{
+    long CurrentSequence) {
     /// <summary>Gets the number of events carried in this payload.</summary>
     public int EventCount => Events.Count;
 

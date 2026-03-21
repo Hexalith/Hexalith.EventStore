@@ -38,8 +38,7 @@ public partial class ProjectionUpdateOrchestrator(
         ArgumentNullException.ThrowIfNull(identity);
 
         int refreshIntervalMs = projectionOptions.Value.GetRefreshIntervalMs(identity.Domain);
-        if (refreshIntervalMs > 0)
-        {
+        if (refreshIntervalMs > 0) {
             Log.PollingModeDeferred(logger, identity.TenantId, identity.Domain, refreshIntervalMs);
             return;
         }

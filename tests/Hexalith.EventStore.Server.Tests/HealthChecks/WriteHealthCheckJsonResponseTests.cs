@@ -38,13 +38,13 @@ public class WriteHealthCheckJsonResponseTests {
         await Extensions.WriteHealthCheckJsonResponse(httpContext, report);
 
         // Assert
-        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         using var reader = new StreamReader(httpContext.Response.Body);
         string json = await reader.ReadToEndAsync();
 
         httpContext.Response.ContentType.ShouldBe("application/json; charset=utf-8");
 
-        using JsonDocument doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         JsonElement root = doc.RootElement;
 
         root.GetProperty("status").GetString().ShouldBe("Unhealthy");
@@ -82,15 +82,15 @@ public class WriteHealthCheckJsonResponseTests {
         await Extensions.WriteHealthCheckJsonResponse(httpContext, report);
 
         // Assert
-        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         using var reader = new StreamReader(httpContext.Response.Body);
         string json = await reader.ReadToEndAsync();
 
-        using JsonDocument doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         JsonElement root = doc.RootElement;
         string? badValue = root.GetProperty("results").GetProperty("test-check").GetProperty("data").GetProperty("bad")
             .GetString();
-        badValue.ShouldNotBeNull();
+        _ = badValue.ShouldNotBeNull();
         badValue.ShouldContain("non-serializable");
     }
 
@@ -119,14 +119,14 @@ public class WriteHealthCheckJsonResponseTests {
         await Extensions.WriteHealthCheckJsonResponse(httpContext, report);
 
         // Assert
-        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         using var reader = new StreamReader(httpContext.Response.Body);
         string json = await reader.ReadToEndAsync();
 
-        using JsonDocument doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         string? badValue = doc.RootElement.GetProperty("results").GetProperty("test-check").GetProperty("data").GetProperty("bad")
             .GetString();
-        badValue.ShouldNotBeNull();
+        _ = badValue.ShouldNotBeNull();
         badValue.ShouldContain("non-serializable");
     }
 

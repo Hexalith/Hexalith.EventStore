@@ -97,11 +97,9 @@ public class DaprSidecarHealthCheckTests {
         _ = await healthCheck.CheckHealthAsync(CreateContext(), cts.Token);
 
         // Assert
-        await daprClient.Received(1).CheckHealthAsync(cts.Token);
+        _ = await daprClient.Received(1).CheckHealthAsync(cts.Token);
     }
 
     [Fact]
-    public void Constructor_NullDaprClient_ThrowsArgumentNullException() {
-        Should.Throw<ArgumentNullException>(() => new DaprSidecarHealthCheck(null!));
-    }
+    public void Constructor_NullDaprClient_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() => new DaprSidecarHealthCheck(null!));
 }

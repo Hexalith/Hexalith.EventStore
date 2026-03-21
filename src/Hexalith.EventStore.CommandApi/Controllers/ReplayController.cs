@@ -1,6 +1,7 @@
 
 using System.Diagnostics;
 
+using Hexalith.EventStore.CommandApi.ErrorHandling;
 using Hexalith.EventStore.CommandApi.Middleware;
 using Hexalith.EventStore.CommandApi.Models;
 using Hexalith.EventStore.CommandApi.Telemetry;
@@ -10,8 +11,6 @@ using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 
 using MediatR;
-
-using Hexalith.EventStore.CommandApi.ErrorHandling;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

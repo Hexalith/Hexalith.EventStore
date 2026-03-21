@@ -108,7 +108,7 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - GetEventsAsync was called but no further processing
-        await aggregateActor.Received(1).GetEventsAsync(0);
+        _ = await aggregateActor.Received(1).GetEventsAsync(0);
         // No write actor proxy should be created
         _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IProjectionWriteActor>(default!, default!);
     }
@@ -133,7 +133,7 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Resolver was called with correct identity parameters
-        await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+        _ = await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
     }
 
     // --- Test 4: AC 2 - Aggregate actor proxy uses correct type name and actor ID ---
@@ -180,7 +180,7 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Full replay from sequence 0
-        await aggregateActor.Received(1).GetEventsAsync(0);
+        _ = await aggregateActor.Received(1).GetEventsAsync(0);
     }
 
     // --- Test 6: AC 3 - Domain service failure does not throw ---
@@ -251,7 +251,7 @@ public class ProjectionUpdateOrchestratorTests {
         _ = orchestrator
             .UpdateProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
             .Returns(_ => {
-                signal.TrySetResult(true);
+                _ = signal.TrySetResult(true);
                 return Task.CompletedTask;
             });
         var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), orchestrator);
@@ -345,7 +345,7 @@ public class ProjectionUpdateOrchestratorTests {
         _ = orchestrator
             .UpdateProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
             .Returns(_ => {
-                signal.TrySetResult(true);
+                _ = signal.TrySetResult(true);
                 return Task.CompletedTask;
             });
         var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), orchestrator);

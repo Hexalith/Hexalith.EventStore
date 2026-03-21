@@ -167,29 +167,23 @@ public class ConfigureJwtBearerOptions(
         return ChallengeKind.MissingToken;
     }
 
-    private static string GetChallengeReason(string? error, ChallengeKind challengeKind) {
-        return challengeKind switch {
-            ChallengeKind.ExpiredToken => "TokenExpired",
-            ChallengeKind.InvalidToken => string.Equals(error, "invalid_token", StringComparison.OrdinalIgnoreCase) ? "InvalidToken" : (error ?? "InvalidToken"),
-            _ => string.IsNullOrWhiteSpace(error) ? "MissingToken" : error,
-        };
-    }
+    private static string GetChallengeReason(string? error, ChallengeKind challengeKind) => challengeKind switch {
+        ChallengeKind.ExpiredToken => "TokenExpired",
+        ChallengeKind.InvalidToken => string.Equals(error, "invalid_token", StringComparison.OrdinalIgnoreCase) ? "InvalidToken" : (error ?? "InvalidToken"),
+        _ => string.IsNullOrWhiteSpace(error) ? "MissingToken" : error,
+    };
 
-    private static string GetDetailMessage(ChallengeKind challengeKind) {
-        return challengeKind switch {
-            ChallengeKind.ExpiredToken => "The provided authentication token has expired.",
-            ChallengeKind.InvalidToken => "The provided authentication token is invalid.",
-            _ => "Authentication is required to access this resource.",
-        };
-    }
+    private static string GetDetailMessage(ChallengeKind challengeKind) => challengeKind switch {
+        ChallengeKind.ExpiredToken => "The provided authentication token has expired.",
+        ChallengeKind.InvalidToken => "The provided authentication token is invalid.",
+        _ => "Authentication is required to access this resource.",
+    };
 
-    private static string GetWwwAuthenticateHeader(ChallengeKind challengeKind) {
-        return challengeKind switch {
-            ChallengeKind.ExpiredToken => "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token has expired\"",
-            ChallengeKind.InvalidToken => "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token is invalid\"",
-            _ => "Bearer realm=\"hexalith-eventstore\"",
-        };
-    }
+    private static string GetWwwAuthenticateHeader(ChallengeKind challengeKind) => challengeKind switch {
+        ChallengeKind.ExpiredToken => "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token has expired\"",
+        ChallengeKind.InvalidToken => "Bearer realm=\"hexalith-eventstore\", error=\"invalid_token\", error_description=\"The token is invalid\"",
+        _ => "Bearer realm=\"hexalith-eventstore\"",
+    };
 
     private static async Task<RequestAuditMetadata> TryExtractRequestAuditMetadataAsync(HttpContext httpContext) {
         if (httpContext.Items.TryGetValue(RequestAuditMetadataKey, out object? cached)

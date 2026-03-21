@@ -68,7 +68,7 @@ builder.Services.AddEventStore();  // Auto-discovers CounterAggregate
 app.UseEventStore();               // Activates domains with convention-derived names
 ```
 
-Today the sample topology also includes a query endpoint, preflight authorization endpoints, projection invalidation hooks, and optional SignalR notifications for real-time read-model refresh.
+Beyond commands, the platform includes a query pipeline with ETag-based cache validation, projection invalidation hooks, preflight authorization endpoints, and optional SignalR notifications for real-time read-model refresh.
 
 **Get started in under 10 minutes** — follow the [Quickstart Guide](docs/getting-started/quickstart.md).
 

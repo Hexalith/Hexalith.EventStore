@@ -1048,7 +1048,7 @@ public class AggregateActorTests {
         ConfigureNoDuplicate(stateManager);
 
         // Configure status store to throw on every write
-        statusStore.WriteStatusAsync(
+        _ = statusStore.WriteStatusAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandStatusRecord>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DAPR state store unavailable"));
 

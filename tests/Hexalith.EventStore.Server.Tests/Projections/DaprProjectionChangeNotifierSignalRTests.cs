@@ -90,8 +90,8 @@ public class DaprProjectionChangeNotifierSignalRTests {
         await sut.NotifyProjectionChangedAsync("order-list", "acme");
 
         Received.InOrder(() => {
-            actor.RegenerateAsync();
-            broadcaster.BroadcastChangedAsync("order-list", "acme", Arg.Any<CancellationToken>());
+            _ = actor.RegenerateAsync();
+            _ = broadcaster.BroadcastChangedAsync("order-list", "acme", Arg.Any<CancellationToken>());
         });
     }
 

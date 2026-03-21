@@ -27,7 +27,7 @@ public class EventPersistenceIntegrationTests {
     };
 
     private static readonly Lazy<Task<IConnectionMultiplexer>> RedisConnection =
-        new(async () => (IConnectionMultiplexer)await ConnectionMultiplexer
+        new(async () => await ConnectionMultiplexer
             .ConnectAsync("localhost:6379,abortConnect=false")
             .ConfigureAwait(false));
 
@@ -206,11 +206,7 @@ public class EventPersistenceIntegrationTests {
 
     private static async Task<T> GetStateAsync<T>(string key) {
         string json = await GetStateJsonAsync(key).ConfigureAwait(true);
-        T? value = JsonSerializer.Deserialize<T>(json, JsonOptions);
-        if (value is null) {
-            throw new ShouldAssertException($"State for key '{key}' could not be deserialized as {typeof(T).Name}.");
-        }
-
+        T? value = JsonSerializer.Deserialize<T>(json, JsonOptions) ?? throw new ShouldAssertException($"State for key '{key}' could not be deserialized as {typeof(T).Name}.");
         return value;
     }
 

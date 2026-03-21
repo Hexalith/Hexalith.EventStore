@@ -9,8 +9,8 @@ using commandapi::Hexalith.EventStore.CommandApi.Configuration;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
@@ -198,7 +198,7 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
         // Assert
         r3.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         string body = await r3.Content.ReadAsStringAsync();
-        JsonDocument doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("consumerId").GetString().ShouldBe("consumer-c");
     }
 
@@ -246,11 +246,11 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
         r3.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
 
         // Retry-After header must be present
-        r3.Headers.RetryAfter.ShouldNotBeNull();
+        _ = r3.Headers.RetryAfter.ShouldNotBeNull();
 
         // ProblemDetails must contain both tenantId and consumerId
         string body = await r3.Content.ReadAsStringAsync();
-        JsonDocument doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("tenantId").GetString().ShouldNotBeNullOrEmpty();
         doc.RootElement.GetProperty("consumerId").GetString().ShouldBe("consumer-d");
     }
@@ -260,7 +260,7 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
     /// </summary>
     [Fact]
     public async Task TenantLimiter_RejectsFirst_WhenTenantLimitIsExceeded() {
-        using var tenantFirstFactory = factory.WithWebHostBuilder(builder =>
+        using WebApplicationFactory<Program> tenantFirstFactory = factory.WithWebHostBuilder(builder =>
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:RateLimiting:PermitLimit"] = "1",
                 ["EventStore:RateLimiting:WindowSeconds"] = "60",
@@ -280,10 +280,10 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
 
         r1.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         r2.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
-        r2.Headers.RetryAfter.ShouldNotBeNull();
+        _ = r2.Headers.RetryAfter.ShouldNotBeNull();
         r2.Headers.RetryAfter!.Delta.ShouldBe(TimeSpan.FromSeconds(60));
 
-        JsonDocument doc = JsonDocument.Parse(await r2.Content.ReadAsStringAsync());
+        var doc = JsonDocument.Parse(await r2.Content.ReadAsStringAsync());
         doc.RootElement.GetProperty("tenantId").GetString().ShouldBe("tenant-tenant-first");
         doc.RootElement.GetProperty("consumerId").GetString().ShouldBe("consumer-tenant-first");
     }
@@ -310,7 +310,7 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
             "Unauthenticated requests should share the anonymous consumer partition and hit the limiter on the third request.");
 
         string body = await r3.Content.ReadAsStringAsync();
-        JsonDocument doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(body);
         doc.RootElement.TryGetProperty("consumerId", out JsonElement consumerIdElement).ShouldBeTrue();
         consumerIdElement.GetString().ShouldBe("anonymous",
             "Unauthenticated requests should use 'anonymous' consumer partition.");

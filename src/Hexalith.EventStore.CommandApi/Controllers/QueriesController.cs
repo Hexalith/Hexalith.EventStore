@@ -106,6 +106,13 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             ? JsonSerializer.SerializeToUtf8Bytes(request.Payload.Value)
             : [];
 
+        // Aggregate-scoped queries persist projection state under the aggregate identity.
+        // If callers omit EntityId, route to AggregateId so read actor identity matches the
+        // projection write path. Explicit EntityId still wins for sub-aggregate queries.
+        string entityId = string.IsNullOrWhiteSpace(request.EntityId)
+            ? request.AggregateId
+            : request.EntityId;
+
         var query = new SubmitQuery(
             Tenant: request.Tenant,
             Domain: request.Domain,
@@ -114,7 +121,7 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             Payload: payloadBytes,
             CorrelationId: correlationId,
             UserId: userId,
-            EntityId: request.EntityId);
+            EntityId: entityId);
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 

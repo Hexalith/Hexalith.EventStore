@@ -6,8 +6,7 @@ using Hexalith.EventStore.Sample.Counter.Projections;
 
 namespace Hexalith.EventStore.Sample.Tests.Counter.Projections;
 
-public class CounterProjectionHandlerTests
-{
+public class CounterProjectionHandlerTests {
     private static ProjectionEventDto CreateEvent(string eventTypeName)
         => new(
             EventTypeName: eventTypeName,
@@ -25,8 +24,7 @@ public class CounterProjectionHandlerTests
             Events: events);
 
     [Fact]
-    public void Project_SingleIncrement_ReturnsCountOne()
-    {
+    public void Project_SingleIncrement_ReturnsCountOne() {
         ProjectionRequest request = CreateRequest(CreateEvent("CounterIncremented"));
 
         ProjectionResponse response = CounterProjectionHandler.Project(request);
@@ -36,8 +34,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_MultipleIncrements_ReturnsCorrectCount()
-    {
+    public void Project_MultipleIncrements_ReturnsCorrectCount() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),
             CreateEvent("CounterIncremented"),
@@ -49,8 +46,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_IncrementThenDecrement_ReturnsZero()
-    {
+    public void Project_IncrementThenDecrement_ReturnsZero() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),
             CreateEvent("CounterDecremented"));
@@ -61,8 +57,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_IncrementThenReset_ReturnsZero()
-    {
+    public void Project_IncrementThenReset_ReturnsZero() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),
             CreateEvent("CounterIncremented"),
@@ -74,8 +69,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_EmptyEvents_ReturnsZeroCount()
-    {
+    public void Project_EmptyEvents_ReturnsZeroCount() {
         ProjectionRequest request = CreateRequest();
 
         ProjectionResponse response = CounterProjectionHandler.Project(request);
@@ -85,8 +79,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_RejectionEvent_Skipped()
-    {
+    public void Project_RejectionEvent_Skipped() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),
             CreateEvent("CounterCannotGoNegative"),
@@ -98,8 +91,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_ProjectionType_IsCounter()
-    {
+    public void Project_ProjectionType_IsCounter() {
         ProjectionRequest request = CreateRequest(CreateEvent("CounterIncremented"));
 
         ProjectionResponse response = CounterProjectionHandler.Project(request);
@@ -108,8 +100,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_MixedStreamWithClose_ReturnsPreCloseCount()
-    {
+    public void Project_MixedStreamWithClose_ReturnsPreCloseCount() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),
             CreateEvent("CounterIncremented"),
@@ -121,8 +112,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_FullyQualifiedEventTypeName_StillMatches()
-    {
+    public void Project_FullyQualifiedEventTypeName_StillMatches() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("Hexalith.EventStore.Sample.Counter.Events.CounterIncremented"));
 
@@ -132,14 +122,10 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_NullRequest_ThrowsArgumentNullException()
-    {
-        _ = Assert.Throws<ArgumentNullException>(() => CounterProjectionHandler.Project(null!));
-    }
+    public void Project_NullRequest_ThrowsArgumentNullException() => _ = Assert.Throws<ArgumentNullException>(() => CounterProjectionHandler.Project(null!));
 
     [Fact]
-    public void Project_NullEventTypeName_SkippedGracefully()
-    {
+    public void Project_NullEventTypeName_SkippedGracefully() {
         ProjectionEventDto nullTypeEvent = new(
             EventTypeName: null!,
             Payload: System.Text.Encoding.UTF8.GetBytes("{}"),
@@ -159,8 +145,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_ResponseSurvivesJsonRoundTrip()
-    {
+    public void Project_ResponseSurvivesJsonRoundTrip() {
         ProjectionRequest request = CreateRequest(CreateEvent("CounterIncremented"));
 
         ProjectionResponse response = CounterProjectionHandler.Project(request);
@@ -174,8 +159,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_PostTombstoneEventsInStream_StillCounted()
-    {
+    public void Project_PostTombstoneEventsInStream_StillCounted() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),
             CreateEvent("CounterIncremented"),
@@ -189,8 +173,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_NullEventsArray_ReturnsZeroCount()
-    {
+    public void Project_NullEventsArray_ReturnsZeroCount() {
         ProjectionRequest request = new(
             TenantId: "sample-tenant",
             Domain: "counter",
@@ -204,8 +187,7 @@ public class CounterProjectionHandlerTests
     }
 
     [Fact]
-    public void Project_NullEventElement_SkippedGracefully()
-    {
+    public void Project_NullEventElement_SkippedGracefully() {
         ProjectionRequest request = new(
             TenantId: "sample-tenant",
             Domain: "counter",

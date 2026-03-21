@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Exception raised when a command is rejected due to per-aggregate backpressure (Story 4.3, FR67).
 /// The aggregate's pending command count exceeds the configured threshold.
 /// </summary>
-public class BackpressureExceededException : InvalidOperationException
-{
+public class BackpressureExceededException : InvalidOperationException {
     public BackpressureExceededException(
         string correlationId,
         string tenantId,
@@ -13,8 +12,7 @@ public class BackpressureExceededException : InvalidOperationException
         string aggregateId,
         int pendingCount,
         int threshold)
-        : base($"Backpressure exceeded for aggregate {domain}:{aggregateId} (tenant: {tenantId}): {pendingCount} pending commands (threshold: {threshold})")
-    {
+        : base($"Backpressure exceeded for aggregate {domain}:{aggregateId} (tenant: {tenantId}): {pendingCount} pending commands (threshold: {threshold})") {
         CorrelationId = correlationId;
         TenantId = tenantId;
         Domain = domain;

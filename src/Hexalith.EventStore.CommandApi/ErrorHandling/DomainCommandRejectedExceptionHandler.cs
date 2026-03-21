@@ -8,16 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.CommandApi.ErrorHandling;
 
-public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejectedExceptionHandler> logger) : IExceptionHandler
-{
+public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejectedExceptionHandler> logger) : IExceptionHandler {
     private const string ProblemJsonContentType = "application/problem+json";
 
-    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
-    {
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
 
-        if (exception is not DomainCommandRejectedException rejection)
-        {
+        if (exception is not DomainCommandRejectedException rejection) {
             return false;
         }
 
@@ -30,15 +27,13 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
             rejection.RejectionType);
 
         int statusCode = GetStatusCode(rejection.RejectionType);
-        string title = statusCode switch
-        {
+        string title = statusCode switch {
             StatusCodes.Status404NotFound => "Not Found",
             StatusCodes.Status409Conflict => "Conflict",
             _ => "Unprocessable Entity",
         };
 
-        var problemDetails = new ProblemDetails
-        {
+        var problemDetails = new ProblemDetails {
             Status = statusCode,
             Title = title,
             Type = rejection.RejectionType,
@@ -55,16 +50,13 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
         return true;
     }
 
-    private static int GetStatusCode(string rejectionType)
-    {
-        if (rejectionType.EndsWith("NotFoundRejection", StringComparison.Ordinal))
-        {
+    private static int GetStatusCode(string rejectionType) {
+        if (rejectionType.EndsWith("NotFoundRejection", StringComparison.Ordinal)) {
             return StatusCodes.Status404NotFound;
         }
 
         if (rejectionType.EndsWith("AlreadyExistsRejection", StringComparison.Ordinal)
-            || rejectionType.EndsWith("AlreadyBootstrappedRejection", StringComparison.Ordinal))
-        {
+            || rejectionType.EndsWith("AlreadyBootstrappedRejection", StringComparison.Ordinal)) {
             return StatusCodes.Status409Conflict;
         }
 

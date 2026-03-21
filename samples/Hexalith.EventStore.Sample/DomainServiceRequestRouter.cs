@@ -2,8 +2,6 @@ using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Hexalith.EventStore.Sample;
 
 /// <summary>

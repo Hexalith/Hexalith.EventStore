@@ -1,4 +1,3 @@
-
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
@@ -7,16 +6,16 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Server.Pipeline;
+
 /// <summary>
 /// Handles query submission: routes queries to projection actors via the query router.
 /// Unlike commands, queries are synchronous — no status tracking or archiving.
 /// </summary>
 public partial class SubmitQueryHandler(
     IQueryRouter queryRouter,
-    ILogger<SubmitQueryHandler> logger) : IRequestHandler<SubmitQuery, SubmitQueryResult>
-{
-    public async Task<SubmitQueryResult> Handle(SubmitQuery request, CancellationToken cancellationToken)
-    {
+    ILogger<SubmitQueryHandler> logger) : IRequestHandler<SubmitQuery, SubmitQueryResult> {
+
+    public async Task<SubmitQueryResult> Handle(SubmitQuery request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
         Log.QueryReceived(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId);
@@ -25,19 +24,16 @@ public partial class SubmitQueryHandler(
             .RouteQueryAsync(request, cancellationToken)
             .ConfigureAwait(false);
 
-        if (routerResult.NotFound)
-        {
+        if (routerResult.NotFound) {
             throw new QueryNotFoundException(request.Tenant, request.Domain, request.AggregateId, request.QueryType);
         }
 
-        if (!routerResult.Success)
-        {
+        if (!routerResult.Success) {
             Log.QueryFailed(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId, routerResult.ErrorMessage);
             throw CreateQueryFailureException(request, routerResult.ErrorMessage);
         }
 
-        if (routerResult.Payload is null)
-        {
+        if (routerResult.Payload is null) {
             Log.QueryCompletedWithoutPayload(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId);
             throw new InvalidOperationException("Projection query completed without a payload.");
         }
@@ -45,12 +41,10 @@ public partial class SubmitQueryHandler(
         return new SubmitQueryResult(request.CorrelationId, routerResult.Payload.Value, routerResult.ProjectionType);
     }
 
-    private static Exception CreateQueryFailureException(SubmitQuery request, string? errorMessage)
-    {
+    private static Exception CreateQueryFailureException(SubmitQuery request, string? errorMessage) {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (IsForbidden(errorMessage))
-        {
+        if (IsForbidden(errorMessage)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
                 request.Tenant,
@@ -61,13 +55,11 @@ public partial class SubmitQueryHandler(
                 errorMessage!);
         }
 
-        if (IsNotFound(errorMessage))
-        {
+        if (IsNotFound(errorMessage)) {
             return new QueryNotFoundException(request.Tenant, request.Domain, request.AggregateId, request.QueryType);
         }
 
-        if (IsNotImplemented(errorMessage))
-        {
+        if (IsNotImplemented(errorMessage)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
                 request.Tenant,
@@ -86,20 +78,21 @@ public partial class SubmitQueryHandler(
 
     private static bool IsNotFound(string? errorMessage)
         => !string.IsNullOrWhiteSpace(errorMessage)
-            && errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase);
+            && (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("no projection state available", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsNotImplemented(string? errorMessage)
         => !string.IsNullOrWhiteSpace(errorMessage)
             && (errorMessage.Contains("not implemented", StringComparison.OrdinalIgnoreCase)
                 || errorMessage.Contains("not yet implemented", StringComparison.OrdinalIgnoreCase));
 
-    private static partial class Log
-    {
+    private static partial class Log {
+
         [LoggerMessage(
-            EventId = 1210,
-            Level = LogLevel.Information,
-            Message = "Query received: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryReceived")]
-        public static partial void QueryReceived(
+            EventId = 1212,
+            Level = LogLevel.Error,
+            Message = "Query routing returned success without payload: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryCompletedWithoutPayload")]
+        public static partial void QueryCompletedWithoutPayload(
             ILogger logger,
             string correlationId,
             string queryType,
@@ -121,10 +114,10 @@ public partial class SubmitQueryHandler(
             string? errorMessage);
 
         [LoggerMessage(
-            EventId = 1212,
-            Level = LogLevel.Error,
-            Message = "Query routing returned success without payload: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryCompletedWithoutPayload")]
-        public static partial void QueryCompletedWithoutPayload(
+                            EventId = 1210,
+            Level = LogLevel.Information,
+            Message = "Query received: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryReceived")]
+        public static partial void QueryReceived(
             ILogger logger,
             string correlationId,
             string queryType,

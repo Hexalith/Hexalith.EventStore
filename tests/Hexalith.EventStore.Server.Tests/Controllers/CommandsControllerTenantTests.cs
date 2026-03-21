@@ -36,8 +36,7 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// decisions to the MediatR pipeline (AuthorizationBehavior) after Story 17-3 refactoring.
 /// Replaces the 7 characterization tests that tested inline tenant checks removed in 17-3.
 /// </summary>
-public class CommandsControllerTenantTests
-{
+public class CommandsControllerTenantTests {
     private static SubmitCommandRequest CreateTestRequest(
         string tenant = "test-tenant",
         string domain = "test-domain",
@@ -53,8 +52,7 @@ public class CommandsControllerTenantTests
             Payload: JsonSerializer.SerializeToElement(new { Value = 1 }),
             Extensions: extensions);
 
-    private static (CommandsController Controller, IMediator Mediator) CreateControllerWithMediator(ClaimsPrincipal? principal = null)
-    {
+    private static (CommandsController Controller, IMediator Mediator) CreateControllerWithMediator(ClaimsPrincipal? principal = null) {
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult("test-correlation-id"));
@@ -65,26 +63,22 @@ public class CommandsControllerTenantTests
         var controller = new CommandsController(mediator, sanitizer, logger);
 
         var httpContext = new DefaultHttpContext();
-        if (principal is not null)
-        {
+        if (principal is not null) {
             httpContext.User = principal;
         }
 
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
 
-        controller.ControllerContext = new ControllerContext
-        {
+        controller.ControllerContext = new ControllerContext {
             HttpContext = httpContext,
         };
 
         return (controller, mediator);
     }
 
-    private static ClaimsPrincipal CreateAuthenticatedPrincipal(params string[] tenants)
-    {
+    private static ClaimsPrincipal CreateAuthenticatedPrincipal(params string[] tenants) {
         var claims = new List<Claim>();
-        foreach (string t in tenants)
-        {
+        foreach (string t in tenants) {
             claims.Add(new Claim("eventstore:tenant", t));
         }
 
@@ -94,11 +88,9 @@ public class CommandsControllerTenantTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
     }
 
-    private static ClaimsPrincipal CreateGlobalAdministratorPrincipal(params string[] tenants)
-    {
+    private static ClaimsPrincipal CreateGlobalAdministratorPrincipal(params string[] tenants) {
         var claims = new List<Claim>();
-        foreach (string tenant in tenants)
-        {
+        foreach (string tenant in tenants) {
             claims.Add(new Claim("eventstore:tenant", tenant));
         }
 
@@ -121,8 +113,7 @@ public class CommandsControllerTenantTests
         ClaimsPrincipal principal,
         ITenantValidator tenantValidator,
         IRbacValidator rbacValidator,
-        out DefaultHttpContext httpContext)
-    {
+        out DefaultHttpContext httpContext) {
         var services = new ServiceCollection();
         var accessor = new HttpContextAccessor();
 
@@ -133,8 +124,7 @@ public class CommandsControllerTenantTests
         _ = services.AddSingleton<ITenantValidator>(tenantValidator);
         _ = services.AddSingleton<IRbacValidator>(rbacValidator);
         _ = services.AddTransient<IRequestHandler<SubmitCommand, SubmitCommandResult>, PipelineTestSubmitCommandHandler>();
-        _ = services.AddMediatR(cfg =>
-        {
+        _ = services.AddMediatR(cfg => {
             _ = cfg.RegisterServicesFromAssemblyContaining<PipelineTestSubmitCommandHandler>();
             _ = cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
         });
@@ -144,8 +134,7 @@ public class CommandsControllerTenantTests
         ExtensionMetadataSanitizer sanitizer = new(Options.Create(new ExtensionMetadataOptions()));
         var controller = new CommandsController(mediator, sanitizer, NullLogger<CommandsController>.Instance);
 
-        httpContext = new DefaultHttpContext
-        {
+        httpContext = new DefaultHttpContext {
             RequestServices = provider,
             User = principal,
         };
@@ -158,16 +147,14 @@ public class CommandsControllerTenantTests
 
         accessor.HttpContext = httpContext;
 
-        controller.ControllerContext = new ControllerContext
-        {
+        controller.ControllerContext = new ControllerContext {
             HttpContext = httpContext,
         };
 
         return controller;
     }
 
-    private static ITenantValidator CreateUnavailableActorTenantValidator()
-    {
+    private static ITenantValidator CreateUnavailableActorTenantValidator() {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         ITenantValidatorActor actor = Substitute.For<ITenantValidatorActor>();
         _ = actor.ValidateTenantAccessAsync(Arg.Any<TenantValidationRequest>())
@@ -178,16 +165,14 @@ public class CommandsControllerTenantTests
 
         return new ActorTenantValidator(
             factory,
-            Options.Create(new EventStoreAuthorizationOptions
-            {
+            Options.Create(new EventStoreAuthorizationOptions {
                 TenantValidatorActorName = "TestTenantValidatorActor",
             }),
             NullLoggerFactory.Instance.CreateLogger<ActorTenantValidator>());
     }
 
     [Fact]
-    public async Task Submit_ValidRequest_DelegatesToMediatR()
-    {
+    public async Task Submit_ValidRequest_DelegatesToMediatR() {
         // Arrange — controller should delegate all auth to MediatR pipeline
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
@@ -201,8 +186,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_ValidRequest_SendsCorrectCommandToMediatR()
-    {
+    public async Task Submit_ValidRequest_SendsCorrectCommandToMediatR() {
         // Arrange
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
@@ -222,8 +206,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_NonGlobalAdministratorPrincipal_LeavesTrustedAdminFlagUnset()
-    {
+    public async Task Submit_NonGlobalAdministratorPrincipal_LeavesTrustedAdminFlagUnset() {
         // Arrange
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
@@ -231,8 +214,7 @@ public class CommandsControllerTenantTests
         _ = mediator.Send(Arg.Do<SubmitCommand>(cmd => capturedCommand = cmd), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult("test-correlation-id"));
         SubmitCommandRequest request = CreateTestRequest(
-            extensions: new Dictionary<string, string>
-            {
+            extensions: new Dictionary<string, string> {
                 ["requestId"] = "req-123",
             });
 
@@ -248,8 +230,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_GlobalAdministratorPrincipal_SetsTrustedAdminFlag()
-    {
+    public async Task Submit_GlobalAdministratorPrincipal_SetsTrustedAdminFlag() {
         // Arrange
         ClaimsPrincipal principal = CreateGlobalAdministratorPrincipal("test-tenant");
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
@@ -257,8 +238,7 @@ public class CommandsControllerTenantTests
         _ = mediator.Send(Arg.Do<SubmitCommand>(cmd => capturedCommand = cmd), Arg.Any<CancellationToken>())
             .Returns(new SubmitCommandResult("test-correlation-id"));
         SubmitCommandRequest request = CreateTestRequest(
-            extensions: new Dictionary<string, string>
-            {
+            extensions: new Dictionary<string, string> {
                 ["requestId"] = "req-456",
             });
 
@@ -274,8 +254,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_NoTenantClaims_StillDelegatesToMediatR()
-    {
+    public async Task Submit_NoTenantClaims_StillDelegatesToMediatR() {
         // Arrange — no tenant claims; controller no longer checks this, behavior does
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user")], "test"));
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
@@ -289,8 +268,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_MissingSubClaim_ReturnsUnauthorizedAndDoesNotCallMediator()
-    {
+    public async Task Submit_MissingSubClaim_ReturnsUnauthorizedAndDoesNotCallMediator() {
         // Arrange
         var principal = new ClaimsPrincipal(new ClaimsIdentity([], "test"));
         (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
@@ -305,8 +283,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_NoTenantClaims_WithRealPipeline_ThrowsCommandAuthorizationExceptionFromBehavior()
-    {
+    public async Task Submit_NoTenantClaims_WithRealPipeline_ThrowsCommandAuthorizationExceptionFromBehavior() {
         // Arrange — prove the controller delegates into the real MediatR pipeline where AuthorizationBehavior denies the request
         ClaimsPrincipal principal = CreateAuthenticatedPrincipalWithoutTenants();
         CommandsController controller = CreateControllerWithRealAuthorizationPipeline(
@@ -324,8 +301,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_ActorTenantValidatorUnavailable_WithRealPipeline_HandlerReturns503WithRetryAfter()
-    {
+    public async Task Submit_ActorTenantValidatorUnavailable_WithRealPipeline_HandlerReturns503WithRetryAfter() {
         // Arrange — prove the 503 path from controller -> MediatR pipeline -> AuthorizationBehavior -> actor-based validator -> exception handler
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         CommandsController controller = CreateControllerWithRealAuthorizationPipeline(
@@ -348,8 +324,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_MediatRThrowsCommandAuthorizationException_Propagates()
-    {
+    public async Task Submit_MediatRThrowsCommandAuthorizationException_Propagates() {
         // Arrange — MediatR pipeline (behavior) throws auth exception
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
@@ -359,8 +334,7 @@ public class CommandsControllerTenantTests
         ILogger<CommandsController> logger = Substitute.For<ILogger<CommandsController>>();
 
         var controller = new CommandsController(mediator, sanitizer, logger);
-        var httpContext = new DefaultHttpContext
-        {
+        var httpContext = new DefaultHttpContext {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "test-user")], "test")),
         };
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
@@ -374,8 +348,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_StoresRequestTenantIdInHttpContext()
-    {
+    public async Task Submit_StoresRequestTenantIdInHttpContext() {
         // Arrange — verify RequestTenantId is set for rate limiter
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         (CommandsController controller, _) = CreateControllerWithMediator(principal);
@@ -389,8 +362,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_AuthorizedTenantItem_NoLongerSetInHttpContext()
-    {
+    public async Task Submit_AuthorizedTenantItem_NoLongerSetInHttpContext() {
         // Arrange — AuthorizedTenant was removed in 17-3 refactoring
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         (CommandsController controller, _) = CreateControllerWithMediator(principal);
@@ -404,8 +376,7 @@ public class CommandsControllerTenantTests
     }
 
     [Fact]
-    public async Task Submit_SuccessfulRequest_Returns202Accepted()
-    {
+    public async Task Submit_SuccessfulRequest_Returns202Accepted() {
         // Arrange
         ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
         (CommandsController controller, _) = CreateControllerWithMediator(principal);
@@ -419,8 +390,7 @@ public class CommandsControllerTenantTests
         accepted.StatusCode.ShouldBe(StatusCodes.Status202Accepted);
     }
 
-    private sealed class PipelineTestSubmitCommandHandler : IRequestHandler<SubmitCommand, SubmitCommandResult>
-    {
+    private sealed class PipelineTestSubmitCommandHandler : IRequestHandler<SubmitCommand, SubmitCommandResult> {
         public Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) =>
             Task.FromResult(new SubmitCommandResult(request.CorrelationId));
     }

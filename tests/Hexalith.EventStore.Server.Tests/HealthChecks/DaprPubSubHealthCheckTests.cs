@@ -110,17 +110,15 @@ public class DaprPubSubHealthCheckTests {
         _ = await healthCheck.CheckHealthAsync(CreateContext(), cts.Token);
 
         // Assert
-        await daprClient.Received(1).GetMetadataAsync(cts.Token);
+        _ = await daprClient.Received(1).GetMetadataAsync(cts.Token);
     }
 
     [Fact]
-    public void Constructor_NullDaprClient_ThrowsArgumentNullException() {
-        Should.Throw<ArgumentNullException>(() => new DaprPubSubHealthCheck(null!, PubSubName));
-    }
+    public void Constructor_NullDaprClient_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() => new DaprPubSubHealthCheck(null!, PubSubName));
 
     [Fact]
     public void Constructor_NullPubSubName_ThrowsArgumentNullException() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        Should.Throw<ArgumentNullException>(() => new DaprPubSubHealthCheck(daprClient, null!));
+        _ = Should.Throw<ArgumentNullException>(() => new DaprPubSubHealthCheck(daprClient, null!));
     }
 }

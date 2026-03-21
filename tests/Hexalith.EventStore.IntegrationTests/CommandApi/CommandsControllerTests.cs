@@ -51,7 +51,7 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
 
         // X-Correlation-ID: middleware-generated HTTP tracing header
         response.Headers.TryGetValues("X-Correlation-ID", out IEnumerable<string>? xcorrelationValues).ShouldBeTrue();
-        xcorrelationValues.ShouldNotBeNull();
+        _ = xcorrelationValues.ShouldNotBeNull();
         xcorrelationValues!.First().ShouldNotBeNullOrEmpty();
     }
 

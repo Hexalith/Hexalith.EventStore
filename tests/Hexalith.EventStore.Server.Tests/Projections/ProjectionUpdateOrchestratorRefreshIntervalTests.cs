@@ -21,15 +21,13 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 /// Story 11-4 Task 4: Tests for refresh interval gating in ProjectionUpdateOrchestrator.
 /// Verifies ACs 2, 3, and 4.
 /// </summary>
-public class ProjectionUpdateOrchestratorRefreshIntervalTests
-{
+public class ProjectionUpdateOrchestratorRefreshIntervalTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     // --- AC 2: DefaultRefreshIntervalMs = 0 proceeds with update ---
 
     [Fact]
-    public async Task UpdateProjectionAsync_DefaultRefreshIntervalZero_ProceedsWithUpdate()
-    {
+    public async Task UpdateProjectionAsync_DefaultRefreshIntervalZero_ProceedsWithUpdate() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 0 };
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver) = CreateSut(options);
@@ -46,7 +44,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Resolver was called (orchestrator proceeded past the refresh interval check)
-        await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+        _ = await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
         _ = actorProxyFactory.Received(1).CreateActorProxy<IAggregateActor>(
             Arg.Is<ActorId>(id => id.GetId() == TestIdentity.ActorId),
             Arg.Is("AggregateActor"));
@@ -55,8 +53,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
     // --- AC 2: DefaultRefreshIntervalMs > 0 skips update ---
 
     [Fact]
-    public async Task UpdateProjectionAsync_DefaultRefreshIntervalPositive_SkipsUpdate()
-    {
+    public async Task UpdateProjectionAsync_DefaultRefreshIntervalPositive_SkipsUpdate() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
         (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver) = CreateSut(options);
@@ -65,20 +62,17 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Resolver was NOT called (orchestrator returned early)
-        await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
     }
 
     // --- AC 3: Per-domain override 0 proceeds for that domain ---
 
     [Fact]
-    public async Task UpdateProjectionAsync_PerDomainOverrideZero_ProceedsForThatDomain()
-    {
+    public async Task UpdateProjectionAsync_PerDomainOverrideZero_ProceedsForThatDomain() {
         // Arrange
-        var options = new ProjectionOptions
-        {
+        var options = new ProjectionOptions {
             DefaultRefreshIntervalMs = 5000,
-            Domains = new Dictionary<string, DomainProjectionOptions>
-            {
+            Domains = new Dictionary<string, DomainProjectionOptions> {
                 ["test-domain"] = new DomainProjectionOptions { RefreshIntervalMs = 0 },
             },
         };
@@ -91,20 +85,17 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Resolver was called (per-domain override 0 takes precedence)
-        await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+        _ = await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
     }
 
     // --- AC 3: Per-domain override positive skips for that domain ---
 
     [Fact]
-    public async Task UpdateProjectionAsync_PerDomainOverridePositive_SkipsForThatDomain()
-    {
+    public async Task UpdateProjectionAsync_PerDomainOverridePositive_SkipsForThatDomain() {
         // Arrange
-        var options = new ProjectionOptions
-        {
+        var options = new ProjectionOptions {
             DefaultRefreshIntervalMs = 0,
-            Domains = new Dictionary<string, DomainProjectionOptions>
-            {
+            Domains = new Dictionary<string, DomainProjectionOptions> {
                 ["test-domain"] = new DomainProjectionOptions { RefreshIntervalMs = 3000 },
             },
         };
@@ -114,20 +105,17 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Resolver was NOT called (per-domain override skips)
-        await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
     }
 
     // --- AC 3: Per-domain override positive proceeds for OTHER domains ---
 
     [Fact]
-    public async Task UpdateProjectionAsync_PerDomainOverridePositive_ProceedsForOtherDomains()
-    {
+    public async Task UpdateProjectionAsync_PerDomainOverridePositive_ProceedsForOtherDomains() {
         // Arrange
-        var options = new ProjectionOptions
-        {
+        var options = new ProjectionOptions {
             DefaultRefreshIntervalMs = 0,
-            Domains = new Dictionary<string, DomainProjectionOptions>
-            {
+            Domains = new Dictionary<string, DomainProjectionOptions> {
                 ["order"] = new DomainProjectionOptions { RefreshIntervalMs = 3000 },
             },
         };
@@ -140,18 +128,15 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Resolver was called (test-domain uses default 0)
-        await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+        _ = await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task UpdateProjectionAsync_PerDomainOverrideMixedCase_SkipsForMatchingDomain()
-    {
+    public async Task UpdateProjectionAsync_PerDomainOverrideMixedCase_SkipsForMatchingDomain() {
         // Arrange
-        var options = new ProjectionOptions
-        {
+        var options = new ProjectionOptions {
             DefaultRefreshIntervalMs = 0,
-            Domains = new Dictionary<string, DomainProjectionOptions>
-            {
+            Domains = new Dictionary<string, DomainProjectionOptions> {
                 ["TEST-DOMAIN"] = new DomainProjectionOptions { RefreshIntervalMs = 3000 },
             },
         };
@@ -161,14 +146,13 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - Mixed-case override key still applies
-        await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
     }
 
     // --- AC 4: Tenant isolation - passes tenant ID through pipeline ---
 
     [Fact]
-    public async Task UpdateProjectionAsync_TenantIsolation_PassesTenantIdThroughPipeline()
-    {
+    public async Task UpdateProjectionAsync_TenantIsolation_PassesTenantIdThroughPipeline() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 0 };
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver) = CreateSut(options);
@@ -186,7 +170,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
         await sut.UpdateProjectionAsync(acmeIdentity);
 
         // Assert - Resolver was called with tenant "acme"
-        await resolver.Received(1).ResolveAsync("acme", "counter", "v1", Arg.Any<CancellationToken>());
+        _ = await resolver.Received(1).ResolveAsync("acme", "counter", "v1", Arg.Any<CancellationToken>());
 
         // Assert - Aggregate actor proxy created with ActorId containing "acme"
         _ = actorProxyFactory.Received(1).CreateActorProxy<IAggregateActor>(
@@ -194,8 +178,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests
             Arg.Is("AggregateActor"));
     }
 
-    private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver) CreateSut(ProjectionOptions? options = null)
-    {
+    private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver) CreateSut(ProjectionOptions? options = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();

@@ -12,7 +12,6 @@ using Hexalith.EventStore.Server.Queries;
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
-using NSubstitute.Core;
 
 using Shouldly;
 
@@ -30,7 +29,7 @@ public class EventReplayProjectionActorTests {
         IETagService eTagService = Substitute.For<IETagService>();
         IProjectionChangeNotifier notifier = Substitute.For<IProjectionChangeNotifier>();
 
-        ActorHost host = ActorHost.CreateForTest<EventReplayProjectionActor>(
+        var host = ActorHost.CreateForTest<EventReplayProjectionActor>(
             new ActorTestOptions { ActorId = new ActorId(ActorIdString) });
 
         var actor = new EventReplayProjectionActor(host, eTagService, notifier, logger);
@@ -92,13 +91,13 @@ public class EventReplayProjectionActorTests {
         ProjectionState state = CreateTestState();
         var callOrder = new List<string>();
 
-        stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
             .Returns(callInfo => {
                 callOrder.Add("SaveState");
                 return Task.CompletedTask;
             });
 
-        notifier.NotifyProjectionChangedAsync(
+        _ = notifier.NotifyProjectionChangedAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => {
                 callOrder.Add("Notify");
@@ -116,7 +115,7 @@ public class EventReplayProjectionActorTests {
     public async Task UpdateProjectionAsync_NullState_ThrowsArgumentNull() {
         (EventReplayProjectionActor actor, _, _, _) = CreateActor();
 
-        await Should.ThrowAsync<ArgumentNullException>(
+        _ = await Should.ThrowAsync<ArgumentNullException>(
             () => actor.UpdateProjectionAsync(null!));
     }
 
@@ -125,7 +124,7 @@ public class EventReplayProjectionActorTests {
         (EventReplayProjectionActor actor, _, _, _) = CreateActor();
         ProjectionState state = CreateTestState(projectionType: " ");
 
-        await Should.ThrowAsync<ArgumentException>(
+        _ = await Should.ThrowAsync<ArgumentException>(
             () => actor.UpdateProjectionAsync(state));
     }
 
@@ -134,7 +133,7 @@ public class EventReplayProjectionActorTests {
         (EventReplayProjectionActor actor, _, _, _) = CreateActor();
         ProjectionState state = CreateTestState(tenantId: " ");
 
-        await Should.ThrowAsync<ArgumentException>(
+        _ = await Should.ThrowAsync<ArgumentException>(
             () => actor.UpdateProjectionAsync(state));
     }
 
@@ -247,7 +246,7 @@ public class EventReplayProjectionActorTests {
         result2.Payload.GetProperty("count").GetInt32().ShouldBe(42);
 
         // TryGetStateAsync should only be called once (first cache miss)
-        await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
+        _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
             EventReplayProjectionActor.ProjectionStateKey, Arg.Any<CancellationToken>());
     }
 }

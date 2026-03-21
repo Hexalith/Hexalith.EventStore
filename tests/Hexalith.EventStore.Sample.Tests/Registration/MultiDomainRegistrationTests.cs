@@ -1,12 +1,10 @@
 using System.Text.Json;
 
-using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
-using Hexalith.EventStore.Sample;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Events;
@@ -88,7 +86,7 @@ public sealed class MultiDomainRegistrationTests {
         using IServiceScope scope = host.Services.CreateScope();
         DomainServiceRequest request = CreateRequest("counter", new IncrementCounter());
 
-        var result = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, request);
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, request);
 
         DomainServiceWireEvent @event = Assert.Single(result.Events);
         Assert.Equal(typeof(CounterIncremented).FullName, @event.EventTypeName);
@@ -105,7 +103,7 @@ public sealed class MultiDomainRegistrationTests {
         using IServiceScope scope = host.Services.CreateScope();
         DomainServiceRequest request = CreateRequest("greeting", new SendGreeting());
 
-        var result = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, request);
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, request);
 
         DomainServiceWireEvent @event = Assert.Single(result.Events);
         Assert.Equal(typeof(GreetingSent).FullName, @event.EventTypeName);

@@ -16,7 +16,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
@@ -110,19 +109,15 @@ public class BackpressureTests {
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
     }
 
-    private static void SetupPendingCount(IActorStateManager stateManager, int count) {
-        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+    private static void SetupPendingCount(IActorStateManager stateManager, int count) => _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<int>(true, count));
-    }
 
-    private static void SetupNoPendingCount(IActorStateManager stateManager) {
-        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+    private static void SetupNoPendingCount(IActorStateManager stateManager) => _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<int>(false, 0));
-    }
 
     private static void SetupPendingCountSequence(IActorStateManager stateManager, params int[] counts) {
         // Set up a sequence of returns for successive calls
-        var calls = counts.Select(c => new ConditionalValue<int>(c > 0, c)).ToArray();
+        ConditionalValue<int>[] calls = counts.Select(c => new ConditionalValue<int>(c > 0, c)).ToArray();
         _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
             .Returns(calls[0], calls.Skip(1).ToArray());
     }
@@ -141,7 +136,7 @@ public class BackpressureTests {
 
         result.Accepted.ShouldBeFalse();
         result.BackpressureExceeded.ShouldBeTrue();
-        result.ErrorMessage.ShouldNotBeNull();
+        _ = result.ErrorMessage.ShouldNotBeNull();
         result.ErrorMessage.ShouldContain("Backpressure");
     }
 
@@ -259,8 +254,8 @@ public class BackpressureTests {
 
         // Counter should be incremented then decremented (finally block)
         Received.InOrder(() => {
-            stateManager.SetStateAsync(PendingCommandCountKey, 1, Arg.Any<CancellationToken>());
-            stateManager.SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
+            _ = stateManager.SetStateAsync(PendingCommandCountKey, 1, Arg.Any<CancellationToken>());
+            _ = stateManager.SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
         });
 
         await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
@@ -314,7 +309,7 @@ public class BackpressureTests {
         _ = await actor.ProcessCommandAsync(CreateCommand());
 
         // Domain service should NOT be called on backpressure rejection
-        await invoker.DidNotReceive().InvokeAsync(
+        _ = await invoker.DidNotReceive().InvokeAsync(
             Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>());
     }
 
@@ -334,8 +329,14 @@ public class BackpressureTests {
         _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
             .Returns(_ => {
                 int call = Interlocked.Increment(ref callCount);
-                if (call == 1) throw new InvalidOperationException("State store unavailable");
-                if (call == 2) return new ConditionalValue<int>(false, 0);   // increment read
+                if (call == 1) {
+                    throw new InvalidOperationException("State store unavailable");
+                }
+
+                if (call == 2) {
+                    return new ConditionalValue<int>(false, 0);   // increment read
+                }
+
                 return new ConditionalValue<int>(true, 1);                    // decrement read
             });
 
@@ -407,7 +408,7 @@ public class BackpressureTests {
         // Should be rejected before any backpressure state access.
         result.Accepted.ShouldBeFalse();
 
-        await stateManager.DidNotReceive().TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>());
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>());
         await stateManager.DidNotReceive().SetStateAsync(PendingCommandCountKey, Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 }

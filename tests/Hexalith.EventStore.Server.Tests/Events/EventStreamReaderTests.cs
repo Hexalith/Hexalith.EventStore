@@ -499,7 +499,7 @@ public class EventStreamReaderTests {
         EventDeserializationException ex = await Should.ThrowAsync<EventDeserializationException>(() => reader.RehydrateAsync(TestIdentity));
         ex.SequenceNumber.ShouldBe(2);
         ex.ActorId.ShouldBe(TestIdentity.ActorId);
-        ex.InnerException.ShouldBeOfType<InvalidCastException>();
+        _ = ex.InnerException.ShouldBeOfType<InvalidCastException>();
     }
 
     [Fact]
@@ -512,7 +512,7 @@ public class EventStreamReaderTests {
         // Act & Assert
         EventDeserializationException ex = await Should.ThrowAsync<EventDeserializationException>(() => reader.RehydrateAsync(TestIdentity));
         ex.SequenceNumber.ShouldBe(-1);
-        ex.InnerException.ShouldBeOfType<InvalidCastException>();
+        _ = ex.InnerException.ShouldBeOfType<InvalidCastException>();
     }
 
     // === Full replay backward compatibility (Task 9) ===

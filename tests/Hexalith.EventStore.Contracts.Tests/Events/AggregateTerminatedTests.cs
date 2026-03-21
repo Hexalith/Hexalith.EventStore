@@ -7,8 +7,8 @@ public class AggregateTerminatedTests {
     public void AggregateTerminated_ImplementsIRejectionEvent() {
         var terminated = new AggregateTerminated("CounterAggregate", "counter-1");
 
-        Assert.IsAssignableFrom<IRejectionEvent>(terminated);
-        Assert.IsAssignableFrom<IEventPayload>(terminated);
+        _ = Assert.IsAssignableFrom<IRejectionEvent>(terminated);
+        _ = Assert.IsAssignableFrom<IEventPayload>(terminated);
     }
 
     [Fact]

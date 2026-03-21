@@ -191,11 +191,9 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         }
     }
 
-    private static void ConfigureAutomaticReconnect(HubConnectionBuilder builder, IRetryPolicy? retryPolicy) {
-        _ = retryPolicy is not null
+    private static void ConfigureAutomaticReconnect(HubConnectionBuilder builder, IRetryPolicy? retryPolicy) => _ = retryPolicy is not null
             ? builder.WithAutomaticReconnect(retryPolicy)
             : builder.WithAutomaticReconnect();
-    }
 
     private void OnProjectionChanged(string projectionType, string tenantId) {
         string groupName = $"{projectionType}:{tenantId}";

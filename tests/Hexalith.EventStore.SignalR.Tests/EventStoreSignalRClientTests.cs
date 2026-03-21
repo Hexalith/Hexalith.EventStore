@@ -46,7 +46,7 @@ public class EventStoreSignalRClientTests {
         };
 
         IRetryPolicy? capturedPolicy = null;
-        var sut = CreateClientWithReconnectConfigurator(options, (_, policy) => capturedPolicy = policy);
+        EventStoreSignalRClient sut = CreateClientWithReconnectConfigurator(options, (_, policy) => capturedPolicy = policy);
         try {
             capturedPolicy.ShouldBeSameAs(retryPolicy);
         }
@@ -61,7 +61,7 @@ public class EventStoreSignalRClientTests {
 
         var sentinel = new TestRetryPolicy();
         IRetryPolicy? capturedPolicy = sentinel;
-        var sut = CreateClientWithReconnectConfigurator(options, (_, policy) => capturedPolicy = policy);
+        EventStoreSignalRClient sut = CreateClientWithReconnectConfigurator(options, (_, policy) => capturedPolicy = policy);
         try {
             capturedPolicy.ShouldBeNull();
         }

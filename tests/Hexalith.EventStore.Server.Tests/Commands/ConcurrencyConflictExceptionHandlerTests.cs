@@ -165,7 +165,7 @@ public class ConcurrencyConflictExceptionHandlerTests {
         _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
         _ = problemDetails.ShouldNotBeNull();
-        problemDetails.Detail.ShouldNotBeNull();
+        _ = problemDetails.Detail.ShouldNotBeNull();
         problemDetails.Detail.ShouldNotContain("aggregate", Case.Insensitive);
         problemDetails.Detail.ShouldNotContain("actor", Case.Insensitive);
         problemDetails.Detail.ShouldNotContain("DAPR", Case.Insensitive);

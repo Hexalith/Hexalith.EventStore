@@ -11,24 +11,20 @@ using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.Client.Tests.Aggregates;
 
-public class EventStoreAggregateTests : IDisposable
-{
-    public EventStoreAggregateTests()
-    {
+public class EventStoreAggregateTests : IDisposable {
+    public EventStoreAggregateTests() {
         AssemblyScanner.ClearCache();
         NamingConventionEngine.ClearCache();
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         AssemblyScanner.ClearCache();
         NamingConventionEngine.ClearCache();
         GC.SuppressFinalize(this);
     }
 
     // --- Test Event Types ---
-    private sealed class ItemAdded : IEventPayload
-    {
+    private sealed class ItemAdded : IEventPayload {
         public string Name { get; init; } = string.Empty;
     }
 
@@ -48,14 +44,12 @@ public class EventStoreAggregateTests : IDisposable
     private sealed record CounterCannotGoNegative : IRejectionEvent;
 
     // --- Test State ---
-    private sealed class TestState
-    {
+    private sealed class TestState {
         public int ItemCount { get; private set; }
 
         public string LastAdded { get; private set; } = string.Empty;
 
-        public void Apply(ItemAdded e)
-        {
+        public void Apply(ItemAdded e) {
             ItemCount++;
             LastAdded = e.Name;
         }
@@ -66,8 +60,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     // --- Counter state for record-based aggregate ---
-    private sealed class CounterState
-    {
+    private sealed class CounterState {
         public int Count { get; private set; }
 
         public void Apply(CounterIncremented e) => Count++;
@@ -93,25 +86,20 @@ public class EventStoreAggregateTests : IDisposable
     private sealed record UnknownCommand;
 
     // --- Test Aggregate with sync Handle methods ---
-    private sealed class TestAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class TestAggregate : EventStoreAggregate<TestState> {
         public static DomainResult Handle(AddItem command, TestState? state)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
 
-        public static DomainResult Handle(RemoveItem command, TestState? state)
-        {
-            if ((state?.ItemCount ?? 0) == 0)
-            {
+        public static DomainResult Handle(RemoveItem command, TestState? state) {
+            if ((state?.ItemCount ?? 0) == 0) {
                 return DomainResult.Rejection(new IRejectionEvent[] { new ItemCannotBeRemoved() });
             }
 
             return DomainResult.Success(new IEventPayload[] { new ItemRemoved() });
         }
 
-        public static DomainResult Handle(ResetItems command, TestState? state)
-        {
-            if ((state?.ItemCount ?? 0) == 0)
-            {
+        public static DomainResult Handle(ResetItems command, TestState? state) {
+            if ((state?.ItemCount ?? 0) == 0) {
                 return DomainResult.NoOp();
             }
 
@@ -120,15 +108,12 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     // --- Record-based aggregate (mirrors production CounterAggregate pattern) ---
-    private sealed class RecordAggregate : EventStoreAggregate<CounterState>
-    {
+    private sealed class RecordAggregate : EventStoreAggregate<CounterState> {
         public static DomainResult Handle(IncrementCounter command, CounterState? state)
             => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
 
-        public static DomainResult Handle(DecrementCounter command, CounterState? state)
-        {
-            if ((state?.Count ?? 0) == 0)
-            {
+        public static DomainResult Handle(DecrementCounter command, CounterState? state) {
+            if ((state?.Count ?? 0) == 0) {
                 return DomainResult.Rejection(new IRejectionEvent[] { new CounterCannotGoNegative() });
             }
 
@@ -137,15 +122,13 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     // --- Test Aggregate with async Handle methods ---
-    private sealed class AsyncTestAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class AsyncTestAggregate : EventStoreAggregate<TestState> {
         public static Task<DomainResult> Handle(AsyncAddItem command, TestState? state) =>
             Task.FromResult(DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } }));
     }
 
     // --- Test Aggregate with mixed sync/async Handle methods ---
-    private sealed class MixedAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class MixedAggregate : EventStoreAggregate<TestState> {
         public static DomainResult Handle(AddItem command, TestState? state)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
 
@@ -156,8 +139,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Test Aggregate with 3-param Handle method (Command, State?, CommandEnvelope) ---
     private sealed record EnvelopeAwareCommand(string Name);
 
-    private sealed class EnvelopeAwareAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class EnvelopeAwareAggregate : EventStoreAggregate<TestState> {
         // 3-param Handle: receives CommandEnvelope as third parameter
         public static DomainResult Handle(EnvelopeAwareCommand command, TestState? state, CommandEnvelope envelope)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = $"{envelope.UserId}:{command.Name}" } });
@@ -167,8 +149,7 @@ public class EventStoreAggregateTests : IDisposable
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
     }
 
-    private sealed class DuplicateHandleAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class DuplicateHandleAggregate : EventStoreAggregate<TestState> {
         public static DomainResult Handle(AddItem command, TestState? state)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
 
@@ -177,8 +158,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     // --- Test Aggregate with INSTANCE (non-static) Handle methods ---
-    private sealed class InstanceHandleAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class InstanceHandleAggregate : EventStoreAggregate<TestState> {
         private readonly string _prefix = "instance";
 
         public DomainResult Handle(AddItem command, TestState? state)
@@ -188,8 +168,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Test Aggregate with wrong return type Handle method (should be silently skipped) ---
     private sealed class WrongReturnTypeCommand;
 
-    private sealed class WrongReturnTypeAggregate : EventStoreAggregate<TestState>
-    {
+    private sealed class WrongReturnTypeAggregate : EventStoreAggregate<TestState> {
         // This Handle method returns string instead of DomainResult — discovery should skip it
         public static string Handle(WrongReturnTypeCommand command, TestState? state) => "not-a-domain-result";
 
@@ -201,8 +180,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Terminatable state and aggregate for tombstoning tests ---
     private sealed record TerminalEvent : IEventPayload;
 
-    private sealed class TerminatableState : ITerminatable
-    {
+    private sealed class TerminatableState : ITerminatable {
         public int Value { get; private set; }
 
         public bool IsTerminated { get; private set; }
@@ -212,16 +190,14 @@ public class EventStoreAggregateTests : IDisposable
         public void Apply(TerminalEvent e) => IsTerminated = true;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Apply must be instance method for reflection-based event replay")]
-        public void Apply(AggregateTerminated e)
-        {
+        public void Apply(AggregateTerminated e) {
             // No-op — required because rejection events are persisted and replayed
         }
     }
 
     private sealed record TerminateCommand;
 
-    private sealed class TerminatableAggregate : EventStoreAggregate<TerminatableState>
-    {
+    private sealed class TerminatableAggregate : EventStoreAggregate<TerminatableState> {
         public static DomainResult Handle(AddItem command, TerminatableState? state)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
 
@@ -233,26 +209,22 @@ public class EventStoreAggregateTests : IDisposable
     // Uses existing TestAggregate/TestState (no ITerminatable interface)
 
     // --- Separate aggregate type for cache independence tests ---
-    private sealed class OtherState
-    {
+    private sealed class OtherState {
         public int Value { get; private set; }
 
         public void Apply(ItemAdded e) => Value += 100;
     }
 
-    private sealed class OtherAggregate : EventStoreAggregate<OtherState>
-    {
+    private sealed class OtherAggregate : EventStoreAggregate<OtherState> {
         public static DomainResult Handle(AddItem command, OtherState? state)
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
     }
 
-    private sealed class CounterStateJson
-    {
+    private sealed class CounterStateJson {
         public int Count { get; init; }
     }
 
-    private static CommandEnvelope CreateCommand<T>(T payload) where T : notnull
-    {
+    private static CommandEnvelope CreateCommand<T>(T payload) where T : notnull {
         byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(payload);
         return new CommandEnvelope(
             MessageId: Guid.NewGuid().ToString(),
@@ -281,8 +253,7 @@ public class EventStoreAggregateTests : IDisposable
             Extensions: null);
 
     private static EventEnvelope CreateHistoricalEnvelope<T>(T payload, long sequenceNumber)
-        where T : IEventPayload
-    {
+        where T : IEventPayload {
         byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(payload);
         return new EventEnvelope(
             new EventMetadata(
@@ -308,8 +279,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Command dispatch tests ---
 
     [Fact]
-    public async Task ProcessAsync_MatchingHandleMethod_DispatchesCorrectly()
-    {
+    public async Task ProcessAsync_MatchingHandleMethod_DispatchesCorrectly() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new AddItem("widget"));
 
@@ -321,8 +291,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_UnknownCommandType_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_UnknownCommandType_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new UnknownCommand());
 
@@ -334,8 +303,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_EmptyPayload_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_EmptyPayload_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateEmptyPayloadCommand("AddItem");
 
@@ -346,8 +314,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- State rehydration tests ---
 
     [Fact]
-    public async Task ProcessAsync_NullState_PassesNullToHandle()
-    {
+    public async Task ProcessAsync_NullState_PassesNullToHandle() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new ResetItems());
 
@@ -357,8 +324,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_TypedState_UsesDirectly()
-    {
+    public async Task ProcessAsync_TypedState_UsesDirectly() {
         var aggregate = new TestAggregate();
         var state = new TestState();
         // Apply some events to set count > 0
@@ -372,8 +338,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementObject_DeserializesToState()
-    {
+    public async Task ProcessAsync_JsonElementObject_DeserializesToState() {
         var aggregate = new TestAggregate();
         string json = """{"ItemCount":2,"LastAdded":"from-json"}""";
         JsonElement jsonState = JsonSerializer.Deserialize<JsonElement>(json);
@@ -386,8 +351,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementNull_ReturnsNullState()
-    {
+    public async Task ProcessAsync_JsonElementNull_ReturnsNullState() {
         var aggregate = new TestAggregate();
         JsonElement jsonNull = JsonSerializer.Deserialize<JsonElement>("null");
         CommandEnvelope command = CreateCommand(new ResetItems());
@@ -398,8 +362,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_ReplaysEvents()
-    {
+    public async Task ProcessAsync_JsonElementArray_ReplaysEvents() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -416,8 +379,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_EnumerableEvents_ReplaysViaApply()
-    {
+    public async Task ProcessAsync_EnumerableEvents_ReplaysViaApply() {
         var aggregate = new TestAggregate();
         object[] events = new object[] {
             new ItemAdded { Name = "one" },
@@ -431,8 +393,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithUnknownEventType_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_JsonElementArray_WithUnknownEventType_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -447,8 +408,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithNonObjectEntry_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_JsonElementArray_WithNonObjectEntry_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -463,8 +423,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithMissingEventTypeName_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_JsonElementArray_WithMissingEventTypeName_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -479,8 +438,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithInvalidPayloadShape_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_JsonElementArray_WithInvalidPayloadShape_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -495,8 +453,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         object[] events = new object[] { new UnknownCommand() };
         CommandEnvelope command = CreateCommand(new ResetItems());
@@ -506,8 +463,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_StringState_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_StringState_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new AddItem("test"));
 
@@ -516,8 +472,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_WrongStateType_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_WrongStateType_ThrowsInvalidOperationException() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new AddItem("test"));
 
@@ -530,8 +485,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Handle method return type tests ---
 
     [Fact]
-    public async Task ProcessAsync_SyncHandleReturnsSuccess_ReturnsCorrectly()
-    {
+    public async Task ProcessAsync_SyncHandleReturnsSuccess_ReturnsCorrectly() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new AddItem("sync-test"));
 
@@ -543,8 +497,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_SyncHandleReturnsRejection_ReturnsCorrectly()
-    {
+    public async Task ProcessAsync_SyncHandleReturnsRejection_ReturnsCorrectly() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new RemoveItem());
 
@@ -555,8 +508,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_SyncHandleReturnsNoOp_ReturnsCorrectly()
-    {
+    public async Task ProcessAsync_SyncHandleReturnsNoOp_ReturnsCorrectly() {
         var aggregate = new TestAggregate();
         CommandEnvelope command = CreateCommand(new ResetItems());
 
@@ -566,8 +518,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_AsyncHandle_AwaitsAndReturnsCorrectly()
-    {
+    public async Task ProcessAsync_AsyncHandle_AwaitsAndReturnsCorrectly() {
         var aggregate = new AsyncTestAggregate();
         CommandEnvelope command = CreateCommand(new AsyncAddItem("async-test"));
 
@@ -579,8 +530,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_MixedSyncAsyncHandlers_BothWorkCorrectly()
-    {
+    public async Task ProcessAsync_MixedSyncAsyncHandlers_BothWorkCorrectly() {
         var aggregate = new MixedAggregate();
 
         CommandEnvelope syncCommand = CreateCommand(new AddItem("sync"));
@@ -595,8 +545,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Reflection cache tests ---
 
     [Fact]
-    public async Task ProcessAsync_MultipleCalls_UsesCache()
-    {
+    public async Task ProcessAsync_MultipleCalls_UsesCache() {
         var aggregate = new TestAggregate();
 
         // Call twice — second call should use cached metadata
@@ -608,8 +557,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DifferentAggregateTypes_IndependentCaches()
-    {
+    public async Task ProcessAsync_DifferentAggregateTypes_IndependentCaches() {
         var testAggregate = new TestAggregate();
         var otherAggregate = new OtherAggregate();
 
@@ -622,12 +570,10 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DifferentAggregateTypes_ConcurrentFirstUse_DoesNotInterfere()
-    {
+    public async Task ProcessAsync_DifferentAggregateTypes_ConcurrentFirstUse_DoesNotInterfere() {
         const int iterations = 32;
         Task<DomainResult>[] calls = Enumerable.Range(0, iterations)
-            .SelectMany(i =>
-            {
+            .SelectMany(i => {
                 var testAggregate = new TestAggregate();
                 var otherAggregate = new OtherAggregate();
 
@@ -647,8 +593,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Null command guard ---
 
     [Fact]
-    public async Task ProcessAsync_NullCommand_ThrowsArgumentNullException()
-    {
+    public async Task ProcessAsync_NullCommand_ThrowsArgumentNullException() {
         var aggregate = new TestAggregate();
 
         _ = await Assert.ThrowsAsync<ArgumentNullException>(
@@ -658,8 +603,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 16-8: Instance (non-static) Handle method (AC#5: 6.2) ---
 
     [Fact]
-    public async Task ProcessAsync_InstanceHandleMethod_DispatchesCorrectly()
-    {
+    public async Task ProcessAsync_InstanceHandleMethod_DispatchesCorrectly() {
         var aggregate = new InstanceHandleAggregate();
         CommandEnvelope command = CreateCommand(new AddItem("test"));
 
@@ -674,8 +618,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 16-8: Multiple Handle methods dispatched correctly (AC#5: 6.3) ---
 
     [Fact]
-    public async Task ProcessAsync_MultipleHandleMethods_AllDispatchCorrectly()
-    {
+    public async Task ProcessAsync_MultipleHandleMethods_AllDispatchCorrectly() {
         var aggregate = new TestAggregate();
 
         // Dispatch AddItem
@@ -699,8 +642,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 16-8: JsonElement array suffix-match fallback (AC#5: 6.4) ---
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_SuffixMatchedEventTypeName_ReplaysCorrectly()
-    {
+    public async Task ProcessAsync_JsonElementArray_SuffixMatchedEventTypeName_ReplaysCorrectly() {
         var aggregate = new TestAggregate();
         // Use fully-qualified-style eventTypeName that ends with "ItemAdded"
         string eventsJson = """
@@ -720,8 +662,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 16-8: IEnumerable replay with null elements (AC#5) ---
 
     [Fact]
-    public async Task ProcessAsync_EnumerableEvents_WithNullElements_SkipsNulls()
-    {
+    public async Task ProcessAsync_EnumerableEvents_WithNullElements_SkipsNulls() {
         var aggregate = new TestAggregate();
         object?[] events = new object?[] {
             new ItemAdded { Name = "one" },
@@ -738,8 +679,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Base64 payload deserialization (EventEnvelope byte[] arrives as Base64 string) ---
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_Base64Payload_DeserializesCorrectly()
-    {
+    public async Task ProcessAsync_JsonElementArray_Base64Payload_DeserializesCorrectly() {
         var aggregate = new TestAggregate();
         // Simulate EventEnvelope.Payload (byte[]) serialized as Base64 by System.Text.Json.
         // Base64 of '{"Name":"base64-test"}' is 'eyJOYW1lIjoiYmFzZTY0LXRlc3QifQ=='
@@ -759,8 +699,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_Base64EmptyRecordPayload_DeserializesCorrectly()
-    {
+    public async Task ProcessAsync_JsonElementArray_Base64EmptyRecordPayload_DeserializesCorrectly() {
         var aggregate = new TestAggregate();
         // Simulate empty record (like CounterIncremented) serialized as Base64.
         // Base64 of '{}' is 'e30='
@@ -781,8 +720,7 @@ public class EventStoreAggregateTests : IDisposable
     // like CounterIncremented, and simulate the full Dapr EventEnvelope serialization format.
 
     [Fact]
-    public async Task ProcessAsync_RecordEvent_Base64EmptyPayload_DeserializesCorrectly()
-    {
+    public async Task ProcessAsync_RecordEvent_Base64EmptyPayload_DeserializesCorrectly() {
         var aggregate = new RecordAggregate();
         // sealed record CounterIncremented serialized as Base64: {} → e30=
         string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
@@ -797,8 +735,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DaprEventEnvelopeFormat_Base64Payload_DeserializesCorrectly()
-    {
+    public async Task ProcessAsync_DaprEventEnvelopeFormat_Base64Payload_DeserializesCorrectly() {
         var aggregate = new RecordAggregate();
         // Simulate the full Dapr EventEnvelope JSON format as it arrives via DaprClient.InvokeMethodAsync.
         // EventEnvelope has 12 fields; byte[] Payload is serialized as Base64 by System.Text.Json.
@@ -831,8 +768,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DaprEventEnvelopeFormat_MultipleEvents_RehydratesState()
-    {
+    public async Task ProcessAsync_DaprEventEnvelopeFormat_MultipleEvents_RehydratesState() {
         var aggregate = new RecordAggregate();
         string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
         // Two increments then a decrement — final count should be 1
@@ -853,8 +789,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DaprEventEnvelopeFormat_ResetEvent_RehydratesState()
-    {
+    public async Task ProcessAsync_DaprEventEnvelopeFormat_ResetEvent_RehydratesState() {
         var aggregate = new RecordAggregate();
         string base64Empty = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{}"));
         // Increment, then reset — final count should be 0
@@ -874,8 +809,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DaprSerializationRoundTrip_Base64Payload_Survives()
-    {
+    public async Task ProcessAsync_DaprSerializationRoundTrip_Base64Payload_Survives() {
         // Simulate the exact Dapr serialization round-trip:
         // 1. DaprClient.InvokeMethodAsync serializes DomainServiceRequest with JsonSerializerDefaults.Web
         // 2. Target service ASP.NET Core deserializes with Web defaults
@@ -918,8 +852,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_SnapshotAwareCurrentState_RehydratesSnapshotPlusTail()
-    {
+    public async Task ProcessAsync_SnapshotAwareCurrentState_RehydratesSnapshotPlusTail() {
         var aggregate = new RecordAggregate();
         CommandEnvelope command = CreateCommand(new DecrementCounter());
         var currentState = new DomainServiceCurrentState(
@@ -934,8 +867,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_SnapshotAwareCurrentState_DaprRoundTrip_RehydratesSnapshotPlusTail()
-    {
+    public async Task ProcessAsync_SnapshotAwareCurrentState_DaprRoundTrip_RehydratesSnapshotPlusTail() {
         var aggregate = new RecordAggregate();
         var currentState = new DomainServiceCurrentState(
             new CounterStateJson { Count = 1 },
@@ -955,8 +887,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 1.4: Handle method with wrong return type silently skipped (AC#2: 2.4) ---
 
     [Fact]
-    public async Task ProcessAsync_HandleMethodWithWrongReturnType_IsSilentlySkipped()
-    {
+    public async Task ProcessAsync_HandleMethodWithWrongReturnType_IsSilentlySkipped() {
         var aggregate = new WrongReturnTypeAggregate();
         // WrongReturnTypeCommand has a Handle method returning string — should be skipped
         CommandEnvelope command = CreateCommand(new WrongReturnTypeCommand());
@@ -970,8 +901,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_WrongReturnTypeAggregate_ValidHandler_StillWorks()
-    {
+    public async Task ProcessAsync_WrongReturnTypeAggregate_ValidHandler_StillWorks() {
         var aggregate = new WrongReturnTypeAggregate();
         // AddItem has a valid DomainResult-returning handler — should still work
         CommandEnvelope command = CreateCommand(new AddItem("valid"));
@@ -984,8 +914,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 16-8: JsonElement array without payload wrapper (direct element) ---
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_DirectEvent_WithoutPayloadWrapper()
-    {
+    public async Task ProcessAsync_JsonElementArray_DirectEvent_WithoutPayloadWrapper() {
         var aggregate = new TestAggregate();
         // Event element has no "payload" property — entire element is deserialized directly
         string eventsJson = """
@@ -1004,8 +933,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 1.5: Tombstoning guard tests ---
 
     [Fact]
-    public async Task ProcessAsync_TerminatedState_RejectsWithAggregateTerminated()
-    {
+    public async Task ProcessAsync_TerminatedState_RejectsWithAggregateTerminated() {
         var aggregate = new TerminatableAggregate();
         var state = new TerminatableState();
         state.Apply(new TerminalEvent()); // Terminate the aggregate
@@ -1021,8 +949,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_NonTerminatedState_ProcessesNormally()
-    {
+    public async Task ProcessAsync_NonTerminatedState_ProcessesNormally() {
         var aggregate = new TerminatableAggregate();
         var state = new TerminatableState();
         // IsTerminated is false (default)
@@ -1035,8 +962,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_NonTerminatableState_ProcessesNormally()
-    {
+    public async Task ProcessAsync_NonTerminatableState_ProcessesNormally() {
         // TestAggregate uses TestState which does NOT implement ITerminatable
         var aggregate = new TestAggregate();
         var state = new TestState();
@@ -1049,8 +975,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_NullState_TerminatableAggregate_ProcessesNormally()
-    {
+    public async Task ProcessAsync_NullState_TerminatableAggregate_ProcessesNormally() {
         // Null state can't be ITerminatable, guard is safe
         var aggregate = new TerminatableAggregate();
 
@@ -1063,8 +988,7 @@ public class EventStoreAggregateTests : IDisposable
     // --- Story 3.2: 3-param Handle method discovery and dispatch ---
 
     [Fact]
-    public async Task ProcessAsync_ThreeParamHandle_ReceivesCommandEnvelope()
-    {
+    public async Task ProcessAsync_ThreeParamHandle_ReceivesCommandEnvelope() {
         var aggregate = new EnvelopeAwareAggregate();
         CommandEnvelope command = CreateCommand(new EnvelopeAwareCommand("test-item"));
 
@@ -1077,8 +1001,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_ThreeParamHandle_BackwardCompatibleWithTwoParam()
-    {
+    public async Task ProcessAsync_ThreeParamHandle_BackwardCompatibleWithTwoParam() {
         var aggregate = new EnvelopeAwareAggregate();
         // AddItem uses a 2-param Handle — should still work alongside the 3-param EnvelopeAwareCommand
         CommandEnvelope command = CreateCommand(new AddItem("two-param"));
@@ -1091,8 +1014,7 @@ public class EventStoreAggregateTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessAsync_DuplicateHandleSignaturesForSameCommand_ThrowsInvalidOperationException()
-    {
+    public async Task ProcessAsync_DuplicateHandleSignaturesForSameCommand_ThrowsInvalidOperationException() {
         var aggregate = new DuplicateHandleAggregate();
         CommandEnvelope command = CreateCommand(new AddItem("duplicate"));
 

@@ -29,6 +29,7 @@ graph TD
     Aspire[Hexalith.EventStore.Aspire]
 
     Client --> Contracts
+    Server --> Client
     Server --> Contracts
     SignalR --> Contracts
     Testing --> Contracts
@@ -38,9 +39,9 @@ graph TD
 <details>
 <summary>Text description of the dependency graph</summary>
 
-- **Contracts** is the root package with no dependencies on other Hexalith packages.
+- **Contracts** is the root Hexalith package. It has no dependency on any other Hexalith.EventStore package, but it does depend on `Hexalith.Commons.UniqueIds` for ULID generation.
 - **Client** depends on Contracts.
-- **Server** depends on Contracts.
+- **Server** depends on both Client and Contracts.
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
 - **Testing** depends on both Contracts and Server (it provides fake implementations of server-side components for integration testing).
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
@@ -119,7 +120,7 @@ Install packages across your projects based on their role:
 
 ### Hexalith.EventStore.Contracts
 
-Pure domain types — `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identity types. This package has no external dependencies.
+Pure domain types — `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identity types. This package has no dependency on any other Hexalith.EventStore package and has a single external dependency for ULID generation.
 
 **Key namespaces and types:**
 
@@ -127,6 +128,12 @@ Pure domain types — `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identi
 - `Hexalith.EventStore.Contracts.Events` — `EventEnvelope`, `EventMetadata`, `IEventPayload`, `IRejectionEvent`
 - `Hexalith.EventStore.Contracts.Identity` — `AggregateIdentity`, `IdentityParser`
 - `Hexalith.EventStore.Contracts.Results` — `DomainResult`, `DomainServiceWireResult`
+
+**External dependencies:**
+
+| Package                    | Version |
+| -------------------------- | ------- |
+| Hexalith.Commons.UniqueIds | 2.13.0  |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Contracts
@@ -158,7 +165,7 @@ $ dotnet add package Hexalith.EventStore.Client
 
 ### Hexalith.EventStore.Server
 
-Aggregate actors, command routing, event persistence, state rehydration, and DAPR state/pub-sub integration.
+Aggregate actors, command routing, event persistence, state rehydration, and DAPR state/pub-sub integration. This package depends on both Client and Contracts because the server builds on the client-side registration and domain processor abstractions.
 
 **Key namespaces and types:**
 
@@ -193,7 +200,7 @@ Signal-only client helper for real-time projection change notifications. This pa
 
 | Package                             | Version |
 | ----------------------------------- | ------- |
-| Microsoft.AspNetCore.SignalR.Client | 10.0.0  |
+| Microsoft.AspNetCore.SignalR.Client | 10.0.5  |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.SignalR

@@ -10,29 +10,25 @@ namespace Hexalith.EventStore.AppHost;
 /// before Aspire builder initialization. Produces consolidated, actionable error
 /// messages with installation links when prerequisites are missing.
 /// </summary>
-internal static class PrerequisiteValidator
-{
+internal static class PrerequisiteValidator {
     /// <summary>
     /// Checks for required prerequisites and exits with a consolidated error message
     /// if any are missing. Skipped in CI environments and publish scenarios.
     /// </summary>
-    public static void Validate()
-    {
+    public static void Validate() {
         // Skip in CI environments and publish scenarios — CI manages its own prerequisites,
         // and `aspire publish` generates manifests without needing Docker/DAPR locally.
         // GitHub Actions sets CI=true; other CI systems can set SKIP_PREREQUISITE_CHECK=true.
         if (string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK"), "true", StringComparison.OrdinalIgnoreCase)
-            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PUBLISH_TARGET")))
-        {
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PUBLISH_TARGET"))) {
             return;
         }
 
         List<string> errors = [];
 
         // Check Docker availability (docker info can be slow ~2-3s when Docker Desktop is starting)
-        if (!IsCommandAvailable("docker", "info"))
-        {
+        if (!IsCommandAvailable("docker", "info")) {
             errors.Add(
                 "Docker is not running or not installed.\n"
                 + "  Install Docker Desktop: https://docs.docker.com/get-docker/\n"
@@ -41,8 +37,7 @@ internal static class PrerequisiteValidator
 
         // Check DAPR CLI + runtime initialization
         (bool cliAvailable, string? daprOutput) = RunCommand("dapr", "--version");
-        if (!cliAvailable)
-        {
+        if (!cliAvailable) {
             errors.Add(
                 "DAPR CLI is not installed.\n"
                 + "  Install DAPR: https://docs.dapr.io/getting-started/install-dapr-cli/\n"
@@ -50,8 +45,7 @@ internal static class PrerequisiteValidator
         }
         else if (daprOutput is null
             || daprOutput.Contains("Runtime version: n/a", StringComparison.OrdinalIgnoreCase)
-            || !daprOutput.Contains("Runtime version:", StringComparison.OrdinalIgnoreCase))
-        {
+            || !daprOutput.Contains("Runtime version:", StringComparison.OrdinalIgnoreCase)) {
             // CLI is installed but runtime is not initialized (n/a or line absent entirely)
             errors.Add(
                 "DAPR runtime is not initialized.\n"
@@ -59,12 +53,10 @@ internal static class PrerequisiteValidator
                 + "  or 'dapr init --slim' (minimal, no Docker components) and retry.");
         }
 
-        if (errors.Count > 0)
-        {
+        if (errors.Count > 0) {
             Console.Error.WriteLine("Prerequisites missing:");
             Console.Error.WriteLine();
-            foreach (string error in errors)
-            {
+            foreach (string error in errors) {
                 Console.Error.WriteLine($"  - {error}");
                 Console.Error.WriteLine();
             }
@@ -76,13 +68,10 @@ internal static class PrerequisiteValidator
     private static bool IsCommandAvailable(string command, string args)
         => RunCommand(command, args).Success;
 
-    private static (bool Success, string? Output) RunCommand(string command, string args)
-    {
-        try
-        {
-            using System.Diagnostics.Process? process = System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo
-                {
+    private static (bool Success, string? Output) RunCommand(string command, string args) {
+        try {
+            using var process = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo {
                     FileName = command,
                     Arguments = args,
                     RedirectStandardOutput = true,
@@ -93,16 +82,14 @@ internal static class PrerequisiteValidator
 
             // WaitForExit returns false on timeout — must check before accessing ExitCode.
             bool exited = process?.WaitForExit(TimeSpan.FromSeconds(5)) ?? false;
-            if (!exited || process is null)
-            {
+            if (!exited || process is null) {
                 return (false, null);
             }
 
             string output = process.StandardOutput.ReadToEnd();
             return (process.ExitCode == 0, output);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return (false, $"Error executing '{command}': {ex.Message}");
         }
     }

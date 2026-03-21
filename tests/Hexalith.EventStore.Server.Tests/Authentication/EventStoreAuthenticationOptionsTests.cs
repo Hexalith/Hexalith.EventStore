@@ -122,8 +122,7 @@ public class EventStoreAuthenticationOptionsTests {
     }
 
     [Fact]
-    public void Validate_NullOptions_ThrowsArgumentNullException() {
+    public void Validate_NullOptions_ThrowsArgumentNullException() =>
         // Act & Assert
         Should.Throw<ArgumentNullException>(() => _validator.Validate(null, null!));
-    }
 }

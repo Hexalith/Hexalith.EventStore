@@ -137,7 +137,7 @@ public class AuthorizationServiceUnavailableHandlerTests {
         // Assert
         ProblemDetails? problem = await ReadProblemDetails(context);
         _ = problem.ShouldNotBeNull();
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("command processing pipeline");
         problem.Detail.ShouldNotContain("Authorization service");
         problem.Detail.ShouldNotContain("actor", Case.Insensitive);

@@ -10,8 +10,7 @@ Hexalith.EventStore is in active development and continues to evolve across majo
 
 These areas are actively being worked on right now:
 
-- **Final lifecycle documentation polish** — the roadmap is in review and the remaining Epic 15 work is the DAPR FAQ deep dive, which closes out the current documentation lifecycle track
-- **Operational and deployment guidance** — expanding deployment walkthroughs, DAPR component guidance, and production-readiness reference material around the current feature set
+- **Documentation and developer onboarding** — completing Epic 13 with repository documentation alignment, ensuring all docs, planning artifacts, and code tell the same story
 - **Read-model ergonomics** — polishing the developer experience around query endpoints, ETag caching, and real-time projection refresh patterns
 
 ## Planned
@@ -20,9 +19,7 @@ Upcoming work organized by priority:
 
 ### Near-Term
 
-- **DAPR deep-dive FAQ** — comprehensive FAQ addressing common DAPR integration questions, performance considerations, and operational patterns
-- **Deployment walkthroughs and platform setup guidance** — step-by-step Docker Compose, Kubernetes, and Azure Container Apps deployment guides, plus DAPR runtime setup and deployment progression documentation
-- **Operational reference gaps** — DAPR component configuration reference, health and readiness endpoint documentation, security model guidance, infrastructure-difference explanations, and production resource sizing guidance
+- **Production resource sizing guidance** — capacity planning, infrastructure sizing recommendations, and performance tuning guidance for production deployments
 
 ### Future Considerations
 
@@ -48,7 +45,9 @@ Key capabilities that have already shipped:
 - **Observability and operations** — end-to-end OpenTelemetry tracing, structured logging, health and readiness endpoints, dead-letter-to-origin tracing
 - **Sample application and CI/CD** — Counter domain example, DAPR component configurations, integration tests across three tiers, GitHub Actions CI/CD, NuGet publishing, and Aspire deployment manifests
 - **Fluent Client SDK API** — convention engine with `[EventStoreDomain]` attribute, assembly scanner with auto-discovery, `AddEventStore()` and `UseEventStore()` extension methods, five-layer cascading configuration
-- **Documentation foundation** — README with progressive disclosure, quickstart guide, concept deep dives (architecture, command lifecycle, event envelope, identity scheme), DAPR trade-offs FAQ intro, NuGet packages guide, awesome-event-sourcing ecosystem page, community infrastructure (contributing guide, issue and PR templates, GitHub Discussions)
+- **Documentation foundation** — README with progressive disclosure, quickstart guide, concept deep dives (architecture, command lifecycle, event envelope, identity scheme), NuGet packages guide, awesome-event-sourcing ecosystem page, community infrastructure (contributing guide, issue and PR templates, GitHub Discussions)
+- **DAPR deep-dive FAQ** — comprehensive FAQ addressing DAPR dependency risks, deprecation scenarios, performance characteristics, operational costs, and migration strategies
+- **Deployment and operations guides** — Docker Compose, Kubernetes, and Azure Container Apps deployment walkthroughs, deployment progression documentation, DAPR component configuration reference, security model guidance, disaster recovery procedures, troubleshooting guide, and configuration reference
 
 ## How to Influence the Roadmap
 

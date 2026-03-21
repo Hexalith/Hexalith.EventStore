@@ -188,7 +188,7 @@ public class ValidatorConsistencyTests {
 
     [Fact]
     public void SubmitCommandRequestValidator_ExtensionsUtf8ByteBudget_UsesActualUtf8Length() {
-        Dictionary<string, string> extensions = Enumerable.Range(0, 22)
+        var extensions = Enumerable.Range(0, 22)
             .ToDictionary(
                 i => $"k{i}",
                 _ => new string('€', 1000));

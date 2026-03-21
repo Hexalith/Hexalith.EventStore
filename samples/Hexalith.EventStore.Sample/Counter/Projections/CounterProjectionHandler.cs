@@ -12,22 +12,18 @@ namespace Hexalith.EventStore.Sample.Counter.Projections;
 /// <see cref="ProjectionRequest"/> onto a fresh <see cref="CounterState"/>
 /// and returns the current count as a <see cref="ProjectionResponse"/>.
 /// </summary>
-public static class CounterProjectionHandler
-{
+public static class CounterProjectionHandler {
     /// <summary>
     /// Projects a sequence of events into a counter projection response.
     /// </summary>
     /// <param name="request">The projection request containing events to replay.</param>
     /// <returns>A projection response with type "counter" and the current count state.</returns>
-    public static ProjectionResponse Project(ProjectionRequest request)
-    {
+    public static ProjectionResponse Project(ProjectionRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
         CounterState state = new();
-        foreach (ProjectionEventDto? evt in request.Events ?? [])
-        {
-            if (evt is null)
-            {
+        foreach (ProjectionEventDto? evt in request.Events ?? []) {
+            if (evt is null) {
                 continue;
             }
 
@@ -39,28 +35,22 @@ public static class CounterProjectionHandler
             JsonSerializer.SerializeToElement(new { count = state.Count }));
     }
 
-    private static void ApplyEvent(CounterState state, string eventTypeName)
-    {
-        if (string.IsNullOrEmpty(eventTypeName))
-        {
+    private static void ApplyEvent(CounterState state, string eventTypeName) {
+        if (string.IsNullOrEmpty(eventTypeName)) {
             return;
         }
 
         // EventTypeName may be short ("CounterIncremented") or fully qualified; suffix match handles both.
-        if (eventTypeName.EndsWith(nameof(CounterIncremented), StringComparison.Ordinal))
-        {
+        if (eventTypeName.EndsWith(nameof(CounterIncremented), StringComparison.Ordinal)) {
             state.Apply(new CounterIncremented());
         }
-        else if (eventTypeName.EndsWith(nameof(CounterDecremented), StringComparison.Ordinal))
-        {
+        else if (eventTypeName.EndsWith(nameof(CounterDecremented), StringComparison.Ordinal)) {
             state.Apply(new CounterDecremented());
         }
-        else if (eventTypeName.EndsWith(nameof(CounterReset), StringComparison.Ordinal))
-        {
+        else if (eventTypeName.EndsWith(nameof(CounterReset), StringComparison.Ordinal)) {
             state.Apply(new CounterReset());
         }
-        else if (eventTypeName.EndsWith(nameof(CounterClosed), StringComparison.Ordinal))
-        {
+        else if (eventTypeName.EndsWith(nameof(CounterClosed), StringComparison.Ordinal)) {
             state.Apply(new CounterClosed());
         }
 

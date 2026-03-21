@@ -6,6 +6,7 @@ using System.Reflection;
 using commandapi::Hexalith.EventStore.CommandApi.ErrorHandling;
 using commandapi::Hexalith.EventStore.CommandApi.OpenApi;
 
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
 using Shouldly;
@@ -57,7 +58,7 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
 
     [Fact]
     public async Task ErrorReferencePage_RemainsAvailable_WhenOpenApiIsDisabled() {
-        using var factory = _factory.WithWebHostBuilder(builder =>
+        using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
             _ = builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:OpenApi:Enabled"] = "false",
             })));

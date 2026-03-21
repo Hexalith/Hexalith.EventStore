@@ -101,12 +101,12 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
         string? statusDescription = statusOperation.GetProperty("description").GetString();
 
         submitOperation.GetProperty("summary").GetString().ShouldBe("Submits a command for asynchronous processing.");
-        submitDescription.ShouldNotBeNull();
+        _ = submitDescription.ShouldNotBeNull();
         submitDescription.ShouldContain("Location header pointing to the status polling endpoint");
         submitOperation.GetProperty("responses").GetProperty("202").GetProperty("description").GetString().ShouldBe("Command accepted for processing. Check status at the Location header URL.");
 
         statusOperation.GetProperty("summary").GetString().ShouldBe("Gets the current processing status of a command by correlation ID.");
-        statusDescription.ShouldNotBeNull();
+        _ = statusDescription.ShouldNotBeNull();
         statusDescription.ShouldContain("Command Lifecycle States");
         statusDescription.ShouldContain("Terminal states mean the command has reached its final outcome");
         statusOperation.GetProperty("responses").GetProperty("404").GetProperty("description").GetString().ShouldBe("No command status found for the given correlation ID.");

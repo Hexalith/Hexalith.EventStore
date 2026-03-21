@@ -208,7 +208,7 @@ public class QueriesControllerTests {
     }
 
     [Fact]
-    public async Task Submit_WithNullEntityId_ForwardsNullEntityIdToSubmitQuery() {
+    public async Task Submit_WithNullEntityId_FallsBackToAggregateIdForRouting() {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
@@ -220,9 +220,9 @@ public class QueriesControllerTests {
         // Act
         _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
-        // Assert — null EntityId from request results in null EntityId in SubmitQuery
+        // Assert — aggregate-scoped queries fall back to AggregateId when EntityId is omitted
         _ = await mediator.Received(1).Send(
-            Arg.Is<SubmitQuery>(q => q.EntityId == null),
+            Arg.Is<SubmitQuery>(q => q.EntityId == "order-1"),
             Arg.Any<CancellationToken>());
     }
 

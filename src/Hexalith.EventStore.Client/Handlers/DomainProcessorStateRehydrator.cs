@@ -8,28 +8,23 @@ using Hexalith.EventStore.Contracts.Events;
 
 namespace Hexalith.EventStore.Client.Handlers;
 
-internal static class DomainProcessorStateRehydrator
-{
+internal static class DomainProcessorStateRehydrator {
     private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> ApplyMethodCache = new();
     private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
 
     internal static Dictionary<string, MethodInfo> DiscoverApplyMethods(Type stateType) =>
         ApplyMethodCache.GetOrAdd(
             stateType,
-            static type =>
-            {
+            static type => {
                 var methods = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
 
-                foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                {
-                    if (!method.Name.Equals("Apply", StringComparison.Ordinal))
-                    {
+                foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
+                    if (!method.Name.Equals("Apply", StringComparison.Ordinal)) {
                         continue;
                     }
 
                     ParameterInfo[] parameters = method.GetParameters();
-                    if (parameters.Length != 1 || method.ReturnType != typeof(void))
-                    {
+                    if (parameters.Length != 1 || method.ReturnType != typeof(void)) {
                         continue;
                     }
 
@@ -42,8 +37,7 @@ internal static class DomainProcessorStateRehydrator
 
     internal static TState? RehydrateState<TState>(object? currentState, Dictionary<string, MethodInfo> applyMethods)
         where TState : class, new() =>
-        currentState switch
-        {
+        currentState switch {
             null => null,
             TState typed => typed,
             DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods),
@@ -69,10 +63,8 @@ internal static class DomainProcessorStateRehydrator
     private static TState? RehydrateFromDomainServiceCurrentState<TState>(
         DomainServiceCurrentState currentState,
         Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
-        TState? state = currentState.SnapshotState switch
-        {
+        where TState : class, new() {
+        TState? state = currentState.SnapshotState switch {
             null when currentState.Events.Count == 0 => null,
             null => new TState(),
             TState typed => typed,
@@ -87,8 +79,7 @@ internal static class DomainProcessorStateRehydrator
             _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods),
         };
 
-        if (state is null)
-        {
+        if (state is null) {
             return null;
         }
 
@@ -99,16 +90,13 @@ internal static class DomainProcessorStateRehydrator
     private static TState? RehydrateFromArbitrarySnapshot<TState>(
         object? snapshotState,
         Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
-        if (snapshotState is null)
-        {
+        where TState : class, new() {
+        if (snapshotState is null) {
             return null;
         }
 
         JsonElement json = JsonSerializer.SerializeToElement(snapshotState, snapshotState.GetType(), WebJsonOptions);
-        return json.ValueKind switch
-        {
+        return json.ValueKind switch {
             JsonValueKind.Object when IsDomainServiceCurrentState(json) =>
                 RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json), applyMethods),
             JsonValueKind.Object => RehydrateFromJsonObject<TState>(json),
@@ -120,29 +108,24 @@ internal static class DomainProcessorStateRehydrator
     }
 
     private static TState RehydrateFromJsonObject<TState>(JsonElement jsonObject)
-        where TState : class, new()
-    {
+        where TState : class, new() {
         var state = new TState();
 
         var jsonProperties = jsonObject
             .EnumerateObject()
             .ToDictionary(static p => p.Name, static p => p.Value, StringComparer.OrdinalIgnoreCase);
 
-        foreach (PropertyInfo property in typeof(TState).GetProperties(BindingFlags.Public | BindingFlags.Instance))
-        {
-            if (property.GetIndexParameters().Length != 0)
-            {
+        foreach (PropertyInfo property in typeof(TState).GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
+            if (property.GetIndexParameters().Length != 0) {
                 continue;
             }
 
             MethodInfo? setter = property.SetMethod;
-            if (setter is null)
-            {
+            if (setter is null) {
                 continue;
             }
 
-            if (!jsonProperties.TryGetValue(property.Name, out JsonElement valueElement))
-            {
+            if (!jsonProperties.TryGetValue(property.Name, out JsonElement valueElement)) {
                 continue;
             }
 
@@ -154,13 +137,10 @@ internal static class DomainProcessorStateRehydrator
     }
 
     private static TState ReplayEventsFromJsonArray<TState>(JsonElement jsonArray, Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
+        where TState : class, new() {
         var state = new TState();
-        foreach (JsonElement eventElement in jsonArray.EnumerateArray())
-        {
-            if (eventElement.ValueKind != JsonValueKind.Object)
-            {
+        foreach (JsonElement eventElement in jsonArray.EnumerateArray()) {
+            if (eventElement.ValueKind != JsonValueKind.Object) {
                 throw new InvalidOperationException(
                     string.Format(
                         CultureInfo.InvariantCulture,
@@ -170,8 +150,7 @@ internal static class DomainProcessorStateRehydrator
             }
 
             if (!eventElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
-                || eventTypeElement.ValueKind != JsonValueKind.String)
-            {
+                || eventTypeElement.ValueKind != JsonValueKind.String) {
                 throw new InvalidOperationException(
                     string.Format(
                         CultureInfo.InvariantCulture,
@@ -180,8 +159,7 @@ internal static class DomainProcessorStateRehydrator
             }
 
             string? eventTypeName = eventTypeElement.GetString();
-            if (string.IsNullOrWhiteSpace(eventTypeName))
-            {
+            if (string.IsNullOrWhiteSpace(eventTypeName)) {
                 throw new InvalidOperationException(
                     string.Format(
                         CultureInfo.InvariantCulture,
@@ -196,25 +174,20 @@ internal static class DomainProcessorStateRehydrator
     }
 
     private static TState ReplayEventsFromEnumerable<TState>(System.Collections.IEnumerable events, Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
+        where TState : class, new() {
         var state = new TState();
-        foreach (object? evt in events)
-        {
-            if (evt is null)
-            {
+        foreach (object? evt in events) {
+            if (evt is null) {
                 continue;
             }
 
-            switch (evt)
-            {
+            switch (evt) {
                 case EventEnvelope envelope:
                     ApplyContractEventEnvelope(state, envelope, applyMethods);
                     continue;
                 case JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Object:
                     if (!jsonElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
-                        || eventTypeElement.ValueKind != JsonValueKind.String)
-                    {
+                        || eventTypeElement.ValueKind != JsonValueKind.String) {
                         throw new InvalidOperationException(
                             string.Format(
                                 CultureInfo.InvariantCulture,
@@ -227,8 +200,7 @@ internal static class DomainProcessorStateRehydrator
             }
 
             string eventTypeName = evt.GetType().Name;
-            if (applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod))
-            {
+            if (applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
                 _ = applyMethod.Invoke(state, [evt]);
                 continue;
             }
@@ -249,10 +221,8 @@ internal static class DomainProcessorStateRehydrator
         TState state,
         IReadOnlyList<EventEnvelope> events,
         Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
-        foreach (EventEnvelope envelope in events)
-        {
+        where TState : class, new() {
+        foreach (EventEnvelope envelope in events) {
             ApplyContractEventEnvelope(state, envelope, applyMethods);
         }
     }
@@ -261,14 +231,12 @@ internal static class DomainProcessorStateRehydrator
         TState state,
         EventEnvelope envelope,
         Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
+        where TState : class, new() {
         MethodInfo applyMethod = ResolveApplyMethod(envelope.Metadata.EventTypeName, applyMethods, typeof(TState));
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
-        try
-        {
-            using JsonDocument payloadDoc = JsonDocument.Parse(envelope.Payload);
+        try {
+            using var payloadDoc = JsonDocument.Parse(envelope.Payload);
             object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, WebJsonOptions)
                 ?? throw new InvalidOperationException(
                     string.Format(
@@ -280,8 +248,7 @@ internal static class DomainProcessorStateRehydrator
 
             _ = applyMethod.Invoke(state, [deserializedEvent]);
         }
-        catch (JsonException ex)
-        {
+        catch (JsonException ex) {
             throw new InvalidOperationException(
                 string.Format(
                     CultureInfo.InvariantCulture,
@@ -298,29 +265,23 @@ internal static class DomainProcessorStateRehydrator
         string eventTypeName,
         JsonElement eventElement,
         Dictionary<string, MethodInfo> applyMethods)
-        where TState : class, new()
-    {
+        where TState : class, new() {
         MethodInfo applyMethod = ResolveApplyMethod(eventTypeName, applyMethods, typeof(TState));
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
-        try
-        {
-            if (eventElement.TryGetProperty("payload", out JsonElement payloadElement))
-            {
+        try {
+            if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
                 object? deserializedEvent;
-                if (payloadElement.ValueKind == JsonValueKind.String)
-                {
+                if (payloadElement.ValueKind == JsonValueKind.String) {
                     byte[] payloadBytes = payloadElement.GetBytesFromBase64();
-                    using JsonDocument payloadDoc = JsonDocument.Parse(payloadBytes);
+                    using var payloadDoc = JsonDocument.Parse(payloadBytes);
                     deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, WebJsonOptions);
                 }
-                else
-                {
+                else {
                     deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType, WebJsonOptions);
                 }
 
-                if (deserializedEvent is null)
-                {
+                if (deserializedEvent is null) {
                     throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
@@ -332,8 +293,7 @@ internal static class DomainProcessorStateRehydrator
 
                 _ = applyMethod.Invoke(state, [deserializedEvent]);
             }
-            else
-            {
+            else {
                 object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType, WebJsonOptions)
                     ?? throw new InvalidOperationException(
                         string.Format(
@@ -345,8 +305,7 @@ internal static class DomainProcessorStateRehydrator
                 _ = applyMethod.Invoke(state, [deserializedEvent]);
             }
         }
-        catch (JsonException ex)
-        {
+        catch (JsonException ex) {
             throw new InvalidOperationException(
                 string.Format(
                     CultureInfo.InvariantCulture,
@@ -361,14 +320,10 @@ internal static class DomainProcessorStateRehydrator
     private static MethodInfo ResolveApplyMethod(
         string eventTypeName,
         Dictionary<string, MethodInfo> applyMethods,
-        Type stateType)
-    {
-        if (!applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod))
-        {
-            foreach (KeyValuePair<string, MethodInfo> kvp in applyMethods)
-            {
-                if (eventTypeName.EndsWith(kvp.Key, StringComparison.Ordinal))
-                {
+        Type stateType) {
+        if (!applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
+            foreach (KeyValuePair<string, MethodInfo> kvp in applyMethods) {
+                if (eventTypeName.EndsWith(kvp.Key, StringComparison.Ordinal)) {
                     applyMethod = kvp.Value;
                     break;
                 }

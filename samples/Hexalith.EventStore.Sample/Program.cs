@@ -1,6 +1,3 @@
-using System.Threading;
-
-using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
@@ -24,25 +21,24 @@ app.UseEventStore();
 app.MapDefaultEndpoints();
 app.MapGet("/", () => "Hexalith EventStore Sample Domain Service");
 
-app.MapPost("/process", async (DomainServiceRequest request, IServiceProvider serviceProvider) => {
-    return Results.Ok(await Hexalith.EventStore.Sample.DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false));
-});
+app.MapPost("/process", async (DomainServiceRequest request, IServiceProvider serviceProvider) => Results.Ok(await Hexalith.EventStore.Sample.DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false)));
 
 if (malformedProjectionResponse) {
-    app.MapPost("/project", () => {
+    _ = app.MapPost("/project", () => {
         _ = Interlocked.Increment(ref malformedProjectionResponseHitCount);
 
         // Intentionally malformed JSON payload used for Tier 3 fail-open validation.
         return Results.Content("{\"projectionType\":", "application/json");
     });
 
-    app.MapGet("/faults/project-hit-count", () => Results.Ok(new {
+    _ = app.MapGet("/faults/project-hit-count", () => Results.Ok(new {
         Count = Volatile.Read(ref malformedProjectionResponseHitCount),
     }));
-} else {
+}
+else {
     // Real /project endpoint: replays events into counter projection state.
     // DaprClient.InvokeMethodAsync round-trips ProjectionRequest/Response as JSON.
-    app.MapPost("/project", (ProjectionRequest request)
+    _ = app.MapPost("/project", (ProjectionRequest request)
         => Results.Ok(CounterProjectionHandler.Project(request)));
 }
 

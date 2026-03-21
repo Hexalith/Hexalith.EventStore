@@ -33,7 +33,7 @@ public sealed class CounterQueryService(IHttpClientFactory httpClientFactory) {
             aggregateId = "counter-1",
             queryType = "get-counter-status",
             payload = _emptyPayload,
-            entityId = (string?)null,
+            entityId = "counter-1",
         });
 
         if (_lastETag is not null) {

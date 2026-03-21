@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.EventStore.CommandApi.Authentication;
@@ -27,7 +26,7 @@ public class ConfigureJwtBearerOptionsTests {
     private const string TestAudience = "test-audience";
 
     private static ConfigureJwtBearerOptions CreateConfigurer() {
-        var authOptions = Options.Create(new EventStoreAuthenticationOptions {
+        IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
             SigningKey = TestSigningKey,
             Issuer = TestIssuer,
             Audience = TestAudience,
@@ -36,7 +35,7 @@ public class ConfigureJwtBearerOptionsTests {
     }
 
     private static ConfigureJwtBearerOptions CreateOidcConfigurer() {
-        var authOptions = Options.Create(new EventStoreAuthenticationOptions {
+        IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
             Authority = TestAuthority,
             Issuer = TestIssuer,
             Audience = TestAudience,
@@ -45,7 +44,7 @@ public class ConfigureJwtBearerOptionsTests {
     }
 
     private static ConfigureJwtBearerOptions CreateDualConfigurer() {
-        var authOptions = Options.Create(new EventStoreAuthenticationOptions {
+        IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
             Authority = TestAuthority,
             SigningKey = TestSigningKey,
             Issuer = TestIssuer,
@@ -68,7 +67,7 @@ public class ConfigureJwtBearerOptionsTests {
     }
 
     private static ConfigureJwtBearerOptions CreateConfigurer(ILoggerFactory loggerFactory) {
-        var authOptions = Options.Create(new EventStoreAuthenticationOptions {
+        IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
             SigningKey = TestSigningKey,
             Issuer = TestIssuer,
             Audience = TestAudience,
@@ -365,8 +364,8 @@ public class ConfigureJwtBearerOptionsTests {
 
         // Assert
         options.Authority.ShouldBeNull();
-        options.TokenValidationParameters.IssuerSigningKey.ShouldNotBeNull();
-        options.TokenValidationParameters.IssuerSigningKey.ShouldBeOfType<SymmetricSecurityKey>();
+        _ = options.TokenValidationParameters.IssuerSigningKey.ShouldNotBeNull();
+        _ = options.TokenValidationParameters.IssuerSigningKey.ShouldBeOfType<SymmetricSecurityKey>();
     }
 
     [Fact]

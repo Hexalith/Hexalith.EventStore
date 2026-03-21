@@ -125,8 +125,7 @@ public partial class EventPublisher(
             // Fire-and-forget projection update (Mode B immediate trigger)
             // NOTE: Unbounded concurrency -- high-throughput aggregates may spawn many concurrent tasks.
             // Acceptable for current scope; checkpoint tracker + SemaphoreSlim would bound this in a follow-up.
-            _ = Task.Run(async () =>
-            {
+            _ = Task.Run(async () => {
                 try {
                     await projectionOrchestrator.UpdateProjectionAsync(identity, CancellationToken.None)
                         .ConfigureAwait(false);

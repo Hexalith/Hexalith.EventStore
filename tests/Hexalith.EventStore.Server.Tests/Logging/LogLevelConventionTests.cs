@@ -13,9 +13,9 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
-using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

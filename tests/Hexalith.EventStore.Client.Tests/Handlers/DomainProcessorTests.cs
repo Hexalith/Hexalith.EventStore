@@ -179,7 +179,7 @@ public class DomainProcessorTests : IDisposable {
     public async Task DomainProcessorBase_WithEventEnvelopeEnumerable_RehydratesViaApply() {
         var processor = new StateCapturingProcessor();
         CommandEnvelope command = CreateTestCommand();
-        var currentState = new object[] { CreateEnvelope(new TestEventApplied()), CreateEnvelope(new TestEventApplied(), 2) };
+        object[] currentState = new object[] { CreateEnvelope(new TestEventApplied()), CreateEnvelope(new TestEventApplied(), 2) };
 
         DomainResult result = await processor.ProcessAsync(command, currentState);
 

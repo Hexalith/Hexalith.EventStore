@@ -26,9 +26,7 @@ public partial class SubmitCommandHandler(
         ICommandRouter commandRouter,
         IBackpressureTracker backpressureTracker,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, logger) {
-        ArgumentNullException.ThrowIfNull(backpressureTracker);
-    }
+        : this(statusStore, archiveStore, commandRouter, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
 
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);

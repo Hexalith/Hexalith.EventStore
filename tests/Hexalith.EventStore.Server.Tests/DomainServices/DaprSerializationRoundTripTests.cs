@@ -9,11 +9,12 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
-using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 using Hexalith.EventStore.Server.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
+
+using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
@@ -94,13 +95,13 @@ public class DaprSerializationRoundTripTests {
         // Act: Capture the currentState that the AggregateActor passed to the domain service
         // on the 2nd invocation (which includes the event from the 1st command)
         _fixture.DomainServiceInvoker.InvocationsWithState.Count.ShouldBeGreaterThanOrEqualTo(2);
-        (CommandEnvelope _, object? capturedState) = _fixture.DomainServiceInvoker.InvocationsWithState
+        (_, object? capturedState) = _fixture.DomainServiceInvoker.InvocationsWithState
             .Last(i => i.Command.AggregateId == aggregateId);
 
         // The captured state should be a DomainServiceCurrentState with at least 1 event
-        capturedState.ShouldNotBeNull("AggregateActor should pass non-null state after first event");
-        capturedState.ShouldBeAssignableTo<DomainServiceCurrentState>();
-        DomainServiceCurrentState state = (DomainServiceCurrentState)capturedState;
+        _ = capturedState.ShouldNotBeNull("AggregateActor should pass non-null state after first event");
+        _ = capturedState.ShouldBeAssignableTo<DomainServiceCurrentState>();
+        var state = (DomainServiceCurrentState)capturedState;
         state.Events.Count.ShouldBeGreaterThan(0, "Should have stored events from previous commands");
 
         // Simulate the Dapr DomainServiceRequest serialization round-trip:

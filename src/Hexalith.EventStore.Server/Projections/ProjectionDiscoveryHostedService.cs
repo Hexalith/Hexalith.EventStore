@@ -27,55 +27,44 @@ namespace Hexalith.EventStore.Server.Projections;
 public sealed partial class ProjectionDiscoveryHostedService(
     IOptions<DomainServiceOptions> domainServiceOptions,
     IOptions<ProjectionOptions> projectionOptions,
-    ILogger<ProjectionDiscoveryHostedService> logger) : IHostedService
-{
+    ILogger<ProjectionDiscoveryHostedService> logger) : IHostedService {
     /// <inheritdoc/>
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
+    public Task StartAsync(CancellationToken cancellationToken) {
         DomainServiceOptions dsOptions = domainServiceOptions.Value;
         ProjectionOptions pOptions = projectionOptions.Value;
 
         // Extract unique domain names from static registrations.
         // Registration keys are "{tenant}:{domain}:{version}" or "{tenant}|{domain}|{version}".
         var discoveredDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (string key in dsOptions.Registrations.Keys)
-        {
+        foreach (string key in dsOptions.Registrations.Keys) {
             string domain = ExtractDomain(key);
-            if (!string.IsNullOrWhiteSpace(domain))
-            {
+            if (!string.IsNullOrWhiteSpace(domain)) {
                 _ = discoveredDomains.Add(domain);
             }
-            else
-            {
+            else {
                 Log.MalformedRegistrationKey(logger, key);
             }
         }
 
-        if (discoveredDomains.Count == 0)
-        {
+        if (discoveredDomains.Count == 0) {
             Log.NoRegistrations(logger);
             return Task.CompletedTask;
         }
 
         // Log projection mode for each discovered domain
-        foreach (string domain in discoveredDomains.Order())
-        {
+        foreach (string domain in discoveredDomains.Order()) {
             int refreshMs = pOptions.GetRefreshIntervalMs(domain);
-            if (refreshMs == 0)
-            {
+            if (refreshMs == 0) {
                 Log.DomainImmediate(logger, domain);
             }
-            else
-            {
+            else {
                 Log.DomainPolling(logger, domain, refreshMs);
             }
         }
 
         // Warn on projection config entries that reference domains without registrations
-        foreach (string configuredDomain in pOptions.Domains.Keys)
-        {
-            if (!discoveredDomains.Contains(configuredDomain))
-            {
+        foreach (string configuredDomain in pOptions.Domains.Keys) {
+            if (!discoveredDomains.Contains(configuredDomain)) {
                 Log.OrphanedConfig(logger, configuredDomain);
             }
         }
@@ -92,13 +81,11 @@ public sealed partial class ProjectionDiscoveryHostedService(
     /// Extracts the domain segment from a registration key.
     /// Keys use either colon or pipe separators: "{tenant}:{domain}:{version}" or "{tenant}|{domain}|{version}".
     /// </summary>
-    internal static string ExtractDomain(string registrationKey)
-    {
+    internal static string ExtractDomain(string registrationKey) {
         bool hasColon = registrationKey.Contains(':');
         bool hasPipe = registrationKey.Contains('|');
 
-        if (hasColon == hasPipe)
-        {
+        if (hasColon == hasPipe) {
             return string.Empty;
         }
 
@@ -107,8 +94,7 @@ public sealed partial class ProjectionDiscoveryHostedService(
         return parts.Length == 3 ? parts[1] : string.Empty;
     }
 
-    private static partial class Log
-    {
+    private static partial class Log {
         [LoggerMessage(
             EventId = 1120,
             Level = LogLevel.Information,
