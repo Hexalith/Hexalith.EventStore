@@ -14,8 +14,10 @@
     <Project Path="src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />
     <Project Path="src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
     <Project Path="src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj" />
+    <Project Path="src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj" />

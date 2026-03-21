@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Admin service interfaces and DTOs for Hexalith.EventStore — shared contract for Web UI, CLI, and MCP</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
