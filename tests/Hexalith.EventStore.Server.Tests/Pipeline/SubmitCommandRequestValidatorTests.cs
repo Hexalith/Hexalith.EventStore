@@ -12,6 +12,39 @@ public class SubmitCommandRequestValidatorTests {
     private readonly SubmitCommandRequestValidator _validator = new();
 
     [Fact]
+    public void SubmitCommandRequestValidator_NullMessageId_ReturnsValidationError() {
+        // Regression test: CounterCommandForm.razor was missing messageId, causing 400 Bad Request.
+        var request = new SubmitCommandRequest(
+            MessageId: null!,
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "IncrementCounter",
+            Payload: JsonDocument.Parse("{}").RootElement);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "MessageId" && e.ErrorMessage.Contains("required"));
+    }
+
+    [Fact]
+    public void SubmitCommandRequestValidator_EmptyMessageId_ReturnsValidationError() {
+        var request = new SubmitCommandRequest(
+            MessageId: "",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "IncrementCounter",
+            Payload: JsonDocument.Parse("{}").RootElement);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "MessageId");
+    }
+
+    [Fact]
     public void SubmitCommandRequestValidator_MissingTenant_ReturnsValidationError() {
         // Arrange
         var request = new SubmitCommandRequest(
