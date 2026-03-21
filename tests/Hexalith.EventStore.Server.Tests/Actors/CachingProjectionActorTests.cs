@@ -40,7 +40,7 @@ public class CachingProjectionActorTests {
             .Returns(currentETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -50,7 +50,7 @@ public class CachingProjectionActorTests {
 
         // Assert
         result.Success.ShouldBeTrue();
-        result.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
         actor.ExecuteCallCount.ShouldBe(1);
     }
 
@@ -63,7 +63,7 @@ public class CachingProjectionActorTests {
             .Returns(currentETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -76,7 +76,7 @@ public class CachingProjectionActorTests {
 
         // Assert
         result.Success.ShouldBeTrue();
-        result.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
         actor.ExecuteCallCount.ShouldBe(1); // Only called once (first call)
     }
 
@@ -94,7 +94,7 @@ public class CachingProjectionActorTests {
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService,
-            new QueryResult(true, payload1), new QueryResult(true, payload2));
+            QueryResult.FromPayload(payload1), QueryResult.FromPayload(payload2));
 
         // First call populates cache
         _ = await actor.QueryAsync(CreateEnvelope());
@@ -103,7 +103,7 @@ public class CachingProjectionActorTests {
         QueryResult result = await actor.QueryAsync(CreateEnvelope());
 
         // Assert
-        result.Payload.GetProperty("count").GetInt32().ShouldBe(2);
+        result.GetPayload().GetProperty("count").GetInt32().ShouldBe(2);
         actor.ExecuteCallCount.ShouldBe(2); // Called twice (cache invalidated)
     }
 
@@ -115,7 +115,7 @@ public class CachingProjectionActorTests {
             .Returns((string?)null);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -138,7 +138,7 @@ public class CachingProjectionActorTests {
             .Returns((string?)null);
 
         JsonElement payload = JsonDocument.Parse("{\"data\":\"test\"}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -164,7 +164,7 @@ public class CachingProjectionActorTests {
             .Returns(stableETag);
 
         JsonElement payload = JsonDocument.Parse("{\"value\":99}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -176,8 +176,8 @@ public class CachingProjectionActorTests {
         QueryResult second = await actor.QueryAsync(CreateEnvelope());
 
         // Assert — same payload
-        first.Payload.GetProperty("value").GetInt32().ShouldBe(99);
-        second.Payload.GetProperty("value").GetInt32().ShouldBe(99);
+        first.GetPayload().GetProperty("value").GetInt32().ShouldBe(99);
+        second.GetPayload().GetProperty("value").GetInt32().ShouldBe(99);
         actor.ExecuteCallCount.ShouldBe(1); // Cached
     }
 
@@ -189,7 +189,7 @@ public class CachingProjectionActorTests {
         _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
             .Returns(currentETag);
 
-        var failedResult = new QueryResult(false, default, "Not found");
+        var failedResult = QueryResult.Failure("Not found");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, failedResult);
@@ -214,7 +214,7 @@ public class CachingProjectionActorTests {
             .Returns(currentETag, currentETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":7}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -244,8 +244,8 @@ public class CachingProjectionActorTests {
             .Returns(orderListETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var result1 = new QueryResult(true, payload, ProjectionType: "order-list");
-        var result2 = new QueryResult(true, payload, ProjectionType: "order-list");
+        var result1 = QueryResult.FromPayload(payload, "order-list");
+        var result2 = QueryResult.FromPayload(payload, "order-list");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
@@ -271,8 +271,8 @@ public class CachingProjectionActorTests {
             .Returns(orderListETag, orderListETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var result1 = new QueryResult(true, payload, ProjectionType: "order-list");
-        var result2 = new QueryResult(true, payload, ProjectionType: "order-list");
+        var result1 = QueryResult.FromPayload(payload, "order-list");
+        var result2 = QueryResult.FromPayload(payload, "order-list");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
@@ -302,8 +302,8 @@ public class CachingProjectionActorTests {
 
         JsonElement payload1 = JsonDocument.Parse("{\"count\":1}").RootElement;
         JsonElement payload2 = JsonDocument.Parse("{\"count\":2}").RootElement;
-        var result1 = new QueryResult(true, payload1, ProjectionType: "order-list");
-        var result2 = new QueryResult(true, payload2, ProjectionType: "order-list");
+        var result1 = QueryResult.FromPayload(payload1, "order-list");
+        var result2 = QueryResult.FromPayload(payload2, "order-list");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
@@ -325,7 +325,7 @@ public class CachingProjectionActorTests {
             .Returns(counterETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: null);
+        var expected = QueryResult.FromPayload(payload);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -348,7 +348,7 @@ public class CachingProjectionActorTests {
             .Returns(counterETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: "");
+        var expected = QueryResult.FromPayload(payload, "");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -371,7 +371,7 @@ public class CachingProjectionActorTests {
             .Returns(counterETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: "evil:type");
+        var expected = QueryResult.FromPayload(payload, "evil:type");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -395,7 +395,7 @@ public class CachingProjectionActorTests {
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
         string longProjectionType = new('x', 101);
-        var expected = new QueryResult(true, payload, ProjectionType: longProjectionType);
+        var expected = QueryResult.FromPayload(payload, longProjectionType);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -422,8 +422,8 @@ public class CachingProjectionActorTests {
             .Returns(orderListETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var result1 = new QueryResult(true, payload, ProjectionType: "order-list");
-        var result2 = new QueryResult(true, payload, ProjectionType: "order-summary"); // different!
+        var result1 = QueryResult.FromPayload(payload, "order-list");
+        var result2 = QueryResult.FromPayload(payload, "order-summary"); // different!
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);
@@ -448,7 +448,7 @@ public class CachingProjectionActorTests {
             .Returns(counterETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: "counter");
+        var expected = QueryResult.FromPayload(payload, "counter");
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, expected);
@@ -464,7 +464,7 @@ public class CachingProjectionActorTests {
     [Fact]
     public void QueryResult_DataContractBackwardCompat_OldFormatWithoutProjectionType_DeserializesWithNullProjectionType() {
         // Arrange — simulate an old serialized QueryResult without ProjectionType.
-        QueryResult original = new(true, default, null, "order-list");
+        QueryResult original = new(true, null, null, "order-list");
 
         var serializer = new DataContractSerializer(typeof(QueryResult));
         using var ms = new MemoryStream();
@@ -498,7 +498,7 @@ public class CachingProjectionActorTests {
             .Returns(counterETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: "");
+        var expected = QueryResult.FromPayload(payload, "");
 
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLoggerInstance(logEntries);
@@ -529,7 +529,7 @@ public class CachingProjectionActorTests {
             .Returns(counterETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: "   ");
+        var expected = QueryResult.FromPayload(payload, "   ");
 
         var logEntries = new List<LogEntry>();
         var testLogger = new TestLoggerInstance(logEntries);
@@ -566,7 +566,7 @@ public class CachingProjectionActorTests {
             .Returns(projectionETag, projectionETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
-        var expected = new QueryResult(true, payload, ProjectionType: "order-list");
+        var expected = QueryResult.FromPayload(payload, "order-list");
         QueryEnvelope envelope = CreateEnvelope(domain: "orders");
 
         var host1 = ActorHost.CreateForTest<TestCachingProjectionActor>();
@@ -587,8 +587,8 @@ public class CachingProjectionActorTests {
         actor2.ExecuteCallCount.ShouldBe(2);
         first.Success.ShouldBeTrue();
         second.Success.ShouldBeTrue();
-        first.Payload.GetProperty("count").GetInt32().ShouldBe(42);
-        second.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        first.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
+        second.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
         _ = await eTagService.Received(2).GetCurrentETagAsync("orders", "tenant1", Arg.Any<CancellationToken>());
         _ = await eTagService.Received(2).GetCurrentETagAsync("order-list", "tenant1", Arg.Any<CancellationToken>());
     }
@@ -607,28 +607,28 @@ public class CachingProjectionActorTests {
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService,
-            new QueryResult(true, payload1), new QueryResult(true, payload2));
+            QueryResult.FromPayload(payload1), QueryResult.FromPayload(payload2));
 
         // Act 1: Cold miss — first call, nothing cached
         QueryResult miss1 = await actor.QueryAsync(CreateEnvelope());
-        miss1.Payload.GetProperty("count").GetInt32().ShouldBe(1);
+        miss1.GetPayload().GetProperty("count").GetInt32().ShouldBe(1);
         actor.ExecuteCallCount.ShouldBe(1);
 
         // Act 2: Warm hit — same ETag, cached payload returned
         QueryResult hit = await actor.QueryAsync(CreateEnvelope());
-        hit.Payload.GetProperty("count").GetInt32().ShouldBe(1); // cached data
+        hit.GetPayload().GetProperty("count").GetInt32().ShouldBe(1); // cached data
         actor.ExecuteCallCount.ShouldBe(1); // NOT called again
 
         // Act 3: ETag changes (projection updated) — cache invalidation, re-query
         QueryResult miss2 = await actor.QueryAsync(CreateEnvelope());
-        miss2.Payload.GetProperty("count").GetInt32().ShouldBe(2); // fresh data
+        miss2.GetPayload().GetProperty("count").GetInt32().ShouldBe(2); // fresh data
         actor.ExecuteCallCount.ShouldBe(2); // called again on cache miss
 
         // Act 4: Same refreshed ETag — cached fresh data should now be reused
         QueryResult hit2 = await actor.QueryAsync(CreateEnvelope());
 
         // Assert — cache is re-warmed after invalidation miss
-        hit2.Payload.GetProperty("count").GetInt32().ShouldBe(2);
+        hit2.GetPayload().GetProperty("count").GetInt32().ShouldBe(2);
         actor.ExecuteCallCount.ShouldBe(2); // still 2 = no extra microservice call
     }
 
@@ -647,8 +647,8 @@ public class CachingProjectionActorTests {
             .Returns(validETag);
 
         JsonElement payload = JsonDocument.Parse("{\"count\":1}").RootElement;
-        var result1 = new QueryResult(true, payload, ProjectionType: "evil:type"); // invalid (colon)
-        var result2 = new QueryResult(true, payload, ProjectionType: "valid-type"); // valid
+        var result1 = QueryResult.FromPayload(payload, "evil:type"); // invalid (colon)
+        var result2 = QueryResult.FromPayload(payload, "valid-type"); // valid
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
         var actor = new TestCachingProjectionActor(host, eTagService, result1, result2);

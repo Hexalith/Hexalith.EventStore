@@ -33,7 +33,7 @@ public class QueryRouterTests {
     public async Task RouteQueryAsync_SuccessfulQuery_ReturnsResultWithPayload() {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
-        var queryResult = new QueryResult(true, resultPayload);
+        var queryResult = QueryResult.FromPayload(resultPayload);
 
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(queryResult);
@@ -59,7 +59,7 @@ public class QueryRouterTests {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
-        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
@@ -144,7 +144,7 @@ public class QueryRouterTests {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
-        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(false, resultPayload, "projection unavailable"));
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.Failure("projection unavailable"));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
@@ -185,7 +185,7 @@ public class QueryRouterTests {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
-        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
@@ -207,7 +207,7 @@ public class QueryRouterTests {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
-        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
@@ -230,7 +230,7 @@ public class QueryRouterTests {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
-        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
@@ -251,7 +251,7 @@ public class QueryRouterTests {
     public async Task RouteQueryAsync_ProjectionType_PassesThroughFromQueryResult() {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
-        var queryResult = new QueryResult(true, resultPayload, ProjectionType: "order-list");
+        var queryResult = QueryResult.FromPayload(resultPayload, "order-list");
 
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(queryResult);
@@ -274,7 +274,7 @@ public class QueryRouterTests {
     public async Task RouteQueryAsync_NullProjectionType_PassesThroughNull() {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
-        var queryResult = new QueryResult(true, resultPayload, ProjectionType: null);
+        var queryResult = QueryResult.FromPayload(resultPayload);
 
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(queryResult);
@@ -297,7 +297,7 @@ public class QueryRouterTests {
         // Arrange
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
-        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, resultPayload));
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload));
 
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())

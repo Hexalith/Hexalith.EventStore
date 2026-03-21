@@ -26,7 +26,7 @@ public class FakeProjectionActorTests {
     public async Task QueryAsync_ReturnsConfiguredResult() {
         var sut = new FakeProjectionActor();
         JsonElement payload = JsonDocument.Parse("{\"value\":99}").RootElement;
-        var expected = new QueryResult(true, payload);
+        var expected = QueryResult.FromPayload(payload);
         sut.ConfiguredResult = expected;
 
         QueryResult result = await sut.QueryAsync(CreateTestEnvelope());
@@ -38,7 +38,7 @@ public class FakeProjectionActorTests {
     public async Task QueryAsync_ThrowsConfiguredException() {
         var sut = new FakeProjectionActor {
             ConfiguredException = new InvalidOperationException("boom"),
-            ConfiguredResult = new QueryResult(true, default)
+            ConfiguredResult = new QueryResult(true)
         };
 
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -52,7 +52,7 @@ public class FakeProjectionActorTests {
         QueryResult result = await sut.QueryAsync(CreateTestEnvelope());
 
         Assert.True(result.Success);
-        Assert.Equal(JsonValueKind.Object, result.Payload.ValueKind);
+        Assert.Equal(JsonValueKind.Object, result.GetPayload().ValueKind);
         Assert.Null(result.ErrorMessage);
     }
 
