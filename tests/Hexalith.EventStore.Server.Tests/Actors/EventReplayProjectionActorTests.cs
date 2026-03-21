@@ -190,7 +190,7 @@ public class EventReplayProjectionActorTests {
         QueryResult result = await actor.QueryAsync(envelope);
 
         result.Success.ShouldBeTrue();
-        result.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
         result.ProjectionType.ShouldBe(TestProjectionType);
     }
 
@@ -215,7 +215,7 @@ public class EventReplayProjectionActorTests {
         QueryResult result = await actor.QueryAsync(envelope);
 
         result.Success.ShouldBeTrue();
-        result.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public class EventReplayProjectionActorTests {
         // Second call: cache hit -> should NOT read from state manager again
         QueryResult result2 = await actor.QueryAsync(envelope);
         result2.Success.ShouldBeTrue();
-        result2.Payload.GetProperty("count").GetInt32().ShouldBe(42);
+        result2.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
 
         // TryGetStateAsync should only be called once (first cache miss)
         _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(

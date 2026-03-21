@@ -58,7 +58,7 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
 
     [Fact]
     public async Task ErrorReferencePage_RemainsAvailable_WhenOpenApiIsDisabled() {
-        using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+        using WebApplicationFactory<commandapi::Program> factory = _factory.WithWebHostBuilder(builder =>
             _ = builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:OpenApi:Enabled"] = "false",
             })));

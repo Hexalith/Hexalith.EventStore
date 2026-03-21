@@ -250,8 +250,8 @@ public class ProjectionUpdateOrchestratorTests {
         TaskCompletionSource<bool> signal = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = orchestrator
             .UpdateProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                _ = signal.TrySetResult(true);
+            .Returns(ci => {
+                signal.TrySetResult(true);
                 return Task.CompletedTask;
             });
         var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), orchestrator);
@@ -344,8 +344,8 @@ public class ProjectionUpdateOrchestratorTests {
         TaskCompletionSource<bool> signal = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = orchestrator
             .UpdateProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                _ = signal.TrySetResult(true);
+            .Returns(ci => {
+                signal.TrySetResult(true);
                 return Task.CompletedTask;
             });
         var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), orchestrator);
