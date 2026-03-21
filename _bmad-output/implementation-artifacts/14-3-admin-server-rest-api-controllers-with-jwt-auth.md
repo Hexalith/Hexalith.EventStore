@@ -1,6 +1,6 @@
 # Story 14.3: Admin.Server — REST API Controllers with JWT Auth
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,28 +25,28 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Prerequisites (AC: all)
-  - [ ] 0.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — confirm baseline compiles (0 errors, 0 warnings)
-  - [ ] 0.2 Verify Story 14-1 output: `src/Hexalith.EventStore.Admin.Abstractions/` exists with all 10 service interfaces. If not, STOP.
-  - [ ] 0.2b Verify Story 14-2 output: `src/Hexalith.EventStore.Admin.Server/` exists with `AddAdminServer()` in `Configuration/ServiceCollectionExtensions.cs` and all 9 service implementations. If not, STOP — this story depends on 14-2.
-  - [ ] 0.3 Read existing controller patterns for conventions:
+- [x] Task 0: Prerequisites (AC: all)
+  - [x] 0.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — confirm baseline compiles (0 errors, 0 warnings)
+  - [x] 0.2 Verify Story 14-1 output: `src/Hexalith.EventStore.Admin.Abstractions/` exists with all 10 service interfaces. If not, STOP.
+  - [x] 0.2b Verify Story 14-2 output: `src/Hexalith.EventStore.Admin.Server/` exists with `AddAdminServer()` in `Configuration/ServiceCollectionExtensions.cs` and all 9 service implementations. If not, STOP — this story depends on 14-2.
+  - [x] 0.3 Read existing controller patterns for conventions:
     - `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` — constructor injection, `[ApiController]`, `[Authorize]`, route pattern, `ControllerBase` base class, ProblemDetails error responses
     - `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` — tenant claim extraction via `User.FindAll("eventstore:tenant")`, correlation ID from `HttpContext`
     - `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` — JWT auth registration, exception handler ordering, OpenAPI setup
     - `src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj` — package references for ASP.NET Core
-  - [ ] 0.4 Read `src/Hexalith.EventStore.Admin.Abstractions/Models/Common/AdminRole.cs` — verify enum values: ReadOnly, Operator, Admin
-  - [ ] 0.5 Read `src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs` — understand existing `AddAdminServer()` registration (from Story 14-2)
-  - [ ] 0.6 Read `Directory.Build.props`, `Directory.Packages.props` — confirm available package versions
+  - [x] 0.4 Read `src/Hexalith.EventStore.Admin.Abstractions/Models/Common/AdminRole.cs` — verify enum values: ReadOnly, Operator, Admin
+  - [x] 0.5 Read `src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs` — understand existing `AddAdminServer()` registration (from Story 14-2)
+  - [x] 0.6 Read `Directory.Build.props`, `Directory.Packages.props` — confirm available package versions
 
-- [ ] Task 1: Add ASP.NET Core dependencies to Admin.Server (AC: #1)
-  - [ ] 1.1 Update `src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj`:
+- [x] Task 1: Add ASP.NET Core dependencies to Admin.Server (AC: #1)
+  - [x] 1.1 Update `src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj`:
     - Add `<FrameworkReference Include="Microsoft.AspNetCore.App" />` to enable controller base classes, authorization, and claims transformation in a class library. This FrameworkReference includes JWT Bearer auth — do NOT add a separate `PackageReference` for `Microsoft.AspNetCore.Authentication.JwtBearer` (causes version conflicts)
     - Keep existing dependencies from Story 14-2 intact
     - Do NOT convert to an executable — Admin.Server remains a class library; the host is created in Story 14-4
-  - [ ] 1.2 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds
+  - [x] 1.2 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds
 
-- [ ] Task 2: Create authorization infrastructure (AC: #4, #5, #6, #7)
-  - [ ] 2.1 Create `Authorization/AdminAuthorizationPolicies.cs`:
+- [x] Task 2: Create authorization infrastructure (AC: #4, #5, #6, #7)
+  - [x] 2.1 Create `Authorization/AdminAuthorizationPolicies.cs`:
     ```csharp
     namespace Hexalith.EventStore.Admin.Server.Authorization;
 
@@ -65,7 +65,7 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
         public const string Admin = "AdminFull";
     }
     ```
-  - [ ] 2.2 Create `Authorization/AdminClaimTypes.cs`:
+  - [x] 2.2 Create `Authorization/AdminClaimTypes.cs`:
     ```csharp
     namespace Hexalith.EventStore.Admin.Server.Authorization;
 
@@ -81,8 +81,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
         public const string Tenant = "eventstore:tenant";
     }
     ```
-  - [ ] 2.3 Create `Authorization/AdminTenantAuthorizationFilter.cs` — action filter that extracts the `tenantId` route parameter and validates it against the caller's `eventstore:tenant` claims (SEC-3 tenant isolation). Returns 403 if the caller lacks the requested tenant claim. Skip validation if `tenantId` route param is absent (tenant-agnostic endpoints like health, type catalog).
-  - [ ] 2.4 Create `Authorization/AdminClaimsTransformation.cs` — `IClaimsTransformation` that inspects existing JWT claims and adds the `eventstore:admin-role` claim based on **existing claim patterns already used in CommandApi**:
+  - [x] 2.3 Create `Authorization/AdminTenantAuthorizationFilter.cs` — action filter that extracts the `tenantId` route parameter and validates it against the caller's `eventstore:tenant` claims (SEC-3 tenant isolation). Returns 403 if the caller lacks the requested tenant claim. Skip validation if `tenantId` route param is absent (tenant-agnostic endpoints like health, type catalog).
+  - [x] 2.4 Create `Authorization/AdminClaimsTransformation.cs` — `IClaimsTransformation` that inspects existing JWT claims and adds the `eventstore:admin-role` claim based on **existing claim patterns already used in CommandApi**:
     - Has `global_admin`, `is_global_admin`, or role claim containing `GlobalAdministrator`/`global-administrator`/`global-admin` (same detection as `CommandsController.cs`) → adds `eventstore:admin-role` = `Admin`
     - Has `eventstore:permission` = `command:replay` → adds `eventstore:admin-role` = `Operator` (only DBA/operator users have replay permission — this prevents privilege escalation where a regular `command:submit` user could pause projections or trigger compaction)
     - Any authenticated user with valid `eventstore:tenant` claim → adds `eventstore:admin-role` = `ReadOnly`
@@ -93,8 +93,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - CRITICAL: The transformation MUST be exception-safe — wrap all claim inspection in try/catch. If transformation throws, every authenticated request returns 500. On failure: log warning, return the identity unchanged (fail-open to let authorization policies handle denial).
     - Co-hosted scenario: If Admin.Server runs in the same host as CommandApi, both `EventStoreClaimsTransformation` (CommandApi) and `AdminClaimsTransformation` (Admin) will be registered. Admin transformation reads `eventstore:permission` claims — if CommandApi's transformation creates/modifies these, Admin transformation must run after. Register Admin transformation AFTER calling `AddCommandApi()` in the host.
 
-- [ ] Task 3: Create stream controller (AC: #1, #2, #4, #7)
-  - [ ] 3.1 Create `Controllers/AdminStreamsController.cs`:
+- [x] Task 3: Create stream controller (AC: #1, #2, #4, #7)
+  - [x] 3.1 Create `Controllers/AdminStreamsController.cs`:
     ```
     [ApiController]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
@@ -111,8 +111,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - Apply `[ServiceFilter(typeof(AdminTenantAuthorizationFilter))]` on tenant-scoped endpoints
     - Return `ProblemDetails` on null results (404)
 
-- [ ] Task 4: Create projection controller (AC: #1, #2, #4, #5, #7)
-  - [ ] 4.1 Create `Controllers/AdminProjectionsController.cs`:
+- [x] Task 4: Create projection controller (AC: #1, #2, #4, #5, #7)
+  - [x] 4.1 Create `Controllers/AdminProjectionsController.cs`:
     ```
     [ApiController]
     [Authorize]
@@ -126,8 +126,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - **POST** `/{tenantId}/{projectionName}/reset` → `ResetProjection(tenantId, projectionName, fromPosition?)` — `[Authorize(Policy = Operator)]`
     - **POST** `/{tenantId}/{projectionName}/replay` → `ReplayProjection(tenantId, projectionName, fromPosition, toPosition)` — `[Authorize(Policy = Operator)]`
 
-- [ ] Task 5: Create type catalog controller (AC: #1, #2, #4)
-  - [ ] 5.1 Create `Controllers/AdminTypeCatalogController.cs`:
+- [x] Task 5: Create type catalog controller (AC: #1, #2, #4)
+  - [x] 5.1 Create `Controllers/AdminTypeCatalogController.cs`:
     ```
     [ApiController]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
@@ -139,8 +139,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - **GET** `/aggregates` → `ListAggregateTypes(domain?)` — delegates to `ListAggregateTypesAsync`
     - No tenant scoping — type catalog is tenant-agnostic per interface XML doc
 
-- [ ] Task 6: Create health controller (AC: #1, #2, #4)
-  - [ ] 6.1 Create `Controllers/AdminHealthController.cs`:
+- [x] Task 6: Create health controller (AC: #1, #2, #4)
+  - [x] 6.1 Create `Controllers/AdminHealthController.cs`:
     ```
     [ApiController]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
@@ -151,8 +151,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - **GET** `/dapr` → `GetDaprComponentStatus()` — delegates to `GetDaprComponentStatusAsync`
     - No tenant scoping — health is system-wide
 
-- [ ] Task 7: Create storage controller (AC: #1, #2, #4, #5, #7)
-  - [ ] 7.1 Create `Controllers/AdminStorageController.cs`:
+- [x] Task 7: Create storage controller (AC: #1, #2, #4, #5, #7)
+  - [x] 7.1 Create `Controllers/AdminStorageController.cs`:
     ```
     [ApiController]
     [Authorize]
@@ -166,8 +166,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - **POST** `/{tenantId}/{domain}/{aggregateId}/snapshot` → `CreateSnapshot(...)` — `[Authorize(Policy = Operator)]`
     - **PUT** `/{tenantId}/{domain}/{aggregateType}/snapshot-policy` → `SetSnapshotPolicy(tenantId, domain, aggregateType, intervalEvents)` — `[Authorize(Policy = Operator)]`
 
-- [ ] Task 8: Create dead-letter controller (AC: #1, #2, #4, #5, #7)
-  - [ ] 8.1 Create `Controllers/AdminDeadLettersController.cs`:
+- [x] Task 8: Create dead-letter controller (AC: #1, #2, #4, #5, #7)
+  - [x] 8.1 Create `Controllers/AdminDeadLettersController.cs`:
     ```
     [ApiController]
     [Authorize]
@@ -180,8 +180,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - **POST** `/{tenantId}/skip` → `SkipDeadLetters(...)` — `[Authorize(Policy = Operator)]`
     - **POST** `/{tenantId}/archive` → `ArchiveDeadLetters(...)` — `[Authorize(Policy = Operator)]`
 
-- [ ] Task 9: Create tenant controller (AC: #1, #2, #6)
-  - [ ] 9.1 Create `Controllers/AdminTenantsController.cs`:
+- [x] Task 9: Create tenant controller (AC: #1, #2, #6)
+  - [x] 9.1 Create `Controllers/AdminTenantsController.cs`:
     ```
     [ApiController]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
@@ -192,14 +192,14 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - **GET** `/{tenantId}/quotas` → `GetTenantQuotas(tenantId)` — delegates to `GetTenantQuotasAsync`
     - **POST** `/compare` → `CompareTenantUsage(tenantIds)` — request body: `TenantCompareRequest { IReadOnlyList<string> TenantIds }`
 
-- [ ] Task 10: Create request/response DTOs for controller actions (AC: #2)
-  - [ ] 10.1 Create `Models/DeadLetterActionRequest.cs` — record: `MessageIds (IReadOnlyList<string>)` with validation
-  - [ ] 10.2 Create `Models/TenantCompareRequest.cs` — record: `TenantIds (IReadOnlyList<string>)` with validation
-  - [ ] 10.3 Create `Models/ProjectionReplayRequest.cs` — record: `FromPosition (long), ToPosition (long)` for replay body
-  - [ ] 10.4 Create `Models/ProjectionResetRequest.cs` — record: `FromPosition (long?)` for reset body
+- [x] Task 10: Create request/response DTOs for controller actions (AC: #2)
+  - [x] 10.1 Create `Models/DeadLetterActionRequest.cs` — record: `MessageIds (IReadOnlyList<string>)` with validation
+  - [x] 10.2 Create `Models/TenantCompareRequest.cs` — record: `TenantIds (IReadOnlyList<string>)` with validation
+  - [x] 10.3 Create `Models/ProjectionReplayRequest.cs` — record: `FromPosition (long), ToPosition (long)` for replay body
+  - [x] 10.4 Create `Models/ProjectionResetRequest.cs` — record: `FromPosition (long?)` for reset body
 
-- [ ] Task 11: Update ServiceCollectionExtensions (AC: #9)
-  - [ ] 11.1 Add `AddAdminApi()` extension method to `Configuration/ServiceCollectionExtensions.cs`:
+- [x] Task 11: Update ServiceCollectionExtensions (AC: #9)
+  - [x] 11.1 Add `AddAdminApi()` extension method to `Configuration/ServiceCollectionExtensions.cs`:
     ```csharp
     public static IServiceCollection AddAdminApi(
         this IServiceCollection services,
@@ -235,52 +235,52 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - IMPORTANT: `AddAdminApi()` calls `AddAdminServer()` internally — consumers only need to call `AddAdminApi()` plus host-level auth/controller registration
     - `AddAdminApi()` does NOT call `AddAuthentication()` or `AddControllers()` — these are host responsibilities to avoid double-registration when cohosted with CommandApi
 
-- [ ] Task 12: Create test project or extend existing (AC: #10)
-  - [ ] 12.1 If `tests/Hexalith.EventStore.Admin.Server.Tests/` already exists from Story 14-2, add controller tests to it. Otherwise, create the project:
+- [x] Task 12: Create test project or extend existing (AC: #10)
+  - [x] 12.1 If `tests/Hexalith.EventStore.Admin.Server.Tests/` already exists from Story 14-2, add controller tests to it. Otherwise, create the project:
     - PackageReferences: xUnit, Shouldly, NSubstitute, coverlet.collector, `Microsoft.AspNetCore.Mvc.Testing` (for `WebApplicationFactory` integration tests)
     - ProjectReference: `../../src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj`
-  - [ ] 12.2 Write `Controllers/AdminStreamsControllerTests.cs`:
+  - [x] 12.2 Write `Controllers/AdminStreamsControllerTests.cs`:
     - Mock `IStreamQueryService` with NSubstitute
     - Test `GetRecentlyActiveStreams`: verify service called with correct parameters, verify 200 response
     - Test null result: verify 404 ProblemDetails response
     - Test tenant isolation: verify 403 when JWT lacks requested tenantId claim
     - Test service throws `RpcException`: verify 503 ProblemDetails response with "Service Unavailable" title
     - Test CancellationToken: verify cancellation token propagated from action to service call
-  - [ ] 12.3 Write `Controllers/AdminProjectionsControllerTests.cs`:
+  - [x] 12.3 Write `Controllers/AdminProjectionsControllerTests.cs`:
     - Test read operations delegate to `IProjectionQueryService`
     - Test write operations delegate to `IProjectionCommandService`
     - Test ReadOnly role rejected on write endpoints (403)
     - Test Operator role accepted on write endpoints
-  - [ ] 12.4 Write `Controllers/AdminTenantsControllerTests.cs`:
+  - [x] 12.4 Write `Controllers/AdminTenantsControllerTests.cs`:
     - Test Admin role accepted
     - Test Operator role rejected (403)
     - Test ReadOnly role rejected (403)
-  - [ ] 12.5 Write `Controllers/AdminHealthControllerTests.cs`:
+  - [x] 12.5 Write `Controllers/AdminHealthControllerTests.cs`:
     - Test service delegation
     - Test any AdminRole accepted
-  - [ ] 12.5b Write `Controllers/AdminStorageControllerTests.cs`:
+  - [x] 12.5b Write `Controllers/AdminStorageControllerTests.cs`:
     - Test read operations delegate to `IStorageQueryService`
     - Test write operations delegate to `IStorageCommandService`
     - Test ReadOnly role rejected on write endpoints (403)
     - Test Operator role accepted on write endpoints
-  - [ ] 12.5c Write `Controllers/AdminDeadLettersControllerTests.cs`:
+  - [x] 12.5c Write `Controllers/AdminDeadLettersControllerTests.cs`:
     - Test read operations delegate to `IDeadLetterQueryService`
     - Test write operations delegate to `IDeadLetterCommandService`
     - Test ReadOnly role rejected on write endpoints (403)
-  - [ ] 12.5d Write `Controllers/AdminTypeCatalogControllerTests.cs`:
+  - [x] 12.5d Write `Controllers/AdminTypeCatalogControllerTests.cs`:
     - Test service delegation for events, commands, aggregates
     - Test domain filter parameter passed correctly
-  - [ ] 12.6 Write `Authorization/AdminTenantAuthorizationFilterTests.cs`:
+  - [x] 12.6 Write `Authorization/AdminTenantAuthorizationFilterTests.cs`:
     - Test tenant claim present and matching — passes
     - Test tenant claim absent — 403
     - Test tenant claim present but not matching — 403
     - Test no tenantId route param — filter skips (passes)
-  - [ ] 12.7 Write `Configuration/ServiceCollectionExtensionsTests.cs`:
+  - [x] 12.7 Write `Configuration/ServiceCollectionExtensionsTests.cs`:
     - Test `AddAdminApi()` registers all authorization policies
     - Test `AddAdminApi()` registers `AdminTenantAuthorizationFilter`
     - Test `AddAdminApi()` registers `AdminClaimsTransformation`
-  - [ ] 12.8 Write authorization integration tests using `WebApplicationFactory` (CRITICAL — unit tests cannot verify `[Authorize]` attribute enforcement):
-    - [ ] 12.8.1 Create `IntegrationTests/AdminTestHost.cs` — minimal `WebApplication` entry point for `WebApplicationFactory<AdminTestHost>`. Since Admin.Server is a class library (no Program.cs), the test project must create its own host:
+  - [x] 12.8 Write authorization integration tests using `WebApplicationFactory` (CRITICAL — unit tests cannot verify `[Authorize]` attribute enforcement):
+    - [x] 12.8.1 Create `IntegrationTests/AdminTestHost.cs` — minimal `WebApplication` entry point for `WebApplicationFactory<AdminTestHost>`. Since Admin.Server is a class library (no Program.cs), the test project must create its own host:
       ```csharp
       // Minimal host that registers admin controllers with mock services
       var builder = WebApplication.CreateBuilder(args);
@@ -311,8 +311,8 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
       app.Run();
       ```
       NSubstitute mocks are registered AFTER `AddAdminApi()` so they override the real DAPR implementations. Integration tests focus on authorization pipeline enforcement, not service logic.
-    - [ ] 12.8.2 Create `IntegrationTests/TestAuthHandler.cs` — `AuthenticationHandler<AuthenticationSchemeOptions>` that creates a `ClaimsPrincipal` from test-configured claims (via custom header or test fixture setup). Follow ASP.NET Core's standard test auth pattern.
-    - [ ] 12.8.3 Create `IntegrationTests/AdminAuthorizationIntegrationTests.cs`:
+    - [x] 12.8.2 Create `IntegrationTests/TestAuthHandler.cs` — `AuthenticationHandler<AuthenticationSchemeOptions>` that creates a `ClaimsPrincipal` from test-configured claims (via custom header or test fixture setup). Follow ASP.NET Core's standard test auth pattern.
+    - [x] 12.8.3 Create `IntegrationTests/AdminAuthorizationIntegrationTests.cs`:
       - Create a minimal `WebApplicationFactory` test fixture that registers admin controllers, policies, claims transformation, and the test auth handler (`AddAuthentication("Test").AddScheme<TestAuthHandler>(...)`)
       - Test: request with no auth → 401
       - Test: request with ReadOnly role to GET `/api/v1/admin/streams` → 200
@@ -321,7 +321,7 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
       - Test: request with Operator role to GET `/api/v1/admin/tenants` → 403
       - Test: request with Admin role to GET `/api/v1/admin/tenants` → 200
       - Test: request with valid role but wrong tenant claim → 403
-  - [ ] 12.9 Write `Authorization/AdminClaimsTransformationTests.cs`:
+  - [x] 12.9 Write `Authorization/AdminClaimsTransformationTests.cs`:
     - Test: `global_admin` claim present → adds AdminRole = Admin
     - Test: `is_global_admin` claim present → adds AdminRole = Admin
     - Test: role claim `GlobalAdministrator` → adds AdminRole = Admin
@@ -332,10 +332,10 @@ So that CLI and MCP clients can consume the Admin API over HTTP, and the Web UI 
     - Test: idempotency — AdminRole already present → no duplicate added
     - Test: exception-safety — malformed claims → returns identity unchanged, logs warning
 
-- [ ] Task 13: Build and test (AC: all)
-  - [ ] 13.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
-  - [ ] 13.2 `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/` — all pass
-  - [ ] 13.3 Run all existing Tier 1 tests — 0 regressions
+- [x] Task 13: Build and test (AC: all)
+  - [x] 13.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+  - [x] 13.2 `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/` — all pass
+  - [x] 13.3 Run all existing Tier 1 tests — 0 regressions
 
 ## Dev Notes
 
@@ -673,9 +673,60 @@ tests/Hexalith.EventStore.Admin.Server.Tests/
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
+- Build errors: NU1510 (redundant PackageReferences removed after adding FrameworkReference)
+- Build errors: CA1062 (added ArgumentNullException.ThrowIfNull for request body parameters)
+- Test errors: WebApplicationFactory requires entry point — switched to TestServer with WebApplication.CreateBuilder
+- Test errors: ThreadStatic claims don't flow to server thread — switched to HTTP header-based test auth
+- Test errors: NSubstitute mocks return null for AdminOperationResult — added null-safety to MapOperationResult
 
 ### Completion Notes List
+- Added FrameworkReference for Microsoft.AspNetCore.App to Admin.Server (class library)
+- Removed redundant package refs (DI, Logging, Options) now covered by FrameworkReference
+- Created 4 authorization infrastructure files: AdminAuthorizationPolicies, AdminClaimTypes, AdminClaimsTransformation, AdminTenantAuthorizationFilter
+- AdminClaimsTransformation replicates global admin detection from CommandsController (global_admin, is_global_admin, GlobalAdministrator roles), maps command:replay → Operator, eventstore:tenant → ReadOnly
+- Created 7 controllers under api/v1/admin/ prefix: Streams, Projections, TypeCatalog, Health, Storage, DeadLetters, Tenants
+- All controllers follow CommandApi patterns: primary constructor, ControllerBase, [ApiController], [Authorize], CancellationToken, ConfigureAwait(false)
+- Three-tier role hierarchy enforced: ReadOnly < Operator < Admin
+- Tenant isolation via AdminTenantAuthorizationFilter (ServiceFilter) + auto-scoping in controllers
+- Created 4 request DTOs: DeadLetterActionRequest, TenantCompareRequest, ProjectionReplayRequest, ProjectionResetRequest
+- Added AddAdminApi() extension method that registers policies, claims transformation, tenant filter, and calls AddAdminServer()
+- 67 new tests added (154 total in Admin.Server.Tests): 7 controller test classes, 2 authorization test classes, 3 integration test files
+- Integration tests use TestServer with custom TestAuthHandler for real middleware pipeline testing
+- All 878 Tier 1 tests pass with 0 regressions
 
 ### File List
+- src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (modified: added FrameworkReference, removed redundant PackageReferences)
+- src/Hexalith.EventStore.Admin.Server/Authorization/AdminAuthorizationPolicies.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Authorization/AdminClaimTypes.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Authorization/AdminClaimsTransformation.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Authorization/AdminTenantAuthorizationFilter.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminStreamsController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminProjectionsController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminTypeCatalogController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminHealthController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminStorageController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminDeadLettersController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Models/DeadLetterActionRequest.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Models/TenantCompareRequest.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Models/ProjectionReplayRequest.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Models/ProjectionResetRequest.cs (new)
+- src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs (modified: added AddAdminApi())
+- tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj (modified: added Mvc.Testing)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Authorization/AdminClaimsTransformationTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Authorization/AdminTenantAuthorizationFilterTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminStreamsControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminProjectionsControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminTypeCatalogControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminHealthControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminStorageControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminDeadLettersControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminTenantsControllerTests.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Configuration/ServiceCollectionExtensionsTests.cs (modified: added AddAdminApi tests)
+- tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/TestAuthHandler.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminTestHost.cs (new)
+- tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminAuthorizationIntegrationTests.cs (new)
+- _bmad-output/implementation-artifacts/sprint-status.yaml (modified: story status)

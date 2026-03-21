@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-21 # story 14-2 done
+last_updated: 2026-03-21 # story 14-3 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -163,9 +163,9 @@ development_status:
   epic-14: in-progress
   14-1-admin-abstractions-service-interfaces-and-dtos: done
   14-2-admin-server-dapr-backed-service-implementations: done
-  14-3-admin-server-rest-api-controllers-with-jwt-auth: ready-for-dev
-  14-4-admin-server-aspire-resource-integration: backlog
-  14-5-admin-api-openapi-spec-and-swagger-ui: backlog
+  14-3-admin-server-rest-api-controllers-with-jwt-auth: done
+  14-4-admin-server-aspire-resource-integration: ready-for-dev
+  14-5-admin-api-openapi-spec-and-swagger-ui: ready-for-dev
   epic-14-retrospective: optional
 
   # Epic 15: Admin Web UI — Core Developer Experience

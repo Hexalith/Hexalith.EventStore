@@ -1,11 +1,15 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Services;
+using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
@@ -112,5 +116,47 @@ public class ServiceCollectionExtensionsTests
         options.TenantServiceAppId.ShouldBe("tenants");
         options.MaxTimelineEvents.ShouldBe(1000);
         options.ServiceInvocationTimeoutSeconds.ShouldBe(30);
+    }
+
+    [Fact]
+    public async Task AddAdminApi_RegistersAuthorizationPolicies()
+    {
+        (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
+        services.AddScoped(_ => Substitute.For<DaprClient>());
+
+        services.AddAdminApi(config);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAuthorizationPolicyProvider policyProvider = provider.GetRequiredService<IAuthorizationPolicyProvider>();
+
+        (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.ReadOnly)).ShouldNotBeNull();
+        (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Operator)).ShouldNotBeNull();
+        (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Admin)).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void AddAdminApi_RegistersTenantFilter()
+    {
+        (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
+        services.AddScoped(_ => Substitute.For<DaprClient>());
+
+        services.AddAdminApi(config);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+        scope.ServiceProvider.GetService<AdminTenantAuthorizationFilter>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void AddAdminApi_RegistersClaimsTransformation()
+    {
+        (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
+        services.AddScoped(_ => Substitute.For<DaprClient>());
+
+        services.AddAdminApi(config);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetService<IClaimsTransformation>().ShouldNotBeNull();
+        provider.GetService<IClaimsTransformation>().ShouldBeOfType<AdminClaimsTransformation>();
     }
 }
