@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-21 # story 8-8 done; epic 8 completed
+last_updated: 2026-03-21 # epics 1,2,6,7,9,11,12 marked done (all stories complete); tenant management change proposal applied
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -51,7 +51,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Domain Contract Foundation
-  epic-1: in-progress
+  epic-1: done
   1-1-core-identity-and-event-envelope: done
   1-2-command-types-domainresult-and-error-contract: done
   1-3-messagetype-value-object-and-hexalith-commons-ulid-integration: done
@@ -60,7 +60,7 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Event Persistence & Aggregate Processing
-  epic-2: in-progress
+  epic-2: done
   2-1-aggregate-actor-and-command-routing: done
   2-2-event-persistence-and-sequence-numbers: done
   2-3-state-rehydration-and-domain-service-invocation: done
@@ -95,14 +95,14 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: Observability & Operations
-  epic-6: in-progress
+  epic-6: done
   6-1-opentelemetry-tracing-across-command-lifecycle: done
   6-2-structured-logging-with-correlation-and-causation-ids: done
   6-3-health-and-readiness-endpoints: done
   epic-6-retrospective: optional
 
   # Epic 7: Snapshots, Rate Limiting & Performance
-  epic-7: in-progress
+  epic-7: done
   7-1-configurable-aggregate-snapshots: done
   7-2-per-tenant-rate-limiting: done
   7-3-per-consumer-rate-limiting: done
@@ -121,7 +121,7 @@ development_status:
   epic-8-retrospective: optional
 
   # Epic 9: Query Pipeline & ETag Caching
-  epic-9: in-progress
+  epic-9: done
   9-1-query-contracts-and-routing-model: done
   9-2-self-routing-etag-encode-decode: done
   9-3-etag-actor-and-projection-change-notification: done
@@ -137,7 +137,7 @@ development_status:
   epic-10-retrospective: optional
 
   # Epic 11: Server-Managed Projection Builder
-  epic-11: in-progress
+  epic-11: done
   11-1-projection-contract-dtos-and-aggregateactor-event-reading: done
   11-2-eventreplayprojectionactor-and-projection-state-storage: done
   11-3-immediate-projection-trigger-fire-and-forget: done
@@ -146,7 +146,7 @@ development_status:
   epic-11-retrospective: optional
 
   # Epic 12: Blazor Sample UI & Refresh Patterns
-  epic-12: in-progress
+  epic-12: done
   12-1-three-blazor-refresh-patterns: done
   12-2-interactive-command-buttons-on-all-pattern-pages: done
   epic-12-retrospective: optional
