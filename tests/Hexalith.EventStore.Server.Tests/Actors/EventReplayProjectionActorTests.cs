@@ -42,7 +42,7 @@ public class EventReplayProjectionActorTests {
 
     private static ProjectionState CreateTestState(string? projectionType = null, string? tenantId = null) {
         JsonElement stateJson = JsonDocument.Parse("{\"count\":42}").RootElement;
-        return new ProjectionState(
+        return ProjectionState.FromJsonElement(
             projectionType ?? TestProjectionType,
             tenantId ?? TestTenantId,
             stateJson);

@@ -11,13 +11,8 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// configurable results or throws configurable exceptions.
 /// </summary>
 public class FakeProjectionActor : IProjectionActor {
-    private static readonly JsonElement _defaultPayload = CreateDefaultPayload();
+    private static readonly byte[] _defaultPayloadBytes = JsonSerializer.SerializeToUtf8Bytes(JsonDocument.Parse("{}").RootElement);
     private readonly ConcurrentQueue<QueryEnvelope> _receivedEnvelopes = new();
-
-    private static JsonElement CreateDefaultPayload() {
-        using var document = JsonDocument.Parse("{}");
-        return document.RootElement.Clone();
-    }
 
     /// <summary>Gets the list of received envelopes for assertion.</summary>
     public IReadOnlyCollection<QueryEnvelope> ReceivedEnvelopes
@@ -43,6 +38,6 @@ public class FakeProjectionActor : IProjectionActor {
 
         return Task.FromResult(
             ConfiguredResult
-            ?? new QueryResult(true, _defaultPayload, null));
+            ?? new QueryResult(true, _defaultPayloadBytes));
     }
 }

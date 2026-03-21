@@ -63,6 +63,7 @@
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands");
             request.Content = JsonContent.Create(new
             {
+                messageId = Guid.NewGuid().ToString(),
                 domain = "counter",
                 tenant = TenantId,
                 aggregateId = "counter-1",

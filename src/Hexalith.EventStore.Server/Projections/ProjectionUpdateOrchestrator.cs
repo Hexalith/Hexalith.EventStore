@@ -104,9 +104,6 @@ public partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
-            // Clone JsonElement to avoid holding a view over an ephemeral JsonDocument.
-            JsonElement clonedState = response.State.Clone();
-
             Log.DomainServiceInvocationSucceeded(logger, identity.TenantId, identity.Domain, identity.AggregateId, registration.AppId);
 
             // Step 5: Derive projection actor ID and update state
@@ -121,7 +118,7 @@ public partial class ProjectionUpdateOrchestrator(
                 QueryRouter.ProjectionActorTypeName);
 
             await writeProxy
-                .UpdateProjectionAsync(new ProjectionState(response.ProjectionType, identity.TenantId, clonedState))
+                .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
             Log.ProjectionStateUpdated(logger, identity.TenantId, identity.Domain, identity.AggregateId, response.ProjectionType, projectionActorId);
