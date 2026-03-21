@@ -1,0 +1,296 @@
+using System.Net.Http.Headers;
+
+using Dapr.Client;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.Abstractions.Services;
+using Hexalith.EventStore.Admin.Server.Configuration;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Hexalith.EventStore.Admin.Server.Services;
+
+/// <summary>
+/// DAPR-backed implementation of <see cref="IStreamQueryService"/>.
+/// Event data reads delegate to CommandApi via InvokeMethodAsync because
+/// actor state uses a different key namespace not accessible via plain GetStateAsync.
+/// </summary>
+public sealed class DaprStreamQueryService : IStreamQueryService
+{
+    private readonly IAdminAuthContext _authContext;
+    private readonly DaprClient _daprClient;
+    private readonly ILogger<DaprStreamQueryService> _logger;
+    private readonly AdminServerOptions _options;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DaprStreamQueryService"/> class.
+    /// </summary>
+    /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="options">The admin server options.</param>
+    /// <param name="authContext">The admin auth context for JWT forwarding.</param>
+    /// <param name="logger">The logger.</param>
+    public DaprStreamQueryService(
+        DaprClient daprClient,
+        IOptions<AdminServerOptions> options,
+        IAdminAuthContext authContext,
+        ILogger<DaprStreamQueryService> logger)
+    {
+        ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(authContext);
+        ArgumentNullException.ThrowIfNull(logger);
+        _daprClient = daprClient;
+        _options = options.Value;
+        _authContext = authContext;
+        _logger = logger;
+    }
+
+    /// <inheritdoc/>
+    public async Task<PagedResult<StreamSummary>> GetRecentlyActiveStreamsAsync(
+        string? tenantId,
+        string? domain,
+        int count = 1000,
+        CancellationToken ct = default)
+    {
+        string indexKey = $"admin:stream-activity:{tenantId ?? "all"}";
+        try
+        {
+            List<StreamSummary>? result = await _daprClient
+                .GetStateAsync<List<StreamSummary>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+                .ConfigureAwait(false);
+
+            if (result is null)
+            {
+                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
+                return new PagedResult<StreamSummary>([], 0, null);
+            }
+
+            IReadOnlyList<StreamSummary> filtered = domain is null
+                ? result
+                : result.Where(s => s.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            IReadOnlyList<StreamSummary> page = filtered
+                .OrderByDescending(s => s.LastActivityUtc)
+                .Take(count)
+                .ToList();
+            return new PagedResult<StreamSummary>(page, filtered.Count, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read stream activity index '{IndexKey}'.", indexKey);
+            return new PagedResult<StreamSummary>([], 0, null);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<PagedResult<TimelineEntry>> GetStreamTimelineAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long? fromSequence,
+        long? toSequence,
+        int count = 100,
+        CancellationToken ct = default)
+    {
+        int maxEvents = _options.MaxTimelineEvents;
+        count = Math.Clamp(count, 1, maxEvents);
+        if (fromSequence.HasValue && toSequence.HasValue
+            && toSequence.Value > fromSequence.Value + maxEvents)
+        {
+            toSequence = fromSequence.Value + maxEvents;
+        }
+
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/timeline";
+        string query = BuildQueryString(fromSequence, toSequence, count);
+        if (query.Length > 0)
+        {
+            endpoint += "?" + query;
+        }
+
+        try
+        {
+            PagedResult<TimelineEntry>? result = await InvokeCommandApiAsync<PagedResult<TimelineEntry>>(
+                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+            return result ?? new PagedResult<TimelineEntry>([], 0, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get stream timeline for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
+            return new PagedResult<TimelineEntry>([], 0, null);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<AggregateStateSnapshot> GetAggregateStateAtPositionAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default)
+    {
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/state?at={sequenceNumber}";
+        try
+        {
+            AggregateStateSnapshot? result = await InvokeCommandApiAsync<AggregateStateSnapshot>(
+                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+            return result ?? CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "not-found");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get aggregate state at position {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
+            return CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "unavailable");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<AggregateStateDiff> DiffAggregateStateAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long fromSequence,
+        long toSequence,
+        CancellationToken ct = default)
+    {
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/diff?from={fromSequence}&to={toSequence}";
+        try
+        {
+            AggregateStateDiff? result = await InvokeCommandApiAsync<AggregateStateDiff>(
+                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+            return result ?? new AggregateStateDiff(fromSequence, toSequence, []);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
+            return new AggregateStateDiff(fromSequence, toSequence, []);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<EventDetail> GetEventDetailAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default)
+    {
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/events/{sequenceNumber}";
+        try
+        {
+            EventDetail? result = await InvokeCommandApiAsync<EventDetail>(
+                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+            return result ?? CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "not-found");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get event detail at {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
+            return CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "unavailable");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<CausationChain> TraceCausationChainAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default)
+    {
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/causation?at={sequenceNumber}";
+        try
+        {
+            CausationChain? result = await InvokeCommandApiAsync<CausationChain>(
+                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+            return result ?? CreateEmptyCausationChain("not-found");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to trace causation chain at {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
+            return CreateEmptyCausationChain("unavailable");
+        }
+    }
+
+    private static string E(string value) => Uri.EscapeDataString(value);
+
+    private static AggregateStateSnapshot CreateEmptyAggregateStateSnapshot(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        string status)
+        => new(tenantId, domain, aggregateId, sequenceNumber, DateTimeOffset.UnixEpoch, $"{{\"status\":\"{status}\"}}");
+
+    private static EventDetail CreateEmptyEventDetail(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        string status)
+        => new(tenantId, domain, aggregateId, sequenceNumber, $"admin.event.{status}", DateTimeOffset.UnixEpoch, $"admin-{status}", null, null, $"{{\"status\":\"{status}\"}}");
+
+    private static CausationChain CreateEmptyCausationChain(string status)
+        => new($"admin.command.{status}", $"admin-{status}", $"admin-{status}", null, [], []);
+
+    private async Task<TResponse?> InvokeCommandApiAsync<TResponse>(
+        HttpMethod method,
+        string endpoint,
+        CancellationToken ct)
+    {
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+
+        using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
+            method, _options.CommandApiAppId, endpoint)
+            ?? new HttpRequestMessage(method, endpoint);
+
+        string? token = _authContext.GetToken();
+        if (token is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
+    }
+
+    private static string BuildQueryString(long? from, long? to, int count)
+    {
+        var parts = new List<string>();
+        if (from.HasValue)
+        {
+            parts.Add($"from={from.Value}");
+        }
+
+        if (to.HasValue)
+        {
+            parts.Add($"to={to.Value}");
+        }
+
+        parts.Add($"count={count}");
+        return string.Join("&", parts);
+    }
+}
