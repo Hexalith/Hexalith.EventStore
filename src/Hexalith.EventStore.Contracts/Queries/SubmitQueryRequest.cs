@@ -10,6 +10,7 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// <param name="Domain">The domain name the query targets.</param>
 /// <param name="AggregateId">The aggregate identifier to query.</param>
 /// <param name="QueryType">The type discriminator of the query.</param>
+/// <param name="ProjectionType">Optional projection type used to route the query to the correct persisted read model.</param>
 /// <param name="Payload">Optional JSON payload containing query parameters.</param>
 /// <param name="EntityId">Optional entity identifier for sub-aggregate queries.</param>
 public record SubmitQueryRequest(
@@ -17,5 +18,6 @@ public record SubmitQueryRequest(
     string Domain,
     string AggregateId,
     string QueryType,
+    string? ProjectionType = null,
     JsonElement? Payload = null,
     string? EntityId = null);

@@ -121,7 +121,10 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             Payload: payloadBytes,
             CorrelationId: correlationId,
             UserId: userId,
-            EntityId: entityId);
+            EntityId: entityId,
+            ProjectionType: string.IsNullOrWhiteSpace(request.ProjectionType)
+                ? request.Domain
+                : request.ProjectionType);
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
@@ -129,7 +132,7 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
         // Uses runtime-discovered projection type (FR63), falls back to request.Domain
         if (currentETag is null) {
             string projectionTypeForETag = string.IsNullOrWhiteSpace(result.ProjectionType)
-                ? request.Domain
+                ? (string.IsNullOrWhiteSpace(request.ProjectionType) ? request.Domain : request.ProjectionType)
                 : result.ProjectionType;
             try {
                 currentETag = await eTagService

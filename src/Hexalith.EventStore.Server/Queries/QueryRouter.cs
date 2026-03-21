@@ -27,7 +27,11 @@ public partial class QueryRouter(
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
 
-        string actorId = QueryActorIdHelper.DeriveActorId(query.QueryType, query.Tenant, query.EntityId, query.Payload);
+        string routingProjectionType = string.IsNullOrWhiteSpace(query.ProjectionType)
+            ? query.Domain
+            : query.ProjectionType;
+
+        string actorId = QueryActorIdHelper.DeriveActorId(routingProjectionType, query.Tenant, query.EntityId, query.Payload);
         int tier = query.EntityId is not null && query.EntityId.Length > 0 ? 1
             : query.Payload.Length > 0 ? 2
             : 3;

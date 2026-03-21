@@ -52,6 +52,20 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .WithMessage("QueryType cannot contain dangerous characters or script injection patterns")
             .When(x => !string.IsNullOrEmpty(x.QueryType), ApplyConditionTo.CurrentValidator);
 
+        _ = RuleFor(x => x.ProjectionType)
+            .Cascade(CascadeMode.Stop)
+            .Must(pt => pt is null || !string.IsNullOrWhiteSpace(pt))
+            .WithMessage("ProjectionType cannot be empty or whitespace when provided")
+            .MaximumLength(MaxTenantDomainLength).WithMessage($"ProjectionType cannot exceed {MaxTenantDomainLength} characters")
+            .Matches(_tenantDomainRegex).WithMessage("ProjectionType must contain only lowercase alphanumeric characters and hyphens")
+            .When(x => x.ProjectionType is not null, ApplyConditionTo.CurrentValidator)
+            .Must(pt => pt == null || !pt.Contains(':'))
+            .WithMessage("ProjectionType cannot contain colons (reserved as actor ID separator)")
+            .When(x => x.ProjectionType is not null, ApplyConditionTo.CurrentValidator)
+            .Must(pt => pt == null || (!ContainsDangerousCharacters(pt) && !_injectionPattern.IsMatch(pt)))
+            .WithMessage("ProjectionType cannot contain dangerous characters or script injection patterns")
+            .When(x => x.ProjectionType is not null, ApplyConditionTo.CurrentValidator);
+
         _ = RuleFor(x => x.EntityId)
             .Cascade(CascadeMode.Stop)
             .Must(eid => eid is null || !string.IsNullOrWhiteSpace(eid))
