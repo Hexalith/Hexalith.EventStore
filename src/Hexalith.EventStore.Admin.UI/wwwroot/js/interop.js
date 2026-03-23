@@ -57,28 +57,36 @@ window.hexalithAdmin = {
         return window.innerWidth;
     },
 
-    _viewportListenerRef: null,
-    _viewportMediaQuery: null,
+    _viewportListeners: new Map(),
+    _viewportMediaQueries: new Map(),
+    _viewportChangeHandlers: new Map(),
+    _viewportIdCounter: 0,
 
     registerViewportListener: function (dotNetRef, breakpoint) {
-        this._viewportListenerRef = dotNetRef;
-        this._viewportMediaQuery = window.matchMedia(`(min-width: ${breakpoint}px)`);
+        const listenerId = `vp-${++this._viewportIdCounter}`;
+        const mediaQuery = window.matchMedia(`(min-width: ${breakpoint}px)`);
         const handler = (e) => {
-            if (this._viewportListenerRef) {
-                this._viewportListenerRef.invokeMethodAsync("OnViewportWidthChanged", e.matches);
+            const ref = this._viewportListeners.get(listenerId);
+            if (ref) {
+                ref.invokeMethodAsync("OnViewportWidthChanged", e.matches);
             }
         };
-        this._viewportMediaQuery.addEventListener("change", handler);
-        this._viewportChangeHandler = handler;
+        mediaQuery.addEventListener("change", handler);
+        this._viewportListeners.set(listenerId, dotNetRef);
+        this._viewportMediaQueries.set(listenerId, mediaQuery);
+        this._viewportChangeHandlers.set(listenerId, handler);
+        return listenerId;
     },
 
-    unregisterViewportListener: function () {
-        if (this._viewportMediaQuery && this._viewportChangeHandler) {
-            this._viewportMediaQuery.removeEventListener("change", this._viewportChangeHandler);
+    unregisterViewportListener: function (listenerId) {
+        const mediaQuery = this._viewportMediaQueries.get(listenerId);
+        const handler = this._viewportChangeHandlers.get(listenerId);
+        if (mediaQuery && handler) {
+            mediaQuery.removeEventListener("change", handler);
         }
-        this._viewportListenerRef = null;
-        this._viewportMediaQuery = null;
-        this._viewportChangeHandler = null;
+        this._viewportListeners.delete(listenerId);
+        this._viewportMediaQueries.delete(listenerId);
+        this._viewportChangeHandlers.delete(listenerId);
     },
 
     focusCommandPaletteSearch: function () {

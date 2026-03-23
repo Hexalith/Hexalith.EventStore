@@ -5,7 +5,7 @@
 <div>
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
                  Style="margin-bottom: 8px;">
-        <span>Showing @Entries.Count of @TotalCount entries</span>
+        <span>Showing @(Entries.Count > 0 ? "1" : "0")-@Entries.Count of @TotalCount entries</span>
         <FluentButton Appearance="Appearance.Outline"
                       Disabled="@(!CanNavigateNewer)"
                       OnClick="@OnNavigateNewer">
@@ -86,6 +86,6 @@
         _ => "timeline-row-event",
     };
 
-    private static string TruncateId(string id)
-        => id.Length > 8 ? id[..8] + "\u2026" : id;
+    private static string TruncateId(string? id)
+        => string.IsNullOrEmpty(id) ? "\u2014" : id.Length > 8 ? id[..8] + "\u2026" : id;
 }

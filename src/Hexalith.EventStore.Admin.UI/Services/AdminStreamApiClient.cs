@@ -40,7 +40,7 @@ public class AdminStreamApiClient(
         string url = BuildStreamsUrl(tenantId, domain, count);
         try
         {
-            HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             HandleErrorStatus(response);
             PagedResult<StreamSummary>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<StreamSummary>>(ct)
@@ -67,7 +67,7 @@ public class AdminStreamApiClient(
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         try
         {
-            HttpResponseMessage response = await client
+            using HttpResponseMessage response = await client
                 .GetAsync("api/v1/admin/health", ct)
                 .ConfigureAwait(false);
             HandleErrorStatus(response);
@@ -95,7 +95,7 @@ public class AdminStreamApiClient(
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         try
         {
-            HttpResponseMessage response = await client
+            using HttpResponseMessage response = await client
                 .GetAsync("api/v1/admin/tenants", ct)
                 .ConfigureAwait(false);
             HandleErrorStatus(response);
@@ -138,7 +138,7 @@ public class AdminStreamApiClient(
         string url = BuildTimelineUrl(tenantId, domain, aggregateId, fromSequence, toSequence, count);
         try
         {
-            HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             HandleErrorStatus(response);
             PagedResult<TimelineEntry>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<TimelineEntry>>(ct)
@@ -175,7 +175,7 @@ public class AdminStreamApiClient(
         string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/events/{sequenceNumber}";
         try
         {
-            HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 return null;
@@ -216,7 +216,7 @@ public class AdminStreamApiClient(
         string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/state?sequenceNumber={sequenceNumber}";
         try
         {
-            HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 return null;
@@ -257,7 +257,7 @@ public class AdminStreamApiClient(
         string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/causation?sequenceNumber={sequenceNumber}";
         try
         {
-            HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 return null;
@@ -294,7 +294,7 @@ public class AdminStreamApiClient(
             : $"api/v1/admin/types/aggregates?domain={Uri.EscapeDataString(domain)}";
         try
         {
-            HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             HandleErrorStatus(response);
             IReadOnlyList<AggregateTypeInfo>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<AggregateTypeInfo>>(ct)
@@ -356,10 +356,9 @@ public class AdminStreamApiClient(
             return;
         }
 
-        // Dispose the response to return the connection to the pool
+        // Extract details before throwing — using statement will dispose the response
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
-        response.Dispose();
 
         throw statusCode switch
         {

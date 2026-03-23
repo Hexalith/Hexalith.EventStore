@@ -66,6 +66,6 @@
     [Parameter]
     public EventCallback<string> OnCorrelationClick { get; set; }
 
-    private static string TruncateId(string id)
-        => id.Length > 8 ? id[..8] + "\u2026" : id;
+    private static string TruncateId(string? id)
+        => string.IsNullOrEmpty(id) ? "\u2014" : id.Length > 8 ? id[..8] + "\u2026" : id;
 }

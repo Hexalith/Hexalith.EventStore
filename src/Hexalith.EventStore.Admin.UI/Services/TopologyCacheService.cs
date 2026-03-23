@@ -9,6 +9,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class TopologyCacheService(AdminStreamApiClient apiClient)
 {
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private IReadOnlyList<TenantSummary>? _tenants;
     private IReadOnlyList<string>? _domains;
     private bool _loaded;
@@ -47,6 +48,11 @@ public class TopologyCacheService(AdminStreamApiClient apiClient)
     /// </summary>
     public async Task RefreshAsync(CancellationToken ct = default)
     {
+        if (!await _refreshLock.WaitAsync(0, ct).ConfigureAwait(false))
+        {
+            return; // Another refresh is already in progress
+        }
+
         try
         {
             IReadOnlyList<TenantSummary> tenants = await apiClient.GetTenantsAsync(ct).ConfigureAwait(false);
@@ -64,6 +70,10 @@ public class TopologyCacheService(AdminStreamApiClient apiClient)
         {
             // Keep stale cache on failure — topology refresh is best-effort
             _loaded = _tenants is not null;
+        }
+        finally
+        {
+            _refreshLock.Release();
         }
     }
 }
