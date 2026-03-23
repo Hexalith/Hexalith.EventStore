@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-23 # story 15-5 review (implementation complete)
+last_updated: 2026-03-23 # story 15-5 done (code review fixes applied)
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -174,7 +174,7 @@ development_status:
   15-2-activity-feed-recent-active-streams: done
   15-3-stream-browser-command-event-query-timeline: done
   15-4-aggregate-state-inspector-and-diff-viewer: done
-  15-5-projection-dashboard-status-lag-errors-controls: review
+  15-5-projection-dashboard-status-lag-errors-controls: done
   15-6-event-type-catalog-searchable-registry: backlog
   15-7-health-dashboard-with-observability-deep-links: backlog
   15-8-deep-linking-and-breadcrumbs: backlog
