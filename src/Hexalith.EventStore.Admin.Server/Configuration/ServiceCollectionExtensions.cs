@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.OpenApi;
 using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authentication;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 
 namespace Hexalith.EventStore.Admin.Server.Configuration;
 
@@ -42,6 +44,60 @@ public static class ServiceCollectionExtensions {
 
         // 4. Register admin services (from Story 14-2)
         services.AddAdminServer(configuration);
+
+        // 5. OpenAPI document generation (Story 14-5)
+        services.AddAdminOpenApi();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers OpenAPI document generation for the Admin API.
+    /// The host must call <c>MapOpenApi()</c> and <c>UseSwaggerUI()</c> to enable endpoints.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddAdminOpenApi(
+        this IServiceCollection services) {
+        services.AddOpenApi(options =>
+        {
+            // Document metadata and JWT security scheme
+            options.AddDocumentTransformer((document, context, ct) =>
+            {
+                document.Info = new OpenApiInfo
+                {
+                    Title = "Hexalith EventStore Admin API",
+                    Version = "v1",
+                    Description = "Administration API for Hexalith EventStore — stream browsing, projection management, type catalog, health monitoring, storage operations, dead-letter management, and tenant administration. Requires JWT Bearer authentication with role-based access control (ReadOnly, Operator, Admin). Error reference documentation is available at /api/v1/admin/problems/{error-type} on this server.",
+                };
+
+                // Add JWT Bearer security scheme (same pattern as CommandApi)
+                OpenApiComponents components = document.Components ??= new OpenApiComponents();
+                components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "JWT Bearer token with admin role claims. Roles: ReadOnly (stream browsing, health), Operator (projection controls, snapshots), Admin (tenant management). Obtain from your identity provider.",
+                };
+
+                var schemeReference = new OpenApiSecuritySchemeReference("Bearer", document);
+                document.Security ??= [];
+                document.Security.Add(new OpenApiSecurityRequirement
+                {
+                    { schemeReference, new List<string>() },
+                });
+
+                return Task.CompletedTask;
+            });
+
+            // Common response codes on all admin operations
+            options.AddOperationTransformer<AdminOperationTransformer>();
+
+            // Role descriptions per endpoint
+            options.AddOperationTransformer<AdminRoleDescriptionTransformer>();
+        });
 
         return services;
     }

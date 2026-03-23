@@ -37,6 +37,18 @@ app.UseExceptionHandler();
 app.MapDefaultEndpoints();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// OpenAPI/Swagger UI (gated by configuration)
+if (app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true))
+{
+    _ = app.MapOpenApi();
+    _ = app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");
+        options.RoutePrefix = "swagger";
+    });
+}
+
 app.MapControllers();
 
 app.Run();
