@@ -1,6 +1,6 @@
 # Story 15.6: Event Type Catalog — Searchable Registry
 
-Status: review
+Status: done
 Size: Medium — ~7 new files, 6 task groups, 12 ACs, 17 tests (~10-14 hours estimated)
 
 ## Definition of Done
