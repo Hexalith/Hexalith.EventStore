@@ -252,6 +252,15 @@ body {
     }
 }
 
+/* Compare mode instruction banner */
+.compare-banner {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: color-mix(in srgb, var(--hexalith-brand) 10%, transparent);
+    border-radius: 4px;
+    font-size: 13px;
+}
+
 /* Windows high-contrast mode */
 @media (forced-colors: active) {
     .skip-to-main:focus {

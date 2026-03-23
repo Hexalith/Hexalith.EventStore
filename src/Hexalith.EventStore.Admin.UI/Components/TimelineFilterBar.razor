@@ -29,6 +29,15 @@
                       Placeholder="Filter by correlation ID..."
                       aria-label="Filter by correlation ID"
                       Style="min-width: 200px;" />
+
+        <div style="margin-left: auto;">
+            <FluentButton Appearance="@(CompareMode ? Appearance.Accent : Appearance.Outline)"
+                          OnClick="ToggleCompareMode"
+                          aria-pressed="@(CompareMode ? "true" : "false")"
+                          Title="Toggle compare mode to select two events for diff">
+                Compare
+            </FluentButton>
+        </div>
     </FluentStack>
 </div>
 
@@ -47,6 +56,12 @@
     [Parameter]
     public EventCallback<string?> CorrelationFilterChanged { get; set; }
 
+    [Parameter]
+    public bool CompareMode { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> CompareModeChanged { get; set; }
+
     protected override void OnParametersSet()
     {
         _correlationSearch = CorrelationFilter;
@@ -61,5 +76,10 @@
     {
         string? value = string.IsNullOrWhiteSpace(_correlationSearch) ? null : _correlationSearch.Trim();
         await CorrelationFilterChanged.InvokeAsync(value).ConfigureAwait(false);
+    }
+
+    private async Task ToggleCompareMode()
+    {
+        await CompareModeChanged.InvokeAsync(!CompareMode).ConfigureAwait(false);
     }
 }

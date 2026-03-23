@@ -3,28 +3,65 @@
 @using static Hexalith.EventStore.Admin.UI.Components.Shared.StatusBadge
 
 <div>
+    @if (CompareMode)
+    {
+        <div class="compare-banner" role="status" aria-live="polite">
+            @if (_compareSequences.Count == 0)
+            {
+                <span>Select two events to compare their state changes.</span>
+            }
+            else if (_compareSequences.Count == 1)
+            {
+                <span>1 of 2 selected &mdash; pick another.</span>
+            }
+            else
+            {
+                <span>2 selected &mdash; click View Diff.</span>
+            }
+            <span style="float: right;">Selected: @_compareSequences.Count/2</span>
+        </div>
+    }
+
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
                  Style="margin-bottom: 8px;">
         <span>Showing @(Entries.Count > 0 ? "1" : "0")-@Entries.Count of @TotalCount entries</span>
         <FluentButton Appearance="Appearance.Outline"
                       Disabled="@(!CanNavigateNewer)"
-                      OnClick="@OnNavigateNewer">
+                      OnClick="@HandleNavigateNewer">
             &#x2190; Newer
         </FluentButton>
         <FluentButton Appearance="Appearance.Outline"
                       Disabled="@(!CanNavigateOlder)"
-                      OnClick="@OnNavigateOlder">
+                      OnClick="@HandleNavigateOlder">
             Older &#x2192;
         </FluentButton>
+        @if (CompareMode && _compareSequences.Count == 2)
+        {
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="RequestCompare"
+                          Style="margin-left: auto;"
+                          aria-label="View diff between selected events">
+                View Diff
+            </FluentButton>
+        }
     </FluentStack>
 
     <FluentDataGrid Items="@Entries.AsQueryable()"
                     TGridItem="TimelineEntry"
-                    GridTemplateColumns="80px 110px 100px 1fr 140px 100px"
+                    GridTemplateColumns="@GridColumns"
                     RowClass="@GetRowClass"
                     OnRowClick="@HandleRowClick"
                     Style="cursor: pointer;"
                     aria-label="Stream timeline">
+        @if (CompareMode)
+        {
+            <TemplateColumn Title="" Style="width: 40px;">
+                <FluentCheckbox Value="@_compareSequences.Contains(context.SequenceNumber)"
+                                ValueChanged="@(v => ToggleCompareSelection(context.SequenceNumber, v))"
+                                Disabled="@(!_compareSequences.Contains(context.SequenceNumber) && _compareSequences.Count >= 2)"
+                                aria-label="@($"Select sequence {context.SequenceNumber} for comparison")" />
+            </TemplateColumn>
+        }
         <PropertyColumn Property="@(e => e.SequenceNumber)"
                         Title="Seq"
                         Align="Align.End"
@@ -47,6 +84,9 @@
 </div>
 
 @code {
+    private readonly HashSet<long> _compareSequences = [];
+    private bool _previousCompareMode;
+
     [Parameter, EditorRequired]
     public List<TimelineEntry> Entries { get; set; } = [];
 
@@ -71,12 +111,89 @@
     [Parameter]
     public EventCallback<TimelineEntry> OnRowClick { get; set; }
 
+    [Parameter]
+    public bool CompareMode { get; set; }
+
+    [Parameter]
+    public EventCallback<(long From, long To)> OnCompareRequested { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // P2: Clear selections when compare mode is toggled off
+        if (!CompareMode && _previousCompareMode)
+        {
+            _compareSequences.Clear();
+        }
+
+        _previousCompareMode = CompareMode;
+
+        // P3: Remove selections that reference entries no longer visible in the grid
+        if (_compareSequences.Count > 0)
+        {
+            HashSet<long> visibleSequences = Entries.Select(e => e.SequenceNumber).ToHashSet();
+            _compareSequences.RemoveWhere(seq => !visibleSequences.Contains(seq));
+        }
+    }
+
+    private string GridColumns => CompareMode
+        ? "40px 80px 110px 100px 1fr 140px 100px"
+        : "80px 110px 100px 1fr 140px 100px";
+
     private async Task HandleRowClick(FluentDataGridRow<TimelineEntry> row)
     {
-        if (row.Item is not null)
+        if (row.Item is null)
+        {
+            return;
+        }
+
+        if (CompareMode)
+        {
+            // In compare mode, row click toggles the checkbox
+            bool isSelected = _compareSequences.Contains(row.Item.SequenceNumber);
+            ToggleCompareSelection(row.Item.SequenceNumber, !isSelected);
+        }
+        else
         {
             await OnRowClick.InvokeAsync(row.Item).ConfigureAwait(false);
         }
+    }
+
+    private void ToggleCompareSelection(long sequenceNumber, bool selected)
+    {
+        if (selected)
+        {
+            if (_compareSequences.Count < 2)
+            {
+                _compareSequences.Add(sequenceNumber);
+            }
+        }
+        else
+        {
+            _compareSequences.Remove(sequenceNumber);
+        }
+    }
+
+    private async Task RequestCompare()
+    {
+        if (_compareSequences.Count == 2)
+        {
+            long[] seqs = [.. _compareSequences];
+            long from = Math.Min(seqs[0], seqs[1]);
+            long to = Math.Max(seqs[0], seqs[1]);
+            await OnCompareRequested.InvokeAsync((from, to)).ConfigureAwait(false);
+        }
+    }
+
+    private async Task HandleNavigateNewer()
+    {
+        _compareSequences.Clear();
+        await OnNavigateNewer.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private async Task HandleNavigateOlder()
+    {
+        _compareSequences.Clear();
+        await OnNavigateOlder.InvokeAsync().ConfigureAwait(false);
     }
 
     private static string? GetRowClass(TimelineEntry entry) => entry.EntryType switch

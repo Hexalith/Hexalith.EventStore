@@ -52,7 +52,16 @@
             <h4 style="margin: 8px 0 0 0;">Event Payload</h4>
             <JsonViewer Json="@_eventDetail.PayloadJson" AriaLabel="Event payload JSON" />
 
-            <h4 style="margin: 8px 0 0 0;">State After This Event</h4>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                         Style="margin: 8px 0 0 0;">
+                <h4 style="margin: 0;">State After This Event</h4>
+                <FluentButton Appearance="Appearance.Outline"
+                              OnClick="OpenInspector"
+                              Title="Inspect state at any position"
+                              aria-label="Inspect state">
+                    &#x1F50D; Inspect State
+                </FluentButton>
+            </FluentStack>
             @if (_stateLoading)
             {
                 <SkeletonCard />
@@ -67,6 +76,15 @@
                 <div class="state-unavailable" style="color: var(--neutral-foreground-hint); padding: 8px;">
                     State reconstruction not available at this position.
                 </div>
+            }
+
+            @if (SequenceNumber >= 1)
+            {
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="DiffWithPrevious"
+                              aria-label="Show what changed due to this event">
+                    Diff with Previous
+                </FluentButton>
             }
 
             <FluentButton Appearance="Appearance.Outline"
@@ -116,6 +134,12 @@
 
     [Parameter]
     public EventCallback<string> OnCopyCorrelation { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnInspectState { get; set; }
+
+    [Parameter]
+    public EventCallback<(long From, long To)> OnDiffRequested { get; set; }
 
     [Parameter]
     public bool AutoTraceCausation { get; set; }
@@ -177,6 +201,16 @@
                 await TraceCausation();
             }
         }
+    }
+
+    private async Task OpenInspector()
+    {
+        await OnInspectState.InvokeAsync(SequenceNumber).ConfigureAwait(false);
+    }
+
+    private async Task DiffWithPrevious()
+    {
+        await OnDiffRequested.InvokeAsync((SequenceNumber - 1, SequenceNumber)).ConfigureAwait(false);
     }
 
     private async Task TraceCausation()

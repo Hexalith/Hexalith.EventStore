@@ -73,9 +73,20 @@ else
     <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
                        @bind-SelectedEntryType:after="OnFilterChanged"
                        @bind-CorrelationFilter="_correlationFilter"
-                       @bind-CorrelationFilter:after="OnFilterChanged" />
+                       @bind-CorrelationFilter:after="OnFilterChanged"
+                       @bind-CompareMode="_compareMode"
+                       @bind-CompareMode:after="OnCompareModeChanged" />
 
-    @if (_selectedSequence.HasValue && !Viewport.IsWideViewport)
+    @if (_diffMode)
+    {
+        @* Diff viewer replaces the detail panel *@
+        <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
+            <StateDiffViewer TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                             FromSequence="@_diffFrom" ToSequence="@_diffTo"
+                             OnClose="CloseDiffViewer" />
+        </div>
+    }
+    else if (_selectedSequence.HasValue && !Viewport.IsWideViewport)
     {
         <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
             <FluentButton Appearance="Appearance.Outline"
@@ -84,17 +95,7 @@ else
                 &#x2190; Back to timeline
             </FluentButton>
             <div style="margin-top: 8px;" role="complementary" aria-label="Timeline entry detail">
-                @if (_selectedEntry?.EntryType == TimelineEntryType.Event)
-                {
-                    <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
-                                      SequenceNumber="@_selectedEntry.SequenceNumber"
-                                      OnCopyCorrelation="@OnCorrelationFilterFromDetail"
-                                      AutoTraceCausation="@(QueryView == "causation")" />
-                }
-                else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
-                {
-                    <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OnCorrelationFilterFromDetail" />
-                }
+                @RenderDetailPanel()
             </div>
         </div>
     }
@@ -102,11 +103,7 @@ else
     {
         <div style="margin-top: 16px; display: flex; gap: 16px; min-height: 500px;" @onkeydown="OnDetailKeyDown">
             <div style="flex: 6;">
-                <StreamTimelineGrid Entries="@_timelineEntries" TotalCount="@_totalCount" PageSize="@PageSize"
-                                     CanNavigateNewer="@(_fromSequence is not null || _toSequence is not null)"
-                                     CanNavigateOlder="@(_timelineEntries.Count >= PageSize)"
-                                     OnNavigateNewer="@NavigateNewer" OnNavigateOlder="@NavigateOlder"
-                                     OnRowClick="@SelectEntry" />
+                @RenderTimelineGrid()
             </div>
             <div style="flex: 4; border-left: 1px solid var(--neutral-stroke-divider-rest); padding-left: 16px;">
                 <FluentButton Appearance="Appearance.Lightweight" OnClick="@CloseDetailPanel"
@@ -114,17 +111,7 @@ else
                     &#x2716;
                 </FluentButton>
                 <div role="complementary" aria-label="Timeline entry detail">
-                    @if (_selectedEntry?.EntryType == TimelineEntryType.Event)
-                    {
-                        <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
-                                          SequenceNumber="@_selectedEntry.SequenceNumber"
-                                          OnCopyCorrelation="@OnCorrelationFilterFromDetail"
-                                      AutoTraceCausation="@(QueryView == "causation")" />
-                    }
-                    else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
-                    {
-                        <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OnCorrelationFilterFromDetail" />
-                    }
+                    @RenderDetailPanel()
                 </div>
             </div>
         </div>
@@ -132,12 +119,15 @@ else
     else
     {
         <div style="margin-top: 16px;">
-            <StreamTimelineGrid Entries="@_timelineEntries" TotalCount="@_totalCount" PageSize="@PageSize"
-                                 CanNavigateNewer="@(_fromSequence is not null || _toSequence is not null)"
-                                 CanNavigateOlder="@(_timelineEntries.Count >= PageSize)"
-                                 OnNavigateNewer="@NavigateNewer" OnNavigateOlder="@NavigateOlder"
-                                 OnRowClick="@SelectEntry" />
+            @RenderTimelineGrid()
         </div>
+    }
+
+    @if (_showInspectorModal)
+    {
+        <StateInspectorModal TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                             InitialSequenceNumber="@_inspectorSequence"
+                             OnClose="CloseInspectorModal" />
     }
 }
 
@@ -152,7 +142,7 @@ else
     private long _eventCount;
     private DateTimeOffset? _lastActivity;
     private StreamStatus? _streamStatus;
-    private bool _hasSnapshot = false; // TODO: Determine from API when snapshot endpoint is available
+    private bool _hasSnapshot = false;
     private HashSet<long> _previousSequenceNumbers = [];
 
     private List<TimelineEntry> _timelineEntries = [];
@@ -165,6 +155,18 @@ else
 
     private long? _selectedSequence;
     private TimelineEntry? _selectedEntry;
+
+    // Compare mode state
+    private bool _compareMode;
+
+    // Diff viewer state
+    private bool _diffMode;
+    private long _diffFrom;
+    private long _diffTo;
+
+    // Inspector modal state
+    private bool _showInspectorModal;
+    private long? _inspectorSequence;
 
     [Parameter]
     public string TenantId { get; set; } = string.Empty;
@@ -193,6 +195,12 @@ else
     [SupplyParameterFromQuery(Name = "view")]
     public string? QueryView { get; set; }
 
+    [SupplyParameterFromQuery(Name = "diff")]
+    public string? QueryDiff { get; set; }
+
+    [SupplyParameterFromQuery(Name = "inspect")]
+    public long? QueryInspect { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -205,11 +213,54 @@ else
             _selectedEntryType = t;
         }
 
+        // Parse ?diff=5-15 deep link (normalized: Min-Max)
+        if (!string.IsNullOrEmpty(QueryDiff) && TryParseDiffParam(QueryDiff, out long diffFrom, out long diffTo))
+        {
+            _diffMode = true;
+            _diffFrom = diffFrom;
+            _diffTo = diffTo;
+        }
+
+        // Parse ?inspect=42 deep link
+        if (QueryInspect.HasValue)
+        {
+            _showInspectorModal = true;
+            _inspectorSequence = QueryInspect.Value;
+        }
+
         RefreshService.OnDataChanged += OnDataChanged;
         Viewport.OnViewportChanged += OnViewportChanged;
         await Viewport.InitializeAsync();
         await LoadTimelineAsync();
     }
+
+    private RenderFragment RenderTimelineGrid() => __builder =>
+    {
+        <StreamTimelineGrid Entries="@_timelineEntries" TotalCount="@_totalCount" PageSize="@PageSize"
+                             CanNavigateNewer="@(_fromSequence is not null || _toSequence is not null)"
+                             CanNavigateOlder="@(_timelineEntries.Count >= PageSize)"
+                             OnNavigateNewer="@NavigateNewer" OnNavigateOlder="@NavigateOlder"
+                             OnRowClick="@SelectEntry"
+                             CompareMode="@_compareMode"
+                             OnCompareRequested="@OnCompareRequested" />
+    };
+
+    private RenderFragment RenderDetailPanel() => __builder =>
+    {
+        if (_selectedEntry?.EntryType == TimelineEntryType.Event)
+        {
+            <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                              SequenceNumber="@_selectedEntry.SequenceNumber"
+                              OnCopyCorrelation="@OnCorrelationFilterFromDetail"
+                              OnInspectState="@OnInspectStateFromDetail"
+                              OnDiffRequested="@OnDiffFromDetail"
+                              AutoTraceCausation="@(QueryView == "causation")" />
+        }
+        else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
+        {
+            <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OnCorrelationFilterFromDetail" />
+        }
+    };
 
     private async Task LoadTimelineAsync()
     {
@@ -347,6 +398,7 @@ else
             return;
         }
 
+        _diffMode = false;
         _selectedSequence = entry.SequenceNumber;
         _selectedEntry = entry;
         UpdateUrl();
@@ -356,6 +408,55 @@ else
     {
         _selectedSequence = null;
         _selectedEntry = null;
+        _diffMode = false;
+        UpdateUrl();
+    }
+
+    private void CloseDiffViewer()
+    {
+        _diffMode = false;
+        UpdateUrl();
+    }
+
+    private void OnCompareModeChanged()
+    {
+        if (!_compareMode)
+        {
+            _diffMode = false;
+        }
+    }
+
+    private void OnCompareRequested((long From, long To) compare)
+    {
+        _diffMode = true;
+        _diffFrom = compare.From;
+        _diffTo = compare.To;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void OnInspectStateFromDetail(long sequenceNumber)
+    {
+        _showInspectorModal = true;
+        _inspectorSequence = sequenceNumber;
+        UpdateUrl();
+    }
+
+    private void OnDiffFromDetail((long From, long To) diff)
+    {
+        _diffMode = true;
+        _diffFrom = diff.From;
+        _diffTo = diff.To;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void CloseInspectorModal()
+    {
+        _showInspectorModal = false;
+        _inspectorSequence = null;
         UpdateUrl();
     }
 
@@ -372,7 +473,14 @@ else
     {
         if (e.Key == "Escape")
         {
-            CloseDetailPanel();
+            if (_diffMode)
+            {
+                CloseDiffViewer();
+            }
+            else
+            {
+                CloseDetailPanel();
+            }
         }
     }
 
@@ -404,14 +512,39 @@ else
             queryParams.Add($"correlation={Uri.EscapeDataString(_correlationFilter)}");
         }
 
-        if (_selectedSequence.HasValue)
+        if (_diffMode)
+        {
+            queryParams.Add($"diff={_diffFrom}-{_diffTo}");
+        }
+        else if (_selectedSequence.HasValue)
         {
             queryParams.Add($"detail={_selectedSequence.Value}");
+        }
+
+        // P7: Write ?inspect= to URL for deep linking
+        if (_showInspectorModal && _inspectorSequence.HasValue)
+        {
+            queryParams.Add($"inspect={_inspectorSequence.Value}");
         }
 
         string path = $"/streams/{Uri.EscapeDataString(TenantId)}/{Uri.EscapeDataString(Domain)}/{Uri.EscapeDataString(AggregateId)}";
         string url = queryParams.Count > 0 ? $"{path}?{string.Join('&', queryParams)}" : path;
         Navigation.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private static bool TryParseDiffParam(string diffParam, out long from, out long to)
+    {
+        from = 0;
+        to = 0;
+        string[] parts = diffParam.Split('-');
+        if (parts.Length == 2 && long.TryParse(parts[0], out long a) && long.TryParse(parts[1], out long b))
+        {
+            from = Math.Min(a, b);
+            to = Math.Max(a, b);
+            return true;
+        }
+
+        return false;
     }
 
     private string GetStreamStatusSeverity() => _streamStatus switch

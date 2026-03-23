@@ -1,0 +1,290 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+@inject AdminStreamApiClient ApiClient
+
+<div class="state-diff-viewer" role="region" aria-label="@($"State diff between sequence {FromSequence} and {ToSequence}")">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 12px;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0;">
+                Comparing state: <span class="monospace">#@FromSequence</span> &rarr; <span class="monospace">#@ToSequence</span>
+            </h3>
+            @if (!_loading && (_fromState is not null || _toState is not null))
+            {
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                    @FormatTimestamp(_fromState) &rarr; @FormatTimestamp(_toState)
+                </span>
+            }
+        </div>
+        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Back to timeline">
+            &#x2190; Back to Timeline
+        </FluentButton>
+    </FluentStack>
+
+    @if (_loading)
+    {
+        <div style="color: var(--neutral-foreground-hint); padding: 8px;">Loading diff...</div>
+        <SkeletonCard />
+        <SkeletonCard />
+    }
+    else if (_initialStateFallback && _toState is not null)
+    {
+        @* P12: FromSequence==0 fallback — show all fields as additions *@
+        <EmptyState Title="@($"Initial state at sequence #{ToSequence}")"
+                    Description="This is the first state of the aggregate — all fields are new." />
+        <JsonViewer Json="@_toState.StateJson"
+                    AriaLabel="@($"Initial aggregate state at sequence {ToSequence}")" />
+    }
+    else if (_diffError is not null)
+    {
+        <EmptyState Title="State diff not available" Description="@_diffError" />
+    }
+    else if (_diff is not null && _diff.ChangedFields.Count == 0)
+    {
+        <EmptyState Title="@($"No differences found between sequence #{FromSequence} and #{ToSequence}")"
+                    Description="States are identical." />
+    }
+    else if (_diff is not null)
+    {
+        @* Field change table *@
+        <FluentDataGrid Items="@_displayedChanges.AsQueryable()"
+                        TGridItem="FieldChange"
+                        GridTemplateColumns="1fr 200px 200px"
+                        aria-label="@($"Field changes between sequence {FromSequence} and {ToSequence}")">
+            <PropertyColumn Property="@(f => f.FieldPath)" Title="Field Path" Class="monospace diff-field-path" />
+            <TemplateColumn Title="Old Value" Class="diff-old-value">
+                <span class="monospace" aria-label="@($"Previous value: {TruncateValue(context.OldValue)}")"
+                      title="@context.OldValue">
+                    <span aria-hidden="true" style="margin-right: 4px;">&minus;</span>@TruncateValue(context.OldValue)
+                </span>
+            </TemplateColumn>
+            <TemplateColumn Title="New Value" Class="diff-new-value">
+                <span class="monospace" aria-label="@($"New value: {TruncateValue(context.NewValue)}")"
+                      title="@context.NewValue">
+                    <span aria-hidden="true" style="margin-right: 4px;">+</span>@TruncateValue(context.NewValue)
+                </span>
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        @if (_diff.ChangedFields.Count > MaxDisplayChanges && !_showAllChanges)
+        {
+            <FluentButton Appearance="Appearance.Outline"
+                          OnClick="ShowAllChanges"
+                          Style="margin-top: 8px;">
+                Show all @_diff.ChangedFields.Count changes
+            </FluentButton>
+        }
+
+        @* Warnings for missing states *@
+        @if (_fromStateWarning is not null)
+        {
+            <div style="color: var(--hexalith-status-warning); font-size: 13px; margin-top: 8px;" role="alert">
+                @_fromStateWarning
+            </div>
+        }
+        @if (_toStateWarning is not null)
+        {
+            <div style="color: var(--hexalith-status-warning); font-size: 13px; margin-top: 4px;" role="alert">
+                @_toStateWarning
+            </div>
+        }
+
+        @* Full state panels *@
+        <FluentAccordion Style="margin-top: 16px;">
+            <FluentAccordionItem Heading="@($"Full State at #{FromSequence}")">
+                @if (_fromState is not null)
+                {
+                    <JsonViewer Json="@_fromState.StateJson"
+                                AriaLabel="@($"Full aggregate state at sequence {FromSequence}")" />
+                }
+                else if (FromSequence == 0)
+                {
+                    <div style="color: var(--neutral-foreground-hint); padding: 8px;">
+                        No state at sequence 0 (initial state — all fields are additions).
+                    </div>
+                }
+                else
+                {
+                    <div style="color: var(--neutral-foreground-hint); padding: 8px;">
+                        State not available at this position.
+                    </div>
+                }
+            </FluentAccordionItem>
+            <FluentAccordionItem Heading="@($"Full State at #{ToSequence}")">
+                @if (_toState is not null)
+                {
+                    <JsonViewer Json="@_toState.StateJson"
+                                AriaLabel="@($"Full aggregate state at sequence {ToSequence}")" />
+                }
+                else
+                {
+                    <div style="color: var(--neutral-foreground-hint); padding: 8px;">
+                        State not available at this position.
+                    </div>
+                }
+            </FluentAccordionItem>
+        </FluentAccordion>
+    }
+</div>
+
+@code {
+    private const int MaxDisplayChanges = 50;
+
+    private bool _loading = true;
+    private string? _diffError;
+    private bool _initialStateFallback;
+    private AggregateStateDiff? _diff;
+    private AggregateStateSnapshot? _fromState;
+    private AggregateStateSnapshot? _toState;
+    private string? _fromStateWarning;
+    private string? _toStateWarning;
+    private List<FieldChange> _displayedChanges = [];
+    private bool _showAllChanges;
+
+    private long _previousFrom = -1;
+    private long _previousTo = -1;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public long FromSequence { get; set; }
+
+    [Parameter, EditorRequired]
+    public long ToSequence { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (FromSequence == _previousFrom && ToSequence == _previousTo)
+        {
+            return;
+        }
+
+        _previousFrom = FromSequence;
+        _previousTo = ToSequence;
+        await LoadDiffAsync();
+    }
+
+    private async Task LoadDiffAsync()
+    {
+        _loading = true;
+        _diffError = null;
+        _initialStateFallback = false;
+        _diff = null;
+        _fromState = null;
+        _toState = null;
+        _fromStateWarning = null;
+        _toStateWarning = null;
+        _showAllChanges = false;
+        StateHasChanged();
+
+        // P9: 5-second timeout on diff API calls
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+        try
+        {
+            // Launch all 3 calls in parallel but track each independently
+            Task<AggregateStateDiff?> diffTask = ApiClient.GetAggregateStateDiffAsync(
+                TenantId, Domain, AggregateId, FromSequence, ToSequence, cts.Token);
+
+            Task<AggregateStateSnapshot?> fromStateTask = FromSequence == 0
+                ? Task.FromResult<AggregateStateSnapshot?>(null)
+                : ApiClient.GetAggregateStateAtPositionAsync(
+                    TenantId, Domain, AggregateId, FromSequence, cts.Token);
+
+            Task<AggregateStateSnapshot?> toStateTask = ApiClient.GetAggregateStateAtPositionAsync(
+                TenantId, Domain, AggregateId, ToSequence, cts.Token);
+
+            await Task.WhenAll(diffTask, fromStateTask, toStateTask).ConfigureAwait(false);
+
+            _diff = diffTask.Result;
+            _fromState = fromStateTask.Result;
+            _toState = toStateTask.Result;
+
+            if (_diff is null)
+            {
+                // P12: FromSequence==0 fallback — show initial state instead of error
+                if (FromSequence == 0 && _toState is not null)
+                {
+                    _initialStateFallback = true;
+                }
+                else
+                {
+                    _diffError = "State diff not available \u2014 one or both positions have no state.";
+                }
+            }
+            else
+            {
+                UpdateDisplayedChanges();
+
+                if (_fromState is null && FromSequence != 0)
+                {
+                    _fromStateWarning = $"Full state at #{FromSequence} not available.";
+                }
+
+                if (_toState is null)
+                {
+                    _toStateWarning = $"Full state at #{ToSequence} not available.";
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _diffError = "Diff range too large \u2014 try comparing closer positions.";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _diffError = "State diff not available \u2014 one or both positions have no state.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void UpdateDisplayedChanges()
+    {
+        if (_diff is null)
+        {
+            _displayedChanges = [];
+            return;
+        }
+
+        _displayedChanges = _showAllChanges || _diff.ChangedFields.Count <= MaxDisplayChanges
+            ? _diff.ChangedFields.ToList()
+            : _diff.ChangedFields.Take(MaxDisplayChanges).ToList();
+    }
+
+    private void ShowAllChanges()
+    {
+        _showAllChanges = true;
+        UpdateDisplayedChanges();
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private static string FormatTimestamp(AggregateStateSnapshot? snapshot) =>
+        snapshot?.Timestamp.ToString("yyyy-MM-dd HH:mm:ss zzz") ?? "N/A";
+
+    private static string TruncateValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "\u2014";
+        }
+
+        return value.Length > 80 ? value[..80] + "\u2026" : value;
+    }
+}
