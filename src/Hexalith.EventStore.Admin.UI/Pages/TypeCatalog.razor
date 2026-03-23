@@ -1,0 +1,630 @@
+@page "/types"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IAsyncDisposable
+
+@inject AdminTypeCatalogApiClient ApiClient
+@inject DashboardRefreshService RefreshService
+@inject ViewportService Viewport
+@inject NavigationManager NavigationManager
+
+<PageTitle>Type Catalog - Hexalith EventStore Admin</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Type Catalog</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="OnManualRefresh"
+                  aria-label="Refresh type catalog">
+        Refresh
+    </FluentButton>
+</div>
+
+@if (_isLoading)
+{
+    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+    </div>
+}
+else if (_hasError)
+{
+    <IssueBanner Visible="true"
+                 Title="Unable to load type catalog"
+                 Description="Service may be unavailable."
+                 ActionLabel="Retry"
+                 OnAction="OnRetry" />
+}
+else
+{
+    <!-- Summary stat cards -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+        <StatCard Label="Event Types" Value="@_allEvents.Count.ToString()" Severity="neutral"
+                  Subtitle="@($"{_eventDomainCount} domains")" />
+        <StatCard Label="Command Types" Value="@_allCommands.Count.ToString()" Severity="neutral"
+                  Subtitle="@($"{_commandDomainCount} domains")" />
+        <StatCard Label="Aggregate Types" Value="@_allAggregates.Count.ToString()" Severity="neutral"
+                  Subtitle="@($"{_aggregatesWithProjections} with projections")" />
+    </div>
+
+    <!-- Filters row -->
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+        <FluentSelect TOption="string"
+                      Value="@_domainFilter"
+                      ValueChanged="@OnDomainFilterChanged"
+                      aria-label="Filter by domain"
+                      Style="min-width: 200px;">
+            <FluentOption Value="@string.Empty">All Domains</FluentOption>
+            @foreach (string domain in _domainList)
+            {
+                <FluentOption Value="@domain">@domain</FluentOption>
+            }
+        </FluentSelect>
+        <FluentSearch Value="@_searchText"
+                      ValueChanged="@OnSearchValueChanged"
+                      Immediate="true"
+                      Placeholder="@SearchPlaceholder"
+                      aria-label="@SearchAriaLabel"
+                      Style="flex: 1;" />
+    </div>
+
+    <!-- Grid + Detail Panel -->
+    <div style="display: flex; gap: 16px; @(Viewport.IsWideViewport ? "flex-direction: row;" : "flex-direction: column;")">
+        <div style="@(Viewport.IsWideViewport && HasSelection ? "flex: 1; min-width: 0;" : "")">
+            <FluentTabs ActiveTabId="@_activeTab" ActiveTabIdChanged="@OnTabChanged">
+                <FluentTab Label="@($"Events ({_filteredEvents.Count})")" Id="events" />
+                <FluentTab Label="@($"Commands ({_filteredCommands.Count})")" Id="commands" />
+                <FluentTab Label="@($"Aggregates ({_filteredAggregates.Count})")" Id="aggregates" />
+            </FluentTabs>
+
+            <div role="tabpanel" style="margin-top: 16px;">
+                @if (_activeTab == "events")
+                {
+                    @if (_filteredEvents.Count == 0)
+                    {
+                        <EmptyState Title="No event types found"
+                                    Description="@(HasActiveFilters ? "No event types match the current filters." : "No event types registered.")" />
+                    }
+                    else
+                    {
+                        <FluentDataGrid Items="@_filteredEvents.AsQueryable()" TGridItem="EventTypeInfo"
+                                        Style="width: 100%;"
+                                        OnRowClick="@(row => OnEventRowClick(row.Item))"
+                                        aria-label="Event types list">
+                            <PropertyColumn Property="@(e => e.TypeName)" Title="Type Name" Class="type-name-cell" Sortable="true" />
+                            <PropertyColumn Property="@(e => e.Domain)" Title="Domain" Sortable="true" />
+                            <PropertyColumn Property="@(e => e.SchemaVersion)" Title="Schema Version" Sortable="true" />
+                            <TemplateColumn Title="Rejection"
+                                            SortBy="@(GridSort<EventTypeInfo>.ByDescending(e => e.IsRejection))">
+                                @if (context.IsRejection)
+                                {
+                                    <FluentBadge Appearance="Appearance.Lightweight"
+                                                 BackgroundColor="rgba(227,179,65,0.15)"
+                                                 Color="#e3b341">
+                                        <FluentIcon Value="@(new Icons.Regular.Size12.Warning())"
+                                                    Style="margin-right: 4px; vertical-align: middle;" />
+                                        Rejection
+                                    </FluentBadge>
+                                }
+                            </TemplateColumn>
+                        </FluentDataGrid>
+                    }
+                }
+                else if (_activeTab == "commands")
+                {
+                    @if (_filteredCommands.Count == 0)
+                    {
+                        <EmptyState Title="No command types found"
+                                    Description="@(HasActiveFilters ? "No command types match the current filters." : "No command types registered.")" />
+                    }
+                    else
+                    {
+                        <FluentDataGrid Items="@_filteredCommands.AsQueryable()" TGridItem="CommandTypeInfo"
+                                        Style="width: 100%;"
+                                        OnRowClick="@(row => OnCommandRowClick(row.Item))"
+                                        aria-label="Command types list">
+                            <PropertyColumn Property="@(c => c.TypeName)" Title="Type Name" Class="type-name-cell" Sortable="true" />
+                            <PropertyColumn Property="@(c => c.Domain)" Title="Domain" Sortable="true" />
+                            <TemplateColumn Title="Target Aggregate"
+                                            SortBy="@(GridSort<CommandTypeInfo>.ByAscending(c => c.TargetAggregateType))">
+                                <span class="aggregate-link" role="link" tabindex="0"
+                                      @onclick="@(() => NavigateToAggregate(context.TargetAggregateType))"
+                                      @onkeydown="@(e => { if (e.Key == "Enter") NavigateToAggregate(context.TargetAggregateType); })"
+                                      style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--accent-fill-rest); text-decoration: underline;">
+                                    @context.TargetAggregateType
+                                </span>
+                            </TemplateColumn>
+                        </FluentDataGrid>
+                    }
+                }
+                else if (_activeTab == "aggregates")
+                {
+                    @if (_filteredAggregates.Count == 0)
+                    {
+                        <EmptyState Title="No aggregate types found"
+                                    Description="@(HasActiveFilters ? "No aggregate types match the current filters." : "No aggregate types registered.")" />
+                    }
+                    else
+                    {
+                        <FluentDataGrid Items="@_filteredAggregates.AsQueryable()" TGridItem="AggregateTypeInfo"
+                                        Style="width: 100%;"
+                                        OnRowClick="@(row => OnAggregateRowClick(row.Item))"
+                                        aria-label="Aggregate types list">
+                            <PropertyColumn Property="@(a => a.TypeName)" Title="Type Name" Class="type-name-cell" Sortable="true" />
+                            <PropertyColumn Property="@(a => a.Domain)" Title="Domain" Sortable="true" />
+                            <PropertyColumn Property="@(a => a.EventCount)" Title="Event Count" Sortable="true" />
+                            <PropertyColumn Property="@(a => a.CommandCount)" Title="Command Count" Sortable="true" />
+                            <TemplateColumn Title="Has Projections"
+                                            SortBy="@(GridSort<AggregateTypeInfo>.ByDescending(a => a.HasProjections))">
+                                @if (context.HasProjections)
+                                {
+                                    <FluentBadge Appearance="Appearance.Lightweight"
+                                                 BackgroundColor="rgba(63,185,80,0.15)"
+                                                 Color="#3fb950">
+                                        <FluentIcon Value="@(new Icons.Regular.Size12.Checkmark())"
+                                                    Style="margin-right: 4px; vertical-align: middle;" />
+                                        Yes
+                                    </FluentBadge>
+                                }
+                                else
+                                {
+                                    <FluentBadge Appearance="Appearance.Lightweight">No</FluentBadge>
+                                }
+                            </TemplateColumn>
+                        </FluentDataGrid>
+                    }
+                }
+            </div>
+        </div>
+
+        @if (HasSelection)
+        {
+            <div style="@(Viewport.IsWideViewport ? "width: 420px; flex-shrink: 0;" : "")">
+                <TypeDetailPanel SelectedEvent="_selectedEvent"
+                                 SelectedCommand="_selectedCommand"
+                                 SelectedAggregate="_selectedAggregate"
+                                 AllEvents="_allEvents"
+                                 AllCommands="_allCommands"
+                                 AllAggregates="_allAggregates"
+                                 OnClose="ClearSelection"
+                                 OnNavigateToAggregate="NavigateToAggregate"
+                                 OnNavigateToEvent="NavigateToEvent"
+                                 OnNavigateToCommand="NavigateToCommand" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isLoadingData;
+    private bool _hasError;
+    private string _activeTab = "events";
+    private string _searchText = string.Empty;
+    private string _domainFilter = string.Empty;
+    private bool _isCrossTabNavigation;
+
+    private EventTypeInfo? _selectedEvent;
+    private CommandTypeInfo? _selectedCommand;
+    private AggregateTypeInfo? _selectedAggregate;
+
+    private IReadOnlyList<EventTypeInfo> _allEvents = [];
+    private IReadOnlyList<CommandTypeInfo> _allCommands = [];
+    private IReadOnlyList<AggregateTypeInfo> _allAggregates = [];
+
+    // Cached filtered lists (P-3: avoid recomputing on every property access)
+    private IReadOnlyList<EventTypeInfo> _filteredEvents = [];
+    private IReadOnlyList<CommandTypeInfo> _filteredCommands = [];
+    private IReadOnlyList<AggregateTypeInfo> _filteredAggregates = [];
+
+    private IReadOnlyList<string> _domainList = [];
+    private int _eventDomainCount;
+    private int _commandDomainCount;
+    private int _aggregatesWithProjections;
+
+    private CancellationTokenSource? _debounceTokenSource;
+    private string? _pendingTypeSelection;
+
+    private bool HasSelection => _selectedEvent is not null || _selectedCommand is not null || _selectedAggregate is not null;
+
+    private bool HasActiveFilters => !string.IsNullOrEmpty(_searchText) || !string.IsNullOrEmpty(_domainFilter);
+
+    private string SearchPlaceholder => _activeTab switch
+    {
+        "commands" => "Search command types...",
+        "aggregates" => "Search aggregate types...",
+        _ => "Search event types...",
+    };
+
+    private string SearchAriaLabel => _activeTab switch
+    {
+        "commands" => "Search command types",
+        "aggregates" => "Search aggregate types",
+        _ => "Search event types",
+    };
+
+    private void ApplyFilters()
+    {
+        _filteredEvents = _allEvents
+            .Where(e => string.IsNullOrEmpty(_domainFilter) || e.Domain == _domainFilter)
+            .Where(e => string.IsNullOrEmpty(_searchText) || e.TypeName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e.Domain, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => e.TypeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _filteredCommands = _allCommands
+            .Where(c => string.IsNullOrEmpty(_domainFilter) || c.Domain == _domainFilter)
+            .Where(c => string.IsNullOrEmpty(_searchText) || c.TypeName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.Domain, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.TypeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _filteredAggregates = _allAggregates
+            .Where(a => string.IsNullOrEmpty(_domainFilter) || a.Domain == _domainFilter)
+            .Where(a => string.IsNullOrEmpty(_searchText) || a.TypeName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => a.Domain, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(a => a.TypeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        await LoadDataAsync().ConfigureAwait(false);
+        RefreshService.OnDataChanged += OnRefreshSignal;
+    }
+
+    private void OnRefreshSignal(DashboardData data)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadDataAsync().ConfigureAwait(false);
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _debounceTokenSource?.Cancel();
+        _debounceTokenSource?.Dispose();
+        RefreshService.OnDataChanged -= OnRefreshSignal;
+        await Task.CompletedTask.ConfigureAwait(false);
+        GC.SuppressFinalize(this);
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query =
+            System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        string? tab = query["tab"];
+        if (!string.IsNullOrEmpty(tab) && tab is "events" or "commands" or "aggregates")
+        {
+            _activeTab = tab;
+        }
+
+        string? domain = query["domain"];
+        if (!string.IsNullOrEmpty(domain))
+        {
+            _domainFilter = domain;
+        }
+
+        string? search = query["search"];
+        if (!string.IsNullOrEmpty(search))
+        {
+            _searchText = search;
+        }
+
+        string? type = query["type"];
+        if (!string.IsNullOrEmpty(type))
+        {
+            _pendingTypeSelection = type;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        // P-9: Guard against concurrent loads
+        if (_isLoadingData)
+        {
+            return;
+        }
+
+        _isLoadingData = true;
+        _isLoading = _allEvents.Count == 0 && _allCommands.Count == 0 && _allAggregates.Count == 0;
+
+        try
+        {
+            Task<IReadOnlyList<EventTypeInfo>> eventsTask = ApiClient.ListEventTypesAsync(null);
+            Task<IReadOnlyList<CommandTypeInfo>> commandsTask = ApiClient.ListCommandTypesAsync(null);
+            Task<IReadOnlyList<AggregateTypeInfo>> aggregatesTask = ApiClient.ListAggregateTypesAsync(null);
+            await Task.WhenAll(eventsTask, commandsTask, aggregatesTask).ConfigureAwait(false);
+
+            _allEvents = eventsTask.Result;
+            _allCommands = commandsTask.Result;
+            _allAggregates = aggregatesTask.Result;
+            _hasError = false;
+
+            // Compute stats
+            _eventDomainCount = _allEvents.Select(e => e.Domain).Distinct().Count();
+            _commandDomainCount = _allCommands.Select(c => c.Domain).Distinct().Count();
+            _aggregatesWithProjections = _allAggregates.Count(a => a.HasProjections);
+
+            // Build domain list from all three lists
+            _domainList = _allEvents.Select(e => e.Domain)
+                .Concat(_allCommands.Select(c => c.Domain))
+                .Concat(_allAggregates.Select(a => a.Domain))
+                .Distinct()
+                .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // P-10: Validate domain filter exists in loaded data
+            if (!string.IsNullOrEmpty(_domainFilter) && !_domainList.Contains(_domainFilter))
+            {
+                _domainFilter = string.Empty;
+            }
+
+            // Apply filters before resolving selections
+            ApplyFilters();
+
+            // Handle pending type selection from deep link
+            // P-8: Search in _allX not filtered lists
+            if (_pendingTypeSelection is not null)
+            {
+                SelectTypeByName(_pendingTypeSelection);
+                _pendingTypeSelection = null;
+            }
+
+            // Preserve selection on refresh
+            if (_selectedEvent is not null)
+            {
+                _selectedEvent = _allEvents.FirstOrDefault(e =>
+                    e.TypeName == _selectedEvent.TypeName && e.Domain == _selectedEvent.Domain);
+            }
+            else if (_selectedCommand is not null)
+            {
+                _selectedCommand = _allCommands.FirstOrDefault(c =>
+                    c.TypeName == _selectedCommand.TypeName && c.Domain == _selectedCommand.Domain);
+            }
+            else if (_selectedAggregate is not null)
+            {
+                _selectedAggregate = _allAggregates.FirstOrDefault(a =>
+                    a.TypeName == _selectedAggregate.TypeName && a.Domain == _selectedAggregate.Domain);
+            }
+        }
+        catch (Exception)
+        {
+            _hasError = true;
+            _allEvents = [];
+            _allCommands = [];
+            _allAggregates = [];
+            _filteredEvents = [];
+            _filteredCommands = [];
+            _filteredAggregates = [];
+        }
+        finally
+        {
+            _isLoading = false;
+            _isLoadingData = false;
+        }
+    }
+
+    // P-8: Search in unfiltered data for deep link resolution
+    private void SelectTypeByName(string typeName)
+    {
+        switch (_activeTab)
+        {
+            case "events":
+                _selectedEvent = _allEvents.FirstOrDefault(e =>
+                    string.Equals(e.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
+                break;
+            case "commands":
+                _selectedCommand = _allCommands.FirstOrDefault(c =>
+                    string.Equals(c.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
+                break;
+            case "aggregates":
+                _selectedAggregate = _allAggregates.FirstOrDefault(a =>
+                    string.Equals(a.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
+                break;
+        }
+    }
+
+    private void OnTabChanged(string? tabId)
+    {
+        if (tabId is null || tabId == _activeTab)
+        {
+            return;
+        }
+
+        _activeTab = tabId;
+
+        if (!_isCrossTabNavigation)
+        {
+            _selectedEvent = null;
+            _selectedCommand = null;
+            _selectedAggregate = null;
+            _searchText = string.Empty;
+            ApplyFilters();
+        }
+
+        _isCrossTabNavigation = false;
+        UpdateUrl();
+    }
+
+    // P-1 + P-2: Proper debounce with CTS disposal
+    private void OnSearchValueChanged(string? value)
+    {
+        _searchText = value ?? string.Empty;
+
+        _debounceTokenSource?.Cancel();
+        _debounceTokenSource?.Dispose();
+        _debounceTokenSource = new CancellationTokenSource();
+        CancellationToken token = _debounceTokenSource.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(300, token).ConfigureAwait(false);
+                await InvokeAsync(() =>
+                {
+                    ApplyFilters();
+                    UpdateUrl();
+                    StateHasChanged();
+                }).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }, token);
+    }
+
+    private void OnDomainFilterChanged(string? domain)
+    {
+        _domainFilter = domain ?? string.Empty;
+        ApplyFilters();
+        UpdateUrl();
+    }
+
+    private void OnEventRowClick(EventTypeInfo? evt)
+    {
+        if (evt is null)
+        {
+            return;
+        }
+
+        _selectedEvent = evt;
+        _selectedCommand = null;
+        _selectedAggregate = null;
+        UpdateUrl();
+    }
+
+    private void OnCommandRowClick(CommandTypeInfo? cmd)
+    {
+        if (cmd is null)
+        {
+            return;
+        }
+
+        _selectedCommand = cmd;
+        _selectedEvent = null;
+        _selectedAggregate = null;
+        UpdateUrl();
+    }
+
+    private void OnAggregateRowClick(AggregateTypeInfo? agg)
+    {
+        if (agg is null)
+        {
+            return;
+        }
+
+        _selectedAggregate = agg;
+        _selectedEvent = null;
+        _selectedCommand = null;
+        UpdateUrl();
+    }
+
+    // P-7: Clear domain filter during cross-tab navigation to avoid blocking target
+    private void NavigateToAggregate(string aggregateTypeName)
+    {
+        _isCrossTabNavigation = true;
+        _activeTab = "aggregates";
+        _domainFilter = string.Empty;
+        _searchText = aggregateTypeName;
+        _selectedEvent = null;
+        _selectedCommand = null;
+        ApplyFilters();
+        _selectedAggregate = _filteredAggregates.FirstOrDefault(a =>
+            string.Equals(a.TypeName, aggregateTypeName, StringComparison.OrdinalIgnoreCase));
+        UpdateUrl();
+    }
+
+    private void NavigateToEvent(string eventTypeName)
+    {
+        _isCrossTabNavigation = true;
+        _activeTab = "events";
+        _domainFilter = string.Empty;
+        _searchText = eventTypeName;
+        _selectedCommand = null;
+        _selectedAggregate = null;
+        ApplyFilters();
+        _selectedEvent = _filteredEvents.FirstOrDefault(e =>
+            string.Equals(e.TypeName, eventTypeName, StringComparison.OrdinalIgnoreCase));
+        UpdateUrl();
+    }
+
+    private void NavigateToCommand(string commandTypeName)
+    {
+        _isCrossTabNavigation = true;
+        _activeTab = "commands";
+        _domainFilter = string.Empty;
+        _searchText = commandTypeName;
+        _selectedEvent = null;
+        _selectedAggregate = null;
+        ApplyFilters();
+        _selectedCommand = _filteredCommands.FirstOrDefault(c =>
+            string.Equals(c.TypeName, commandTypeName, StringComparison.OrdinalIgnoreCase));
+        UpdateUrl();
+    }
+
+    private void ClearSelection()
+    {
+        _selectedEvent = null;
+        _selectedCommand = null;
+        _selectedAggregate = null;
+        UpdateUrl();
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnRetry()
+    {
+        await LoadDataAsync().ConfigureAwait(false);
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParts = [];
+
+        if (_activeTab != "events")
+        {
+            queryParts.Add($"tab={_activeTab}");
+        }
+
+        if (!string.IsNullOrEmpty(_domainFilter))
+        {
+            queryParts.Add($"domain={Uri.EscapeDataString(_domainFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_searchText))
+        {
+            queryParts.Add($"search={Uri.EscapeDataString(_searchText)}");
+        }
+
+        string? selectedTypeName = _selectedEvent?.TypeName ?? _selectedCommand?.TypeName ?? _selectedAggregate?.TypeName;
+        if (selectedTypeName is not null)
+        {
+            queryParts.Add($"type={Uri.EscapeDataString(selectedTypeName)}");
+        }
+
+        string url = queryParts.Count > 0
+            ? $"/types?{string.Join('&', queryParts)}"
+            : "/types";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+}

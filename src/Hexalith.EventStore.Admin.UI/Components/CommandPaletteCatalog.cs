@@ -20,6 +20,10 @@ public static class CommandPaletteCatalog
         new("Streams", "Inspect stream metadata", "/commands"),
         new("Actions", "Projections", "/projections"),
         new("Projections", "Projection Dashboard", "/projections"),
+        new("Actions", "Type Catalog", "/types"),
+        new("Types", "Event Types", "/types?tab=events"),
+        new("Types", "Command Types", "/types?tab=commands"),
+        new("Types", "Aggregate Types", "/types?tab=aggregates"),
         new("Tenants", "Manage Tenants", "/tenants"),
     ];
 

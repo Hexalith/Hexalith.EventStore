@@ -1,0 +1,45 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+
+<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px;">
+    @foreach (string item in DisplayedItems)
+    {
+        <li>
+            <FluentBadge Appearance="Appearance.Lightweight"
+                         Style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.8em; cursor: pointer;"
+                         @onclick="@(() => OnItemClick.InvokeAsync(item))">
+                @item
+            </FluentBadge>
+        </li>
+    }
+</ul>
+@if (Items.Count > MaxVisible && !_showAll)
+{
+    <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                  Style="margin-top: 8px;"
+                  OnClick="@(() => _showAll = true)">
+        Show all @Items.Count
+    </FluentButton>
+}
+
+@code {
+    private const int MaxVisible = 10;
+    private bool _showAll;
+    private IReadOnlyList<string> _previousItems = [];
+
+    [Parameter]
+    public IReadOnlyList<string> Items { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<string> OnItemClick { get; set; }
+
+    private IEnumerable<string> DisplayedItems => _showAll ? Items : Items.Take(MaxVisible);
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(Items, _previousItems))
+        {
+            _showAll = false;
+            _previousItems = Items;
+        }
+    }
+}
