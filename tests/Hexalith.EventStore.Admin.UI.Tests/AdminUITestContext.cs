@@ -17,8 +17,10 @@ namespace Hexalith.EventStore.Admin.UI.Tests;
 /// Base test context for Admin.UI bUnit tests.
 /// Registers FluentUI components and mock services.
 /// </summary>
-public class AdminUITestContext : BunitContext {
-    public AdminUITestContext() {
+public class AdminUITestContext : BunitContext
+{
+    public AdminUITestContext()
+    {
         // Register FluentUI components
         Services.AddFluentUIComponents();
 
@@ -56,12 +58,14 @@ public class AdminUITestContext : BunitContext {
         Services.AddSingleton(testSignalRClient);
         Services.AddSingleton(testSignalRClient.Inner);
         Services.AddSingleton<IConfiguration>(_ => new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> {
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
                 ["EventStore:AdminServer:SwaggerUrl"] = "https://localhost:8091/swagger/index.html",
                 ["EventStore:AdminServer:BaseUrl"] = "https://admin-server",
             })
             .Build());
-        Services.AddCascadingValue(sp => {
+        Services.AddCascadingValue(sp =>
+        {
             AuthenticationStateProvider asp = sp.GetRequiredService<AuthenticationStateProvider>();
             return asp.GetAuthenticationStateAsync();
         });

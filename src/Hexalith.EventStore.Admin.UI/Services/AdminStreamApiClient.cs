@@ -356,7 +356,12 @@ public class AdminStreamApiClient(
             return;
         }
 
-        throw response.StatusCode switch
+        // Dispose the response to return the connection to the pool
+        HttpStatusCode statusCode = response.StatusCode;
+        string? reasonPhrase = response.ReasonPhrase;
+        response.Dispose();
+
+        throw statusCode switch
         {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
@@ -365,9 +370,9 @@ public class AdminStreamApiClient(
             HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException(
                 "The admin backend service is temporarily unavailable."),
             _ => new HttpRequestException(
-                $"Admin API returned {(int)response.StatusCode}: {response.ReasonPhrase}",
+                $"Admin API returned {(int)statusCode}: {reasonPhrase}",
                 null,
-                response.StatusCode),
+                statusCode),
         };
     }
 }

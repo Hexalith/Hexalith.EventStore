@@ -3,7 +3,8 @@ namespace Hexalith.EventStore.Admin.UI.Components;
 /// <summary>
 /// Provides the placeholder command palette entries and fuzzy filtering logic.
 /// </summary>
-public static class CommandPaletteCatalog {
+public static class CommandPaletteCatalog
+{
     private static readonly IReadOnlyList<CommandPaletteItem> _allItems =
     [
         new("Actions", "Home", "/"),
@@ -23,15 +24,18 @@ public static class CommandPaletteCatalog {
 
     public static IReadOnlyList<CommandPaletteItem> AllItems => _allItems;
 
-    public static IReadOnlyList<CommandPaletteItem> Filter(string? searchQuery) {
-        if (string.IsNullOrWhiteSpace(searchQuery)) {
+    public static IReadOnlyList<CommandPaletteItem> Filter(string? searchQuery)
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
             return _allItems;
         }
 
         string query = searchQuery.Trim();
 
         return _allItems
-            .Select(item => new {
+            .Select(item => new
+            {
                 Item = item,
                 Score = GetMatchScore(item, query),
             })
@@ -43,7 +47,8 @@ public static class CommandPaletteCatalog {
             .ToList();
     }
 
-    private static int? GetMatchScore(CommandPaletteItem item, string query) {
+    private static int? GetMatchScore(CommandPaletteItem item, string query)
+    {
         string normalizedQuery = Normalize(query);
         string[] candidates =
         [
@@ -52,8 +57,10 @@ public static class CommandPaletteCatalog {
             Normalize($"{item.Category} {item.Label}"),
         ];
 
-        foreach (string candidate in candidates) {
-            if (candidate.Contains(normalizedQuery, StringComparison.Ordinal)) {
+        foreach (string candidate in candidates)
+        {
+            if (candidate.Contains(normalizedQuery, StringComparison.Ordinal))
+            {
                 return candidate.IndexOf(normalizedQuery, StringComparison.Ordinal);
             }
         }
@@ -67,12 +74,15 @@ public static class CommandPaletteCatalog {
         return subsequenceScore is null ? null : 100 + subsequenceScore.Value;
     }
 
-    private static int? GetSubsequenceScore(string candidate, string query) {
+    private static int? GetSubsequenceScore(string candidate, string query)
+    {
         int score = 0;
         int currentIndex = -1;
-        foreach (char character in query) {
+        foreach (char character in query)
+        {
             currentIndex = candidate.IndexOf(character, currentIndex + 1);
-            if (currentIndex < 0) {
+            if (currentIndex < 0)
+            {
                 return null;
             }
 

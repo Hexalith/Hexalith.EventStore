@@ -22,23 +22,23 @@
              ActionLabel="Retry"
              OnAction="LoadDataAsync" />
 
-<div class="stat-card-grid" aria-live="polite">
+<div class="stat-card-grid" aria-live="polite" style="@(_isStale ? "opacity: 0.5;" : "")">
     <div style="cursor: pointer;" @onclick='() => NavigationManager.NavigateTo("/streams?status=active")'>
-        <StatCard Label="Active Streams"
+        <StatCard Label="@(_isStale ? "Active Streams (stale)" : "Active Streams")"
                   Value="@(_isLoading ? "\u2014" : FormatActiveStreams())"
                   Severity="@(_isStale ? "neutral" : "success")"
                   IsLoading="_isLoading" />
     </div>
-    <StatCard Label="Total Events"
+    <StatCard Label="@(_isStale ? "Total Events (stale)" : "Total Events")"
               Value="@(_isLoading ? "\u2014" : FormatTotalEvents())"
               Severity="@(_isStale ? "neutral" : "success")"
               IsLoading="_isLoading" />
-    <StatCard Label="Events/sec"
+    <StatCard Label="@(_isStale ? "Events/sec (stale)" : "Events/sec")"
               Value="@(_isLoading ? "\u2014" : FormatEventsPerSecond())"
               Severity="@(_isStale ? "neutral" : "success")"
               IsLoading="_isLoading" />
     <div style="cursor: pointer;" @onclick='() => NavigationManager.NavigateTo("/health")'>
-        <StatCard Label="Error Rate"
+        <StatCard Label="@(_isStale ? "Error Rate (stale)" : "Error Rate")"
                   Value="@(_isLoading ? "\u2014" : FormatErrorRate())"
                   Severity="@(_isStale ? "neutral" : GetErrorRateSeverity())"
                   IsLoading="_isLoading" />
@@ -91,8 +91,8 @@
 
 @if (_isStale && !_isLoading && !_apiUnavailable)
 {
-    <div style="margin-top: 8px; font-size: 12px; color: var(--neutral-foreground-hint); opacity: 0.7;">
-        Data may be stale. Last successful refresh: @_lastRefreshUtc?.ToString("HH:mm:ss")
+    <div style="margin-top: 8px; font-size: 12px; color: var(--neutral-foreground-hint);">
+        Last successful refresh: @_lastRefreshUtc?.ToString("HH:mm:ss")
     </div>
 }
 
@@ -111,6 +111,7 @@
     private PagedResult<StreamSummary>? _cachedStreams;
 
     private HashSet<string> _previousStreamKeys = [];
+    private HashSet<string> _newStreamKeys = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -137,29 +138,37 @@
     {
         _ = InvokeAsync(() =>
         {
-            if (data.Health is not null)
+            try
             {
-                _healthReport = data.Health;
-                _cachedHealthReport = data.Health;
-                _isStale = false;
-                _apiUnavailable = false;
-            }
+                if (data.Health is not null)
+                {
+                    _healthReport = data.Health;
+                    _cachedHealthReport = data.Health;
+                    _isStale = false;
+                    _apiUnavailable = false;
+                }
 
-            if (data.Streams is not null)
+                if (data.Streams is not null)
+                {
+                    // Track new rows for highlight
+                    HashSet<string> currentKeys = data.Streams.Items
+                        .Select(s => $"{s.TenantId}/{s.Domain}/{s.AggregateId}")
+                        .ToHashSet();
+                    _newStreamKeys = currentKeys.Except(_previousStreamKeys).ToHashSet();
+                    _previousStreamKeys = currentKeys;
+
+                    _streams = data.Streams;
+                    _cachedStreams = data.Streams;
+                    _activityBuckets = BuildActivityBuckets(data.Streams.Items);
+                }
+
+                _lastRefreshUtc = DateTimeOffset.UtcNow;
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
             {
-                // Track new rows for highlight
-                HashSet<string> newKeys = data.Streams.Items
-                    .Select(s => $"{s.TenantId}/{s.Domain}/{s.AggregateId}")
-                    .ToHashSet();
-                _previousStreamKeys = newKeys;
-
-                _streams = data.Streams;
-                _cachedStreams = data.Streams;
-                _activityBuckets = BuildActivityBuckets(data.Streams.Items);
+                // Component disposed during async callback
             }
-
-            _lastRefreshUtc = DateTimeOffset.UtcNow;
-            StateHasChanged();
         });
     }
 
@@ -167,22 +176,31 @@
     {
         _ = InvokeAsync(() =>
         {
-            if (_cachedHealthReport is not null)
+            try
             {
-                _isStale = true;
-            }
-            else
-            {
-                _apiUnavailable = true;
-            }
+                if (_cachedHealthReport is not null)
+                {
+                    _isStale = true;
+                }
+                else
+                {
+                    _apiUnavailable = true;
+                }
 
-            StateHasChanged();
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
         });
     }
 
     private void OnSignalRChanged()
     {
-        _ = RefreshService.TriggerImmediateRefreshAsync();
+        _ = RefreshService.TriggerImmediateRefreshAsync().ContinueWith(
+            static t => { /* SignalR-triggered refresh failed — polling continues */ },
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 
     public async ValueTask DisposeAsync()
@@ -262,6 +280,10 @@
             HandleApiFailure();
         }
         catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+        }
+        catch (ForbiddenAccessException)
         {
             _apiUnavailable = true;
         }

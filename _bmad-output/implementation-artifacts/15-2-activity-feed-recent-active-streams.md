@@ -1,6 +1,6 @@
 # Story 15.2: Activity Feed & Recent Active Streams
 
-Status: review
+Status: done
 Size: Large (multi-session) — ~15 new files, 8 task groups, 14 ACs
 
 ## Story
@@ -412,6 +412,54 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-03-23: Implemented activity feed, live data dashboard, streams page, real-time updates, and 23 bUnit tests
+- 2026-03-23: Code review completed (BMAD 3-layer adversarial review). 23 patch fixes applied, 2 bad-spec items noted, 3 deferred to story 15-3. All 107 tests pass (80 Admin.UI + 27 SignalR), 0 regressions.
+
+### Code Review Record
+
+**Review Model:** Claude Opus 4.6 (BMAD code review workflow — Blind Hunter + Edge Case Hunter + Acceptance Auditor)
+
+**Findings Summary:** 2 bad_spec, 24 patch, 3 defer, 6 rejected as noise
+
+**Patches Applied (23 of 24):**
+
+- P-1: Race condition on `_isRefreshing` — replaced `bool` with `Interlocked.CompareExchange`
+- P-2: SignalR connection status always "Connected" — added `IsConnected` property to `EventStoreSignalRClient`, wired in `MainLayout.razor`
+- P-3: Fire-and-forget `InvokeAsync` swallows exceptions — added try/catch in `MainLayout`, `Index`, `Streams`
+- P-4: `async void` unobserved exceptions in `NavMenu.razor` — added try/catch
+- P-5: `DisposeAsync` JS interop after circuit disposed — added `JSDisconnectedException` guard
+- P-6: `OnAfterRenderAsync` JS interop needs disconnect guard — added try/catch
+- P-7: `Dispose` vs `DisposeAsync` race in `DashboardRefreshService` — synchronous `Dispose` now waits for timer loop
+- P-8: Non-deterministic skeleton bar heights — replaced `Random.Shared.Next()` with static array
+- P-9: `CopyAggregateId` no-op stub — implemented via `navigator.clipboard.writeText`
+- P-10: `ForbiddenAccessException` uncaught in `Index.razor` — added catch clause
+- P-11: `ForbiddenAccessException` swallowed in `Streams.razor` — added specific catch with error message
+- P-12: `HttpResponseMessage` not disposed on error path — dispose before throwing in `HandleErrorStatus`
+- P-13: `TopologyCacheService.RefreshAsync` no error handling — added try/catch keeping stale cache
+- P-14: New row fade-in CSS never applied — added `_newStreamKeys` tracking
+- P-15: Non-Allman brace style — reformatted `CommandPaletteCatalog.cs` and `AdminUITestContext.cs`
+- P-16: Missing `GC.SuppressFinalize` — added to both `Dispose` and `DisposeAsync`
+- P-17: ActivityChart missing Compact 12-bar mode — added CSS hiding odd bars at <=1279px
+- P-18: ActivityChart missing Minimum summary text — added summary div shown at <960px
+- P-19: ActivityChart missing hidden data table for screen readers — added `sr-only` table
+- P-20: FluentDataGrid missing `aria-sort` — added `SortBy`/`IsDefaultSortColumn`/`InitialSortDirection`
+- P-21: `forced-colors` grid row selection — added Highlight CSS rule
+- P-22: Stale data indicator mismatch — per-StatCard "(stale)" suffix + `opacity: 0.5` on container
+- P-24: Polling loop test coverage — added 4 tests (start, idempotent start, re-entrancy, sync dispose)
+
+**Skipped (1):**
+
+- P-23: `FluentPaginator` not used — Low severity nit, custom buttons are functionally equivalent
+
+**Bad Spec (2 — noted for future stories):**
+
+- BS-1: `ConfigureAwait(false)` directive unsafe in Blazor Server components — spec should say "non-component service classes only"
+- BS-2: "Resets the 30s timer" — PeriodicTimer doesn't support reset; re-entrancy guard handles it
+
+**Deferred (3 — not caused by story 15-2):**
+
+- D-1: StreamDetail.razor (story 15-3) — 7 findings to review with that story
+- D-2: AdminApiAccessTokenProvider resource management — future cleanup
+- D-3: TestSignalRClient sync-over-async — low-risk test utility
 
 ### File List
 

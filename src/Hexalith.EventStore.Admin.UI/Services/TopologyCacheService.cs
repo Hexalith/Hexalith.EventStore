@@ -43,14 +43,27 @@ public class TopologyCacheService(AdminStreamApiClient apiClient)
 
     /// <summary>
     /// Forces a refresh of cached topology data.
+    /// Keeps stale cache on failure.
     /// </summary>
     public async Task RefreshAsync(CancellationToken ct = default)
     {
-        IReadOnlyList<TenantSummary> tenants = await apiClient.GetTenantsAsync(ct).ConfigureAwait(false);
-        IReadOnlyList<AggregateTypeInfo> types = await apiClient.GetAggregateTypesAsync(ct: ct).ConfigureAwait(false);
+        try
+        {
+            IReadOnlyList<TenantSummary> tenants = await apiClient.GetTenantsAsync(ct).ConfigureAwait(false);
+            IReadOnlyList<AggregateTypeInfo> types = await apiClient.GetAggregateTypesAsync(ct: ct).ConfigureAwait(false);
 
-        _tenants = tenants;
-        _domains = types.Select(t => t.Domain).Distinct().OrderBy(d => d).ToList();
-        _loaded = true;
+            _tenants = tenants;
+            _domains = types.Select(t => t.Domain).Distinct().OrderBy(d => d).ToList();
+            _loaded = true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // Propagate cancellation
+        }
+        catch
+        {
+            // Keep stale cache on failure — topology refresh is best-effort
+            _loaded = _tenants is not null;
+        }
     }
 }
