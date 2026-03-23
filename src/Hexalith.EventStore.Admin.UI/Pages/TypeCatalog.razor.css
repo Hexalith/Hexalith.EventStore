@@ -1,0 +1,4 @@
+::deep .type-name-cell {
+    font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace);
+    font-size: 0.85em;
+}

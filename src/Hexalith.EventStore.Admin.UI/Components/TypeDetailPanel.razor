@@ -1,0 +1,207 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog
+
+<FluentCard Style="padding: 16px;">
+    <!-- Header with close button -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600; font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace);">
+            @CurrentTypeName
+        </h2>
+        <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                      OnClick="OnClose"
+                      aria-label="Close detail panel">
+            Back to List
+        </FluentButton>
+    </div>
+
+    @if (SelectedEvent is not null)
+    {
+        <!-- Event detail view -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+            <FluentBadge Appearance="Appearance.Lightweight">@SelectedEvent.Domain</FluentBadge>
+            <FluentBadge Appearance="Appearance.Lightweight">v@(SelectedEvent.SchemaVersion)</FluentBadge>
+            @if (SelectedEvent.IsRejection)
+            {
+                <FluentBadge Appearance="Appearance.Lightweight"
+                             BackgroundColor="rgba(227,179,65,0.15)"
+                             Color="#e3b341">
+                    Rejection
+                </FluentBadge>
+            }
+        </div>
+
+        <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Related Commands</h3>
+        @if (EventRelatedCommands.Count == 0)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No related commands found.</p>
+        }
+        else
+        {
+            <RelatedTypeList Items="@EventRelatedCommands"
+                             OnItemClick="@(name => OnNavigateToCommand.InvokeAsync(name))" />
+        }
+
+        <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Related Aggregates</h3>
+        @if (EventRelatedAggregates.Count == 0)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No related aggregates found.</p>
+        }
+        else
+        {
+            <RelatedTypeList Items="@EventRelatedAggregates"
+                             OnItemClick="@(name => OnNavigateToAggregate.InvokeAsync(name))" />
+        }
+    }
+    else if (SelectedCommand is not null)
+    {
+        <!-- Command detail view -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+            <FluentBadge Appearance="Appearance.Lightweight">@SelectedCommand.Domain</FluentBadge>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Target Aggregate:</span>
+            <span role="link" tabindex="0"
+                  @onclick="@(() => OnNavigateToAggregate.InvokeAsync(SelectedCommand.TargetAggregateType))"
+                  style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--accent-fill-rest); text-decoration: underline; margin-left: 8px;">
+                @SelectedCommand.TargetAggregateType
+            </span>
+        </div>
+
+        <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Related Events</h3>
+        @if (CommandRelatedEvents.Count == 0)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No related events found.</p>
+        }
+        else
+        {
+            <RelatedTypeList Items="@CommandRelatedEvents"
+                             OnItemClick="@(name => OnNavigateToEvent.InvokeAsync(name))" />
+        }
+
+        <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Sibling Commands</h3>
+        @if (CommandSiblings.Count == 0)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No sibling commands found.</p>
+        }
+        else
+        {
+            <RelatedTypeList Items="@CommandSiblings"
+                             OnItemClick="@(name => OnNavigateToCommand.InvokeAsync(name))" />
+        }
+    }
+    else if (SelectedAggregate is not null)
+    {
+        <!-- Aggregate detail view -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+            <FluentBadge Appearance="Appearance.Lightweight">@SelectedAggregate.Domain</FluentBadge>
+            <FluentBadge Appearance="Appearance.Lightweight">@SelectedAggregate.EventCount events</FluentBadge>
+            <FluentBadge Appearance="Appearance.Lightweight">@SelectedAggregate.CommandCount commands</FluentBadge>
+            @if (SelectedAggregate.HasProjections)
+            {
+                <FluentBadge Appearance="Appearance.Lightweight"
+                             BackgroundColor="rgba(63,185,80,0.15)"
+                             Color="#3fb950">
+                    Has Projections
+                </FluentBadge>
+            }
+            else
+            {
+                <FluentBadge Appearance="Appearance.Lightweight">No Projections</FluentBadge>
+            }
+        </div>
+
+        <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Events</h3>
+        @if (AggregateEvents.Count == 0)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No events found.</p>
+        }
+        else
+        {
+            <RelatedTypeList Items="@AggregateEvents"
+                             OnItemClick="@(name => OnNavigateToEvent.InvokeAsync(name))" />
+        }
+
+        <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Commands</h3>
+        @if (AggregateCommands.Count == 0)
+        {
+            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No commands found.</p>
+        }
+        else
+        {
+            <RelatedTypeList Items="@AggregateCommands"
+                             OnItemClick="@(name => OnNavigateToCommand.InvokeAsync(name))" />
+        }
+    }
+</FluentCard>
+
+@code {
+    [Parameter]
+    public EventTypeInfo? SelectedEvent { get; set; }
+
+    [Parameter]
+    public CommandTypeInfo? SelectedCommand { get; set; }
+
+    [Parameter]
+    public AggregateTypeInfo? SelectedAggregate { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<EventTypeInfo> AllEvents { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<CommandTypeInfo> AllCommands { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<AggregateTypeInfo> AllAggregates { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateToAggregate { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateToEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateToCommand { get; set; }
+
+    private string CurrentTypeName => SelectedEvent?.TypeName
+        ?? SelectedCommand?.TypeName
+        ?? SelectedAggregate?.TypeName
+        ?? string.Empty;
+
+    // Event detail computed lists
+    private IReadOnlyList<string> EventRelatedCommands => SelectedEvent is null
+        ? []
+        : AllCommands.Where(c => c.Domain == SelectedEvent.Domain).Select(c => c.TypeName).ToList();
+
+    private IReadOnlyList<string> EventRelatedAggregates => SelectedEvent is null
+        ? []
+        : AllAggregates.Where(a => a.Domain == SelectedEvent.Domain).Select(a => a.TypeName).ToList();
+
+    // Command detail computed lists
+    private IReadOnlyList<string> CommandRelatedEvents => SelectedCommand is null
+        ? []
+        : AllEvents.Where(e => e.Domain == SelectedCommand.Domain).Select(e => e.TypeName).ToList();
+
+    private IReadOnlyList<string> CommandSiblings => SelectedCommand is null
+        ? []
+        : AllCommands
+            .Where(c => c.Domain == SelectedCommand.Domain
+                && c.TargetAggregateType == SelectedCommand.TargetAggregateType
+                && c.TypeName != SelectedCommand.TypeName)
+            .Select(c => c.TypeName)
+            .ToList();
+
+    // Aggregate detail computed lists
+    private IReadOnlyList<string> AggregateEvents => SelectedAggregate is null
+        ? []
+        : AllEvents.Where(e => e.Domain == SelectedAggregate.Domain).Select(e => e.TypeName).ToList();
+
+    private IReadOnlyList<string> AggregateCommands => SelectedAggregate is null
+        ? []
+        : AllCommands.Where(c => c.TargetAggregateType == SelectedAggregate.TypeName).Select(c => c.TypeName).ToList();
+
+}
