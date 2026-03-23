@@ -1,0 +1,71 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+
+<div class="causation-chain" role="list" aria-label="Causation chain">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="0">
+        @* Originating command *@
+        <div class="chain-node chain-node--command" role="listitem">
+            <span class="chain-node__icon" aria-hidden="true">&#x25B6;</span>
+            <span class="chain-node__label">
+                <strong>Command:</strong> @Chain.OriginatingCommandType
+                <span class="monospace" style="font-size: 11px;">(@TruncateId(Chain.OriginatingCommandId))</span>
+            </span>
+        </div>
+
+        @* Correlation ID *@
+        <div class="chain-connector" aria-hidden="true"></div>
+        <div class="chain-node chain-node--correlation" role="listitem">
+            <span class="chain-node__icon" aria-hidden="true">&#x1F517;</span>
+            <span class="chain-node__label">
+                <strong>Correlation:</strong>
+                <span class="monospace">@Chain.CorrelationId</span>
+                <FluentButton Appearance="Appearance.Lightweight"
+                              Title="Copy correlation ID"
+                              OnClick="() => OnCorrelationClick.InvokeAsync(Chain.CorrelationId)"
+                              aria-label="Copy correlation ID">
+                    &#x1F4CB;
+                </FluentButton>
+            </span>
+        </div>
+
+        @* Events *@
+        @foreach (CausationEvent evt in Chain.Events)
+        {
+            <div class="chain-connector" aria-hidden="true"></div>
+            <div class="chain-node chain-node--event" role="listitem">
+                <span class="chain-node__icon" aria-hidden="true">&#x26A1;</span>
+                <span class="chain-node__label">
+                    <strong>#@evt.SequenceNumber</strong> @evt.EventTypeName
+                    <span class="monospace" style="font-size: 11px;">(@evt.Timestamp.ToString("HH:mm:ss.fff"))</span>
+                </span>
+            </div>
+        }
+
+        @* Affected projections *@
+        @if (Chain.AffectedProjections.Count > 0)
+        {
+            <div class="chain-connector" aria-hidden="true"></div>
+            <div class="chain-node chain-node--projections" role="listitem">
+                <span class="chain-node__icon" aria-hidden="true">&#x1F4CA;</span>
+                <span class="chain-node__label">
+                    <strong>Affected Projections:</strong>
+                    @foreach (string proj in Chain.AffectedProjections)
+                    {
+                        <FluentBadge>@proj</FluentBadge>
+                    }
+                </span>
+            </div>
+        }
+    </FluentStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public CausationChain Chain { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<string> OnCorrelationClick { get; set; }
+
+    private static string TruncateId(string id)
+        => id.Length > 8 ? id[..8] + "\u2026" : id;
+}

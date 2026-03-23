@@ -57,6 +57,30 @@ window.hexalithAdmin = {
         return window.innerWidth;
     },
 
+    _viewportListenerRef: null,
+    _viewportMediaQuery: null,
+
+    registerViewportListener: function (dotNetRef, breakpoint) {
+        this._viewportListenerRef = dotNetRef;
+        this._viewportMediaQuery = window.matchMedia(`(min-width: ${breakpoint}px)`);
+        const handler = (e) => {
+            if (this._viewportListenerRef) {
+                this._viewportListenerRef.invokeMethodAsync("OnViewportWidthChanged", e.matches);
+            }
+        };
+        this._viewportMediaQuery.addEventListener("change", handler);
+        this._viewportChangeHandler = handler;
+    },
+
+    unregisterViewportListener: function () {
+        if (this._viewportMediaQuery && this._viewportChangeHandler) {
+            this._viewportMediaQuery.removeEventListener("change", this._viewportChangeHandler);
+        }
+        this._viewportListenerRef = null;
+        this._viewportMediaQuery = null;
+        this._viewportChangeHandler = null;
+    },
+
     focusCommandPaletteSearch: function () {
         const searchElement = document.querySelector(
             ".command-palette-search input, .command-palette-search",

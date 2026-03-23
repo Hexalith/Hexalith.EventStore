@@ -1,0 +1,190 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+@inject AdminStreamApiClient ApiClient
+
+<div class="event-detail-panel" role="complementary" aria-label="Event detail">
+    @if (_loading)
+    {
+        <SkeletonCard />
+        <SkeletonCard />
+    }
+    else if (_error is not null)
+    {
+        <EmptyState Title="Failed to load event detail"
+                    Description="@_error"
+                    ActionLabel="Retry"
+                    ActionHref="#" />
+    }
+    else if (_eventDetail is not null)
+    {
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="16">
+            <h3 style="margin: 0;">@_eventDetail.EventTypeName</h3>
+
+            <div class="event-metadata">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="8">
+                    <div><strong>Sequence:</strong> <span class="monospace">@_eventDetail.SequenceNumber</span></div>
+                    <div><strong>Timestamp:</strong> <span class="monospace">@_eventDetail.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff")</span></div>
+                    <div>
+                        <strong>Correlation ID:</strong>
+                        <span class="monospace" title="@_eventDetail.CorrelationId">@_eventDetail.CorrelationId</span>
+                        <FluentButton Appearance="Appearance.Lightweight"
+                                      Title="Copy correlation ID"
+                                      OnClick="() => OnCopyCorrelation.InvokeAsync(_eventDetail.CorrelationId)"
+                                      aria-label="Copy correlation ID">
+                            &#x1F4CB;
+                        </FluentButton>
+                    </div>
+                    @if (_eventDetail.CausationId is not null)
+                    {
+                        <div>
+                            <strong>Causation ID:</strong>
+                            <span class="monospace" title="@_eventDetail.CausationId">@_eventDetail.CausationId</span>
+                        </div>
+                    }
+                    @if (_eventDetail.UserId is not null)
+                    {
+                        <div><strong>User:</strong> @_eventDetail.UserId</div>
+                    }
+                </FluentStack>
+            </div>
+
+            <h4 style="margin: 8px 0 0 0;">Event Payload</h4>
+            <JsonViewer Json="@_eventDetail.PayloadJson" AriaLabel="Event payload JSON" />
+
+            <h4 style="margin: 8px 0 0 0;">State After This Event</h4>
+            @if (_stateLoading)
+            {
+                <SkeletonCard />
+            }
+            else if (_stateSnapshot is not null)
+            {
+                <JsonViewer Json="@_stateSnapshot.StateJson"
+                            AriaLabel="@($"Aggregate state at sequence {_eventDetail.SequenceNumber}")" />
+            }
+            else
+            {
+                <div class="state-unavailable" style="color: var(--neutral-foreground-hint); padding: 8px;">
+                    State reconstruction not available at this position.
+                </div>
+            }
+
+            <FluentButton Appearance="Appearance.Outline"
+                          OnClick="TraceCausation"
+                          Disabled="@_causationLoading">
+                @(_causationLoading ? "Loading..." : "Trace Causation")
+            </FluentButton>
+
+            @if (_causationChain is not null)
+            {
+                <CausationChainView Chain="@_causationChain" OnCorrelationClick="OnCopyCorrelation" />
+            }
+            @if (_causationError is not null)
+            {
+                <div class="causation-error" role="alert" style="color: var(--hexalith-status-error);">
+                    @_causationError
+                    <FluentButton Appearance="Appearance.Lightweight" OnClick="TraceCausation">Retry</FluentButton>
+                </div>
+            }
+        </FluentStack>
+    }
+</div>
+
+@code {
+    private EventDetail? _eventDetail;
+    private AggregateStateSnapshot? _stateSnapshot;
+    private CausationChain? _causationChain;
+    private bool _loading = true;
+    private bool _stateLoading;
+    private bool _causationLoading;
+    private string? _error;
+    private string? _causationError;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public long SequenceNumber { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnCopyCorrelation { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _causationChain = null;
+        _causationError = null;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            _eventDetail = await ApiClient.GetEventDetailAsync(
+                TenantId, Domain, AggregateId, SequenceNumber).ConfigureAwait(false);
+
+            if (_eventDetail is null)
+            {
+                _error = "Event not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_eventDetail is not null)
+        {
+            _stateLoading = true;
+            StateHasChanged();
+            try
+            {
+                _stateSnapshot = await ApiClient.GetAggregateStateAtPositionAsync(
+                    TenantId, Domain, AggregateId, SequenceNumber).ConfigureAwait(false);
+            }
+            catch
+            {
+                _stateSnapshot = null;
+            }
+            finally
+            {
+                _stateLoading = false;
+            }
+        }
+    }
+
+    private async Task TraceCausation()
+    {
+        _causationLoading = true;
+        _causationError = null;
+        _causationChain = null;
+        StateHasChanged();
+
+        try
+        {
+            _causationChain = await ApiClient.TraceCausationChainAsync(
+                TenantId, Domain, AggregateId, SequenceNumber).ConfigureAwait(false);
+            if (_causationChain is null)
+            {
+                _causationError = "Causation chain not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _causationError = $"Failed to load causation chain: {ex.Message}";
+        }
+        finally
+        {
+            _causationLoading = false;
+        }
+    }
+}

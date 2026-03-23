@@ -1,0 +1,91 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using static Hexalith.EventStore.Admin.UI.Components.Shared.StatusBadge
+
+<div>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 8px;">
+        <span>Showing @Entries.Count of @TotalCount entries</span>
+        <FluentButton Appearance="Appearance.Outline"
+                      Disabled="@(!CanNavigateNewer)"
+                      OnClick="@OnNavigateNewer">
+            &#x2190; Newer
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline"
+                      Disabled="@(!CanNavigateOlder)"
+                      OnClick="@OnNavigateOlder">
+            Older &#x2192;
+        </FluentButton>
+    </FluentStack>
+
+    <FluentDataGrid Items="@Entries.AsQueryable()"
+                    TGridItem="TimelineEntry"
+                    GridTemplateColumns="80px 110px 100px 1fr 140px 100px"
+                    RowClass="@GetRowClass"
+                    OnRowClick="@HandleRowClick"
+                    Style="cursor: pointer;"
+                    aria-label="Stream timeline">
+        <PropertyColumn Property="@(e => e.SequenceNumber)"
+                        Title="Seq"
+                        Align="Align.End"
+                        Class="monospace" />
+        <TemplateColumn Title="Time">
+            <span class="monospace">@context.Timestamp.ToString("HH:mm:ss.fff")</span>
+        </TemplateColumn>
+        <TemplateColumn Title="Type">
+            <StatusBadge DisplayConfig="@StatusDisplayConfig.FromTimelineEntryType(context.EntryType)"
+                         AriaLabelPrefix="Entry type" />
+        </TemplateColumn>
+        <PropertyColumn Property="@(e => e.TypeName)" Title="Type Name" />
+        <TemplateColumn Title="Correlation" Class="timeline-col-correlation">
+            <span class="monospace" title="@context.CorrelationId">@TruncateId(context.CorrelationId)</span>
+        </TemplateColumn>
+        <TemplateColumn Title="User" Class="timeline-col-user">
+            @(context.UserId ?? "\u2014")
+        </TemplateColumn>
+    </FluentDataGrid>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<TimelineEntry> Entries { get; set; } = [];
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    [Parameter]
+    public int PageSize { get; set; } = 50;
+
+    [Parameter]
+    public bool CanNavigateNewer { get; set; }
+
+    [Parameter]
+    public bool CanNavigateOlder { get; set; }
+
+    [Parameter]
+    public EventCallback OnNavigateNewer { get; set; }
+
+    [Parameter]
+    public EventCallback OnNavigateOlder { get; set; }
+
+    [Parameter]
+    public EventCallback<TimelineEntry> OnRowClick { get; set; }
+
+    private async Task HandleRowClick(FluentDataGridRow<TimelineEntry> row)
+    {
+        if (row.Item is not null)
+        {
+            await OnRowClick.InvokeAsync(row.Item).ConfigureAwait(false);
+        }
+    }
+
+    private static string? GetRowClass(TimelineEntry entry) => entry.EntryType switch
+    {
+        TimelineEntryType.Command => "timeline-row-command",
+        TimelineEntryType.Query => "timeline-row-query",
+        _ => "timeline-row-event",
+    };
+
+    private static string TruncateId(string id)
+        => id.Length > 8 ? id[..8] + "\u2026" : id;
+}

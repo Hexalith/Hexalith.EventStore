@@ -1,4 +1,9 @@
 @using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.UI.Services
+@inject TopologyCacheService TopologyCache
+@inject DashboardRefreshService RefreshService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <nav aria-label="Main navigation">
     <FluentNavMenu Width="@Width" Title="Admin Navigation" @bind-Expanded="_expanded">
@@ -14,8 +19,33 @@
             <FluentNavLink Href="/settings" Icon="@(new Icons.Regular.Size20.Settings())">Settings</FluentNavLink>
         }
         <FluentNavGroup Title="Topology" Icon="@(new Icons.Regular.Size20.BranchFork())" Expanded="false">
-            <FluentTreeView>
-            </FluentTreeView>
+            @if (!TopologyCache.IsLoaded)
+            {
+                <FluentTreeView>
+                    <FluentTreeItem Text="Loading..." Disabled="true" />
+                </FluentTreeView>
+            }
+            else if (TopologyCache.Tenants.Count == 0)
+            {
+                <FluentTreeView>
+                    <FluentTreeItem Text="No tenants" Disabled="true" />
+                </FluentTreeView>
+            }
+            else
+            {
+                <FluentTreeView>
+                    @foreach (var tenant in TopologyCache.Tenants)
+                    {
+                        <FluentTreeItem Text="@tenant.TenantId" Expanded="false">
+                            @foreach (string domain in TopologyCache.Domains)
+                            {
+                                <FluentTreeItem Text="@domain"
+                                                @onclick="@(() => NavigateToStreams(tenant.TenantId, domain))" />
+                            }
+                        </FluentTreeItem>
+                    }
+                </FluentTreeView>
+            }
         </FluentNavGroup>
     </FluentNavMenu>
 </nav>
@@ -28,4 +58,33 @@
     public AdminRole UserRole { get; set; } = AdminRole.ReadOnly;
 
     private bool _expanded = true;
+    private bool _disposed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        RefreshService.OnDataChanged += OnDataChanged;
+        await TopologyCache.EnsureLoadedAsync().ConfigureAwait(false);
+    }
+
+    private async void OnDataChanged(DashboardData data)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await TopologyCache.RefreshAsync().ConfigureAwait(false);
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+    }
+
+    private void NavigateToStreams(string tenantId, string domain)
+    {
+        Navigation.NavigateTo($"/streams?tenant={Uri.EscapeDataString(tenantId)}&domain={Uri.EscapeDataString(domain)}");
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        RefreshService.OnDataChanged -= OnDataChanged;
+    }
 }
