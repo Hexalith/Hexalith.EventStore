@@ -18,7 +18,8 @@ public static class CommandPaletteCatalog
         new("Actions", "Settings", "/settings"),
         new("Streams", "Recent Activity", "/streams"),
         new("Streams", "Inspect stream metadata", "/commands"),
-        new("Projections", "Projection Dashboard", "/health"),
+        new("Actions", "Projections", "/projections"),
+        new("Projections", "Projection Dashboard", "/projections"),
         new("Tenants", "Manage Tenants", "/tenants"),
     ];
 

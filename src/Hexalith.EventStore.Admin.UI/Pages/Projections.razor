@@ -1,0 +1,385 @@
+@page "/projections"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Projections
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IAsyncDisposable
+
+@inject AdminProjectionApiClient ApiClient
+@inject DashboardRefreshService RefreshService
+@inject ViewportService Viewport
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Projections - Hexalith EventStore Admin</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Projections</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="OnManualRefresh"
+                  aria-label="Refresh projections">
+        Refresh
+    </FluentButton>
+</div>
+
+@if (_isLoading)
+{
+    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+    </div>
+}
+else if (_hasError)
+{
+    <IssueBanner Visible="true"
+                 Title="Unable to load projections"
+                 Description="Service may be unavailable."
+                 ActionLabel="Retry"
+                 OnAction="OnRetry" />
+}
+else
+{
+    <!-- Summary stat cards -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+        <StatCard Label="Total Projections" Value="@_allProjections.Count.ToString()" Severity="neutral" />
+        <StatCard Label="Running" Value="@_runningCount.ToString()" Severity="success" />
+        <StatCard Label="Unhealthy"
+                  Value="@_unhealthyCount.ToString()"
+                  Severity="@(_errorCount > 0 ? "error" : _unhealthyCount > 0 ? "warning" : "neutral")" />
+        <StatCard Label="Max Lag"
+                  Value="@(_allProjections.Count == 0 ? "—" : _maxLag.ToString("N0"))"
+                  Severity="@(_maxLag > 1000 ? "error" : _maxLag > 100 ? "warning" : "success")"
+                  Title="@_maxLagTitle" />
+    </div>
+
+    <!-- Filters -->
+    <ProjectionFilterBar SelectedStatus="@_statusFilter"
+                         SelectedStatusChanged="OnStatusFilterChanged"
+                         SelectedTenantId="@_tenantFilter"
+                         SelectedTenantIdChanged="OnTenantFilterChanged"
+                         Tenants="_tenantList" />
+
+    <!-- Grid + Detail Panel -->
+    <div style="display: flex; gap: 16px; @(Viewport.IsWideViewport ? "flex-direction: row;" : "flex-direction: column;")">
+        <div style="@(Viewport.IsWideViewport && _selectedTenantId is not null ? "flex: 1; min-width: 0;" : "")">
+            @if (_filteredProjections.Count == 0)
+            {
+                <EmptyState Title="No projections found"
+                            Description="@(_statusFilter != "All" || !string.IsNullOrEmpty(_tenantFilter) ? "No projections match the current filters." : "No projections found.")" />
+            }
+            else
+            {
+                <FluentDataGrid Items="@_filteredProjections.AsQueryable()" TGridItem="ProjectionStatus"
+                                Style="width: 100%;"
+                                OnRowClick="@(row => OnRowClick(row.Item))"
+                                aria-label="Projections list"
+                                GridTemplateColumns="100px 100px 100px 80px 100px 80px 100px 120px">
+                    <PropertyColumn Property="@(p => p.Name)" Title="Name" Class="monospace" Sortable="true" />
+                    <PropertyColumn Property="@(p => p.TenantId)" Title="Tenant" Class="monospace" Sortable="true" />
+                    <TemplateColumn Title="Status"
+                                    SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => GetStatusSortOrder(p.Status) * 1_000_000 + p.Lag))">
+                        <ProjectionStatusBadge Status="@context.Status" />
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(p => p.Lag)" Title="Lag" Align="Align.End" Sortable="true" />
+                    <TemplateColumn Title="Throughput" Align="Align.End"
+                                    SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => p.Throughput))">
+                        @context.Throughput.ToString("F1") /s
+                    </TemplateColumn>
+                    <TemplateColumn Title="Errors" Align="Align.End"
+                                    SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => p.ErrorCount))">
+                        <span style="@(context.ErrorCount > 0 ? "color: var(--hexalith-status-error); font-weight: 600;" : "")">
+                            @context.ErrorCount
+                        </span>
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(p => p.LastProcessedPosition)" Title="Last Position" Align="Align.End" Class="monospace" Sortable="true" />
+                    <TemplateColumn Title="Last Processed"
+                                    SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => p.LastProcessedUtc))">
+                        <span title="@context.LastProcessedUtc.ToString("O")">
+                            @FormatRelativeTime(context.LastProcessedUtc)
+                        </span>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+        </div>
+
+        @if (_selectedTenantId is not null && _selectedProjectionName is not null)
+        {
+            <div style="@(Viewport.IsWideViewport ? "width: 420px; flex-shrink: 0;" : "")">
+                <ProjectionDetailPanel TenantId="@_selectedTenantId"
+                                       ProjectionName="@_selectedProjectionName"
+                                       OnClose="OnDetailClose" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _hasError;
+    private string _statusFilter = "All";
+    private string _tenantFilter = string.Empty;
+    private string? _selectedTenantId;
+    private string? _selectedProjectionName;
+
+    private IReadOnlyList<ProjectionStatus> _allProjections = [];
+    private List<ProjectionStatus> _filteredProjections = [];
+    private IReadOnlyList<string>? _tenantList;
+
+    private int _runningCount;
+    private int _unhealthyCount;
+    private int _errorCount;
+    private long _maxLag;
+    private string _maxLagTitle = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        await LoadDataAsync().ConfigureAwait(false);
+        RefreshService.OnDataChanged += OnRefreshSignal;
+    }
+
+    private void OnRefreshSignal(DashboardData data)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadDataAsync().ConfigureAwait(false);
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        RefreshService.OnDataChanged -= OnRefreshSignal;
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query =
+            System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        string? tenant = query["tenant"];
+        if (!string.IsNullOrEmpty(tenant))
+        {
+            _tenantFilter = tenant;
+        }
+
+        string? status = query["status"];
+        if (!string.IsNullOrEmpty(status))
+        {
+            _statusFilter = status switch
+            {
+                "running" => "Running",
+                "paused" => "Paused",
+                "error" => "Error",
+                "rebuilding" => "Rebuilding",
+                _ => "All",
+            };
+        }
+
+        string? projection = query["projection"];
+        if (!string.IsNullOrEmpty(projection) && !string.IsNullOrEmpty(tenant))
+        {
+            _selectedTenantId = tenant;
+            _selectedProjectionName = projection;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = _allProjections.Count == 0;
+
+        try
+        {
+            string? tenantId = string.IsNullOrEmpty(_tenantFilter) ? null : _tenantFilter;
+            _allProjections = await ApiClient.ListProjectionsAsync(tenantId).ConfigureAwait(false);
+            _hasError = false;
+
+            // Compute stats
+            _runningCount = _allProjections.Count(p => p.Status == ProjectionStatusType.Running);
+            _errorCount = _allProjections.Count(p => p.Status == ProjectionStatusType.Error);
+            _unhealthyCount = _allProjections.Count(p => p.Status is ProjectionStatusType.Paused
+                or ProjectionStatusType.Error or ProjectionStatusType.Rebuilding);
+
+            if (_allProjections.Count > 0)
+            {
+                ProjectionStatus maxLagProjection = _allProjections.MaxBy(p => p.Lag)!;
+                _maxLag = maxLagProjection.Lag;
+                _maxLagTitle = $"{maxLagProjection.Name}: {_maxLag:N0} events";
+            }
+            else
+            {
+                _maxLag = 0;
+                _maxLagTitle = "No projections";
+            }
+
+            // Build tenant list from data
+            List<string> tenants = _allProjections.Select(p => p.TenantId).Distinct().OrderBy(t => t).ToList();
+            _tenantList = tenants;
+
+            // Preserve selected projection
+            if (_selectedTenantId is not null && _selectedProjectionName is not null)
+            {
+                bool stillExists = _allProjections.Any(p =>
+                    p.Name == _selectedProjectionName && p.TenantId == _selectedTenantId);
+                if (!stillExists)
+                {
+                    _selectedTenantId = null;
+                    _selectedProjectionName = null;
+                    ToastService.ShowWarning("Projection no longer available");
+                }
+            }
+
+            ApplyFilters();
+        }
+        catch (Exception)
+        {
+            _hasError = true;
+            _allProjections = [];
+            _filteredProjections = [];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<ProjectionStatus> filtered = _allProjections;
+
+        if (_statusFilter != "All" && Enum.TryParse<ProjectionStatusType>(_statusFilter, out ProjectionStatusType statusType))
+        {
+            filtered = filtered.Where(p => p.Status == statusType);
+        }
+
+        // Default sort: Error > Paused > Rebuilding > Running, then Lag descending
+        _filteredProjections = filtered
+            .OrderByDescending(p => GetStatusSortOrder(p.Status))
+            .ThenByDescending(p => p.Lag)
+            .ToList();
+    }
+
+    private static int GetStatusSortOrder(ProjectionStatusType status) => status switch
+    {
+        ProjectionStatusType.Error => 3,
+        ProjectionStatusType.Paused => 2,
+        ProjectionStatusType.Rebuilding => 1,
+        ProjectionStatusType.Running => 0,
+        _ => -1,
+    };
+
+    private void OnRowClick(ProjectionStatus? projection)
+    {
+        if (projection is null)
+        {
+            return;
+        }
+
+        _selectedTenantId = projection.TenantId;
+        _selectedProjectionName = projection.Name;
+        UpdateUrl();
+    }
+
+    private void OnDetailClose()
+    {
+        _selectedTenantId = null;
+        _selectedProjectionName = null;
+        UpdateUrl();
+    }
+
+    private async Task OnStatusFilterChanged(string status)
+    {
+        _statusFilter = status;
+        ApplyFilters();
+        UpdateUrl();
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private async Task OnTenantFilterChanged(string tenantId)
+    {
+        _tenantFilter = tenantId;
+        await LoadDataAsync().ConfigureAwait(false);
+        UpdateUrl();
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnRetry()
+    {
+        await LoadDataAsync().ConfigureAwait(false);
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParts = [];
+
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParts.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (_statusFilter != "All")
+        {
+            queryParts.Add($"status={_statusFilter.ToLowerInvariant()}");
+        }
+
+        if (_selectedProjectionName is not null && _selectedTenantId is not null)
+        {
+            // P6: Always use the selected projection's tenant for the deep-link,
+            // overriding the filter tenant if they differ
+            queryParts.RemoveAll(q => q.StartsWith("tenant=", StringComparison.Ordinal));
+            queryParts.Add($"tenant={Uri.EscapeDataString(_selectedTenantId)}");
+            queryParts.Add($"projection={Uri.EscapeDataString(_selectedProjectionName)}");
+        }
+
+        string url = queryParts.Count > 0
+            ? $"/projections?{string.Join('&', queryParts)}"
+            : "/projections";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset timestamp)
+    {
+        if (timestamp == DateTimeOffset.MinValue)
+        {
+            return "Never";
+        }
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - timestamp;
+        if (elapsed < TimeSpan.Zero)
+        {
+            return "Just now";
+        }
+
+        if (elapsed.TotalSeconds < 60)
+        {
+            return $"{(int)elapsed.TotalSeconds}s ago";
+        }
+
+        if (elapsed.TotalMinutes < 60)
+        {
+            return $"{(int)elapsed.TotalMinutes}m ago";
+        }
+
+        if (elapsed.TotalHours < 24)
+        {
+            return $"{(int)elapsed.TotalHours}h ago";
+        }
+
+        return $"{(int)elapsed.TotalDays}d ago";
+    }
+}

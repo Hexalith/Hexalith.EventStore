@@ -1,0 +1,62 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Projections
+
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+    <div style="display: flex; gap: 4px;" role="radiogroup" aria-label="Filter by status">
+        @foreach (string status in _statusOptions)
+        {
+            <FluentButton Appearance="@(status == SelectedStatus ? Appearance.Accent : Appearance.Outline)"
+                          Size="ButtonSize.Small"
+                          OnClick="@(() => OnStatusClick(status))"
+                          aria-pressed="@(status == SelectedStatus ? "true" : "false")">
+                @status
+            </FluentButton>
+        }
+    </div>
+
+    @if (Tenants is not null && Tenants.Count > 1)
+    {
+        <FluentSelect TOption="string"
+                      Value="@SelectedTenantId"
+                      ValueChanged="OnTenantChanged"
+                      aria-label="Filter by tenant"
+                      Style="min-width: 160px;">
+            <FluentOption Value="">All Tenants</FluentOption>
+            @foreach (string tenant in Tenants)
+            {
+                <FluentOption Value="@tenant">@tenant</FluentOption>
+            }
+        </FluentSelect>
+    }
+</div>
+
+@code {
+    private static readonly string[] _statusOptions = ["All", "Running", "Paused", "Error", "Rebuilding"];
+
+    [Parameter]
+    public string SelectedStatus { get; set; } = "All";
+
+    [Parameter]
+    public EventCallback<string> SelectedStatusChanged { get; set; }
+
+    [Parameter]
+    public string SelectedTenantId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SelectedTenantIdChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string>? Tenants { get; set; }
+
+    private async Task OnStatusClick(string status)
+    {
+        SelectedStatus = status;
+        await SelectedStatusChanged.InvokeAsync(status).ConfigureAwait(false);
+    }
+
+    private async Task OnTenantChanged(string? tenantId)
+    {
+        SelectedTenantId = tenantId ?? string.Empty;
+        await SelectedTenantIdChanged.InvokeAsync(SelectedTenantId).ConfigureAwait(false);
+    }
+}
