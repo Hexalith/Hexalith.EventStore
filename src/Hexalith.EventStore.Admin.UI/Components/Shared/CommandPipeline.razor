@@ -1,0 +1,49 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+
+<div class="command-pipeline" role="list" aria-label="Command lifecycle stages">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="0" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+        @foreach ((string stage, int index) in _stages.Select((s, i) => (s, i)))
+        {
+            @if (index > 0)
+            {
+                <span class="pipeline-chevron" aria-hidden="true">&#x276F;</span>
+            }
+            <FluentBadge Appearance="@GetAppearance(stage)"
+                         aria-label="@($"Stage: {stage}")"
+                         tabindex="0"
+                         Class="pipeline-stage">
+                @stage
+            </FluentBadge>
+        }
+    </FluentStack>
+</div>
+
+@code {
+    private static readonly string[] _stages =
+    [
+        "Received",
+        "Processing",
+        "EventsStored",
+        "EventsPublished",
+        "Completed",
+        "Rejected",
+        "PublishFailed",
+        "TimedOut",
+    ];
+
+    /// <summary>
+    /// The currently active stage name, or null for static/educational display.
+    /// </summary>
+    [Parameter]
+    public string? ActiveStage { get; set; }
+
+    private Appearance GetAppearance(string stage)
+    {
+        if (ActiveStage is not null && string.Equals(stage, ActiveStage, StringComparison.OrdinalIgnoreCase))
+        {
+            return Appearance.Accent;
+        }
+
+        return Appearance.Outline;
+    }
+}

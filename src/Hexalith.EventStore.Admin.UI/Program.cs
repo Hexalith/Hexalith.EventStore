@@ -36,6 +36,12 @@ builder.Services.AddScoped<AdminStreamApiClient>();
 // Dashboard polling refresh service
 builder.Services.AddScoped<DashboardRefreshService>();
 
+// Viewport detection for responsive layout
+builder.Services.AddScoped<ViewportService>();
+
+// Topology cache for sidebar tree
+builder.Services.AddScoped<TopologyCacheService>();
+
 // SignalR client for real-time projection change signals
 string signalRHubUrl = builder.Configuration["EventStore:SignalR:HubUrl"]
     ?? "https+http://commandapi/hubs/projection-changes";

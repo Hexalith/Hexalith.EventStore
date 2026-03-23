@@ -49,6 +49,7 @@ public class AdminUITestContext : BunitContext {
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance));
         Services.AddScoped<DashboardRefreshService>();
+        Services.AddScoped<TopologyCacheService>();
 
         // SignalR client with test-safe disposal
         TestSignalRClient testSignalRClient = new();

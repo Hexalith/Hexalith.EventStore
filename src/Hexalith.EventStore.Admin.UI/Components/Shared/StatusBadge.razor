@@ -57,5 +57,17 @@
             StreamStatus.Tombstoned => new("Tombstoned", "\u2612", "var(--hexalith-status-error)"),
             _ => new(status.ToString(), "\u2022", "var(--hexalith-status-neutral)"),
         };
+
+        /// <summary>
+        /// Creates a <see cref="StatusDisplayConfig"/> from a <see cref="TimelineEntryType"/> value.
+        /// </summary>
+        public static StatusDisplayConfig FromTimelineEntryType(TimelineEntryType entryType) => entryType switch
+        {
+            TimelineEntryType.Command => new("Command", "\u25B6", "var(--hexalith-status-inflight)"),
+            TimelineEntryType.Event => new("Event", "\u26A1", "var(--hexalith-status-success)"),
+            // Query entries may not be produced by the server yet — filter chip will show zero results
+            TimelineEntryType.Query => new("Query", "\u2315", "var(--hexalith-status-neutral)"),
+            _ => new(entryType.ToString(), "\u2022", "var(--hexalith-status-neutral)"),
+        };
     }
 }

@@ -1,13 +1,159 @@
 @page "/streams/{TenantId}/{Domain}/{AggregateId}"
+@namespace Hexalith.EventStore.Admin.UI.Pages
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+@using static Hexalith.EventStore.Admin.UI.Components.Shared.StatusBadge
+@implements IDisposable
+@inject AdminStreamApiClient ApiClient
+@inject DashboardRefreshService RefreshService
+@inject NavigationManager Navigation
 
-<PageTitle>Stream Detail - Hexalith EventStore Admin</PageTitle>
+<PageTitle>Stream @AggregateId - Hexalith EventStore</PageTitle>
 
-<h1>Stream Detail</h1>
+<nav class="admin-breadcrumb" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="separator" aria-hidden="true">/</span>
+    <a href="/streams">Streams</a>
+    <span class="separator" aria-hidden="true">/</span>
+    <a href="@($"/streams?tenant={Uri.EscapeDataString(TenantId)}")">@TenantId</a>
+    <span class="separator" aria-hidden="true">/</span>
+    <a href="@($"/streams?tenant={Uri.EscapeDataString(TenantId)}&domain={Uri.EscapeDataString(Domain)}")">@Domain</a>
+    <span class="separator" aria-hidden="true">/</span>
+    <span class="current">@AggregateId</span>
+</nav>
 
-<EmptyState Title="Stream detail view coming in story 15-3."
-            Description="@($"Stream: {TenantId}/{Domain}/{AggregateId}")" />
+@if (_loading)
+{
+    <div class="stat-card-grid" style="margin: 16px 0;">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+    </div>
+    <p>Loading stream...</p>
+}
+else if (_error is not null)
+{
+    <EmptyState Title="Unable to load timeline. Check Admin API connection."
+                Description="@_error"
+                ActionLabel="Retry"
+                ActionHref="@Navigation.Uri" />
+}
+else
+{
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="16" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin: 16px 0 8px 0;">
+        <h1 style="margin: 0; font-size: 20px;">
+            <span class="monospace">@TenantId / @Domain / @AggregateId</span>
+        </h1>
+        @if (_streamStatus.HasValue)
+        {
+            <StatusBadge DisplayConfig="@StatusDisplayConfig.FromStreamStatus(_streamStatus.Value)"
+                         AriaLabelPrefix="Stream status" />
+        }
+    </FluentStack>
+
+    <div class="stat-card-grid" style="margin-bottom: 16px;">
+        <StatCard Label="Event Count" Value="@_eventCount.ToString()" />
+        <StatCard Label="Last Activity" Value="@FormatRelativeTime(_lastActivity)" />
+        <StatCard Label="Stream Status" Value="@(_streamStatus?.ToString() ?? "Unknown")" />
+        <StatCard Label="Has Snapshot" Value="@(_hasSnapshot ? "Yes" : "No")" />
+    </div>
+
+    <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
+                       @bind-SelectedEntryType:after="OnFilterChanged"
+                       @bind-CorrelationFilter="_correlationFilter"
+                       @bind-CorrelationFilter:after="OnFilterChanged" />
+
+    @if (_selectedSequence.HasValue && !_isWideViewport)
+    {
+        <div style="margin-top: 16px;">
+            <FluentButton Appearance="Appearance.Outline"
+                          OnClick="@CloseDetailPanel"
+                          aria-label="Close detail panel">
+                &#x2190; Back to timeline
+            </FluentButton>
+            <div style="margin-top: 8px;" role="complementary" aria-label="Timeline entry detail">
+                @if (_selectedEntry?.EntryType == TimelineEntryType.Event)
+                {
+                    <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                                      SequenceNumber="@_selectedEntry.SequenceNumber"
+                                      OnCopyCorrelation="@OnCorrelationFilterFromDetail" />
+                }
+                else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
+                {
+                    <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OnCorrelationFilterFromDetail" />
+                }
+            </div>
+        </div>
+    }
+    else if (_selectedSequence.HasValue && _isWideViewport)
+    {
+        <div style="margin-top: 16px; display: flex; gap: 16px; min-height: 500px;">
+            <div style="flex: 6;">
+                <StreamTimelineGrid Entries="@_timelineEntries" TotalCount="@_totalCount" PageSize="@PageSize"
+                                     CanNavigateNewer="@(_fromSequence is not null || _toSequence is not null)"
+                                     CanNavigateOlder="@(_timelineEntries.Count >= PageSize)"
+                                     OnNavigateNewer="@NavigateNewer" OnNavigateOlder="@NavigateOlder"
+                                     OnRowClick="@SelectEntry" />
+            </div>
+            <div style="flex: 4; border-left: 1px solid var(--neutral-stroke-divider-rest); padding-left: 16px;">
+                <FluentButton Appearance="Appearance.Lightweight" OnClick="@CloseDetailPanel"
+                              aria-label="Close detail panel" Title="Close" Style="margin-bottom: 8px;">
+                    &#x2716;
+                </FluentButton>
+                <div role="complementary" aria-label="Timeline entry detail">
+                    @if (_selectedEntry?.EntryType == TimelineEntryType.Event)
+                    {
+                        <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                                          SequenceNumber="@_selectedEntry.SequenceNumber"
+                                          OnCopyCorrelation="@OnCorrelationFilterFromDetail" />
+                    }
+                    else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
+                    {
+                        <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OnCorrelationFilterFromDetail" />
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div style="margin-top: 16px;">
+            <StreamTimelineGrid Entries="@_timelineEntries" TotalCount="@_totalCount" PageSize="@PageSize"
+                                 CanNavigateNewer="@(_fromSequence is not null || _toSequence is not null)"
+                                 CanNavigateOlder="@(_timelineEntries.Count >= PageSize)"
+                                 OnNavigateNewer="@NavigateNewer" OnNavigateOlder="@NavigateOlder"
+                                 OnRowClick="@SelectEntry" />
+        </div>
+    }
+}
 
 @code {
+    private const int PageSize = 50;
+    private const int FilteredPageSize = 500;
+
+    private bool _loading = true;
+    private bool _disposed;
+    private string? _error;
+    private bool _isWideViewport = true;
+
+    private long _eventCount;
+    private DateTimeOffset? _lastActivity;
+    private StreamStatus? _streamStatus;
+    private bool _hasSnapshot = false;
+
+    private List<TimelineEntry> _timelineEntries = [];
+    private int _totalCount;
+    private long? _fromSequence;
+    private long? _toSequence;
+
+    private TimelineEntryType? _selectedEntryType;
+    private string? _correlationFilter;
+
+    private long? _selectedSequence;
+    private TimelineEntry? _selectedEntry;
+
     [Parameter]
     public string TenantId { get; set; } = string.Empty;
 
@@ -16,4 +162,228 @@
 
     [Parameter]
     public string AggregateId { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public long? QueryFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public long? QueryTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? QueryType { get; set; }
+
+    [SupplyParameterFromQuery(Name = "correlation")]
+    public string? QueryCorrelation { get; set; }
+
+    [SupplyParameterFromQuery(Name = "detail")]
+    public long? QueryDetail { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _fromSequence = QueryFrom;
+        _toSequence = QueryTo;
+        _correlationFilter = QueryCorrelation;
+        _selectedSequence = QueryDetail;
+
+        if (!string.IsNullOrEmpty(QueryType) && Enum.TryParse<TimelineEntryType>(QueryType, true, out TimelineEntryType t))
+        {
+            _selectedEntryType = t;
+        }
+
+        RefreshService.OnDataChanged += OnDataChanged;
+        await LoadTimelineAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadTimelineAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            bool hasFilters = _selectedEntryType.HasValue || !string.IsNullOrEmpty(_correlationFilter);
+            int count = hasFilters ? FilteredPageSize : PageSize;
+
+            PagedResult<TimelineEntry> result = await ApiClient.GetStreamTimelineAsync(
+                TenantId, Domain, AggregateId, _fromSequence, _toSequence, count)
+                .ConfigureAwait(false);
+
+            _totalCount = result.TotalCount;
+
+            if (result.Items.Count > 0)
+            {
+                _lastActivity = result.Items.Max(e => e.Timestamp);
+                _eventCount = _totalCount;
+                _streamStatus = StreamStatus.Active;
+            }
+
+            IEnumerable<TimelineEntry> filtered = result.Items;
+            if (_selectedEntryType.HasValue)
+            {
+                filtered = filtered.Where(e => e.EntryType == _selectedEntryType.Value);
+            }
+
+            if (!string.IsNullOrEmpty(_correlationFilter))
+            {
+                filtered = filtered.Where(e =>
+                    e.CorrelationId.StartsWith(_correlationFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            _timelineEntries = filtered.OrderByDescending(e => e.SequenceNumber).ToList();
+
+            if (_selectedSequence.HasValue)
+            {
+                _selectedEntry = _timelineEntries
+                    .FirstOrDefault(e => e.SequenceNumber == _selectedSequence.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async void OnDataChanged(DashboardData data)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await InvokeAsync(async () =>
+        {
+            await LoadTimelineAsync().ConfigureAwait(false);
+            StateHasChanged();
+        }).ConfigureAwait(false);
+    }
+
+    private async Task OnFilterChanged()
+    {
+        _fromSequence = null;
+        _toSequence = null;
+        UpdateUrl();
+        await LoadTimelineAsync().ConfigureAwait(false);
+    }
+
+    private async Task NavigateOlder()
+    {
+        if (_timelineEntries.Count > 0)
+        {
+            long minSeq = _timelineEntries.Min(e => e.SequenceNumber);
+            _toSequence = minSeq - 1;
+            _fromSequence = null;
+            UpdateUrl();
+            await LoadTimelineAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task NavigateNewer()
+    {
+        if (_timelineEntries.Count > 0)
+        {
+            long maxSeq = _timelineEntries.Max(e => e.SequenceNumber);
+            _fromSequence = maxSeq + 1;
+            _toSequence = null;
+            UpdateUrl();
+            await LoadTimelineAsync().ConfigureAwait(false);
+        }
+    }
+
+    private void SelectEntry(TimelineEntry entry)
+    {
+        if (_selectedSequence == entry.SequenceNumber)
+        {
+            CloseDetailPanel();
+            return;
+        }
+
+        _selectedSequence = entry.SequenceNumber;
+        _selectedEntry = entry;
+        UpdateUrl();
+    }
+
+    private void CloseDetailPanel()
+    {
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void OnCorrelationFilterFromDetail(string correlationId)
+    {
+        _correlationFilter = correlationId;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+        _ = LoadTimelineAsync();
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (_fromSequence.HasValue)
+        {
+            queryParams.Add($"from={_fromSequence.Value}");
+        }
+
+        if (_toSequence.HasValue)
+        {
+            queryParams.Add($"to={_toSequence.Value}");
+        }
+
+        if (_selectedEntryType.HasValue)
+        {
+            queryParams.Add($"type={_selectedEntryType.Value.ToString().ToLowerInvariant()}");
+        }
+
+        if (!string.IsNullOrEmpty(_correlationFilter))
+        {
+            queryParams.Add($"correlation={Uri.EscapeDataString(_correlationFilter)}");
+        }
+
+        if (_selectedSequence.HasValue)
+        {
+            queryParams.Add($"detail={_selectedSequence.Value}");
+        }
+
+        string path = $"/streams/{Uri.EscapeDataString(TenantId)}/{Uri.EscapeDataString(Domain)}/{Uri.EscapeDataString(AggregateId)}";
+        string url = queryParams.Count > 0 ? $"{path}?{string.Join('&', queryParams)}" : path;
+        Navigation.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset? timestamp)
+    {
+        if (!timestamp.HasValue)
+        {
+            return "\u2014";
+        }
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - timestamp.Value;
+        if (elapsed.TotalMinutes < 1)
+        {
+            return "Just now";
+        }
+
+        if (elapsed.TotalMinutes < 60)
+        {
+            return $"{(int)elapsed.TotalMinutes}m ago";
+        }
+
+        if (elapsed.TotalHours < 24)
+        {
+            return $"{(int)elapsed.TotalHours}h ago";
+        }
+
+        return $"{(int)elapsed.TotalDays}d ago";
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        RefreshService.OnDataChanged -= OnDataChanged;
+    }
 }

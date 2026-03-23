@@ -1,0 +1,151 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using System.Text.Json
+@using System.Text.RegularExpressions
+
+<div class="json-viewer" style="max-height: @(MaxHeight)px; overflow: auto;" role="code" aria-label="@AriaLabel">
+    @if (string.IsNullOrWhiteSpace(Json))
+    {
+        <div class="json-viewer__empty">No data</div>
+    }
+    else if (_isInvalid)
+    {
+        <div class="json-viewer__warning" role="alert">
+            <span>&#x26A0; Invalid JSON</span>
+        </div>
+        <pre class="json-viewer__raw"><code>@Json</code></pre>
+    }
+    else if (_isTruncated)
+    {
+        <pre class="json-viewer__code"><code>@((MarkupString)_highlightedLines)</code></pre>
+        @if (!_showFull)
+        {
+            <button class="json-viewer__show-all" @onclick="ShowFullPayload">
+                Show full payload (@(_totalLines) lines)
+            </button>
+        }
+    }
+    else
+    {
+        <pre class="json-viewer__code"><code>@((MarkupString)_highlightedLines)</code></pre>
+    }
+</div>
+
+@code {
+    private const int MaxLines = 500;
+    private const int MaxBytes = 102400; // 100KB
+
+    [Parameter]
+    public string? Json { get; set; }
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "JSON content";
+
+    [Parameter]
+    public bool Collapsed { get; set; }
+
+    [Parameter]
+    public int MaxHeight { get; set; } = 400;
+
+    private string _highlightedLines = string.Empty;
+    private bool _isInvalid;
+    private bool _isTruncated;
+    private bool _showFull;
+    private int _totalLines;
+    private string? _formattedJson;
+    private string? _previousJson;
+
+    protected override void OnParametersSet()
+    {
+        if (Json == _previousJson)
+        {
+            return;
+        }
+
+        _previousJson = Json;
+        _showFull = false;
+        FormatAndHighlight();
+    }
+
+    private void FormatAndHighlight()
+    {
+        if (string.IsNullOrWhiteSpace(Json))
+        {
+            _highlightedLines = string.Empty;
+            _isInvalid = false;
+            _isTruncated = false;
+            return;
+        }
+
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(Json);
+            _formattedJson = JsonSerializer.Serialize(doc, new JsonSerializerOptions { WriteIndented = true });
+            _isInvalid = false;
+        }
+        catch (JsonException)
+        {
+            _isInvalid = true;
+            _formattedJson = null;
+            return;
+        }
+
+        string[] lines = _formattedJson.Split('\n');
+        _totalLines = lines.Length;
+        _isTruncated = !_showFull && (_totalLines > MaxLines || _formattedJson.Length > MaxBytes);
+
+        int lineCount = _isTruncated ? MaxLines : _totalLines;
+        _highlightedLines = BuildHighlightedHtml(lines, lineCount);
+    }
+
+    private void ShowFullPayload()
+    {
+        _showFull = true;
+        FormatAndHighlight();
+    }
+
+    private static string BuildHighlightedHtml(string[] lines, int lineCount)
+    {
+        System.Text.StringBuilder sb = new();
+        for (int i = 0; i < lineCount && i < lines.Length; i++)
+        {
+            string line = System.Net.WebUtility.HtmlEncode(lines[i]);
+            string highlighted = HighlightTokens(line);
+            sb.Append($"<span class=\"json-line\"><span class=\"json-line-number\">{i + 1}</span>{highlighted}</span>\n");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string HighlightTokens(string line)
+    {
+        // Keys: "key":
+        line = Regex.Replace(line, @"(&quot;[^&]*?&quot;)\s*:", "<span class=\"json-key\">$1</span>:");
+
+        // Strings (remaining quoted values not already wrapped)
+        line = Regex.Replace(line, @"(?<!class=&quot;json-key&quot;&gt;)(&quot;[^&]*?&quot;)", match =>
+        {
+            // Skip if already wrapped as key
+            if (match.Index > 0 && line.AsSpan(0, match.Index).Contains("json-key", StringComparison.Ordinal))
+            {
+                int lastClose = line.LastIndexOf("</span>", match.Index, StringComparison.Ordinal);
+                if (lastClose >= 0 && lastClose + 7 >= match.Index)
+                {
+                    return match.Value;
+                }
+            }
+
+            return $"<span class=\"json-string\">{match.Value}</span>";
+        });
+
+        // Booleans
+        line = Regex.Replace(line, @"\b(true|false)\b", "<span class=\"json-boolean\">$1</span>");
+
+        // Null
+        line = Regex.Replace(line, @"\bnull\b", "<span class=\"json-null\">$1</span>");
+
+        // Numbers
+        line = Regex.Replace(line, @"(?<=:\s*)(-?\d+\.?\d*(?:[eE][+-]?\d+)?)", "<span class=\"json-number\">$1</span>");
+
+        return line;
+    }
+}
