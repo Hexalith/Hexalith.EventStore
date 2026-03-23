@@ -33,6 +33,8 @@ public class ProductionDaprComponentValidationTests {
             "pubsub-servicebus.yaml",
             "resiliency.yaml",
             "accesscontrol.yaml",
+            "accesscontrol.admin-server.yaml",
+            "accesscontrol.sample.yaml",
             "subscription-sample-counter.yaml",
         ];
 
@@ -53,17 +55,17 @@ public class ProductionDaprComponentValidationTests {
             .ShouldBe("true", $"{fileName} must have actorStateStore enabled for DAPR actor state management");
     }
 
-    // --- ProductionStateStores_ScopedToCommandApiOnly ---
+    // --- ProductionStateStores_ScopedToCommandApiAndAdminServer ---
 
     [Theory]
     [InlineData("statestore-postgresql.yaml")]
     [InlineData("statestore-cosmosdb.yaml")]
-    public void ProductionStateStores_ScopedToCommandApiOnly(string fileName) {
+    public void ProductionStateStores_ScopedToCommandApiAndAdminServer(string fileName) {
         Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, fileName));
         List<object>? scopes = GetScopes(doc);
         _ = scopes.ShouldNotBeNull($"{fileName} must have scopes defined");
-        scopes.Count.ShouldBe(1, $"{fileName} scopes must contain exactly one entry (commandapi only)");
-        scopes[0]?.ToString().ShouldBe("commandapi", $"{fileName} must be scoped to commandapi only (D4)");
+        scopes.Count.ShouldBe(2, $"{fileName} scopes must contain exactly two entries (commandapi and admin-server)");
+        scopes.Select(s => s?.ToString()).ShouldBe(["commandapi", "admin-server"], ignoreOrder: true);
     }
 
     // --- ProductionPubSubs_HaveDeadLetterEnabled ---
@@ -91,24 +93,66 @@ public class ProductionDaprComponentValidationTests {
     // --- ProductionAccessControl_DefaultActionIsDeny ---
 
     [Fact]
-    public void ProductionAccessControl_DefaultActionIsDeny() {
+    public void ProductionCommandApiAccessControl_DefaultActionIsDeny() {
         Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
-            .ShouldBe("deny", "Production access control must have defaultAction: deny (D4)");
+            .ShouldBe("deny", "Production CommandApi access control must have defaultAction: deny (D4)");
     }
 
     // --- ProductionAccessControl_CommandApiCanPostOnly ---
 
     [Fact]
-    public void ProductionAccessControl_CommandApiCanPostOnly() {
+    public void ProductionCommandApiAccessControl_AdminServerCanInvokeGetPostPut() {
         Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
+
+        Dictionary<object, object>? adminServerPolicy = policies
+            .Cast<Dictionary<object, object>>()
+            .FirstOrDefault(p => GetString(p, "appId") == "admin-server");
+        _ = adminServerPolicy.ShouldNotBeNull("Production CommandApi access control must have an admin-server policy");
+
+        List<object>? operations = adminServerPolicy.TryGetValue("operations", out object? ops)
+            ? ops as List<object> : null;
+        _ = operations.ShouldNotBeNull("admin-server policy must have operations");
+
+        Dictionary<object, object>? wildcardOp = operations!
+            .Cast<Dictionary<object, object>>()
+            .FirstOrDefault(op => GetString(op, "name") == "/**");
+        _ = wildcardOp.ShouldNotBeNull("admin-server must allow wildcard path /** for CommandApi delegation");
+
+        List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
+        _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
+        httpVerbs!.Select(v => v?.ToString()).ShouldContain("GET", "admin-server wildcard must allow GET");
+        httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST", "admin-server wildcard must allow POST");
+        httpVerbs!.Select(v => v?.ToString()).ShouldContain("PUT", "admin-server wildcard must allow PUT");
+        GetString(wildcardOp, "action").ShouldBe("allow");
+    }
+
+    // --- ProductionAdminServerAccessControl_HasNoInboundPolicies ---
+
+    [Fact]
+    public void ProductionAdminServerAccessControl_HasNoInboundPolicies() {
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.admin-server.yaml"));
+
+        Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
+            .ShouldBe("deny", "Production Admin.Server access control must have defaultAction: deny (D4)");
+
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
+        policies.ShouldBeEmpty("Production Admin.Server access control must not expose inbound caller policies");
+    }
+
+    [Fact]
+    public void ProductionSampleAccessControl_CommandApiCanPostOnly() {
+        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.sample.yaml"));
         List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
         _ = policies.ShouldNotBeNull();
 
         Dictionary<object, object>? commandApiPolicy = policies
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(p => GetString(p, "appId") == "commandapi");
-        _ = commandApiPolicy.ShouldNotBeNull("Production access control must have a commandapi policy");
+        _ = commandApiPolicy.ShouldNotBeNull("Production sample access control must have a commandapi policy");
 
         List<object>? operations = commandApiPolicy.TryGetValue("operations", out object? ops)
             ? ops as List<object> : null;
@@ -121,22 +165,9 @@ public class ProductionDaprComponentValidationTests {
 
         List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
         _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
-        httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST", "commandapi wildcard must allow POST");
+        httpVerbs.Count.ShouldBe(1, "Production sample wildcard operation must allow exactly one verb");
+        httpVerbs[0]?.ToString().ShouldBe("POST", "Production sample wildcard must allow POST only");
         GetString(wildcardOp, "action").ShouldBe("allow");
-    }
-
-    // --- ProductionAccessControl_NoSampleDomainService ---
-
-    [Fact]
-    public void ProductionAccessControl_NoSampleDomainService() {
-        Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "accesscontrol.yaml"));
-        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
-        _ = policies.ShouldNotBeNull();
-
-        Dictionary<object, object>? samplePolicy = policies
-            .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(p => GetString(p, "appId") == "sample");
-        samplePolicy.ShouldBeNull("Production access control must NOT include sample domain service (production-only config)");
     }
 
     // --- ProductionResiliency_HasStatestoreTarget ---

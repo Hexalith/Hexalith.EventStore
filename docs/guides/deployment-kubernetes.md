@@ -18,17 +18,17 @@ If you followed the [Docker Compose Deployment Guide](deployment-docker-compose.
 
 **What's new in Kubernetes:**
 
-| Concept | Docker Compose | Kubernetes |
-|---------|---------------|------------|
-| DAPR sidecar injection | Manual container definitions in `docker-compose.yaml` | Automatic via `dapr.io/enabled: "true"` annotation — the DAPR operator injects the sidecar container |
-| Component configuration | File-mounted YAML volumes | Kubernetes CRDs (`kubectl apply -f`) — the DAPR operator watches for Component resources |
-| Secret management | `.env` file (excluded from source control) | Kubernetes Secrets with DAPR `secretKeyRef` syntax |
-| Networking | Docker Compose network (`service:` DNS) | Kubernetes Service DNS (`<service>.<namespace>.svc.cluster.local`) |
-| Authentication | Keycloak container (local OIDC) | External OIDC provider (required — K8s publisher does not support bind mounts for Keycloak realm import) |
-| Scaling | Manual `replicas:` in compose | Horizontal Pod Autoscaler (HPA) / KEDA |
-| Health checks | Docker `HEALTHCHECK` directive | Kubernetes `livenessProbe`, `readinessProbe`, `startupProbe` |
-| Manifest source | `aspire publish` → `docker-compose.yaml` | `aspire publish` → Helm chart (`Chart.yaml`, `values.yaml`, templates) |
-| Service identity | Docker network isolation | SPIFFE-based mTLS via DAPR Sentry (certificate-based service identity) |
+| Concept                 | Docker Compose                                        | Kubernetes                                                                                               |
+| ----------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| DAPR sidecar injection  | Manual container definitions in `docker-compose.yaml` | Automatic via `dapr.io/enabled: "true"` annotation — the DAPR operator injects the sidecar container     |
+| Component configuration | File-mounted YAML volumes                             | Kubernetes CRDs (`kubectl apply -f`) — the DAPR operator watches for Component resources                 |
+| Secret management       | `.env` file (excluded from source control)            | Kubernetes Secrets with DAPR `secretKeyRef` syntax                                                       |
+| Networking              | Docker Compose network (`service:` DNS)               | Kubernetes Service DNS (`<service>.<namespace>.svc.cluster.local`)                                       |
+| Authentication          | Keycloak container (local OIDC)                       | External OIDC provider (required — K8s publisher does not support bind mounts for Keycloak realm import) |
+| Scaling                 | Manual `replicas:` in compose                         | Horizontal Pod Autoscaler (HPA) / KEDA                                                                   |
+| Health checks           | Docker `HEALTHCHECK` directive                        | Kubernetes `livenessProbe`, `readinessProbe`, `startupProbe`                                             |
+| Manifest source         | `aspire publish` → `docker-compose.yaml`              | `aspire publish` → Helm chart (`Chart.yaml`, `values.yaml`, templates)                                   |
+| Service identity        | Docker network isolation                              | SPIFFE-based mTLS via DAPR Sentry (certificate-based service identity)                                   |
 
 ## What You'll Deploy
 
@@ -86,14 +86,14 @@ An HTTP Client obtains JWT tokens from an External OIDC Provider (such as Micros
 The Kubernetes cluster contains two namespaces:
 
 1. **dapr-system namespace**: Contains four DAPR system pods:
-   - **DAPR Operator** — watches for DAPR-annotated pods and manages component CRDs
-   - **Sidecar Injector** — injects DAPR sidecar containers into annotated pods
-   - **Placement Service** — manages actor assignment, ensuring each aggregate identity is processed by exactly one actor instance
-   - **Sentry** — issues and rotates mTLS certificates for service-to-service communication
+    - **DAPR Operator** — watches for DAPR-annotated pods and manages component CRDs
+    - **Sidecar Injector** — injects DAPR sidecar containers into annotated pods
+    - **Placement Service** — manages actor assignment, ensuring each aggregate identity is processed by exactly one actor instance
+    - **Sentry** — issues and rotates mTLS certificates for service-to-service communication
 
 2. **hexalith namespace**: Contains two application pods:
-   - **commandapi Pod** (shows 2/2 containers — app + DAPR sidecar): The Command API Gateway listens on port 8080. Its DAPR sidecar (app-id: commandapi) handles all infrastructure interactions: persisting events and actor state to the external state store, publishing domain events via pub/sub, and invoking the sample domain service through DAPR service invocation.
-   - **sample Pod** (shows 2/2 containers — app + DAPR sidecar): The Counter Sample domain service runs with its own DAPR sidecar (app-id: sample). The sample sidecar receives service invocation calls from the commandapi sidecar. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub (D4).
+    - **commandapi Pod** (shows 2/2 containers — app + DAPR sidecar): The Command API Gateway listens on port 8080. Its DAPR sidecar (app-id: commandapi) handles all infrastructure interactions: persisting events and actor state to the external state store, publishing domain events via pub/sub, and invoking the sample domain service through DAPR service invocation.
+    - **sample Pod** (shows 2/2 containers — app + DAPR sidecar): The Counter Sample domain service runs with its own DAPR sidecar (app-id: sample). The sample sidecar receives service invocation calls from the commandapi sidecar. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub (D4).
 
 The external state store (PostgreSQL or Azure Cosmos DB) and external pub/sub (RabbitMQ, Kafka, or Azure Service Bus) run outside the cluster or as separate managed services. DAPR Sentry provides mTLS certificates to both application sidecars for encrypted service-to-service communication.
 
@@ -159,12 +159,12 @@ dapr status -k
 
 Expected output shows four components running:
 
-| NAME                   | NAMESPACE   | STATUS  |
-|------------------------|-------------|---------|
-| dapr-operator          | dapr-system | Running |
-| dapr-sidecar-injector  | dapr-system | Running |
-| dapr-placement-server  | dapr-system | Running |
-| dapr-sentry            | dapr-system | Running |
+| NAME                  | NAMESPACE   | STATUS  |
+| --------------------- | ----------- | ------- |
+| dapr-operator         | dapr-system | Running |
+| dapr-sidecar-injector | dapr-system | Running |
+| dapr-placement-server | dapr-system | Running |
+| dapr-sentry           | dapr-system | Running |
 
 Verify DAPR CRDs are installed:
 
@@ -223,30 +223,30 @@ Edit `values.yaml` to configure your deployment:
 ```yaml
 # Container image registry and tags
 commandapi:
-  image:
-    repository: myregistry.azurecr.io/hexalith-commandapi
-    tag: "1.0.0"
-  replicas: 1
-  resources:
-    requests:
-      cpu: "250m"
-      memory: "256Mi"
-    limits:
-      cpu: "1000m"
-      memory: "512Mi"
+    image:
+        repository: myregistry.azurecr.io/hexalith-commandapi
+        tag: "1.0.0"
+    replicas: 1
+    resources:
+        requests:
+            cpu: "250m"
+            memory: "256Mi"
+        limits:
+            cpu: "1000m"
+            memory: "512Mi"
 
 sample:
-  image:
-    repository: myregistry.azurecr.io/hexalith-sample
-    tag: "1.0.0"
-  replicas: 1
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "500m"
-      memory: "256Mi"
+    image:
+        repository: myregistry.azurecr.io/hexalith-sample
+        tag: "1.0.0"
+    replicas: 1
+    resources:
+        requests:
+            cpu: "100m"
+            memory: "128Mi"
+        limits:
+            cpu: "500m"
+            memory: "256Mi"
 ```
 
 > **Note:** Exact field names depend on the Aspire SDK version (currently 13.1.2). Always inspect the generated `values.yaml` before modifying.
@@ -304,46 +304,46 @@ Add the following to `templates/commandapi.yaml` at `spec.template.metadata.anno
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: commandapi
+    name: commandapi
 spec:
-  template:
-    metadata:
-      annotations:
-        # --- DAPR annotations (add these) ---
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "commandapi"
-        dapr.io/app-port: "8080"
-        dapr.io/config: "accesscontrol"
-        dapr.io/sidecar-cpu-request: "100m"
-        dapr.io/sidecar-memory-request: "128Mi"
-        dapr.io/sidecar-cpu-limit: "300m"
-        dapr.io/sidecar-memory-limit: "256Mi"
-    spec:
-      containers:
-        - name: commandapi
-          # ... (existing image, env, ports from generated template)
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "256Mi"
-            limits:
-              cpu: "1000m"
-              memory: "512Mi"
-          # --- Kubernetes probes (add these) ---
-          startupProbe:
-            httpGet:
-              path: /alive
-              port: 8080
-            failureThreshold: 30
-            periodSeconds: 2
-          livenessProbe:
-            httpGet:
-              path: /alive
-              port: 8080
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
+    template:
+        metadata:
+            annotations:
+                # --- DAPR annotations (add these) ---
+                dapr.io/enabled: "true"
+                dapr.io/app-id: "commandapi"
+                dapr.io/app-port: "8080"
+                dapr.io/config: "accesscontrol"
+                dapr.io/sidecar-cpu-request: "100m"
+                dapr.io/sidecar-memory-request: "128Mi"
+                dapr.io/sidecar-cpu-limit: "300m"
+                dapr.io/sidecar-memory-limit: "256Mi"
+        spec:
+            containers:
+                - name: commandapi
+                  # ... (existing image, env, ports from generated template)
+                  resources:
+                      requests:
+                          cpu: "250m"
+                          memory: "256Mi"
+                      limits:
+                          cpu: "1000m"
+                          memory: "512Mi"
+                  # --- Kubernetes probes (add these) ---
+                  startupProbe:
+                      httpGet:
+                          path: /alive
+                          port: 8080
+                      failureThreshold: 30
+                      periodSeconds: 2
+                  livenessProbe:
+                      httpGet:
+                          path: /alive
+                          port: 8080
+                  readinessProbe:
+                      httpGet:
+                          path: /ready
+                          port: 8080
 ```
 
 ### sample Deployment
@@ -354,45 +354,45 @@ Add the following to `templates/sample.yaml`:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sample
+    name: sample
 spec:
-  template:
-    metadata:
-      annotations:
-        # --- DAPR annotations (add these) ---
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "sample"
-        dapr.io/app-port: "8080"
-        dapr.io/config: "accesscontrol"
-        dapr.io/sidecar-cpu-request: "100m"
-        dapr.io/sidecar-memory-request: "128Mi"
-        dapr.io/sidecar-cpu-limit: "300m"
-        dapr.io/sidecar-memory-limit: "256Mi"
-    spec:
-      containers:
-        - name: sample
-          # ... (existing image, env, ports from generated template)
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "256Mi"
-          startupProbe:
-            httpGet:
-              path: /alive
-              port: 8080
-            failureThreshold: 30
-            periodSeconds: 2
-          livenessProbe:
-            httpGet:
-              path: /alive
-              port: 8080
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
+    template:
+        metadata:
+            annotations:
+                # --- DAPR annotations (add these) ---
+                dapr.io/enabled: "true"
+                dapr.io/app-id: "sample"
+                dapr.io/app-port: "8080"
+                dapr.io/config: "accesscontrol"
+                dapr.io/sidecar-cpu-request: "100m"
+                dapr.io/sidecar-memory-request: "128Mi"
+                dapr.io/sidecar-cpu-limit: "300m"
+                dapr.io/sidecar-memory-limit: "256Mi"
+        spec:
+            containers:
+                - name: sample
+                  # ... (existing image, env, ports from generated template)
+                  resources:
+                      requests:
+                          cpu: "100m"
+                          memory: "128Mi"
+                      limits:
+                          cpu: "500m"
+                          memory: "256Mi"
+                  startupProbe:
+                      httpGet:
+                          path: /alive
+                          port: 8080
+                      failureThreshold: 30
+                      periodSeconds: 2
+                  livenessProbe:
+                      httpGet:
+                          path: /alive
+                          port: 8080
+                  readinessProbe:
+                      httpGet:
+                          path: /ready
+                          port: 8080
 ```
 
 > **Why `startupProbe` with `failureThreshold: 30`?** DAPR sidecar initialization (connecting to placement service, loading components, establishing mTLS) can take 10–30 seconds on cold starts. Without a startup probe, the liveness probe may kill the pod before the sidecar is ready.
@@ -439,6 +439,8 @@ kubectl apply -f deploy/dapr/pubsub-servicebus.yaml -n hexalith
 ```bash
 kubectl apply -f deploy/dapr/resiliency.yaml -n hexalith
 kubectl apply -f deploy/dapr/accesscontrol.yaml -n hexalith
+kubectl apply -f deploy/dapr/accesscontrol.admin-server.yaml -n hexalith
+kubectl apply -f deploy/dapr/accesscontrol.sample.yaml -n hexalith
 kubectl apply -f deploy/dapr/subscription-sample-counter.yaml -n hexalith
 ```
 
@@ -448,7 +450,7 @@ kubectl apply -f deploy/dapr/subscription-sample-counter.yaml -n hexalith
 
 The production DAPR component files already include `scopes: [commandapi]` on state store, pub/sub, and config store CRDs. This restricts access to commandapi only — domain services have zero infrastructure access (D4).
 
-> **Warning:** `DAPR_TRUST_DOMAIN` and `DAPR_NAMESPACE` in `accesscontrol.yaml` **must** be explicitly set. The fallback defaults (`hexalith.io` and `hexalith`) are reference values only — `hexalith.io` is a real domain and not safe for production use without intentional configuration. See [Adapt DAPR Components for Kubernetes Secrets](#adapt-dapr-components-for-kubernetes-secrets) for how to provide these values.
+> **Warning:** `DAPR_TRUST_DOMAIN` and `DAPR_NAMESPACE` in the `accesscontrol*.yaml` files **must** be explicitly set. The fallback defaults (`hexalith.io` and `hexalith`) are reference values only — `hexalith.io` is a real domain and not safe for production use without intentional configuration. See [Adapt DAPR Components for Kubernetes Secrets](#adapt-dapr-components-for-kubernetes-secrets) for how to provide these values.
 
 ## Adapt DAPR Components for Kubernetes Secrets
 
@@ -474,12 +476,12 @@ kubectl create secret generic dapr-secrets \
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: kubernetes-secrets
-  namespace: hexalith
+    name: kubernetes-secrets
+    namespace: hexalith
 spec:
-  type: secretstores.kubernetes
-  version: v1
-  metadata: []
+    type: secretstores.kubernetes
+    version: v1
+    metadata: []
 ```
 
 Apply it:
@@ -506,22 +508,22 @@ Replace `{env:VAR}` references with `secretKeyRef`. For example, modify `statest
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: statestore
-  namespace: hexalith
+    name: statestore
+    namespace: hexalith
 spec:
-  type: state.postgresql
-  version: v1
-  metadata:
-    - name: connectionString
-      secretKeyRef:
-        name: dapr-secrets
-        key: postgres-connection-string
-    - name: actorStateStore
-      value: "true"
+    type: state.postgresql
+    version: v1
+    metadata:
+        - name: connectionString
+          secretKeyRef:
+              name: dapr-secrets
+              key: postgres-connection-string
+        - name: actorStateStore
+          value: "true"
 auth:
-  secretStore: kubernetes-secrets
+    secretStore: kubernetes-secrets
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 #### Step 4: Verify Component Loading
@@ -542,9 +544,9 @@ Use the `dapr.io/env` annotation to inject environment variables directly into t
 
 ```yaml
 annotations:
-  dapr.io/enabled: "true"
-  dapr.io/app-id: "commandapi"
-  dapr.io/env: "POSTGRES_CONNECTION_STRING=host=mydb;port=5432;username=dapr;password=secret;database=eventstore,DAPR_TRUST_DOMAIN=your-trust-domain.example.com,DAPR_NAMESPACE=hexalith"
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "commandapi"
+    dapr.io/env: "POSTGRES_CONNECTION_STRING=host=mydb;port=5432;username=dapr;password=secret;database=eventstore,DAPR_TRUST_DOMAIN=your-trust-domain.example.com,DAPR_NAMESPACE=hexalith"
 ```
 
 > **Note:** Approach A (secretKeyRef) is recommended because it avoids exposing secrets in pod annotations and integrates with Kubernetes secret rotation.
@@ -559,14 +561,14 @@ Kubernetes deployments require an external OIDC provider. Set the following envi
 
 ```yaml
 env:
-  - name: Authentication__JwtBearer__Authority
-    value: "https://login.microsoftonline.com/{tenant-id}/v2.0"
-  - name: Authentication__JwtBearer__Issuer
-    value: "https://login.microsoftonline.com/{tenant-id}/v2.0"
-  - name: Authentication__JwtBearer__Audience
-    value: "api://hexalith-eventstore"
-  - name: Authentication__JwtBearer__RequireHttpsMetadata
-    value: "true"
+    - name: Authentication__JwtBearer__Authority
+      value: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+    - name: Authentication__JwtBearer__Issuer
+      value: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+    - name: Authentication__JwtBearer__Audience
+      value: "api://hexalith-eventstore"
+    - name: Authentication__JwtBearer__RequireHttpsMetadata
+      value: "true"
 ```
 
 > **Critical:** Do **not** set `Authentication__JwtBearer__SigningKey`. If a SigningKey is present (in appsettings or environment variables), the application uses symmetric key validation and ignores the OIDC Authority. For external OIDC, the SigningKey must be cleared or omitted.
@@ -574,20 +576,20 @@ env:
 ### Microsoft Entra ID (Azure AD) Walkthrough
 
 1. **Create an App Registration** in the Azure Portal:
-   - Navigate to **Microsoft Entra ID** → **App registrations** → **New registration**
-   - Set a name (e.g., `hexalith-eventstore-api`)
-   - Set **Supported account types** as appropriate for your organization
-   - No redirect URI is needed for a server API
+    - Navigate to **Microsoft Entra ID** → **App registrations** → **New registration**
+    - Set a name (e.g., `hexalith-eventstore-api`)
+    - Set **Supported account types** as appropriate for your organization
+    - No redirect URI is needed for a server API
 
 2. **Expose an API scope:**
-   - Go to **Expose an API** → **Add a scope**
-   - Set the Application ID URI (e.g., `api://hexalith-eventstore`)
-   - Add a scope named `access_as_user` (or your preferred scope name)
+    - Go to **Expose an API** → **Add a scope**
+    - Set the Application ID URI (e.g., `api://hexalith-eventstore`)
+    - Add a scope named `access_as_user` (or your preferred scope name)
 
 3. **Note the values** for your Deployment environment variables:
-   - **Authority:** `https://login.microsoftonline.com/{tenant-id}/v2.0`
-   - **Issuer:** `https://login.microsoftonline.com/{tenant-id}/v2.0`
-   - **Audience:** `api://hexalith-eventstore` (the Application ID URI)
+    - **Authority:** `https://login.microsoftonline.com/{tenant-id}/v2.0`
+    - **Issuer:** `https://login.microsoftonline.com/{tenant-id}/v2.0`
+    - **Audience:** `api://hexalith-eventstore` (the Application ID URI)
 
 4. **Acquire a token** for testing (using client credentials or user flow):
 
@@ -736,14 +738,14 @@ Expected output should show `statestore` and `pubsub` components loaded successf
 
 ### Quick Validation Checklist
 
-| Check | Command | Expected |
-|-------|---------|----------|
-| DAPR installed | `dapr status -k` | 4 system pods Running |
-| CRDs present | `kubectl get crd \| grep dapr` | 4+ DAPR CRDs |
-| All pods 2/2 | `kubectl get pods -n hexalith` | All pods `2/2 Running` |
-| `/health` returns 200 | `curl -s http://localhost:8080/health` | `Healthy` |
-| Can get token | Token acquisition from OIDC provider | Valid JWT |
-| Can submit command | POST to `/api/v1/commands` | HTTP 202 Accepted |
+| Check                 | Command                                | Expected               |
+| --------------------- | -------------------------------------- | ---------------------- |
+| DAPR installed        | `dapr status -k`                       | 4 system pods Running  |
+| CRDs present          | `kubectl get crd \| grep dapr`         | 4+ DAPR CRDs           |
+| All pods 2/2          | `kubectl get pods -n hexalith`         | All pods `2/2 Running` |
+| `/health` returns 200 | `curl -s http://localhost:8080/health` | `Healthy`              |
+| Can get token         | Token acquisition from OIDC provider   | Valid JWT              |
+| Can submit command    | POST to `/api/v1/commands`             | HTTP 202 Accepted      |
 
 ## Send a Test Command
 
@@ -825,19 +827,19 @@ For the full backend compatibility matrix and key patterns, see [deploy/README.m
 
 ### Application Container Resources
 
-| Component | CPU Request | CPU Limit | Memory Request | Memory Limit |
-|-----------|------------|-----------|----------------|--------------|
-| commandapi | 250m | 1000m | 256Mi | 512Mi |
-| sample | 100m | 500m | 128Mi | 256Mi |
+| Component  | CPU Request | CPU Limit | Memory Request | Memory Limit |
+| ---------- | ----------- | --------- | -------------- | ------------ |
+| commandapi | 250m        | 1000m     | 256Mi          | 512Mi        |
+| sample     | 100m        | 500m      | 128Mi          | 256Mi        |
 
 > **Note:** .NET runtime respects container memory limits. Set at least 512Mi for commandapi to avoid GC pressure under load.
 
 ### DAPR Sidecar Resources (via Annotations)
 
-| Sidecar | CPU Request | CPU Limit | Memory Request | Memory Limit |
-|---------|------------|-----------|----------------|--------------|
-| commandapi sidecar | 100m | 300m | 128Mi | 256Mi |
-| sample sidecar | 100m | 300m | 128Mi | 256Mi |
+| Sidecar            | CPU Request | CPU Limit | Memory Request | Memory Limit |
+| ------------------ | ----------- | --------- | -------------- | ------------ |
+| commandapi sidecar | 100m        | 300m      | 128Mi          | 256Mi        |
+| sample sidecar     | 100m        | 300m      | 128Mi          | 256Mi        |
 
 ### Minimal Cluster Sizing
 
@@ -859,18 +861,18 @@ For running commandapi + sample + DAPR system pods + a state store + a pub/sub b
 
 ## Infrastructure Differences: Docker vs Kubernetes
 
-| Aspect | Docker Compose | Kubernetes |
-|--------|---------------|------------|
-| Sidecar injection | Manual container definitions in `docker-compose.yaml` | Annotation-based auto-injection by DAPR operator |
-| Component config | File-mounted YAML via Docker volumes | Kubernetes CRDs applied via `kubectl apply` |
-| Secret management | `.env` file (excluded from source control) | Kubernetes Secrets with DAPR `secretKeyRef` |
-| Networking | Docker Compose network (service DNS) | Kubernetes Service DNS (`<svc>.<ns>.svc.cluster.local`) |
-| Scaling | Manual `replicas:` in compose file | HPA (CPU/memory) or KEDA (event-driven) |
-| Health checks | Docker `HEALTHCHECK` directive | Kubernetes `livenessProbe` / `readinessProbe` / `startupProbe` |
-| Image delivery | Local `docker build` (images available immediately) | Container registry (build, push, pull) |
-| Authentication | Keycloak container (local OIDC) | External OIDC provider (Entra ID, Okta, Auth0) |
-| Service identity | Docker network isolation | SPIFFE-based mTLS via DAPR Sentry |
-| Manifest source | `aspire publish` → `docker-compose.yaml` | `aspire publish` → Helm chart |
+| Aspect            | Docker Compose                                        | Kubernetes                                                     |
+| ----------------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| Sidecar injection | Manual container definitions in `docker-compose.yaml` | Annotation-based auto-injection by DAPR operator               |
+| Component config  | File-mounted YAML via Docker volumes                  | Kubernetes CRDs applied via `kubectl apply`                    |
+| Secret management | `.env` file (excluded from source control)            | Kubernetes Secrets with DAPR `secretKeyRef`                    |
+| Networking        | Docker Compose network (service DNS)                  | Kubernetes Service DNS (`<svc>.<ns>.svc.cluster.local`)        |
+| Scaling           | Manual `replicas:` in compose file                    | HPA (CPU/memory) or KEDA (event-driven)                        |
+| Health checks     | Docker `HEALTHCHECK` directive                        | Kubernetes `livenessProbe` / `readinessProbe` / `startupProbe` |
+| Image delivery    | Local `docker build` (images available immediately)   | Container registry (build, push, pull)                         |
+| Authentication    | Keycloak container (local OIDC)                       | External OIDC provider (Entra ID, Okta, Auth0)                 |
+| Service identity  | Docker network isolation                              | SPIFFE-based mTLS via DAPR Sentry                              |
+| Manifest source   | `aspire publish` → `docker-compose.yaml`              | `aspire publish` → Helm chart                                  |
 
 ## Expose the Service
 
@@ -882,27 +884,27 @@ By default, the commandapi Service is only accessible within the cluster. To exp
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: commandapi-ingress
-  namespace: hexalith
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    name: commandapi-ingress
+    namespace: hexalith
+    annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - api.example.com
-      secretName: tls-secret
-  rules:
-    - host: api.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: commandapi
-                port:
-                  number: 8080
+    ingressClassName: nginx
+    tls:
+        - hosts:
+              - api.example.com
+          secretName: tls-secret
+    rules:
+        - host: api.example.com
+          http:
+              paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                        service:
+                            name: commandapi
+                            port:
+                                number: 8080
 ```
 
 ### LoadBalancer Service
@@ -1017,7 +1019,7 @@ kubectl get pods -n dapr-system -l app=dapr-placement-server
 
 - `app-id` must match the Kubernetes Service name — verify the `dapr.io/app-id` annotation matches
 - Namespace alignment — both pods must be in the same namespace, or use the full DNS name
-- Access control policy — verify `accesscontrol.yaml` allows commandapi to invoke the sample service
+- Access control policy — verify `accesscontrol.sample.yaml` allows commandapi to invoke the sample service and that `accesscontrol.yaml` is bound only to the CommandApi sidecar
 
 ### 401 Unauthorized on All Requests
 

@@ -4,9 +4,9 @@
 # Composite key pattern: {tenant}||{domain}||{aggregateId} (D1)
 #
 # Component Scoping (AC #2, AC #4, AC #13):
-#   Only commandapi can access this state store. Actors run in-process under the
-#   commandapi app-id, so no other app-id needs state store access. Domain services
-#   have zero state store access -- no read, no write.
+#   commandapi accesses actor state, snapshots, and command status.
+#   admin-server reads admin indexes and performs direct health/state probes.
+#   Domain services have zero state store access -- no read, no write.
 #
 # Adding New Domain Services:
 #   DO NOT add new domain services to scopes. Domain services have zero state store
@@ -34,8 +34,10 @@ spec:
       value: "{env:COSMOSDB_COLLECTION}"
     - name: actorStateStore
       value: "true"
-# Component-level scoping: only commandapi can access this state store (AC #2, AC #4, AC #13).
-# Actors run in-process under the commandapi app-id. Domain services have zero state store
-# access -- no read, no write. This enforces the zero-trust posture (D4).
+# Component-level scoping: commandapi and admin-server can access this state store.
+# Actors run in-process under the commandapi app-id. Admin.Server performs read-only
+# admin queries and health probes. Domain services have zero state store access --
+# no read, no write. This enforces the zero-trust posture (D4).
 scopes:
   - commandapi
+  - admin-server

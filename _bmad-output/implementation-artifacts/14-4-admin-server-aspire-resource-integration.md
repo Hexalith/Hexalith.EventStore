@@ -1,6 +1,6 @@
 # Story 14.4: Admin.Server — Aspire Resource Integration
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,314 +25,331 @@ So that the admin API starts automatically alongside CommandApi in the local top
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Prerequisites (AC: all)
-  - [ ] 0.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — confirm baseline compiles (0 errors, 0 warnings)
-  - [ ] 0.2 Verify Story 14-3 output: `src/Hexalith.EventStore.Admin.Server/Controllers/` contains all 7 admin controllers with `[Tags]`, `[ProducesResponseType]`, and `[ApiController]` attributes. If not, STOP.
-  - [ ] 0.3 Verify Story 14-3 output: `src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs` contains `AddAdminApi()`. If not, STOP.
-  - [ ] 0.4 Read existing host patterns for conventions:
-    - `src/Hexalith.EventStore.CommandApi/Program.cs` — bootstrap order, middleware chain, OpenAPI gating, partial Program class for testing
-    - `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` — JWT auth registration pattern (`AddCommandApi()` registers auth, authorization, exception handlers)
-    - `src/Hexalith.EventStore.CommandApi/Middleware/CorrelationIdMiddleware.cs` — correlation ID injection pattern
-    - `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` — `AddServiceDefaults()`, `MapDefaultEndpoints()`
-  - [ ] 0.5 Read Aspire orchestration patterns:
-    - `src/Hexalith.EventStore.AppHost/Program.cs` — how CommandApi is registered, Keycloak wiring, publisher environments
-    - `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` — `AddHexalithEventStore()` extension
-    - `src/Hexalith.EventStore.Aspire/HexalithEventStoreResources.cs` — resource record
-  - [ ] 0.6 Read DAPR access control:
-    - `src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml` — current policy entries
+- [x] Task 0: Prerequisites (AC: all)
+    - [x] 0.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — confirm baseline compiles (0 errors, 0 warnings)
+    - [x] 0.2 Verify Story 14-3 output: `src/Hexalith.EventStore.Admin.Server/Controllers/` contains all 7 admin controllers with `[Tags]`, `[ProducesResponseType]`, and `[ApiController]` attributes. If not, STOP.
+    - [x] 0.3 Verify Story 14-3 output: `src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs` contains `AddAdminApi()`. If not, STOP.
+    - [x] 0.4 Read existing host patterns for conventions:
+        - `src/Hexalith.EventStore.CommandApi/Program.cs` — bootstrap order, middleware chain, OpenAPI gating, partial Program class for testing
+        - `src/Hexalith.EventStore.CommandApi/Extensions/ServiceCollectionExtensions.cs` — JWT auth registration pattern (`AddCommandApi()` registers auth, authorization, exception handlers)
+        - `src/Hexalith.EventStore.CommandApi/Middleware/CorrelationIdMiddleware.cs` — correlation ID injection pattern
+        - `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` — `AddServiceDefaults()`, `MapDefaultEndpoints()`
+    - [x] 0.5 Read Aspire orchestration patterns:
+        - `src/Hexalith.EventStore.AppHost/Program.cs` — how CommandApi is registered, Keycloak wiring, publisher environments
+        - `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` — `AddHexalithEventStore()` extension
+        - `src/Hexalith.EventStore.Aspire/HexalithEventStoreResources.cs` — resource record
+    - [x] 0.6 Read DAPR access control:
+        - `src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml` — current policy entries
 
-- [ ] Task 1: Create Admin.Server.Host web application project (AC: #1)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj`:
-    ```xml
-    <Project Sdk="Microsoft.NET.Sdk.Web">
+- [x] Task 1: Create Admin.Server.Host web application project (AC: #1)
+    - [x] 1.1 Create `src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj`:
 
-      <PropertyGroup>
-        <IsPackable>false</IsPackable>
-      </PropertyGroup>
+        ```xml
+        <Project Sdk="Microsoft.NET.Sdk.Web">
 
-      <ItemGroup>
-        <ProjectReference Include="../Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj" />
-        <ProjectReference Include="../Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
-      </ItemGroup>
+          <PropertyGroup>
+            <IsPackable>false</IsPackable>
+          </PropertyGroup>
 
-      <ItemGroup>
-        <PackageReference Include="Dapr.AspNetCore" />
-      </ItemGroup>
+          <ItemGroup>
+            <ProjectReference Include="../Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj" />
+            <ProjectReference Include="../Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
+          </ItemGroup>
 
-    </Project>
-    ```
-    Key decisions:
-    - `Microsoft.NET.Sdk.Web` — produces an executable web application (unlike Admin.Server which is `Microsoft.NET.Sdk` class library)
-    - References Admin.Server (controllers, authorization, services) and ServiceDefaults (Aspire integration, health checks, OpenTelemetry)
-    - `Dapr.AspNetCore` — for `AddDaprClient()` and DAPR integration in ASP.NET Core host
-    - `IsPackable=false` — this is a deployment artifact, NOT a NuGet package
-    - NO explicit `<FrameworkReference Include="Microsoft.AspNetCore.App" />` — `Microsoft.NET.Sdk.Web` includes it automatically
-    - NO reference to CommandApi — Admin.Server.Host and CommandApi are sibling hosts; they communicate via DAPR service invocation only
-  - [ ] 1.2 Add project to `Hexalith.EventStore.slnx`
-  - [ ] 1.3 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds
+          <ItemGroup>
+            <PackageReference Include="Dapr.AspNetCore" />
+          </ItemGroup>
 
-- [ ] Task 2: Create Admin.Server.Host Program.cs (AC: #2, #5, #6)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Admin.Server.Host/Program.cs`:
-    ```csharp
-    using Hexalith.EventStore.Admin.Server.Configuration;
-    using Hexalith.EventStore.Admin.Server.Controllers;
-    using Hexalith.EventStore.ServiceDefaults;
+        </Project>
+        ```
 
-    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+        Key decisions:
+        - `Microsoft.NET.Sdk.Web` — produces an executable web application (unlike Admin.Server which is `Microsoft.NET.Sdk` class library)
+        - References Admin.Server (controllers, authorization, services) and ServiceDefaults (Aspire integration, health checks, OpenTelemetry)
+        - `Dapr.AspNetCore` — for `AddDaprClient()` and DAPR integration in ASP.NET Core host
+        - `IsPackable=false` — this is a deployment artifact, NOT a NuGet package
+        - NO explicit `<FrameworkReference Include="Microsoft.AspNetCore.App" />` — `Microsoft.NET.Sdk.Web` includes it automatically
+        - NO reference to CommandApi — Admin.Server.Host and CommandApi are sibling hosts; they communicate via DAPR service invocation only
 
-    builder.AddServiceDefaults();
-    builder.Services.AddDaprClient();
-    builder.Services.AddAdminApi(builder.Configuration);
+    - [x] 1.2 Add project to `Hexalith.EventStore.slnx`
+    - [x] 1.3 Verify `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeds
 
-    // Authentication: same JWT Bearer pattern as CommandApi.
-    // Authority is configured via environment variables from Aspire/Keycloak.
-    builder.Services.AddAuthentication("Bearer")
-        .AddJwtBearer("Bearer", options =>
+- [x] Task 2: Create Admin.Server.Host Program.cs (AC: #2, #5, #6)
+    - [x] 2.1 Create `src/Hexalith.EventStore.Admin.Server.Host/Program.cs`:
+
+        ```csharp
+        using Hexalith.EventStore.Admin.Server.Configuration;
+        using Hexalith.EventStore.Admin.Server.Controllers;
+        using Hexalith.EventStore.ServiceDefaults;
+
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+        builder.AddServiceDefaults();
+        builder.Services.AddDaprClient();
+        builder.Services.AddAdminApi(builder.Configuration);
+
+        // Authentication: same JWT Bearer pattern as CommandApi.
+        // Authority is configured via environment variables from Aspire/Keycloak.
+        builder.Services.AddAuthentication("Bearer")
+            .AddJwtBearer("Bearer", options =>
+            {
+                // Bind from configuration — Aspire sets these via environment variables
+                builder.Configuration.GetSection("Authentication:JwtBearer").Bind(options);
+            });
+
+        builder.Services.AddControllers()
+            .AddApplicationPart(typeof(AdminStreamsController).Assembly);
+
+        WebApplication app = builder.Build();
+
+        app.UseExceptionHandler();
+        app.MapDefaultEndpoints();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllers();
+
+        app.Run();
+
+        /// <summary>
+        /// Entry point class, made partial for WebApplicationFactory test access.
+        /// </summary>
+        public partial class Program;
+        ```
+
+        Key conventions (matching CommandApi exactly):
+        - `AddServiceDefaults()` FIRST — Aspire resilience, telemetry, health checks, service discovery
+        - `AddDaprClient()` — DAPR sidecar communication
+        - `AddAdminApi(configuration)` — admin authorization policies, claims transformation, tenant filter, all 10 DAPR-backed services
+        - Auth registration: `AddAuthentication().AddJwtBearer()` with config binding — Aspire injects Authority/Issuer/Audience via environment variables
+        - `AddControllers().AddApplicationPart()` — discovers Admin.Server controllers from the class library assembly
+        - Middleware order: `UseExceptionHandler` → `MapDefaultEndpoints` → `UseAuthentication` → `UseAuthorization` → `MapControllers`
+        - `public partial class Program;` — enables `WebApplicationFactory<Program>` in test projects
+        - NO `CorrelationIdMiddleware` — Admin.Server does not have its own; if needed later, add in a follow-up. Controllers already handle correlation IDs via HttpContext.
+        - NO `UseCloudEvents()` or `MapSubscribeHandler()` — Admin.Server does not subscribe to pub/sub
+        - NO `MapActorsHandlers()` — Admin.Server does not host DAPR actors
+        - NO OpenAPI/Swagger in this story — that's Story 14-5
+
+    - [x] 2.2 CRITICAL: Verify `AddAdminApi()` calls `AddAdminServer()` internally — consumers only call `AddAdminApi()` + host-level auth/controller registration. The existing code in `ServiceCollectionExtensions.cs` already does this (line 46: `services.AddAdminServer(configuration);`).
+
+    - [x] 2.3 Create `src/Hexalith.EventStore.Admin.Server.Host/Properties/launchSettings.json`:
+
+        ```json
         {
-            // Bind from configuration — Aspire sets these via environment variables
-            builder.Configuration.GetSection("Authentication:JwtBearer").Bind(options);
-        });
-
-    builder.Services.AddControllers()
-        .AddApplicationPart(typeof(AdminStreamsController).Assembly);
-
-    WebApplication app = builder.Build();
-
-    app.UseExceptionHandler();
-    app.MapDefaultEndpoints();
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.MapControllers();
-
-    app.Run();
-
-    /// <summary>
-    /// Entry point class, made partial for WebApplicationFactory test access.
-    /// </summary>
-    public partial class Program;
-    ```
-    Key conventions (matching CommandApi exactly):
-    - `AddServiceDefaults()` FIRST — Aspire resilience, telemetry, health checks, service discovery
-    - `AddDaprClient()` — DAPR sidecar communication
-    - `AddAdminApi(configuration)` — admin authorization policies, claims transformation, tenant filter, all 10 DAPR-backed services
-    - Auth registration: `AddAuthentication().AddJwtBearer()` with config binding — Aspire injects Authority/Issuer/Audience via environment variables
-    - `AddControllers().AddApplicationPart()` — discovers Admin.Server controllers from the class library assembly
-    - Middleware order: `UseExceptionHandler` → `MapDefaultEndpoints` → `UseAuthentication` → `UseAuthorization` → `MapControllers`
-    - `public partial class Program;` — enables `WebApplicationFactory<Program>` in test projects
-    - NO `CorrelationIdMiddleware` — Admin.Server does not have its own; if needed later, add in a follow-up. Controllers already handle correlation IDs via HttpContext.
-    - NO `UseCloudEvents()` or `MapSubscribeHandler()` — Admin.Server does not subscribe to pub/sub
-    - NO `MapActorsHandlers()` — Admin.Server does not host DAPR actors
-    - NO OpenAPI/Swagger in this story — that's Story 14-5
-
-  - [ ] 2.2 CRITICAL: Verify `AddAdminApi()` calls `AddAdminServer()` internally — consumers only call `AddAdminApi()` + host-level auth/controller registration. The existing code in `ServiceCollectionExtensions.cs` already does this (line 46: `services.AddAdminServer(configuration);`).
-
-  - [ ] 2.3 Create `src/Hexalith.EventStore.Admin.Server.Host/Properties/launchSettings.json`:
-    ```json
-    {
-      "$schema": "http://json.schemastore.org/launchsettings.json",
-      "profiles": {
-        "http": {
-          "commandName": "Project",
-          "dotnetRunMessages": true,
-          "launchBrowser": false,
-          "applicationUrl": "http://localhost:8090",
-          "environmentVariables": {
-            "ASPNETCORE_ENVIRONMENT": "Development"
-          }
-        },
-        "https": {
-          "commandName": "Project",
-          "dotnetRunMessages": true,
-          "launchBrowser": false,
-          "applicationUrl": "https://localhost:8091;http://localhost:8090",
-          "environmentVariables": {
-            "ASPNETCORE_ENVIRONMENT": "Development"
-          }
+            "$schema": "http://json.schemastore.org/launchsettings.json",
+            "profiles": {
+                "http": {
+                    "commandName": "Project",
+                    "dotnetRunMessages": true,
+                    "launchBrowser": false,
+                    "applicationUrl": "http://localhost:8090",
+                    "environmentVariables": {
+                        "ASPNETCORE_ENVIRONMENT": "Development"
+                    }
+                },
+                "https": {
+                    "commandName": "Project",
+                    "dotnetRunMessages": true,
+                    "launchBrowser": false,
+                    "applicationUrl": "https://localhost:8091;http://localhost:8090",
+                    "environmentVariables": {
+                        "ASPNETCORE_ENVIRONMENT": "Development"
+                    }
+                }
+            }
         }
-      }
-    }
-    ```
-    Port 8090 avoids conflicts: CommandApi=8080, Keycloak=8180, Sample=8081.
+        ```
 
-  - [ ] 2.4 Create `src/Hexalith.EventStore.Admin.Server.Host/appsettings.json`:
-    ```json
-    {
-      "Logging": {
-        "LogLevel": {
-          "Default": "Information",
-          "Microsoft.AspNetCore": "Warning"
+        Port 8090 avoids conflicts: CommandApi=8080, Keycloak=8180, Sample=8081.
+
+    - [x] 2.4 Create `src/Hexalith.EventStore.Admin.Server.Host/appsettings.json`:
+
+        ```json
+        {
+            "Logging": {
+                "LogLevel": {
+                    "Default": "Information",
+                    "Microsoft.AspNetCore": "Warning"
+                }
+            },
+            "AllowedHosts": "*",
+            "AdminServer": {
+                "StateStoreName": "statestore",
+                "CommandApiAppId": "commandapi",
+                "TenantsServiceAppId": "tenants"
+            }
         }
-      },
-      "AllowedHosts": "*",
-      "AdminServer": {
-        "StateStoreName": "statestore",
-        "CommandApiAppId": "commandapi",
-        "TenantsServiceAppId": "tenants"
-      }
-    }
-    ```
+        ```
 
-  - [ ] 2.5 Create `src/Hexalith.EventStore.Admin.Server.Host/appsettings.Development.json`:
-    ```json
-    {
-      "Logging": {
-        "LogLevel": {
-          "Default": "Information",
-          "Microsoft.AspNetCore": "Warning",
-          "Hexalith": "Debug"
+    - [x] 2.5 Create `src/Hexalith.EventStore.Admin.Server.Host/appsettings.Development.json`:
+        ```json
+        {
+            "Logging": {
+                "LogLevel": {
+                    "Default": "Information",
+                    "Microsoft.AspNetCore": "Warning",
+                    "Hexalith": "Debug"
+                }
+            }
         }
-      }
-    }
-    ```
+        ```
 
-- [ ] Task 3: Update Aspire hosting extension (AC: #3, #4)
-  - [ ] 3.1 Update `src/Hexalith.EventStore.Aspire/HexalithEventStoreResources.cs` — add `AdminServer` property:
-    ```csharp
-    public record HexalithEventStoreResources(
-        IResourceBuilder<IDaprComponentResource> StateStore,
-        IResourceBuilder<IDaprComponentResource> PubSub,
-        IResourceBuilder<ProjectResource> CommandApi,
-        IResourceBuilder<ProjectResource> AdminServer);
-    ```
-    This is a **BREAKING CHANGE** to the record constructor — any existing consumer passing positional arguments must update. Since this is an internal hosting extension (not a published NuGet API), this is acceptable.
+- [x] Task 3: Update Aspire hosting extension (AC: #3, #4)
+    - [x] 3.1 Update `src/Hexalith.EventStore.Aspire/HexalithEventStoreResources.cs` — add `AdminServer` property:
 
-  - [ ] 3.2 Update `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` — add `adminServer` parameter and wire it with DAPR sidecar:
-    ```csharp
-    public static HexalithEventStoreResources AddHexalithEventStore(
-        this IDistributedApplicationBuilder builder,
-        IResourceBuilder<ProjectResource> commandApi,
-        IResourceBuilder<ProjectResource> adminServer,
-        string? daprConfigPath = null)
-    {
-        // ... existing stateStore and pubSub setup ...
+        ```csharp
+        public record HexalithEventStoreResources(
+            IResourceBuilder<IDaprComponentResource> StateStore,
+            IResourceBuilder<IDaprComponentResource> PubSub,
+            IResourceBuilder<ProjectResource> CommandApi,
+            IResourceBuilder<ProjectResource> AdminServer);
+        ```
 
-        // Wire CommandApi with DAPR sidecar (existing)
-        _ = commandApi
-            .WithDaprSidecar(sidecar => sidecar
-                .WithOptions(new DaprSidecarOptions {
-                    AppId = "commandapi",
-                    Config = daprConfigPath,
-                })
-                .WithReference(stateStore)
-                .WithReference(pubSub));
+        This is a **BREAKING CHANGE** to the record constructor — any existing consumer passing positional arguments must update. Since this is an internal hosting extension (not a published NuGet API), this is acceptable.
 
-        // Wire Admin.Server with DAPR sidecar
-        // Admin.Server needs state store for direct reads (health, admin indexes)
-        // and service invocation to CommandApi for write delegation (ADR-P4).
-        _ = adminServer
-            .WithReference(commandApi)
-            .WithDaprSidecar(sidecar => sidecar
-                .WithOptions(new DaprSidecarOptions {
-                    AppId = "admin-server",
-                    Config = daprConfigPath,
-                })
-                .WithReference(stateStore)
-                .WithReference(pubSub));
+    - [x] 3.2 Update `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs` — add `adminServer` parameter and wire it with DAPR sidecar:
 
-        return new HexalithEventStoreResources(stateStore, pubSub, commandApi, adminServer);
-    }
-    ```
-    Key decisions:
-    - `adminServer` is a **required parameter** (not optional) — Admin.Server is a core part of the EventStore topology
-    - Admin.Server's DAPR sidecar gets the same `stateStore` and `pubSub` references as CommandApi — it needs state store for read operations (health checks, admin indexes)
-    - `WithReference(commandApi)` — Aspire service discovery so Admin.Server can resolve CommandApi's endpoint
-    - AppId = `"admin-server"` — matches the access control policy entry (Task 4)
-    - Same `daprConfigPath` — loads the same access control configuration
+        ```csharp
+        public static HexalithEventStoreResources AddHexalithEventStore(
+            this IDistributedApplicationBuilder builder,
+            IResourceBuilder<ProjectResource> commandApi,
+            IResourceBuilder<ProjectResource> adminServer,
+            string? daprConfigPath = null)
+        {
+            // ... existing stateStore and pubSub setup ...
 
-  - [ ] 3.3 Update `src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj` — no changes expected (existing `Aspire.Hosting` and `CommunityToolkit.Aspire.Hosting.Dapr` dependencies suffice)
+            // Wire CommandApi with DAPR sidecar (existing)
+            _ = commandApi
+                .WithDaprSidecar(sidecar => sidecar
+                    .WithOptions(new DaprSidecarOptions {
+                        AppId = "commandapi",
+                        Config = daprConfigPath,
+                    })
+                    .WithReference(stateStore)
+                    .WithReference(pubSub));
 
-- [ ] Task 4: Update AppHost Program.cs (AC: #3, #8)
-  - [ ] 4.1 Update `src/Hexalith.EventStore.AppHost/Program.cs` — add Admin.Server resource:
-    ```csharp
-    // Add Admin.Server host with DAPR sidecar
-    IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("admin-server");
-    HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(commandApi, adminServer, accessControlConfigPath);
-    ```
-    Also wire Keycloak auth to Admin.Server (same env vars as CommandApi):
-    ```csharp
-    if (keycloak is not null && realmUrl is not null)
-    {
-        _ = adminServer
-            .WithReference(keycloak)
-            .WaitFor(keycloak)
-            .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-            .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-            .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-            .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
-            .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
-    }
-    ```
+            // Wire Admin.Server with DAPR sidecar
+            // Admin.Server needs state store for direct reads (health, admin indexes)
+            // and service invocation to CommandApi for write delegation (ADR-P4).
+            _ = adminServer
+                .WithReference(commandApi)
+                .WithDaprSidecar(sidecar => sidecar
+                    .WithOptions(new DaprSidecarOptions {
+                        AppId = "admin-server",
+                        Config = daprConfigPath,
+                    })
+                    .WithReference(stateStore)
+                    .WithReference(pubSub));
 
-  - [ ] 4.2 Update `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` — add project reference:
-    ```xml
-    <ProjectReference Include="..\Hexalith.EventStore.Admin.Server.Host\Hexalith.EventStore.Admin.Server.Host.csproj" />
-    ```
+            return new HexalithEventStoreResources(stateStore, pubSub, commandApi, adminServer);
+        }
+        ```
 
-- [ ] Task 5: Update DAPR access control (AC: #7)
-  - [ ] 5.1 Update `src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml` — add `admin-server` policy entry:
-    ```yaml
-    # admin-server: Admin API host -- invokes commandapi for write delegation (ADR-P4)
-    # Admin reads go to DAPR state store directly; writes delegate to commandapi.
-    - appId: admin-server
-      defaultAction: deny
-      trustDomain: "public"
-      namespace: "default"
-      operations:
-        - name: /**
-          httpVerb: ['GET', 'POST', 'PUT']
-          action: allow
-    ```
-    Also update the header comment to reflect 3 services:
-    ```yaml
-    # App-ID Topology (3 services):
-    #   - commandapi (port 8080): REST API host + DAPR actor host + event publisher
-    #   - admin-server (port 8090): Admin REST API host -- reads state store, delegates writes to commandapi via DAPR service invocation
-    #   - sample (port 8081): Reference domain service. Zero infrastructure access.
-    ```
+        Key decisions:
+        - `adminServer` is a **required parameter** (not optional) — Admin.Server is a core part of the EventStore topology
+        - Admin.Server's DAPR sidecar gets the same `stateStore` and `pubSub` references as CommandApi — it needs state store for read operations (health checks, admin indexes)
+        - `WithReference(commandApi)` — Aspire service discovery so Admin.Server can resolve CommandApi's endpoint
+        - AppId = `"admin-server"` — matches the access control policy entry (Task 4)
+        - Same `daprConfigPath` — loads the same access control configuration
 
-- [ ] Task 6: Create test project (AC: #9)
-  - [ ] 6.1 Create `tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj`:
-    ```xml
-    <Project Sdk="Microsoft.NET.Sdk">
+    - [x] 3.3 Update `src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj` — no changes expected (existing `Aspire.Hosting` and `CommunityToolkit.Aspire.Hosting.Dapr` dependencies suffice)
 
-      <PropertyGroup>
-        <IsPackable>false</IsPackable>
-      </PropertyGroup>
+- [x] Task 4: Update AppHost Program.cs (AC: #3, #8)
+    - [x] 4.1 Update `src/Hexalith.EventStore.AppHost/Program.cs` — add Admin.Server resource:
 
-      <ItemGroup>
-        <ProjectReference Include="../../src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj" />
-      </ItemGroup>
+        ```csharp
+        // Add Admin.Server host with DAPR sidecar
+        IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("admin-server");
+        HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(commandApi, adminServer, accessControlConfigPath);
+        ```
 
-      <ItemGroup>
-        <PackageReference Include="coverlet.collector" />
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="NSubstitute" />
-        <PackageReference Include="Shouldly" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
-      </ItemGroup>
+        Also wire Keycloak auth to Admin.Server (same env vars as CommandApi):
 
-    </Project>
-    ```
-  - [ ] 6.2 Add project to `Hexalith.EventStore.slnx`
-  - [ ] 6.3 Write `HostBootstrapTests.cs`:
-    - Test: `WebApplicationFactory<Program>` builds successfully with mock DaprClient
-    - Test: `AddAdminApi()` registers all authorization policies (AdminReadOnly, AdminOperator, AdminFull)
-    - Test: `AddAdminApi()` registers `AdminClaimsTransformation`
-    - Test: `AddAdminApi()` registers `AdminTenantAuthorizationFilter`
-    - Test: `AddAdminApi()` registers all 10 admin service implementations
-    - Test: `AddControllers().AddApplicationPart()` discovers admin controllers
-    - Test: Health check endpoints respond (GET `/health` → 200)
-  - [ ] 6.4 Write `MiddlewareOrderTests.cs`:
-    - Test: unauthenticated request to `/api/v1/admin/streams` → 401 (auth middleware active)
-    - Test: authenticated request with valid admin role → 200 (or service-level result)
+        ```csharp
+        if (keycloak is not null && realmUrl is not null)
+        {
+            _ = adminServer
+                .WithReference(keycloak)
+                .WaitFor(keycloak)
+                .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
+                .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
+                .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
+                .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+                .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+        }
+        ```
 
-- [ ] Task 7: Build and test (AC: #10)
-  - [ ] 7.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
-  - [ ] 7.2 `dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/` — all pass
-  - [ ] 7.3 `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/` — all existing 154 tests pass (0 regressions)
-  - [ ] 7.4 Run all Tier 1 tests — 0 regressions
+    - [x] 4.2 Update `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` — add project reference:
+        ```xml
+        <ProjectReference Include="..\Hexalith.EventStore.Admin.Server.Host\Hexalith.EventStore.Admin.Server.Host.csproj" />
+        ```
+
+- [x] Task 5: Update DAPR access control (AC: #7)
+    - [x] 5.1 Update `src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml` — add `admin-server` policy entry:
+        ```yaml
+        # admin-server: Admin API host -- invokes commandapi for write delegation (ADR-P4)
+        # Admin reads go to DAPR state store directly; writes delegate to commandapi.
+        - appId: admin-server
+          defaultAction: deny
+          trustDomain: "public"
+          namespace: "default"
+          operations:
+              - name: /**
+                httpVerb: ["GET", "POST", "PUT"]
+                action: allow
+        ```
+        Also update the header comment to reflect 3 services:
+        ```yaml
+        # App-ID Topology (3 services):
+        #   - commandapi (port 8080): REST API host + DAPR actor host + event publisher
+        #   - admin-server (port 8090): Admin REST API host -- reads state store, delegates writes to commandapi via DAPR service invocation
+        #   - sample (port 8081): Reference domain service. Zero infrastructure access.
+        ```
+
+- [x] Task 6: Create test project (AC: #9)
+    - [x] 6.1 Create `tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj`:
+
+        ```xml
+        <Project Sdk="Microsoft.NET.Sdk">
+
+          <PropertyGroup>
+            <IsPackable>false</IsPackable>
+          </PropertyGroup>
+
+          <ItemGroup>
+            <ProjectReference Include="../../src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj" />
+          </ItemGroup>
+
+          <ItemGroup>
+            <PackageReference Include="coverlet.collector" />
+            <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+            <PackageReference Include="Microsoft.NET.Test.Sdk" />
+            <PackageReference Include="NSubstitute" />
+            <PackageReference Include="Shouldly" />
+            <PackageReference Include="xunit" />
+            <PackageReference Include="xunit.runner.visualstudio" />
+          </ItemGroup>
+
+        </Project>
+        ```
+
+    - [x] 6.2 Add project to `Hexalith.EventStore.slnx`
+    - [x] 6.3 Write `HostBootstrapTests.cs`:
+        - Test: `WebApplicationFactory<Program>` builds successfully with mock DaprClient
+        - Test: `AddAdminApi()` registers all authorization policies (AdminReadOnly, AdminOperator, AdminFull)
+        - Test: `AddAdminApi()` registers `AdminClaimsTransformation`
+        - Test: `AddAdminApi()` registers `AdminTenantAuthorizationFilter`
+        - Test: `AddAdminApi()` registers all 10 admin service implementations
+        - Test: `AddControllers().AddApplicationPart()` discovers admin controllers
+        - Test: Health check endpoints respond (GET `/health` → 200)
+    - [x] 6.4 Write `MiddlewareOrderTests.cs`:
+        - Test: unauthenticated request to `/api/v1/admin/streams` → 401 (auth middleware active)
+        - Test: authenticated request with valid admin role → 200 (or service-level result)
+
+- [x] Task 7: Build and test (AC: #10)
+    - [x] 7.1 `dotnet build Hexalith.EventStore.slnx --configuration Release` — 0 errors, 0 warnings
+    - [x] 7.2 `dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/` — all pass
+    - [x] 7.3 `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/` — all existing 154 tests pass (0 regressions)
+    - [x] 7.4 Run all Tier 1 tests — 0 regressions
 
 ## Dev Notes
 
@@ -387,6 +404,7 @@ app.MapControllers();
 ### DAPR Sidecar Configuration (ADR-P4)
 
 Admin.Server gets its own DAPR sidecar with AppId `"admin-server"`:
+
 - **State store access**: Direct reads for health checks and admin-specific indexes
 - **Service invocation**: Delegates all writes to CommandApi via `DaprClient.InvokeMethodAsync()` — the DAPR service invocation building block handles mTLS, retries, and service discovery
 - **Pub/Sub**: Referenced for completeness but Admin.Server does NOT publish or subscribe — it delegates write operations to CommandApi which handles publication
@@ -412,6 +430,7 @@ AppHost
 ### JWT Authentication — Identical to CommandApi
 
 Admin.Server.Host receives the same Keycloak environment variables as CommandApi:
+
 - `Authentication__JwtBearer__Authority` → Keycloak realm URL
 - `Authentication__JwtBearer__Issuer` → Keycloak realm URL
 - `Authentication__JwtBearer__Audience` → `hexalith-eventstore`
@@ -425,6 +444,7 @@ IMPORTANT: The JWT auth configuration in `Program.cs` must bind from the `Authen
 ### Aspire Extension Breaking Change
 
 Adding `adminServer` to `HexalithEventStoreResources` and `AddHexalithEventStore()` is a **breaking change** to the public API surface. Since:
+
 - `Hexalith.EventStore.Aspire` is consumed only by the AppHost (internal)
 - The AppHost call site is updated in the same story (Task 4)
 - No external consumers exist yet
@@ -434,6 +454,7 @@ This is safe. If external consumers ever exist, add an overload with backward co
 ### DAPR Access Control Update
 
 The access control YAML adds `admin-server` as a permitted caller:
+
 - `commandapi` policy already allows POST on `/**` — no changes needed for incoming calls TO commandapi FROM admin-server
 - New `admin-server` policy: `defaultAction: deny` with operations allowing GET/POST/PUT on `/**` — controls what can call INTO admin-server
 
@@ -455,6 +476,7 @@ In production with mTLS, the `admin-server` sidecar's SPIFFE identity would be v
 ### Naming and Organization Conventions
 
 Follow existing patterns exactly:
+
 - **Project name**: `Hexalith.EventStore.Admin.Server.Host` (mirrors how CommandApi hosts Server)
 - **Namespace**: `Hexalith.EventStore.Admin.Server.Host` for the Program class
 - **File-scoped namespaces**: `namespace X.Y.Z;`
@@ -475,6 +497,7 @@ Follow existing patterns exactly:
 ### Previous Story Intelligence
 
 **Story 14-3** (in review) created:
+
 - 7 REST controllers under `api/v1/admin/` prefix
 - 4 authorization infrastructure classes (policies, claim types, claims transformation, tenant filter)
 - 4 request DTOs
@@ -484,12 +507,14 @@ Follow existing patterns exactly:
 - Admin.Server remains class library with `FrameworkReference` for ASP.NET Core types
 
 **Story 14-2** created:
+
 - 10 DAPR-backed service implementations
 - `AdminServerOptions` (state store name, app IDs, timeouts)
 - `AddAdminServer()` DI registration
 - `IAdminAuthContext` + `NullAdminAuthContext` for JWT token forwarding
 
 **Story 14-1** created:
+
 - 10 service interfaces in Admin.Abstractions
 - 30+ DTOs with `ToString()` redaction
 - `AdminRole` enum: ReadOnly, Operator, Admin
@@ -497,6 +522,7 @@ Follow existing patterns exactly:
 ### Git Intelligence
 
 Recent commits focus on:
+
 - Unit tests for DAPR services (projection, storage, stream, tenant, type catalog)
 - Model tests for Admin.Abstractions
 - MessageId validation tests
@@ -546,10 +572,47 @@ tests/Hexalith.EventStore.Admin.Server.Host.Tests/  ← NEW
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- Pre-existing build error in `tests/Hexalith.EventStore.IntegrationTests/` (CS0433 — ambiguous `Program` type between AppHost and Sample). Tier 3, unrelated to this story.
+- `UseExceptionHandler()` requires `AddProblemDetails()` — added to Program.cs (not in story spec, but required for middleware to work).
+- Added `Microsoft.AspNetCore.Authentication.JwtBearer` package reference — not in original csproj spec but required for `AddJwtBearer()`.
+
 ### Completion Notes List
 
+- Created Admin.Server.Host as executable web application following CommandApi bootstrap pattern exactly
+- Program.cs: AddServiceDefaults → AddDaprClient → AddProblemDetails → AddAdminApi → AddAuthentication/JwtBearer → AddControllers/ApplicationPart → UseExceptionHandler → MapDefaultEndpoints → UseAuthentication → UseAuthorization → MapControllers
+- HexalithEventStoreResources record extended with AdminServer property (breaking change, internal only)
+- AddHexalithEventStore() extended with adminServer parameter, wires DAPR sidecar with stateStore + pubSub + service discovery to commandApi
+- AppHost registers admin-server resource with Keycloak auth env vars matching commandApi
+- DAPR access control updated: admin-server policy allows GET/POST/PUT on /\*\*, topology updated to 3 services
+- 10 new tests: host bootstrap (DI, auth policies, claims transformation, tenant filter, service registrations, controller discovery, health endpoints) + middleware order (401 unauthenticated, auth pass-through)
+- All 1,059 Tier 1 tests pass (10 new + 1,049 existing), zero regressions
+- Review follow-up: restored `NullAdminAuthContext` as the shared-library default and moved `HttpContextAdminAuthContext` registration into `Admin.Server.Host`
+- Review follow-up: scoped `admin-server` into state-store components for direct admin reads/health probes and removed unused pub/sub wiring from the admin host sidecar
+- Review follow-up: strengthened host tests to use real JWT bearer tokens and assert concrete 200/403 outcomes instead of only checking for “not 401/403”
+
 ### File List
+
+New files:
+
+- src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj
+- src/Hexalith.EventStore.Admin.Server.Host/Program.cs
+- src/Hexalith.EventStore.Admin.Server.Host/Properties/launchSettings.json
+- src/Hexalith.EventStore.Admin.Server.Host/appsettings.json
+- src/Hexalith.EventStore.Admin.Server.Host/appsettings.Development.json
+- tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj
+- tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs
+- tests/Hexalith.EventStore.Admin.Server.Host.Tests/MiddlewareOrderTests.cs
+
+Modified files:
+
+- Hexalith.EventStore.slnx (added Admin.Server.Host + test project)
+- src/Hexalith.EventStore.Aspire/HexalithEventStoreResources.cs (added AdminServer property)
+- src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs (added adminServer parameter + DAPR sidecar wiring)
+- src/Hexalith.EventStore.AppHost/Program.cs (added admin-server resource + Keycloak wiring)
+- src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj (added Admin.Server.Host project reference)
+- src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml (added admin-server policy + updated topology comment)
+

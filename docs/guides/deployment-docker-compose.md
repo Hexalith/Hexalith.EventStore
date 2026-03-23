@@ -172,13 +172,16 @@ To adapt the generated compose file for production deployment:
 
 ### Step 1: Prepare the DAPR Components Directory
 
-Create a directory for DAPR component definitions and copy the local development components:
+Create directories for DAPR component definitions and sidecar configuration, then copy the local development files:
 
 ```bash
 $ mkdir -p publish-output/docker/dapr-components
+$ mkdir -p publish-output/docker/dapr-config
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml publish-output/docker/dapr-components/
-$ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml publish-output/docker/dapr-components/
+$ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml publish-output/docker/dapr-config/
+$ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.admin-server.yaml publish-output/docker/dapr-config/
+$ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.sample.yaml publish-output/docker/dapr-config/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.yaml publish-output/docker/dapr-components/
@@ -210,6 +213,7 @@ services:
             - commandapi
         volumes:
             - ./dapr-components:/components
+            - ./dapr-config:/config
         command:
             [
                 "./daprd",
@@ -222,7 +226,28 @@ services:
                 "-components-path",
                 "/components",
                 "-config",
-                "/components/accesscontrol.yaml",
+                "/config/accesscontrol.yaml",
+            ]
+
+    admin-server-dapr:
+        image: "daprio/daprd:latest"
+        network_mode: "service:admin-server"
+        depends_on:
+            - admin-server
+        volumes:
+            - ./dapr-components:/components
+            - ./dapr-config:/config
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "admin-server",
+                "-app-port",
+                "8090",
+                "-components-path",
+                "/components",
+                "-config",
+                "/config/accesscontrol.admin-server.yaml",
             ]
 
     sample-dapr:
@@ -232,6 +257,7 @@ services:
             - sample
         volumes:
             - ./dapr-components:/components
+            - ./dapr-config:/config
         command:
             [
                 "./daprd",
@@ -242,7 +268,7 @@ services:
                 "-components-path",
                 "/components",
                 "-config",
-                "/components/accesscontrol.yaml",
+                "/config/accesscontrol.sample.yaml",
             ]
 
     placement:
@@ -351,7 +377,7 @@ To swap backends, copy the desired production component files into `dapr-compone
 ```bash
 $ cp deploy/dapr/statestore-postgresql.yaml publish-output/docker/dapr-components/statestore.yaml
 $ cp deploy/dapr/pubsub-rabbitmq.yaml publish-output/docker/dapr-components/pubsub.yaml
-$ docker compose restart commandapi-dapr sample-dapr
+$ docker compose restart commandapi-dapr admin-server-dapr sample-dapr
 ```
 
 For per-backend environment variables and connection string formats, see [deploy/README.md](../../deploy/README.md#per-backend-configuration).
@@ -556,7 +582,7 @@ One of DAPR's core benefits is infrastructure portability. You can switch from R
 4. Restart the DAPR sidecars to pick up the new component:
 
     ```bash
-    $ docker compose restart commandapi-dapr sample-dapr
+    $ docker compose restart commandapi-dapr admin-server-dapr sample-dapr
     ```
 
 5. Verify the swap by sending a test command and checking PostgreSQL:

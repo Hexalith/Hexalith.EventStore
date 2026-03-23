@@ -10,13 +10,13 @@ This is the comprehensive reference for all DAPR building blocks used by Hexalit
 
 Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure concerns away from application code. A "building block" is a DAPR API that your application calls instead of talking directly to infrastructure. DAPR translates those API calls into backend-specific operations via pluggable components.
 
-| Building Block | Purpose in Hexalith | DAPR Component Type |
-|----------------|---------------------|---------------------|
-| State Store | Actor state, event snapshots, command status tracking | `state.redis`, `state.postgresql`, `state.azure.cosmosdb` |
-| Pub/Sub | Event distribution with per-tenant-per-domain topics | `pubsub.redis`, `pubsub.rabbitmq`, `pubsub.kafka`, `pubsub.azure.servicebus.topics` |
-| Actors | Aggregate lifecycle management (turn-based concurrency) | Enabled via `actorStateStore: true` on state store |
-| Configuration | Domain service registration and dynamic config | `configuration.redis` |
-| Resiliency | Retry, timeout, and circuit breaker policies | `Resiliency` resource (not a component) |
+| Building Block | Purpose in Hexalith                                     | DAPR Component Type                                                                 |
+| -------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| State Store    | Actor state, event snapshots, command status tracking   | `state.redis`, `state.postgresql`, `state.azure.cosmosdb`                           |
+| Pub/Sub        | Event distribution with per-tenant-per-domain topics    | `pubsub.redis`, `pubsub.rabbitmq`, `pubsub.kafka`, `pubsub.azure.servicebus.topics` |
+| Actors         | Aggregate lifecycle management (turn-based concurrency) | Enabled via `actorStateStore: true` on state store                                  |
+| Configuration  | Domain service registration and dynamic config          | `configuration.redis`                                                               |
+| Resiliency     | Retry, timeout, and circuit breaker policies            | `Resiliency` resource (not a component)                                             |
 
 ```mermaid
 flowchart TB
@@ -47,13 +47,13 @@ The diagram shows the data flow through Hexalith.EventStore DAPR components. A c
 
 The key architecture decisions that affect component configuration:
 
-| Decision | Description | Configuration Impact |
-|----------|-------------|---------------------|
-| D1 | Composite key strategy | Event stream keys follow `{tenant}:{domain}:{aggregateId}:events:{seq}` pattern |
-| D2 | Command status TTL | 24-hour TTL set at application level, not component level |
-| D4 | Deny-by-default access | Only `commandapi` accesses state store and pub/sub; access control enforces this |
-| D6 | Topic naming convention | Topics follow `{tenant}.{domain}.events`; dead-letter: `deadletter.{tenant}.{domain}.events` |
-| D7 | Resiliency at sidecar level | No custom retry logic in application code; DAPR resiliency policies handle all retries |
+| Decision | Description                 | Configuration Impact                                                                         |
+| -------- | --------------------------- | -------------------------------------------------------------------------------------------- |
+| D1       | Composite key strategy      | Event stream keys follow `{tenant}:{domain}:{aggregateId}:events:{seq}` pattern              |
+| D2       | Command status TTL          | 24-hour TTL set at application level, not component level                                    |
+| D4       | Deny-by-default access      | Only `commandapi` accesses state store and pub/sub; access control enforces this             |
+| D6       | Topic naming convention     | Topics follow `{tenant}.{domain}.events`; dead-letter: `deadletter.{tenant}.{domain}.events` |
+| D7       | Resiliency at sidecar level | No custom retry logic in application code; DAPR resiliency policies handle all retries       |
 
 ## State Store Configuration
 
@@ -69,28 +69,28 @@ Source: `src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: statestore
+    name: statestore
 spec:
-  type: state.redis
-  version: v1
-  metadata:
-    - name: redisHost
-      # Redis server address. Default: localhost:6379 for local development.
-      # The |localhost:6379 syntax provides a fallback if REDIS_HOST is not set.
-      value: "{env:REDIS_HOST|localhost:6379}"
-    - name: redisPassword
-      # Redis password. Leave empty for local development without auth.
-      # Set via environment variable for any environment requiring authentication.
-      value: "{env:REDIS_PASSWORD}"
-    - name: actorStateStore
-      # REQUIRED: Enables this state store for DAPR Actors building block.
-      # Without this, actor activation fails with "no actor state store" error.
-      value: "true"
+    type: state.redis
+    version: v1
+    metadata:
+        - name: redisHost
+          # Redis server address. Default: localhost:6379 for local development.
+          # The |localhost:6379 syntax provides a fallback if REDIS_HOST is not set.
+          value: "{env:REDIS_HOST|localhost:6379}"
+        - name: redisPassword
+          # Redis password. Leave empty for local development without auth.
+          # Set via environment variable for any environment requiring authentication.
+          value: "{env:REDIS_PASSWORD}"
+        - name: actorStateStore
+          # REQUIRED: Enables this state store for DAPR Actors building block.
+          # Without this, actor activation fails with "no actor state store" error.
+          value: "true"
 # Component scoping: only commandapi can access this state store (D4).
 # Actors run in-process under the commandapi app-id.
 # Domain services (sample) have zero state store access.
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 Persistence guarantees: Redis stores data in-memory by default. Data survives process restarts only if AOF (Append Only File) or RDB (Redis Database) persistence is enabled in your Redis server configuration. For local development, data loss on restart is acceptable. ETag-based optimistic concurrency is supported via Redis `SET NX` semantics. Multi-key transactions use Redis `MULTI/EXEC`.
@@ -103,22 +103,22 @@ Source: `deploy/dapr/statestore-postgresql.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: statestore
+    name: statestore
 spec:
-  type: state.postgresql
-  version: v1
-  metadata:
-    - name: connectionString
-      # PostgreSQL connection string.
-      # Format: host=<host>;port=5432;username=<user>;password=<pass>;database=<db>;sslmode=require
-      # NEVER hardcode secrets -- provide via environment variable (NFR14).
-      value: "{env:POSTGRES_CONNECTION_STRING}"
-    - name: actorStateStore
-      # REQUIRED: Enables this state store for DAPR Actors building block.
-      value: "true"
+    type: state.postgresql
+    version: v1
+    metadata:
+        - name: connectionString
+          # PostgreSQL connection string.
+          # Format: host=<host>;port=5432;username=<user>;password=<pass>;database=<db>;sslmode=require
+          # NEVER hardcode secrets -- provide via environment variable (NFR14).
+          value: "{env:POSTGRES_CONNECTION_STRING}"
+        - name: actorStateStore
+          # REQUIRED: Enables this state store for DAPR Actors building block.
+          value: "true"
 # Component scoping: only commandapi can access this state store (D4).
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 Persistence guarantees: PostgreSQL provides WAL-based (Write-Ahead Logging) durability — committed data survives crashes. Consistency is ACID-strong with full transaction support. ETag optimistic concurrency uses row versioning. Data lives in a relational `state` table. Back up with `pg_dump` or continuous WAL archiving.
@@ -131,31 +131,31 @@ Source: `deploy/dapr/statestore-cosmosdb.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: statestore
+    name: statestore
 spec:
-  type: state.azure.cosmosdb
-  version: v1
-  metadata:
-    - name: url
-      # Cosmos DB account URL.
-      # Format: https://<account-name>.documents.azure.com:443/
-      value: "{env:COSMOSDB_URL}"
-    - name: masterKey
-      # Cosmos DB primary or secondary key.
-      # NEVER hardcode -- use Azure Key Vault in production (NFR14).
-      value: "{env:COSMOSDB_KEY}"
-    - name: database
-      # Cosmos DB database name for actor state storage.
-      value: "{env:COSMOSDB_DATABASE}"
-    - name: collection
-      # Cosmos DB container/collection name for actor state storage.
-      value: "{env:COSMOSDB_COLLECTION}"
-    - name: actorStateStore
-      # REQUIRED: Enables this state store for DAPR Actors building block.
-      value: "true"
+    type: state.azure.cosmosdb
+    version: v1
+    metadata:
+        - name: url
+          # Cosmos DB account URL.
+          # Format: https://<account-name>.documents.azure.com:443/
+          value: "{env:COSMOSDB_URL}"
+        - name: masterKey
+          # Cosmos DB primary or secondary key.
+          # NEVER hardcode -- use Azure Key Vault in production (NFR14).
+          value: "{env:COSMOSDB_KEY}"
+        - name: database
+          # Cosmos DB database name for actor state storage.
+          value: "{env:COSMOSDB_DATABASE}"
+        - name: collection
+          # Cosmos DB container/collection name for actor state storage.
+          value: "{env:COSMOSDB_COLLECTION}"
+        - name: actorStateStore
+          # REQUIRED: Enables this state store for DAPR Actors building block.
+          value: "true"
 # Component scoping: only commandapi can access this state store (D4).
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 Azure Container Apps uses a simplified component schema (no `apiVersion`, `kind`, `metadata.name` wrapper). The equivalent ACA DAPR component configuration:
@@ -200,38 +200,38 @@ Source: `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: pubsub
+    name: pubsub
 spec:
-  type: pubsub.redis
-  version: v1
-  metadata:
-    - name: redisHost
-      # Redis server address for pub/sub. Same Redis instance as state store in local dev.
-      value: "{env:REDIS_HOST|localhost:6379}"
-    - name: redisPassword
-      # Redis password for pub/sub connection.
-      # Leave empty for local development without authentication.
-      value: "{env:REDIS_PASSWORD}"
-    - name: enableDeadLetter
-      # Routes undeliverable messages (after retry exhaustion) to a dead-letter topic.
-      value: "true"
-    - name: deadLetterTopic
-      # Default dead-letter topic name. Per-tenant dead-letter routing
-      # (deadletter.{tenant}.{domain}.events) is configured per-subscription.
-      value: "deadletter"
-    - name: publishingScopes
-      # Layer 2: sample= (empty) denies sample from publishing.
-      # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
-      value: "sample="
-    - name: subscriptionScopes
-      # Layer 3: sample= (empty) denies sample from subscribing.
-      # External subscribers are scoped to specific tenant topics.
-      value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+    type: pubsub.redis
+    version: v1
+    metadata:
+        - name: redisHost
+          # Redis server address for pub/sub. Same Redis instance as state store in local dev.
+          value: "{env:REDIS_HOST|localhost:6379}"
+        - name: redisPassword
+          # Redis password for pub/sub connection.
+          # Leave empty for local development without authentication.
+          value: "{env:REDIS_PASSWORD}"
+        - name: enableDeadLetter
+          # Routes undeliverable messages (after retry exhaustion) to a dead-letter topic.
+          value: "true"
+        - name: deadLetterTopic
+          # Default dead-letter topic name. Per-tenant dead-letter routing
+          # (deadletter.{tenant}.{domain}.events) is configured per-subscription.
+          value: "deadletter"
+        - name: publishingScopes
+          # Layer 2: sample= (empty) denies sample from publishing.
+          # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
+          value: "sample="
+        - name: subscriptionScopes
+          # Layer 3: sample= (empty) denies sample from subscribing.
+          # External subscribers are scoped to specific tenant topics.
+          value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Layer 1: Component scoping.
 scopes:
-  - commandapi
-  - example-subscriber
-  - ops-monitor
+    - commandapi
+    - example-subscriber
+    - ops-monitor
 ```
 
 Redis Streams uses consumer group semantics for at-least-once delivery. Dead-letter handling is DAPR-managed (Redis does not have native dead-letter queues).
@@ -329,52 +329,52 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: pubsub
+    name: pubsub
 spec:
-  type: pubsub.rabbitmq
-  version: v1
-  metadata:
-    - name: connectionString
-      # RabbitMQ connection string. Format: amqp://<user>:<pass>@<host>:5672/
-      # Provide via environment variable -- NEVER hardcode secrets in this file (NFR14).
-      value: "{env:RABBITMQ_CONNECTION_STRING}"
-    - name: durable
-      # RabbitMQ queue durability flag (true = survives broker restart).
-      value: "true"
-    - name: deletedWhenUnused
-      # Queue lifecycle flag (false = keep queue even when no consumers).
-      value: "false"
-    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-    # Compatible with RabbitMQ dead-letter exchanges (DLX).
-    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-    # per-subscription in Story 4.5.
-    - name: enableDeadLetter
-      value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
-    # Publishing scoping (Story 5.1):
-    # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
-    # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
-    # not a wildcard. Omitting commandapi achieves unrestricted access.
-    #
-    # When adding production domain services to component scopes, you MUST add
-    # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
-    # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID environment variables before deployment.
-    # If left unset, DAPR env var references will not resolve and scoping will not match real app-ids.
-    - name: publishingScopes
-      value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
-    # Subscription scoping (Story 5.3, FR29):
-    # commandapi is NOT listed = unrestricted subscription to all topics.
-    # External subscribers must be explicitly added with authorized tenant topics.
-    #
-    # Example with production subscriber:
-    #   value: ";{env:NEW_SUBSCRIBER_APP_ID}=tenant.domain.events,tenant2.domain2.events"
-    # Example with ops-monitor for dead-letter topics:
-    #   value: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.tenant.domain.events"
-    # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
-    # with your actual tenant.domain.events topics before deployment.
-    - name: subscriptionScopes
-      value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+    type: pubsub.rabbitmq
+    version: v1
+    metadata:
+        - name: connectionString
+          # RabbitMQ connection string. Format: amqp://<user>:<pass>@<host>:5672/
+          # Provide via environment variable -- NEVER hardcode secrets in this file (NFR14).
+          value: "{env:RABBITMQ_CONNECTION_STRING}"
+        - name: durable
+          # RabbitMQ queue durability flag (true = survives broker restart).
+          value: "true"
+        - name: deletedWhenUnused
+          # Queue lifecycle flag (false = keep queue even when no consumers).
+          value: "false"
+        # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
+        # Compatible with RabbitMQ dead-letter exchanges (DLX).
+        # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
+        # per-subscription in Story 4.5.
+        - name: enableDeadLetter
+          value: "true"
+        - name: deadLetterTopic
+          value: "deadletter"
+        # Publishing scoping (Story 5.1):
+        # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
+        # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
+        # not a wildcard. Omitting commandapi achieves unrestricted access.
+        #
+        # When adding production domain services to component scopes, you MUST add
+        # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
+        # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID environment variables before deployment.
+        # If left unset, DAPR env var references will not resolve and scoping will not match real app-ids.
+        - name: publishingScopes
+          value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
+        # Subscription scoping (Story 5.3, FR29):
+        # commandapi is NOT listed = unrestricted subscription to all topics.
+        # External subscribers must be explicitly added with authorized tenant topics.
+        #
+        # Example with production subscriber:
+        #   value: ";{env:NEW_SUBSCRIBER_APP_ID}=tenant.domain.events,tenant2.domain2.events"
+        # Example with ops-monitor for dead-letter topics:
+        #   value: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.tenant.domain.events"
+        # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
+        # with your actual tenant.domain.events topics before deployment.
+        - name: subscriptionScopes
+          value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Component-level scoping: commandapi and explicitly authorized subscriber app-ids
 # can access this pub/sub component. Domain services have zero pub/sub access (D4).
 #
@@ -385,9 +385,9 @@ spec:
 #     - "{env:SUBSCRIBER_APP_ID}"
 #     - "{env:OPS_MONITOR_APP_ID}"
 scopes:
-  - commandapi
-  - "{env:SUBSCRIBER_APP_ID}"
-  - "{env:OPS_MONITOR_APP_ID}"
+    - commandapi
+    - "{env:SUBSCRIBER_APP_ID}"
+    - "{env:OPS_MONITOR_APP_ID}"
 ```
 
 RabbitMQ uses durable queues and dead-letter exchanges (DLX). Message persistence is enabled via the `durable` flag. AMQP delivery guarantees provide at-least-once delivery. RabbitMQ-level ACLs/permissions are a separate layer — configure independently from DAPR scoping.
@@ -487,50 +487,50 @@ Source: `deploy/dapr/pubsub-kafka.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: pubsub
+    name: pubsub
 spec:
-  type: pubsub.kafka
-  version: v1
-  metadata:
-    - name: brokers
-      # Comma-separated Kafka broker addresses. Format: broker1:9092,broker2:9092
-      # Provide via environment variable -- NEVER hardcode in this file (NFR14).
-      value: "{env:KAFKA_BROKERS}"
-    - name: authType
-      # Kafka authentication type: none, password, mtls, or oidc.
-      # Use 'password' for SASL/PLAIN or SASL/SCRAM, 'mtls' for certificate auth.
-      value: "{env:KAFKA_AUTH_TYPE}"
-    # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
-    # Kafka dead-letter: messages routed to a separate Kafka topic after consumer failure.
-    # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
-    # per-subscription in Story 4.5.
-    - name: enableDeadLetter
-      value: "true"
-    - name: deadLetterTopic
-      value: "deadletter"
-    # Publishing scoping (Story 5.1):
-    # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
-    # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
-    # not a wildcard. Omitting commandapi achieves unrestricted access.
-    #
-    # When adding production domain services to component scopes, you MUST add
-    # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
-    # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID environment variables before deployment.
-    # If left unset, DAPR env var references will not resolve and scoping will not match real app-ids.
-    - name: publishingScopes
-      value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
-    # Subscription scoping (Story 5.3, FR29):
-    # commandapi is NOT listed = unrestricted subscription to all topics.
-    # External subscribers must be explicitly added with authorized tenant topics.
-    #
-    # Example with production subscriber:
-    #   value: ";{env:NEW_SUBSCRIBER_APP_ID}=tenant.domain.events,tenant2.domain2.events"
-    # Example with ops-monitor for dead-letter topics:
-    #   value: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.tenant.domain.events"
-    # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
-    # with your actual tenant.domain.events topics before deployment.
-    - name: subscriptionScopes
-      value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+    type: pubsub.kafka
+    version: v1
+    metadata:
+        - name: brokers
+          # Comma-separated Kafka broker addresses. Format: broker1:9092,broker2:9092
+          # Provide via environment variable -- NEVER hardcode in this file (NFR14).
+          value: "{env:KAFKA_BROKERS}"
+        - name: authType
+          # Kafka authentication type: none, password, mtls, or oidc.
+          # Use 'password' for SASL/PLAIN or SASL/SCRAM, 'mtls' for certificate auth.
+          value: "{env:KAFKA_AUTH_TYPE}"
+        # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.
+        # Kafka dead-letter: messages routed to a separate Kafka topic after consumer failure.
+        # Per-tenant dead-letter routing (deadletter.{tenant}.{domain}.events) is configured
+        # per-subscription in Story 4.5.
+        - name: enableDeadLetter
+          value: "true"
+        - name: deadLetterTopic
+          value: "deadletter"
+        # Publishing scoping (Story 5.1):
+        # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
+        # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
+        # not a wildcard. Omitting commandapi achieves unrestricted access.
+        #
+        # When adding production domain services to component scopes, you MUST add
+        # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
+        # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID environment variables before deployment.
+        # If left unset, DAPR env var references will not resolve and scoping will not match real app-ids.
+        - name: publishingScopes
+          value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
+        # Subscription scoping (Story 5.3, FR29):
+        # commandapi is NOT listed = unrestricted subscription to all topics.
+        # External subscribers must be explicitly added with authorized tenant topics.
+        #
+        # Example with production subscriber:
+        #   value: ";{env:NEW_SUBSCRIBER_APP_ID}=tenant.domain.events,tenant2.domain2.events"
+        # Example with ops-monitor for dead-letter topics:
+        #   value: ";{env:NEW_OPS_TOOL_APP_ID}=deadletter.tenant.domain.events"
+        # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
+        # with your actual tenant.domain.events topics before deployment.
+        - name: subscriptionScopes
+          value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Component-level scoping: commandapi and explicitly authorized subscriber app-ids
 # can access this pub/sub component. Domain services have zero pub/sub access (D4).
 #
@@ -541,9 +541,9 @@ spec:
 #     - "{env:SUBSCRIBER_APP_ID}"
 #     - "{env:OPS_MONITOR_APP_ID}"
 scopes:
-  - commandapi
-  - "{env:SUBSCRIBER_APP_ID}"
-  - "{env:OPS_MONITOR_APP_ID}"
+    - commandapi
+    - "{env:SUBSCRIBER_APP_ID}"
+    - "{env:OPS_MONITOR_APP_ID}"
 ```
 
 Kafka uses a commit log with configurable retention. Each subscriber app-id uses its own consumer group by default, providing consumer group isolation. Kafka topic auto-creation supports dynamic tenant provisioning (NFR20). Kafka-level ACLs are a separate layer from DAPR scoping.
@@ -643,34 +643,34 @@ Source: `deploy/dapr/pubsub-servicebus.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: pubsub
+    name: pubsub
 spec:
-  type: pubsub.azure.servicebus.topics
-  version: v1
-  metadata:
-    - name: connectionString
-      # Azure Service Bus connection string with topic management permissions.
-      # Format: Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key>
-      # Alternatively, use Azure AD authentication with namespaceName metadata.
-      value: "{env:SERVICEBUS_CONNECTION_STRING}"
-    - name: enableDeadLetter
-      # Enables routing to dead-letter topic when retries are exhausted.
-      value: "true"
-    - name: deadLetterTopic
-      # Default dead-letter topic name used by this component.
-      value: "deadletter"
-    # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID before deployment.
-    # If left unset, these values may remain literal and scoping will not match real app-ids.
-    - name: publishingScopes
-      value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
-    # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
-    # with your actual tenant.domain.events topics before deployment.
-    - name: subscriptionScopes
-      value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+    type: pubsub.azure.servicebus.topics
+    version: v1
+    metadata:
+        - name: connectionString
+          # Azure Service Bus connection string with topic management permissions.
+          # Format: Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=<key-name>;SharedAccessKey=<key>
+          # Alternatively, use Azure AD authentication with namespaceName metadata.
+          value: "{env:SERVICEBUS_CONNECTION_STRING}"
+        - name: enableDeadLetter
+          # Enables routing to dead-letter topic when retries are exhausted.
+          value: "true"
+        - name: deadLetterTopic
+          # Default dead-letter topic name used by this component.
+          value: "deadletter"
+        # IMPORTANT: Set SUBSCRIBER_APP_ID and OPS_MONITOR_APP_ID before deployment.
+        # If left unset, these values may remain literal and scoping will not match real app-ids.
+        - name: publishingScopes
+          value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
+        # MUST CUSTOMIZE: Replace example topic names (acme.orders.events, acme.inventory.events)
+        # with your actual tenant.domain.events topics before deployment.
+        - name: subscriptionScopes
+          value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 scopes:
-  - commandapi
-  - "{env:SUBSCRIBER_APP_ID}"
-  - "{env:OPS_MONITOR_APP_ID}"
+    - commandapi
+    - "{env:SUBSCRIBER_APP_ID}"
+    - "{env:OPS_MONITOR_APP_ID}"
 ```
 
 Azure Container Apps equivalent (simplified schema):
@@ -707,21 +707,21 @@ Actors in Hexalith.EventStore are NOT a separate DAPR component YAML. The Actors
 
 Actor-specific runtime configuration:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Idle timeout | 60 minutes | Actor is deactivated after this period of inactivity, freeing memory |
-| Turn-based concurrency | Single-threaded | Only one method executes at a time per actor instance — no concurrent access |
-| Placement | Consistent hashing | DAPR distributes actors across instances using consistent hashing |
-| Reentrancy | Disabled | Reentrant calls within the same actor are blocked by default |
+| Setting                | Default            | Description                                                                  |
+| ---------------------- | ------------------ | ---------------------------------------------------------------------------- |
+| Idle timeout           | 60 minutes         | Actor is deactivated after this period of inactivity, freeing memory         |
+| Turn-based concurrency | Single-threaded    | Only one method executes at a time per actor instance — no concurrent access |
+| Placement              | Consistent hashing | DAPR distributes actors across instances using consistent hashing            |
+| Reentrancy             | Disabled           | Reentrant calls within the same actor are blocked by default                 |
 
 Actor reminders (used in publish recovery flows):
 
 - Reminder name format: `drain-unpublished-{correlationId}`
 - Trigger path: `ReceiveReminderAsync` processes only reminders with `drain-unpublished-` prefix
 - Schedule source: `EventStore:Drain` options
-  - `InitialDrainDelay` controls due time (negative values are clamped to `0`)
-  - `DrainPeriod` controls repeat interval (defaults to `00:01:00` when invalid)
-  - `MaxDrainPeriod` upper-bounds repeat interval (defaults to `00:30:00` when invalid)
+    - `InitialDrainDelay` controls due time (negative values are clamped to `0`)
+    - `DrainPeriod` controls repeat interval (defaults to `00:01:00` when invalid)
+    - `MaxDrainPeriod` upper-bounds repeat interval (defaults to `00:30:00` when invalid)
 - Registration behavior: reminder is registered only after successful state commit in publish-failure handling
 
 Hexalith currently uses reminders for unpublished event draining and does not define custom actor timers in component YAML.
@@ -742,26 +742,26 @@ Source: `src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: configstore
+    name: configstore
 spec:
-  type: configuration.redis
-  version: v1
-  metadata:
-    - name: redisHost
-      # Redis server address for configuration store.
-      # Can share the same Redis instance as state store and pub/sub in local dev.
-      value: "{env:REDIS_HOST|localhost:6379}"
-    - name: redisPassword
-      # Redis password for configuration-store connection.
-      # Leave empty for local development without authentication.
-      value: "{env:REDIS_PASSWORD}"
+    type: configuration.redis
+    version: v1
+    metadata:
+        - name: redisHost
+          # Redis server address for configuration store.
+          # Can share the same Redis instance as state store and pub/sub in local dev.
+          value: "{env:REDIS_HOST|localhost:6379}"
+        - name: redisPassword
+          # Redis password for configuration-store connection.
+          # Leave empty for local development without authentication.
+          value: "{env:REDIS_PASSWORD}"
 # Default scope includes `commandapi`; add domain-service app-ids when they consume configuration directly.
 # Example:
 # scopes:
 #   - commandapi
 #   - sample
 scopes:
-  - commandapi
+    - commandapi
 ```
 
 The configuration store supports dynamic updates without application restart — when a configuration key changes in Redis, the DAPR sidecar notifies subscribed applications via the Configuration API.
@@ -776,129 +776,126 @@ Source: `deploy/dapr/resiliency.yaml`
 apiVersion: dapr.io/v1alpha1
 kind: Resiliency
 metadata:
-  name: resiliency
+    name: resiliency
 spec:
-  policies:
-    retries:
-      defaultRetry:
-        # Exponential backoff with jitter for general operations.
-        policy: exponential
-        maxInterval: 15s
-        maxRetries: 10
-      pubsubRetryOutbound:
-        # Publisher -> sidecar -> broker retries.
-        # Conservative: Story 4.4 recovery drain handles prolonged outages.
-        # Effective retry count = component built-in retries x resiliency retries:
-        #   Redis Streams: 0 built-in -> effective = 5
-        #   RabbitMQ: ~3 built-in (publisher confirms) -> effective ~15
-        #   Kafka: ~infinite built-in (default retries=2147483647) -> resiliency rarely fires
-        #   Azure Service Bus: 3 built-in (SDK default) -> effective ~15
-        policy: exponential
-        maxInterval: 10s
-        maxRetries: 5
-      pubsubRetryInbound:
-        # Broker -> sidecar -> subscriber app retries.
-        # More retries with longer intervals for subscriber processing failures.
-        policy: exponential
-        maxInterval: 60s
-        maxRetries: 20
-    timeouts:
-      daprSidecar:
-        # General sidecar operation timeout.
-        general: 5s
-      pubsubTimeout:
-        # Pub/sub outbound: prevents hung sidecar->broker calls
-        # from blocking actor turns.
-        10s
-      subscriberTimeout:
-        # Pub/sub inbound: allows more time for subscriber processing.
-        30s
-    circuitBreakers:
-      defaultBreaker:
-        # General circuit breaker for app-to-sidecar operations.
-        maxRequests: 1      # 1 probe request in half-open state
-        interval: 60s       # Sampling window for failure counting
-        timeout: 60s        # Time in open state before half-open
-        trip: consecutiveFailures > 5
-      pubsubBreaker:
-        # Pub/sub circuit breaker for prolonged broker outages.
-        # When open, AggregateActor receives immediate failure (fast-fail)
-        # and transitions to PublishFailed state.
-        maxRequests: 1
-        interval: 60s
-        timeout: 60s
-        trip: consecutiveFailures > 10
-  targets:
-    apps:
-      commandapi:
-        # Apply default policies to commandapi operations.
-        retry: defaultRetry
-        timeout: daprSidecar
-        circuitBreaker: defaultBreaker
-    components:
-      pubsub:
-        outbound:
-          # Publisher-side resiliency.
-          retry: pubsubRetryOutbound
-          timeout: pubsubTimeout
-          circuitBreaker: pubsubBreaker
-        inbound:
-          # Subscriber-side resiliency.
-          retry: pubsubRetryInbound
-          timeout: subscriberTimeout
-      statestore:
-        # State store resiliency for event persistence,
-        # snapshot read/write, and command status operations.
-        retry: defaultRetry
-        timeout: daprSidecar
-        circuitBreaker: defaultBreaker
+    policies:
+        retries:
+            defaultRetry:
+                # Exponential backoff with jitter for general operations.
+                policy: exponential
+                maxInterval: 15s
+                maxRetries: 10
+            pubsubRetryOutbound:
+                # Publisher -> sidecar -> broker retries.
+                # Conservative: Story 4.4 recovery drain handles prolonged outages.
+                # Effective retry count = component built-in retries x resiliency retries:
+                #   Redis Streams: 0 built-in -> effective = 5
+                #   RabbitMQ: ~3 built-in (publisher confirms) -> effective ~15
+                #   Kafka: ~infinite built-in (default retries=2147483647) -> resiliency rarely fires
+                #   Azure Service Bus: 3 built-in (SDK default) -> effective ~15
+                policy: exponential
+                maxInterval: 10s
+                maxRetries: 5
+            pubsubRetryInbound:
+                # Broker -> sidecar -> subscriber app retries.
+                # More retries with longer intervals for subscriber processing failures.
+                policy: exponential
+                maxInterval: 60s
+                maxRetries: 20
+        timeouts:
+            daprSidecar:
+                # General sidecar operation timeout.
+                general: 5s
+            pubsubTimeout:
+                # Pub/sub outbound: prevents hung sidecar->broker calls
+                # from blocking actor turns.
+                10s
+            subscriberTimeout:
+                # Pub/sub inbound: allows more time for subscriber processing.
+                30s
+        circuitBreakers:
+            defaultBreaker:
+                # General circuit breaker for app-to-sidecar operations.
+                maxRequests: 1 # 1 probe request in half-open state
+                interval: 60s # Sampling window for failure counting
+                timeout: 60s # Time in open state before half-open
+                trip: consecutiveFailures > 5
+            pubsubBreaker:
+                # Pub/sub circuit breaker for prolonged broker outages.
+                # When open, AggregateActor receives immediate failure (fast-fail)
+                # and transitions to PublishFailed state.
+                maxRequests: 1
+                interval: 60s
+                timeout: 60s
+                trip: consecutiveFailures > 10
+    targets:
+        apps:
+            commandapi:
+                # Apply default policies to commandapi operations.
+                retry: defaultRetry
+                timeout: daprSidecar
+                circuitBreaker: defaultBreaker
+        components:
+            pubsub:
+                outbound:
+                    # Publisher-side resiliency.
+                    retry: pubsubRetryOutbound
+                    timeout: pubsubTimeout
+                    circuitBreaker: pubsubBreaker
+                inbound:
+                    # Subscriber-side resiliency.
+                    retry: pubsubRetryInbound
+                    timeout: subscriberTimeout
+            statestore:
+                # State store resiliency for event persistence,
+                # snapshot read/write, and command status operations.
+                retry: defaultRetry
+                timeout: daprSidecar
+                circuitBreaker: defaultBreaker
 ```
 
 The resiliency policies augment built-in component retries. The effective retry count is `component built-in retries x resiliency retries`. For example, RabbitMQ has ~3 built-in publisher confirm retries, so with `maxRetries: 5` in `pubsubRetryOutbound`, the effective outbound retry count is approximately 15.
 
 ## Access Control
 
-Access control defines service-to-service invocation policies. Each DAPR sidecar loads this configuration to evaluate incoming service invocation requests. Hexalith.EventStore uses a deny-by-default security posture (D4).
+Access control defines service-to-service invocation policies. Each DAPR sidecar loads its own configuration to evaluate incoming service invocation requests. Hexalith.EventStore uses a deny-by-default security posture (D4) and binds a separate config per receiving sidecar.
 
-Source: `deploy/dapr/accesscontrol.yaml`
+Sources:
+
+- `deploy/dapr/accesscontrol.yaml` — CommandApi inbound policy
+- `deploy/dapr/accesscontrol.admin-server.yaml` — Admin.Server inbound policy
+- `deploy/dapr/accesscontrol.sample.yaml` — sample domain-service inbound policy
 
 ```yaml
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
 metadata:
-  name: accesscontrol
+    name: accesscontrol
 spec:
-  accessControl:
-    # Deny-by-default: all service invocations are blocked unless explicitly allowed (D4).
-    defaultAction: deny
-    # SPIFFE trust domain for mTLS identity validation.
-    # All sidecars must present certificates from this trust domain.
-    # Mismatched trust domains are rejected at TLS handshake.
-    trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
-    policies:
-      # commandapi: Trusted caller -- REST API + actor host + event publisher.
-      # When commandapi invokes a domain service via DaprClient.InvokeMethodAsync,
-      # the domain service's sidecar evaluates this policy.
-      - appId: commandapi
+    accessControl:
+        # Deny-by-default: all service invocations are blocked unless explicitly allowed (D4).
         defaultAction: deny
+        # SPIFFE trust domain for mTLS identity validation.
+        # All sidecars must present certificates from this trust domain.
+        # Mismatched trust domains are rejected at TLS handshake.
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
-        namespace: "{env:DAPR_NAMESPACE|hexalith}"
-        operations:
-          # Wildcard allows any method path since domain service method names
-          # are dynamically resolved from the domain service registry.
-          # POST-only: DaprClient.InvokeMethodAsync uses POST by default.
-          - name: /**
-            httpVerb: ['POST']
-            action: allow
-      # Production domain services template:
-      # Add a new policy entry for each domain service with defaultAction: deny
-      # and NO allowed operations (domain services cannot invoke other services).
-      #
-      # - appId: <domain-service-app-id>
-      #   defaultAction: deny
-      #   trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
-      #   namespace: "<production-namespace>"
+        policies:
+            # admin-server: Trusted caller for CommandApi passthrough.
+            # Admin.Server delegates reads and writes to CommandApi using GET/POST/PUT.
+            - appId: admin-server
+              defaultAction: deny
+              trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
+              namespace: "{env:DAPR_NAMESPACE|hexalith}"
+              operations:
+                  # Wildcard allows the existing admin passthrough routes.
+                  - name: /**
+                    httpVerb: ["GET", "POST", "PUT"]
+                    action: allow
 ```
+
+`accesscontrol.admin-server.yaml` sets `defaultAction: deny` with an empty `policies: []` list because no peer workload should invoke Admin.Server over DAPR.
+
+`accesscontrol.sample.yaml` retains the POST-only `commandapi` caller policy for domain-service invocation.
 
 Azure Container Apps does NOT support `accesscontrol.yaml`. In ACA, equivalent security is achieved through component scoping (the `scopes` field on each component) and ACA's built-in networking isolation.
 
@@ -912,19 +909,19 @@ Source: `deploy/dapr/subscription-sample-counter.yaml`
 apiVersion: dapr.io/v2alpha1
 kind: Subscription
 metadata:
-  name: sample-counter-events
+    name: sample-counter-events
 spec:
-  pubsubname: pubsub
-  # Topic follows D6 naming: {tenant}.{domain}.events
-  topic: sample.counter.events
-  routes:
-    # HTTP endpoint on the subscriber that receives events.
-    default: /events/idempotency-demo
-  # Dead-letter topic follows convention: deadletter.{tenant}.{domain}.events
-  deadLetterTopic: deadletter.sample.counter.events
+    pubsubname: pubsub
+    # Topic follows D6 naming: {tenant}.{domain}.events
+    topic: sample.counter.events
+    routes:
+        # HTTP endpoint on the subscriber that receives events.
+        default: /events/idempotency-demo
+    # Dead-letter topic follows convention: deadletter.{tenant}.{domain}.events
+    deadLetterTopic: deadletter.sample.counter.events
 # Scoped to the subscriber app-id only.
 scopes:
-  - sample
+    - sample
 ```
 
 The subscription pattern: a topic routes events to an HTTP endpoint on the subscriber application. If the subscriber fails to process the event after retry exhaustion, the message moves to the dead-letter topic. Dead-letter topic subscription is separate — only operational/monitoring tools should subscribe to dead-letter topics.
@@ -933,20 +930,20 @@ The subscription pattern: a topic routes events to an HTTP endpoint on the subsc
 
 ### State Store Backends
 
-| Backend | Durability | Consistency | ETag Support | Transaction Support | Where Data Lives | Backup Strategy |
-|---------|-----------|-------------|-------------|-------------------|-----------------|----------------|
-| Redis | In-memory (AOF/RDB optional) | Eventual | Yes (SET NX) | Multi-key MULTI/EXEC | Key-value store | RDB snapshots |
-| PostgreSQL | WAL-based | ACID Strong | Yes (row version) | Full ACID | Relational `state` table | pg_dump / WAL archiving |
-| Azure Cosmos DB | Multi-region replicated | Configurable (5 levels) | Yes (`_etag`) | Cross-partition limited | JSON documents | Azure Backup |
+| Backend         | Durability                   | Consistency             | ETag Support      | Transaction Support     | Where Data Lives         | Backup Strategy         |
+| --------------- | ---------------------------- | ----------------------- | ----------------- | ----------------------- | ------------------------ | ----------------------- |
+| Redis           | In-memory (AOF/RDB optional) | Eventual                | Yes (SET NX)      | Multi-key MULTI/EXEC    | Key-value store          | RDB snapshots           |
+| PostgreSQL      | WAL-based                    | ACID Strong             | Yes (row version) | Full ACID               | Relational `state` table | pg_dump / WAL archiving |
+| Azure Cosmos DB | Multi-region replicated      | Configurable (5 levels) | Yes (`_etag`)     | Cross-partition limited | JSON documents           | Azure Backup            |
 
 ### Pub/Sub Backends
 
-| Backend | Durability | Delivery Guarantee | Dead-Letter Support | Consumer Isolation | Auto-Create Topics |
-|---------|-----------|-------------------|--------------------|--------------------|-------------------|
-| Redis Streams | In-memory (AOF/RDB optional) | At-least-once | DAPR-managed | Consumer groups | Yes |
-| RabbitMQ | Durable queues (configurable) | At-least-once | Native DLX | Queue-per-consumer | Yes |
-| Kafka | Commit log (configurable retention) | At-least-once | Separate topic | Consumer group offset | Yes |
-| Azure Service Bus | Guaranteed delivery | At-least-once | Native DLQ | Subscription-per-consumer | No (pre-create required) |
+| Backend           | Durability                          | Delivery Guarantee | Dead-Letter Support | Consumer Isolation        | Auto-Create Topics       |
+| ----------------- | ----------------------------------- | ------------------ | ------------------- | ------------------------- | ------------------------ |
+| Redis Streams     | In-memory (AOF/RDB optional)        | At-least-once      | DAPR-managed        | Consumer groups           | Yes                      |
+| RabbitMQ          | Durable queues (configurable)       | At-least-once      | Native DLX          | Queue-per-consumer        | Yes                      |
+| Kafka             | Commit log (configurable retention) | At-least-once      | Separate topic      | Consumer group offset     | Yes                      |
+| Azure Service Bus | Guaranteed delivery                 | At-least-once      | Native DLQ          | Subscription-per-consumer | No (pre-create required) |
 
 ## Backend Swap Procedure
 
@@ -966,33 +963,33 @@ All backends use `{env:VAR_NAME}` substitution in DAPR component YAML. Set these
 
 ### State Store Variables
 
-| Variable | Backend | Example Value |
-|----------|---------|---------------|
-| `REDIS_HOST` | Redis | `localhost:6379` |
-| `REDIS_PASSWORD` | Redis | (empty for local dev) |
-| `POSTGRES_CONNECTION_STRING` | PostgreSQL | `host=mydb;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require` |
-| `COSMOSDB_URL` | Azure Cosmos DB | `https://myaccount.documents.azure.com:443/` |
-| `COSMOSDB_KEY` | Azure Cosmos DB | (from Azure Portal or Key Vault) |
-| `COSMOSDB_DATABASE` | Azure Cosmos DB | `eventstore` |
-| `COSMOSDB_COLLECTION` | Azure Cosmos DB | `actorstate` |
+| Variable                     | Backend         | Example Value                                                                             |
+| ---------------------------- | --------------- | ----------------------------------------------------------------------------------------- |
+| `REDIS_HOST`                 | Redis           | `localhost:6379`                                                                          |
+| `REDIS_PASSWORD`             | Redis           | (empty for local dev)                                                                     |
+| `POSTGRES_CONNECTION_STRING` | PostgreSQL      | `host=mydb;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require` |
+| `COSMOSDB_URL`               | Azure Cosmos DB | `https://myaccount.documents.azure.com:443/`                                              |
+| `COSMOSDB_KEY`               | Azure Cosmos DB | (from Azure Portal or Key Vault)                                                          |
+| `COSMOSDB_DATABASE`          | Azure Cosmos DB | `eventstore`                                                                              |
+| `COSMOSDB_COLLECTION`        | Azure Cosmos DB | `actorstate`                                                                              |
 
 ### Pub/Sub Variables
 
-| Variable | Backend | Example Value |
-|----------|---------|---------------|
-| `RABBITMQ_CONNECTION_STRING` | RabbitMQ | `amqp://user:pass@rabbitmq:5672/` |
-| `KAFKA_BROKERS` | Kafka | `broker1:9092,broker2:9092` |
-| `KAFKA_AUTH_TYPE` | Kafka | `none`, `password`, `mtls`, or `oidc` |
+| Variable                       | Backend           | Example Value                                                                                      |
+| ------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------- |
+| `RABBITMQ_CONNECTION_STRING`   | RabbitMQ          | `amqp://user:pass@rabbitmq:5672/`                                                                  |
+| `KAFKA_BROKERS`                | Kafka             | `broker1:9092,broker2:9092`                                                                        |
+| `KAFKA_AUTH_TYPE`              | Kafka             | `none`, `password`, `mtls`, or `oidc`                                                              |
 | `SERVICEBUS_CONNECTION_STRING` | Azure Service Bus | `Endpoint=sb://mynamespace.servicebus.windows.net/;SharedAccessKeyName=dapr;SharedAccessKey=<key>` |
 
 ### Scoping and Security Variables
 
-| Variable | Used In | Example Value |
-|----------|---------|---------------|
-| `SUBSCRIBER_APP_ID` | Pub/Sub scoping | `my-subscriber` |
-| `OPS_MONITOR_APP_ID` | Pub/Sub scoping | `ops-monitor` |
-| `DAPR_TRUST_DOMAIN` | Access Control | `hexalith.io` |
-| `DAPR_NAMESPACE` | Access Control | `hexalith` |
+| Variable             | Used In         | Example Value   |
+| -------------------- | --------------- | --------------- |
+| `SUBSCRIBER_APP_ID`  | Pub/Sub scoping | `my-subscriber` |
+| `OPS_MONITOR_APP_ID` | Pub/Sub scoping | `ops-monitor`   |
+| `DAPR_TRUST_DOMAIN`  | Access Control  | `hexalith.io`   |
+| `DAPR_NAMESPACE`     | Access Control  | `hexalith`      |
 
 ## Next Steps
 

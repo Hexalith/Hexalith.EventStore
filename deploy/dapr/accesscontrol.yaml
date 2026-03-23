@@ -1,28 +1,19 @@
-# DAPR Access Control Configuration -- Production (D4, FR34, NFR15)
-# ==================================================================
-# Defines service-to-service invocation policies for the Hexalith EventStore in production.
-# Each DAPR sidecar loads this Configuration to evaluate INCOMING service invocation requests.
-# Policies define which CALLERS (by appId) are permitted to invoke operations on the service
-# that loads this Configuration.
+# DAPR Access Control Configuration for the CommandApi sidecar -- Production (D4, FR34, NFR15)
+# =============================================================================================
+# This Configuration CRD is bound ONLY to the commandapi sidecar and therefore governs which
+# CALLERS may invoke CommandApi endpoints through DAPR service invocation.
 #
-# App-ID Topology (production):
-#   - commandapi: REST API host + DAPR actor host + event publisher (all in-process).
-#     The ONLY app-id that needs infrastructure access (state store, pub/sub, outbound service invocation).
-#   - Domain services: Production domain services will have their own app-ids configured at
-#     deployment time. The sample domain service (local dev only) is intentionally omitted here.
+# Allowed callers in the production topology:
+#   - admin-server: Admin REST API host. Needs GET/POST/PUT to delegate admin reads and writes
+#     to CommandApi (ADR-P4).
 #
 # Security Posture: defaultAction: deny (secure by default, D4)
 # Trust Domain: Configure for production environment (see trustDomain below)
 # Namespace: Configure for production Kubernetes namespace (see namespace below)
 #
-# Adding New Domain Services (Production):
-#   1. Add a new policy entry for the new app-id with defaultAction: deny and NO allowed operations.
-#      This explicitly blocks the new domain service from invoking any other service.
-#   2. The commandapi policy already uses wildcard (/**) so no changes needed for commandapi
-#      to invoke the new domain service.
-#   3. Set the new domain service's trustDomain and namespace to match its deployment environment.
-#   4. DO NOT add the new domain service to pub/sub scopes, state store scopes, or publishingScopes.
-#      Domain services have zero infrastructure access (D4).
+# Bind this config ONLY to the CommandApi workload. Other receiving services (admin-server,
+# sample, future domain services) should each have their own DAPR Configuration CRD so caller
+# policies apply only to the intended inbound surface.
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
 metadata:
@@ -36,34 +27,18 @@ spec:
     # from this trust domain. Mismatched trust domains are rejected at TLS handshake.
     trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
     policies:
-      # commandapi: Trusted caller -- REST API + actor host + event publisher (D4)
-      # When commandapi invokes a domain service via DaprClient.InvokeMethodAsync (D7),
-      # the domain service's sidecar evaluates this policy to allow the call.
-      # commandapi needs outbound service invocation to domain services only.
-      # State store and pub/sub access are controlled by component scoping, not access control.
-      - appId: commandapi
+      # admin-server: Admin API host -- invokes commandapi for write delegation (ADR-P4).
+      # Admin.Server delegates reads and writes through CommandApi endpoints exposed over DAPR.
+      - appId: admin-server
         defaultAction: deny  # Deny any operations not explicitly listed
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
         # Replace with production Kubernetes namespace where commandapi is deployed
         # (or set DAPR_NAMESPACE env var).
         namespace: "{env:DAPR_NAMESPACE|hexalith}"
         operations:
-          # Domain service invocation: actor host invokes domain services via
-          # DaprClient.InvokeMethodAsync with POST to configurable method paths (D7).
-          # Wildcard (/**) allows any method path since domain service method names
-          # are dynamically resolved from the domain service registry.
-          # INTENTIONALLY POST-ONLY: DaprClient.InvokeMethodAsync uses POST by default.
-          # GET/PUT/DELETE are blocked. If domain services need other verbs, add them here.
+          # Admin.Server delegates reads and writes through CommandApi using GET/POST/PUT.
+          # Wildcard (/**) allows the existing admin passthrough endpoints while the
+          # command surface remains protected by CommandApi authorization.
           - name: /**
-            httpVerb: ['POST']
+            httpVerb: ['GET', 'POST', 'PUT']
             action: allow
-      # Production domain services:
-      # The sample domain service is a local dev reference implementation and is intentionally
-      # omitted from production configuration. Production domain services should each have
-      # their own policy entry following this template:
-      #
-      # - appId: <domain-service-app-id>
-      #   defaultAction: deny  # Zero-trust posture (AC #13)
-      #   trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
-      #   namespace: "<production-namespace>"
-      #   # No allowed operations: domain services cannot invoke any other service (D4)

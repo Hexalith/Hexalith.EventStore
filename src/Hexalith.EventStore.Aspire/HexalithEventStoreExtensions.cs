@@ -13,22 +13,29 @@ public static class HexalithEventStoreExtensions {
     /// <summary>
     /// Adds the Hexalith EventStore topology to the distributed application builder.
     /// This provisions DAPR state store (in-memory with actor support), DAPR pub/sub,
-    /// and wires the CommandApi service with a DAPR sidecar.
+    /// and wires the CommandApi and Admin.Server services with DAPR sidecars.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="commandApi">The CommandApi project resource builder.</param>
-    /// <param name="daprConfigPath">
-    /// Path to the Dapr sidecar configuration file (access control policies, D4/FR34).
-    /// When null, the sidecar starts without access control -- all service-to-service
-    /// calls are allowed. This is a security risk in production environments.
+    /// <param name="adminServer">The Admin.Server.Host project resource builder.</param>
+    /// <param name="commandApiDaprConfigPath">
+    /// Path to the Dapr access control configuration file loaded by the CommandApi sidecar.
+    /// This config governs incoming invocations to CommandApi.
+    /// </param>
+    /// <param name="adminServerDaprConfigPath">
+    /// Path to the Dapr access control configuration file loaded by the Admin.Server sidecar.
+    /// This config governs incoming invocations to Admin.Server.
     /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<ProjectResource> commandApi,
-        string? daprConfigPath = null) {
+        IResourceBuilder<ProjectResource> adminServer,
+        string? commandApiDaprConfigPath = null,
+        string? adminServerDaprConfigPath = null) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(commandApi);
+        ArgumentNullException.ThrowIfNull(adminServer);
 
         // Use AddDaprComponent instead of AddDaprStateStore so that WithMetadata
         // actually propagates into the generated YAML. AddDaprStateStore spawns a
@@ -47,11 +54,25 @@ public static class HexalithEventStoreExtensions {
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "commandapi",
-                    Config = daprConfigPath,
+                    Config = commandApiDaprConfigPath,
                 })
                 .WithReference(stateStore)
                 .WithReference(pubSub));
 
-        return new HexalithEventStoreResources(stateStore, pubSub, commandApi);
+        // Wire Admin.Server with DAPR sidecar.
+        // Admin.Server needs state store for direct reads (health, admin indexes)
+        // and service invocation to CommandApi for write delegation (ADR-P4).
+        // It does not publish or subscribe directly, so it intentionally does not
+        // reference the pub/sub component.
+        _ = adminServer
+            .WithReference(commandApi)
+            .WithDaprSidecar(sidecar => sidecar
+                .WithOptions(new DaprSidecarOptions {
+                    AppId = "admin-server",
+                    Config = adminServerDaprConfigPath,
+                })
+                .WithReference(stateStore));
+
+        return new HexalithEventStoreResources(stateStore, pubSub, commandApi, adminServer);
     }
 }

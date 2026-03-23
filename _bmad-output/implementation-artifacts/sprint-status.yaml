@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-21 # story 14-3 done
+last_updated: 2026-03-21 # story 15-1 ready-for-dev
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -164,13 +164,13 @@ development_status:
   14-1-admin-abstractions-service-interfaces-and-dtos: done
   14-2-admin-server-dapr-backed-service-implementations: done
   14-3-admin-server-rest-api-controllers-with-jwt-auth: done
-  14-4-admin-server-aspire-resource-integration: ready-for-dev
+  14-4-admin-server-aspire-resource-integration: done
   14-5-admin-api-openapi-spec-and-swagger-ui: ready-for-dev
   epic-14-retrospective: optional
 
   # Epic 15: Admin Web UI — Core Developer Experience
-  epic-15: backlog
-  15-1-blazor-shell-fluentui-layout-command-palette-dark-mode: backlog
+  epic-15: in-progress
+  15-1-blazor-shell-fluentui-layout-command-palette-dark-mode: ready-for-dev
   15-2-activity-feed-recent-active-streams: backlog
   15-3-stream-browser-command-event-query-timeline: backlog
   15-4-aggregate-state-inspector-and-diff-viewer: backlog

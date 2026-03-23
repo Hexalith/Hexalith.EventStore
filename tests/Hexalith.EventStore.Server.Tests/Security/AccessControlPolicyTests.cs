@@ -12,13 +12,29 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 public class AccessControlPolicyTests {
     // --- File path construction (matches ResiliencyConfigurationTests pattern) ---
 
-    private static readonly string LocalAccessControlPath = Path.GetFullPath(
+    private static readonly string LocalCommandApiAccessControlPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "src", "Hexalith.EventStore.AppHost", "DaprComponents", "accesscontrol.yaml"));
 
-    private static readonly string ProductionAccessControlPath = Path.GetFullPath(
+    private static readonly string LocalAdminServerAccessControlPath = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+            "src", "Hexalith.EventStore.AppHost", "DaprComponents", "accesscontrol.admin-server.yaml"));
+
+    private static readonly string LocalSampleAccessControlPath = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+            "src", "Hexalith.EventStore.AppHost", "DaprComponents", "accesscontrol.sample.yaml"));
+
+    private static readonly string ProductionCommandApiAccessControlPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "deploy", "dapr", "accesscontrol.yaml"));
+
+    private static readonly string ProductionAdminServerAccessControlPath = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+            "deploy", "dapr", "accesscontrol.admin-server.yaml"));
+
+    private static readonly string ProductionSampleAccessControlPath = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+            "deploy", "dapr", "accesscontrol.sample.yaml"));
 
     private static readonly string LocalPubSubPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
@@ -47,45 +63,119 @@ public class AccessControlPolicyTests {
     // --- Task 5.2: Local access control YAML validation ---
 
     [Fact]
-    public void LocalAccessControlYaml_IsValidYaml_ParsesCorrectly() {
-        Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
+    public void LocalCommandApiAccessControlYaml_IsValidYaml_ParsesCorrectly() {
+        Dictionary<string, object> doc = LoadYaml(LocalCommandApiAccessControlPath);
 
         Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
-            "Local access control must use DAPR v1alpha1 API version");
+            "Local CommandApi access control must use DAPR v1alpha1 API version");
         Nav(doc, "kind")?.ToString().ShouldBe("Configuration",
-            "Local access control must be a Configuration CRD");
+            "Local CommandApi access control must be a Configuration CRD");
         _ = Nav(doc, "spec").ShouldNotBeNull(
-            "Local access control must contain a spec section");
+            "Local CommandApi access control must contain a spec section");
         _ = Nav(doc, "spec", "accessControl").ShouldNotBeNull(
-            "Local access control must contain an accessControl section");
+            "Local CommandApi access control must contain an accessControl section");
         _ = NavList(doc, "spec", "accessControl", "policies").ShouldNotBeNull(
-            "Local access control must contain a policies section");
+            "Local CommandApi access control must contain a policies section");
+    }
+
+    [Fact]
+    public void LocalAdminServerAccessControlYaml_IsValidYaml_ParsesCorrectly() {
+        Dictionary<string, object> doc = LoadYaml(LocalAdminServerAccessControlPath);
+
+        Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
+            "Local Admin.Server access control must use DAPR v1alpha1 API version");
+        Nav(doc, "kind")?.ToString().ShouldBe("Configuration",
+            "Local Admin.Server access control must be a Configuration CRD");
+        _ = Nav(doc, "spec").ShouldNotBeNull(
+            "Local Admin.Server access control must contain a spec section");
+        _ = Nav(doc, "spec", "accessControl").ShouldNotBeNull(
+            "Local Admin.Server access control must contain an accessControl section");
+        _ = NavList(doc, "spec", "accessControl", "policies").ShouldNotBeNull(
+            "Local Admin.Server access control must contain a policies section");
+    }
+
+    [Fact]
+    public void LocalSampleAccessControlYaml_IsValidYaml_ParsesCorrectly() {
+        Dictionary<string, object> doc = LoadYaml(LocalSampleAccessControlPath);
+
+        Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
+            "Local sample access control must use DAPR v1alpha1 API version");
+        Nav(doc, "kind")?.ToString().ShouldBe("Configuration",
+            "Local sample access control must be a Configuration CRD");
+        _ = Nav(doc, "spec").ShouldNotBeNull(
+            "Local sample access control must contain a spec section");
+        _ = Nav(doc, "spec", "accessControl").ShouldNotBeNull(
+            "Local sample access control must contain an accessControl section");
+        _ = NavList(doc, "spec", "accessControl", "policies").ShouldNotBeNull(
+            "Local sample access control must contain a policies section");
     }
 
     // --- Task 5.3: Local deny-by-default ---
 
     [Fact]
-    public void LocalAccessControlYaml_HasDenyDefault_SecureByDefault() {
-        Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
+    public void LocalCommandApiAccessControlYaml_HasAllowDefault_SecureByDefault() {
+        Dictionary<string, object> doc = LoadYaml(LocalCommandApiAccessControlPath);
 
         // Local self-hosted profile uses allow-by-default because mTLS identity is unavailable.
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("allow",
-            "Global-level defaultAction must be allow in local self-hosted profile (no mTLS caller identity)");
+            "CommandApi global-level defaultAction must be allow in local self-hosted profile (no mTLS caller identity)");
     }
 
     // --- Task 5.4: CommandApi policy completeness ---
 
     [Fact]
-    public void LocalAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations() {
-        Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
+    public void LocalCommandApiAccessControlYaml_AdminServerPolicy_AllowsRequiredOperations() {
+        Dictionary<string, object> doc = LoadYaml(LocalCommandApiAccessControlPath);
+
+        Dictionary<object, object>? adminServerPolicy = FindPolicy(doc, "admin-server");
+        _ = adminServerPolicy.ShouldNotBeNull("Local CommandApi access control must contain a policy for admin-server");
+
+        List<Dictionary<object, object>> operations = GetPolicyOperations(adminServerPolicy);
+        operations.ShouldNotBeEmpty("admin-server policy must have at least one operation");
+
+        // Verify admin-server can invoke CommandApi via wildcard path with GET/POST/PUT.
+        Dictionary<object, object>? wildcardOp = operations.FirstOrDefault(op =>
+            GetString(op, "name") == "/**");
+        _ = wildcardOp.ShouldNotBeNull(
+            "admin-server policy must allow wildcard path (/**) for CommandApi delegation (ADR-P4)");
+
+        List<object>? httpVerbs = GetList(wildcardOp, "httpVerb");
+        _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
+        httpVerbs.Select(v => v?.ToString()).ShouldContain("GET",
+            "admin-server policy must allow GET for CommandApi read delegation");
+        httpVerbs.Select(v => v?.ToString()).ShouldContain("POST",
+            "admin-server policy must allow POST for CommandApi write delegation");
+        httpVerbs.Select(v => v?.ToString()).ShouldContain("PUT",
+            "admin-server policy must allow PUT for CommandApi update delegation");
+
+        GetString(wildcardOp, "action").ShouldBe("allow",
+            "admin-server wildcard operation must have action: allow");
+    }
+
+    // --- Task 5.5: Sample domain service denied ---
+
+    [Fact]
+    public void LocalAdminServerAccessControlYaml_HasNoInboundPolicies() {
+        Dictionary<string, object> doc = LoadYaml(LocalAdminServerAccessControlPath);
+
+        Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("allow",
+            "Admin.Server global-level defaultAction must be allow in local self-hosted profile (no mTLS caller identity)");
+
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull("Admin.Server access control must contain a policies list");
+        policies.ShouldBeEmpty("Admin.Server should not allow any peer Dapr caller policies in the local topology");
+    }
+
+    [Fact]
+    public void LocalSampleAccessControlYaml_CommandApiPolicy_AllowsRequiredOperations() {
+        Dictionary<string, object> doc = LoadYaml(LocalSampleAccessControlPath);
 
         Dictionary<object, object>? commandApiPolicy = FindPolicy(doc, "commandapi");
-        _ = commandApiPolicy.ShouldNotBeNull("Local access control must contain a policy for commandapi");
+        _ = commandApiPolicy.ShouldNotBeNull("Local sample access control must contain a policy for commandapi");
 
         List<Dictionary<object, object>> operations = GetPolicyOperations(commandApiPolicy);
         operations.ShouldNotBeEmpty("commandapi policy must have at least one operation");
 
-        // Verify commandapi can invoke domain services via wildcard path with POST
         Dictionary<object, object>? wildcardOp = operations.FirstOrDefault(op =>
             GetString(op, "name") == "/**");
         _ = wildcardOp.ShouldNotBeNull(
@@ -100,47 +190,61 @@ public class AccessControlPolicyTests {
             "commandapi wildcard operation must have action: allow");
     }
 
-    // --- Task 5.5: Sample domain service denied ---
-
-    [Fact]
-    public void LocalAccessControlYaml_SamplePolicy_DeniesDirectInvocation() {
-        Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
-
-        Dictionary<object, object>? samplePolicy = FindPolicy(doc, "sample");
-        _ = samplePolicy.ShouldNotBeNull(
-            "Local access control must contain a policy for sample domain service");
-
-        GetString(samplePolicy, "defaultAction").ShouldBe("deny",
-            "sample policy must have defaultAction: deny (zero-trust posture, AC #3, AC #13)");
-
-        // Verify NO operations are defined for sample (zero infrastructure access)
-        samplePolicy.ContainsKey("operations").ShouldBeFalse(
-            "sample domain service must not have any operations defined (D4, AC #13)");
-    }
-
     // --- Task 5.6: Production access control YAML validation ---
 
     [Fact]
-    public void ProductionAccessControlYaml_IsValidYaml_ParsesCorrectly() {
-        Dictionary<string, object> doc = LoadYaml(ProductionAccessControlPath);
+    public void ProductionCommandApiAccessControlYaml_IsValidYaml_ParsesCorrectly() {
+        Dictionary<string, object> doc = LoadYaml(ProductionCommandApiAccessControlPath);
 
         Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
-            "Production access control must use DAPR v1alpha1 API version");
+            "Production CommandApi access control must use DAPR v1alpha1 API version");
         Nav(doc, "kind")?.ToString().ShouldBe("Configuration",
-            "Production access control must be a Configuration CRD");
+            "Production CommandApi access control must be a Configuration CRD");
         _ = Nav(doc, "spec").ShouldNotBeNull(
-            "Production access control must contain a spec section");
+            "Production CommandApi access control must contain a spec section");
         _ = Nav(doc, "spec", "accessControl").ShouldNotBeNull(
-            "Production access control must contain an accessControl section");
+            "Production CommandApi access control must contain an accessControl section");
         _ = NavList(doc, "spec", "accessControl", "policies").ShouldNotBeNull(
-            "Production access control must contain a policies section");
+            "Production CommandApi access control must contain a policies section");
+    }
+
+    [Fact]
+    public void ProductionAdminServerAccessControlYaml_IsValidYaml_ParsesCorrectly() {
+        Dictionary<string, object> doc = LoadYaml(ProductionAdminServerAccessControlPath);
+
+        Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
+            "Production Admin.Server access control must use DAPR v1alpha1 API version");
+        Nav(doc, "kind")?.ToString().ShouldBe("Configuration",
+            "Production Admin.Server access control must be a Configuration CRD");
+        _ = Nav(doc, "spec").ShouldNotBeNull(
+            "Production Admin.Server access control must contain a spec section");
+        _ = Nav(doc, "spec", "accessControl").ShouldNotBeNull(
+            "Production Admin.Server access control must contain an accessControl section");
+        _ = NavList(doc, "spec", "accessControl", "policies").ShouldNotBeNull(
+            "Production Admin.Server access control must contain a policies section");
+    }
+
+    [Fact]
+    public void ProductionSampleAccessControlYaml_IsValidYaml_ParsesCorrectly() {
+        Dictionary<string, object> doc = LoadYaml(ProductionSampleAccessControlPath);
+
+        Nav(doc, "apiVersion")?.ToString().ShouldBe("dapr.io/v1alpha1",
+            "Production sample access control must use DAPR v1alpha1 API version");
+        Nav(doc, "kind")?.ToString().ShouldBe("Configuration",
+            "Production sample access control must be a Configuration CRD");
+        _ = Nav(doc, "spec").ShouldNotBeNull(
+            "Production sample access control must contain a spec section");
+        _ = Nav(doc, "spec", "accessControl").ShouldNotBeNull(
+            "Production sample access control must contain an accessControl section");
+        _ = NavList(doc, "spec", "accessControl", "policies").ShouldNotBeNull(
+            "Production sample access control must contain a policies section");
     }
 
     // --- Task 5.7: Production deny-by-default ---
 
     [Fact]
-    public void ProductionAccessControlYaml_HasDenyDefault_SecureByDefault() {
-        Dictionary<string, object> doc = LoadYaml(ProductionAccessControlPath);
+    public void ProductionCommandApiAccessControlYaml_HasDenyDefault_SecureByDefault() {
+        Dictionary<string, object> doc = LoadYaml(ProductionCommandApiAccessControlPath);
 
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("deny",
             "Production global-level defaultAction must be deny for secure-by-default posture (D4)");
@@ -182,14 +286,14 @@ public class AccessControlPolicyTests {
 
     [Fact]
     public void AllDaprComponents_LocalAndProduction_PolicyTopologyConsistent() {
-        Dictionary<string, object> localAc = LoadYaml(LocalAccessControlPath);
-        Dictionary<string, object> prodAc = LoadYaml(ProductionAccessControlPath);
+        Dictionary<string, object> localAc = LoadYaml(LocalSampleAccessControlPath);
+        Dictionary<string, object> prodAc = LoadYaml(ProductionSampleAccessControlPath);
 
         // Local self-hosted profile is allow-by-default; production remains deny-by-default.
         Nav(localAc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("allow");
         Nav(prodAc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("deny");
 
-        // Both must have commandapi policy
+        // Both must have commandapi policy on the domain-service receiving sidecar config.
         _ = FindPolicy(localAc, "commandapi").ShouldNotBeNull("Local must have commandapi policy");
         _ = FindPolicy(prodAc, "commandapi").ShouldNotBeNull("Production must have commandapi policy");
 
@@ -218,17 +322,17 @@ public class AccessControlPolicyTests {
             LoadYaml(ProductionPubSubKafkaPath),
             "production Kafka pub/sub");
 
-        // All state store configs must restrict scopes to commandapi
-        VerifyScopesContainOnlyCommandApi(LoadYaml(LocalStateStorePath), "local state store");
-        VerifyScopesContainOnlyCommandApi(LoadYaml(ProductionStateStorePostgresPath), "production PostgreSQL state store");
-        VerifyScopesContainOnlyCommandApi(LoadYaml(ProductionStateStoreCosmosPath), "production Cosmos DB state store");
+        // All state store configs must restrict scopes to commandapi and admin-server.
+        VerifyStateStoreScopes(LoadYaml(LocalStateStorePath), "local state store");
+        VerifyStateStoreScopes(LoadYaml(ProductionStateStorePostgresPath), "production PostgreSQL state store");
+        VerifyStateStoreScopes(LoadYaml(ProductionStateStoreCosmosPath), "production Cosmos DB state store");
     }
 
     // --- Task 5.11: mTLS trust domain configuration ---
 
     [Fact]
     public void LocalAccessControlYaml_HasTrustDomain_MtlsConfigured() {
-        Dictionary<string, object> doc = LoadYaml(LocalAccessControlPath);
+        Dictionary<string, object> doc = LoadYaml(LocalSampleAccessControlPath);
 
         Nav(doc, "spec", "accessControl", "trustDomain")?.ToString()
             .ShouldBe("public",
@@ -286,13 +390,19 @@ public class AccessControlPolicyTests {
 
     [Fact]
     public void AccessControlYaml_HasNamespace_IdentityConfigured() {
-        Dictionary<string, object> localDoc = LoadYaml(LocalAccessControlPath);
-        Dictionary<object, object>? localCommandApi = FindPolicy(localDoc, "commandapi");
+        Dictionary<string, object> localCommandApiDoc = LoadYaml(LocalCommandApiAccessControlPath);
+        Dictionary<object, object>? localAdminServer = FindPolicy(localCommandApiDoc, "admin-server");
+        _ = localAdminServer.ShouldNotBeNull();
+        GetString(localAdminServer, "namespace").ShouldBe("default",
+            "Local CommandApi access control namespace must be 'default' for local development");
+
+        Dictionary<string, object> localSampleDoc = LoadYaml(LocalSampleAccessControlPath);
+        Dictionary<object, object>? localCommandApi = FindPolicy(localSampleDoc, "commandapi");
         _ = localCommandApi.ShouldNotBeNull();
         GetString(localCommandApi, "namespace").ShouldBe("default",
-            "Local access control namespace must be 'default' for local development");
+            "Local sample access control namespace must be 'default' for local development");
 
-        Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
+        Dictionary<string, object> prodDoc = LoadYaml(ProductionSampleAccessControlPath);
         Dictionary<object, object>? prodCommandApi = FindPolicy(prodDoc, "commandapi");
         _ = prodCommandApi.ShouldNotBeNull();
         string prodNamespace = GetString(prodCommandApi, "namespace");
@@ -304,14 +414,25 @@ public class AccessControlPolicyTests {
 
     [Fact]
     public void DomainServicePolicy_ZeroInfrastructureAccess_AllDenied() {
-        // 1. Access control: sample has defaultAction: deny with no allowed operations
-        Dictionary<string, object> acDoc = LoadYaml(LocalAccessControlPath);
-        Dictionary<object, object>? samplePolicy = FindPolicy(acDoc, "sample");
-        _ = samplePolicy.ShouldNotBeNull("Access control must contain sample policy");
-        GetString(samplePolicy, "defaultAction").ShouldBe("deny",
-            "sample must have defaultAction: deny in access control");
-        samplePolicy.ContainsKey("operations").ShouldBeFalse(
-            "sample must not have any operations (AC #13)");
+        // 1. Access control: sample sidecar only trusts commandapi and only for POST invocations.
+        Dictionary<string, object> acDoc = LoadYaml(LocalSampleAccessControlPath);
+        Dictionary<object, object>? commandApiPolicy = FindPolicy(acDoc, "commandapi");
+        _ = commandApiPolicy.ShouldNotBeNull("Sample sidecar access control must contain commandapi policy");
+        GetString(commandApiPolicy, "defaultAction").ShouldBe("deny",
+            "commandapi caller policy must have defaultAction: deny in sample access control");
+
+        List<Dictionary<object, object>> operations = GetPolicyOperations(commandApiPolicy);
+        operations.Count.ShouldBe(1,
+            "Sample sidecar should expose exactly one allowed wildcard operation to commandapi");
+
+        Dictionary<object, object> wildcardOp = operations.Single();
+        GetString(wildcardOp, "name").ShouldBe("/**",
+            "Sample sidecar should only authorize the wildcard invocation path");
+        List<object> verbs = GetList(wildcardOp, "httpVerb")!;
+        verbs.Count.ShouldBe(1,
+            "Sample sidecar should only authorize one HTTP verb for commandapi invocations");
+        verbs[0]?.ToString().ShouldBe("POST",
+            "Sample sidecar should only authorize POST invocations from commandapi");
 
         // 2. Pub/sub: sample is excluded from component scopes
         Dictionary<string, object> pubSubDoc = LoadYaml(LocalPubSubPath);
@@ -327,15 +448,15 @@ public class AccessControlPolicyTests {
         _ = GetComponentMetadataValue(pubSubDoc, "subscriptionScopes").ShouldNotBeNull(
             "Pub/sub must have subscriptionScopes restricting sample");
 
-        // 5. Production configs: scopes must contain ONLY commandapi
+        // 5. Production state-store configs: scopes must contain only commandapi and admin-server
         VerifyPubSubScopesAllowAuthorizedSubscribersOnly(
             LoadYaml(ProductionPubSubRabbitMqPath),
             "production RabbitMQ pub/sub");
         VerifyPubSubScopesAllowAuthorizedSubscribersOnly(
             LoadYaml(ProductionPubSubKafkaPath),
             "production Kafka pub/sub");
-        VerifyScopesContainOnlyCommandApi(LoadYaml(ProductionStateStorePostgresPath), "production PostgreSQL state store");
-        VerifyScopesContainOnlyCommandApi(LoadYaml(ProductionStateStoreCosmosPath), "production Cosmos DB state store");
+        VerifyStateStoreScopes(LoadYaml(ProductionStateStorePostgresPath), "production PostgreSQL state store");
+        VerifyStateStoreScopes(LoadYaml(ProductionStateStoreCosmosPath), "production Cosmos DB state store");
 
         // 6. Production pub/sub: active publishingScopes and subscriptionScopes for defense-in-depth
         Dictionary<string, object> prodRabbitDoc = LoadYaml(ProductionPubSubRabbitMqPath);
@@ -358,7 +479,7 @@ public class AccessControlPolicyTests {
         // Defense-in-depth: verify the commandapi wildcard operation lists ONLY POST.
         // DaprClient.InvokeMethodAsync uses POST by default (D7). GET/PUT/DELETE must NOT
         // appear in the policy -- their presence would widen the attack surface.
-        Dictionary<string, object> localDoc = LoadYaml(LocalAccessControlPath);
+        Dictionary<string, object> localDoc = LoadYaml(LocalSampleAccessControlPath);
         Dictionary<object, object> commandApiPolicy = FindPolicy(localDoc, "commandapi")!;
         Dictionary<object, object>? wildcardOp = GetPolicyOperations(commandApiPolicy)
             .FirstOrDefault(op => GetString(op, "name") == "/**");
@@ -372,7 +493,7 @@ public class AccessControlPolicyTests {
             "commandapi wildcard operation must allow POST only -- GET/PUT/DELETE are not permitted (D7)");
 
         // Same check for production
-        Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
+        Dictionary<string, object> prodDoc = LoadYaml(ProductionSampleAccessControlPath);
         Dictionary<object, object> prodPolicy = FindPolicy(prodDoc, "commandapi")!;
         Dictionary<object, object>? prodWildcardOp = GetPolicyOperations(prodPolicy)
             .FirstOrDefault(op => GetString(op, "name") == "/**");
@@ -393,8 +514,8 @@ public class AccessControlPolicyTests {
         // Single test asserting BOTH: local is allow AND production is deny.
         // Stronger than separate tests (#2, #6) -- catches accidental synchronization
         // if someone copies one config over the other (RT-2 finding).
-        Dictionary<string, object> localDoc = LoadYaml(LocalAccessControlPath);
-        Dictionary<string, object> prodDoc = LoadYaml(ProductionAccessControlPath);
+        Dictionary<string, object> localDoc = LoadYaml(LocalSampleAccessControlPath);
+        Dictionary<string, object> prodDoc = LoadYaml(ProductionSampleAccessControlPath);
 
         string localDefault = Nav(localDoc, "spec", "accessControl", "defaultAction")?.ToString() ?? "";
         string prodDefault = Nav(prodDoc, "spec", "accessControl", "defaultAction")?.ToString() ?? "";
@@ -417,7 +538,7 @@ public class AccessControlPolicyTests {
         // Forward-looking guard: in production accesscontrol.yaml, ONLY commandapi may have
         // allowed operations. If a future developer adds a domain service policy with operations,
         // this test catches the regression.
-        Dictionary<string, object> doc = LoadYaml(ProductionAccessControlPath);
+        Dictionary<string, object> doc = LoadYaml(ProductionSampleAccessControlPath);
         List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
         _ = policies.ShouldNotBeNull("Production access control must have policies");
 
@@ -471,17 +592,15 @@ public class AccessControlPolicyTests {
     }
 
     /// <summary>
-    /// Verifies that a DAPR component's scopes list contains ONLY commandapi.
+    /// Verifies that a state-store component's scopes list contains ONLY commandapi and admin-server.
     /// </summary>
-    private static void VerifyScopesContainOnlyCommandApi(Dictionary<string, object> doc, string componentName) {
+    private static void VerifyStateStoreScopes(Dictionary<string, object> doc, string componentName) {
         List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         _ = scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
         scopes.ShouldNotBeEmpty($"{componentName} scopes section must have at least one entry");
 
-        foreach (object? scope in scopes) {
-            scope?.ToString().ShouldBe("commandapi",
-                $"{componentName} scopes must contain ONLY commandapi, found '{scope}'");
-        }
+        scopes.Select(scope => scope?.ToString()).ShouldBe(["commandapi", "admin-server"], ignoreOrder: true,
+            customMessage: $"{componentName} scopes must contain ONLY commandapi and admin-server");
     }
 
     /// <summary>

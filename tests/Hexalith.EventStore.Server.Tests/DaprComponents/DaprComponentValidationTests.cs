@@ -17,7 +17,9 @@ public class DaprComponentValidationTests {
     private static readonly string StateStorePath = Path.Combine(DaprComponentsDir, "statestore.yaml");
     private static readonly string PubSubPath = Path.Combine(DaprComponentsDir, "pubsub.yaml");
     private static readonly string ResiliencyPath = Path.Combine(DaprComponentsDir, "resiliency.yaml");
-    private static readonly string AccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.yaml");
+    private static readonly string CommandApiAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.yaml");
+    private static readonly string AdminServerAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.admin-server.yaml");
+    private static readonly string SampleAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.sample.yaml");
     private static readonly string SubscriptionPath = Path.Combine(DaprComponentsDir, "subscription-sample-counter.yaml");
 
     // --- Task 5.2: StateStoreComponent_HasActorStateStoreEnabled ---
@@ -29,15 +31,15 @@ public class DaprComponentValidationTests {
             .ShouldBe("true", "State store must have actorStateStore enabled for DAPR actor state management");
     }
 
-    // --- Task 5.3: StateStoreComponent_ScopedToCommandApiOnly ---
+    // --- Task 5.3: StateStoreComponent_ScopedToCommandApiAndAdminServer ---
 
     [Fact]
-    public void StateStoreComponent_ScopedToCommandApiOnly() {
+    public void StateStoreComponent_ScopedToCommandApiAndAdminServer() {
         Dictionary<string, object> doc = LoadYaml(StateStorePath);
         List<object>? scopes = GetScopes(doc);
         _ = scopes.ShouldNotBeNull("State store must have scopes defined");
-        scopes.Count.ShouldBe(1, "State store scopes must contain exactly one entry (commandapi only)");
-        scopes[0]?.ToString().ShouldBe("commandapi", "State store must be scoped to commandapi only (D4)");
+        scopes.Count.ShouldBe(2, "State store scopes must contain exactly two entries (commandapi and admin-server)");
+        scopes.Select(s => s?.ToString()).ShouldBe(["commandapi", "admin-server"], ignoreOrder: true);
     }
 
     // --- Task 5.4: PubSubComponent_HasDeadLetterEnabled ---
@@ -74,28 +76,77 @@ public class DaprComponentValidationTests {
     // --- Task 5.7: AccessControl_DefaultActionIsDeny ---
 
     [Fact]
-    public void AccessControl_DefaultActionIsAllowInLocalProfile() {
-        Dictionary<string, object> doc = LoadYaml(AccessControlPath);
+    public void CommandApiAccessControl_DefaultActionIsAllowInLocalProfile() {
+        Dictionary<string, object> doc = LoadYaml(CommandApiAccessControlPath);
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
-            .ShouldBe("allow", "Local access control uses defaultAction: allow in self-hosted profile (no mTLS caller identity)");
+            .ShouldBe("allow", "Local CommandApi access control uses defaultAction: allow in self-hosted profile (no mTLS caller identity)");
     }
 
     // --- Task 5.8: AccessControl_CommandApiCanInvokePostOnly ---
 
     [Fact]
-    public void AccessControl_CommandApiCanInvokePostOnly() {
-        Dictionary<string, object> doc = LoadYaml(AccessControlPath);
+    public void CommandApiAccessControl_AdminServerCanInvokeGetPostPut() {
+        Dictionary<string, object> doc = LoadYaml(CommandApiAccessControlPath);
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull();
+
+        Dictionary<object, object>? adminServerPolicy = policies
+            .Cast<Dictionary<object, object>>()
+            .FirstOrDefault(p => GetString(p, "appId") == "admin-server");
+        _ = adminServerPolicy.ShouldNotBeNull("CommandApi access control must have an admin-server policy");
+
+        List<object>? operations = adminServerPolicy.TryGetValue("operations", out object? ops)
+            ? ops as List<object> : null;
+        _ = operations.ShouldNotBeNull("admin-server policy must have operations");
+
+        Dictionary<object, object>? wildcardOp = operations!
+            .Cast<Dictionary<object, object>>()
+            .FirstOrDefault(op => GetString(op, "name") == "/**");
+        _ = wildcardOp.ShouldNotBeNull("admin-server must allow wildcard path /** for CommandApi delegation");
+
+        List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
+        _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
+        httpVerbs!.Select(v => v?.ToString()).ShouldContain("GET",
+            "admin-server wildcard must allow GET");
+        httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST",
+            "admin-server wildcard must allow POST");
+        httpVerbs!.Select(v => v?.ToString()).ShouldContain("PUT",
+            "admin-server wildcard must allow PUT");
+        GetString(wildcardOp, "action").ShouldBe("allow");
+    }
+
+    // --- Task 5.9: AccessControl_SampleHasZeroAllowedOperations ---
+
+    [Fact]
+    public void AdminServerAccessControl_HasNoInboundPolicies() {
+        Dictionary<string, object> doc = LoadYaml(AdminServerAccessControlPath);
+
+        Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
+            .ShouldBe("allow", "Local Admin.Server access control uses defaultAction: allow in self-hosted profile (no mTLS caller identity)");
+
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull("Admin.Server access control must contain a policies list");
+        policies.ShouldBeEmpty("Admin.Server should not expose inbound Dapr caller policies in the local topology");
+    }
+
+    [Fact]
+    public void SampleAccessControl_CommandApiCanInvokePostOnly() {
+        Dictionary<string, object> doc = LoadYaml(SampleAccessControlPath);
         List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
         _ = policies.ShouldNotBeNull();
 
         Dictionary<object, object>? commandApiPolicy = policies
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(p => GetString(p, "appId") == "commandapi");
-        _ = commandApiPolicy.ShouldNotBeNull("Access control must have a commandapi policy");
+        _ = commandApiPolicy.ShouldNotBeNull("Sample access control must have a commandapi policy");
+
+        GetString(commandApiPolicy, "defaultAction").ShouldBe("deny",
+            "commandapi caller policy must have defaultAction: deny (zero-trust, D4)");
 
         List<object>? operations = commandApiPolicy.TryGetValue("operations", out object? ops)
             ? ops as List<object> : null;
         _ = operations.ShouldNotBeNull("commandapi policy must have operations");
+        operations.Count.ShouldBe(1, "Sample access control should allow exactly one wildcard POST operation for commandapi");
 
         Dictionary<object, object>? wildcardOp = operations!
             .Cast<Dictionary<object, object>>()
@@ -104,28 +155,9 @@ public class DaprComponentValidationTests {
 
         List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
         _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
-        httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST",
-            "commandapi wildcard must allow POST");
+        httpVerbs.Count.ShouldBe(1, "Sample wildcard operation must allow exactly one verb");
+        httpVerbs[0]?.ToString().ShouldBe("POST", "commandapi wildcard must allow POST only");
         GetString(wildcardOp, "action").ShouldBe("allow");
-    }
-
-    // --- Task 5.9: AccessControl_SampleHasZeroAllowedOperations ---
-
-    [Fact]
-    public void AccessControl_SampleHasZeroAllowedOperations() {
-        Dictionary<string, object> doc = LoadYaml(AccessControlPath);
-        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
-        _ = policies.ShouldNotBeNull();
-
-        Dictionary<object, object>? samplePolicy = policies
-            .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(p => GetString(p, "appId") == "sample");
-        _ = samplePolicy.ShouldNotBeNull("Access control must have a sample policy");
-
-        GetString(samplePolicy, "defaultAction").ShouldBe("deny",
-            "sample must have defaultAction: deny (zero-trust, D4)");
-        samplePolicy.ContainsKey("operations").ShouldBeFalse(
-            "sample must not have any allowed operations (zero infrastructure access)");
     }
 
     // --- Task 5.10: Resiliency_SidecarTimeoutIsFiveSeconds ---
@@ -159,7 +191,9 @@ public class DaprComponentValidationTests {
         File.Exists(StateStorePath).ShouldBeTrue($"statestore.yaml must exist at {StateStorePath}");
         File.Exists(PubSubPath).ShouldBeTrue($"pubsub.yaml must exist at {PubSubPath}");
         File.Exists(ResiliencyPath).ShouldBeTrue($"resiliency.yaml must exist at {ResiliencyPath}");
-        File.Exists(AccessControlPath).ShouldBeTrue($"accesscontrol.yaml must exist at {AccessControlPath}");
+        File.Exists(CommandApiAccessControlPath).ShouldBeTrue($"accesscontrol.yaml must exist at {CommandApiAccessControlPath}");
+        File.Exists(AdminServerAccessControlPath).ShouldBeTrue($"accesscontrol.admin-server.yaml must exist at {AdminServerAccessControlPath}");
+        File.Exists(SampleAccessControlPath).ShouldBeTrue($"accesscontrol.sample.yaml must exist at {SampleAccessControlPath}");
         File.Exists(SubscriptionPath).ShouldBeTrue($"subscription-sample-counter.yaml must exist at {SubscriptionPath}");
     }
 

@@ -7,25 +7,22 @@ PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
-// Resolve DAPR access control configuration path (Story 5.1, D4, FR34).
-// Both commandapi and sample sidecars load this Configuration CRD.
-string accessControlConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", "accesscontrol.yaml");
-if (!File.Exists(accessControlConfigPath)) {
-    accessControlConfigPath = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "DaprComponents", "accesscontrol.yaml"));
-}
-
-if (!File.Exists(accessControlConfigPath)) {
-    throw new FileNotFoundException(
-        "DAPR access control configuration not found. "
-        + "Ensure accesscontrol.yaml exists in the DaprComponents directory (D4, FR34).",
-        accessControlConfigPath);
-}
+// Resolve DAPR access control configuration paths (D4, FR34).
+// Each receiving service now has its own Configuration CRD so policies apply only
+// to the intended inbound surface instead of every sidecar sharing one config file.
+string commandApiAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.yaml");
+string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.admin-server.yaml");
+string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
 
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
 IResourceBuilder<ProjectResource> commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
-HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(commandApi, accessControlConfigPath);
+IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("admin-server");
+HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
+    commandApi,
+    adminServer,
+    commandApiAccessControlConfigPath,
+    adminServerAccessControlConfigPath);
 
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
 // Enabled by default for local development with real OIDC token testing.
@@ -69,7 +66,7 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(new DaprSidecarOptions {
             AppId = "sample",
-            Config = accessControlConfigPath,
+            Config = sampleAccessControlConfigPath,
         }));
 
 // Add Blazor UI sample — consumes CommandApi via Aspire service discovery (Story 18-6).
@@ -85,6 +82,15 @@ IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalit
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{commandApiHttps}/hubs/projection-changes"));
 
 if (keycloak is not null && realmUrl is not null) {
+    _ = adminServer
+        .WithReference(keycloak)
+        .WaitFor(keycloak)
+        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
+        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
+        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+
     _ = blazorUi
         .WithReference(keycloak)
         .WaitFor(keycloak)
@@ -113,3 +119,20 @@ else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)
 }
 
 builder.Build().Run();
+
+static string ResolveDaprConfigPath(string fileName) {
+    string configPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", fileName);
+    if (!File.Exists(configPath)) {
+        configPath = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "DaprComponents", fileName));
+    }
+
+    if (!File.Exists(configPath)) {
+        throw new FileNotFoundException(
+            "DAPR access control configuration not found. "
+            + $"Ensure {fileName} exists in the DaprComponents directory (D4, FR34).",
+            configPath);
+    }
+
+    return configPath;
+}

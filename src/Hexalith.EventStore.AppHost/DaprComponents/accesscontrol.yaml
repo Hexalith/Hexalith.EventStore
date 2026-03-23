@@ -1,15 +1,11 @@
-# DAPR Access Control Configuration (D4, FR34, NFR15)
-# =====================================================
-# Defines service-to-service invocation policies for the Hexalith EventStore.
-# Each DAPR sidecar loads this Configuration to evaluate INCOMING service invocation requests.
-# Policies define which CALLERS (by appId) are permitted to invoke operations on the service
-# that loads this Configuration.
+# DAPR Access Control Configuration for the CommandApi sidecar (D4, FR34, NFR15)
+# ===============================================================================
+# This Configuration CRD is loaded ONLY by the commandapi sidecar and therefore
+# governs which CALLERS may invoke CommandApi endpoints through Dapr service invocation.
 #
-# App-ID Topology (2 services):
-#   - commandapi (port 8080): REST API host + DAPR actor host + event publisher (all in-process).
-#     The ONLY app-id that needs infrastructure access (state store, pub/sub, outbound service invocation).
-#   - sample (port 8081): Reference domain service. Zero infrastructure access -- can only
-#     respond to incoming invocations from the actor host.
+# Allowed callers in the local topology:
+#   - admin-server (port 8090): Admin REST API host. Needs GET/POST/PUT to delegate
+#     admin reads and writes to CommandApi (ADR-P4).
 #
 # Security Posture (D4, FR34, NFR15):
 #   defaultAction: allow (self-hosted mode without mTLS).
@@ -18,18 +14,12 @@
 #   Without mTLS, policies cannot verify callers -- deny-by-default would block
 #   ALL service invocations regardless of policy rules.
 #
-#   For PRODUCTION (Kubernetes with mTLS + Sentry):
+#   For PRODUCTION (Kubernetes with mTLS + Sentry), use deny-by-default and bind
+#   this config only to the CommandApi workload:
 #     1. Change defaultAction to "deny"
 #     2. Set trustDomain to your SPIFFE domain (e.g. "hexalith.io")
 #     3. Update each policy trustDomain + namespace to match the caller's K8s identity
-#     4. Domain service isolation (D4, AC #13) is then enforced by the policies below
-#
-# Adding New Domain Services:
-#   1. Add a new policy entry for the new app-id with defaultAction: deny and NO allowed operations.
-#   2. The commandapi policy already uses wildcard (/**) so no changes needed for commandapi
-#      to invoke the new domain service.
-#   3. DO NOT add the new domain service to pub/sub scopes, state store scopes, or publishingScopes.
-#      Domain services have zero infrastructure access (D4).
+#     4. Bind separate access-control configs to each receiving service sidecar.
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
 metadata:
@@ -39,18 +29,13 @@ spec:
     defaultAction: allow  # Allow-by-default in self-hosted mode; change to deny with mTLS
     trustDomain: "public"
     policies:
-      # commandapi: Trusted caller -- REST API + actor host + event publisher (D4)
-      - appId: commandapi
+      # admin-server: Admin API host -- invokes commandapi for write delegation (ADR-P4)
+      # Admin reads go to DAPR state store directly; writes delegate to commandapi.
+      - appId: admin-server
         defaultAction: deny
         trustDomain: "public"
         namespace: "default"
         operations:
           - name: /**
-            httpVerb: ['POST']
+            httpVerb: ['GET', 'POST', 'PUT']
             action: allow
-      # sample: Domain service -- zero outbound access (D4, AC #3, AC #13)
-      # With mTLS + deny-by-default, this blocks sample from calling any other service.
-      - appId: sample
-        defaultAction: deny
-        trustDomain: "public"
-        namespace: "default"

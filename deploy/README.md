@@ -4,7 +4,7 @@ Production DAPR component configurations for deploying Hexalith.EventStore to di
 
 ## Directory Structure
 
-```
+```text
 deploy/
   dapr/
     statestore-postgresql.yaml    # PostgreSQL state store (production)
@@ -13,7 +13,9 @@ deploy/
     pubsub-kafka.yaml             # Kafka pub/sub (production)
     pubsub-servicebus.yaml        # Azure Service Bus pub/sub (production)
     resiliency.yaml               # Production resiliency policies
-    accesscontrol.yaml            # Production access control (deny-by-default)
+    accesscontrol.yaml            # CommandApi access control (deny-by-default)
+    accesscontrol.admin-server.yaml # Admin.Server access control (deny-by-default)
+    accesscontrol.sample.yaml     # Sample domain-service access control (deny-by-default)
     subscription-sample-counter.yaml       # Sample subscription template
     subscription-projection-changed.yaml   # Projection change subscription
 ```
@@ -22,21 +24,21 @@ deploy/
 
 ### State Store Backends
 
-| Backend | DAPR Component Type | Config File | Key Features |
-|---------|-------------------|-------------|--------------|
-| Redis | `state.redis` | (local only) | Fast, simple setup |
-| PostgreSQL | `state.postgresql` | `statestore-postgresql.yaml` | ACID transactions, range queries |
-| Azure Cosmos DB | `state.azure.cosmosdb` | `statestore-cosmosdb.yaml` | Global distribution, elastic scale |
+| Backend         | DAPR Component Type    | Config File                  | Key Features                       |
+| --------------- | ---------------------- | ---------------------------- | ---------------------------------- |
+| Redis           | `state.redis`          | (local only)                 | Fast, simple setup                 |
+| PostgreSQL      | `state.postgresql`     | `statestore-postgresql.yaml` | ACID transactions, range queries   |
+| Azure Cosmos DB | `state.azure.cosmosdb` | `statestore-cosmosdb.yaml`   | Global distribution, elastic scale |
 
 All state store backends support: ETag optimistic concurrency, actor state store, composite key pattern `{tenant}||{domain}||{aggregateId}`.
 
 ### Pub/Sub Backends
 
-| Backend | DAPR Component Type | Config File | Key Features |
-|---------|-------------------|-------------|--------------|
-| Redis Streams | `pubsub.redis` | (local only) | Simple setup, development |
-| RabbitMQ | `pubsub.rabbitmq` | `pubsub-rabbitmq.yaml` | Mature, flexible routing |
-| Kafka | `pubsub.kafka` | `pubsub-kafka.yaml` | High throughput, log-based |
+| Backend           | DAPR Component Type              | Config File              | Key Features                      |
+| ----------------- | -------------------------------- | ------------------------ | --------------------------------- |
+| Redis Streams     | `pubsub.redis`                   | (local only)             | Simple setup, development         |
+| RabbitMQ          | `pubsub.rabbitmq`                | `pubsub-rabbitmq.yaml`   | Mature, flexible routing          |
+| Kafka             | `pubsub.kafka`                   | `pubsub-kafka.yaml`      | High throughput, log-based        |
 | Azure Service Bus | `pubsub.azure.servicebus.topics` | `pubsub-servicebus.yaml` | Native Azure, enterprise features |
 
 All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-letter routing, per-tenant-per-domain topic isolation.
@@ -49,8 +51,8 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 **Environment variables:**
 
-| Variable | Description | Example |
-| ---------- | ------------- | --------- |
+| Variable                     | Description                  | Example                                                                                                               |
+| ---------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | `host=mydb.postgres.database.azure.com;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require` |
 
 ### Cosmos DB State Store
@@ -59,12 +61,12 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 **Environment variables:**
 
-| Variable | Description | Example |
-| ---------- | ------------- | --------- |
-| `COSMOSDB_URL` | Account endpoint URL | `https://myaccount.documents.azure.com:443/` |
-| `COSMOSDB_KEY` | Primary or secondary key | (from Azure Portal or Key Vault) |
-| `COSMOSDB_DATABASE` | Database name | `eventstore` |
-| `COSMOSDB_COLLECTION` | Container/collection name | `actorstate` |
+| Variable              | Description               | Example                                      |
+| --------------------- | ------------------------- | -------------------------------------------- |
+| `COSMOSDB_URL`        | Account endpoint URL      | `https://myaccount.documents.azure.com:443/` |
+| `COSMOSDB_KEY`        | Primary or secondary key  | (from Azure Portal or Key Vault)             |
+| `COSMOSDB_DATABASE`   | Database name             | `eventstore`                                 |
+| `COSMOSDB_COLLECTION` | Container/collection name | `actorstate`                                 |
 
 ### RabbitMQ Pub/Sub
 
@@ -72,8 +74,8 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 **Environment variables:**
 
-| Variable | Description | Example |
-|----------|-------------|---------|
+| Variable                     | Description            | Example                                       |
+| ---------------------------- | ---------------------- | --------------------------------------------- |
 | `RABBITMQ_CONNECTION_STRING` | AMQP connection string | `amqp://user:pass@rabbitmq.example.com:5672/` |
 
 ### Kafka Pub/Sub
@@ -82,10 +84,10 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 **Environment variables:**
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `KAFKA_BROKERS` | Comma-separated broker addresses | `broker1:9092,broker2:9092` |
-| `KAFKA_AUTH_TYPE` | Authentication type | `none`, `password`, `mtls`, or `oidc` |
+| Variable          | Description                      | Example                               |
+| ----------------- | -------------------------------- | ------------------------------------- |
+| `KAFKA_BROKERS`   | Comma-separated broker addresses | `broker1:9092,broker2:9092`           |
+| `KAFKA_AUTH_TYPE` | Authentication type              | `none`, `password`, `mtls`, or `oidc` |
 
 ### Azure Service Bus Pub/Sub
 
@@ -93,8 +95,8 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 **Environment variables:**
 
-| Variable | Description | Example |
-|----------|-------------|---------|
+| Variable                       | Description                   | Example                                                                                            |
+| ------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------- |
 | `SERVICEBUS_CONNECTION_STRING` | Service Bus connection string | `Endpoint=sb://mynamespace.servicebus.windows.net/;SharedAccessKeyName=dapr;SharedAccessKey=<key>` |
 
 **Note:** Azure Service Bus does not auto-create topics. Pre-create topics matching the `{tenant}.{domain}.events` pattern before deployment.
@@ -103,8 +105,8 @@ All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-lett
 
 Some production templates use environment variable placeholders for environment-specific identity values:
 
-- `DAPR_TRUST_DOMAIN` (used in `accesscontrol.yaml`): SPIFFE trust domain for mTLS identity validation.
-- `DAPR_NAMESPACE` (used in `accesscontrol.yaml`): Kubernetes namespace where `commandapi` runs.
+- `DAPR_TRUST_DOMAIN` (used in `accesscontrol*.yaml`): SPIFFE trust domain for mTLS identity validation.
+- `DAPR_NAMESPACE` (used in `accesscontrol.yaml` and `accesscontrol.sample.yaml`): Kubernetes namespace where the DAPR-enabled workloads run.
 - `SUBSCRIBER_APP_ID` (used in all pub/sub configs): Authorized external subscriber app-id.
 - `OPS_MONITOR_APP_ID` (used in all pub/sub configs): Operational/monitoring subscriber app-id for dead-letter topics.
 
@@ -112,13 +114,13 @@ Set these before applying production templates to avoid unresolved/literal place
 
 ## Security Posture: Local vs. Production
 
-| Aspect | Local Dev (`AppHost/DaprComponents/`) | Production (`deploy/dapr/`) |
-|--------|---------------------------------------|---------------------------|
-| Access Control | `defaultAction: allow` (no mTLS) | `defaultAction: deny` + mTLS (SPIFFE trust domain) |
-| Component Scoping | Explicit scopes (e.g., `commandapi`) | Explicit `scopes: ["commandapi"]` on every component |
-| Secrets | `appsettings.json` / env vars | K8s Secrets / Azure Key Vault |
-| TLS | None (local loopback) | mTLS via DAPR sidecar (NFR9) |
-| Resiliency | Constant retry (3 retries, 1s), shorter intervals | Exponential retry (10 retries, 15s max), longer intervals |
+| Aspect            | Local Dev (`AppHost/DaprComponents/`)             | Production (`deploy/dapr/`)                               |
+| ----------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| Access Control    | `defaultAction: allow` (no mTLS)                  | `defaultAction: deny` + mTLS (SPIFFE trust domain)        |
+| Component Scoping | Explicit scopes (e.g., `commandapi`)              | Explicit `scopes: ["commandapi"]` on every component      |
+| Secrets           | `appsettings.json` / env vars                     | K8s Secrets / Azure Key Vault                             |
+| TLS               | None (local loopback)                             | mTLS via DAPR sidecar (NFR9)                              |
+| Resiliency        | Constant retry (3 retries, 1s), shorter intervals | Exponential retry (10 retries, 15s max), longer intervals |
 
 ## Secret Management
 
@@ -137,38 +139,41 @@ Recommended approaches by platform:
 ### Docker Compose
 
 1. Choose one state store config and one pub/sub config
-2. Copy chosen files plus `resiliency.yaml` to a `dapr-components/` directory, and `accesscontrol.yaml` to a separate `dapr-config/` directory (see [Docker Compose Publisher](#docker-compose-publisher) for why)
+2. Copy chosen files plus `resiliency.yaml` to a `dapr-components/` directory, and copy the sidecar-specific `accesscontrol*.yaml` files to a separate `dapr-config/` directory (see [Docker Compose Publisher](#docker-compose-publisher) for why)
 3. Set required environment variables in your `.env` file
 4. Add DAPR sidecar containers — see the [reference override file pattern](#docker-compose-publisher) for a complete example
-
 
 ### Kubernetes
 
 1. Apply chosen component configs as DAPR component resources:
 
-   ```bash
-   kubectl apply -f statestore-postgresql.yaml
-   kubectl apply -f pubsub-rabbitmq.yaml
-   kubectl apply -f resiliency.yaml
-   kubectl apply -f accesscontrol.yaml
-   ```
+    ```bash
+    kubectl apply -f statestore-postgresql.yaml
+    kubectl apply -f pubsub-rabbitmq.yaml
+    kubectl apply -f resiliency.yaml
+    kubectl apply -f accesscontrol.yaml
+    kubectl apply -f accesscontrol.admin-server.yaml
+    kubectl apply -f accesscontrol.sample.yaml
+    ```
 
 2. Create Kubernetes Secrets for connection strings referenced by environment variables
-3. Configure DAPR annotations on your application pods:
+3. Configure DAPR annotations on your application pods with the config that matches each receiving sidecar:
 
-   ```yaml
-   annotations:
-     dapr.io/enabled: "true"
-     dapr.io/app-id: "commandapi"
-     dapr.io/config: "accesscontrol"
-   ```
+    ```yaml
+    annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "commandapi"
+        dapr.io/config: "accesscontrol"
+    ```
+
+    Use `dapr.io/config: "accesscontrol-admin-server"` for the `admin-server` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
 
 ### Azure Container Apps (Aspire Publisher)
 
 1. Publish the Aspire app for Azure Container Apps and generate deployment artifacts.
 2. Create/update Container Apps secrets for all required component values (for example: `POSTGRES_CONNECTION_STRING`, `SERVICEBUS_CONNECTION_STRING`, `DAPR_TRUST_DOMAIN`, `DAPR_NAMESPACE`, `SUBSCRIBER_APP_ID`, `OPS_MONITOR_APP_ID`).
-3. Apply DAPR production components (`statestore-*`, `pubsub-*`, `resiliency.yaml`, `accesscontrol.yaml`) to the target environment, ensuring placeholders resolve from environment/secrets.
-4. Configure the `commandapi` container app with matching environment variables and DAPR settings (app-id `commandapi`, config name `accesscontrol`).
+3. Apply DAPR production components (`statestore-*`, `pubsub-*`, `resiliency.yaml`) to the target environment, ensuring placeholders resolve from environment/secrets.
+4. Do **not** apply `accesscontrol*.yaml` in Azure Container Apps — ACA does not support DAPR `Configuration` CRDs. Use component scoping plus ACA networking isolation instead.
 5. Pre-create Azure Service Bus topics/subscriptions used by your tenant/domain topology before traffic cutover.
 6. Verify component load and sidecar health through Container Apps logs and DAPR health endpoint checks before promoting traffic.
 
@@ -197,11 +202,11 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **Generated output:** `docker-compose.yaml` + `.env` file containing parameterized placeholders for container images, ports, and secrets.
 
-**Services generated:** `commandapi`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
+**Services generated:** `commandapi`, `admin-server`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
 
 **DAPR sidecar handling:** `CommunityToolkit.Aspire.Hosting.Dapr` is a local dev orchestration tool. The Docker Compose publisher does **NOT** generate DAPR sidecar containers. To add DAPR support:
 
-1. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume. Place the `accesscontrol.yaml` (a DAPR Configuration resource, `kind: Configuration`) in a separate `dapr-config/` directory to avoid DAPR loading it as both a config and a component.
+1. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume. Place `accesscontrol.yaml`, `accesscontrol.admin-server.yaml`, and `accesscontrol.sample.yaml` (DAPR `Configuration` resources, `kind: Configuration`) in a separate `dapr-config/` directory to avoid DAPR loading them as components.
 2. Resolve environment variable placeholders in the `.env` file with production values.
 3. Add sidecar containers via a `docker-compose.override.yml` file (keeps Aspire-generated `docker-compose.yaml` unchanged and reviewable):
 
@@ -209,20 +214,60 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 ```yaml
 services:
-  commandapi-dapr:
-    image: "daprio/daprd:1.16.1"
-    network_mode: "service:commandapi"
-    volumes:
-      - ./dapr-components:/components
-      - ./dapr-config:/config
-    command: ["./daprd", "-app-id", "commandapi", "-app-port", "8080", "-components-path", "/components", "-config", "/config/accesscontrol.yaml"]
-  sample-dapr:
-    image: "daprio/daprd:1.16.1"
-    network_mode: "service:sample"
-    volumes:
-      - ./dapr-components:/components
-      - ./dapr-config:/config
-    command: ["./daprd", "-app-id", "sample", "-app-port", "8080", "-components-path", "/components", "-config", "/config/accesscontrol.yaml"]
+    commandapi-dapr:
+        image: "daprio/daprd:1.16.1"
+        network_mode: "service:commandapi"
+        volumes:
+            - ./dapr-components:/components
+            - ./dapr-config:/config
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "commandapi",
+                "-app-port",
+                "8080",
+                "-components-path",
+                "/components",
+                "-config",
+                "/config/accesscontrol.yaml",
+            ]
+    admin-server-dapr:
+        image: "daprio/daprd:1.16.1"
+        network_mode: "service:admin-server"
+        volumes:
+            - ./dapr-components:/components
+            - ./dapr-config:/config
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "admin-server",
+                "-app-port",
+                "8090",
+                "-components-path",
+                "/components",
+                "-config",
+                "/config/accesscontrol.admin-server.yaml",
+            ]
+    sample-dapr:
+        image: "daprio/daprd:1.16.1"
+        network_mode: "service:sample"
+        volumes:
+            - ./dapr-components:/components
+            - ./dapr-config:/config
+        command:
+            [
+                "./daprd",
+                "-app-id",
+                "sample",
+                "-app-port",
+                "8080",
+                "-components-path",
+                "/components",
+                "-config",
+                "/config/accesscontrol.sample.yaml",
+            ]
 ```
 
 Pin the DAPR sidecar image to a specific version (e.g., `1.16.1`) — avoid mutable tags like `latest` (see [CI/CD Image Tagging](#cicd-image-tagging)).
@@ -245,32 +290,36 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **Note:** `EnableKeycloak=false` is required because the Kubernetes publisher does not support bind mounts (used by Keycloak's realm import). For production Kubernetes deployments, use an external OIDC provider instead of Keycloak (see [External OIDC Configuration](#external-oidc-configuration-for-production)).
 
-**Generated output:** Helm chart with `Chart.yaml`, `values.yaml`, and templates containing Deployments, Services, and ConfigMaps for `commandapi` and `sample`.
+**Generated output:** Helm chart with `Chart.yaml`, `values.yaml`, and templates containing Deployments, Services, and ConfigMaps for `commandapi`, `admin-server`, and `sample`.
 
 **DAPR annotation handling:** The Kubernetes publisher does **NOT** auto-generate DAPR annotations on pod templates. To add DAPR support:
 
 1. Add DAPR annotations to each Deployment's pod template:
 
-   ```yaml
-   spec:
-     template:
-       metadata:
-         annotations:
-           dapr.io/enabled: "true"
-           dapr.io/app-id: "commandapi"
-           dapr.io/app-port: "8080"
-           dapr.io/config: "accesscontrol"
-   ```
+    ```yaml
+    spec:
+        template:
+            metadata:
+                annotations:
+                    dapr.io/enabled: "true"
+                    dapr.io/app-id: "commandapi"
+                    dapr.io/app-port: "8080"
+                    dapr.io/config: "accesscontrol"
+    ```
+
+    Use `dapr.io/config: "accesscontrol-admin-server"` for the `admin-server` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
 
 2. Install the DAPR operator in your Kubernetes cluster.
 3. Apply production DAPR components as Kubernetes CRDs:
 
-   ```bash
-   kubectl apply -f deploy/dapr/statestore-postgresql.yaml
-   kubectl apply -f deploy/dapr/pubsub-rabbitmq.yaml
-   kubectl apply -f deploy/dapr/resiliency.yaml
-   kubectl apply -f deploy/dapr/accesscontrol.yaml
-   ```
+    ```bash
+    kubectl apply -f deploy/dapr/statestore-postgresql.yaml
+    kubectl apply -f deploy/dapr/pubsub-rabbitmq.yaml
+    kubectl apply -f deploy/dapr/resiliency.yaml
+    kubectl apply -f deploy/dapr/accesscontrol.yaml
+    kubectl apply -f deploy/dapr/accesscontrol.admin-server.yaml
+    kubectl apply -f deploy/dapr/accesscontrol.sample.yaml
+    ```
 
 4. Create Kubernetes Secrets for connection strings referenced by environment variables.
 
@@ -305,12 +354,12 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production auth, configure an external OIDC provider via these environment variables on the `commandapi` container:
 
-| Variable | Description | Example |
-| ---------- | ------------- | --------- |
-| `Authentication__JwtBearer__Authority` | OIDC discovery URL (issuer) | `https://login.microsoftonline.com/{tenant}/v2.0` |
-| `Authentication__JwtBearer__Issuer` | Expected token issuer | `https://login.microsoftonline.com/{tenant}/v2.0` |
-| `Authentication__JwtBearer__Audience` | Expected token audience | `api://hexalith-eventstore` |
-| `Authentication__JwtBearer__RequireHttpsMetadata` | Require HTTPS for metadata | `true` (recommended for production) |
+| Variable                                          | Description                 | Example                                           |
+| ------------------------------------------------- | --------------------------- | ------------------------------------------------- |
+| `Authentication__JwtBearer__Authority`            | OIDC discovery URL (issuer) | `https://login.microsoftonline.com/{tenant}/v2.0` |
+| `Authentication__JwtBearer__Issuer`               | Expected token issuer       | `https://login.microsoftonline.com/{tenant}/v2.0` |
+| `Authentication__JwtBearer__Audience`             | Expected token audience     | `api://hexalith-eventstore`                       |
+| `Authentication__JwtBearer__RequireHttpsMetadata` | Require HTTPS for metadata  | `true` (recommended for production)               |
 
 When `Authentication__JwtBearer__Authority` is set, the application uses OIDC discovery to validate tokens. When it is not set, it falls back to symmetric key validation via `Authentication__JwtBearer__SigningKey`.
 
@@ -335,9 +384,10 @@ When adding a new domain service to the production deployment:
 
 1. **Do NOT** add it to state store scopes -- domain services have zero state store access (D4)
 2. **Do NOT** add it to pub/sub component scopes -- domain services have zero pub/sub access (D4)
-3. Add its app-id to `accesscontrol.yaml` following the template in the file comments
-4. If the domain service needs to receive invocations from commandapi, ensure its `defaultAction: deny` policy allows the specific operations needed
-5. Update subscription files if the domain service processes events from specific topics
+3. Create a dedicated `accesscontrol.<service>.yaml` for the new receiving sidecar, using `accesscontrol.sample.yaml` as the template
+4. Bind that config only to the new workload via its DAPR config setting or annotation
+5. If the domain service needs to receive invocations from commandapi, ensure its `defaultAction: deny` policy allows only the specific operations needed
+6. Update subscription files if the domain service processes events from specific topics
 
 ## Adding New Subscriber Services
 
@@ -360,8 +410,8 @@ The NFR29 portability guarantee means any DAPR-compatible backend works — not 
 1. Find the DAPR component spec for your backend at [DAPR State Store Components](https://docs.dapr.io/reference/components-reference/supported-state-stores/)
 2. Create a new YAML file in `deploy/dapr/` following the pattern in `statestore-postgresql.yaml`
 3. Required metadata fields:
-   - `actorStateStore: "true"` (required for DAPR actors)
-   - Connection credentials via `{env:VAR_NAME}` references (never hardcode)
+    - `actorStateStore: "true"` (required for DAPR actors)
+    - Connection credentials via `{env:VAR_NAME}` references (never hardcode)
 4. The component `metadata.name` **must** be `statestore` (matches what the application code references)
 5. Add `scopes: ["commandapi"]` (D4 requirement — only commandapi accesses the state store)
 6. Verify the backend supports ETag-based optimistic concurrency (D1 hard requirement)
@@ -371,9 +421,11 @@ The NFR29 portability guarantee means any DAPR-compatible backend works — not 
 1. Find the DAPR component spec at [DAPR Pub/Sub Components](https://docs.dapr.io/reference/components-reference/supported-pubsub/)
 2. Create a new YAML file following the pattern in `pubsub-rabbitmq.yaml`
 3. Required metadata fields:
-   - Configure dead-letter handling using backend-supported metadata (for example: `enableDeadLetter` + `deadLetterTopic` where supported)
-   - `publishingScopes` and `subscriptionScopes` (copy from existing pub/sub configs)
-   - Connection credentials via `{env:VAR_NAME}` references
+    - Configure dead-letter handling using backend-supported metadata (for example: `enableDeadLetter` + `deadLetterTopic` where supported)
+    - `publishingScopes` and `subscriptionScopes` (copy from existing pub/sub configs)
+    - Connection credentials via `{env:VAR_NAME}` references
 4. The component `metadata.name` **must** be `pubsub` (matches what the application code references)
 5. Add `scopes` list: `["commandapi", "{env:SUBSCRIBER_APP_ID}", "{env:OPS_MONITOR_APP_ID}"]` — must include `commandapi` (publisher) plus any authorized subscriber app-ids
 6. Verify the backend supports CloudEvents 1.0 and at-least-once delivery
+ <!-- End of deployment README -->
+

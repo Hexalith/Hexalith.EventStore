@@ -1,0 +1,17 @@
+# DAPR Access Control Configuration for the Admin.Server sidecar (D4, FR34, NFR15)
+# ================================================================================
+# This Configuration CRD is loaded ONLY by the admin-server sidecar and therefore
+# governs which CALLERS may invoke Admin.Server through Dapr service invocation.
+#
+# In the current topology no other service should directly invoke admin-server.
+# Admin.Server is an HTTP-facing host that delegates to CommandApi, not a Dapr
+# service target for peer workloads.
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: accesscontrol-admin-server
+spec:
+  accessControl:
+    defaultAction: allow  # Allow-by-default in self-hosted mode; change to deny with mTLS
+    trustDomain: "public"
+    policies: []

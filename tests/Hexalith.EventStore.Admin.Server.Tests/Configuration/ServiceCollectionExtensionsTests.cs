@@ -15,13 +15,10 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Configuration;
 
-public class ServiceCollectionExtensionsTests
-{
-    private static (IServiceCollection Services, IConfiguration Configuration) CreateServicesWithConfig()
-    {
+public class ServiceCollectionExtensionsTests {
+    private static (IServiceCollection Services, IConfiguration Configuration) CreateServicesWithConfig() {
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
+            .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["AdminServer:StateStoreName"] = "teststore",
                 ["AdminServer:CommandApiAppId"] = "test-commandapi",
                 ["AdminServer:TenantServiceAppId"] = "test-tenants",
@@ -38,8 +35,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdminServer_RegistersAllServiceInterfaces()
-    {
+    public void AddAdminServer_RegistersAllServiceInterfaces() {
         (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
 
         services.AddAdminServer(config);
@@ -61,8 +57,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdminServer_RegistersAuthContext()
-    {
+    public void AddAdminServer_RegistersAuthContext() {
         (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
 
         services.AddAdminServer(config);
@@ -74,8 +69,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdminServer_BindsOptionsFromConfiguration()
-    {
+    public void AddAdminServer_BindsOptionsFromConfiguration() {
         (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
 
         services.AddAdminServer(config);
@@ -91,15 +85,13 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdminServer_NullConfiguration_ThrowsArgumentNullException()
-    {
+    public void AddAdminServer_NullConfiguration_ThrowsArgumentNullException() {
         var services = new ServiceCollection();
         Should.Throw<ArgumentNullException>(() => services.AddAdminServer(null!));
     }
 
     [Fact]
-    public void AddAdminServer_UsesDefaultOptions_WhenNotConfigured()
-    {
+    public void AddAdminServer_UsesDefaultOptions_WhenNotConfigured() {
         var config = new ConfigurationBuilder().Build();
         var services = new ServiceCollection();
         services.AddLogging();
@@ -119,8 +111,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddAdminApi_RegistersAuthorizationPolicies()
-    {
+    public async Task AddAdminApi_RegistersAuthorizationPolicies() {
         (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
         services.AddScoped(_ => Substitute.For<DaprClient>());
 
@@ -135,8 +126,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdminApi_RegistersTenantFilter()
-    {
+    public void AddAdminApi_RegistersTenantFilter() {
         (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
         services.AddScoped(_ => Substitute.For<DaprClient>());
 
@@ -148,8 +138,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAdminApi_RegistersClaimsTransformation()
-    {
+    public void AddAdminApi_RegistersClaimsTransformation() {
         (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
         services.AddScoped(_ => Substitute.For<DaprClient>());
 

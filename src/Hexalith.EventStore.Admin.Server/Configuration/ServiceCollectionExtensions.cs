@@ -13,8 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Configuration;
 /// <summary>
 /// Extension methods for registering Admin.Server services in the DI container.
 /// </summary>
-public static class ServiceCollectionExtensions
-{
+public static class ServiceCollectionExtensions {
     /// <summary>
     /// Adds the Admin API layer: authorization policies, claims transformation, tenant filter, and admin services.
     /// The host (Story 14-4) MUST additionally call <c>AddAuthentication().AddJwtBearer()</c> and
@@ -25,8 +24,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddAdminApi(
         this IServiceCollection services,
-        IConfiguration configuration)
-    {
+        IConfiguration configuration) {
         // 1. Authorization policies (NFR46)
         services.AddAuthorizationBuilder()
             .AddPolicy(AdminAuthorizationPolicies.ReadOnly, policy =>
@@ -56,14 +54,14 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddAdminServer(
         this IServiceCollection services,
-        IConfiguration configuration)
-    {
+        IConfiguration configuration) {
         ArgumentNullException.ThrowIfNull(configuration);
         services.Configure<AdminServerOptions>(
             configuration.GetSection(AdminServerOptions.SectionName));
         services.TryAddSingleton<IValidateOptions<AdminServerOptions>, AdminServerOptionsValidator>();
 
-        // Auth context — default no-op, Story 14-3 replaces with real implementation
+        // Host-agnostic default auth context.
+        // ASP.NET Core hosts can override this with an IHttpContextAccessor-based implementation.
         services.TryAddScoped<IAdminAuthContext, NullAdminAuthContext>();
 
         // Register all 10 service implementations as scoped
