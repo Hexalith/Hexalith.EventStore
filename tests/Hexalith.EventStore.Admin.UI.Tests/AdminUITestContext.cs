@@ -1,10 +1,12 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Services;
+using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -41,6 +43,17 @@ public class AdminUITestContext : BunitContext {
         Services.AddSingleton(authStateProvider);
         Services.AddScoped<AdminUserContext>();
         Services.AddScoped<ThemeState>();
+
+        // Mock AdminStreamApiClient for pages that inject it (tests can override)
+        Services.AddScoped(_ => Substitute.For<AdminStreamApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminStreamApiClient>.Instance));
+        Services.AddScoped<DashboardRefreshService>();
+
+        // SignalR client with test-safe disposal
+        TestSignalRClient testSignalRClient = new();
+        Services.AddSingleton(testSignalRClient);
+        Services.AddSingleton(testSignalRClient.Inner);
         Services.AddSingleton<IConfiguration>(_ => new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:AdminServer:SwaggerUrl"] = "https://localhost:8091/swagger/index.html",

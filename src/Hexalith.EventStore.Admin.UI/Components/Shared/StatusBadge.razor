@@ -1,9 +1,10 @@
 @namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 
-<span class="status-badge" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: @_color;"
-      aria-label="@($"{AriaLabelPrefix}: {Status}")">
-    <span class="status-badge__icon" aria-hidden="true">@_icon</span>
-    <span class="status-badge__label">@Status</span>
+<span class="status-badge" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: @_effectiveColor;"
+      aria-label="@($"{AriaLabelPrefix}: {_effectiveLabel}")">
+    <span class="status-badge__icon" aria-hidden="true">@_effectiveIcon</span>
+    <span class="status-badge__label">@_effectiveLabel</span>
 </span>
 
 @code {
@@ -16,7 +17,14 @@
     [Parameter]
     public string AriaLabelPrefix { get; set; } = "Command status";
 
-    private string _color => Severity.ToLowerInvariant() switch
+    [Parameter]
+    public StatusDisplayConfig? DisplayConfig { get; set; }
+
+    private string _effectiveLabel => DisplayConfig?.Label ?? Status;
+    private string _effectiveColor => DisplayConfig?.CssColor ?? SeverityToColor(Severity);
+    private string _effectiveIcon => DisplayConfig?.Icon ?? SeverityToIcon(Severity);
+
+    private static string SeverityToColor(string severity) => severity.ToLowerInvariant() switch
     {
         "success" => "var(--hexalith-status-success)",
         "inflight" => "var(--hexalith-status-inflight)",
@@ -25,7 +33,7 @@
         _ => "var(--hexalith-status-neutral)",
     };
 
-    private string _icon => Severity.ToLowerInvariant() switch
+    private static string SeverityToIcon(string severity) => severity.ToLowerInvariant() switch
     {
         "success" => "\u2714",
         "inflight" => "\u25CB",
@@ -33,4 +41,21 @@
         "error" => "\u2716",
         _ => "\u2022",
     };
+
+    /// <summary>
+    /// Display configuration for a status badge, decoupled from specific enum types.
+    /// </summary>
+    public record StatusDisplayConfig(string Label, string Icon, string CssColor)
+    {
+        /// <summary>
+        /// Creates a <see cref="StatusDisplayConfig"/> from a <see cref="StreamStatus"/> value.
+        /// </summary>
+        public static StatusDisplayConfig FromStreamStatus(StreamStatus status) => status switch
+        {
+            StreamStatus.Active => new("Active", "\u25CF", "var(--hexalith-status-success)"),
+            StreamStatus.Idle => new("Idle", "\u25CB", "var(--hexalith-status-neutral)"),
+            StreamStatus.Tombstoned => new("Tombstoned", "\u2612", "var(--hexalith-status-error)"),
+            _ => new(status.ToString(), "\u2022", "var(--hexalith-status-neutral)"),
+        };
+    }
 }

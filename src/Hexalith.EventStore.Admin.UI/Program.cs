@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.SignalR;
 
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -29,10 +30,25 @@ builder.Services.AddTransient<AdminApiAuthorizationHandler>();
 builder.Services.AddScoped<AdminUserContext>();
 builder.Services.AddScoped<ThemeState>();
 
+// Admin API client for streams, health, and tenants
+builder.Services.AddScoped<AdminStreamApiClient>();
+
+// Dashboard polling refresh service
+builder.Services.AddScoped<DashboardRefreshService>();
+
+// SignalR client for real-time projection change signals
+string signalRHubUrl = builder.Configuration["EventStore:SignalR:HubUrl"]
+    ?? "https+http://commandapi/hubs/projection-changes";
+builder.Services.AddSingleton(new EventStoreSignalRClientOptions { HubUrl = signalRHubUrl });
+builder.Services.AddSingleton<EventStoreSignalRClient>();
+
 // HttpClient for querying Admin.Server via Aspire service discovery
 builder.Services.AddHttpClient("AdminApi", client =>
+{
     client.BaseAddress = new Uri(builder.Configuration["EventStore:AdminServer:BaseUrl"]
-        ?? "https://admin-server"))
+        ?? "https://admin-server");
+    client.Timeout = TimeSpan.FromSeconds(5);
+})
     .AddHttpMessageHandler<AdminApiAuthorizationHandler>();
 
 WebApplication app = builder.Build();
@@ -56,4 +72,15 @@ app.UseAuthorization();
 app.MapRazorComponents<Hexalith.EventStore.Admin.UI.Components.App>()
     .AddInteractiveServerRenderMode();
 
-app.Run();
+// Start SignalR connection gracefully — polling handles data refresh if SignalR is unavailable
+try
+{
+    EventStoreSignalRClient signalRClient = app.Services.GetRequiredService<EventStoreSignalRClient>();
+    await signalRClient.StartAsync().ConfigureAwait(false);
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "SignalR connection failed on startup. Polling will handle data refresh.");
+}
+
+await app.RunAsync().ConfigureAwait(false);

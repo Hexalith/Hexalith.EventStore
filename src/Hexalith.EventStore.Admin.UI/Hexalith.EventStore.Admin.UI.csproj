@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Admin.Abstractions\Hexalith.EventStore.Admin.Abstractions.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Hexalith.EventStore.SignalR\Hexalith.EventStore.SignalR.csproj" />
   </ItemGroup>
 
   <ItemGroup>

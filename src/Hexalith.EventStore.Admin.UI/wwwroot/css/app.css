@@ -133,6 +133,31 @@ body {
     font-size: 13px;
 }
 
+/* StatCard severity color transition */
+.stat-card-value {
+    transition: color 300ms ease-out;
+}
+
+/* New-row fade-in animation for real-time updates */
+@keyframes row-fade-in {
+    from { background-color: color-mix(in srgb, var(--hexalith-brand) 10%, transparent); }
+    to { background-color: transparent; }
+}
+
+.stream-row-new {
+    animation: row-fade-in 150ms ease-out;
+}
+
+/* Streams grid responsive column visibility */
+.streams-col-domain,
+.streams-col-snapshot {
+    display: table-cell;
+}
+
+.streams-col-tenant {
+    display: table-cell;
+}
+
 /* Responsive breakpoints */
 
 /* Standard: 1280-1919px */
@@ -142,7 +167,7 @@ body {
     }
 }
 
-/* Compact: 960-1279px */
+/* Compact: 960-1279px — hide Domain and Snapshot columns */
 @media (max-width: 1279px) {
     .admin-sidebar {
         width: 48px;
@@ -152,9 +177,14 @@ body {
     .stat-card-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .streams-col-domain,
+    .streams-col-snapshot {
+        display: none !important;
+    }
 }
 
-/* Minimum: <960px */
+/* Minimum: <960px — also hide Tenant */
 @media (max-width: 959px) {
     .narrow-screen-warning {
         display: block;
@@ -162,6 +192,10 @@ body {
 
     .stat-card-grid {
         grid-template-columns: 1fr;
+    }
+
+    .streams-col-tenant {
+        display: none !important;
     }
 }
 

@@ -1,10 +1,13 @@
 @using Hexalith.EventStore.Admin.Abstractions.Models.Common
 @using Hexalith.EventStore.Admin.UI.Services
 @using Hexalith.EventStore.Admin.UI.Components
+@using Microsoft.AspNetCore.SignalR.Client
 @inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject AdminUserContext UserContext
+@inject EventStoreSignalRClient SignalRClient
+@inject DashboardRefreshService RefreshService
 @implements IAsyncDisposable
 
 <a href="#main-content" class="skip-to-main">Skip to main content</a>
@@ -14,7 +17,7 @@
         <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
             <span style="font-weight: 600;">Hexalith EventStore Admin</span>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <HeaderStatusIndicator />
+                <HeaderStatusIndicator ConnectionStatus="_connectionStatus" HealthSummary="@_healthSummary" />
                 <ThemeToggle />
             </div>
         </div>
@@ -48,6 +51,9 @@
     private DotNetObjectReference<MainLayout>? _dotNetRef;
     private CommandPalette? _commandPalette;
     private string? _shortcutRegistrationId;
+    private HeaderStatusIndicator.ConnectionStatusType _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Unknown;
+    private string _healthSummary = "\u2014";
+    private bool _pollingFailed;
 
     private bool ShouldShowBreadcrumb => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).Length > 0;
 
@@ -55,6 +61,11 @@
     {
         if (firstRender)
         {
+            // Wire connection status from SignalR + polling
+            RefreshService.OnDataChanged += OnPollingSuccess;
+            RefreshService.OnError += OnPollingFailure;
+            UpdateConnectionStatus();
+
             _userRole = await UserContext.GetRoleAsync().ConfigureAwait(false);
 
             string storageKey = await GetSidebarStorageKeyAsync().ConfigureAwait(false);
@@ -105,8 +116,54 @@
         return $"hexalith-sidebar-collapsed-{tier}";
     }
 
+    private void OnPollingSuccess(DashboardData data)
+    {
+        _pollingFailed = false;
+        if (data.Health is not null)
+        {
+            _healthSummary = data.Health.OverallStatus.ToString();
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            UpdateConnectionStatus();
+            StateHasChanged();
+        });
+    }
+
+    private void OnPollingFailure(Exception ex)
+    {
+        _pollingFailed = true;
+        _ = InvokeAsync(() =>
+        {
+            UpdateConnectionStatus();
+            StateHasChanged();
+        });
+    }
+
+    private void UpdateConnectionStatus()
+    {
+        bool signalRConnected = SignalRClient is not null;
+        // SignalR connected → green; SignalR down + polling works → gray; both fail → red
+        if (_pollingFailed && !signalRConnected)
+        {
+            _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Disconnected;
+        }
+        else if (signalRConnected)
+        {
+            _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Connected;
+        }
+        else
+        {
+            _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Unknown;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        RefreshService.OnDataChanged -= OnPollingSuccess;
+        RefreshService.OnError -= OnPollingFailure;
+
         if (!string.IsNullOrWhiteSpace(_shortcutRegistrationId))
         {
             await JSRuntime.InvokeVoidAsync("hexalithAdmin.unregisterShortcuts", _shortcutRegistrationId).ConfigureAwait(false);

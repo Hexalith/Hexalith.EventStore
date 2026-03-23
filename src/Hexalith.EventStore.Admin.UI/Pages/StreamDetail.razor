@@ -1,0 +1,19 @@
+@page "/streams/{TenantId}/{Domain}/{AggregateId}"
+
+<PageTitle>Stream Detail - Hexalith EventStore Admin</PageTitle>
+
+<h1>Stream Detail</h1>
+
+<EmptyState Title="Stream detail view coming in story 15-3."
+            Description="@($"Stream: {TenantId}/{Domain}/{AggregateId}")" />
+
+@code {
+    [Parameter]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter]
+    public string AggregateId { get; set; } = string.Empty;
+}

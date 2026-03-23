@@ -1,0 +1,56 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+
+@using Hexalith.EventStore.Admin.UI.Models
+
+@inject NavigationManager NavigationManager
+
+<div class="activity-chart">
+    <h3 class="activity-chart-title">Stream Activity (24h)</h3>
+
+    @if (IsLoading)
+    {
+        <div class="activity-chart-skeleton" aria-hidden="true">
+            @for (int i = 0; i < 24; i++)
+            {
+                <div class="activity-chart-skeleton-bar" style="height: @(20 + Random.Shared.Next(60))%"></div>
+            }
+        </div>
+    }
+    else if (Buckets is null || Buckets.Count == 0 || Buckets.All(b => b.StreamCount == 0))
+    {
+        <EmptyState Title="No stream activity in the last 24 hours" Description="" />
+    }
+    else
+    {
+        int maxCount = Buckets.Max(b => b.StreamCount);
+        <div class="activity-chart-bars" role="img" aria-label="Bar chart showing stream activity over the last 24 hours">
+            @foreach (ActivityBucket bucket in Buckets)
+            {
+                double heightPct = maxCount > 0 ? (double)bucket.StreamCount / maxCount * 100 : 0;
+                string timeRange = $"{bucket.Start:HH:mm}-{bucket.End:HH:mm}";
+                string ariaLabel = $"{timeRange}: {bucket.StreamCount} active streams";
+                <button class="activity-chart-bar-wrapper"
+                        title="@($"{timeRange}: {bucket.StreamCount} streams")"
+                        aria-label="@ariaLabel"
+                        @onclick="() => OnBarClick(bucket)">
+                    <div class="activity-chart-bar" style="height: @($"{heightPct:F0}%")"></div>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ActivityBucket>? Buckets { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private void OnBarClick(ActivityBucket bucket)
+    {
+        string start = bucket.Start.ToString("o");
+        string end = bucket.End.ToString("o");
+        NavigationManager.NavigateTo($"/streams?start={Uri.EscapeDataString(start)}&end={Uri.EscapeDataString(end)}");
+    }
+}

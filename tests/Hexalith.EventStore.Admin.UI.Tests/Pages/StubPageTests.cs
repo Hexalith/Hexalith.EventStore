@@ -55,9 +55,10 @@ public class StubPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public void LandingPage_RendersExactEmptyStateCopyAfterLoad() {
+    public void LandingPage_RendersStatCardGrid() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
 
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("EventStore Admin is running. Connect to Admin API to begin."));
+        // Landing page always renders the stat card grid
+        cut.Markup.ShouldContain("stat-card-grid");
     }
 }
