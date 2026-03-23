@@ -1,6 +1,6 @@
 # Story 15.5: Projection Dashboard — Status, Lag, Errors & Controls
 
-Status: review
+Status: done
 Size: Large — ~9 new files, 7 task groups, 14 ACs, 21 tests (~16-20 hours estimated)
 
 ## Definition of Done
