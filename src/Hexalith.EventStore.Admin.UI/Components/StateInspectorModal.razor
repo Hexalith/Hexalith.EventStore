@@ -1,0 +1,218 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+@inject AdminStreamApiClient ApiClient
+
+<FluentDialog @ref="_dialog"
+              Modal="true"
+              TrapFocus="true"
+              aria-modal="true"
+              aria-label="Aggregate state inspector"
+              @ondialogdismiss="HandleDismiss"
+              Style="min-width: 500px; max-width: 800px; max-height: 80vh;">
+    <FluentDialogHeader>
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <h3 style="margin: 0; flex: 1;">State Inspector</h3>
+            <FluentButton Appearance="Appearance.Lightweight"
+                          OnClick="HandleClose"
+                          aria-label="Close inspector"
+                          Title="Close">
+                &#x2716;
+            </FluentButton>
+        </FluentStack>
+    </FluentDialogHeader>
+    <FluentDialogBody Style="overflow-y: auto;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
+                <span style="font-weight: 600;">Mode:</span>
+                <FluentSwitch @bind-Value="_useTimestampMode"
+                              Label="By Timestamp"
+                              aria-label="Toggle between sequence and timestamp mode" />
+            </FluentStack>
+
+            @if (!_useTimestampMode)
+            {
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
+                    <FluentButton Appearance="Appearance.Outline"
+                                  OnClick="DecrementSequence"
+                                  Disabled="@(_sequenceInput <= 0 || _fetching)"
+                                  aria-label="Previous sequence"
+                                  Title="Previous position">
+                        -1
+                    </FluentButton>
+                    <FluentNumberField @bind-Value="_sequenceInput"
+                                       Min="0"
+                                       Label="Sequence Number"
+                                       aria-label="Sequence number to inspect"
+                                       Style="flex: 1;"
+                                       Autofocus="true" />
+                    <FluentButton Appearance="Appearance.Outline"
+                                  OnClick="IncrementSequence"
+                                  Disabled="@_fetching"
+                                  aria-label="Next sequence"
+                                  Title="Next position">
+                        +1
+                    </FluentButton>
+                </FluentStack>
+            }
+            else
+            {
+                <FluentTextField @bind-Value="_timestampInput"
+                                 Label="Timestamp (ISO 8601)"
+                                 Placeholder="2026-03-23T12:00:00Z"
+                                 aria-label="ISO 8601 timestamp to inspect"
+                                 Title="Enter ISO 8601 format: YYYY-MM-DDThh:mm:ssZ" />
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                    Current time: @DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                </span>
+                @if (_timestampError is not null)
+                {
+                    <span style="color: var(--hexalith-status-error); font-size: 13px;" role="alert">@_timestampError</span>
+                }
+            }
+
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="FetchState"
+                          Disabled="@_fetching"
+                          Style="align-self: flex-start;">
+                @(_fetching ? "Loading..." : "Inspect")
+            </FluentButton>
+
+            @if (_fetching)
+            {
+                <SkeletonCard />
+            }
+            else if (_fetched && _snapshot is not null)
+            {
+                <div>
+                    <h4 style="margin: 8px 0;">State at Sequence #@_snapshot.SequenceNumber</h4>
+                    <span class="monospace" style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                        @_snapshot.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")
+                    </span>
+                    <JsonViewer Json="@_snapshot.StateJson"
+                                AriaLabel="@($"Aggregate state at sequence {_snapshot.SequenceNumber}")" />
+                </div>
+            }
+            else if (_fetched && _snapshot is null)
+            {
+                <EmptyState Title="No state available at this position"
+                            Description="@(_capExceeded ? "Timestamp too far in history \u2014 use sequence number instead." : "The aggregate has no state at the requested position.")" />
+            }
+        </FluentStack>
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    private FluentDialog? _dialog;
+    private long _sequenceInput;
+    private string? _timestampInput;
+    private bool _useTimestampMode;
+    private bool _fetching;
+    private bool _fetched;
+    private bool _capExceeded;
+    private string? _timestampError;
+    private AggregateStateSnapshot? _snapshot;
+    private long? _previousInitialSequence;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter]
+    public long? InitialSequenceNumber { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // P5: Track parameter changes so reopening with a different sequence works
+        if (InitialSequenceNumber != _previousInitialSequence)
+        {
+            _previousInitialSequence = InitialSequenceNumber;
+            if (InitialSequenceNumber.HasValue)
+            {
+                _sequenceInput = InitialSequenceNumber.Value;
+            }
+        }
+    }
+
+    private async Task FetchState()
+    {
+        // P4: Validate timestamp before entering the try block to avoid
+        // the finally block setting _fetched=true on a validation failure
+        _timestampError = null;
+        if (_useTimestampMode && !DateTimeOffset.TryParse(_timestampInput, out _))
+        {
+            _timestampError = "Invalid timestamp format. Use ISO 8601: YYYY-MM-DDThh:mm:ssZ";
+            return;
+        }
+
+        _fetching = true;
+        _fetched = false;
+        _snapshot = null;
+        _capExceeded = false;
+        StateHasChanged();
+
+        try
+        {
+            if (_useTimestampMode)
+            {
+                DateTimeOffset.TryParse(_timestampInput, out DateTimeOffset ts);
+                // P8: Use tuple return to distinguish cap-exceeded from no-events
+                (AggregateStateSnapshot? snapshot, bool capExceeded) = await ApiClient
+                    .GetAggregateStateAtTimestampAsync(TenantId, Domain, AggregateId, ts)
+                    .ConfigureAwait(false);
+                _snapshot = snapshot;
+                _capExceeded = capExceeded;
+            }
+            else
+            {
+                _snapshot = await ApiClient.GetAggregateStateAtPositionAsync(
+                    TenantId, Domain, AggregateId, _sequenceInput).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _snapshot = null;
+        }
+        finally
+        {
+            _fetching = false;
+            _fetched = true;
+        }
+    }
+
+    private async Task IncrementSequence()
+    {
+        _sequenceInput++;
+        await FetchState();
+    }
+
+    private async Task DecrementSequence()
+    {
+        if (_sequenceInput > 0)
+        {
+            _sequenceInput--;
+            await FetchState();
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private async Task HandleDismiss(DialogEventArgs args)
+    {
+        if (args is not null)
+        {
+            await OnClose.InvokeAsync().ConfigureAwait(false);
+        }
+    }
+}

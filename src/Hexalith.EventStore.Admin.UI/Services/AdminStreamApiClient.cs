@@ -238,6 +238,117 @@ public class AdminStreamApiClient(
     }
 
     /// <summary>
+    /// Gets the diff between aggregate state at two sequence positions.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="fromSequence">Starting sequence number.</param>
+    /// <param name="toSequence">Ending sequence number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The state diff, or null if not available at either position.</returns>
+    public virtual async Task<AggregateStateDiff?> GetAggregateStateDiffAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long fromSequence,
+        long toSequence,
+        CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/diff?fromSequence={fromSequence}&toSequence={toSequence}";
+        try
+        {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<AggregateStateDiff>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to fetch aggregate state diff from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the aggregate state at the nearest event at or before a given timestamp.
+    /// Uses client-side resolution: fetches timeline pages to find the nearest entry,
+    /// then calls GetAggregateStateAtPositionAsync. Caps at 3 timeline API calls.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="timestamp">The target timestamp.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A tuple of (snapshot, capExceeded). Snapshot is null if not found; capExceeded is true when the 3-call pagination cap was hit.</returns>
+    public virtual async Task<(AggregateStateSnapshot? Snapshot, bool CapExceeded)> GetAggregateStateAtTimestampAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        DateTimeOffset timestamp,
+        CancellationToken ct = default)
+    {
+        const int pageSize = 200;
+        const int maxCalls = 3;
+        long? toSequence = null;
+
+        for (int call = 0; call < maxCalls; call++)
+        {
+            PagedResult<TimelineEntry> page = await GetStreamTimelineAsync(
+                tenantId, domain, aggregateId, null, toSequence, pageSize, ct)
+                .ConfigureAwait(false);
+
+            if (page.Items.Count == 0)
+            {
+                return (null, false);
+            }
+
+            // Items are returned most-recent-first; find last entry at or before timestamp
+            TimelineEntry? nearest = null;
+            foreach (TimelineEntry entry in page.Items)
+            {
+                if (entry.Timestamp <= timestamp)
+                {
+                    if (nearest is null || entry.SequenceNumber > nearest.SequenceNumber)
+                    {
+                        nearest = entry;
+                    }
+                }
+            }
+
+            if (nearest is not null)
+            {
+                AggregateStateSnapshot? snapshot = await GetAggregateStateAtPositionAsync(
+                    tenantId, domain, aggregateId, nearest.SequenceNumber, ct)
+                    .ConfigureAwait(false);
+                return (snapshot, false);
+            }
+
+            // All entries on this page are after the timestamp — try older page
+            long minSeq = page.Items.Min(e => e.SequenceNumber);
+            if (minSeq <= 1)
+            {
+                return (null, false); // No more older entries
+            }
+
+            toSequence = minSeq - 1;
+        }
+
+        // Cap exceeded
+        return (null, true);
+    }
+
+    /// <summary>
     /// Traces the causation chain from a specific event.
     /// </summary>
     /// <param name="tenantId">Tenant identifier.</param>
