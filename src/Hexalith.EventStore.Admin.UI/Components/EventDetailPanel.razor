@@ -99,6 +99,8 @@
     private bool _causationLoading;
     private string? _error;
     private string? _causationError;
+    private long _previousSequenceNumber = -1;
+    private string _previousAggregateId = string.Empty;
 
     [Parameter, EditorRequired]
     public string TenantId { get; set; } = string.Empty;
@@ -115,8 +117,18 @@
     [Parameter]
     public EventCallback<string> OnCopyCorrelation { get; set; }
 
+    [Parameter]
+    public bool AutoTraceCausation { get; set; }
+
     protected override async Task OnParametersSetAsync()
     {
+        if (SequenceNumber == _previousSequenceNumber && AggregateId == _previousAggregateId)
+        {
+            return;
+        }
+
+        _previousSequenceNumber = SequenceNumber;
+        _previousAggregateId = AggregateId;
         _loading = true;
         _causationChain = null;
         _causationError = null;
@@ -126,7 +138,7 @@
         try
         {
             _eventDetail = await ApiClient.GetEventDetailAsync(
-                TenantId, Domain, AggregateId, SequenceNumber).ConfigureAwait(false);
+                TenantId, Domain, AggregateId, SequenceNumber);
 
             if (_eventDetail is null)
             {
@@ -149,7 +161,7 @@
             try
             {
                 _stateSnapshot = await ApiClient.GetAggregateStateAtPositionAsync(
-                    TenantId, Domain, AggregateId, SequenceNumber).ConfigureAwait(false);
+                    TenantId, Domain, AggregateId, SequenceNumber);
             }
             catch
             {
@@ -158,6 +170,11 @@
             finally
             {
                 _stateLoading = false;
+            }
+
+            if (AutoTraceCausation && _causationChain is null)
+            {
+                await TraceCausation();
             }
         }
     }

@@ -2,7 +2,7 @@
 
 @implements IDisposable
 
-<FluentCard class="stat-card" aria-label="@($"{Label}: {(IsLoading ? "Loading" : Value)}")">
+<FluentCard class="stat-card" aria-label="@($"{Label}: {(IsLoading ? "Loading" : Value)}")" title="@Title">
     @if (IsLoading)
     {
         <SkeletonCard />
@@ -26,6 +26,9 @@
 
     [Parameter]
     public string Severity { get; set; } = "neutral";
+
+    [Parameter]
+    public string? Title { get; set; }
 
     [Parameter]
     public bool IsLoading { get; set; }

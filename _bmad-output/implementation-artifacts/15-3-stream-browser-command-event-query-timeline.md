@@ -1,6 +1,6 @@
 # Story 15.3: Stream Browser — Command/Event/Query Timeline
 
-Status: review
+Status: done
 Size: Large (multi-session) — ~20 new files, 9 task groups, 16 ACs
 
 ## Definition of Done

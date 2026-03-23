@@ -30,6 +30,8 @@ public class AdminUITestContext : BunitContext
         JSInterop.Setup<string?>("hexalithAdmin.getLocalStorage", _ => true).SetResult(null);
         JSInterop.SetupVoid("hexalithAdmin.setLocalStorage", _ => true);
         JSInterop.Setup<int>("hexalithAdmin.getViewportWidth", _ => true).SetResult(1920);
+        JSInterop.Setup<string>("hexalithAdmin.registerViewportListener", _ => true).SetResult("vp-test-1");
+        JSInterop.SetupVoid("hexalithAdmin.unregisterViewportListener", _ => true);
         JSInterop.SetupVoid("hexalithAdmin.focusCommandPaletteSearch", _ => true).SetVoidResult();
         JSInterop.Mode = JSRuntimeMode.Loose;
 
@@ -52,6 +54,7 @@ public class AdminUITestContext : BunitContext
             NullLogger<AdminStreamApiClient>.Instance));
         Services.AddScoped<DashboardRefreshService>();
         Services.AddScoped<TopologyCacheService>();
+        Services.AddScoped<ViewportService>();
 
         // SignalR client with test-safe disposal
         TestSignalRClient testSignalRClient = new();

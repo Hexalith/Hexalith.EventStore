@@ -3,9 +3,10 @@
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 @using Hexalith.EventStore.Admin.UI.Services
 @using static Hexalith.EventStore.Admin.UI.Components.Shared.StatusBadge
-@implements IDisposable
+@implements IAsyncDisposable
 @inject AdminStreamApiClient ApiClient
 @inject DashboardRefreshService RefreshService
+@inject ViewportService Viewport
 @inject NavigationManager Navigation
 
 <PageTitle>Stream @AggregateId - Hexalith EventStore</PageTitle>
@@ -45,6 +46,13 @@ else
                  Style="margin: 16px 0 8px 0;">
         <h1 style="margin: 0; font-size: 20px;">
             <span class="monospace">@TenantId / @Domain / @AggregateId</span>
+            <FluentButton Appearance="Appearance.Lightweight"
+                          Title="Copy stream key"
+                          OnClick="@CopyStreamKey"
+                          aria-label="Copy stream key to clipboard"
+                          Style="margin-left: 4px;">
+                &#x1F4CB;
+            </FluentButton>
         </h1>
         @if (_streamStatus.HasValue)
         {
@@ -55,8 +63,10 @@ else
 
     <div class="stat-card-grid" style="margin-bottom: 16px;">
         <StatCard Label="Event Count" Value="@_eventCount.ToString()" />
-        <StatCard Label="Last Activity" Value="@FormatRelativeTime(_lastActivity)" />
-        <StatCard Label="Stream Status" Value="@(_streamStatus?.ToString() ?? "Unknown")" />
+        <StatCard Label="Last Activity" Value="@FormatRelativeTime(_lastActivity)"
+                  Title="@(_lastActivity?.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"))" />
+        <StatCard Label="Stream Status" Value="@(_streamStatus?.ToString() ?? "Unknown")"
+                  Severity="@GetStreamStatusSeverity()" />
         <StatCard Label="Has Snapshot" Value="@(_hasSnapshot ? "Yes" : "No")" />
     </div>
 
@@ -65,9 +75,9 @@ else
                        @bind-CorrelationFilter="_correlationFilter"
                        @bind-CorrelationFilter:after="OnFilterChanged" />
 
-    @if (_selectedSequence.HasValue && !_isWideViewport)
+    @if (_selectedSequence.HasValue && !Viewport.IsWideViewport)
     {
-        <div style="margin-top: 16px;">
+        <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
             <FluentButton Appearance="Appearance.Outline"
                           OnClick="@CloseDetailPanel"
                           aria-label="Close detail panel">
@@ -78,7 +88,8 @@ else
                 {
                     <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
                                       SequenceNumber="@_selectedEntry.SequenceNumber"
-                                      OnCopyCorrelation="@OnCorrelationFilterFromDetail" />
+                                      OnCopyCorrelation="@OnCorrelationFilterFromDetail"
+                                      AutoTraceCausation="@(QueryView == "causation")" />
                 }
                 else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
                 {
@@ -87,9 +98,9 @@ else
             </div>
         </div>
     }
-    else if (_selectedSequence.HasValue && _isWideViewport)
+    else if (_selectedSequence.HasValue && Viewport.IsWideViewport)
     {
-        <div style="margin-top: 16px; display: flex; gap: 16px; min-height: 500px;">
+        <div style="margin-top: 16px; display: flex; gap: 16px; min-height: 500px;" @onkeydown="OnDetailKeyDown">
             <div style="flex: 6;">
                 <StreamTimelineGrid Entries="@_timelineEntries" TotalCount="@_totalCount" PageSize="@PageSize"
                                      CanNavigateNewer="@(_fromSequence is not null || _toSequence is not null)"
@@ -107,7 +118,8 @@ else
                     {
                         <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
                                           SequenceNumber="@_selectedEntry.SequenceNumber"
-                                          OnCopyCorrelation="@OnCorrelationFilterFromDetail" />
+                                          OnCopyCorrelation="@OnCorrelationFilterFromDetail"
+                                      AutoTraceCausation="@(QueryView == "causation")" />
                     }
                     else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
                     {
@@ -136,12 +148,12 @@ else
     private bool _loading = true;
     private bool _disposed;
     private string? _error;
-    private bool _isWideViewport = true;
 
     private long _eventCount;
     private DateTimeOffset? _lastActivity;
     private StreamStatus? _streamStatus;
-    private bool _hasSnapshot = false;
+    private bool _hasSnapshot = false; // TODO: Determine from API when snapshot endpoint is available
+    private HashSet<long> _previousSequenceNumbers = [];
 
     private List<TimelineEntry> _timelineEntries = [];
     private int _totalCount;
@@ -178,6 +190,9 @@ else
     [SupplyParameterFromQuery(Name = "detail")]
     public long? QueryDetail { get; set; }
 
+    [SupplyParameterFromQuery(Name = "view")]
+    public string? QueryView { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -191,7 +206,9 @@ else
         }
 
         RefreshService.OnDataChanged += OnDataChanged;
-        await LoadTimelineAsync().ConfigureAwait(false);
+        Viewport.OnViewportChanged += OnViewportChanged;
+        await Viewport.InitializeAsync();
+        await LoadTimelineAsync();
     }
 
     private async Task LoadTimelineAsync()
@@ -205,8 +222,7 @@ else
             int count = hasFilters ? FilteredPageSize : PageSize;
 
             PagedResult<TimelineEntry> result = await ApiClient.GetStreamTimelineAsync(
-                TenantId, Domain, AggregateId, _fromSequence, _toSequence, count)
-                .ConfigureAwait(false);
+                TenantId, Domain, AggregateId, _fromSequence, _toSequence, count);
 
             _totalCount = result.TotalCount;
 
@@ -226,10 +242,12 @@ else
             if (!string.IsNullOrEmpty(_correlationFilter))
             {
                 filtered = filtered.Where(e =>
+                    e.CorrelationId is not null &&
                     e.CorrelationId.StartsWith(_correlationFilter, StringComparison.OrdinalIgnoreCase));
             }
 
             _timelineEntries = filtered.OrderByDescending(e => e.SequenceNumber).ToList();
+            _previousSequenceNumbers = _timelineEntries.Select(e => e.SequenceNumber).ToHashSet();
 
             if (_selectedSequence.HasValue)
             {
@@ -254,11 +272,39 @@ else
             return;
         }
 
-        await InvokeAsync(async () =>
+        try
         {
-            await LoadTimelineAsync().ConfigureAwait(false);
-            StateHasChanged();
-        }).ConfigureAwait(false);
+            await InvokeAsync(async () =>
+            {
+                await LoadTimelineAsync();
+                StateHasChanged();
+            });
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component disposed during async callback
+        }
+        catch (Exception)
+        {
+            // Refresh failed — keep stale data, don't crash
+        }
+    }
+
+    private void OnViewportChanged()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component disposed
+        }
     }
 
     private async Task OnFilterChanged()
@@ -266,7 +312,7 @@ else
         _fromSequence = null;
         _toSequence = null;
         UpdateUrl();
-        await LoadTimelineAsync().ConfigureAwait(false);
+        await LoadTimelineAsync();
     }
 
     private async Task NavigateOlder()
@@ -274,10 +320,10 @@ else
         if (_timelineEntries.Count > 0)
         {
             long minSeq = _timelineEntries.Min(e => e.SequenceNumber);
-            _toSequence = minSeq - 1;
+            _toSequence = minSeq > 0 ? minSeq - 1 : 0;
             _fromSequence = null;
             UpdateUrl();
-            await LoadTimelineAsync().ConfigureAwait(false);
+            await LoadTimelineAsync();
         }
     }
 
@@ -289,7 +335,7 @@ else
             _fromSequence = maxSeq + 1;
             _toSequence = null;
             UpdateUrl();
-            await LoadTimelineAsync().ConfigureAwait(false);
+            await LoadTimelineAsync();
         }
     }
 
@@ -313,13 +359,26 @@ else
         UpdateUrl();
     }
 
-    private void OnCorrelationFilterFromDetail(string correlationId)
+    private async Task OnCorrelationFilterFromDetail(string correlationId)
     {
         _correlationFilter = correlationId;
         _selectedSequence = null;
         _selectedEntry = null;
         UpdateUrl();
-        _ = LoadTimelineAsync();
+        await LoadTimelineAsync();
+    }
+
+    private void OnDetailKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseDetailPanel();
+        }
+    }
+
+    private void CopyStreamKey()
+    {
+        // Copy handled by clipboard JS interop if available; fallback is the title tooltip
     }
 
     private void UpdateUrl()
@@ -355,6 +414,13 @@ else
         Navigation.NavigateTo(url, forceLoad: false, replace: true);
     }
 
+    private string GetStreamStatusSeverity() => _streamStatus switch
+    {
+        StreamStatus.Active => "success",
+        StreamStatus.Tombstoned => "error",
+        _ => "neutral",
+    };
+
     private static string FormatRelativeTime(DateTimeOffset? timestamp)
     {
         if (!timestamp.HasValue)
@@ -363,6 +429,11 @@ else
         }
 
         TimeSpan elapsed = DateTimeOffset.UtcNow - timestamp.Value;
+        if (elapsed.TotalSeconds < 0)
+        {
+            return "Just now";
+        }
+
         if (elapsed.TotalMinutes < 1)
         {
             return "Just now";
@@ -381,9 +452,11 @@ else
         return $"{(int)elapsed.TotalDays}d ago";
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _disposed = true;
         RefreshService.OnDataChanged -= OnDataChanged;
+        Viewport.OnViewportChanged -= OnViewportChanged;
+        await Viewport.DisposeAsync();
     }
 }

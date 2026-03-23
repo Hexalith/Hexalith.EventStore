@@ -33,6 +33,7 @@
 @code {
     private const int MaxLines = 500;
     private const int MaxBytes = 102400; // 100KB
+    private static readonly JsonSerializerOptions _indentedOptions = new() { WriteIndented = true };
 
     [Parameter]
     public string? Json { get; set; }
@@ -79,7 +80,7 @@
         try
         {
             using JsonDocument doc = JsonDocument.Parse(Json);
-            _formattedJson = JsonSerializer.Serialize(doc, new JsonSerializerOptions { WriteIndented = true });
+            _formattedJson = JsonSerializer.Serialize(doc, _indentedOptions);
             _isInvalid = false;
         }
         catch (JsonException)
@@ -141,7 +142,7 @@
         line = Regex.Replace(line, @"\b(true|false)\b", "<span class=\"json-boolean\">$1</span>");
 
         // Null
-        line = Regex.Replace(line, @"\bnull\b", "<span class=\"json-null\">$1</span>");
+        line = Regex.Replace(line, @"\b(null)\b", "<span class=\"json-null\">$1</span>");
 
         // Numbers
         line = Regex.Replace(line, @"(?<=:\s*)(-?\d+\.?\d*(?:[eE][+-]?\d+)?)", "<span class=\"json-number\">$1</span>");
