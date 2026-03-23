@@ -31,6 +31,7 @@ public static class HexalithEventStoreExtensions {
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<ProjectResource> commandApi,
         IResourceBuilder<ProjectResource> adminServer,
+        IResourceBuilder<ProjectResource>? adminUI = null,
         string? commandApiDaprConfigPath = null,
         string? adminServerDaprConfigPath = null) {
         ArgumentNullException.ThrowIfNull(builder);
@@ -73,6 +74,16 @@ public static class HexalithEventStoreExtensions {
                 })
                 .WithReference(stateStore));
 
-        return new HexalithEventStoreResources(stateStore, pubSub, commandApi, adminServer);
+        // Wire Admin.UI with Admin.Server reference for HTTP API calls.
+        // Admin.UI does not use DAPR directly — it communicates exclusively via
+        // HTTP REST API to Admin.Server (ADR-P4 deviation).
+        if (adminUI is not null) {
+            _ = adminUI
+                .WithReference(adminServer)
+                .WaitFor(adminServer)
+                .WithExternalHttpEndpoints();
+        }
+
+        return new HexalithEventStoreResources(stateStore, pubSub, commandApi, adminServer, adminUI);
     }
 }

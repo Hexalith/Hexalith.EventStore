@@ -1,0 +1,95 @@
+@implements IDisposable
+@using Hexalith.EventStore.Admin.UI.Services
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <HeadOutlet @rendermode="RenderMode.InteractiveServer" />
+    <link href="Hexalith.EventStore.Admin.UI.styles.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+</head>
+
+<body>
+    <FluentDesignTheme Mode="@ThemeState.Mode" ModeChanged="@OnThemeModeChanged" StorageName="hexalith-admin-theme"
+                       CustomColor="#0066CC" />
+    <FluentToastProvider />
+    <ErrorBoundary>
+        <ChildContent>
+            <Routes @rendermode="RenderMode.InteractiveServer" />
+        </ChildContent>
+        <ErrorContent Context="exception">
+            <div role="alert"
+                 style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 16px;">
+                <h2>@GetErrorTitle(exception)</h2>
+                <p>@GetErrorMessage(exception)</p>
+                <FluentButton Appearance="Appearance.Accent" OnClick="@ReloadPage">
+                    @GetErrorActionLabel(exception)
+                </FluentButton>
+            </div>
+        </ErrorContent>
+    </ErrorBoundary>
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/interop.js"></script>
+</body>
+
+</html>
+
+@code {
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    [Inject]
+    private ThemeState ThemeState { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        ThemeState.Changed += OnThemeChanged;
+    }
+
+    private void ReloadPage()
+    {
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    private static AppErrorContent GetErrorContent(Exception exception)
+        => exception switch
+        {
+            UnauthorizedAccessException => new(
+                "Authentication required",
+                "Your Admin API session expired or you are not authorized. Sign in again and retry.",
+                "Reload and sign in again"),
+            _ => new(
+                "Something went wrong",
+                "An unexpected error occurred. Please try reloading the page.",
+                "Reload Page"),
+        };
+
+    private static string GetErrorTitle(Exception exception) => GetErrorContent(exception).Title;
+
+    private static string GetErrorMessage(Exception exception) => GetErrorContent(exception).Message;
+
+    private static string GetErrorActionLabel(Exception exception) => GetErrorContent(exception).ActionLabel;
+
+    private void OnThemeModeChanged(DesignThemeModes mode)
+    {
+        ThemeState.SetMode(mode);
+    }
+
+    private void OnThemeChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ThemeState.Changed -= OnThemeChanged;
+    }
+
+    private sealed record AppErrorContent(string Title, string Message, string ActionLabel);
+}

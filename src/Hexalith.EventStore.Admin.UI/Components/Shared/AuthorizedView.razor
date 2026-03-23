@@ -1,0 +1,24 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.UI.Services
+@inject AdminUserContext UserContext
+
+@if (_isAuthorized)
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter]
+    public AdminRole MinimumRole { get; set; } = AdminRole.ReadOnly;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _isAuthorized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAuthorized = await UserContext.HasMinimumRoleAsync(MinimumRole).ConfigureAwait(false);
+    }
+}

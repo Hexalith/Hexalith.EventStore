@@ -1,0 +1,23 @@
+@page "/tenants"
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@inject Hexalith.EventStore.Admin.UI.Services.AdminUserContext UserContext
+
+<PageTitle>Tenants - Hexalith EventStore</PageTitle>
+
+<h1 style="font-size: 24px; margin: 0 0 16px;">Tenants</h1>
+
+<EmptyState Title="No tenants configured."
+            Description="Tenants provide multi-tenant data isolation for your event streams." Icon="@TenantsIcon"
+            ActionLabel="@(_canManageTenants ? "Create your first tenant" : null)"
+            ActionHref="@(_canManageTenants ? "/tenants" : null)" />
+
+@code {
+    private bool _canManageTenants;
+
+    private static RenderFragment TenantsIcon => builder => builder.AddMarkupContent(0, "&#128101;");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _canManageTenants = await UserContext.HasMinimumRoleAsync(AdminRole.Operator).ConfigureAwait(false);
+    }
+}

@@ -1,0 +1,55 @@
+using Bunit;
+
+using Hexalith.EventStore.Admin.UI.Services;
+
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FluentUI.AspNetCore.Components;
+
+using NSubstitute;
+
+namespace Hexalith.EventStore.Admin.UI.Tests;
+
+/// <summary>
+/// Base test context for Admin.UI bUnit tests.
+/// Registers FluentUI components and mock services.
+/// </summary>
+public class AdminUITestContext : BunitContext {
+    public AdminUITestContext() {
+        // Register FluentUI components
+        Services.AddFluentUIComponents();
+
+        // Mock JSInterop for FluentUI and custom interop
+        JSInterop.Setup<string>("hexalithAdmin.registerShortcuts", _ => true).SetResult("shortcut-test");
+        JSInterop.SetupVoid("hexalithAdmin.unregisterShortcuts", _ => true);
+        JSInterop.Setup<string?>("hexalithAdmin.getLocalStorage", _ => true).SetResult(null);
+        JSInterop.SetupVoid("hexalithAdmin.setLocalStorage", _ => true);
+        JSInterop.Setup<int>("hexalithAdmin.getViewportWidth", _ => true).SetResult(1920);
+        JSInterop.SetupVoid("hexalithAdmin.focusCommandPaletteSearch", _ => true).SetVoidResult();
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        // Mock authentication state provider
+        AuthenticationStateProvider authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        System.Security.Claims.ClaimsPrincipal user = new(new System.Security.Claims.ClaimsIdentity(
+        [
+            new System.Security.Claims.Claim(AdminClaimTypes.Role, "Admin"),
+        ], "TestAuth"));
+        _ = authStateProvider.GetAuthenticationStateAsync()
+            .Returns(Task.FromResult(new AuthenticationState(user)));
+
+        Services.AddSingleton(authStateProvider);
+        Services.AddScoped<AdminUserContext>();
+        Services.AddScoped<ThemeState>();
+        Services.AddSingleton<IConfiguration>(_ => new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:AdminServer:SwaggerUrl"] = "https://localhost:8091/swagger/index.html",
+                ["EventStore:AdminServer:BaseUrl"] = "https://admin-server",
+            })
+            .Build());
+        Services.AddCascadingValue(sp => {
+            AuthenticationStateProvider asp = sp.GetRequiredService<AuthenticationStateProvider>();
+            return asp.GetAuthenticationStateAsync();
+        });
+    }
+}

@@ -1,0 +1,44 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+
+@if (Visible)
+{
+    <div role="alert" aria-live="assertive"
+         style="padding: 12px 24px; background: var(--hexalith-status-warning); color: white; display: flex; align-items: center; gap: 12px;">
+        <span style="font-weight: 600;">@Title</span>
+        <span>@Description</span>
+        @if (!string.IsNullOrEmpty(ActionLabel) && (!string.IsNullOrWhiteSpace(ActionHref) || OnAction.HasDelegate))
+        {
+            @if (!string.IsNullOrWhiteSpace(ActionHref))
+            {
+                <FluentAnchor Href="@ActionHref" Appearance="Appearance.Stealth" Style="color: white; text-decoration: underline;">
+                    @ActionLabel</FluentAnchor>
+                }
+            else
+                {
+                    <FluentButton Appearance="Appearance.Stealth" Style="color: white; text-decoration: underline;" OnClick="@OnAction">
+                        @ActionLabel
+                    </FluentButton>
+                }
+            }
+        </div>
+    }
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ActionLabel { get; set; }
+
+    [Parameter]
+    public string? ActionHref { get; set; }
+
+    [Parameter]
+    public EventCallback OnAction { get; set; }
+}

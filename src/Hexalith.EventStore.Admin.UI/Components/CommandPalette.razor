@@ -1,0 +1,82 @@
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<FluentDialog @bind-Hidden="_hidden" Modal="true" TrapFocus="true" PreventDismiss="false" aria-label="Command palette"
+              OnDismiss="@(() => Close())" Style="width: 560px; max-height: 480px;">
+    <FluentDialogHeader ShowDismiss="true">
+        <FluentSearch @bind-Value="_searchQuery" @bind-Value:after="OnSearchChanged" Class="command-palette-search"
+                      Placeholder="Search commands, pages, actions..." Style="width: 100%;" />
+    </FluentDialogHeader>
+    <FluentDialogBody>
+        @if (_filteredResults.Count > 0)
+        {
+            string? currentCategory = null;
+            @foreach (CommandPaletteItem item in _filteredResults)
+            {
+                @if (item.Category != currentCategory)
+                {
+                    currentCategory = item.Category;
+                    <div
+                        style="padding: 8px 0 4px; font-size: 11px; font-weight: 600; color: var(--neutral-foreground-hint); text-transform: uppercase; letter-spacing: 0.5px;">
+                        @currentCategory
+                    </div>
+                }
+                <FluentButton Appearance="Appearance.Stealth"
+                              Style="width: 100%; justify-content: flex-start; padding: 8px 12px;"
+                              OnClick="@(() => NavigateTo(item.Href))">
+                    @item.Label
+                </FluentButton>
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            <div style="padding: 24px; text-align: center; color: var(--neutral-foreground-hint);">
+                No results found for "@_searchQuery"
+            </div>
+        }
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    private bool _hidden = true;
+    private bool _focusSearchRequested;
+    private string? _searchQuery;
+    private List<CommandPaletteItem> _filteredResults = [];
+
+    public void Open()
+    {
+        _hidden = false;
+        _searchQuery = null;
+        _filteredResults = [.. CommandPaletteCatalog.AllItems];
+        _focusSearchRequested = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        _hidden = true;
+        StateHasChanged();
+    }
+
+    private void OnSearchChanged()
+    {
+        _filteredResults = [.. CommandPaletteCatalog.Filter(_searchQuery)];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusSearchRequested && !_hidden)
+        {
+            _focusSearchRequested = false;
+            await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusCommandPaletteSearch").ConfigureAwait(false);
+        }
+
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private void NavigateTo(string href)
+    {
+        Close();
+        NavigationManager.NavigateTo(href);
+    }
+}

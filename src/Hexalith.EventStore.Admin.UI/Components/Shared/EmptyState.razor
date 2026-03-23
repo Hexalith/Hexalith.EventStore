@@ -1,0 +1,38 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+
+<div class="empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; gap: 12px;">
+    @if (Icon is not null)
+    {
+        <div aria-hidden="true" style="font-size: 28px; line-height: 1;">@Icon</div>
+    }
+    else if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    <h2 style="margin: 0; font-size: 18px; font-weight: 600;">@Title</h2>
+    <p style="margin: 0; color: var(--neutral-foreground-hint); max-width: 480px;">@Description</p>
+    @if (!string.IsNullOrEmpty(ActionLabel) && !string.IsNullOrEmpty(ActionHref))
+    {
+        <FluentAnchor Href="@ActionHref" Appearance="Appearance.Accent">@ActionLabel</FluentAnchor>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? Icon { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ActionLabel { get; set; }
+
+    [Parameter]
+    public string? ActionHref { get; set; }
+}

@@ -1,0 +1,36 @@
+@page "/"
+
+<PageTitle>Hexalith EventStore Admin</PageTitle>
+
+<IssueBanner Visible="false" Title="" Description="" />
+
+<div class="stat-card-grid">
+    <StatCard Label="Active Streams" Value="\u2014" IsLoading="_isLoading" />
+    <StatCard Label="Commands Processed" Value="\u2014" IsLoading="_isLoading" />
+    <StatCard Label="Events Stored" Value="\u2014" IsLoading="_isLoading" />
+    <StatCard Label="System Health" Value="\u2014" IsLoading="_isLoading" />
+</div>
+
+@if (!_isLoading)
+{
+    <div style="margin-top: 32px;">
+        <EmptyState Title="EventStore Admin is running. Connect to Admin API to begin." Description="" Icon="@HomeIcon" />
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+
+    private static RenderFragment HomeIcon => builder => builder.AddMarkupContent(0, "&#127968;");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Simulated 200ms loading delay per AC7 — no real API call
+            await Task.Delay(200).ConfigureAwait(false);
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        }
+    }
+}

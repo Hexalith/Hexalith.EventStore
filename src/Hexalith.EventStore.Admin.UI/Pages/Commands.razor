@@ -1,0 +1,19 @@
+@inject IConfiguration Configuration
+@page "/commands"
+
+<PageTitle>Commands - Hexalith EventStore</PageTitle>
+
+<h1 style="font-size: 24px; margin: 0 0 16px;">Commands</h1>
+
+<EmptyState Title="No commands processed yet."
+            Description="Commands will appear here once they are submitted to the EventStore."
+            Icon="@CommandIcon"
+            ActionLabel="Open Admin API Swagger"
+            ActionHref="@SwaggerUrl" />
+
+@code {
+    private string SwaggerUrl => Configuration["EventStore:AdminServer:SwaggerUrl"]
+        ?? "https://localhost:8091/swagger/index.html";
+
+    private static RenderFragment CommandIcon => builder => builder.AddMarkupContent(0, "&#9881;");
+}

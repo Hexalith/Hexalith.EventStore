@@ -1,0 +1,30 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+
+<div style="display: flex; align-items: center; gap: 12px; font-size: 13px;">
+    <FluentBadge Appearance="@_badgeAppearance" aria-label="@($"Connection status: {ConnectionStatus}")">
+        @ConnectionStatus
+    </FluentBadge>
+    <span style="color: var(--neutral-foreground-hint);">@HealthSummary</span>
+</div>
+
+@code {
+    public enum ConnectionStatusType
+    {
+        Unknown,
+        Connected,
+        Disconnected,
+    }
+
+    [Parameter]
+    public ConnectionStatusType ConnectionStatus { get; set; } = ConnectionStatusType.Unknown;
+
+    [Parameter]
+    public string HealthSummary { get; set; } = "\u2014";
+
+    private Appearance _badgeAppearance => ConnectionStatus switch
+    {
+        ConnectionStatusType.Connected => Appearance.Accent,
+        ConnectionStatusType.Disconnected => Appearance.Lightweight,
+        _ => Appearance.Neutral,
+    };
+}

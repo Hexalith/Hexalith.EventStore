@@ -1,0 +1,15 @@
+@page "/events"
+
+<PageTitle>Events - Hexalith EventStore</PageTitle>
+
+<h1 style="font-size: 24px; margin: 0 0 16px;">Events</h1>
+
+<EmptyState Title="No events stored yet."
+            Description="Events will appear here once commands are processed and events are persisted."
+            Icon="@EventsIcon"
+            ActionLabel="Read the getting started guide"
+            ActionHref="https://github.com/Hexalith/Hexalith.EventStore/blob/main/docs/getting-started/quickstart.md" />
+
+@code {
+    private static RenderFragment EventsIcon => builder => builder.AddMarkupContent(0, "&#128340;");
+}

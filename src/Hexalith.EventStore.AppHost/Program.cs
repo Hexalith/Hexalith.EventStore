@@ -18,9 +18,11 @@ string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.samp
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
 IResourceBuilder<ProjectResource> commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
 IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("admin-server");
+IResourceBuilder<ProjectResource> adminUI = builder.AddProject<Projects.Hexalith_EventStore_Admin_UI>("admin-ui");
 HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     commandApi,
     adminServer,
+    adminUI,
     commandApiAccessControlConfigPath,
     adminServerAccessControlConfigPath);
 
@@ -73,6 +75,7 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
 // Enables SignalR on CommandApi so the hub is active when the Blazor UI is running.
 _ = commandApi.WithEnvironment("EventStore__SignalR__Enabled", "true");
 EndpointReference commandApiHttps = commandApi.GetEndpoint("https");
+EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
     .WithReference(commandApi)
     .WaitFor(commandApi)
@@ -98,6 +101,18 @@ if (keycloak is not null && realmUrl is not null) {
         .WithEnvironment("EventStore__Authentication__ClientId", "hexalith-eventstore")
         .WithEnvironment("EventStore__Authentication__Username", "admin-user")
         .WithEnvironment("EventStore__Authentication__Password", "admin-pass");
+
+    _ = adminUI
+        .WithReference(keycloak)
+        .WaitFor(keycloak)
+        .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"))
+        .WithEnvironment("EventStore__Authentication__Authority", realmUrl)
+        .WithEnvironment("EventStore__Authentication__ClientId", "hexalith-eventstore")
+        .WithEnvironment("EventStore__Authentication__Username", "admin-user")
+        .WithEnvironment("EventStore__Authentication__Password", "admin-pass");
+}
+else {
+    _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
 }
 
 // --- Publisher environments (only activate during `aspire publish`) ---

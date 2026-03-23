@@ -1,0 +1,118 @@
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Components
+@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject AdminUserContext UserContext
+@implements IAsyncDisposable
+
+<a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+<FluentLayout>
+    <FluentHeader>
+        <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
+            <span style="font-weight: 600;">Hexalith EventStore Admin</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <HeaderStatusIndicator />
+                <ThemeToggle />
+            </div>
+        </div>
+    </FluentHeader>
+
+    <FluentBodyContent>
+        <div class="narrow-screen-warning" role="alert">
+            Dashboard optimized for wider screens.
+        </div>
+        @if (ShouldShowBreadcrumb)
+        {
+            <Breadcrumb />
+        }
+        <FluentStack Orientation="Orientation.Horizontal" Style="height: 100%;">
+            <div class="admin-sidebar @(_sidebarCollapsed ? "collapsed" : "")">
+                <NavMenu Width="@(_sidebarCollapsed ? 48 : 220)" UserRole="_userRole" />
+            </div>
+
+            <main id="main-content" class="admin-main" role="main">
+                @Body
+            </main>
+        </FluentStack>
+    </FluentBodyContent>
+</FluentLayout>
+
+<CommandPalette @ref="_commandPalette" />
+
+@code {
+    private bool _sidebarCollapsed;
+    private AdminRole _userRole = AdminRole.ReadOnly;
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
+    private CommandPalette? _commandPalette;
+    private string? _shortcutRegistrationId;
+
+    private bool ShouldShowBreadcrumb => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).Length > 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _userRole = await UserContext.GetRoleAsync().ConfigureAwait(false);
+
+            string storageKey = await GetSidebarStorageKeyAsync().ConfigureAwait(false);
+            string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey).ConfigureAwait(false);
+            if (bool.TryParse(savedState, out bool collapsed))
+            {
+                _sidebarCollapsed = collapsed;
+            }
+            else if (storageKey.Contains("compact", StringComparison.Ordinal))
+            {
+                _sidebarCollapsed = true;
+            }
+
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _shortcutRegistrationId = await JSRuntime.InvokeAsync<string>("hexalithAdmin.registerShortcuts", _dotNetRef).ConfigureAwait(false);
+
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnCommandPaletteShortcut()
+    {
+        _commandPalette?.Open();
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    [JSInvokable]
+    public async Task OnToggleSidebarShortcut()
+    {
+        _sidebarCollapsed = !_sidebarCollapsed;
+        string storageKey = await GetSidebarStorageKeyAsync().ConfigureAwait(false);
+        await JSRuntime.InvokeVoidAsync("hexalithAdmin.setLocalStorage", storageKey, _sidebarCollapsed.ToString().ToLowerInvariant()).ConfigureAwait(false);
+        StateHasChanged();
+    }
+
+    private async Task<string> GetSidebarStorageKeyAsync()
+    {
+        int viewportWidth = await JSRuntime.InvokeAsync<int>("hexalithAdmin.getViewportWidth").ConfigureAwait(false);
+        string tier = viewportWidth switch
+        {
+            >= 1920 => "optimal",
+            >= 1280 => "standard",
+            >= 960 => "compact",
+            _ => "minimum",
+        };
+
+        return $"hexalith-sidebar-collapsed-{tier}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_shortcutRegistrationId))
+        {
+            await JSRuntime.InvokeVoidAsync("hexalithAdmin.unregisterShortcuts", _shortcutRegistrationId).ConfigureAwait(false);
+        }
+
+        _dotNetRef?.Dispose();
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+}

@@ -1,0 +1,36 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+
+<span class="status-badge" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: @_color;"
+      aria-label="@($"{AriaLabelPrefix}: {Status}")">
+    <span class="status-badge__icon" aria-hidden="true">@_icon</span>
+    <span class="status-badge__label">@Status</span>
+</span>
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = "Unknown";
+
+    [Parameter]
+    public string Severity { get; set; } = "neutral";
+
+    [Parameter]
+    public string AriaLabelPrefix { get; set; } = "Command status";
+
+    private string _color => Severity.ToLowerInvariant() switch
+    {
+        "success" => "var(--hexalith-status-success)",
+        "inflight" => "var(--hexalith-status-inflight)",
+        "warning" => "var(--hexalith-status-warning)",
+        "error" => "var(--hexalith-status-error)",
+        _ => "var(--hexalith-status-neutral)",
+    };
+
+    private string _icon => Severity.ToLowerInvariant() switch
+    {
+        "success" => "\u2714",
+        "inflight" => "\u25CB",
+        "warning" => "\u26A0",
+        "error" => "\u2716",
+        _ => "\u2022",
+    };
+}

@@ -1,0 +1,57 @@
+@using Hexalith.EventStore.Admin.UI.Services
+@inject IJSRuntime JSRuntime
+@inject ThemeState ThemeState
+
+<FluentButton Appearance="Appearance.Stealth"
+              Title="@_tooltip"
+              aria-label="@_tooltip"
+              OnClick="@CycleTheme">
+    @_label
+</FluentButton>
+
+@code {
+    private const string ThemeStorageKey = "hexalith-admin-theme";
+
+    private DesignThemeModes _currentMode => ThemeState.Mode;
+
+    private string _tooltip => _currentMode switch
+    {
+        DesignThemeModes.Light => "Switch to dark theme",
+        DesignThemeModes.Dark => "Switch to system theme",
+        _ => "Switch to light theme",
+    };
+
+    private string _label => _currentMode switch
+    {
+        DesignThemeModes.Light => "\u2600",
+        DesignThemeModes.Dark => "\u263D",
+        _ => "\u2699",
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string? savedTheme = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", ThemeStorageKey).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(savedTheme) && Enum.TryParse<DesignThemeModes>(savedTheme, out DesignThemeModes mode))
+            {
+                ThemeState.SetMode(mode);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task CycleTheme()
+    {
+        DesignThemeModes nextMode = _currentMode switch
+        {
+            DesignThemeModes.System => DesignThemeModes.Light,
+            DesignThemeModes.Light => DesignThemeModes.Dark,
+            DesignThemeModes.Dark => DesignThemeModes.System,
+            _ => DesignThemeModes.System,
+        };
+
+        ThemeState.SetMode(nextMode);
+        await JSRuntime.InvokeVoidAsync("hexalithAdmin.setLocalStorage", ThemeStorageKey, nextMode.ToString()).ConfigureAwait(false);
+    }
+}

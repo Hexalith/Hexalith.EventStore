@@ -1,0 +1,86 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+
+@implements IDisposable
+
+<FluentCard class="stat-card" aria-label="@($"{Label}: {(IsLoading ? "Loading" : Value)}")">
+    @if (IsLoading)
+    {
+        <SkeletonCard />
+    }
+    else
+    {
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 13px; color: var(--neutral-foreground-hint);">@Label</span>
+            <span class="monospace" style="font-size: 28px; font-weight: 600; color: @_severityColor;">@Value</span>
+            <span class="sr-only" aria-live="polite">@_liveAnnouncement</span>
+        </div>
+    }
+</FluentCard>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Value { get; set; } = "0";
+
+    [Parameter]
+    public string Severity { get; set; } = "neutral";
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private string? _liveAnnouncement;
+    private string? _lastValue;
+    private CancellationTokenSource? _announcementCts;
+
+    protected override void OnParametersSet()
+    {
+        if (IsLoading || string.Equals(_lastValue, Value, StringComparison.Ordinal))
+        {
+            _lastValue = Value;
+            return;
+        }
+
+        _lastValue = Value;
+        QueueAnnouncement();
+    }
+
+    private void QueueAnnouncement()
+    {
+        _announcementCts?.Cancel();
+        _announcementCts?.Dispose();
+        _announcementCts = new CancellationTokenSource();
+        CancellationToken cancellationToken = _announcementCts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    _liveAnnouncement = $"{Label}: {Value}";
+                    await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }, cancellationToken);
+    }
+
+    private string _severityColor => Severity.ToLowerInvariant() switch
+    {
+        "success" => "var(--hexalith-status-success)",
+        "warning" => "var(--hexalith-status-warning)",
+        "error" => "var(--hexalith-status-error)",
+        _ => "var(--neutral-foreground-rest)",
+    };
+
+    public void Dispose()
+    {
+        _announcementCts?.Cancel();
+        _announcementCts?.Dispose();
+    }
+}
