@@ -1,0 +1,659 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.Abstractions.Models.Projections
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@inject AdminProjectionApiClient ApiClient
+@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<FluentCard style="padding: 16px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        @if (_detail is not null)
+        {
+            <h3 style="margin: 0; font-size: 16px;">Projection: @_detail.Name (@_detail.TenantId)</h3>
+        }
+        else if (_isLoading)
+        {
+            <h3 style="margin: 0; font-size: 16px;">Loading...</h3>
+        }
+        <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                      OnClick="OnClose"
+                      aria-label="Back to List">
+            Back to List
+        </FluentButton>
+    </div>
+
+    @if (_isLoading)
+    {
+        <SkeletonCard />
+    }
+    else if (_detail is null)
+    {
+        <EmptyState Title="Projection not found" Description="The projection could not be loaded." />
+    }
+    else
+    {
+        <!-- Status + Key Metrics -->
+        <div style="margin-bottom: 16px;">
+            <ProjectionStatusBadge Status="@_detail.Status" />
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+            <div>
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Lag</span>
+                <div class="monospace" style="font-size: 18px; font-weight: 600;">@_detail.Lag.ToString("N0")</div>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Throughput</span>
+                <div class="monospace" style="font-size: 18px; font-weight: 600;">@_detail.Throughput.ToString("F1") /s</div>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Errors</span>
+                <div class="monospace" style="font-size: 18px; font-weight: 600; @(_detail.ErrorCount > 0 ? "color: var(--hexalith-status-error);" : "")">@_detail.ErrorCount</div>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
+            <div>
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Last Position</span>
+                <div class="monospace">@_detail.LastProcessedPosition</div>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Last Processed</span>
+                <div title="@_detail.LastProcessedUtc.ToString("O")">@FormatRelativeTime(_detail.LastProcessedUtc)</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <AuthorizedView MinimumRole="AdminRole.Operator">
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                @if (_detail.Status == ProjectionStatusType.Running)
+                {
+                    <FluentButton Appearance="Appearance.Outline"
+                                  OnClick="OnPauseClick"
+                                  Disabled="@_isOperating"
+                                  aria-label="@($"Pause projection {_detail.Name}")">
+                        @if (_isOperating && _operatingAction == "pause")
+                        {
+                            <FluentProgressRing Style="width: 16px; height: 16px;" />
+                        }
+                        else
+                        {
+                            <span>&#x23F8; Pause</span>
+                        }
+                    </FluentButton>
+                }
+                else if (_detail.Status == ProjectionStatusType.Paused)
+                {
+                    <FluentButton Appearance="Appearance.Accent"
+                                  OnClick="OnResumeClick"
+                                  Disabled="@_isOperating"
+                                  aria-label="@($"Resume projection {_detail.Name}")">
+                        @if (_isOperating && _operatingAction == "resume")
+                        {
+                            <FluentProgressRing Style="width: 16px; height: 16px;" />
+                        }
+                        else
+                        {
+                            <span>&#x25B6; Resume</span>
+                        }
+                    </FluentButton>
+                }
+
+                <FluentButton Appearance="Appearance.Outline"
+                              OnClick="ShowResetDialog"
+                              Disabled="@_isOperating"
+                              aria-label="@($"Reset projection {_detail.Name}")">
+                    &#x21BB; Reset
+                </FluentButton>
+
+                <FluentButton Appearance="Appearance.Outline"
+                              OnClick="ShowReplayDialog"
+                              Disabled="@_isOperating"
+                              aria-label="@($"Replay projection {_detail.Name}")">
+                    &#x21BA; Replay
+                </FluentButton>
+            </div>
+        </AuthorizedView>
+
+        <!-- Subscribed Event Types -->
+        <div style="margin-bottom: 16px;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px;">Subscribed Event Types (@_detail.SubscribedEventTypes.Count)</h4>
+            @if (_detail.SubscribedEventTypes.Count == 0)
+            {
+                <span style="color: var(--neutral-foreground-hint);">No subscribed event types</span>
+            }
+            else
+            {
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    @foreach (string eventType in _detail.SubscribedEventTypes)
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral">@eventType</FluentBadge>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Configuration -->
+        <FluentAccordion>
+            <FluentAccordionItem Heading="Configuration">
+                <JsonViewer Json="@_detail.Configuration" AriaLabel="Projection configuration" />
+            </FluentAccordionItem>
+        </FluentAccordion>
+
+        <!-- Error List -->
+        <div style="margin-top: 16px;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px;">Errors</h4>
+            @if (_detail.Errors.Count == 0)
+            {
+                <EmptyState Title="No errors recorded" Description="" />
+            }
+            else
+            {
+                <FluentDataGrid Items="@GetDisplayedErrors()" TGridItem="ProjectionError"
+                                Style="width: 100%;"
+                                aria-label="@($"Projection errors for {_detail.Name}")">
+                    <PropertyColumn Property="@(e => e.Position)" Title="Position" Class="monospace" />
+                    <TemplateColumn Title="Timestamp">
+                        <span title="@context.Timestamp.ToString("O")">@FormatRelativeTime(context.Timestamp)</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Message">
+                        <span title="@(context.Message.Length > 120 ? context.Message : null)">
+                            @(context.Message.Length > 120 ? context.Message[..120] + "\u2026" : context.Message)
+                        </span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Event Type" Class="monospace">
+                        @(context.EventTypeName ?? "\u2014")
+                    </TemplateColumn>
+                </FluentDataGrid>
+
+                @if (_detail.Errors.Count > 20 && !_showAllErrors)
+                {
+                    <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                                  OnClick="() => _showAllErrors = true"
+                                  Style="margin-top: 8px;">
+                        Show all @_detail.Errors.Count errors
+                    </FluentButton>
+                }
+            }
+        </div>
+    }
+</FluentCard>
+
+@* Reset Confirmation Dialog *@
+@if (_showResetDialog && _detail is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Reset projection" @ondialogdismiss="CancelResetDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Confirm Reset</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p style="margin: 0 0 12px 0;">This will rebuild projection '@_detail.Name' from the specified position. This is an async operation.</p>
+            <FluentNumberField @bind-Value="_resetFromPosition"
+                               Label="From Position (leave empty to reset from beginning)"
+                               Min="0"
+                               Style="width: 100%; margin-bottom: 12px;"
+                               aria-label="Reset from position" />
+            <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-warning);">
+                &#x26A0; Warning: Resetting from the beginning will rebuild the entire projection.
+            </p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CancelResetDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="ConfirmResetAsync"
+                          Disabled="@_isOperating"
+                          Style="background-color: var(--hexalith-status-error); color: white;">
+                @if (_isOperating && _operatingAction == "reset")
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Reset</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Replay Confirmation Dialog *@
+@if (_showReplayDialog && _detail is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Replay projection" @ondialogdismiss="CancelReplayDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Confirm Replay</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p style="margin: 0 0 12px 0;">This will replay events between the specified positions for projection '@_detail.Name'.</p>
+            <FluentNumberField @bind-Value="_replayFromPosition"
+                               Label="From Position (required)"
+                               Min="0"
+                               Style="width: 100%; margin-bottom: 8px;"
+                               aria-label="Replay from position" />
+            <FluentNumberField @bind-Value="_replayToPosition"
+                               Label="To Position (required)"
+                               Min="0"
+                               Style="width: 100%; margin-bottom: 8px;"
+                               aria-label="Replay to position" />
+            @if (!string.IsNullOrEmpty(_replayValidationError))
+            {
+                <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-error);">@_replayValidationError</p>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CancelReplayDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="ConfirmReplayAsync"
+                          Disabled="@_isOperating"
+                          aria-label="Confirm replay">
+                @if (_isOperating && _operatingAction == "replay")
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Replay</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@code {
+    private const int DefaultErrorLimit = 20;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string ProjectionName { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private ProjectionDetail? _detail;
+    private bool _isLoading = true;
+    private bool _showAllErrors;
+    private bool _isOperating;
+    private string? _operatingAction;
+
+    // P4: Change detection for OnParametersSetAsync
+    private string? _prevTenantId;
+    private string? _prevProjectionName;
+
+    // P2: Reset dialog state
+    private bool _showResetDialog;
+    private long? _resetFromPosition;
+
+    // P1: Replay dialog state
+    private bool _showReplayDialog;
+    private long? _replayFromPosition;
+    private long? _replayToPosition;
+    private string? _replayValidationError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // P4: Skip reload if parameters haven't changed
+        if (TenantId == _prevTenantId && ProjectionName == _prevProjectionName)
+        {
+            return;
+        }
+
+        _prevTenantId = TenantId;
+        _prevProjectionName = ProjectionName;
+
+        if (!string.IsNullOrEmpty(TenantId) && !string.IsNullOrEmpty(ProjectionName))
+        {
+            await LoadDetailAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task LoadDetailAsync()
+    {
+        _isLoading = true;
+        _showAllErrors = false;
+
+        try
+        {
+            _detail = await ApiClient.GetProjectionDetailAsync(TenantId, ProjectionName).ConfigureAwait(false);
+            if (_detail is null)
+            {
+                ToastService.ShowWarning("Projection not found");
+                await OnClose.InvokeAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception)
+        {
+            _detail = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IQueryable<ProjectionError> GetDisplayedErrors()
+    {
+        if (_detail is null)
+        {
+            return Array.Empty<ProjectionError>().AsQueryable();
+        }
+
+        IEnumerable<ProjectionError> errors = _detail.Errors.OrderByDescending(e => e.Timestamp);
+        if (!_showAllErrors && _detail.Errors.Count > DefaultErrorLimit)
+        {
+            errors = errors.Take(DefaultErrorLimit);
+        }
+
+        return errors.AsQueryable();
+    }
+
+    private async Task OnPauseClick()
+    {
+        await ExecuteOperationAsync("pause", async () =>
+        {
+            IDialogReference dialog = await DialogService.ShowConfirmationAsync(
+                $"Are you sure you want to pause projection '{_detail!.Name}'?",
+                "Confirm Pause",
+                "Pause",
+                "Cancel").ConfigureAwait(false);
+            DialogResult result = await dialog.Result.ConfigureAwait(false);
+            if (result.Cancelled)
+            {
+                return;
+            }
+
+            AdminOperationResult? opResult = await ApiClient
+                .PauseProjectionAsync(TenantId, ProjectionName)
+                .ConfigureAwait(false);
+            if (opResult?.Success == true)
+            {
+                ToastService.ShowSuccess("Projection paused successfully");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to pause projection");
+            }
+
+            await Task.Delay(500).ConfigureAwait(false);
+            await LoadDetailAsync().ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    private async Task OnResumeClick()
+    {
+        await ExecuteOperationAsync("resume", async () =>
+        {
+            IDialogReference dialog = await DialogService.ShowConfirmationAsync(
+                $"Are you sure you want to resume projection '{_detail!.Name}'?",
+                "Confirm Resume",
+                "Resume",
+                "Cancel").ConfigureAwait(false);
+            DialogResult result = await dialog.Result.ConfigureAwait(false);
+            if (result.Cancelled)
+            {
+                return;
+            }
+
+            AdminOperationResult? opResult = await ApiClient
+                .ResumeProjectionAsync(TenantId, ProjectionName)
+                .ConfigureAwait(false);
+            if (opResult?.Success == true)
+            {
+                ToastService.ShowSuccess("Projection resumed successfully");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to resume projection");
+            }
+
+            await Task.Delay(500).ConfigureAwait(false);
+            await LoadDetailAsync().ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    // P2: Reset dialog with From Position input and danger confirm
+    private void ShowResetDialog()
+    {
+        _resetFromPosition = null;
+        _showResetDialog = true;
+    }
+
+    private void CancelResetDialog()
+    {
+        _showResetDialog = false;
+    }
+
+    private async Task ConfirmResetAsync()
+    {
+        if (_detail is null)
+        {
+            return;
+        }
+
+        _isOperating = true;
+        _operatingAction = "reset";
+
+        try
+        {
+            AdminOperationResult? opResult = await ApiClient
+                .ResetProjectionAsync(TenantId, ProjectionName, _resetFromPosition)
+                .ConfigureAwait(false);
+            if (opResult?.Success == true)
+            {
+                ToastService.ShowSuccess($"Reset initiated (Operation: {opResult.OperationId})");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to reset projection");
+            }
+
+            _showResetDialog = false;
+            await PollForUpdateAsync().ConfigureAwait(false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Unauthorized");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Forbidden — insufficient permissions");
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Service unavailable — try again later");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Operation failed: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            _operatingAction = null;
+        }
+    }
+
+    // P1: Replay dialog with From/To inputs and validation
+    private void ShowReplayDialog()
+    {
+        _replayFromPosition = 0;
+        _replayToPosition = _detail?.LastProcessedPosition;
+        _replayValidationError = null;
+        _showReplayDialog = true;
+    }
+
+    private void CancelReplayDialog()
+    {
+        _showReplayDialog = false;
+        _replayValidationError = null;
+    }
+
+    private async Task ConfirmReplayAsync()
+    {
+        if (_detail is null)
+        {
+            return;
+        }
+
+        // P1: Validate From < To (strictly less than)
+        _replayValidationError = null;
+        if (_replayFromPosition is null)
+        {
+            _replayValidationError = "From Position is required.";
+            return;
+        }
+
+        if (_replayToPosition is null)
+        {
+            _replayValidationError = "To Position is required.";
+            return;
+        }
+
+        if (_replayFromPosition.Value >= _replayToPosition.Value)
+        {
+            _replayValidationError = "From Position must be strictly less than To Position.";
+            return;
+        }
+
+        _isOperating = true;
+        _operatingAction = "replay";
+
+        try
+        {
+            AdminOperationResult? opResult = await ApiClient
+                .ReplayProjectionAsync(TenantId, ProjectionName, _replayFromPosition.Value, _replayToPosition.Value)
+                .ConfigureAwait(false);
+            if (opResult?.Success == true)
+            {
+                ToastService.ShowSuccess($"Replay initiated (Operation: {opResult.OperationId})");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to replay projection");
+            }
+
+            _showReplayDialog = false;
+            await PollForUpdateAsync().ConfigureAwait(false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Unauthorized");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Forbidden — insufficient permissions");
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Service unavailable — try again later");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Operation failed: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            _operatingAction = null;
+        }
+    }
+
+    private async Task ExecuteOperationAsync(string action, Func<Task> operation)
+    {
+        _isOperating = true;
+        _operatingAction = action;
+
+        try
+        {
+            await operation().ConfigureAwait(false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Unauthorized");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Forbidden — insufficient permissions");
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Service unavailable — try again later");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Operation failed: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            _operatingAction = null;
+        }
+    }
+
+    // P5: Poll without triggering OnClose on transient 404
+    private async Task PollForUpdateAsync()
+    {
+        ProjectionStatusType? originalStatus = _detail?.Status;
+        for (int i = 0; i < 3; i++)
+        {
+            await Task.Delay(1000).ConfigureAwait(false);
+            ProjectionDetail? polledDetail = await ApiClient
+                .GetProjectionDetailAsync(TenantId, ProjectionName)
+                .ConfigureAwait(false);
+
+            if (polledDetail is null)
+            {
+                // Temporarily unavailable during async operation — keep panel open
+                continue;
+            }
+
+            _detail = polledDetail;
+            _isLoading = false;
+            if (_detail.Status != originalStatus)
+            {
+                return;
+            }
+        }
+
+        ToastService.ShowInfo("Operation submitted — status may take a moment to update");
+    }
+
+    // P8: Boundary-safe relative time formatting
+    private static string FormatRelativeTime(DateTimeOffset timestamp)
+    {
+        if (timestamp == DateTimeOffset.MinValue)
+        {
+            return "Never";
+        }
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - timestamp;
+        if (elapsed < TimeSpan.Zero)
+        {
+            return "Just now";
+        }
+
+        if (elapsed.TotalSeconds < 60)
+        {
+            return $"{(int)elapsed.TotalSeconds}s ago";
+        }
+
+        if (elapsed.TotalMinutes < 60)
+        {
+            return $"{(int)elapsed.TotalMinutes}m ago";
+        }
+
+        if (elapsed.TotalHours < 24)
+        {
+            return $"{(int)elapsed.TotalHours}h ago";
+        }
+
+        return $"{(int)elapsed.TotalDays}d ago";
+    }
+}
