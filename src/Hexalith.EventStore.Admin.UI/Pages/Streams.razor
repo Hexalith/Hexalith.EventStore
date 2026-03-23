@@ -11,6 +11,7 @@
 @inject AdminStreamApiClient ApiClient
 @inject NavigationManager NavigationManager
 @inject DashboardRefreshService RefreshService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Streams - Hexalith EventStore Admin</PageTitle>
 
@@ -53,7 +54,9 @@ else if (_filteredItems is not null && _filteredItems.Count > 0)
             </TemplateColumn>
             <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="Align.End"
                             Class="streams-col-events" />
-            <TemplateColumn Title="Last Activity" Class="monospace streams-col-activity">
+            <TemplateColumn Title="Last Activity" Class="monospace streams-col-activity"
+                            SortBy="@(GridSort<StreamSummary>.ByDescending(s => s.LastActivityUtc))"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
                 <span class="monospace" style="font-size: 12px;">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
             </TemplateColumn>
             <TemplateColumn Title="Snapshot" Class="streams-col-snapshot" Align="Align.Center">
@@ -87,7 +90,8 @@ else if (_filteredItems is not null && _filteredItems.Count > 0)
 }
 else
 {
-    <EmptyState Title="No streams found" Description="No streams match the current filters." />
+    <EmptyState Title="@(_errorMessage is not null ? "Access Denied" : "No streams found")"
+                Description="@(_errorMessage ?? "No streams match the current filters.")" />
 }
 
 @code {
@@ -102,6 +106,7 @@ else
     private IReadOnlyList<StreamSummary>? _filteredItems;
     private IReadOnlyList<TenantSummary>? _tenants;
     private IReadOnlyList<string>? _domains;
+    private string? _errorMessage;
 
     private int _totalPages => _filteredItems is null || _filteredItems.Count == 0
         ? 1
@@ -121,8 +126,15 @@ else
     {
         _ = InvokeAsync(async () =>
         {
-            await LoadStreamsAsync().ConfigureAwait(false);
-            StateHasChanged();
+            try
+            {
+                await LoadStreamsAsync();
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
         });
     }
 
@@ -181,16 +193,22 @@ else
             string? tenantId = string.IsNullOrEmpty(_tenantFilter) ? null : _tenantFilter;
             string? domain = string.IsNullOrEmpty(_domainFilter) ? null : _domainFilter;
             PagedResult<StreamSummary> result = await ApiClient
-                .GetRecentlyActiveStreamsAsync(tenantId, domain, 1000)
-                .ConfigureAwait(false);
+                .GetRecentlyActiveStreamsAsync(tenantId, domain, 1000);
             _allItems = result.Items;
             _domains = _allItems.Select(s => s.Domain).Distinct().OrderBy(d => d).ToList();
             ApplyStatusFilter();
         }
-        catch
+        catch (ForbiddenAccessException)
         {
             _allItems = [];
             _filteredItems = [];
+            _errorMessage = "Access denied. Insufficient permissions to view streams.";
+        }
+        catch (Exception)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = null;
         }
         finally
         {
@@ -316,8 +334,15 @@ else
         NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
     }
 
-    private void CopyAggregateId(string aggregateId)
+    private async Task CopyAggregateId(string aggregateId)
     {
-        // JS interop for clipboard would go here — for now, tooltip shows full ID
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", aggregateId);
+        }
+        catch (JSException)
+        {
+            // Clipboard API not available — tooltip shows full ID as fallback
+        }
     }
 }

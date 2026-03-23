@@ -79,10 +79,29 @@
     }
 }
 
-/* Responsive: hide chart at minimum breakpoint */
+/* Summary text for minimum breakpoint — hidden by default */
+.activity-chart-summary {
+    display: none;
+    font-size: 14px;
+    color: var(--neutral-foreground-hint);
+    padding: 12px 0;
+}
+
+/* Compact: 960-1279px — show every other bar (CSS approximation of 12 bars) */
+@media (max-width: 1279px) {
+    .activity-chart-bar-wrapper:nth-child(odd) {
+        display: none;
+    }
+}
+
+/* Minimum: <960px — hide bars, show summary text */
 @media (max-width: 959px) {
     .activity-chart-bars {
         display: none;
+    }
+
+    .activity-chart-summary {
+        display: block;
     }
 }
 

@@ -16,7 +16,7 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly ILogger<DashboardRefreshService> _logger;
     private readonly PeriodicTimer _timer;
-    private bool _isRefreshing;
+    private int _isRefreshing;
     private Task? _timerLoop;
 
     /// <summary>
@@ -60,6 +60,7 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
         }
 
         _cts.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc/>
@@ -67,7 +68,19 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     {
         _cts.Cancel();
         _timer.Dispose();
+        if (_timerLoop is not null)
+        {
+            try
+            {
+                _timerLoop.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
         _cts.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -94,12 +107,11 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
 
     private async Task RefreshAsync()
     {
-        if (_isRefreshing)
+        if (Interlocked.CompareExchange(ref _isRefreshing, 1, 0) != 0)
         {
             return;
         }
 
-        _isRefreshing = true;
         try
         {
             SystemHealthReport? health = await _apiClient
@@ -126,7 +138,7 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
         }
         finally
         {
-            _isRefreshing = false;
+            Interlocked.Exchange(ref _isRefreshing, 0);
         }
     }
 

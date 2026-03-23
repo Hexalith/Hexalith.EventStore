@@ -73,8 +73,19 @@
             return;
         }
 
-        await TopologyCache.RefreshAsync().ConfigureAwait(false);
-        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        try
+        {
+            await TopologyCache.RefreshAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component disposed during async callback
+        }
+        catch (Exception)
+        {
+            // Topology refresh failed — keep stale cache, don't crash
+        }
     }
 
     private void NavigateToStreams(string tenantId, string domain)

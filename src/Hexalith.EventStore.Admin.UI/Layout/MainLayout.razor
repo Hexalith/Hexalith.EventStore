@@ -2,6 +2,7 @@
 @using Hexalith.EventStore.Admin.UI.Services
 @using Hexalith.EventStore.Admin.UI.Components
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.JSInterop
 @inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -66,21 +67,28 @@
             RefreshService.OnError += OnPollingFailure;
             UpdateConnectionStatus();
 
-            _userRole = await UserContext.GetRoleAsync().ConfigureAwait(false);
+            _userRole = await UserContext.GetRoleAsync();
 
-            string storageKey = await GetSidebarStorageKeyAsync().ConfigureAwait(false);
-            string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey).ConfigureAwait(false);
-            if (bool.TryParse(savedState, out bool collapsed))
+            try
             {
-                _sidebarCollapsed = collapsed;
-            }
-            else if (storageKey.Contains("compact", StringComparison.Ordinal))
-            {
-                _sidebarCollapsed = true;
-            }
+                string storageKey = await GetSidebarStorageKeyAsync();
+                string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey);
+                if (bool.TryParse(savedState, out bool collapsed))
+                {
+                    _sidebarCollapsed = collapsed;
+                }
+                else if (storageKey.Contains("compact", StringComparison.Ordinal))
+                {
+                    _sidebarCollapsed = true;
+                }
 
-            _dotNetRef = DotNetObjectReference.Create(this);
-            _shortcutRegistrationId = await JSRuntime.InvokeAsync<string>("hexalithAdmin.registerShortcuts", _dotNetRef).ConfigureAwait(false);
+                _dotNetRef = DotNetObjectReference.Create(this);
+                _shortcutRegistrationId = await JSRuntime.InvokeAsync<string>("hexalithAdmin.registerShortcuts", _dotNetRef);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected during render — safe to ignore
+            }
 
             StateHasChanged();
         }
@@ -126,8 +134,15 @@
 
         _ = InvokeAsync(() =>
         {
-            UpdateConnectionStatus();
-            StateHasChanged();
+            try
+            {
+                UpdateConnectionStatus();
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
         });
     }
 
@@ -136,14 +151,21 @@
         _pollingFailed = true;
         _ = InvokeAsync(() =>
         {
-            UpdateConnectionStatus();
-            StateHasChanged();
+            try
+            {
+                UpdateConnectionStatus();
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
         });
     }
 
     private void UpdateConnectionStatus()
     {
-        bool signalRConnected = SignalRClient is not null;
+        bool signalRConnected = SignalRClient?.IsConnected ?? false;
         // SignalR connected → green; SignalR down + polling works → gray; both fail → red
         if (_pollingFailed && !signalRConnected)
         {
@@ -164,12 +186,18 @@
         RefreshService.OnDataChanged -= OnPollingSuccess;
         RefreshService.OnError -= OnPollingFailure;
 
-        if (!string.IsNullOrWhiteSpace(_shortcutRegistrationId))
+        try
         {
-            await JSRuntime.InvokeVoidAsync("hexalithAdmin.unregisterShortcuts", _shortcutRegistrationId).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(_shortcutRegistrationId))
+            {
+                await JSRuntime.InvokeVoidAsync("hexalithAdmin.unregisterShortcuts", _shortcutRegistrationId);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit already disconnected — safe to ignore
         }
 
         _dotNetRef?.Dispose();
-        await Task.CompletedTask.ConfigureAwait(false);
     }
 }

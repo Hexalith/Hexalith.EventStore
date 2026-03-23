@@ -59,6 +59,11 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
         _ = _connection.On<string, string>("ProjectionChanged", OnProjectionChanged);
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the underlying SignalR hub connection is currently connected.
+    /// </summary>
+    public bool IsConnected => _connection.State == HubConnectionState.Connected;
+
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() {
         await _disposeCts.CancelAsync().ConfigureAwait(false);

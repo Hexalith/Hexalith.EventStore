@@ -294,4 +294,11 @@ body {
         background: transparent;
         border-left: 3px solid CanvasText;
     }
+
+    /* FluentDataGrid row selection in forced-colors mode */
+    .fluent-data-grid-row[aria-selected="true"],
+    .fluent-data-grid tr:focus-within {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
 }
