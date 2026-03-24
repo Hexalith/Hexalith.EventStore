@@ -31,6 +31,8 @@ public static class CommandPaletteCatalog
         new("Storage", "Storage Growth Analyzer", "/storage"),
         new("Actions", "Snapshots", "/snapshots"),
         new("Snapshots", "Snapshot Policies", "/snapshots"),
+        new("Actions", "Compaction", "/compaction"),
+        new("Compaction", "Compaction Manager", "/compaction"),
     ];
 
     public static IReadOnlyList<CommandPaletteItem> AllItems => _allItems;

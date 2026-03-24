@@ -43,8 +43,8 @@ public class StoragePageTests : AdminUITestContext
         // Assert
         cut.Markup.ShouldContain("Total Events");
         cut.Markup.ShouldContain(formatted);
-        // FormatBytes is culture-dependent (F1 format): "1.0 GB" or "1,0 GB"
-        cut.Markup.ShouldContain($"{1.0:F1} GB");
+        // FormatBytes uses InvariantCulture (always "1.0 GB" format)
+        cut.Markup.ShouldContain("1.0 GB");
         cut.Markup.ShouldContain("Tenants");
     }
 
@@ -279,8 +279,8 @@ public class StoragePageTests : AdminUITestContext
         ]);
         SetupEmptyHotStreams();
 
-        // Act — FormatBytes is culture-dependent (F1 format)
-        string expected = $"{1.0:F1} KB";
+        // Act — FormatBytes uses InvariantCulture (always "1.0 KB" format)
+        string expected = "1.0 KB";
         IRenderedComponent<Storage> cut = Render<Storage>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain(expected), TimeSpan.FromSeconds(5));
 

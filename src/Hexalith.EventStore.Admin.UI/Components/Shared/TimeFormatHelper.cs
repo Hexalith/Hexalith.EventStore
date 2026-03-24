@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Hexalith.EventStore.Admin.UI.Components.Shared;
 
 /// <summary>
@@ -44,5 +46,29 @@ public static class TimeFormatHelper
         }
 
         return timestamp.ToString("yyyy-MM-dd");
+    }
+
+    /// <summary>
+    /// Formats a byte count as a human-readable string (e.g., "1.2 GB", "456 MB").
+    /// </summary>
+    /// <param name="bytes">The byte count, or null if not available.</param>
+    /// <returns>A formatted string, or "N/A" if null.</returns>
+    public static string FormatBytes(long? bytes)
+    {
+        if (bytes is null or < 0)
+        {
+            return "N/A";
+        }
+
+        double value = bytes.Value;
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        int i = 0;
+        while (value >= 1024 && i < units.Length - 1)
+        {
+            value /= 1024;
+            i++;
+        }
+
+        return string.Format(CultureInfo.InvariantCulture, "{0:F1} {1}", value, units[i]);
     }
 }

@@ -139,6 +139,37 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<CompactionJob>> GetCompactionJobsAsync(
+        string? tenantId,
+        CancellationToken ct = default)
+    {
+        string indexKey = $"admin:storage-compaction-jobs:{tenantId ?? "all"}";
+        try
+        {
+            List<CompactionJob>? result = await _daprClient
+                .GetStateAsync<List<CompactionJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+                .ConfigureAwait(false);
+
+            if (result is null)
+            {
+                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
+                return [];
+            }
+
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read compaction jobs index '{IndexKey}'.", indexKey);
+            return [];
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<SnapshotPolicy>> GetSnapshotPoliciesAsync(
         string? tenantId,
         CancellationToken ct = default)

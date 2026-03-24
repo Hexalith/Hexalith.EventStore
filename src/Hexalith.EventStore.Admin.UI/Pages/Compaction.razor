@@ -1,0 +1,505 @@
+@page "/compaction"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminCompactionApiClient CompactionApi
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Compaction - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Compaction</h1>
+    <div style="display: flex; gap: 8px;">
+        <AuthorizedView MinimumRole="AdminRole.Operator">
+            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                          OnClick="OpenTriggerDialog"
+                          aria-label="Trigger compaction">
+                Trigger Compaction
+            </FluentButton>
+        </AuthorizedView>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      aria-label="Refresh compaction jobs">
+            Refresh
+        </FluentButton>
+    </div>
+</div>
+
+@* Error state *@
+<IssueBanner Visible="@_apiUnavailable"
+             Title="Unable to load compaction jobs"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Tenant filter *@
+<div class="storage-filter-bar">
+    <FluentTextField @bind-Value="_tenantFilterInput"
+                     @bind-Value:after="OnTenantFilterChanged"
+                     Placeholder="Filter by tenant ID..."
+                     aria-label="Filter by tenant ID"
+                     style="min-width: 280px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Active Jobs"
+                      Value="@ActiveJobCount.ToString("N0")"
+                      Severity="@(ActiveJobCount > 0 ? "warning" : "neutral")"
+                      Title="Jobs with Pending or Running status" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Completed (30d)"
+                      Value="@CompletedLast30Days.ToString("N0")"
+                      Severity="neutral"
+                      Title="Completed jobs in the last 30 days" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Space Reclaimed"
+                      Value="@FormatTotalSpaceReclaimed()"
+                      Severity="neutral"
+                      Title="Total space reclaimed across all completed jobs" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Job grid *@
+@if (!_isLoading)
+{
+    @if (_filteredJobs.Count == 0)
+    {
+        <EmptyState Title="No compaction jobs"
+                    Description="Trigger a compaction to reclaim storage space from event streams." />
+    }
+    else
+    {
+        <FluentDataGrid Items="@_filteredJobs.AsQueryable()" TGridItem="CompactionJob"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Compaction jobs"
+                        OnRowClick="@(row => OnRowClick(row.Item))">
+            <PropertyColumn Property="@(j => j.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
+            <TemplateColumn Title="Domain" Sortable="true"
+                            SortBy="@(GridSort<CompactionJob>.ByAscending(j => j.Domain ?? ""))">
+                @(context.Domain ?? "All")
+            </TemplateColumn>
+            <TemplateColumn Title="Status" Sortable="true"
+                            SortBy="@(GridSort<CompactionJob>.ByAscending(j => j.Status))">
+                @{
+                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                }
+                <FluentBadge Appearance="@appearance"
+                             Class="@cssClass"
+                             aria-label="@($"Status: {context.Status}")">
+                    @context.Status
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Started" Sortable="true" IsDefaultSortColumn="true"
+                            InitialSortDirection="SortDirection.Descending"
+                            SortBy="@(GridSort<CompactionJob>.ByDescending(j => j.StartedAtUtc))">
+                <span title="@context.StartedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.StartedAtUtc)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Duration" Sortable="true"
+                            SortBy="@(GridSort<CompactionJob>.ByDescending(j => (j.CompletedAtUtc ?? DateTimeOffset.UtcNow) - j.StartedAtUtc))">
+                @FormatDuration(context)
+            </TemplateColumn>
+            <TemplateColumn Title="Events Compacted" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<CompactionJob>.ByDescending(j => j.EventsCompacted ?? 0))">
+                @(context.EventsCompacted?.ToString("N0") ?? "\u2014")
+            </TemplateColumn>
+            <TemplateColumn Title="Space Reclaimed" Sortable="true"
+                            SortBy="@(GridSort<CompactionJob>.ByDescending(j => j.SpaceReclaimedBytes ?? 0))">
+                @if (context.SpaceReclaimedBytes is null)
+                {
+                    <span title="Backend does not report size metrics (NFR44)">N/A</span>
+                }
+                else
+                {
+                    @TimeFormatHelper.FormatBytes(context.SpaceReclaimedBytes)
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        @* Expanded error detail for failed job *@
+        @if (_expandedJob is not null && _expandedJob.Status == CompactionJobStatus.Failed && _expandedJob.ErrorMessage is not null)
+        {
+            <FluentCard Class="compaction-error-detail" aria-label="Error details">
+                <pre style="margin: 0; white-space: pre-wrap;">@_expandedJob.ErrorMessage</pre>
+            </FluentCard>
+        }
+    }
+}
+
+@* Trigger Compaction Dialog *@
+@if (_showTriggerDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Trigger Compaction" @ondialogdismiss="CloseTriggerDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Trigger Compaction</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_triggerTenantId"
+                             Label="Tenant ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Tenant ID" />
+            @if (HasActiveJobForTenant)
+            {
+                <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                    Compaction already in progress for this tenant.
+                </p>
+            }
+            <FluentTextField @bind-Value="_triggerDomain"
+                             Label="Domain (optional)"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Domain" />
+            @if (!string.IsNullOrWhiteSpace(_triggerTenantId))
+            {
+                <p style="margin: 0 0 12px; font-size: 14px;">
+                    This will compact event streams for tenant <strong>@_triggerTenantId</strong>@if (!string.IsNullOrWhiteSpace(_triggerDomain))
+                    {<text>, domain <strong>@_triggerDomain</strong></text>}.
+                </p>
+            }
+            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Compaction is a resource-intensive operation that runs asynchronously.
+                    It may temporarily increase CPU and I/O usage. Consider running during low-traffic periods.
+                </p>
+            </FluentCard>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnTriggerConfirm"
+                          Disabled="@(!CanTrigger || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Start Compaction</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@code {
+    private IReadOnlyList<CompactionJob>? _jobs;
+    private IReadOnlyList<CompactionJob> _filteredJobs = [];
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _disposed;
+    private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+    private string? _tenantFilter;
+    private string? _tenantFilterInput;
+    private Timer? _debounceTimer;
+    private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _triggerCts;
+    private bool _isOperating;
+    private CompactionJob? _expandedJob;
+
+    // Trigger dialog state
+    private bool _showTriggerDialog;
+    private string? _triggerTenantId;
+    private string? _triggerDomain;
+
+    private void UpdateFilteredJobs()
+    {
+        _filteredJobs = _jobs?
+            .Where(j => string.IsNullOrEmpty(_tenantFilter)
+                || j.TenantId.StartsWith(_tenantFilter, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(j => j.StartedAtUtc)
+            .ToList() ?? [];
+    }
+
+    private int ActiveJobCount =>
+        (_jobs ?? []).Count(j => j.Status is CompactionJobStatus.Pending or CompactionJobStatus.Running);
+
+    private int CompletedLast30Days =>
+        (_jobs ?? []).Count(j => j.Status == CompactionJobStatus.Completed
+            && j.StartedAtUtc >= DateTimeOffset.UtcNow.AddDays(-30));
+
+    private bool CanTrigger =>
+        !string.IsNullOrWhiteSpace(_triggerTenantId) && !HasActiveJobForTenant;
+
+    private bool HasActiveJobForTenant =>
+        !string.IsNullOrWhiteSpace(_triggerTenantId)
+        && _jobs is not null
+        && _jobs.Any(j =>
+            string.Equals(j.TenantId, _triggerTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            && j.Status is CompactionJobStatus.Pending or CompactionJobStatus.Running);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        _tenantFilterInput = _tenantFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        _isLoading = _jobs is null;
+        try
+        {
+            IReadOnlyList<CompactionJob> result = await CompactionApi
+                .GetCompactionJobsAsync(null, ct)
+                .ConfigureAwait(false);
+            _jobs = result;
+            UpdateFilteredJobs();
+            _apiUnavailable = false;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Insufficient permissions to view compaction jobs.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = $"Unable to load compaction jobs ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync();
+    }
+
+    private void OnTenantFilterChanged()
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnDebounceElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _tenantFilter = string.IsNullOrWhiteSpace(_tenantFilterInput)
+                ? null
+                : _tenantFilterInput.Trim();
+            UpdateFilteredJobs();
+            UpdateUrl();
+            StateHasChanged();
+        });
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _tenantFilter = query["tenant"];
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        string url = queryParams.Count > 0 ? $"/compaction?{string.Join('&', queryParams)}" : "/compaction";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private void OnRowClick(CompactionJob? job)
+    {
+        if (job is null || job.Status != CompactionJobStatus.Failed)
+        {
+            _expandedJob = null;
+            return;
+        }
+
+        _expandedJob = _expandedJob == job ? null : job;
+    }
+
+    private string FormatTotalSpaceReclaimed()
+    {
+        IEnumerable<CompactionJob> completed = (_jobs ?? []).Where(j => j.Status == CompactionJobStatus.Completed);
+        if (!completed.Any())
+        {
+            return "N/A";
+        }
+
+        long? totalBytes = completed
+            .Where(j => j.SpaceReclaimedBytes is not null)
+            .Sum(j => j.SpaceReclaimedBytes);
+
+        return totalBytes is null or 0
+            ? "N/A"
+            : TimeFormatHelper.FormatBytes(totalBytes);
+    }
+
+    private static string FormatDuration(CompactionJob job)
+    {
+        return job.Status switch
+        {
+            CompactionJobStatus.Pending => "\u2014",
+            CompactionJobStatus.Running => "Running...",
+            CompactionJobStatus.Completed or CompactionJobStatus.Failed when job.CompletedAtUtc is not null =>
+                FormatTimeSpan(job.CompletedAtUtc.Value - job.StartedAtUtc),
+            _ => "\u2014",
+        };
+    }
+
+    private static string FormatTimeSpan(TimeSpan duration)
+    {
+        if (duration < TimeSpan.Zero)
+        {
+            return "\u2014";
+        }
+
+        if (duration.TotalMinutes < 1)
+        {
+            return $"{(int)duration.TotalSeconds}s";
+        }
+
+        return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
+    }
+
+    private static (Appearance Appearance, string CssClass) GetStatusBadge(CompactionJobStatus status) =>
+        status switch
+        {
+            CompactionJobStatus.Pending => (Appearance.Accent, ""),
+            CompactionJobStatus.Running => (Appearance.Lightweight, "compaction-status-running"),
+            CompactionJobStatus.Completed => (Appearance.Accent, "compaction-status-completed"),
+            CompactionJobStatus.Failed => (Appearance.Accent, "compaction-status-failed"),
+            _ => (Appearance.Accent, ""),
+        };
+
+    // Trigger dialog
+    private void OpenTriggerDialog()
+    {
+        _triggerTenantId = string.Empty;
+        _triggerDomain = string.Empty;
+        _showTriggerDialog = true;
+    }
+
+    private void CloseTriggerDialog()
+    {
+        _showTriggerDialog = false;
+    }
+
+    private async Task OnTriggerConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        _triggerCts?.Cancel();
+        _triggerCts = new CancellationTokenSource();
+        try
+        {
+            AdminOperationResult? result = await CompactionApi.TriggerCompactionAsync(
+                _triggerTenantId!.Trim(),
+                string.IsNullOrWhiteSpace(_triggerDomain) ? null : _triggerDomain.Trim(),
+                _triggerCts.Token);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"Compaction started for {_triggerTenantId}. Refresh to check status.");
+                _showTriggerDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to trigger compaction.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle cancellation (e.g., component disposal)
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _triggerCts?.Cancel();
+        _triggerCts?.Dispose();
+        if (_debounceTimer is not null)
+        {
+            await _debounceTimer.DisposeAsync();
+        }
+    }
+}

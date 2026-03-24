@@ -1,4 +1,5 @@
 @using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
 @using System.Text
 
@@ -316,24 +317,7 @@
         }
     }
 
-    private static string FormatBytes(long? bytes)
-    {
-        if (bytes is null)
-        {
-            return "N/A";
-        }
-
-        double value = bytes.Value;
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        int i = 0;
-        while (value >= 1024 && i < units.Length - 1)
-        {
-            value /= 1024;
-            i++;
-        }
-
-        return $"{value:F1} {units[i]}";
-    }
+    private static string FormatBytes(long? bytes) => TimeFormatHelper.FormatBytes(bytes);
 
     private static string TruncateLabel(string label, int maxChars) =>
         label.Length > maxChars ? label[..maxChars] + "\u2026" : label;

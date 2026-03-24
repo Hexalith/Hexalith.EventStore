@@ -142,6 +142,17 @@
                     @GetGrowthSeverity(context.GrowthRatePerDay)
                 </FluentBadge>
             </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <div @onclick:stopPropagation="true">
+                    @if (context.EventCount > 50_000)
+                    {
+                        <FluentAnchor Href="@($"/compaction?tenant={Uri.EscapeDataString(context.TenantId)}")"
+                                      Appearance="Appearance.Hypertext">
+                            Run Compaction
+                        </FluentAnchor>
+                    }
+                </div>
+            </TemplateColumn>
         </FluentDataGrid>
     }
 }
@@ -473,24 +484,7 @@
             : "N/A";
     }
 
-    private static string FormatBytes(long? bytes)
-    {
-        if (bytes is null)
-        {
-            return "N/A";
-        }
-
-        double value = bytes.Value;
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        int i = 0;
-        while (value >= 1024 && i < units.Length - 1)
-        {
-            value /= 1024;
-            i++;
-        }
-
-        return $"{value:F1} {units[i]}";
-    }
+    private static string FormatBytes(long? bytes) => TimeFormatHelper.FormatBytes(bytes);
 
     private static string FormatDuration(TimeSpan duration)
     {

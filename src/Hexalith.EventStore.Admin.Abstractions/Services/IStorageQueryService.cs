@@ -31,4 +31,12 @@ public interface IStorageQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A list of snapshot policies.</returns>
     Task<IReadOnlyList<SnapshotPolicy>> GetSnapshotPoliciesAsync(string? tenantId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the compaction jobs, optionally filtered by tenant.
+    /// </summary>
+    /// <param name="tenantId">Optional tenant filter.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of compaction jobs.</returns>
+    Task<IReadOnlyList<CompactionJob>> GetCompactionJobsAsync(string? tenantId, CancellationToken ct = default);
 }
