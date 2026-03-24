@@ -29,6 +29,8 @@ public static class CommandPaletteCatalog
         new("Tenants", "Manage Tenants", "/tenants"),
         new("Actions", "Storage", "/storage"),
         new("Storage", "Storage Growth Analyzer", "/storage"),
+        new("Actions", "Snapshots", "/snapshots"),
+        new("Snapshots", "Snapshot Policies", "/snapshots"),
     ];
 
     public static IReadOnlyList<CommandPaletteItem> AllItems => _allItems;

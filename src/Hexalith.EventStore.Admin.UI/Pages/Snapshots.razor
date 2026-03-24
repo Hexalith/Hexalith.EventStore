@@ -1,0 +1,729 @@
+@page "/snapshots"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminSnapshotApiClient SnapshotApi
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Snapshots - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Snapshots</h1>
+    <div style="display: flex; gap: 8px;">
+        <AuthorizedView MinimumRole="AdminRole.Operator">
+            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                          OnClick="OpenCreateDialog"
+                          aria-label="Add snapshot policy">
+                Add Policy
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                          OnClick="OpenCreateSnapshotDialog"
+                          aria-label="Create snapshot for aggregate">
+                Create Snapshot
+            </FluentButton>
+        </AuthorizedView>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      aria-label="Refresh snapshot policies">
+            Refresh
+        </FluentButton>
+    </div>
+</div>
+
+@* Error state *@
+<IssueBanner Visible="@_apiUnavailable"
+             Title="Unable to load snapshot policies"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Tenant filter *@
+<div class="storage-filter-bar">
+    <FluentTextField @bind-Value="_tenantFilterInput"
+                     @bind-Value:after="OnTenantFilterChanged"
+                     Placeholder="Filter by tenant ID..."
+                     aria-label="Filter by tenant ID"
+                     style="min-width: 280px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Total Policies"
+                      Value="@FilteredPolicies.Count.ToString("N0")"
+                      Severity="neutral"
+                      Title="Number of snapshot policies" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Tenants Covered"
+                      Value="@DistinctTenantCount.ToString("N0")"
+                      Severity="neutral"
+                      Title="Distinct tenants with snapshot policies" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Avg Interval"
+                      Value="@FormatAvgInterval()"
+                      Severity="neutral"
+                      Title="Average events between snapshots" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Policy grid *@
+@if (!_isLoading)
+{
+    @if (FilteredPolicies.Count == 0)
+    {
+        <EmptyState Title="No snapshot policies configured"
+                    Description="Create an auto-snapshot policy to automatically snapshot aggregates after a specified number of events." />
+    }
+    else
+    {
+        <FluentDataGrid Items="@FilteredPolicies.AsQueryable()" TGridItem="SnapshotPolicy"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Snapshot policies"
+                        OnRowClick="@(row => OpenEditDialog(row.Item))">
+            <PropertyColumn Property="@(p => p.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+            <PropertyColumn Property="@(p => p.Domain)" Title="Domain" Sortable="true" />
+            <PropertyColumn Property="@(p => p.AggregateType)" Title="Aggregate Type" Sortable="true" />
+            <PropertyColumn Property="@(p => p.IntervalEvents)" Title="Interval" Sortable="true"
+                            Format="N0" Align="Align.End" />
+            <TemplateColumn Title="Created" Sortable="true"
+                            SortBy="@(GridSort<SnapshotPolicy>.ByDescending(p => p.CreatedAtUtc))">
+                <span title="@context.CreatedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.CreatedAtUtc)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <div @onclick:stopPropagation="true">
+                    <AuthorizedView MinimumRole="AdminRole.Operator">
+                        <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                                      OnClick="@(() => OpenDeleteDialog(context))"
+                                      aria-label="@($"Delete policy for {context.AggregateType}")">
+                            Delete
+                        </FluentButton>
+                    </AuthorizedView>
+                </div>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+}
+
+@* Create Policy Dialog *@
+@if (_showCreateDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Create snapshot policy" @ondialogdismiss="CloseCreateDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Create Snapshot Policy</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_createTenantId"
+                             Label="Tenant ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Tenant ID" />
+            <FluentTextField @bind-Value="_createDomain"
+                             Label="Domain" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Domain" />
+            <FluentTextField @bind-Value="_createAggregateType"
+                             Label="Aggregate Type" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Aggregate Type" />
+            <FluentNumberField @bind-Value="_createIntervalEvents"
+                               Label="Interval Events" Required="true"
+                               Min="1"
+                               Style="width: 100%; margin-bottom: 12px;"
+                               aria-label="Interval events" />
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnCreatePolicyConfirm"
+                          Disabled="@(!IsCreateFormValid || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Create Policy</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Edit Policy Dialog *@
+@if (_showEditDialog && _editPolicy is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Edit snapshot policy" @ondialogdismiss="CloseEditDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Edit Snapshot Policy</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <div style="margin-bottom: 12px;">
+                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Tenant ID</span>
+                <div class="monospace snapshot-readonly-field">@_editPolicy.TenantId</div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Domain</span>
+                <div class="snapshot-readonly-field">@_editPolicy.Domain</div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Aggregate Type</span>
+                <div class="snapshot-readonly-field">@_editPolicy.AggregateType</div>
+            </div>
+            <FluentNumberField @bind-Value="_editIntervalEvents"
+                               Label="Interval Events" Required="true"
+                               Min="1"
+                               Style="width: 100%; margin-bottom: 12px;"
+                               aria-label="Interval events" />
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnEditPolicyConfirm"
+                          Disabled="@(_editIntervalEvents < 1 || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Update Policy</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Delete Confirmation Dialog *@
+@if (_showDeleteDialog && _deletePolicy is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Delete snapshot policy" @ondialogdismiss="CloseDeleteDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Delete Snapshot Policy</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p style="margin: 0;">
+                This will remove the auto-snapshot policy for <strong>@_deletePolicy.AggregateType</strong>
+                in <strong>@_deletePolicy.Domain</strong> (<span class="monospace">@_deletePolicy.TenantId</span>).
+                Existing snapshots will not be deleted.
+            </p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDeleteDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnDeletePolicyConfirm"
+                          Disabled="@_isOperating"
+                          Style="background-color: var(--hexalith-status-error); color: white;">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Delete Policy</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Create Snapshot Dialog *@
+@if (_showCreateSnapshotDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Create snapshot" @ondialogdismiss="CloseCreateSnapshotDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Create Snapshot</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_snapshotTenantId"
+                             Label="Tenant ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Tenant ID" />
+            <FluentTextField @bind-Value="_snapshotDomain"
+                             Label="Domain" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Domain" />
+            <FluentTextField @bind-Value="_snapshotAggregateId"
+                             Label="Aggregate ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Aggregate ID" />
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateSnapshotDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnCreateSnapshotConfirm"
+                          Disabled="@(!IsSnapshotFormValid || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Create Snapshot</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@code {
+    private IReadOnlyList<SnapshotPolicy>? _policies;
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+    private string? _tenantFilter;
+    private string? _tenantFilterInput;
+    private Timer? _debounceTimer;
+    private CancellationTokenSource? _loadCts;
+    private bool _isOperating;
+
+    // Create dialog state
+    private bool _showCreateDialog;
+    private string? _createTenantId;
+    private string? _createDomain;
+    private string? _createAggregateType;
+    private int _createIntervalEvents = 100;
+
+    // Edit dialog state
+    private bool _showEditDialog;
+    private SnapshotPolicy? _editPolicy;
+    private int _editIntervalEvents;
+
+    // Delete dialog state
+    private bool _showDeleteDialog;
+    private SnapshotPolicy? _deletePolicy;
+
+    // Create snapshot dialog state
+    private bool _showCreateSnapshotDialog;
+    private string? _snapshotTenantId;
+    private string? _snapshotDomain;
+    private string? _snapshotAggregateId;
+
+    private IReadOnlyList<SnapshotPolicy> FilteredPolicies =>
+        _policies?
+            .Where(p => string.IsNullOrEmpty(_tenantFilter)
+                || p.TenantId.StartsWith(_tenantFilter, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.TenantId, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(p => p.Domain, StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? [];
+
+    private int DistinctTenantCount =>
+        FilteredPolicies.Select(p => p.TenantId).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
+    private bool IsCreateFormValid =>
+        !string.IsNullOrWhiteSpace(_createTenantId)
+        && !string.IsNullOrWhiteSpace(_createDomain)
+        && !string.IsNullOrWhiteSpace(_createAggregateType)
+        && _createIntervalEvents >= 1;
+
+    private bool IsSnapshotFormValid =>
+        !string.IsNullOrWhiteSpace(_snapshotTenantId)
+        && !string.IsNullOrWhiteSpace(_snapshotDomain)
+        && !string.IsNullOrWhiteSpace(_snapshotAggregateId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        _tenantFilterInput = _tenantFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        _isLoading = _policies is null;
+        try
+        {
+            IReadOnlyList<SnapshotPolicy> result = await SnapshotApi
+                .GetSnapshotPoliciesAsync(null, ct)
+                .ConfigureAwait(false);
+            _policies = result;
+            _apiUnavailable = false;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Insufficient permissions to view snapshot policies.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = $"Unable to load snapshot policies ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync();
+    }
+
+    private void OnTenantFilterChanged()
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnDebounceElapsed(object? state)
+    {
+        _ = InvokeAsync(() =>
+        {
+            _tenantFilter = string.IsNullOrWhiteSpace(_tenantFilterInput)
+                ? null
+                : _tenantFilterInput.Trim();
+            UpdateUrl();
+            StateHasChanged();
+        });
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _tenantFilter = query["tenant"];
+
+        // Handle create dialog pre-fill from URL
+        if (string.Equals(query["create"], "true", StringComparison.OrdinalIgnoreCase))
+        {
+            _showCreateDialog = true;
+            _createTenantId = query["tenant"] ?? string.Empty;
+            _createDomain = query["domain"] ?? string.Empty;
+            _createAggregateType = query["aggregateType"] ?? string.Empty;
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        string url = queryParams.Count > 0 ? $"/snapshots?{string.Join('&', queryParams)}" : "/snapshots";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private string FormatAvgInterval()
+    {
+        IReadOnlyList<SnapshotPolicy> filtered = FilteredPolicies;
+        if (filtered.Count == 0)
+        {
+            return "N/A";
+        }
+
+        double avg = filtered.Average(p => p.IntervalEvents);
+        return $"{avg:N0} events";
+    }
+
+    // Create policy dialog
+    private void OpenCreateDialog()
+    {
+        _createTenantId = string.Empty;
+        _createDomain = string.Empty;
+        _createAggregateType = string.Empty;
+        _createIntervalEvents = 100;
+        _showCreateDialog = true;
+    }
+
+    private void CloseCreateDialog()
+    {
+        _showCreateDialog = false;
+    }
+
+    private async Task OnCreatePolicyConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        try
+        {
+            AdminOperationResult? result = await SnapshotApi.SetSnapshotPolicyAsync(
+                _createTenantId!, _createDomain!, _createAggregateType!,
+                _createIntervalEvents, _loadCts?.Token ?? default);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess("Snapshot policy created.");
+                _showCreateDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to create policy.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // Edit policy dialog
+    private void OpenEditDialog(SnapshotPolicy? policy)
+    {
+        if (policy is null)
+        {
+            return;
+        }
+
+        _editPolicy = policy;
+        _editIntervalEvents = policy.IntervalEvents;
+        _showEditDialog = true;
+    }
+
+    private void CloseEditDialog()
+    {
+        _showEditDialog = false;
+        _editPolicy = null;
+    }
+
+    private async Task OnEditPolicyConfirm()
+    {
+        if (_editPolicy is null)
+        {
+            return;
+        }
+
+        _isOperating = true;
+        StateHasChanged();
+        try
+        {
+            AdminOperationResult? result = await SnapshotApi.SetSnapshotPolicyAsync(
+                _editPolicy.TenantId, _editPolicy.Domain, _editPolicy.AggregateType,
+                _editIntervalEvents, _loadCts?.Token ?? default);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess("Snapshot policy updated.");
+                _showEditDialog = false;
+                _editPolicy = null;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to update policy.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // Delete policy dialog
+    private void OpenDeleteDialog(SnapshotPolicy policy)
+    {
+        _deletePolicy = policy;
+        _showDeleteDialog = true;
+    }
+
+    private void CloseDeleteDialog()
+    {
+        _showDeleteDialog = false;
+        _deletePolicy = null;
+    }
+
+    private async Task OnDeletePolicyConfirm()
+    {
+        if (_deletePolicy is null)
+        {
+            return;
+        }
+
+        _isOperating = true;
+        StateHasChanged();
+        try
+        {
+            AdminOperationResult? result = await SnapshotApi.DeleteSnapshotPolicyAsync(
+                _deletePolicy.TenantId, _deletePolicy.Domain, _deletePolicy.AggregateType,
+                _loadCts?.Token ?? default);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess("Policy deleted.");
+                _showDeleteDialog = false;
+                _deletePolicy = null;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to delete policy.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // Create snapshot dialog
+    private void OpenCreateSnapshotDialog()
+    {
+        _snapshotTenantId = string.Empty;
+        _snapshotDomain = string.Empty;
+        _snapshotAggregateId = string.Empty;
+        _showCreateSnapshotDialog = true;
+    }
+
+    private void CloseCreateSnapshotDialog()
+    {
+        _showCreateSnapshotDialog = false;
+    }
+
+    private async Task OnCreateSnapshotConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        try
+        {
+            AdminOperationResult? result = await SnapshotApi.CreateSnapshotAsync(
+                _snapshotTenantId!, _snapshotDomain!, _snapshotAggregateId!,
+                _loadCts?.Token ?? default);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"Snapshot created for {_snapshotAggregateId}.");
+                _showCreateSnapshotDialog = false;
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to create snapshot.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        if (_debounceTimer is not null)
+        {
+            await _debounceTimer.DisposeAsync();
+        }
+    }
+}

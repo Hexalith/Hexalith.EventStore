@@ -83,6 +83,18 @@ public sealed class DaprStorageCommandService : IStorageCommandService
             new { tenantId, domain, aggregateType, intervalEvents },
             ct).ConfigureAwait(false);
 
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> DeleteSnapshotPolicyAsync(
+        string tenantId,
+        string domain,
+        string aggregateType,
+        CancellationToken ct = default)
+        => await InvokeCommandApiAsync(
+            HttpMethod.Delete,
+            "api/v1/admin/storage/snapshot-policy",
+            new { tenantId, domain, aggregateType },
+            ct).ConfigureAwait(false);
+
     private async Task<AdminOperationResult> InvokeCommandApiPostAsync<TRequest>(
         string endpoint,
         TRequest request,

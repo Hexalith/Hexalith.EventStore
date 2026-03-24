@@ -218,6 +218,40 @@ public class AdminStorageController(
         }
     }
 
+    /// <summary>
+    /// Deletes the automatic snapshot policy for an aggregate type.
+    /// </summary>
+    [HttpDelete("{tenantId}/{domain}/{aggregateType}/snapshot-policy")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> DeleteSnapshotPolicy(
+        string tenantId,
+        string domain,
+        string aggregateType,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            AdminOperationResult result = await storageCommandService
+                .DeleteSnapshotPolicyAsync(tenantId, domain, aggregateType, ct)
+                .ConfigureAwait(false);
+            return MapOperationResult(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(DeleteSnapshotPolicy), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(DeleteSnapshotPolicy), ex);
+        }
+    }
+
     private string? ResolveTenantScope(string? requestedTenantId)
     {
         if (requestedTenantId is not null)

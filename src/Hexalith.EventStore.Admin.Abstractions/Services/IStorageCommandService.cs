@@ -36,4 +36,14 @@ public interface IStorageCommandService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> SetSnapshotPolicyAsync(string tenantId, string domain, string aggregateType, int intervalEvents, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes the automatic snapshot policy for an aggregate type.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="domain">The domain name.</param>
+    /// <param name="aggregateType">The aggregate type name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The operation result.</returns>
+    Task<AdminOperationResult> DeleteSnapshotPolicyAsync(string tenantId, string domain, string aggregateType, CancellationToken ct = default);
 }

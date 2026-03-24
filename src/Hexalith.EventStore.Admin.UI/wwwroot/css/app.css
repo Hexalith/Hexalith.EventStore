@@ -388,3 +388,10 @@ body {
     min-width: auto;
     padding: 4px 8px;
 }
+
+/* Snapshot dialog styles */
+.snapshot-readonly-field {
+    color: var(--neutral-foreground-hint);
+    font-size: 14px;
+    padding: 4px 0;
+}
