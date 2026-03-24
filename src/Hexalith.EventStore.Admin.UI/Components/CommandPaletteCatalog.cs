@@ -12,6 +12,8 @@ public static class CommandPaletteCatalog
         new("Actions", "Events", "/events"),
         new("Actions", "Health Dashboard", "/health"),
         new("Actions", "Dead Letters", "/health/dead-letters"),
+        new("Health", "DAPR Component Status", "/health"),
+        new("Health", "Observability Tools", "/health"),
         new("Actions", "Services", "/services"),
         new("Actions", "Tenants", "/tenants"),
         new("Actions", "Streams", "/streams"),

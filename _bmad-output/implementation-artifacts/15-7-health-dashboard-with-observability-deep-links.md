@@ -1,6 +1,6 @@
 # Story 15.7: Health Dashboard with Observability Deep Links
 
-Status: ready-for-dev
+Status: done
 Size: Medium — ~5 new/modified files, 5 task groups, 11 ACs, 15 tests (~8-12 hours estimated)
 
 ## Definition of Done
@@ -33,63 +33,63 @@ so that **I can assess system health at a glance in under 2 minutes and seamless
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Implement Health.razor page** (AC: 1, 2, 5, 6, 7, 8, 9, 11)
-  - [ ] 1.1 Replace placeholder content in `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor`. Keep `@page "/health"`. Add `@implements IAsyncDisposable`. Inject `AdminStreamApiClient`, `DashboardRefreshService`, `ViewportService`, `NavigationManager`.
-  - [ ] 1.2 Page layout: header row with `<h1>Health</h1>` + overall status `FluentBadge` + refresh `FluentButton`. Then stat cards row (4x `StatCard`). Then DAPR component grid section. Then observability deep-links section.
-  - [ ] 1.3 Summary stat cards: Total Events (neutral), Events/sec (dynamic severity), Error Rate (dynamic severity), DAPR Components ("{healthy}/{total}", dynamic severity). Compute from `_healthReport`. Use `SkeletonCard` while `_isLoading`.
-  - [ ] 1.4 Overall status badge: map `HealthStatus` → `FluentBadge` with filled style. Healthy = green fill + checkmark icon. Degraded = amber fill + warning icon. Unhealthy = red fill + error icon. Include text label. **Verify at build time:** check whether FluentUI Blazor v4.13.2 `FluentBadge` supports `Appearance="Appearance.Filled"` — if not, use `Fill` and `BackgroundColor` properties or apply CSS class directly (same verification pattern as 15-6's FluentTabs API note).
-  - [ ] 1.5 `OnInitializedAsync`: subscribe to `DashboardRefreshService.OnDataChanged` first, then call `AdminStreamApiClient.GetSystemHealthAsync()`. Set `_isLoading = false` after data loads. **Note:** If the refresh timer fires during initial load, the handler may update state concurrently. This is safe because both paths write the same data shape and `InvokeAsync` serializes UI updates. No lock needed — just ensure `_isLoading` is cleared only after the initial `GetSystemHealthAsync` completes.
-  - [ ] 1.6 State management: `_isLoading`, `_apiUnavailable`, `_isStale`, `_healthReport` (current), `_cachedHealthReport` (last-good), `_lastRefreshUtc`. On successful load: `_healthReport = data`, `_cachedHealthReport = data`, `_apiUnavailable = false`, `_isStale = false`, `_lastRefreshUtc = DateTimeOffset.UtcNow`. On null data: `_isStale = true`, `_apiUnavailable = _cachedHealthReport is null`.
-  - [ ] 1.7 Error state: `IssueBanner` when `_apiUnavailable && _cachedHealthReport is null`. Stale banner when `_isStale && _cachedHealthReport is not null`.
-  - [ ] 1.8 Refresh handler: subscribe `DashboardRefreshService.OnDataChanged += OnRefreshSignal`. In handler: extract `DashboardData.Health`, update state, call `InvokeAsync(StateHasChanged)`. Handle `ObjectDisposedException`.
-  - [ ] 1.9 `IAsyncDisposable.DisposeAsync`: unsubscribe from `OnDataChanged`, set `_disposed = true`.
-  - [ ] 1.10 Responsive layout: `FluentGrid` with `Spacing="3"` for stat cards. `FluentGridItem xs="6" sm="6" md="3"` for each card (2-col on narrow, 4-col on wide).
-  - [ ] 1.11 **Checkpoint**: Page loads health data, shows stat cards and status badge.
+- [x] **Task 1: Implement Health.razor page** (AC: 1, 2, 5, 6, 7, 8, 9, 11)
+  - [x]1.1 Replace placeholder content in `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor`. Keep `@page "/health"`. Add `@implements IAsyncDisposable`. Inject `AdminStreamApiClient`, `DashboardRefreshService`, `ViewportService`, `NavigationManager`.
+  - [x]1.2 Page layout: header row with `<h1>Health</h1>` + overall status `FluentBadge` + refresh `FluentButton`. Then stat cards row (4x `StatCard`). Then DAPR component grid section. Then observability deep-links section.
+  - [x]1.3 Summary stat cards: Total Events (neutral), Events/sec (dynamic severity), Error Rate (dynamic severity), DAPR Components ("{healthy}/{total}", dynamic severity). Compute from `_healthReport`. Use `SkeletonCard` while `_isLoading`.
+  - [x]1.4 Overall status badge: map `HealthStatus` → `FluentBadge` with filled style. Healthy = green fill + checkmark icon. Degraded = amber fill + warning icon. Unhealthy = red fill + error icon. Include text label. **Verify at build time:** check whether FluentUI Blazor v4.13.2 `FluentBadge` supports `Appearance="Appearance.Filled"` — if not, use `Fill` and `BackgroundColor` properties or apply CSS class directly (same verification pattern as 15-6's FluentTabs API note).
+  - [x]1.5 `OnInitializedAsync`: subscribe to `DashboardRefreshService.OnDataChanged` first, then call `AdminStreamApiClient.GetSystemHealthAsync()`. Set `_isLoading = false` after data loads. **Note:** If the refresh timer fires during initial load, the handler may update state concurrently. This is safe because both paths write the same data shape and `InvokeAsync` serializes UI updates. No lock needed — just ensure `_isLoading` is cleared only after the initial `GetSystemHealthAsync` completes.
+  - [x]1.6 State management: `_isLoading`, `_apiUnavailable`, `_isStale`, `_healthReport` (current), `_cachedHealthReport` (last-good), `_lastRefreshUtc`. On successful load: `_healthReport = data`, `_cachedHealthReport = data`, `_apiUnavailable = false`, `_isStale = false`, `_lastRefreshUtc = DateTimeOffset.UtcNow`. On null data: `_isStale = true`, `_apiUnavailable = _cachedHealthReport is null`.
+  - [x]1.7 Error state: `IssueBanner` when `_apiUnavailable && _cachedHealthReport is null`. Stale banner when `_isStale && _cachedHealthReport is not null`.
+  - [x]1.8 Refresh handler: subscribe `DashboardRefreshService.OnDataChanged += OnRefreshSignal`. In handler: extract `DashboardData.Health`, update state, call `InvokeAsync(StateHasChanged)`. Handle `ObjectDisposedException`.
+  - [x]1.9 `IAsyncDisposable.DisposeAsync`: unsubscribe from `OnDataChanged`, set `_disposed = true`.
+  - [x]1.10 Responsive layout: `FluentGrid` with `Spacing="3"` for stat cards. `FluentGridItem xs="6" sm="6" md="3"` for each card (2-col on narrow, 4-col on wide).
+  - [x]1.11 **Checkpoint**: Page loads health data, shows stat cards and status badge.
 
-- [ ] **Task 2: DAPR component grid** (AC: 3, 10)
-  - [ ] 2.1 Add `FluentDataGrid<DaprComponentHealth>` section below stat cards. Columns: ComponentName (monospace CSS class, `PropertyColumn` sortable), ComponentType (`PropertyColumn` sortable), Status (`TemplateColumn` with `StatusBadge` — map HealthStatus: Healthy→success, Degraded→warning, Unhealthy→error — **must include `SortBy="@(items => items.OrderByDescending(x => (int)x.Status))"` parameter** since TemplateColumn has no automatic sort), LastCheckUtc (`TemplateColumn` showing relative time, with `SortBy` on `LastCheckUtc` property).
-  - [ ] 2.2 Use `StatusDisplayConfig.FromHealthStatus()` factory method. Add this factory to `StatusBadge.razor`'s existing pattern if not present, or create inline mapping in Health.razor.
-  - [ ] 2.3 Default sort: Status descending (unhealthy components surface first). Secondary sort: ComponentName ascending.
-  - [ ] 2.4 Grid `aria-label="DAPR component health status"`. Empty state: `EmptyState` with "No DAPR components detected" when `DaprComponents` is empty.
-  - [ ] 2.5 Time formatting helper for LastCheckUtc: "just now" (<60s), "N min ago" (<60m), "N hours ago" (<24h), then date. Check `Index.razor` and `Projections.razor` for existing inline time formatting logic before creating a new helper. If found, extract to a shared static method; if not, create one in Health.razor's `@code` block.
-  - [ ] 2.6 **Checkpoint**: DAPR grid renders with all columns, status badges, and relative times.
+- [x] **Task 2: DAPR component grid** (AC: 3, 10)
+  - [x]2.1 Add `FluentDataGrid<DaprComponentHealth>` section below stat cards. Columns: ComponentName (monospace CSS class, `PropertyColumn` sortable), ComponentType (`PropertyColumn` sortable), Status (`TemplateColumn` with `StatusBadge` — map HealthStatus: Healthy→success, Degraded→warning, Unhealthy→error — **must include `SortBy="@(items => items.OrderByDescending(x => (int)x.Status))"` parameter** since TemplateColumn has no automatic sort), LastCheckUtc (`TemplateColumn` showing relative time, with `SortBy` on `LastCheckUtc` property).
+  - [x]2.2 Use `StatusDisplayConfig.FromHealthStatus()` factory method. Add this factory to `StatusBadge.razor`'s existing pattern if not present, or create inline mapping in Health.razor.
+  - [x]2.3 Default sort: Status descending (unhealthy components surface first). Secondary sort: ComponentName ascending.
+  - [x]2.4 Grid `aria-label="DAPR component health status"`. Empty state: `EmptyState` with "No DAPR components detected" when `DaprComponents` is empty.
+  - [x]2.5 Time formatting helper for LastCheckUtc: "just now" (<60s), "N min ago" (<60m), "N hours ago" (<24h), then date. Check `Index.razor` and `Projections.razor` for existing inline time formatting logic before creating a new helper. If found, extract to a shared static method; if not, create one in Health.razor's `@code` block.
+  - [x]2.6 **Checkpoint**: DAPR grid renders with all columns, status badges, and relative times.
 
-- [ ] **Task 3: Observability deep-link buttons** (AC: 4, 10)
-  - [ ] 3.1 Add "Observability Tools" section below DAPR grid. Show only if at least one URL is non-null. Use `FluentStack` horizontal layout for buttons.
-  - [ ] 3.2 "View Traces" link button: anchor element (`<a href="@url" target="_blank" rel="noopener noreferrer">`) with `Icons.Regular.Size20.BranchFork` icon. Use `FluentButton As="a"` if supported, or plain `<a>` with outline button CSS class. Visible only if `ObservabilityLinks.TraceUrl` is not null/empty.
-  - [ ] 3.3 "View Metrics" link button: `Icons.Regular.Size20.ChartMultiple` icon. Same anchor pattern as traces. Visible if `MetricsUrl` is not null/empty.
-  - [ ] 3.4 "View Logs" link button: `Icons.Regular.Size20.DocumentText` icon. Same anchor pattern. Visible if `LogsUrl` is not null/empty.
-  - [ ] 3.5 Each link: `aria-label` (e.g., "Open traces in external observability tool"), `target="_blank"`, `rel="noopener noreferrer"`. Styled as outline buttons in a horizontal stack with gap. No JS interop — pure anchor elements for proper browser behavior.
-  - [ ] 3.6 **Checkpoint**: Deep-link buttons render conditionally based on available URLs.
+- [x] **Task 3: Observability deep-link buttons** (AC: 4, 10)
+  - [x]3.1 Add "Observability Tools" section below DAPR grid. Show only if at least one URL is non-null. Use `FluentStack` horizontal layout for buttons.
+  - [x]3.2 "View Traces" link button: anchor element (`<a href="@url" target="_blank" rel="noopener noreferrer">`) with `Icons.Regular.Size20.BranchFork` icon. Use `FluentButton As="a"` if supported, or plain `<a>` with outline button CSS class. Visible only if `ObservabilityLinks.TraceUrl` is not null/empty.
+  - [x]3.3 "View Metrics" link button: `Icons.Regular.Size20.ChartMultiple` icon. Same anchor pattern as traces. Visible if `MetricsUrl` is not null/empty.
+  - [x]3.4 "View Logs" link button: `Icons.Regular.Size20.DocumentText` icon. Same anchor pattern. Visible if `LogsUrl` is not null/empty.
+  - [x]3.5 Each link: `aria-label` (e.g., "Open traces in external observability tool"), `target="_blank"`, `rel="noopener noreferrer"`. Styled as outline buttons in a horizontal stack with gap. No JS interop — pure anchor elements for proper browser behavior.
+  - [x]3.6 **Checkpoint**: Deep-link buttons render conditionally based on available URLs.
 
-- [ ] **Task 4: Unit tests (bUnit)** (AC: 1-11)
+- [x] **Task 4: Unit tests (bUnit)** (AC: 1-11)
   - **Mock `AdminStreamApiClient`** — use NSubstitute (already registered in `AdminUITestContext`)
   - **Merge-blocking tests** (must pass):
-  - [ ] 4.1 Test `Health` page renders stat cards with correct values from mock `SystemHealthReport` (AC: 2)
-  - [ ] 4.2 Test `Health` page renders overall status badge with correct text for each `HealthStatus` value: Healthy, Degraded, Unhealthy (AC: 1)
-  - [ ] 4.3 Test `Health` page renders DAPR component grid with all required columns (AC: 3)
-  - [ ] 4.4 Test `Health` page shows `IssueBanner` on API failure (null health report) (AC: 8)
-  - [ ] 4.5 Test `Health` page shows stale indicator when refresh fails after successful initial load (AC: 9)
-  - [ ] 4.6 Test observability deep-link buttons render when URLs are configured (AC: 4)
-  - [ ] 4.7 Test observability buttons are hidden when URLs are null (AC: 4)
-  - [ ] 4.8 Test refresh handler updates displayed health data when `DashboardRefreshService.OnDataChanged` fires with new `SystemHealthReport` (AC: 5)
+  - [x]4.1 Test `Health` page renders stat cards with correct values from mock `SystemHealthReport` (AC: 2)
+  - [x]4.2 Test `Health` page renders overall status badge with correct text for each `HealthStatus` value: Healthy, Degraded, Unhealthy (AC: 1)
+  - [x]4.3 Test `Health` page renders DAPR component grid with all required columns (AC: 3)
+  - [x]4.4 Test `Health` page shows `IssueBanner` on API failure (null health report) (AC: 8)
+  - [x]4.5 Test `Health` page shows stale indicator when refresh fails after successful initial load (AC: 9)
+  - [x]4.6 Test observability deep-link buttons render when URLs are configured (AC: 4)
+  - [x]4.7 Test observability buttons are hidden when URLs are null (AC: 4)
+  - [x]4.8 Test refresh handler updates displayed health data when `DashboardRefreshService.OnDataChanged` fires with new `SystemHealthReport` (AC: 5)
   - **Recommended tests**:
-  - [ ] 4.9 Test error rate severity mapping: <1% → success, 1-5% → warning, >5% → error (AC: 2)
-  - [ ] 4.10 Test DAPR components stat card shows "{healthy}/{total}" format (AC: 2)
-  - [ ] 4.11 Test DAPR component status badge renders correct severity for each HealthStatus (AC: 3, 10)
-  - [ ] 4.12 Test stat cards show `SkeletonCard` during loading state (AC: 2)
-  - [ ] 4.13 Test page shows empty state when DaprComponents list is empty (AC: 3)
-  - [ ] 4.14 Test observability section is hidden when all URLs are null (AC: 4)
-  - [ ] 4.15 Test responsive layout: stat cards use correct grid spans (AC: 11)
+  - [x]4.9 Test error rate severity mapping: <1% → success, 1-5% → warning, >5% → error (AC: 2)
+  - [x]4.10 Test DAPR components stat card shows "{healthy}/{total}" format (AC: 2)
+  - [x]4.11 Test DAPR component status badge renders correct severity for each HealthStatus (AC: 3, 10)
+  - [x]4.12 Test stat cards show `SkeletonCard` during loading state (AC: 2)
+  - [x]4.13 Test page shows empty state when DaprComponents list is empty (AC: 3)
+  - [x]4.14 Test observability section is hidden when all URLs are null (AC: 4)
+  - [x]4.15 Test responsive layout: stat cards use correct grid spans (AC: 11)
 
-- [ ] **Task 5: Command palette and final polish** (AC: 7, 10)
-  - [ ] 5.1 Update `CommandPaletteCatalog.cs`: existing entries are already present (`"Health Dashboard", "/health"` and `"Dead Letters", "/health/dead-letters"`). Add entries:
+- [x] **Task 5: Command palette and final polish** (AC: 7, 10)
+  - [x]5.1 Update `CommandPaletteCatalog.cs`: existing entries are already present (`"Health Dashboard", "/health"` and `"Dead Letters", "/health/dead-letters"`). Add entries:
     - `new("Health", "DAPR Component Status", "/health")`
     - `new("Health", "Observability Tools", "/health")`
     - Note: These entries all point to `/health` intentionally — they exist for discoverability via fuzzy search, not as distinct navigation targets (single-view page, no anchors).
-  - [ ] 5.2 Verify NavMenu.razor already has the Health link (it does: `<FluentNavLink Href="/health" Icon="@(new Icons.Regular.Size20.HeartPulse())">Health</FluentNavLink>`). No changes needed.
-  - [ ] 5.3 Create `Pages/Health.razor.css` for scoped styles: monospace class for component names, status badge sizing, section spacing.
-  - [ ] 5.4 **Checkpoint**: All ACs pass, zero warnings, health page fully functional.
+  - [x]5.2 Verify NavMenu.razor already has the Health link (it does: `<FluentNavLink Href="/health" Icon="@(new Icons.Regular.Size20.HeartPulse())">Health</FluentNavLink>`). No changes needed.
+  - [x]5.3 Create `Pages/Health.razor.css` for scoped styles: monospace class for component names, status badge sizing, section spacing.
+  - [x]5.4 **Checkpoint**: All ACs pass, zero warnings, health page fully functional.
 
 ## Dev Notes
 
@@ -285,10 +285,56 @@ No new API clients, no new models, no server-side changes.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- Fixed Razor compilation issue: C# relational pattern `< 1.0 =>` in switch expressions was interpreted as HTML by Razor parser. Converted to if/else.
+- Fixed culture-sensitive number formatting in tests: used `ToString("F1")` / `ToString("N0")` instead of hardcoded strings for French locale compatibility.
+- Updated StubPageTests.HealthPage_RendersCorrectContent to reflect new Health page (no longer a placeholder).
+
 ### Completion Notes List
 
+- Replaced placeholder Health.razor with full health dashboard implementation (AC 1-11)
+- Implemented 4 summary stat cards: Total Events, Events/sec, Error Rate, DAPR Components with dynamic severity (AC 2)
+- Overall status FluentBadge with semantic colors and icon+text labels (AC 1, 10)
+- FluentDataGrid for DAPR component health with sortable columns, StatusBadge, relative time formatting (AC 3)
+- Observability deep-link buttons using anchor elements with `rel="noopener noreferrer"` for proper browser behavior (AC 4)
+- DashboardRefreshService integration with OnDataChanged subscription and proper IAsyncDisposable cleanup (AC 5)
+- Initial load via AdminStreamApiClient.GetSystemHealthAsync() (AC 6)
+- Deep linking at /health route (AC 7)
+- Error state with IssueBanner and Retry action (AC 8)
+- Stale data indicator with cached last-known-good report (AC 9)
+- All accessibility requirements: aria-labels, icon+text badges, grid aria-label (AC 10)
+- Responsive FluentGrid layout: 4-col wide, 2-col narrow via xs/sm/md grid spans (AC 11)
+- Added FromHealthStatus() factory to StatusBadge component
+- Added command palette entries for discoverability
+- Created Health.razor.css with scoped styles for monospace and observability links
+- 21 bUnit tests (8 merge-blocking + 13 recommended), all passing
+- Full test suite: 169/169 passing, zero regressions
+- Build: 0 warnings, 0 errors
+
+### Code Review Fixes (2026-03-24)
+
+6 patch findings from 3-layer adversarial code review (Blind Hunter, Edge Case Hunter, Acceptance Auditor):
+
+- **P1 (AC 1):** Refresh button now calls `RefreshService.TriggerImmediateRefreshAsync()` instead of `LoadDataAsync()` directly — aligns with spec and DashboardRefreshService pipeline (deduplication, OnDataChanged broadcast)
+- **P2 (AC 3):** Added default sort on DAPR component grid — pre-sorted items by Status descending then ComponentName ascending, added `IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending"` on Status column
+- **P3 (bug):** Removed `ConfigureAwait(false)` from `OnInitializedAsync` and `LoadDataAsync` — incorrect in Blazor component context, causes continuation to run off synchronization context
+- **P4 (test):** Fixed false-passing stale-indicator test — `GetRaiseMethod()` returns null for field-like C# events; replaced with reflection on backing field to invoke `OnDataChanged` delegate directly; test now asserts "Health data may be stale" banner
+- **P5 (security):** Added `IsValidHttpUrl()` helper validating `http`/`https` scheme on observability deep links — prevents XSS via `javascript:` or `data:` URIs in `href` attributes
+- **P6 (cosmetic):** Fixed `FormatTimeAgo` inconsistent casing ("Just now" vs "just now") and grammar ("1 hours ago" → "1 hour ago")
+
+### Change Log
+
+- 2026-03-24: Implemented story 15-7 — Health Dashboard with Observability Deep Links. All 11 ACs satisfied.
+- 2026-03-24: Code review (3-layer adversarial) — 6 patch fixes applied. 169/169 tests passing, 0 warnings.
+
 ### File List
+
+- `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor` (MODIFIED — replaced placeholder with full implementation)
+- `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor.css` (CREATED — scoped styles)
+- `src/Hexalith.EventStore.Admin.UI/Components/CommandPaletteCatalog.cs` (MODIFIED — added 2 health sub-entries)
+- `src/Hexalith.EventStore.Admin.UI/Components/Shared/StatusBadge.razor` (MODIFIED — added FromHealthStatus() factory + Health using)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/HealthPageTests.cs` (CREATED — 21 bUnit tests)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/StubPageTests.cs` (MODIFIED — updated Health stub test)
