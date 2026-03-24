@@ -25,7 +25,8 @@ public class StubPageTests : AdminUITestContext {
     [Fact]
     public void HealthPage_RendersCorrectContent() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Health> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Health>();
-        cut.Markup.ShouldContain("All systems nominal. No issues detected.");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Health"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("Refresh");
     }
 
     [Fact]

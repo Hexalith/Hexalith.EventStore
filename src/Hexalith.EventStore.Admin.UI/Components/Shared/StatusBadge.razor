@@ -1,4 +1,5 @@
 @namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.Abstractions.Models.Health
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 
 <span class="status-badge" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: @_effectiveColor;"
@@ -55,6 +56,17 @@
             StreamStatus.Active => new("Active", "\u25CF", "var(--hexalith-status-success)"),
             StreamStatus.Idle => new("Idle", "\u25CB", "var(--hexalith-status-neutral)"),
             StreamStatus.Tombstoned => new("Tombstoned", "\u2612", "var(--hexalith-status-error)"),
+            _ => new(status.ToString(), "\u2022", "var(--hexalith-status-neutral)"),
+        };
+
+        /// <summary>
+        /// Creates a <see cref="StatusDisplayConfig"/> from a <see cref="HealthStatus"/> value.
+        /// </summary>
+        public static StatusDisplayConfig FromHealthStatus(HealthStatus status) => status switch
+        {
+            HealthStatus.Healthy => new("Healthy", "\u2714", "var(--hexalith-status-success)"),
+            HealthStatus.Degraded => new("Degraded", "\u26A0", "var(--hexalith-status-warning)"),
+            HealthStatus.Unhealthy => new("Unhealthy", "\u2716", "var(--hexalith-status-error)"),
             _ => new(status.ToString(), "\u2022", "var(--hexalith-status-neutral)"),
         };
 

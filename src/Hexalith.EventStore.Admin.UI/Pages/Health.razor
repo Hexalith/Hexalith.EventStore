@@ -1,8 +1,372 @@
 @page "/health"
 
+@using Hexalith.EventStore.Admin.Abstractions.Models.Health
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IAsyncDisposable
+
+@inject AdminStreamApiClient ApiClient
+@inject DashboardRefreshService RefreshService
+@inject ViewportService Viewport
+@inject NavigationManager NavigationManager
+
 <PageTitle>Health - Hexalith EventStore</PageTitle>
 
-<h1 style="font-size: 24px; margin: 0 0 16px;">Health</h1>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <h1 style="margin: 0;">Health</h1>
+        @if (!_isLoading && _healthReport is not null)
+        {
+            <FluentBadge Fill="@GetOverallStatusFill(_healthReport.OverallStatus)"
+                         BackgroundColor="@GetOverallStatusColor(_healthReport.OverallStatus)"
+                         Color="white"
+                         aria-label="@($"Overall status: {_healthReport.OverallStatus}")">
+                @GetOverallStatusIcon(_healthReport.OverallStatus) @_healthReport.OverallStatus
+            </FluentBadge>
+        }
+    </div>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="OnManualRefresh"
+                  aria-label="Refresh health dashboard">
+        Refresh
+    </FluentButton>
+</div>
 
-<EmptyState Title="All systems nominal. No issues detected."
-            Description="System health status will be displayed here when connected to the Admin API." />
+@* Error state: API unavailable and no cached data *@
+<IssueBanner Visible="@(_apiUnavailable && _cachedHealthReport is null)"
+             Title="Unable to load health status"
+             Description="The admin backend service may be unavailable. Check DAPR sidecar connectivity."
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Stale data indicator *@
+<IssueBanner Visible="@(_isStale && _cachedHealthReport is not null)"
+             Title="@_staleBannerTitle"
+             Description="" />
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else if (_healthReport is not null)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Events"
+                      Value="@_healthReport.TotalEventCount.ToString("N0")"
+                      Severity="neutral"
+                      Title="Total events in the system" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Events/sec"
+                      Value="@_healthReport.EventsPerSecond.ToString("F1")"
+                      Severity="@(_healthReport.EventsPerSecond > 0 ? "success" : "neutral")"
+                      Title="Current event throughput" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Error Rate"
+                      Value="@($"{_healthReport.ErrorPercentage:F1}%")"
+                      Severity="@GetErrorRateSeverity(_healthReport.ErrorPercentage)"
+                      Title="Current error rate" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="DAPR Components"
+                      Value="@($"{_healthReport.DaprComponents.Count(c => c.Status == HealthStatus.Healthy)}/{_healthReport.DaprComponents.Count}")"
+                      Severity="@GetDaprComponentsSeverity(_healthReport.DaprComponents)"
+                      Subtitle="@($"{_healthReport.DaprComponents.Select(c => c.ComponentType).Distinct().Count()} component types")"
+                      Title="Healthy DAPR components out of total" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* DAPR component grid *@
+@if (!_isLoading && _healthReport is not null)
+{
+    @if (_healthReport.DaprComponents.Count == 0)
+    {
+        <EmptyState Title="No DAPR components detected"
+                    Description="DAPR component health information will appear here when components are registered." />
+    }
+    else
+    {
+        <FluentDataGrid Items="@_healthReport.DaprComponents.OrderByDescending(c => (int)c.Status).ThenBy(c => c.ComponentName).AsQueryable()" TGridItem="DaprComponentHealth"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="DAPR component health status">
+            <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
+            <PropertyColumn Property="@(c => c.ComponentType)" Title="Component Type" Sortable="true" />
+            <TemplateColumn Title="Status"
+                            SortBy="@(GridSort<DaprComponentHealth>.ByDescending(c => (int)c.Status))"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
+                <StatusBadge Severity="@GetHealthSeverity(context.Status)"
+                             Status="@context.Status.ToString()"
+                             AriaLabelPrefix="Component status" />
+            </TemplateColumn>
+            <TemplateColumn Title="Last Check"
+                            SortBy="@(GridSort<DaprComponentHealth>.ByDescending(c => c.LastCheckUtc))">
+                <span title="@context.LastCheckUtc.ToString("O")">
+                    @FormatTimeAgo(context.LastCheckUtc)
+                </span>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+
+    @* Observability deep-link buttons *@
+    @if (HasAnyObservabilityUrl(_healthReport.ObservabilityLinks))
+    {
+        <div style="margin-top: 24px;">
+            <h2 style="font-size: 18px; margin: 0 0 12px;">Observability Tools</h2>
+            <FluentStack Orientation="Orientation.Horizontal" Wrap="true" HorizontalGap="8">
+                @if (IsValidHttpUrl(_healthReport.ObservabilityLinks.TraceUrl))
+                {
+                    <a href="@_healthReport.ObservabilityLinks.TraceUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="observability-link"
+                       aria-label="Open traces in external observability tool">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.BranchFork())" /> View Traces
+                    </a>
+                }
+                @if (IsValidHttpUrl(_healthReport.ObservabilityLinks.MetricsUrl))
+                {
+                    <a href="@_healthReport.ObservabilityLinks.MetricsUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="observability-link"
+                       aria-label="Open metrics in external observability tool">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ChartMultiple())" /> View Metrics
+                    </a>
+                }
+                @if (IsValidHttpUrl(_healthReport.ObservabilityLinks.LogsUrl))
+                {
+                    <a href="@_healthReport.ObservabilityLinks.LogsUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="observability-link"
+                       aria-label="Open logs in external observability tool">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.DocumentText())" /> View Logs
+                    </a>
+                }
+            </FluentStack>
+        </div>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _isStale;
+    private bool _disposed;
+    private SystemHealthReport? _healthReport;
+    private SystemHealthReport? _cachedHealthReport;
+    private DateTimeOffset _lastRefreshUtc;
+
+    private string _staleBannerTitle => $"Health data may be stale \u2014 last updated {FormatTimeAgo(_lastRefreshUtc)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        RefreshService.OnDataChanged += OnRefreshSignal;
+
+        try
+        {
+            SystemHealthReport? health = await ApiClient.GetSystemHealthAsync();
+            if (health is not null)
+            {
+                _healthReport = health;
+                _cachedHealthReport = health;
+                _apiUnavailable = false;
+                _isStale = false;
+                _lastRefreshUtc = DateTimeOffset.UtcNow;
+            }
+            else
+            {
+                _apiUnavailable = true;
+            }
+        }
+        catch (Exception)
+        {
+            _apiUnavailable = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnRefreshSignal(DashboardData data)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            try
+            {
+                if (data.Health is not null)
+                {
+                    _healthReport = data.Health;
+                    _cachedHealthReport = data.Health;
+                    _isStale = false;
+                    _apiUnavailable = false;
+                    _lastRefreshUtc = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    _isStale = _cachedHealthReport is not null;
+                    _apiUnavailable = _cachedHealthReport is null;
+                }
+
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        });
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            SystemHealthReport? health = await ApiClient.GetSystemHealthAsync();
+            if (health is not null)
+            {
+                _healthReport = health;
+                _cachedHealthReport = health;
+                _apiUnavailable = false;
+                _isStale = false;
+                _lastRefreshUtc = DateTimeOffset.UtcNow;
+            }
+            else
+            {
+                _isStale = _cachedHealthReport is not null;
+                _apiUnavailable = _cachedHealthReport is null;
+            }
+        }
+        catch (Exception)
+        {
+            _isStale = _cachedHealthReport is not null;
+            _apiUnavailable = _cachedHealthReport is null;
+        }
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await RefreshService.TriggerImmediateRefreshAsync();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        RefreshService.OnDataChanged -= OnRefreshSignal;
+        _disposed = true;
+        return ValueTask.CompletedTask;
+    }
+
+    private static string GetHealthSeverity(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "success",
+        HealthStatus.Degraded => "warning",
+        HealthStatus.Unhealthy => "error",
+        _ => "neutral",
+    };
+
+    private static string GetErrorRateSeverity(double percentage)
+    {
+        if (percentage < 1.0)
+        {
+            return "success";
+        }
+
+        return percentage < 5.0 ? "warning" : "error";
+    }
+
+    private static string GetDaprComponentsSeverity(IEnumerable<DaprComponentHealth> components)
+    {
+        if (components.Any(c => c.Status == HealthStatus.Unhealthy))
+        {
+            return "error";
+        }
+
+        if (components.Any(c => c.Status == HealthStatus.Degraded))
+        {
+            return "warning";
+        }
+
+        return "success";
+    }
+
+    private static string GetOverallStatusColor(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "var(--hexalith-status-success)",
+        HealthStatus.Degraded => "var(--hexalith-status-warning)",
+        HealthStatus.Unhealthy => "var(--hexalith-status-error)",
+        _ => "var(--hexalith-status-neutral)",
+    };
+
+    private static string? GetOverallStatusFill(HealthStatus status) => null;
+
+    private static string GetOverallStatusIcon(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "\u2714",
+        HealthStatus.Degraded => "\u26A0",
+        HealthStatus.Unhealthy => "\u2716",
+        _ => "\u2022",
+    };
+
+    private static bool HasAnyObservabilityUrl(ObservabilityLinks links) =>
+        IsValidHttpUrl(links.TraceUrl)
+        || IsValidHttpUrl(links.MetricsUrl)
+        || IsValidHttpUrl(links.LogsUrl);
+
+    private static bool IsValidHttpUrl(string? url) =>
+        !string.IsNullOrEmpty(url)
+        && Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
+        && (uri.Scheme == "http" || uri.Scheme == "https");
+
+    private static string FormatTimeAgo(DateTimeOffset timestamp)
+    {
+        if (timestamp == default)
+        {
+            return "Never";
+        }
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - timestamp;
+        if (elapsed < TimeSpan.Zero)
+        {
+            return "just now";
+        }
+
+        if (elapsed.TotalSeconds < 60)
+        {
+            return "just now";
+        }
+
+        if (elapsed.TotalMinutes < 60)
+        {
+            int minutes = (int)elapsed.TotalMinutes;
+            return $"{minutes} {(minutes == 1 ? "min" : "min")} ago";
+        }
+
+        if (elapsed.TotalHours < 24)
+        {
+            int hours = (int)elapsed.TotalHours;
+            return $"{hours} {(hours == 1 ? "hour" : "hours")} ago";
+        }
+
+        return timestamp.ToString("yyyy-MM-dd");
+    }
+}
