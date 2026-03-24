@@ -87,6 +87,45 @@ public sealed class DaprTenantQueryService : ITenantQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await InvokeTenantServiceAsync<TenantDetail>(
+                HttpMethod.Get, $"api/v1/tenants/{Uri.EscapeDataString(tenantId)}", ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get tenant detail for {TenantId}.", tenantId);
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default)
+    {
+        try
+        {
+            IReadOnlyList<TenantUser>? result = await InvokeTenantServiceAsync<IReadOnlyList<TenantUser>>(
+                HttpMethod.Get, $"api/v1/tenants/{Uri.EscapeDataString(tenantId)}/users", ct).ConfigureAwait(false);
+            return result ?? [];
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get tenant users for {TenantId}.", tenantId);
+            return [];
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<TenantComparison> CompareTenantUsageAsync(
         IReadOnlyList<string> tenantIds,
         CancellationToken ct = default)

@@ -131,6 +131,7 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<IDeadLetterQueryService, DaprDeadLetterQueryService>();
         services.TryAddScoped<IDeadLetterCommandService, DaprDeadLetterCommandService>();
         services.TryAddScoped<ITenantQueryService, DaprTenantQueryService>();
+        services.TryAddScoped<ITenantCommandService, DaprTenantCommandService>();
         services.TryAddScoped<IBackupQueryService, DaprBackupQueryService>();
         services.TryAddScoped<IBackupCommandService, DaprBackupCommandService>();
 
