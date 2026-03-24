@@ -1,0 +1,375 @@
+@using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.UI.Services
+@using System.Text
+
+@inject ViewportService ViewportService
+
+<h2 style="font-size: 18px; margin: 0 0 12px;">Storage Distribution</h2>
+
+<div class="storage-filter-bar">
+    <FluentButton Appearance="@(_showBarChart ? Appearance.Outline : Appearance.Accent)"
+                  Size="ButtonSize.Small"
+                  OnClick="@(() => SetViewMode(false))"
+                  aria-label="Switch to treemap view">
+        Treemap
+    </FluentButton>
+    <FluentButton Appearance="@(_showBarChart ? Appearance.Accent : Appearance.Outline)"
+                  Size="ButtonSize.Small"
+                  OnClick="@(() => SetViewMode(true))"
+                  aria-label="Switch to bar chart view">
+        Bar Chart
+    </FluentButton>
+</div>
+
+<div class="storage-treemap-container">
+    @if (ShouldShowBarChart)
+    {
+        @* Bar chart fallback *@
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" width="100%"
+             role="img" aria-label="Storage distribution bar chart">
+            @{
+                List<(string Label, long Value, string Color)> barItems = GetBarChartData();
+                if (barItems.Count > 0)
+                {
+                    double maxValue = barItems.Max(i => (double)i.Value);
+                    double barHeight = 900.0 / Math.Max(barItems.Count, 1) * 0.8;
+                    double gap = 900.0 / Math.Max(barItems.Count, 1) * 0.2;
+                    double yPos = 0;
+
+                    foreach ((string label, long value, string color) in barItems)
+                    {
+                        double barWidth = maxValue > 0 ? (value / maxValue) * 1200 : 0;
+                        <g>
+                            <rect x="300" y="@yPos" width="@barWidth" height="@barHeight"
+                                  fill="@color" stroke="white" stroke-width="1">
+                                <title>@label: @value.ToString("N0") events</title>
+                            </rect>
+                            @((MarkupString)$"<text x=\"290\" y=\"{yPos + barHeight / 2 + 5}\" text-anchor=\"end\" fill=\"currentColor\" font-size=\"22\">{System.Net.WebUtility.HtmlEncode(TruncateLabel(label, 25))}</text>")
+                            @((MarkupString)$"<text x=\"{305 + barWidth}\" y=\"{yPos + barHeight / 2 + 5}\" fill=\"currentColor\" font-size=\"20\">{value.ToString("N0")}</text>")
+                        </g>
+                        yPos += barHeight + gap;
+                    }
+                }
+            }
+        </svg>
+    }
+    else
+    {
+        @* Treemap SVG *@
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" width="100%"
+             role="img" aria-label="Storage distribution treemap">
+            @foreach (TreemapDisplayRect rect in ComputeTreemapRects())
+            {
+                bool isSelected = string.Equals(rect.AggregateType, SelectedAggregateType, StringComparison.OrdinalIgnoreCase);
+                <g class="treemap-rect" @onclick="@(() => OnRectClick(rect.AggregateType))" style="cursor: pointer;">
+                    <rect x="@rect.X" y="@rect.Y" width="@rect.Width" height="@rect.Height"
+                          fill="@rect.Color"
+                          stroke="@(isSelected ? "white" : "rgba(255,255,255,0.5)")"
+                          stroke-width="@(isSelected ? "3" : "1")"
+                          aria-label="@($"{rect.Label}: {rect.Value:N0} events")">
+                        <title>@rect.Tooltip</title>
+                    </rect>
+                    @if (rect.Width > 60 && rect.Height > 20)
+                    {
+                        @((MarkupString)$"<text x=\"{rect.X + 6}\" y=\"{rect.Y + 18}\" fill=\"white\" font-size=\"14\" font-weight=\"600\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(TruncateLabel(rect.Label, (int)(rect.Width / 8)))}</text>")
+                    }
+                    @if (rect.Width > 40 && rect.Height > 36)
+                    {
+                        @((MarkupString)$"<text x=\"{rect.X + 6}\" y=\"{rect.Y + 34}\" fill=\"rgba(255,255,255,0.8)\" font-size=\"12\" pointer-events=\"none\">{rect.Value.ToString("N0")}</text>")
+                    }
+                </g>
+            }
+        </svg>
+    }
+</div>
+
+@* Hidden screen reader table *@
+<table class="sr-only" aria-label="Storage distribution data">
+    <thead>
+        <tr>
+            <th>Aggregate Type</th>
+            <th>Event Count</th>
+            <th>Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var group in GetGroupedData())
+        {
+            <tr>
+                <td>@group.Label</td>
+                <td>@group.EventCount.ToString("N0")</td>
+                <td>@(group.SizeBytes is not null ? FormatBytes(group.SizeBytes) : "N/A")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private static readonly string[] _colorPalette =
+    [
+        "#0078D4", "#107C10", "#D83B01", "#8764B8", "#008272",
+        "#E3008C", "#4F6BED", "#B4009E", "#C239B3", "#00B7C3",
+    ];
+
+    private bool? _viewModeOverride;
+    private IReadOnlyList<TreemapDisplayRect>? _cachedRects;
+    private string? _lastCacheKey;
+
+    [Parameter]
+    public IReadOnlyList<StreamStorageInfo> Data { get; set; } = [];
+
+    [Parameter]
+    public string? SelectedTenant { get; set; }
+
+    [Parameter]
+    public string? SelectedAggregateType { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnAggregateTypeSelected { get; set; }
+
+    private bool _showBarChart => _viewModeOverride ?? !ViewportService.IsWideViewport;
+
+    private bool ShouldShowBarChart => _showBarChart;
+
+    private void SetViewMode(bool barChart)
+    {
+        _viewModeOverride = barChart;
+    }
+
+    private void OnRectClick(string aggregateType)
+    {
+        if (OnAggregateTypeSelected.HasDelegate)
+        {
+            _ = OnAggregateTypeSelected.InvokeAsync(aggregateType);
+        }
+    }
+
+    private IReadOnlyList<TreemapDisplayRect> ComputeTreemapRects()
+    {
+        List<GroupedStorageItem> groups = GetGroupedData();
+        bool useSizeBytes = groups.Count > 0 && groups.All(g => g.SizeBytes is not null && g.SizeBytes > 0);
+        string cacheKey = BuildCacheKey(groups, useSizeBytes);
+        if (string.Equals(_lastCacheKey, cacheKey, StringComparison.Ordinal) && _cachedRects is not null)
+        {
+            return _cachedRects;
+        }
+
+        List<TreemapInputItem> items = groups
+            .Select(g => new TreemapInputItem(
+                g.Key,
+                g.Label,
+                g.TenantId,
+                g.Domain,
+                g.AggregateType,
+                g.EventCount,
+                g.SizeBytes,
+                g.StreamsWithSnapshot,
+                g.StreamsWithoutSnapshot,
+                useSizeBytes ? g.SizeBytes!.Value : g.EventCount))
+            .Where(i => i.LayoutValue > 0)
+            .OrderByDescending(i => i.LayoutValue)
+            .ToList();
+
+        // Bucket into "Other" if > 500 types
+        if (items.Count > 500)
+        {
+            List<TreemapInputItem> top = items.Take(499).ToList();
+            List<TreemapInputItem> overflow = items.Skip(499).ToList();
+            long otherSum = overflow.Sum(i => i.LayoutValue);
+            int otherCount = items.Count - 499;
+            top.Add(new TreemapInputItem(
+                Key: $"other:{otherCount}",
+                Label: $"Other ({otherCount} types)",
+                TenantId: SelectedTenant ?? "Multiple",
+                Domain: "Other",
+                AggregateType: "Other",
+                EventCount: overflow.Sum(i => i.EventCount),
+                SizeBytes: overflow.All(i => i.SizeBytes is not null) ? overflow.Sum(i => i.SizeBytes!.Value) : null,
+                StreamsWithSnapshot: overflow.Sum(i => i.StreamsWithSnapshot),
+                StreamsWithoutSnapshot: overflow.Sum(i => i.StreamsWithoutSnapshot),
+                LayoutValue: otherSum));
+            items = top;
+        }
+
+        IReadOnlyList<TreemapLayoutEngine.TreemapRect> layout = TreemapLayoutEngine.ComputeLayout(
+            items.Select(i => (i.Key, i.LayoutValue)).ToList(),
+            0,
+            0,
+            1600,
+            900);
+
+        // Map back to display rects with colors and tooltips
+        Dictionary<string, TreemapInputItem> groupLookup = items.ToDictionary(g => g.Key, StringComparer.OrdinalIgnoreCase);
+        List<TreemapDisplayRect> rects = [];
+
+        foreach (TreemapLayoutEngine.TreemapRect rect in layout)
+        {
+            if (!groupLookup.TryGetValue(rect.Label, out TreemapInputItem? group))
+            {
+                continue;
+            }
+
+            string domain = group.Domain;
+            string color = _colorPalette[(DeterministicHash(domain) & 0x7FFFFFFF) % _colorPalette.Length];
+            string snapshotStatus = group.StreamsWithoutSnapshot == 0
+                ? "All streams have snapshots"
+                : $"{group.StreamsWithoutSnapshot:N0} stream(s) without snapshots";
+            string tooltip = $"{group.Label}\nTenant: {group.TenantId}\nDomain: {group.Domain}\nAggregate Type: {group.AggregateType}\nEvents: {group.EventCount:N0}\nSize: {(group.SizeBytes is not null ? FormatBytes(group.SizeBytes) : "N/A")}\nSnapshot Status: {snapshotStatus}";
+
+            rects.Add(new TreemapDisplayRect(
+                group.Label,
+                group.EventCount,
+                rect.X,
+                rect.Y,
+                rect.Width,
+                rect.Height,
+                color,
+                tooltip,
+                group.AggregateType,
+                domain));
+        }
+
+        _cachedRects = rects;
+        _lastCacheKey = cacheKey;
+        return rects;
+    }
+
+    private List<GroupedStorageItem> GetGroupedData()
+    {
+        IEnumerable<StreamStorageInfo> filtered = Data;
+
+        if (!string.IsNullOrEmpty(SelectedTenant))
+        {
+            filtered = filtered.Where(s => s.TenantId.StartsWith(SelectedTenant, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return filtered
+            .GroupBy(s => (
+                TenantId: string.IsNullOrEmpty(SelectedTenant) ? s.TenantId : SelectedTenant!,
+                s.Domain,
+                s.AggregateType))
+            .Select(g => new GroupedStorageItem(
+                $"{g.Key.TenantId}|{g.Key.Domain}|{g.Key.AggregateType}",
+                string.IsNullOrEmpty(SelectedTenant)
+                    ? $"{g.Key.TenantId}/{g.Key.Domain}/{g.Key.AggregateType}"
+                    : $"{g.Key.Domain}/{g.Key.AggregateType}",
+                g.Key.TenantId,
+                g.Key.Domain,
+                g.Key.AggregateType,
+                g.Sum(s => s.EventCount),
+                g.All(s => s.SizeBytes is not null) ? g.Sum(s => s.SizeBytes!.Value) : null,
+                g.Count(s => s.HasSnapshot),
+                g.Count(s => !s.HasSnapshot)))
+            .OrderByDescending(g => g.EventCount)
+            .ToList();
+    }
+
+    private List<(string Label, long Value, string Color)> GetBarChartData()
+    {
+        return Data
+            .Where(s => string.IsNullOrEmpty(SelectedTenant)
+                || s.TenantId.StartsWith(SelectedTenant, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(s => s.AggregateType, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new { AggregateType = g.Key, EventCount = g.Sum(s => s.EventCount), Domain = g.First().Domain })
+            .OrderByDescending(g => g.EventCount)
+            .Take(10)
+            .Select(g =>
+            {
+                string color = _colorPalette[(DeterministicHash(g.Domain) & 0x7FFFFFFF) % _colorPalette.Length];
+                return (g.AggregateType, g.EventCount, color);
+            })
+            .ToList();
+    }
+
+    private static string BuildCacheKey(IEnumerable<GroupedStorageItem> groups, bool useSizeBytes)
+    {
+        StringBuilder sb = new();
+        sb.Append(useSizeBytes ? "size" : "events").Append('|');
+        foreach (GroupedStorageItem g in groups.OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            sb.Append(g.Key)
+                .Append(':')
+                .Append(g.EventCount)
+                .Append(':')
+                .Append(g.SizeBytes ?? -1)
+                .Append(':')
+                .Append(g.StreamsWithSnapshot)
+                .Append(':')
+                .Append(g.StreamsWithoutSnapshot)
+                .Append(';');
+        }
+
+        return sb.ToString();
+    }
+
+    private static int DeterministicHash(string s)
+    {
+        unchecked
+        {
+            int hash = (int)2166136261;
+            foreach (char c in s)
+            {
+                hash = (hash ^ c) * 16777619;
+            }
+
+            return hash;
+        }
+    }
+
+    private static string FormatBytes(long? bytes)
+    {
+        if (bytes is null)
+        {
+            return "N/A";
+        }
+
+        double value = bytes.Value;
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        int i = 0;
+        while (value >= 1024 && i < units.Length - 1)
+        {
+            value /= 1024;
+            i++;
+        }
+
+        return $"{value:F1} {units[i]}";
+    }
+
+    private static string TruncateLabel(string label, int maxChars) =>
+        label.Length > maxChars ? label[..maxChars] + "\u2026" : label;
+
+    private sealed record GroupedStorageItem(
+        string Key,
+        string Label,
+        string TenantId,
+        string Domain,
+        string AggregateType,
+        long EventCount,
+        long? SizeBytes,
+        int StreamsWithSnapshot,
+        int StreamsWithoutSnapshot);
+
+    private sealed record TreemapInputItem(
+        string Key,
+        string Label,
+        string TenantId,
+        string Domain,
+        string AggregateType,
+        long EventCount,
+        long? SizeBytes,
+        int StreamsWithSnapshot,
+        int StreamsWithoutSnapshot,
+        long LayoutValue);
+
+    private sealed record TreemapDisplayRect(
+        string Label,
+        long Value,
+        double X,
+        double Y,
+        double Width,
+        double Height,
+        string Color,
+        string Tooltip,
+        string AggregateType,
+        string Domain);
+}

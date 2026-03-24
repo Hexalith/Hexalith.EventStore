@@ -30,10 +30,11 @@ builder.Services.AddTransient<AdminApiAuthorizationHandler>();
 builder.Services.AddScoped<AdminUserContext>();
 builder.Services.AddScoped<ThemeState>();
 
-// Admin API clients for streams, health, tenants, projections, and type catalog
+// Admin API clients for streams, health, tenants, projections, type catalog, and storage
 builder.Services.AddScoped<AdminStreamApiClient>();
 builder.Services.AddScoped<AdminProjectionApiClient>();
 builder.Services.AddScoped<AdminTypeCatalogApiClient>();
+builder.Services.AddScoped<AdminStorageApiClient>();
 
 // Dashboard polling refresh service
 builder.Services.AddScoped<DashboardRefreshService>();

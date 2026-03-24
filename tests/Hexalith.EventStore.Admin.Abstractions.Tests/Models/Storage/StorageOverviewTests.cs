@@ -20,6 +20,15 @@ public class StorageOverviewTests
         var overview = new StorageOverview(1000, null, []);
 
         overview.TotalSizeBytes.ShouldBeNull();
+        overview.TotalStreamCount.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithTotalStreamCount_CreatesInstance()
+    {
+        var overview = new StorageOverview(1000, null, [], 42);
+
+        overview.TotalStreamCount.ShouldBe(42);
     }
 
     [Fact]
@@ -27,5 +36,12 @@ public class StorageOverviewTests
     {
         Should.Throw<ArgumentNullException>(() =>
             new StorageOverview(0, null, null!));
+    }
+
+    [Fact]
+    public void Constructor_WithNegativeTotalStreamCount_ThrowsArgumentOutOfRangeException()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() =>
+            new StorageOverview(0, null, [], -1));
     }
 }

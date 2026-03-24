@@ -1,0 +1,537 @@
+@page "/storage"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminStorageApiClient StorageApi
+@inject ViewportService ViewportService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Storage - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Storage</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="OnManualRefresh"
+                  aria-label="Refresh storage data">
+        Refresh
+    </FluentButton>
+</div>
+
+@* Error state: API unavailable and no cached data *@
+<IssueBanner Visible="@(_apiUnavailable && _cachedOverview is null)"
+             Title="Unable to load storage data"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Stale data indicator *@
+<IssueBanner Visible="@(_isStale && _cachedOverview is not null)"
+             Title="Storage data may be stale"
+             Description="Showing previously loaded data. Click Refresh to reload." />
+
+@* Tenant filter *@
+<div class="storage-filter-bar">
+    <FluentTextField @bind-Value="_tenantFilterInput"
+                     @bind-Value:after="OnTenantFilterChanged"
+                     Placeholder="Filter by tenant ID..."
+                     aria-label="Filter by tenant ID"
+                     style="min-width: 280px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else if (_overview is not null)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Events"
+                      Value="@_overview.TotalEventCount.ToString("N0")"
+                      Severity="neutral"
+                      Title="Total events across all tenants" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            @if (_overview.TotalSizeBytes is not null || _overview.TenantBreakdown.Any(t => t.SizeBytes is not null))
+            {
+                <StatCard Label="Total Storage"
+                          Value="@FormatBytes(_overview.TotalSizeBytes)"
+                          Severity="neutral"
+                          Title="Total storage size" />
+            }
+            else
+            {
+                <StatCard Label="Total Streams"
+                          Value="@GetDisplayedStreamCount()"
+                          Severity="neutral"
+                          Title="@GetStreamCountTitle()" />
+            }
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Tenants"
+                      Value="@FilteredTenants.Count.ToString("N0")"
+                      Severity="neutral"
+                      Title="Number of tenants" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Avg Growth/Day"
+                      Value="@FormatAvgGrowth()"
+                      Severity="neutral"
+                      Title="Average daily event growth rate" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Tenant breakdown table *@
+@if (!_isLoading && _overview is not null)
+{
+    @if (FilteredTenants.Count == 0)
+    {
+        <EmptyState Title="No storage data available"
+                    Description="No tenants found. Storage data will appear once events are persisted." />
+    }
+    else
+    {
+        <h2 style="font-size: 18px; margin: 0 0 12px;">Tenant Breakdown</h2>
+        <FluentDataGrid Items="@FilteredTenants.AsQueryable()" TGridItem="TenantStorageInfo"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Tenant storage breakdown"
+                        OnRowClick="@(async row => await OnTenantRowClickAsync(row.Item))">
+            <PropertyColumn Property="@(t => t.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
+            <PropertyColumn Property="@(t => t.EventCount)" Title="Event Count" Sortable="true"
+                            Format="N0" Align="Align.End" />
+            <TemplateColumn Title="Size" Sortable="true"
+                            SortBy="@(GridSort<TenantStorageInfo>.ByDescending(t => t.SizeBytes ?? 0))">
+                @FormatBytes(context.SizeBytes)
+            </TemplateColumn>
+            <TemplateColumn Title="Growth Rate" Sortable="true" IsDefaultSortColumn="true"
+                            InitialSortDirection="SortDirection.Descending"
+                            SortBy="@(GridSort<TenantStorageInfo>.ByDescending(t => t.GrowthRatePerDay ?? 0))">
+                @if (context.GrowthRatePerDay is not null)
+                {
+                    <span>@context.GrowthRatePerDay.Value.ToString("N0") events/day</span>
+                }
+                else
+                {
+                    <span>N/A</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Growth" Sortable="true"
+                            SortBy="@(GridSort<TenantStorageInfo>.ByDescending(t => t.GrowthRatePerDay ?? 0))">
+                <FluentBadge BackgroundColor="@GetGrowthBadgeColor(context.GrowthRatePerDay)"
+                             Color="white"
+                             aria-label="@($"Growth severity: {GetGrowthSeverity(context.GrowthRatePerDay)}")">
+                    @GetGrowthSeverity(context.GrowthRatePerDay)
+                </FluentBadge>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+}
+
+@* Snapshot risk summary banner *@
+@if (!_isLoading && _hotStreams is not null && AtRiskStreamCount > 0)
+{
+    <div style="margin-bottom: 12px;">
+        <FluentBadge BackgroundColor="var(--hexalith-status-warning)" Color="white">
+            @AtRiskStreamCount streams have &gt; 1,000 events without snapshots.
+        </FluentBadge>
+    </div>
+}
+
+@* Hot streams grid *@
+@if (!_isLoading && _overview is not null)
+{
+    @if (FilteredHotStreams.Count == 0)
+    {
+        <EmptyState Title="No streams found"
+                    Description="No event streams match the current filter." />
+    }
+    else
+    {
+        <h2 style="font-size: 18px; margin: 0 0 12px;">Hot Streams</h2>
+        <FluentDataGrid Items="@FilteredHotStreams.AsQueryable()" TGridItem="StreamStorageInfo"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Hot streams by event count">
+            <PropertyColumn Property="@(s => s.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
+            <PropertyColumn Property="@(s => s.Domain)" Title="Domain" Sortable="true" />
+            <PropertyColumn Property="@(s => s.AggregateType)" Title="Aggregate Type" Sortable="true" />
+            <TemplateColumn Title="Aggregate ID">
+                <a href="@($"/streams/{Uri.EscapeDataString(context.TenantId)}/{Uri.EscapeDataString(context.Domain)}/{Uri.EscapeDataString(context.AggregateId)}")"
+                   class="monospace"
+                   title="@context.AggregateId">
+                    @TruncateId(context.AggregateId)
+                </a>
+            </TemplateColumn>
+            <PropertyColumn Property="@(s => s.EventCount)" Title="Event Count" Sortable="true"
+                            Format="N0" Align="Align.End"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending" />
+            <TemplateColumn Title="Size" Sortable="true"
+                            SortBy="@(GridSort<StreamStorageInfo>.ByDescending(s => s.SizeBytes ?? 0))">
+                @FormatBytes(context.SizeBytes)
+            </TemplateColumn>
+            <TemplateColumn Title="Snapshot">
+                @if (context.HasSnapshot)
+                {
+                    <span style="color: var(--hexalith-status-success);" aria-label="Has snapshot">&#x2714;</span>
+                }
+                else
+                {
+                    <span style="color: var(--hexalith-status-error);" aria-label="No snapshot">&#x2716;</span>
+                    @if (context.EventCount > 1000)
+                    {
+                        <span title="No snapshot — consider configuring auto-snapshot policy"
+                              style="color: var(--hexalith-status-warning); margin-left: 4px;"
+                              aria-label="Warning: no snapshot with over 1000 events">&#x26A0;</span>
+                    }
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Snapshot Age">
+                @if (context.SnapshotAge is not null)
+                {
+                    @FormatDuration(context.SnapshotAge.Value)
+                }
+                else
+                {
+                    <span>&mdash;</span>
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+}
+
+@* Treemap visualization *@
+@if (!_isLoading && _hotStreams is not null && FilteredHotStreams.Count > 0)
+{
+    <StorageTreemap Data="@FilteredHotStreams"
+                        SelectedTenant="@(_selectedTenant ?? _tenantFilter)"
+                    SelectedAggregateType="@_selectedAggregateType"
+                    OnAggregateTypeSelected="OnAggregateTypeSelected" />
+}
+
+@code {
+    private const double GreenThreshold = 1_000;
+    private const double AmberThreshold = 10_000;
+
+    private StorageOverview? _overview;
+    private IReadOnlyList<StreamStorageInfo>? _hotStreams;
+    private StorageOverview? _cachedOverview;
+    private bool _isLoading = true;
+    private bool _isStale;
+    private bool _apiUnavailable;
+    private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+    private string? _tenantFilter;
+    private string? _tenantFilterInput;
+    private string? _selectedTenant;
+    private string? _selectedAggregateType;
+    private string _sortColumn = "eventCount";
+    private string _sortDirection = "desc";
+    private Timer? _debounceTimer;
+    private CancellationTokenSource? _loadCts;
+
+    private IReadOnlyList<TenantStorageInfo> FilteredTenants =>
+        _overview?.TenantBreakdown
+            .Where(t => !string.IsNullOrEmpty(_selectedTenant)
+                ? string.Equals(t.TenantId, _selectedTenant, StringComparison.OrdinalIgnoreCase)
+                : string.IsNullOrEmpty(_tenantFilter)
+                    || t.TenantId.StartsWith(_tenantFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList() ?? [];
+
+    private IReadOnlyList<StreamStorageInfo> FilteredHotStreams
+    {
+        get
+        {
+            if (_hotStreams is null)
+            {
+                return [];
+            }
+
+            IEnumerable<StreamStorageInfo> result = _hotStreams;
+            if (!string.IsNullOrEmpty(_selectedTenant))
+            {
+                result = result.Where(s => string.Equals(s.TenantId, _selectedTenant, StringComparison.OrdinalIgnoreCase));
+            }
+            else if (!string.IsNullOrEmpty(_tenantFilter))
+            {
+                result = result.Where(s => s.TenantId.StartsWith(_tenantFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrEmpty(_selectedAggregateType))
+            {
+                result = result.Where(s => string.Equals(s.AggregateType, _selectedAggregateType, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return result.ToList();
+        }
+    }
+
+    private int AtRiskStreamCount =>
+        FilteredHotStreams.Count(s => !s.HasSnapshot && s.EventCount > 1000);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        _tenantFilterInput = _tenantFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+        string? tenantForApi = _selectedTenant;
+
+        _isLoading = _overview is null;
+        try
+        {
+            StorageOverview nextOverview = await StorageApi.GetStorageOverviewAsync(tenantForApi, ct);
+            IReadOnlyList<StreamStorageInfo> nextHotStreams = await StorageApi.GetHotStreamsAsync(tenantForApi, 100, ct);
+
+            _overview = nextOverview;
+            _hotStreams = nextHotStreams;
+
+            _selectedTenant = !string.IsNullOrEmpty(_tenantFilter)
+                && _overview.TenantBreakdown.Any(t => string.Equals(t.TenantId, _tenantFilter, StringComparison.OrdinalIgnoreCase))
+                ? _tenantFilter
+                : null;
+
+            _cachedOverview = _overview;
+            bool hasAnyData = _overview.TenantBreakdown.Count > 0 || _hotStreams.Count > 0;
+            _apiUnavailable = !hasAnyData;
+            _apiErrorMessage = "Unable to load storage data.";
+            _isStale = false;
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+            _isStale = _cachedOverview is not null;
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnTenantRowClickAsync(TenantStorageInfo? tenant)
+    {
+        if (tenant is null)
+        {
+            return;
+        }
+
+        _selectedTenant = tenant.TenantId;
+        _tenantFilter = tenant.TenantId;
+        _tenantFilterInput = tenant.TenantId;
+        UpdateUrl();
+        await LoadDataAsync();
+    }
+
+    private void OnTenantFilterChanged()
+    {
+        _selectedTenant = null;
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnDebounceElapsed(object? state)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _tenantFilter = string.IsNullOrWhiteSpace(_tenantFilterInput)
+                ? null
+                : _tenantFilterInput.Trim();
+
+            _selectedTenant = !string.IsNullOrEmpty(_tenantFilter)
+                && _overview?.TenantBreakdown.Any(t => string.Equals(t.TenantId, _tenantFilter, StringComparison.OrdinalIgnoreCase)) == true
+                ? _tenantFilter
+                : null;
+
+            UpdateUrl();
+            await LoadDataAsync();
+        });
+    }
+
+    private void OnAggregateTypeSelected(string aggregateType)
+    {
+        _selectedAggregateType = string.Equals(_selectedAggregateType, aggregateType, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : aggregateType;
+        UpdateUrl();
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _tenantFilter = query["tenant"];
+        _selectedAggregateType = query["type"];
+        _sortColumn = query["sort"] ?? "eventCount";
+        _sortDirection = query["dir"] ?? "desc";
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_selectedAggregateType))
+        {
+            queryParams.Add($"type={Uri.EscapeDataString(_selectedAggregateType)}");
+        }
+
+        if (!string.IsNullOrEmpty(_sortColumn))
+        {
+            if (!string.Equals(_sortColumn, "eventCount", StringComparison.OrdinalIgnoreCase))
+            {
+                queryParams.Add($"sort={Uri.EscapeDataString(_sortColumn)}");
+            }
+        }
+
+        if (!string.IsNullOrEmpty(_sortDirection))
+        {
+            if (!string.Equals(_sortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+            {
+                queryParams.Add($"dir={Uri.EscapeDataString(_sortDirection)}");
+            }
+        }
+
+        string url = queryParams.Count > 0 ? $"/storage?{string.Join('&', queryParams)}" : "/storage";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private string GetDisplayedStreamCount()
+    {
+        if (CanUseExactStreamCount() && _overview?.TotalStreamCount is long exactCount)
+        {
+            return exactCount.ToString("N0");
+        }
+
+        if (_hotStreams is null)
+        {
+            return "0";
+        }
+
+        int count = _hotStreams
+            .Where(s => string.IsNullOrEmpty(_tenantFilter) || s.TenantId.StartsWith(_tenantFilter, StringComparison.OrdinalIgnoreCase))
+            .Select(s => $"{s.TenantId}:{s.Domain}:{s.AggregateId}")
+            .Distinct()
+            .Count();
+
+        return count >= 100 ? "100+" : count.ToString("N0");
+    }
+
+    private string GetStreamCountTitle() => CanUseExactStreamCount() && _overview?.TotalStreamCount is not null
+        ? "Total streams in the selected scope"
+        : "Best-effort stream count from currently loaded hot streams";
+
+    private bool CanUseExactStreamCount() =>
+        !string.IsNullOrEmpty(_selectedTenant)
+        || string.IsNullOrEmpty(_tenantFilter);
+
+    private string FormatAvgGrowth()
+    {
+        IReadOnlyList<TenantStorageInfo> tenants = FilteredTenants;
+        double[] growthValues = tenants
+            .Where(t => t.GrowthRatePerDay is not null)
+            .Select(t => t.GrowthRatePerDay!.Value)
+            .ToArray();
+        return growthValues.Length > 0
+            ? $"{growthValues.Average():N0} events/day"
+            : "N/A";
+    }
+
+    private static string FormatBytes(long? bytes)
+    {
+        if (bytes is null)
+        {
+            return "N/A";
+        }
+
+        double value = bytes.Value;
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        int i = 0;
+        while (value >= 1024 && i < units.Length - 1)
+        {
+            value /= 1024;
+            i++;
+        }
+
+        return $"{value:F1} {units[i]}";
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1)
+        {
+            return $"{(int)duration.TotalDays}d {duration.Hours}h";
+        }
+
+        if (duration.TotalHours >= 1)
+        {
+            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+        }
+
+        return $"{(int)duration.TotalMinutes}m";
+    }
+
+    private static string TruncateId(string id) =>
+        id.Length > 12 ? id[..12] + "\u2026" : id;
+
+    private static string GetGrowthSeverity(double? rate) => rate switch
+    {
+        null => "N/A",
+        < GreenThreshold => "Low",
+        < AmberThreshold => "Medium",
+        _ => "High",
+    };
+
+    private static string GetGrowthBadgeColor(double? rate) => rate switch
+    {
+        null => "var(--neutral-foreground-hint)",
+        < GreenThreshold => "var(--hexalith-status-success)",
+        < AmberThreshold => "var(--hexalith-status-warning)",
+        _ => "var(--hexalith-status-error)",
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        if (_debounceTimer is not null)
+        {
+            await _debounceTimer.DisposeAsync();
+        }
+    }
+}
