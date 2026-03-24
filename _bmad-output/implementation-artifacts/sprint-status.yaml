@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-24 # story 16-2 done
+last_updated: 2026-03-24 # story 16-3 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -184,8 +184,8 @@ development_status:
   epic-16: in-progress
   16-1-storage-growth-analyzer-with-treemap: done
   16-2-snapshot-management-and-auto-snapshot-policies: done
-  16-3-compaction-manager: backlog
-  16-4-backup-and-restore-console: backlog
+  16-3-compaction-manager: done
+  16-4-backup-and-restore-console: ready-for-dev
   16-5-tenant-management-quotas-onboarding-comparison: backlog
   16-6-dead-letter-queue-manager: backlog
   16-7-consistency-checker: backlog

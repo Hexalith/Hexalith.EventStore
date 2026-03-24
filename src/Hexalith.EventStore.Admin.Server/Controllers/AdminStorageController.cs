@@ -120,6 +120,38 @@ public class AdminStorageController(
     }
 
     /// <summary>
+    /// Gets compaction job history with optional tenant filter.
+    /// </summary>
+    [HttpGet("compaction-jobs")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(IReadOnlyList<CompactionJob>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetCompactionJobs(
+        [FromQuery] string? tenantId = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            IReadOnlyList<CompactionJob> result = await storageQueryService
+                .GetCompactionJobsAsync(effectiveTenantId, ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetCompactionJobs), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetCompactionJobs), ex);
+        }
+    }
+
+    /// <summary>
     /// Triggers compaction for a tenant, optionally scoped to a specific domain.
     /// </summary>
     [HttpPost("{tenantId}/compact")]

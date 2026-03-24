@@ -395,3 +395,33 @@ body {
     font-size: 14px;
     padding: 4px 0;
 }
+
+/* Compaction page styles */
+.compaction-status-running {
+    animation: compaction-pulse 1.5s ease-in-out infinite;
+    background-color: var(--hexalith-status-warning) !important;
+    color: white !important;
+}
+
+.compaction-status-completed {
+    background-color: var(--hexalith-status-success) !important;
+    color: white !important;
+}
+
+.compaction-status-failed {
+    background-color: var(--hexalith-status-error) !important;
+    color: white !important;
+}
+
+@keyframes compaction-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.compaction-error-detail {
+    font-family: var(--body-font), 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    background-color: var(--neutral-layer-card-container);
+    padding: 12px;
+    margin-bottom: 16px;
+}
