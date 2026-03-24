@@ -49,7 +49,7 @@ public class DaprStorageServiceTests {
     [Fact]
     public async Task GetStorageOverviewAsync_ReturnsOverview_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var overview = new StorageOverview(1000, 50000, []);
+        var overview = new StorageOverview(1000, 50000, [], 125);
 
         daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
@@ -63,6 +63,84 @@ public class DaprStorageServiceTests {
 
         result.TotalEventCount.ShouldBe(1000);
         result.TotalSizeBytes.ShouldBe(50000);
+        result.TotalStreamCount.ShouldBe(125);
+    }
+
+    [Fact]
+    public async Task GetStorageOverviewAsync_UsesOptionalStreamCountIndex_WhenOverviewStreamCountMissing()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var overview = new StorageOverview(1000, 50000, []);
+
+        daprClient.GetStateAsync<StorageOverview>(
+            StateStoreName,
+            "admin:storage-overview:tenant1",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => overview);
+
+        daprClient.GetStateAsync<long?>(
+            StateStoreName,
+            "admin:storage-stream-count:tenant1",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => 321L);
+
+        DaprStorageQueryService service = CreateQueryService(daprClient);
+
+        StorageOverview result = await service.GetStorageOverviewAsync("tenant1");
+
+        result.TotalStreamCount.ShouldBe(321);
+    }
+
+    [Fact]
+    public async Task GetStorageOverviewAsync_IgnoresOptionalStreamCount_WhenInvalid()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var overview = new StorageOverview(1000, 50000, []);
+
+        daprClient.GetStateAsync<StorageOverview>(
+            StateStoreName,
+            "admin:storage-overview:tenant1",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => overview);
+
+        daprClient.GetStateAsync<long?>(
+            StateStoreName,
+            "admin:storage-stream-count:tenant1",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => -1L);
+
+        DaprStorageQueryService service = CreateQueryService(daprClient);
+
+        StorageOverview result = await service.GetStorageOverviewAsync("tenant1");
+
+        result.TotalStreamCount.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetStorageOverviewAsync_IgnoresOptionalStreamCount_WhenLookupFails()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var overview = new StorageOverview(1000, 50000, []);
+
+        daprClient.GetStateAsync<StorageOverview>(
+            StateStoreName,
+            "admin:storage-overview:tenant1",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => overview);
+
+        daprClient.GetStateAsync<long?>(
+            StateStoreName,
+            "admin:storage-stream-count:tenant1",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("stream count index unavailable"));
+
+        DaprStorageQueryService service = CreateQueryService(daprClient);
+
+        StorageOverview result = await service.GetStorageOverviewAsync("tenant1");
+
+        result.TotalEventCount.ShouldBe(1000);
+        result.TotalSizeBytes.ShouldBe(50000);
+        result.TotalStreamCount.ShouldBeNull();
     }
 
     [Fact]
@@ -81,6 +159,7 @@ public class DaprStorageServiceTests {
         result.TotalEventCount.ShouldBe(0);
         result.TotalSizeBytes.ShouldBeNull();
         result.TenantBreakdown.ShouldBeEmpty();
+        result.TotalStreamCount.ShouldBe(0);
     }
 
     [Fact]

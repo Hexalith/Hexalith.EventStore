@@ -357,3 +357,34 @@ body {
         outline-offset: -2px;
     }
 }
+
+/* Storage page styles */
+.storage-treemap-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.storage-treemap-container svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.storage-treemap-container g.treemap-rect rect:hover {
+    opacity: 0.85;
+}
+
+.storage-filter-bar {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.storage-toggle-btn {
+    min-width: auto;
+    padding: 4px 8px;
+}
