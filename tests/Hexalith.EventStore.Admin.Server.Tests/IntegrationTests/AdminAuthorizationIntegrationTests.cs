@@ -72,15 +72,17 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task OperatorRole_GetTenants_Returns403()
+    public async Task OperatorRole_GetTenants_NotForbiddenOrUnauthorized()
     {
+        // Tenant list is a read operation — ReadOnly policy allows Operator access (AC14)
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Operator"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
 
         HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/tenants");
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.ShouldNotBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]

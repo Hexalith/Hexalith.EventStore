@@ -1,23 +1,1393 @@
 @page "/tenants"
+
 @using Hexalith.EventStore.Admin.Abstractions.Models.Common
-@inject Hexalith.EventStore.Admin.UI.Services.AdminUserContext UserContext
+@using Hexalith.EventStore.Admin.Abstractions.Models.Tenants
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminTenantApiClient TenantApi
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
 
 <PageTitle>Tenants - Hexalith EventStore</PageTitle>
 
-<h1 style="font-size: 24px; margin: 0 0 16px;">Tenants</h1>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Tenants</h1>
+    <div style="display: flex; gap: 8px;">
+        <AuthorizedView MinimumRole="AdminRole.Admin">
+            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                          OnClick="OpenCreateDialog"
+                          aria-label="Create tenant">
+                Create Tenant
+            </FluentButton>
+        </AuthorizedView>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OpenCompareDialog"
+                      Disabled="@((_tenants ?? []).Count < 2)"
+                      title="@((_tenants ?? []).Count < 2 ? "At least 2 tenants required" : "Compare tenant usage")"
+                      aria-label="Compare tenants">
+            Compare Tenants
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      aria-label="Refresh tenant list">
+            Refresh
+        </FluentButton>
+    </div>
+</div>
 
-<EmptyState Title="No tenants configured."
-            Description="Tenants provide multi-tenant data isolation for your event streams." Icon="@TenantsIcon"
-            ActionLabel="@(_canManageTenants ? "Create your first tenant" : null)"
-            ActionHref="@(_canManageTenants ? "/tenants" : null)" />
+@* Error state *@
+<IssueBanner Visible="@_apiUnavailable"
+             Title="Unable to load tenant data"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Filter bar *@
+<div class="storage-filter-bar">
+    <FluentSelect TOption="string" @bind-Value="_statusFilterInput"
+                  @bind-Value:after="OnStatusFilterChanged"
+                  aria-label="Filter by status"
+                  style="min-width: 150px;">
+        <FluentOption TOption="string" Value="@("All")">All</FluentOption>
+        <FluentOption TOption="string" Value="@("Active")">Active</FluentOption>
+        <FluentOption TOption="string" Value="@("Suspended")">Suspended</FluentOption>
+        <FluentOption TOption="string" Value="@("Onboarding")">Onboarding</FluentOption>
+    </FluentSelect>
+    <FluentTextField @bind-Value="_searchFilterInput"
+                     @bind-Value:after="OnSearchFilterChanged"
+                     Placeholder="Filter by tenant ID or name..."
+                     aria-label="Search tenants"
+                     style="min-width: 280px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Tenants"
+                      Value="@TotalCount.ToString("N0")"
+                      Severity="neutral"
+                      Title="Total number of tenants" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Active"
+                      Value="@ActiveCount.ToString("N0")"
+                      Severity="success"
+                      Title="Tenants with Active status" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Suspended"
+                      Value="@SuspendedCount.ToString("N0")"
+                      Severity="@(SuspendedCount > 0 ? "error" : "neutral")"
+                      Title="Tenants with Suspended status" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Onboarding"
+                      Value="@OnboardingCount.ToString("N0")"
+                      Severity="@(OnboardingCount > 0 ? "warning" : "neutral")"
+                      Title="Tenants being onboarded" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Tenant data grid *@
+@if (!_isLoading)
+{
+    @if (_filteredTenants.Count == 0)
+    {
+        <EmptyState Title="No tenants configured."
+                    Description="Create your first tenant to start managing multi-tenant event streams."
+                    ActionLabel="@(_showCreateAction ? "Create Tenant" : null)"
+                    ActionHref="@(_showCreateAction ? null : null)" />
+    }
+    else
+    {
+        <FluentDataGrid Items="@_filteredTenants.AsQueryable()" TGridItem="TenantSummary"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Tenants"
+                        OnRowClick="@(row => OnRowClick(row.Item))">
+            <PropertyColumn Property="@(t => t.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
+            <PropertyColumn Property="@(t => t.DisplayName)" Title="Display Name" Sortable="true"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+            <TemplateColumn Title="Status" Sortable="true"
+                            SortBy="@(GridSort<TenantSummary>.ByAscending(t => t.Status))">
+                @{
+                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                }
+                <FluentBadge Appearance="@appearance"
+                             Class="@cssClass"
+                             aria-label="@($"Status: {context.Status}")">
+                    @context.Status
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Domains" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<TenantSummary>.ByDescending(t => t.DomainCount))">
+                @context.DomainCount.ToString("N0")
+            </TemplateColumn>
+            <TemplateColumn Title="Events" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<TenantSummary>.ByDescending(t => t.EventCount))">
+                @context.EventCount.ToString("N0")
+            </TemplateColumn>
+            <TemplateColumn Title="Quota Usage" Sortable="false">
+                @{
+                    TenantQuotas? quotas = _quotasCache.GetValueOrDefault(context.TenantId);
+                }
+                @if (quotas is null)
+                {
+                    <span>N/A</span>
+                }
+                else if (quotas.MaxStorageBytes == 0)
+                {
+                    <span>Unlimited</span>
+                }
+                else
+                {
+                    double percent = quotas.MaxStorageBytes > 0
+                        ? (double)quotas.CurrentUsage / quotas.MaxStorageBytes * 100
+                        : 0;
+                    string color = percent < 75 ? "var(--hexalith-status-success)"
+                        : percent < 90 ? "var(--hexalith-status-warning)"
+                        : "var(--hexalith-status-error)";
+                    <div class="tenant-quota-bar" title="@($"{quotas.CurrentUsage:N0} / {quotas.MaxStorageBytes:N0} ({percent:F0}%)")"
+                         role="progressbar" aria-label="@($"Quota usage: {percent:F0}%")" aria-valuenow="@((int)percent)" aria-valuemin="0" aria-valuemax="100">
+                        <div class="tenant-quota-bar-fill" style="width: @($"{Math.Min(percent, 100):F0}%"); background-color: @color;"></div>
+                    </div>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <div @onclick:stopPropagation>
+                    <AuthorizedView MinimumRole="AdminRole.Admin">
+                        @if (context.Status == TenantStatusType.Active)
+                        {
+                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                          OnClick="@(() => OpenDisableDialog(context))"
+                                          aria-label="Disable tenant">
+                                Disable
+                            </FluentButton>
+                        }
+                        else if (context.Status == TenantStatusType.Suspended)
+                        {
+                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                          OnClick="@(() => OpenEnableDialog(context))"
+                                          aria-label="Enable tenant">
+                                Enable
+                            </FluentButton>
+                        }
+                        else if (context.Status == TenantStatusType.Onboarding)
+                        {
+                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                          Disabled="true"
+                                          title="Tenant is being provisioned."
+                                          aria-label="Tenant is being provisioned">
+                                Provisioning...
+                            </FluentButton>
+                        }
+                    </AuthorizedView>
+                </div>
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        @* Expanded detail panel *@
+        @if (_expandedTenantId is not null)
+        {
+            <div class="tenant-detail-panel" aria-label="Tenant detail">
+                @if (_isLoadingDetail)
+                {
+                    <FluentProgressRing Style="width: 32px; height: 32px;" />
+                }
+                else if (_expandedDetail is not null)
+                {
+                    <h3 style="margin: 0 0 12px;">Summary</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 16px;">
+                        <div><strong>Tenant ID:</strong> <span class="monospace">@_expandedDetail.TenantId</span></div>
+                        <div><strong>Display Name:</strong> @_expandedDetail.DisplayName</div>
+                        <div><strong>Status:</strong> @_expandedDetail.Status</div>
+                        <div><strong>Created:</strong> <span title="@_expandedDetail.CreatedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(_expandedDetail.CreatedAtUtc)</span></div>
+                        <div><strong>Domains:</strong> @_expandedDetail.DomainCount.ToString("N0")</div>
+                        <div><strong>Events:</strong> @_expandedDetail.EventCount.ToString("N0")</div>
+                        <div><strong>Storage:</strong> @TimeFormatHelper.FormatBytes(_expandedDetail.StorageBytes)</div>
+                        @if (_expandedDetail.SubscriptionTier is not null)
+                        {
+                            <div><strong>Tier:</strong> @_expandedDetail.SubscriptionTier</div>
+                        }
+                    </div>
+
+                    @if (_expandedDetail.Quotas is not null)
+                    {
+                        <h3 style="margin: 0 0 12px;">Quotas</h3>
+                        <div style="margin-bottom: 16px;">
+                            <div><strong>Max Events/Day:</strong> @_expandedDetail.Quotas.MaxEventsPerDay.ToString("N0")</div>
+                            <div style="margin-top: 4px;"><strong>Max Storage:</strong>
+                                @if (_expandedDetail.Quotas.MaxStorageBytes == 0)
+                                {
+                                    <span>Unlimited</span>
+                                }
+                                else
+                                {
+                                    @TimeFormatHelper.FormatBytes(_expandedDetail.Quotas.MaxStorageBytes)
+                                }
+                            </div>
+                            @if (_expandedDetail.Quotas.MaxStorageBytes > 0)
+                            {
+                                double quotaPercent = (double)_expandedDetail.Quotas.CurrentUsage / _expandedDetail.Quotas.MaxStorageBytes * 100;
+                                string quotaColor = quotaPercent < 75 ? "var(--hexalith-status-success)"
+                                    : quotaPercent < 90 ? "var(--hexalith-status-warning)"
+                                    : "var(--hexalith-status-error)";
+                                <div style="margin-top: 8px;">
+                                    <div class="tenant-quota-bar" title="@($"{_expandedDetail.Quotas.CurrentUsage:N0} / {_expandedDetail.Quotas.MaxStorageBytes:N0} ({quotaPercent:F0}%)")"
+                                         role="progressbar" aria-label="@($"Quota usage: {quotaPercent:F0}%")" aria-valuenow="@((int)quotaPercent)" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="tenant-quota-bar-fill" style="width: @($"{Math.Min(quotaPercent, 100):F0}%"); background-color: @quotaColor;"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <h3 style="margin: 0 0 12px;">Users</h3>
+                    @if (_usersUnavailable)
+                    {
+                        <p style="color: var(--hexalith-status-warning);">User management unavailable &mdash; Tenants service is not responding.</p>
+                    }
+                    else if (_expandedUsers.Count == 0)
+                    {
+                        <p style="color: var(--neutral-foreground-hint);">No users assigned to this tenant.</p>
+                    }
+                    else
+                    {
+                        <FluentDataGrid Items="@_expandedUsers.AsQueryable()" TGridItem="TenantUser"
+                                        Style="width: 100%;" Class="tenant-user-grid"
+                                        aria-label="Tenant users">
+                            <PropertyColumn Property="@(u => u.Email)" Title="Email" />
+                            <TemplateColumn Title="Role">
+                                <FluentBadge Appearance="Appearance.Neutral" aria-label="@($"Role: {context.Role}")">@context.Role</FluentBadge>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Added">
+                                <span title="@context.AddedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.AddedAtUtc)</span>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Actions">
+                                <div @onclick:stopPropagation>
+                                    <AuthorizedView MinimumRole="AdminRole.Admin">
+                                        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                                      OnClick="@(() => OpenChangeRoleDialog(context))"
+                                                      aria-label="Change role">
+                                            Change Role
+                                        </FluentButton>
+                                        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                                      OnClick="@(() => OpenRemoveUserDialog(context))"
+                                                      aria-label="Remove user"
+                                                      Style="margin-left: 4px;">
+                                            Remove
+                                        </FluentButton>
+                                    </AuthorizedView>
+                                </div>
+                            </TemplateColumn>
+                        </FluentDataGrid>
+                    }
+                    <div style="margin-top: 8px;">
+                        <AuthorizedView MinimumRole="AdminRole.Admin">
+                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                          OnClick="OpenAddUserDialog"
+                                          aria-label="Add user">
+                                Add User
+                            </FluentButton>
+                        </AuthorizedView>
+                    </div>
+                }
+                else
+                {
+                    <p style="color: var(--hexalith-status-warning);">Tenant details unavailable &mdash; Tenants service is not responding.</p>
+                }
+            </div>
+        }
+    }
+}
+
+@* Create Tenant Wizard (4-step) *@
+@if (_showCreateDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Create Tenant" @ondialogdismiss="CloseCreateDialog"
+                  Style="min-width: 450px; max-width: 550px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Create Tenant</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;" role="group" aria-label="Create tenant steps">
+                @for (int i = 1; i <= 4; i++)
+                {
+                    int step = i;
+                    string[] stepNames = ["Basics", "Configuration", "Initial Admin", "Confirmation"];
+                    <FluentBadge Appearance="@(_wizardStep == step ? Appearance.Accent : Appearance.Neutral)"
+                                 aria-current="@(_wizardStep == step ? "step" : null)">
+                        Step @step: @stepNames[step - 1]
+                    </FluentBadge>
+                }
+            </div>
+
+            @if (_wizardStep == 1)
+            {
+                <FluentTextField @bind-Value="_wizardTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Placeholder="e.g. acme-corp"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                @if (!string.IsNullOrEmpty(_wizardTenantId) && !IsValidTenantId(_wizardTenantId))
+                {
+                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 8px;">
+                        Tenant ID must be lowercase alphanumeric with hyphens only.
+                    </p>
+                }
+                <FluentTextField @bind-Value="_wizardDisplayName"
+                                 Label="Display Name" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Display Name" />
+            }
+            else if (_wizardStep == 2)
+            {
+                <FluentSelect TOption="string" @bind-Value="_wizardTier"
+                              @bind-Value:after="OnTierChanged"
+                              Label="Subscription Tier"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="Subscription tier">
+                    <FluentOption TOption="string" Value="@("Standard")">Standard</FluentOption>
+                    <FluentOption TOption="string" Value="@("Premium")">Premium</FluentOption>
+                    <FluentOption TOption="string" Value="@("Enterprise")">Enterprise</FluentOption>
+                </FluentSelect>
+                <FluentTextField @bind-Value="_wizardMaxEventsStr"
+                                 Label="Max Events/Day" type="number"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Max Events Per Day" />
+                <FluentTextField @bind-Value="_wizardMaxStorageStr"
+                                 Label="Max Storage (MB)" type="number"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Max Storage in MB" />
+            }
+            else if (_wizardStep == 3)
+            {
+                <FluentTextField @bind-Value="_wizardAdminEmail"
+                                 Label="Admin User Email" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Admin email" />
+                @if (!string.IsNullOrEmpty(_wizardAdminEmail) && !IsValidEmail(_wizardAdminEmail))
+                {
+                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 8px;">
+                        Please enter a valid email address.
+                    </p>
+                }
+                <FluentSelect TOption="string" @bind-Value="_wizardAdminRole"
+                              Label="Admin Role"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="Admin role">
+                    <FluentOption TOption="string" Value="@("Admin")">Admin</FluentOption>
+                    <FluentOption TOption="string" Value="@("Operator")">Operator</FluentOption>
+                    <FluentOption TOption="string" Value="@("ReadOnly")">ReadOnly</FluentOption>
+                </FluentSelect>
+            }
+            else if (_wizardStep == 4)
+            {
+                <p style="margin: 0 0 12px;">
+                    This will create tenant <strong class="monospace">@_wizardTenantId</strong>
+                    with display name <strong>@_wizardDisplayName</strong>
+                    and assign <strong>@_wizardAdminEmail</strong> as the initial administrator.
+                </p>
+                <ul style="font-size: 14px; margin: 0 0 12px;">
+                    <li>Tier: @_wizardTier</li>
+                    <li>Max Events/Day: @_wizardMaxEventsStr</li>
+                    <li>Max Storage: @_wizardMaxStorageStr MB</li>
+                    <li>Admin Role: @_wizardAdminRole</li>
+                </ul>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
+            @if (_wizardStep > 1)
+            {
+                <FluentButton Appearance="Appearance.Outline" OnClick="WizardBack">Back</FluentButton>
+            }
+            @if (_wizardStep < 4)
+            {
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="WizardNext"
+                              Disabled="@(!IsCurrentStepValid())">
+                    Next
+                </FluentButton>
+            }
+            else
+            {
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="OnCreateTenantConfirm"
+                              Disabled="@_isOperating">
+                    @if (_isOperating)
+                    {
+                        <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    }
+                    else
+                    {
+                        <span>Create Tenant</span>
+                    }
+                </FluentButton>
+            }
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Disable Tenant Confirmation Dialog *@
+@if (_showDisableDialog && _lifecycleTarget is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Disable Tenant" @ondialogdismiss="CloseLifecycleDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Disable Tenant @_lifecycleTarget.TenantId?</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>All command processing for this tenant will be suspended. Existing events are preserved.</p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnDisableConfirm"
+                          Disabled="@_isOperating">
+                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                else { <span>Disable</span> }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Enable Tenant Confirmation Dialog *@
+@if (_showEnableDialog && _lifecycleTarget is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Enable Tenant" @ondialogdismiss="CloseLifecycleDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Enable Tenant @_lifecycleTarget.TenantId?</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>Command processing will resume for this tenant.</p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnEnableConfirm"
+                          Disabled="@_isOperating">
+                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                else { <span>Enable</span> }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Add User Dialog *@
+@if (_showAddUserDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Add User" @ondialogdismiss="CloseAddUserDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Add User to @_expandedTenantId</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_addUserEmail"
+                             Label="Email" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="User email" />
+            <FluentSelect TOption="string" @bind-Value="_addUserRole"
+                          Label="Role"
+                          Style="width: 100%; margin-bottom: 12px;"
+                          aria-label="User role">
+                <FluentOption TOption="string" Value="@("Admin")">Admin</FluentOption>
+                <FluentOption TOption="string" Value="@("Operator")">Operator</FluentOption>
+                <FluentOption TOption="string" Value="@("ReadOnly")">ReadOnly</FluentOption>
+            </FluentSelect>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseAddUserDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnAddUserConfirm"
+                          Disabled="@(!IsValidEmail(_addUserEmail) || _isOperating)">
+                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                else { <span>Add User</span> }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Remove User Confirmation Dialog *@
+@if (_showRemoveUserDialog && _removeUserTarget is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Remove User" @ondialogdismiss="CloseRemoveUserDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Remove @_removeUserTarget.Email?</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>This will remove <strong>@_removeUserTarget.Email</strong> from tenant <strong class="monospace">@_expandedTenantId</strong>.</p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseRemoveUserDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnRemoveUserConfirm"
+                          Disabled="@_isOperating">
+                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                else { <span>Remove</span> }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Change Role Dialog *@
+@if (_showChangeRoleDialog && _changeRoleTarget is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Change Role" @ondialogdismiss="CloseChangeRoleDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Change Role for @_changeRoleTarget.Email</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentSelect TOption="string" @bind-Value="_changeRoleNewRole"
+                          Label="New Role"
+                          Style="width: 100%; margin-bottom: 12px;"
+                          aria-label="New role">
+                <FluentOption TOption="string" Value="@("Admin")">Admin</FluentOption>
+                <FluentOption TOption="string" Value="@("Operator")">Operator</FluentOption>
+                <FluentOption TOption="string" Value="@("ReadOnly")">ReadOnly</FluentOption>
+            </FluentSelect>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseChangeRoleDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnChangeRoleConfirm"
+                          Disabled="@(_isOperating || _changeRoleNewRole == _changeRoleTarget?.Role)">
+                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                else { <span>Change Role</span> }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Compare Tenants Dialog *@
+@if (_showCompareDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Compare Tenants" @ondialogdismiss="CloseCompareDialog"
+                  Style="min-width: 500px; max-width: 700px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">@(_comparisonResult is null ? "Select Tenants to Compare" : "Tenant Comparison")</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            @if (_comparisonResult is null)
+            {
+                <p style="font-size: 14px; margin: 0 0 8px;">Select 2-5 tenants to compare:</p>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 8px;">
+                    @foreach (TenantSummary tenant in _tenants ?? [])
+                    {
+                        bool isSelected = _compareSelectedIds.Contains(tenant.TenantId);
+                        bool isDisabled = !isSelected && _compareSelectedIds.Count >= 5;
+                        <FluentCheckbox Value="@isSelected"
+                                        ValueChanged="@(v => OnCompareSelectionChanged(tenant.TenantId, v))"
+                                        Disabled="@isDisabled"
+                                        Label="@($"{tenant.DisplayName} ({tenant.TenantId})")"
+                                        Style="margin-bottom: 4px;" />
+                    }
+                </div>
+            }
+            else
+            {
+                <table class="tenant-comparison-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--neutral-stroke-rest);">Metric</th>
+                            @foreach (TenantSummary t in _comparisonResult.Tenants)
+                            {
+                                <th style="text-align: right; padding: 8px; border-bottom: 2px solid var(--neutral-stroke-rest);" class="monospace">@t.TenantId</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_comparisonResult.Tenants.Count > 0)
+                        {
+                            long maxEvents = _comparisonResult.Tenants.Max(t => t.EventCount);
+                            int maxDomains = _comparisonResult.Tenants.Max(t => t.DomainCount);
+                            long maxStorage = _comparisonResult.Tenants.Max(t => _quotasCache.TryGetValue(t.TenantId, out TenantQuotas? q) ? q.CurrentUsage : 0);
+                            double maxQuotaPct = _comparisonResult.Tenants.Max(t => GetQuotaPercent(t.TenantId));
+                            <tr>
+                                <td style="padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest);">Event Count</td>
+                                @foreach (TenantSummary t in _comparisonResult.Tenants)
+                                {
+                                    <td style="text-align: right; padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest); @(t.EventCount == maxEvents ? "font-weight: bold;" : "")">@t.EventCount.ToString("N0")</td>
+                                }
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest);">Domain Count</td>
+                                @foreach (TenantSummary t in _comparisonResult.Tenants)
+                                {
+                                    <td style="text-align: right; padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest); @(t.DomainCount == maxDomains ? "font-weight: bold;" : "")">@t.DomainCount.ToString("N0")</td>
+                                }
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest);">Storage Usage</td>
+                                @foreach (TenantSummary t in _comparisonResult.Tenants)
+                                {
+                                    long storageVal = _quotasCache.TryGetValue(t.TenantId, out TenantQuotas? sq) ? sq.CurrentUsage : 0;
+                                    <td style="text-align: right; padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest); @(storageVal == maxStorage && maxStorage > 0 ? "font-weight: bold;" : "")">@TimeFormatHelper.FormatBytes(storageVal)</td>
+                                }
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest);">Quota Usage %</td>
+                                @foreach (TenantSummary t in _comparisonResult.Tenants)
+                                {
+                                    double pct = GetQuotaPercent(t.TenantId);
+                                    <td style="text-align: right; padding: 8px; border-bottom: 1px solid var(--neutral-stroke-rest); @(pct == maxQuotaPct && maxQuotaPct > 0 ? "font-weight: bold;" : "")">@(pct >= 0 ? $"{pct:F1}%" : "N/A")</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            @if (_comparisonResult is not null)
+            {
+                <FluentButton Appearance="Appearance.Outline" OnClick="ResetComparison">Back</FluentButton>
+            }
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCompareDialog">Close</FluentButton>
+            @if (_comparisonResult is null)
+            {
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="OnCompareConfirm"
+                              Disabled="@(_compareSelectedIds.Count < 2 || _isOperating)">
+                    @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                    else { <span>Compare</span> }
+                </FluentButton>
+            }
+        </FluentDialogFooter>
+    </FluentDialog>
+}
 
 @code {
-    private bool _canManageTenants;
+    private static readonly System.Text.RegularExpressions.Regex TenantIdRegex = new(@"^[a-z0-9]+(-[a-z0-9]+)*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex EmailRegex = new(@"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
-    private static RenderFragment TenantsIcon => builder => builder.AddMarkupContent(0, "&#128101;");
+    // ---- Data state ----
+    private IReadOnlyList<TenantSummary>? _tenants;
+    private IReadOnlyList<TenantSummary> _filteredTenants = [];
+    private Dictionary<string, TenantQuotas> _quotasCache = [];
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _disposed;
+    private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+    private bool _showCreateAction;
+
+    // ---- Filter state ----
+    private string _statusFilterInput = "All";
+    private string? _searchFilter;
+    private string? _searchFilterInput;
+    private Timer? _debounceTimer;
+    private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _operationCts;
+    private bool _isOperating;
+
+    // ---- Detail panel state ----
+    private string? _expandedTenantId;
+    private TenantDetail? _expandedDetail;
+    private IReadOnlyList<TenantUser> _expandedUsers = [];
+    private bool _isLoadingDetail;
+    private bool _usersUnavailable;
+    private CancellationTokenSource? _detailCts;
+
+    // ---- Create tenant wizard state ----
+    private bool _showCreateDialog;
+    private int _wizardStep = 1;
+    private string? _wizardTenantId;
+    private string? _wizardDisplayName;
+    private string _wizardTier = "Standard";
+    private string _wizardMaxEventsStr = "10000";
+    private string _wizardMaxStorageStr = "1024";
+    private string? _wizardAdminEmail;
+    private string _wizardAdminRole = "Admin";
+
+    // ---- Lifecycle dialog state ----
+    private bool _showDisableDialog;
+    private bool _showEnableDialog;
+    private TenantSummary? _lifecycleTarget;
+
+    // ---- User management dialog state ----
+    private bool _showAddUserDialog;
+    private string? _addUserEmail;
+    private string _addUserRole = "ReadOnly";
+    private bool _showRemoveUserDialog;
+    private TenantUser? _removeUserTarget;
+    private bool _showChangeRoleDialog;
+    private TenantUser? _changeRoleTarget;
+    private string _changeRoleNewRole = "ReadOnly";
+
+    // ---- Compare dialog state ----
+    private bool _showCompareDialog;
+    private HashSet<string> _compareSelectedIds = [];
+    private TenantComparison? _comparisonResult;
+
+    // ---- Computed properties ----
+    private int TotalCount => (_tenants ?? []).Count;
+    private int ActiveCount => (_tenants ?? []).Count(t => t.Status == TenantStatusType.Active);
+    private int SuspendedCount => (_tenants ?? []).Count(t => t.Status == TenantStatusType.Suspended);
+    private int OnboardingCount => (_tenants ?? []).Count(t => t.Status == TenantStatusType.Onboarding);
 
     protected override async Task OnInitializedAsync()
     {
-        _canManageTenants = await UserContext.HasMinimumRoleAsync(AdminRole.Operator).ConfigureAwait(false);
+        ReadUrlParameters();
+        _searchFilterInput = _searchFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        _isLoading = _tenants is null;
+        try
+        {
+            IReadOnlyList<TenantSummary> result = await TenantApi
+                .ListTenantsAsync(ct)
+                .ConfigureAwait(false);
+            _tenants = result;
+
+            // Load quotas in parallel for all tenants
+            Dictionary<string, TenantQuotas> quotas = [];
+            await Task.WhenAll(result.Select(async t =>
+            {
+                try
+                {
+                    TenantQuotas q = await TenantApi.GetTenantQuotasAsync(t.TenantId, ct).ConfigureAwait(false);
+                    lock (quotas) { quotas[t.TenantId] = q; }
+                }
+                catch (Exception)
+                {
+                    // Ignore per-tenant quota fetch failures
+                }
+            })).ConfigureAwait(false);
+
+            _quotasCache = quotas;
+            UpdateFilteredTenants();
+            _apiUnavailable = false;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Insufficient permissions to view tenants.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = $"Unable to load tenant data ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Tenants service is not responding. Tenant data may be stale or unavailable.";
+        }
+        finally
+        {
+            _isLoading = false;
+            _showCreateAction = _tenants is not null && _tenants.Count == 0;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void UpdateFilteredTenants()
+    {
+        IEnumerable<TenantSummary> filtered = _tenants ?? [];
+
+        // Status filter
+        if (_statusFilterInput != "All" && Enum.TryParse<TenantStatusType>(_statusFilterInput, out TenantStatusType statusFilter))
+        {
+            filtered = filtered.Where(t => t.Status == statusFilter);
+        }
+
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(_searchFilter))
+        {
+            string search = _searchFilter.Trim();
+            filtered = filtered.Where(t =>
+                t.TenantId.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                || t.DisplayName.StartsWith(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredTenants = filtered.ToList();
+    }
+
+    private async Task OnManualRefresh() => await LoadDataAsync();
+
+    private void OnStatusFilterChanged()
+    {
+        UpdateFilteredTenants();
+        UpdateUrl();
+        StateHasChanged();
+    }
+
+    private void OnSearchFilterChanged()
+    {
+        _debounceTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnDebounceElapsed(object? state)
+    {
+        if (_disposed) { return; }
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed) { return; }
+            _searchFilter = string.IsNullOrWhiteSpace(_searchFilterInput) ? null : _searchFilterInput.Trim();
+            UpdateFilteredTenants();
+            UpdateUrl();
+            StateHasChanged();
+        });
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        string? status = query["status"];
+        if (!string.IsNullOrEmpty(status) && Enum.TryParse<TenantStatusType>(status, out _))
+        {
+            _statusFilterInput = status;
+        }
+
+        _searchFilter = query["search"];
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (_statusFilterInput != "All")
+        {
+            queryParams.Add($"status={Uri.EscapeDataString(_statusFilterInput)}");
+        }
+
+        if (!string.IsNullOrEmpty(_searchFilter))
+        {
+            queryParams.Add($"search={Uri.EscapeDataString(_searchFilter)}");
+        }
+
+        string url = queryParams.Count > 0 ? $"/tenants?{string.Join('&', queryParams)}" : "/tenants";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    // ---- Row click / detail panel ----
+    private async Task OnRowClick(TenantSummary? tenant)
+    {
+        if (tenant is null) { return; }
+
+        if (_expandedTenantId == tenant.TenantId)
+        {
+            _expandedTenantId = null;
+            _expandedDetail = null;
+            _expandedUsers = [];
+            return;
+        }
+
+        _detailCts?.Cancel();
+        _detailCts?.Dispose();
+        _detailCts = new CancellationTokenSource();
+        CancellationToken ct = _detailCts.Token;
+
+        _expandedTenantId = tenant.TenantId;
+        _expandedDetail = null;
+        _expandedUsers = [];
+        _usersUnavailable = false;
+        _isLoadingDetail = true;
+        StateHasChanged();
+
+        try
+        {
+            Task<TenantDetail?> detailTask = TenantApi.GetTenantDetailAsync(tenant.TenantId, ct);
+            Task<IReadOnlyList<TenantUser>> usersTask = TenantApi.GetTenantUsersAsync(tenant.TenantId, ct);
+
+            try
+            {
+                _expandedDetail = await detailTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                // Detail load failed — shows fallback message
+            }
+
+            try
+            {
+                _expandedUsers = await usersTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                _expandedUsers = [];
+                _usersUnavailable = true;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        finally
+        {
+            _isLoadingDetail = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ---- Status badge helper ----
+    private static (Appearance Appearance, string CssClass) GetStatusBadge(TenantStatusType status) =>
+        status switch
+        {
+            TenantStatusType.Active => (Appearance.Accent, "tenant-status-active"),
+            TenantStatusType.Suspended => (Appearance.Accent, "tenant-status-suspended"),
+            TenantStatusType.Onboarding => (Appearance.Lightweight, "tenant-status-onboarding"),
+            _ => (Appearance.Accent, ""),
+        };
+
+    // ---- Create Tenant Wizard ----
+    private void OpenCreateDialog()
+    {
+        _wizardStep = 1;
+        _wizardTenantId = string.Empty;
+        _wizardDisplayName = string.Empty;
+        _wizardTier = "Standard";
+        _wizardMaxEventsStr = "10000";
+        _wizardMaxStorageStr = "1024";
+        _wizardAdminEmail = string.Empty;
+        _wizardAdminRole = "Admin";
+        _showCreateDialog = true;
+    }
+
+    private void CloseCreateDialog() => _showCreateDialog = false;
+    private void WizardNext() { if (IsCurrentStepValid()) { _wizardStep++; } }
+    private void WizardBack() { if (_wizardStep > 1) { _wizardStep--; } }
+
+    private void OnTierChanged()
+    {
+        (string maxEvents, string maxStorage) = _wizardTier switch
+        {
+            "Standard" => ("10000", "1024"),
+            "Premium" => ("100000", "10240"),
+            "Enterprise" => ("1000000", "102400"),
+            _ => ("10000", "1024"),
+        };
+        _wizardMaxEventsStr = maxEvents;
+        _wizardMaxStorageStr = maxStorage;
+    }
+
+    private bool IsCurrentStepValid() => _wizardStep switch
+    {
+        1 => !string.IsNullOrWhiteSpace(_wizardTenantId) && IsValidTenantId(_wizardTenantId) && !string.IsNullOrWhiteSpace(_wizardDisplayName),
+        2 => !string.IsNullOrWhiteSpace(_wizardTier) && long.TryParse(_wizardMaxEventsStr, out long ev) && ev > 0 && long.TryParse(_wizardMaxStorageStr, out long st) && st > 0,
+        3 => !string.IsNullOrWhiteSpace(_wizardAdminEmail) && IsValidEmail(_wizardAdminEmail) && !string.IsNullOrWhiteSpace(_wizardAdminRole),
+        _ => true,
+    };
+
+    private static bool IsValidTenantId(string? id)
+        => !string.IsNullOrWhiteSpace(id) && TenantIdRegex.IsMatch(id);
+
+    private static bool IsValidEmail(string? email)
+        => !string.IsNullOrWhiteSpace(email) && EmailRegex.IsMatch(email);
+
+    private async Task OnCreateTenantConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+
+        try
+        {
+            long maxEvents = long.Parse(_wizardMaxEventsStr, System.Globalization.CultureInfo.InvariantCulture);
+            long storageMb = long.Parse(_wizardMaxStorageStr, System.Globalization.CultureInfo.InvariantCulture);
+            long maxStorageBytes = checked(storageMb * 1024 * 1024); // MB to bytes
+
+            AdminOperationResult? createResult = await TenantApi.CreateTenantAsync(
+                new CreateTenantRequest(_wizardTenantId!.Trim(), _wizardDisplayName!.Trim(), _wizardTier, maxEvents, maxStorageBytes),
+                _operationCts.Token);
+
+            if (createResult?.Success != true)
+            {
+                ToastService.ShowError(createResult?.Message ?? "Failed to create tenant.");
+                return;
+            }
+
+            // Try to add initial admin user
+            try
+            {
+                AdminOperationResult? userResult = await TenantApi.AddUserToTenantAsync(
+                    _wizardTenantId!.Trim(), _wizardAdminEmail!.Trim(), _wizardAdminRole,
+                    _operationCts.Token);
+
+                if (userResult?.Success != true)
+                {
+                    ToastService.ShowWarning($"Tenant {_wizardTenantId} created, but failed to add initial admin user: {userResult?.Message ?? "Unknown error"}. Add the user manually from the tenant detail panel.");
+                    _showCreateDialog = false;
+                    await LoadDataAsync();
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowWarning($"Tenant {_wizardTenantId} created, but failed to add initial admin user: {ex.Message}. Add the user manually from the tenant detail panel.");
+                _showCreateDialog = false;
+                await LoadDataAsync();
+                return;
+            }
+
+            ToastService.ShowSuccess($"Tenant {_wizardTenantId} created successfully.");
+            _showCreateDialog = false;
+            await LoadDataAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (OverflowException)
+        {
+            ToastService.ShowError("Max storage value is too large. Please reduce the value.");
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Tenants service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to create tenant: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ---- Disable/Enable lifecycle ----
+    private void OpenDisableDialog(TenantSummary tenant)
+    {
+        _lifecycleTarget = tenant;
+        _showDisableDialog = true;
+    }
+
+    private void OpenEnableDialog(TenantSummary tenant)
+    {
+        _lifecycleTarget = tenant;
+        _showEnableDialog = true;
+    }
+
+    private void CloseLifecycleDialog()
+    {
+        _showDisableDialog = false;
+        _showEnableDialog = false;
+        _lifecycleTarget = null;
+    }
+
+    private async Task OnDisableConfirm()
+    {
+        if (_lifecycleTarget is null) { return; }
+        await ExecuteLifecycleAction(
+            ct => TenantApi.DisableTenantAsync(_lifecycleTarget.TenantId, ct),
+            $"Tenant {_lifecycleTarget.TenantId} disabled.",
+            "Failed to disable tenant.");
+    }
+
+    private async Task OnEnableConfirm()
+    {
+        if (_lifecycleTarget is null) { return; }
+        await ExecuteLifecycleAction(
+            ct => TenantApi.EnableTenantAsync(_lifecycleTarget.TenantId, ct),
+            $"Tenant {_lifecycleTarget.TenantId} enabled.",
+            "Failed to enable tenant.");
+    }
+
+    private async Task ExecuteLifecycleAction(Func<CancellationToken, Task<AdminOperationResult?>> action, string successMsg, string failMsg)
+    {
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+
+        try
+        {
+            AdminOperationResult? result = await action(_operationCts.Token);
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess(successMsg);
+                CloseLifecycleDialog();
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? failMsg);
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Tenants service unavailable. Try again later.");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"{failMsg}: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ---- User management ----
+    private void OpenAddUserDialog()
+    {
+        _addUserEmail = string.Empty;
+        _addUserRole = "ReadOnly";
+        _showAddUserDialog = true;
+    }
+
+    private void CloseAddUserDialog() => _showAddUserDialog = false;
+
+    private async Task OnAddUserConfirm()
+    {
+        if (_expandedTenantId is null) { return; }
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+
+        try
+        {
+            AdminOperationResult? result = await TenantApi.AddUserToTenantAsync(
+                _expandedTenantId, _addUserEmail!.Trim(), _addUserRole, _operationCts.Token);
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"User {_addUserEmail} added.");
+                _showAddUserDialog = false;
+                await ReloadDetailPanel();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to add user.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to add user: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OpenRemoveUserDialog(TenantUser user)
+    {
+        _removeUserTarget = user;
+        _showRemoveUserDialog = true;
+    }
+
+    private void CloseRemoveUserDialog() => _showRemoveUserDialog = false;
+
+    private async Task OnRemoveUserConfirm()
+    {
+        if (_expandedTenantId is null || _removeUserTarget is null) { return; }
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+
+        try
+        {
+            AdminOperationResult? result = await TenantApi.RemoveUserFromTenantAsync(
+                _expandedTenantId, _removeUserTarget.Email, _operationCts.Token);
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"User {_removeUserTarget.Email} removed.");
+                _showRemoveUserDialog = false;
+                _removeUserTarget = null;
+                await ReloadDetailPanel();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to remove user.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to remove user: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OpenChangeRoleDialog(TenantUser user)
+    {
+        _changeRoleTarget = user;
+        _changeRoleNewRole = user.Role;
+        _showChangeRoleDialog = true;
+    }
+
+    private void CloseChangeRoleDialog() => _showChangeRoleDialog = false;
+
+    private async Task OnChangeRoleConfirm()
+    {
+        if (_expandedTenantId is null || _changeRoleTarget is null) { return; }
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+
+        try
+        {
+            AdminOperationResult? result = await TenantApi.ChangeUserRoleAsync(
+                _expandedTenantId, _changeRoleTarget.Email, _changeRoleNewRole, _operationCts.Token);
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"Role changed for {_changeRoleTarget.Email}.");
+                _showChangeRoleDialog = false;
+                _changeRoleTarget = null;
+                await ReloadDetailPanel();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to change role.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to change role: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ReloadDetailPanel()
+    {
+        if (_expandedTenantId is null) { return; }
+        try
+        {
+            _expandedUsers = await TenantApi.GetTenantUsersAsync(_expandedTenantId).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Ignore — keeps existing data
+        }
+    }
+
+    // ---- Compare tenants ----
+    private void OpenCompareDialog()
+    {
+        _compareSelectedIds = [];
+        _comparisonResult = null;
+        _showCompareDialog = true;
+    }
+
+    private void CloseCompareDialog() => _showCompareDialog = false;
+    private void ResetComparison() => _comparisonResult = null;
+
+    private void OnCompareSelectionChanged(string tenantId, bool isSelected)
+    {
+        if (isSelected)
+        {
+            _compareSelectedIds.Add(tenantId);
+        }
+        else
+        {
+            _compareSelectedIds.Remove(tenantId);
+        }
+    }
+
+    private async Task OnCompareConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+
+        try
+        {
+            _comparisonResult = await TenantApi.CompareTenantUsageAsync(
+                _compareSelectedIds.ToList(), _operationCts.Token);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Comparison failed: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private double GetQuotaPercent(string tenantId)
+    {
+        if (!_quotasCache.TryGetValue(tenantId, out TenantQuotas? q) || q.MaxStorageBytes <= 0)
+        {
+            return -1; // N/A
+        }
+
+        return (double)q.CurrentUsage / q.MaxStorageBytes * 100;
+    }
+
+    // ---- Cleanup ----
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _detailCts?.Cancel();
+        _detailCts?.Dispose();
+        _debounceTimer?.Dispose();
+        return ValueTask.CompletedTask;
     }
 }

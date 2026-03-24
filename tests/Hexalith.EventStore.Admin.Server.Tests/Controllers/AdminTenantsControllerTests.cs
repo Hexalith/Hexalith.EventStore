@@ -17,11 +17,12 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Controllers;
 public class AdminTenantsControllerTests
 {
     private readonly ITenantQueryService _service = Substitute.For<ITenantQueryService>();
+    private readonly ITenantCommandService _commandService = Substitute.For<ITenantCommandService>();
     private readonly AdminTenantsController _sut;
 
     public AdminTenantsControllerTests()
     {
-        _sut = new AdminTenantsController(_service, NullLogger<AdminTenantsController>.Instance);
+        _sut = new AdminTenantsController(_service, _commandService, NullLogger<AdminTenantsController>.Instance);
         _sut.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

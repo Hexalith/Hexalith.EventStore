@@ -1,6 +1,6 @@
 # Story 16.5: Tenant Management, Quotas, Onboarding & Comparison
 
-Status: ready-for-dev
+Status: done
 
 Size: Large — ~22 new/modified files, 7 task groups, 16 ACs, ~31 tests (~14-18 hours estimated). Core new work: Tenant DTOs + request DTOs + command service interfaces (Task 1), DaprTenantCommandService + controller write endpoints (Task 2), AdminTenantApiClient (Task 3), Tenants.razor full page with detail panel, user management, onboarding wizard, comparison view (Task 4), bUnit tests (Task 5), nav/breadcrumb/CSS updates (Task 6), Aspire topology verification (Task 7).
 
@@ -56,8 +56,8 @@ so that **I can perform self-service tenant administration — onboarding new cu
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Expand Tenant DTOs and add command service interface** (AC: 1, 4, 5, 6, 7, 8, 9)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/TenantDetail.cs` — record:
+- [x] **Task 1: Expand Tenant DTOs and add command service interface** (AC: 1, 4, 5, 6, 7, 8, 9)
+  - [x]1.1 Create `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/TenantDetail.cs` — record:
     ```csharp
     /// <summary>
     /// Detailed tenant information including quota and configuration.
@@ -82,7 +82,7 @@ so that **I can perform self-service tenant administration — onboarding new cu
         TenantQuotas? Quotas,
         string? SubscriptionTier);
     ```
-  - [ ] 1.2 Create `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/TenantUser.cs` — record:
+  - [x]1.2 Create `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/TenantUser.cs` — record:
     ```csharp
     /// <summary>
     /// A user assigned to a tenant with their role.
@@ -92,7 +92,7 @@ so that **I can perform self-service tenant administration — onboarding new cu
     /// <param name="AddedAtUtc">When the user was added to this tenant.</param>
     public record TenantUser(string Email, string Role, DateTimeOffset AddedAtUtc);
     ```
-  - [ ] 1.3 Create `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/CreateTenantRequest.cs` — record:
+  - [x]1.3 Create `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/CreateTenantRequest.cs` — record:
     ```csharp
     /// <summary>
     /// Request to create a new tenant.
@@ -109,7 +109,7 @@ so that **I can perform self-service tenant administration — onboarding new cu
         long MaxEventsPerDay,
         long MaxStorageBytes);
     ```
-  - [ ] 1.4 Create user operation request DTOs in `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/`:
+  - [x]1.4 Create user operation request DTOs in `src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/`:
     ```csharp
     /// <summary>Request to add a user to a tenant.</summary>
     public record AddTenantUserRequest(string Email, string Role);
@@ -121,7 +121,7 @@ so that **I can perform self-service tenant administration — onboarding new cu
     public record ChangeTenantUserRoleRequest(string Email, string NewRole);
     ```
     **Security rationale:** Email addresses must be in request body, never in URL paths or query parameters. URLs appear in server logs, browser history, proxy logs, and CDN caches. PII in URLs violates security best practices.
-  - [ ] 1.5 Create `src/Hexalith.EventStore.Admin.Abstractions/Services/ITenantCommandService.cs`:
+  - [x]1.5 Create `src/Hexalith.EventStore.Admin.Abstractions/Services/ITenantCommandService.cs`:
     ```csharp
     using Hexalith.EventStore.Admin.Abstractions.Models.Common;
     using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
@@ -153,7 +153,7 @@ so that **I can perform self-service tenant administration — onboarding new cu
         Task<AdminOperationResult> ChangeUserRoleAsync(string tenantId, string email, string newRole, CancellationToken ct = default);
     }
     ```
-  - [ ] 1.6 Expand `ITenantQueryService` — add two methods:
+  - [x]1.6 Expand `ITenantQueryService` — add two methods:
     ```csharp
     /// <summary>Gets detailed tenant information including quotas.</summary>
     Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default);
@@ -161,10 +161,10 @@ so that **I can perform self-service tenant administration — onboarding new cu
     /// <summary>Gets users assigned to a tenant.</summary>
     Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default);
     ```
-  - [ ] 1.7 **Checkpoint**: All DTOs and interfaces compile, follow existing record patterns (see `TenantSummary.cs`, `BackupJob.cs`).
+  - [x]1.7 **Checkpoint**: All DTOs and interfaces compile, follow existing record patterns (see `TenantSummary.cs`, `BackupJob.cs`).
 
-- [ ] **Task 2: Implement server-side tenant command service and controller endpoints** (AC: 5, 6, 7, 13, 16)
-  - [ ] 2.1 Implement `DaprTenantCommandService` in `src/Hexalith.EventStore.Admin.Server/Services/DaprTenantCommandService.cs`. Follow `DaprTenantQueryService` pattern exactly — constructor takes `DaprClient`, `IOptions<AdminServerOptions>`, `IAdminAuthContext`, `ILogger`. All methods use `InvokeTenantServiceAsync<T>` helper. Endpoint mapping:
+- [x] **Task 2: Implement server-side tenant command service and controller endpoints** (AC: 5, 6, 7, 13, 16)
+  - [x]2.1 Implement `DaprTenantCommandService` in `src/Hexalith.EventStore.Admin.Server/Services/DaprTenantCommandService.cs`. Follow `DaprTenantQueryService` pattern exactly — constructor takes `DaprClient`, `IOptions<AdminServerOptions>`, `IAdminAuthContext`, `ILogger`. All methods use `InvokeTenantServiceAsync<T>` helper. Endpoint mapping:
     - `CreateTenantAsync` → POST `api/v1/tenants` on Hexalith.Tenants service
     - `DisableTenantAsync` → POST `api/v1/tenants/{tenantId}/disable`
     - `EnableTenantAsync` → POST `api/v1/tenants/{tenantId}/enable`
@@ -173,10 +173,10 @@ so that **I can perform self-service tenant administration — onboarding new cu
     - `ChangeUserRoleAsync` → POST `api/v1/tenants/{tenantId}/change-role` (body: `ChangeTenantUserRoleRequest`)
     All methods catch exceptions gracefully and return `AdminOperationResult(Success: false, Message: "Tenants service unavailable")` when the peer service is down. JWT is forwarded via `_authContext.GetToken()`.
     **IMPORTANT — Verify Hexalith.Tenants API routes before implementation:** The endpoint paths above are assumed based on REST conventions. Before coding, verify the actual routes by checking the Hexalith.Tenants repository's controller source or OpenAPI spec. If routes differ, adjust `DaprTenantCommandService` endpoint mapping accordingly. Mismatched routes will result in 404 errors from DAPR service invocation.
-  - [ ] 2.2 Add `GetTenantDetailAsync` and `GetTenantUsersAsync` to `DaprTenantQueryService`:
+  - [x]2.2 Add `GetTenantDetailAsync` and `GetTenantUsersAsync` to `DaprTenantQueryService`:
     - `GetTenantDetailAsync` → GET `api/v1/tenants/{tenantId}` — return null on 404
     - `GetTenantUsersAsync` → GET `api/v1/tenants/{tenantId}/users` — return empty list on error
-  - [ ] 2.3 Add write endpoints to `AdminTenantsController`:
+  - [x]2.3 Add write endpoints to `AdminTenantsController`:
     ```csharp
     [HttpPost]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
@@ -216,15 +216,15 @@ so that **I can perform self-service tenant administration — onboarding new cu
     public async Task<IActionResult> GetTenantUsers(string tenantId, CancellationToken ct)
     ```
     All write endpoints require `AdminAuthorizationPolicies.Admin`. All read endpoints require `AdminAuthorizationPolicies.ReadOnly`. Follow existing `AdminTenantsController` error handling pattern.
-  - [ ] 2.4 Register `ITenantCommandService` in `ServiceCollectionExtensions.cs`:
+  - [x]2.4 Register `ITenantCommandService` in `ServiceCollectionExtensions.cs`:
     ```csharp
     services.TryAddScoped<ITenantCommandService, DaprTenantCommandService>();
     ```
-  - [ ] 2.5 **Checkpoint**: All endpoints compile, follow existing controller patterns, correct auth policies applied.
+  - [x]2.5 **Checkpoint**: All endpoints compile, follow existing controller patterns, correct auth policies applied.
 
-- [ ] **Task 3: Create AdminTenantApiClient** (AC: 1, 4, 5, 6, 7, 8, 13, 16)
-  - [ ] 3.1 Create `src/Hexalith.EventStore.Admin.UI/Services/AdminTenantApiClient.cs` following `AdminSnapshotApiClient` pattern: constructor takes `IHttpClientFactory` + `ILogger<AdminTenantApiClient>`, uses named client `"AdminApi"`. Mark all public methods `virtual` for NSubstitute mocking.
-  - [ ] 3.2 Read methods:
+- [x] **Task 3: Create AdminTenantApiClient** (AC: 1, 4, 5, 6, 7, 8, 13, 16)
+  - [x]3.1 Create `src/Hexalith.EventStore.Admin.UI/Services/AdminTenantApiClient.cs` following `AdminSnapshotApiClient` pattern: constructor takes `IHttpClientFactory` + `ILogger<AdminTenantApiClient>`, uses named client `"AdminApi"`. Mark all public methods `virtual` for NSubstitute mocking.
+  - [x]3.2 Read methods:
     ```csharp
     public virtual async Task<IReadOnlyList<TenantSummary>> ListTenantsAsync(CancellationToken ct = default)
     // → GET api/v1/admin/tenants
@@ -243,7 +243,7 @@ so that **I can perform self-service tenant administration — onboarding new cu
     // Body: serialize as JSON array of tenant IDs (the server-side TenantCompareRequest in Admin.Server/Models/ wraps this).
     // Client sends: PostAsJsonAsync("api/v1/admin/tenants/compare", new { TenantIds = tenantIds })
     ```
-  - [ ] 3.3 Write methods:
+  - [x]3.3 Write methods:
     ```csharp
     public virtual async Task<AdminOperationResult?> CreateTenantAsync(CreateTenantRequest request, CancellationToken ct = default)
     // → POST api/v1/admin/tenants (body: CreateTenantRequest)
@@ -263,83 +263,83 @@ so that **I can perform self-service tenant administration — onboarding new cu
     public virtual async Task<AdminOperationResult?> ChangeUserRoleAsync(string tenantId, string email, string newRole, CancellationToken ct = default)
     // → POST api/v1/admin/tenants/{tenantId}/change-role (body: ChangeTenantUserRoleRequest)
     ```
-  - [ ] 3.4 Error handling: copy `HandleErrorStatus` from `AdminSnapshotApiClient` (maps 401, 403, 503).
-  - [ ] 3.5 Register `AdminTenantApiClient` as scoped in `Program.cs`: `builder.Services.AddScoped<AdminTenantApiClient>();`
-  - [ ] 3.6 **Checkpoint**: Client builds, all methods callable, errors handled gracefully.
+  - [x]3.4 Error handling: copy `HandleErrorStatus` from `AdminSnapshotApiClient` (maps 401, 403, 503).
+  - [x]3.5 Register `AdminTenantApiClient` as scoped in `Program.cs`: `builder.Services.AddScoped<AdminTenantApiClient>();`
+  - [x]3.6 **Checkpoint**: Client builds, all methods callable, errors handled gracefully.
 
-- [ ] **Task 4: Implement Tenants.razor page** (AC: 1-16)
-  - [ ] 4.1 **Replace** the existing placeholder in `src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor` with full implementation. Inject: `AdminTenantApiClient`, `NavigationManager`, `IToastService`. Implement `IAsyncDisposable`.
-  - [ ] 4.2 Implement `OnInitializedAsync`: parse URL filters (`?status=`, `?search=`), load tenant list via `ListTenantsAsync`.
-  - [ ] 4.3 Render 4 stat cards in `FluentGrid` (xs=6, sm=6, md=3): Total Tenants, Active (Success), Suspended (Error when > 0), Onboarding (Warning when > 0). Show `SkeletonCard` during loading.
-  - [ ] 4.4 Render filter bar: `FluentSelect` for status filter (All/Active/Suspended/Onboarding) + `FluentTextField` for search with 300ms debounce. On filter change: update URL, re-filter displayed data (client-side filtering is sufficient — tenant lists are small).
-  - [ ] 4.5 Render `FluentDataGrid` with tenant list. Columns: Tenant ID (monospace), Display Name, Status (badge), Domains (right-aligned), Events (right-aligned), Quota Usage (progress bar or "Unlimited"), Actions (lifecycle + expand). Default sort: Display Name ascending. Clicking a row toggles detail expansion.
-  - [ ] 4.6 Implement `EmptyState` when no tenants exist (reuse existing `EmptyState` component with building icon).
-  - [ ] 4.7 Implement inline detail expansion panel: When a tenant row is clicked, expand a detail section below the row showing tenant details + quota info + user list. **This is structurally different from the simple error-detail toggle in Compaction/Backups** — it requires async data loading into the expanded row. Implementation: track `_expandedTenantId` (string?) and `_expandedDetail` (TenantDetail?) / `_expandedUsers` (IReadOnlyList<TenantUser>?) / `_isLoadingDetail` (bool) state variables. On row click: if same tenant → collapse (set to null). If different → **cancel any in-flight detail load** (`_detailCts?.Cancel(); _detailCts = new CancellationTokenSource();`) to prevent race conditions when user clicks rapidly between rows. Set `_expandedTenantId`, set `_isLoadingDetail = true`, call `GetTenantDetailAsync` + `GetTenantUsersAsync` in parallel with `_detailCts.Token`, then set `_isLoadingDetail = false`. Render: below the expanded row, show `FluentProgressRing` while loading, then detail content. If Tenants service is unreachable, show inline warning "Tenant details unavailable — Tenants service is not responding."
-  - [ ] 4.8 Implement tenant user management within the detail panel. **Use stacked sections with `<h3>` headers (Summary, Quotas, Users), not `FluentTabs`** — tabs inside an expanded grid row have rendering quirks in FluentUI v4. User section renders a `FluentDataGrid` for users (Email, Role badge, Added Date). **Ensure inner user `FluentDataGrid` uses a distinct `TGridItem="TenantUser"` type to avoid column ID conflicts with the outer tenant grid.** Admin-only "Add User" button, per-row "Remove" and "Change Role" actions. "Add User" opens dialog: Email (required, email format) + Role dropdown (Admin/Operator/ReadOnly). "Remove" shows confirmation dialog. "Change Role" opens dialog with role dropdown.
-  - [ ] 4.9 Implement "Create Tenant" button in page header (Admin-only). Multi-step `FluentDialog` (4 steps): Basics → Configuration → Initial Admin → Confirmation. **This is the most complex dialog in Epic 16 — 4 steps vs 2 in Backups restore. Implement the wizard inline in Tenants.razor — do NOT extract a reusable wizard component.** Implementation: use `_wizardStep` (int, 1-4) state variable. Per-step state: `_wizardTenantId`, `_wizardDisplayName`, `_wizardTier`, `_wizardMaxEvents`, `_wizardMaxStorage`, `_wizardAdminEmail`, `_wizardAdminRole`. **On dialog open, reset all `_wizard*` fields to defaults and set `_wizardStep = 1`** — prevents stale data from a previous cancelled attempt. Per-step validation methods: `IsStep1Valid()` (tenantId non-empty, URL-safe regex `^[a-z0-9-]+$`, displayName non-empty), `IsStep2Valid()` (tier selected, quotas > 0), `IsStep3Valid()` (email format regex, role selected). **Tenant ID regex:** Verify this regex matches what Hexalith.Tenants accepts for TenantId — check the `CreateTenantValidator` in Hexalith.Tenants.Contracts. If they allow dots or underscores, adjust. "Next" button disabled until current step is valid. "Back" preserves entered values. **FluentNumberField:** Verify `FluentNumberField` exists in FluentUI v4.13.2 before using. If not available, use `FluentTextField` with `type="number"` and manual `long.TryParse` conversion. On step 4 confirm: calls `CreateTenantAsync` then `AddUserToTenantAsync`. Subscription tier pre-fills (hardcoded defaults for v1 — not backend-driven): Standard (10K events/day, 1 GB), Premium (100K events/day, 10 GB), Enterprise (1M events/day, 100 GB). **Partial failure handling:** If create succeeds but add-user fails, show warning toast and close dialog (tenant exists, user can be added from detail panel). Full success → close + success toast + reload. Create failure → error toast + stay on step.
-  - [ ] 4.10 Implement "Disable" / "Enable" per-row action buttons (Admin-only). Confirmation dialogs with clear warnings. Disable: "All command processing for this tenant will be suspended. Existing events are preserved." Enable: "Command processing will resume."
-  - [ ] 4.11 Implement "Compare Tenants" button. Opens dialog with multi-select tenant list (checkboxes, min 2, max 5). **Tenant selection list must have `max-height: 300px; overflow-y: auto;`** to handle environments with many tenants gracefully. Enforce max 5 selection client-side (disable unchecked items when 5 are selected). On confirm: calls `CompareTenantUsageAsync`. Results display in a comparison table: rows = metrics, columns = selected tenants. Highest value per row highlighted.
-  - [ ] 4.12 Implement quota progress bars: green < 75%, orange 75-90%, red > 90%. Use `FluentProgressBar` with `aria-label`. Show "Unlimited" when max is 0.
-  - [ ] 4.13 Implement URL state management: `ReadUrlParameters()` on init, `UpdateUrl()` on filter change with `replace: true`.
-  - [ ] 4.14 Add manual "Refresh" button, `IssueBanner` for error state (with specific message for Tenants service unavailability vs general errors), `IAsyncDisposable` for Timer + CancellationTokenSource cleanup.
-  - [ ] 4.15 Add action buttons in page header, gated by `AuthorizedView MinimumRole="AdminRole.Admin"`:
+- [x] **Task 4: Implement Tenants.razor page** (AC: 1-16)
+  - [x]4.1 **Replace** the existing placeholder in `src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor` with full implementation. Inject: `AdminTenantApiClient`, `NavigationManager`, `IToastService`. Implement `IAsyncDisposable`.
+  - [x]4.2 Implement `OnInitializedAsync`: parse URL filters (`?status=`, `?search=`), load tenant list via `ListTenantsAsync`.
+  - [x]4.3 Render 4 stat cards in `FluentGrid` (xs=6, sm=6, md=3): Total Tenants, Active (Success), Suspended (Error when > 0), Onboarding (Warning when > 0). Show `SkeletonCard` during loading.
+  - [x]4.4 Render filter bar: `FluentSelect` for status filter (All/Active/Suspended/Onboarding) + `FluentTextField` for search with 300ms debounce. On filter change: update URL, re-filter displayed data (client-side filtering is sufficient — tenant lists are small).
+  - [x]4.5 Render `FluentDataGrid` with tenant list. Columns: Tenant ID (monospace), Display Name, Status (badge), Domains (right-aligned), Events (right-aligned), Quota Usage (progress bar or "Unlimited"), Actions (lifecycle + expand). Default sort: Display Name ascending. Clicking a row toggles detail expansion.
+  - [x]4.6 Implement `EmptyState` when no tenants exist (reuse existing `EmptyState` component with building icon).
+  - [x]4.7 Implement inline detail expansion panel: When a tenant row is clicked, expand a detail section below the row showing tenant details + quota info + user list. **This is structurally different from the simple error-detail toggle in Compaction/Backups** — it requires async data loading into the expanded row. Implementation: track `_expandedTenantId` (string?) and `_expandedDetail` (TenantDetail?) / `_expandedUsers` (IReadOnlyList<TenantUser>?) / `_isLoadingDetail` (bool) state variables. On row click: if same tenant → collapse (set to null). If different → **cancel any in-flight detail load** (`_detailCts?.Cancel(); _detailCts = new CancellationTokenSource();`) to prevent race conditions when user clicks rapidly between rows. Set `_expandedTenantId`, set `_isLoadingDetail = true`, call `GetTenantDetailAsync` + `GetTenantUsersAsync` in parallel with `_detailCts.Token`, then set `_isLoadingDetail = false`. Render: below the expanded row, show `FluentProgressRing` while loading, then detail content. If Tenants service is unreachable, show inline warning "Tenant details unavailable — Tenants service is not responding."
+  - [x]4.8 Implement tenant user management within the detail panel. **Use stacked sections with `<h3>` headers (Summary, Quotas, Users), not `FluentTabs`** — tabs inside an expanded grid row have rendering quirks in FluentUI v4. User section renders a `FluentDataGrid` for users (Email, Role badge, Added Date). **Ensure inner user `FluentDataGrid` uses a distinct `TGridItem="TenantUser"` type to avoid column ID conflicts with the outer tenant grid.** Admin-only "Add User" button, per-row "Remove" and "Change Role" actions. "Add User" opens dialog: Email (required, email format) + Role dropdown (Admin/Operator/ReadOnly). "Remove" shows confirmation dialog. "Change Role" opens dialog with role dropdown.
+  - [x]4.9 Implement "Create Tenant" button in page header (Admin-only). Multi-step `FluentDialog` (4 steps): Basics → Configuration → Initial Admin → Confirmation. **This is the most complex dialog in Epic 16 — 4 steps vs 2 in Backups restore. Implement the wizard inline in Tenants.razor — do NOT extract a reusable wizard component.** Implementation: use `_wizardStep` (int, 1-4) state variable. Per-step state: `_wizardTenantId`, `_wizardDisplayName`, `_wizardTier`, `_wizardMaxEvents`, `_wizardMaxStorage`, `_wizardAdminEmail`, `_wizardAdminRole`. **On dialog open, reset all `_wizard*` fields to defaults and set `_wizardStep = 1`** — prevents stale data from a previous cancelled attempt. Per-step validation methods: `IsStep1Valid()` (tenantId non-empty, URL-safe regex `^[a-z0-9-]+$`, displayName non-empty), `IsStep2Valid()` (tier selected, quotas > 0), `IsStep3Valid()` (email format regex, role selected). **Tenant ID regex:** Verify this regex matches what Hexalith.Tenants accepts for TenantId — check the `CreateTenantValidator` in Hexalith.Tenants.Contracts. If they allow dots or underscores, adjust. "Next" button disabled until current step is valid. "Back" preserves entered values. **FluentNumberField:** Verify `FluentNumberField` exists in FluentUI v4.13.2 before using. If not available, use `FluentTextField` with `type="number"` and manual `long.TryParse` conversion. On step 4 confirm: calls `CreateTenantAsync` then `AddUserToTenantAsync`. Subscription tier pre-fills (hardcoded defaults for v1 — not backend-driven): Standard (10K events/day, 1 GB), Premium (100K events/day, 10 GB), Enterprise (1M events/day, 100 GB). **Partial failure handling:** If create succeeds but add-user fails, show warning toast and close dialog (tenant exists, user can be added from detail panel). Full success → close + success toast + reload. Create failure → error toast + stay on step.
+  - [x]4.10 Implement "Disable" / "Enable" per-row action buttons (Admin-only). Confirmation dialogs with clear warnings. Disable: "All command processing for this tenant will be suspended. Existing events are preserved." Enable: "Command processing will resume."
+  - [x]4.11 Implement "Compare Tenants" button. Opens dialog with multi-select tenant list (checkboxes, min 2, max 5). **Tenant selection list must have `max-height: 300px; overflow-y: auto;`** to handle environments with many tenants gracefully. Enforce max 5 selection client-side (disable unchecked items when 5 are selected). On confirm: calls `CompareTenantUsageAsync`. Results display in a comparison table: rows = metrics, columns = selected tenants. Highest value per row highlighted.
+  - [x]4.12 Implement quota progress bars: green < 75%, orange 75-90%, red > 90%. Use `FluentProgressBar` with `aria-label`. Show "Unlimited" when max is 0.
+  - [x]4.13 Implement URL state management: `ReadUrlParameters()` on init, `UpdateUrl()` on filter change with `replace: true`.
+  - [x]4.14 Add manual "Refresh" button, `IssueBanner` for error state (with specific message for Tenants service unavailability vs general errors), `IAsyncDisposable` for Timer + CancellationTokenSource cleanup.
+  - [x]4.15 Add action buttons in page header, gated by `AuthorizedView MinimumRole="AdminRole.Admin"`:
     - "Create Tenant" (primary, accent)
     - "Compare Tenants" (outline — visible to all users, no auth gate)
-  - [ ] 4.16 **Checkpoint**: Page loads, stat cards show, grid renders with sorting/filtering, detail panel expands, user management works, create wizard completes, disable/enable lifecycle works, comparison view works, role enforcement active, URL state persists, graceful degradation when Tenants service is down.
+  - [x]4.16 **Checkpoint**: Page loads, stat cards show, grid renders with sorting/filtering, detail panel expands, user management works, create wizard completes, disable/enable lifecycle works, comparison view works, role enforcement active, URL state persists, graceful degradation when Tenants service is down.
 
-- [ ] **Task 5: bUnit and unit tests** (AC: 1-16)
+- [x] **Task 5: bUnit and unit tests** (AC: 1-16)
   - **Mock dependencies**: extend `AdminUITestContext`, mock `AdminTenantApiClient` using `Substitute.For<AdminTenantApiClient>(...)` with `IHttpClientFactory` + `NullLogger<AdminTenantApiClient>.Instance`.
   - **Culture sensitivity**: Any test asserting formatted numbers must use culture-invariant assertions (lesson from story 16-1 with French locale).
   - **Merge-blocking tests**:
-  - [ ] 5.1 Test `Tenants` page renders 4 stat cards with correct values from tenant list (AC: 2)
-  - [ ] 5.2 Test `Tenants` page shows `SkeletonCard` during loading state (AC: 2)
-  - [ ] 5.3 Test tenant grid renders all tenants with correct columns (AC: 1)
-  - [ ] 5.4 Test `EmptyState` shown when no tenants exist (AC: 1)
-  - [ ] 5.5 Test `IssueBanner` shown when API returns error (AC: 13)
-  - [ ] 5.6 Test tenants page has `<h1>Tenants</h1>` heading (AC: 15)
-  - [ ] 5.7 Test "Create Tenant" button hidden for ReadOnly and Operator users (AC: 14)
-  - [ ] 5.8 Test "Create Tenant" button visible for Admin users (AC: 14)
-  - [ ] 5.9 Test create tenant wizard calls `CreateTenantAsync` on confirm, reloads list, shows success toast (AC: 5)
-  - [ ] 5.10 Test create tenant wizard shows error toast when API returns failure (AC: 5)
-  - [ ] 5.11 Test status badges render correct appearance per tenant status (AC: 1)
-  - [ ] 5.12 Test "Disable" button only appears on Active tenants (AC: 6)
-  - [ ] 5.13 Test "Enable" button only appears on Suspended tenants (AC: 6)
-  - [ ] 5.14 Test quota progress bar colors: green < 75%, orange 75-90%, red > 90% (AC: 9)
-  - [ ] 5.15 Test create tenant wizard partial failure: CreateTenantAsync succeeds but AddUserToTenantAsync fails — shows warning toast, closes dialog, tenant appears in list (AC: 5)
-  - [ ] 5.16 Test "Compare Tenants" button visible and functional for ReadOnly users (AC: 14) — verifies comparison is a read-only operation accessible to all roles
+  - [x]5.1 Test `Tenants` page renders 4 stat cards with correct values from tenant list (AC: 2)
+  - [x]5.2 Test `Tenants` page shows `SkeletonCard` during loading state (AC: 2)
+  - [x]5.3 Test tenant grid renders all tenants with correct columns (AC: 1)
+  - [x]5.4 Test `EmptyState` shown when no tenants exist (AC: 1)
+  - [x]5.5 Test `IssueBanner` shown when API returns error (AC: 13)
+  - [x]5.6 Test tenants page has `<h1>Tenants</h1>` heading (AC: 15)
+  - [x]5.7 Test "Create Tenant" button hidden for ReadOnly and Operator users (AC: 14)
+  - [x]5.8 Test "Create Tenant" button visible for Admin users (AC: 14)
+  - [x]5.9 Test create tenant wizard calls `CreateTenantAsync` on confirm, reloads list, shows success toast (AC: 5)
+  - [x]5.10 Test create tenant wizard shows error toast when API returns failure (AC: 5)
+  - [x]5.11 Test status badges render correct appearance per tenant status (AC: 1)
+  - [x]5.12 Test "Disable" button only appears on Active tenants (AC: 6)
+  - [x]5.13 Test "Enable" button only appears on Suspended tenants (AC: 6)
+  - [x]5.14 Test quota progress bar colors: green < 75%, orange 75-90%, red > 90% (AC: 9)
+  - [x]5.15 Test create tenant wizard partial failure: CreateTenantAsync succeeds but AddUserToTenantAsync fails — shows warning toast, closes dialog, tenant appears in list (AC: 5)
+  - [x]5.16 Test "Compare Tenants" button visible and functional for ReadOnly users (AC: 14) — verifies comparison is a read-only operation accessible to all roles
   - **Recommended tests**:
-  - [ ] 5.17 Test URL parameters read on page initialization (AC: 10)
-  - [ ] 5.18 Test status filter shows correct subset of tenants (AC: 3)
-  - [ ] 5.19 Test search filter filters by tenant ID prefix (AC: 3)
-  - [ ] 5.20 Test tenant detail panel loads on row click (AC: 4)
-  - [ ] 5.21 Test tenant detail shows "Tenants service not responding" when service is unavailable (AC: 16)
-  - [ ] 5.22 Test "Add User" dialog calls `AddUserToTenantAsync` (AC: 7)
-  - [ ] 5.23 Test "Remove User" confirmation dialog calls `RemoveUserFromTenantAsync` (AC: 7)
-  - [ ] 5.24 Test "Change Role" dialog calls `ChangeUserRoleAsync` with correct params (AC: 7)
-  - [ ] 5.25 Test "Create Tenant" shows error toast when Tenants service is down during write (AC: 16) — write-operation graceful degradation
-  - [ ] 5.26 Test "Compare Tenants" button disabled when fewer than 2 tenants (AC: 8)
-  - [ ] 5.27 Test comparison table renders correct metrics for selected tenants (AC: 8)
-  - [ ] 5.28 Test comparison table highlights highest value per metric row with bold (AC: 8)
-  - [ ] 5.29 Test create wizard step 2 pre-fills quotas from subscription tier selection (AC: 5)
-  - [ ] 5.30 Test "Disable" and "Enable" buttons disabled for Onboarding tenants (AC: 6)
-  - [ ] 5.31 Test quota shows "Unlimited" when MaxStorageBytes is 0 (AC: 9)
+  - [x]5.17 Test URL parameters read on page initialization (AC: 10)
+  - [x]5.18 Test status filter shows correct subset of tenants (AC: 3)
+  - [x]5.19 Test search filter filters by tenant ID prefix (AC: 3)
+  - [x]5.20 Test tenant detail panel loads on row click (AC: 4)
+  - [x]5.21 Test tenant detail shows "Tenants service not responding" when service is unavailable (AC: 16)
+  - [x]5.22 Test "Add User" dialog calls `AddUserToTenantAsync` (AC: 7)
+  - [x]5.23 Test "Remove User" confirmation dialog calls `RemoveUserFromTenantAsync` (AC: 7)
+  - [x]5.24 Test "Change Role" dialog calls `ChangeUserRoleAsync` with correct params (AC: 7)
+  - [x]5.25 Test "Create Tenant" shows error toast when Tenants service is down during write (AC: 16) — write-operation graceful degradation
+  - [x]5.26 Test "Compare Tenants" button disabled when fewer than 2 tenants (AC: 8)
+  - [x]5.27 Test comparison table renders correct metrics for selected tenants (AC: 8)
+  - [x]5.28 Test comparison table highlights highest value per metric row with bold (AC: 8)
+  - [x]5.29 Test create wizard step 2 pre-fills quotas from subscription tier selection (AC: 5)
+  - [x]5.30 Test "Disable" and "Enable" buttons disabled for Onboarding tenants (AC: 6)
+  - [x]5.31 Test quota shows "Unlimited" when MaxStorageBytes is 0 (AC: 9)
 
-- [ ] **Task 6: Navigation, Command Palette, and CSS** (AC: 11, 12, 15)
-  - [ ] 6.1 **Verify** `Breadcrumb.razor` already has `"tenants" -> "Tenants"`. If missing, add it.
-  - [ ] 6.2 **Verify** `NavMenu.razor` already has Tenants `FluentNavLink`. If icon needs updating, use `Icons.Regular.Size20.Building` (tenant = building). Verify icon compiles — `TreatWarningsAsErrors` is enabled.
-  - [ ] 6.3 **Verify** `CommandPaletteCatalog.cs` has entries for `("Actions", "Tenants", "/tenants")` and `("Tenants", "Tenant Management", "/tenants")`. If missing, add them.
-  - [ ] 6.4 Add CSS styles in `wwwroot/css/app.css`:
+- [x] **Task 6: Navigation, Command Palette, and CSS** (AC: 11, 12, 15)
+  - [x]6.1 **Verify** `Breadcrumb.razor` already has `"tenants" -> "Tenants"`. If missing, add it.
+  - [x]6.2 **Verify** `NavMenu.razor` already has Tenants `FluentNavLink`. If icon needs updating, use `Icons.Regular.Size20.Building` (tenant = building). Verify icon compiles — `TreatWarningsAsErrors` is enabled.
+  - [x]6.3 **Verify** `CommandPaletteCatalog.cs` has entries for `("Actions", "Tenants", "/tenants")` and `("Tenants", "Tenant Management", "/tenants")`. If missing, add them.
+  - [x]6.4 Add CSS styles in `wwwroot/css/app.css`:
     - `.tenant-status-onboarding` with pulse animation (reuse `.compaction-status-running` pattern)
     - `.tenant-quota-bar` for progress bar container
     - `.tenant-detail-panel` for expanded detail section (padded, muted background, border-top)
     - `.tenant-comparison-table` for comparison layout
     - `.tenant-user-grid` for nested user data grid within detail panel
-  - [ ] 6.5 **Checkpoint**: Tenants page accessible from sidebar, breadcrumb shows "Home / Tenants", Ctrl+K "Tenants" navigates correctly, styles applied.
+  - [x]6.5 **Checkpoint**: Tenants page accessible from sidebar, breadcrumb shows "Home / Tenants", Ctrl+K "Tenants" navigates correctly, styles applied.
 
-- [ ] **Task 7: Verify Aspire topology and integration** (AC: 16)
-  - [ ] 7.1 Verify `AdminServerOptions` in `src/Hexalith.EventStore.Admin.Server/Configuration/AdminServerOptions.cs` has `TenantServiceAppId` property (used by `DaprTenantQueryService`). If the default value needs updating, set it to `"hexalith-tenants"` or whatever the Hexalith.Tenants DAPR app ID is in the Aspire topology.
-  - [ ] 7.2 Verify the Aspire AppHost already orchestrates Hexalith.Tenants as a peer resource (should have been done in story 14-4). If not present, this story's scope is **UI only** — the Tenants.razor page degrades gracefully when the service is unavailable (AC: 16). Log a note in Dev Agent Record that full integration requires Hexalith.Tenants to be running in the topology.
-  - [ ] 7.3 **Checkpoint**: Topology verified, graceful degradation confirmed.
+- [x] **Task 7: Verify Aspire topology and integration** (AC: 16)
+  - [x]7.1 Verify `AdminServerOptions` in `src/Hexalith.EventStore.Admin.Server/Configuration/AdminServerOptions.cs` has `TenantServiceAppId` property (used by `DaprTenantQueryService`). If the default value needs updating, set it to `"hexalith-tenants"` or whatever the Hexalith.Tenants DAPR app ID is in the Aspire topology.
+  - [x]7.2 Verify the Aspire AppHost already orchestrates Hexalith.Tenants as a peer resource (should have been done in story 14-4). If not present, this story's scope is **UI only** — the Tenants.razor page degrades gracefully when the service is unavailable (AC: 16). Log a note in Dev Agent Record that full integration requires Hexalith.Tenants to be running in the topology.
+  - [x]7.3 **Checkpoint**: Topology verified, graceful degradation confirmed.
 
 ## Dev Notes
 
@@ -472,10 +472,53 @@ All new files follow existing folder structure:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- FluentProgressBar not available in FluentUI v4.13.2 — replaced with custom CSS progress bar divs
+- AdminTenantsController authorization changed from controller-level Admin to per-endpoint ReadOnly (reads) / Admin (writes) per AC14
+- Updated pre-existing StubPageTests and AdminAuthorizationIntegrationTests for new controller signature and authorization policies
+
 ### Completion Notes List
 
+- Task 1: Created 6 new DTOs (TenantDetail, TenantUser, CreateTenantRequest, AddTenantUserRequest, RemoveTenantUserRequest, ChangeTenantUserRoleRequest), ITenantCommandService interface, extended ITenantQueryService with GetTenantDetailAsync and GetTenantUsersAsync
+- Task 2: Created DaprTenantCommandService with full DAPR service invocation pattern, extended DaprTenantQueryService with 2 new methods, completely rebuilt AdminTenantsController with 6 write endpoints (Admin policy) and 5 read endpoints (ReadOnly policy), registered ITenantCommandService in DI
+- Task 3: Created AdminTenantApiClient with 6 read methods and 6 write methods following AdminSnapshotApiClient pattern, registered in Program.cs
+- Task 4: Full Tenants.razor page implementation: stat cards (Total/Active/Suspended/Onboarding), status filter + search filter with debounce, FluentDataGrid with sortable columns and status badges, inline detail panel with async data loading, quota progress bars (green/orange/red), 4-step Create Tenant wizard with tier pre-fills and partial failure handling, Disable/Enable lifecycle dialogs, user management (Add/Remove/Change Role), tenant comparison dialog with multi-select and results table, URL state persistence, IAsyncDisposable cleanup, graceful degradation for Tenants service unavailability
+- Task 5: 31 bUnit tests in TenantsPageTests (16 merge-blocking + 15 recommended), updated StubPageTests for new Tenants page, all 721 tests pass (312 Admin.UI + 185 Admin.Server + 224 Admin.Abstractions)
+- Task 6: CommandPaletteCatalog "Tenant Management" entry added, CSS styles for tenant status badges (active/suspended/onboarding), quota progress bars, detail panel, comparison table, user grid. NavMenu and Breadcrumb already present.
+- Task 7: AdminServerOptions.TenantServiceAppId verified (default: "tenants"), graceful degradation confirmed in all service layers
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/TenantDetail.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/TenantUser.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/CreateTenantRequest.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/AddTenantUserRequest.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/RemoveTenantUserRequest.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Tenants/ChangeTenantUserRoleRequest.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Services/ITenantCommandService.cs
+- src/Hexalith.EventStore.Admin.Server/Services/DaprTenantCommandService.cs
+- src/Hexalith.EventStore.Admin.UI/Services/AdminTenantApiClient.cs
+- tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TenantsPageTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Admin.Abstractions/Services/ITenantQueryService.cs (extended with 2 methods)
+- src/Hexalith.EventStore.Admin.Server/Services/DaprTenantQueryService.cs (extended with 2 methods)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs (rebuilt with write endpoints + per-endpoint auth)
+- src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs (added ITenantCommandService DI)
+- src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor (full implementation replacing placeholder)
+- src/Hexalith.EventStore.Admin.UI/Program.cs (added AdminTenantApiClient registration)
+- src/Hexalith.EventStore.Admin.UI/Components/CommandPaletteCatalog.cs (added "Tenant Management" entry)
+- src/Hexalith.EventStore.Admin.UI/wwwroot/css/app.css (added tenant CSS styles)
+- tests/Hexalith.EventStore.Admin.UI.Tests/Pages/StubPageTests.cs (updated for new Tenants page)
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminTenantsControllerTests.cs (updated constructor)
+- tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminTestHost.cs (added ITenantCommandService mock)
+- tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminAuthorizationIntegrationTests.cs (updated auth expectations)
+
+### Change Log
+
+- 2026-03-24: Story 16-5 implemented — Full tenant management page with quotas, onboarding wizard, user management, comparison view, and 24 new bUnit tests. All 490 tests pass.
+- 2026-03-24: Code review completed (3-layer: Blind Hunter, Edge Case Hunter, Acceptance Auditor). 32 findings raised, 18 fixed: parallel quota loading (P-1), request DTO validation with DataAnnotations (P-2), HTTP 422 handling in API client (P-3), _operationCts null safety via CancellationToken parameter (P-4), _detailCts dispose on reassignment (P-5), Max() empty guard in comparison (P-6), checked arithmetic for MB-to-bytes overflow (P-7), tightened tenant ID regex (P-8), independent user/detail endpoint failure handling with _usersUnavailable fallback (P-9), strengthened shallow merge-blocking tests 5.9/5.10/5.15 (P-10), OperationCanceledException catch in create wizard (P-11), tightened email regex with 2-char TLD minimum (P-12), static compiled Regex instances (P-13), Change Role disabled when role unchanged (P-14), TenantDetail.DisplayName lenient deserialization (P-15), tenantId ThrowIfNullOrWhiteSpace in controller write endpoints (P-16), added Storage Usage and Quota Usage % rows to comparison table (IG-1), added 7 missing recommended tests (IG-2). All 721 tests pass (312 UI + 185 Server + 224 Abstractions). 0 warnings, 0 errors.

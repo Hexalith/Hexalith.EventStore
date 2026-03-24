@@ -39,6 +39,7 @@ public sealed class AdminTestHost : IDisposable
         builder.Services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
         builder.Services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
         builder.Services.AddScoped(_ => Substitute.For<ITenantQueryService>());
+        builder.Services.AddScoped(_ => Substitute.For<ITenantCommandService>());
 
         builder.WebHost.UseTestServer();
 

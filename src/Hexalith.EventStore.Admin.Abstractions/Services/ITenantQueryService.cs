@@ -30,4 +30,20 @@ public interface ITenantQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The tenant comparison.</returns>
     Task<TenantComparison> CompareTenantUsageAsync(IReadOnlyList<string> tenantIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets detailed tenant information including quotas.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The tenant detail, or null if not found.</returns>
+    Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets users assigned to a tenant.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of tenant users.</returns>
+    Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default);
 }

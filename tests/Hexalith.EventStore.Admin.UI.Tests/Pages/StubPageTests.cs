@@ -1,5 +1,13 @@
 using Bunit;
 
+using Hexalith.EventStore.Admin.UI.Services;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
 namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 
 /// <summary>
@@ -37,9 +45,19 @@ public class StubPageTests : AdminUITestContext {
 
     [Fact]
     public void TenantsPage_RendersCorrectContent() {
+        // Register AdminTenantApiClient (Tenants page is now a full implementation, not a stub)
+        AdminTenantApiClient mockTenantApi = Substitute.For<AdminTenantApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminTenantApiClient>.Instance);
+        _ = mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
+        _ = mockTenantApi.GetTenantQuotasAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new Hexalith.EventStore.Admin.UI.Services.Exceptions.ServiceUnavailableException("test"));
+        Services.AddScoped(_ => mockTenantApi);
+
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Tenants> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Tenants>();
-        cut.Markup.ShouldContain("No tenants configured.");
-        cut.Markup.ShouldContain("Create your first tenant");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants configured"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("No tenants configured");
     }
 
     [Fact]
