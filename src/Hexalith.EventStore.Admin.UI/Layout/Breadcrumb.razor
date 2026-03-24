@@ -1,29 +1,68 @@
+@using Hexalith.EventStore.Admin.UI.Services
+@using Microsoft.FluentUI.AspNetCore.Components
 @inject NavigationManager NavigationManager
+@inject ViewportService ViewportService
+@inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 @implements IDisposable
 
 @if (_segments.Count > 0)
 {
-    <div class="admin-breadcrumb" aria-label="Breadcrumb">
-        @for (int i = 0; i < _segments.Count; i++)
-        {
-            @if (i > 0)
-            {
-                <span class="separator" aria-hidden="true">/</span>
+    <nav class="admin-breadcrumb" aria-label="Breadcrumb">
+        <div class="breadcrumb-segments">
+            @{
+                List<BreadcrumbSegment> visibleSegments = GetVisibleSegments();
+                for (int i = 0; i < visibleSegments.Count; i++)
+                {
+                    BreadcrumbSegment segment = visibleSegments[i];
+                    if (i > 0)
+                    {
+                        <span class="separator" aria-hidden="true">/</span>
+                    }
+                    @if (segment.IsTruncationButton)
+                    {
+                        <button class="breadcrumb-truncation-btn"
+                                aria-label="Show full breadcrumb path"
+                                @onclick="ToggleFullPath">...</button>
+                    }
+                    else if (i < visibleSegments.Count - 1)
+                    {
+                        <a href="@segment.Href" class="@(segment.IsMonospace ? "monospace" : "")">@segment.Label</a>
+                    }
+                    else
+                    {
+                        <span class="current @(segment.IsMonospace ? "monospace" : "")" aria-current="page">@segment.Label</span>
+                    }
+                }
             }
-            @if (i < _segments.Count - 1)
-            {
-                <a href="@_segments[i].Href">@_segments[i].Label</a>
-            }
-            else
-            {
-                <span class="current monospace" aria-current="page">@_segments[i].Label</span>
-            }
-        }
-    </div>
+        </div>
+        <button class="breadcrumb-copy-btn"
+                aria-label="Copy page URL to clipboard"
+                title="Copy link"
+                @onclick="CopyUrlAsync">
+            <FluentIcon Value="@(new Icons.Regular.Size16.Copy())" />
+        </button>
+    </nav>
 }
 
 @code {
+    private static readonly IReadOnlyDictionary<string, string> _routeLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["streams"] = "Streams",
+        ["health"] = "Health",
+        ["projections"] = "Projections",
+        ["types"] = "Type Catalog",
+        ["commands"] = "Commands",
+        ["events"] = "Events",
+        ["services"] = "Services",
+        ["tenants"] = "Tenants",
+        ["settings"] = "Settings",
+        ["dead-letters"] = "Dead Letters",
+    };
+
     private List<BreadcrumbSegment> _segments = [];
+    private bool _showFullPath;
+    private bool _disposed;
 
     protected override void OnInitialized()
     {
@@ -31,10 +70,31 @@
         UpdateSegments();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ViewportService.InitializeAsync();
+            ViewportService.OnViewportChanged += OnViewportChanged;
+            StateHasChanged();
+        }
+    }
+
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
+        _showFullPath = false;
         UpdateSegments();
         StateHasChanged();
+    }
+
+    private void OnViewportChanged()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void UpdateSegments()
@@ -48,22 +108,87 @@
             return;
         }
 
-        _segments.Add(new BreadcrumbSegment("Home", "/"));
+        _segments.Add(new BreadcrumbSegment("Home", "/", false, false));
 
         string[] parts = path.Split('/');
         string currentPath = string.Empty;
         foreach (string part in parts)
         {
             currentPath += "/" + part;
-            string label = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(part.Replace('-', ' '));
-            _segments.Add(new BreadcrumbSegment(label, currentPath));
+            if (_routeLabels.TryGetValue(part, out string? displayName))
+            {
+                _segments.Add(new BreadcrumbSegment(displayName, currentPath, false, false));
+            }
+            else
+            {
+                string decodedLabel = Uri.UnescapeDataString(part);
+                _segments.Add(new BreadcrumbSegment(decodedLabel, currentPath, true, false));
+            }
+        }
+    }
+
+    private List<BreadcrumbSegment> GetVisibleSegments()
+    {
+        bool shouldTruncate = !ViewportService.IsWideViewport
+            && !_showFullPath
+            && _segments.Count > 4;
+
+        if (!shouldTruncate)
+        {
+            return _segments;
+        }
+
+        // Home + "..." + last 3 segments
+        List<BreadcrumbSegment> visible =
+        [
+            _segments[0],
+            new BreadcrumbSegment("...", "", false, true),
+            .. _segments[^3..],
+        ];
+        return visible;
+    }
+
+    private void ToggleFullPath()
+    {
+        _showFullPath = !_showFullPath;
+    }
+
+    private async Task CopyUrlAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            bool success = await JSRuntime.InvokeAsync<bool>("hexalithAdmin.copyToClipboard", NavigationManager.Uri);
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (success)
+            {
+                ToastService.ShowSuccess("Link copied to clipboard");
+            }
+            else
+            {
+                ToastService.ShowError("Could not copy link");
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // User navigated away during async clipboard call
         }
     }
 
     public void Dispose()
     {
+        ViewportService.OnViewportChanged -= OnViewportChanged;
         NavigationManager.LocationChanged -= OnLocationChanged;
+        _disposed = true;
     }
 
-    private sealed record BreadcrumbSegment(string Label, string Href);
+    private sealed record BreadcrumbSegment(string Label, string Href, bool IsMonospace, bool IsTruncationButton);
 }
