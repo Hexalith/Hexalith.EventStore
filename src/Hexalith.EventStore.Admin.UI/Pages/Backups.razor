@@ -1,0 +1,1173 @@
+@page "/backups"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminBackupApiClient BackupApi
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Backups - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Backups</h1>
+    <div style="display: flex; gap: 8px;">
+        <AuthorizedView MinimumRole="AdminRole.Admin">
+            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                          OnClick="OpenCreateBackupDialog"
+                          aria-label="Create backup">
+                Create Backup
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                          OnClick="OpenExportDialog"
+                          aria-label="Export stream">
+                Export Stream
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                          OnClick="OpenImportDialog"
+                          aria-label="Import stream">
+                Import Stream
+            </FluentButton>
+        </AuthorizedView>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      aria-label="Refresh backup jobs">
+            Refresh
+        </FluentButton>
+    </div>
+</div>
+
+@* Error state *@
+<IssueBanner Visible="@_apiUnavailable"
+             Title="Unable to load backup jobs"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Tenant filter *@
+<div class="storage-filter-bar">
+    <FluentTextField @bind-Value="_tenantFilterInput"
+                     @bind-Value:after="OnTenantFilterChanged"
+                     Placeholder="Filter by tenant ID..."
+                     aria-label="Filter by tenant ID"
+                     style="min-width: 280px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Active Backups"
+                      Value="@ActiveBackupCount.ToString("N0")"
+                      Severity="@(ActiveBackupCount > 0 ? "warning" : "neutral")"
+                      Title="Backups with Pending or Running status" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Completed (30d)"
+                      Value="@CompletedLast30Days.ToString("N0")"
+                      Severity="neutral"
+                      Title="Completed backups in the last 30 days" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Backup Size"
+                      Value="@FormatTotalBackupSize()"
+                      Severity="neutral"
+                      Title="Sum of all completed backup sizes" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Last Successful"
+                      Value="@FormatLastSuccessful()"
+                      Severity="neutral"
+                      Title="Time since last completed backup" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Backup job grid *@
+@if (!_isLoading)
+{
+    @if (_filteredJobs.Count == 0)
+    {
+        <EmptyState Title="No backups"
+                    Description="Create a backup to protect your event store data." />
+    }
+    else
+    {
+        <FluentDataGrid Items="@_filteredJobs.AsQueryable()" TGridItem="BackupJob"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Backup jobs"
+                        OnRowClick="@(row => OnRowClick(row.Item))">
+            <TemplateColumn Title="Backup ID" Class="monospace" Sortable="true"
+                            SortBy="@(GridSort<BackupJob>.ByAscending(j => j.BackupId))">
+                <span title="@context.BackupId">@TruncateId(context.BackupId)</span>
+            </TemplateColumn>
+            <PropertyColumn Property="@(j => j.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
+            <TemplateColumn Title="Scope" Sortable="true"
+                            SortBy="@(GridSort<BackupJob>.ByAscending(j => j.StreamId ?? ""))">
+                @if (context.StreamId is null)
+                {
+                    <FluentBadge Appearance="Appearance.Accent" aria-label="Scope: Full">Full</FluentBadge>
+                }
+                else
+                {
+                    <FluentBadge Appearance="Appearance.Neutral" aria-label="Scope: Stream">Stream</FluentBadge>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Status" Sortable="true"
+                            SortBy="@(GridSort<BackupJob>.ByAscending(j => j.Status))">
+                @{
+                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                }
+                <FluentBadge Appearance="@appearance"
+                             Class="@cssClass"
+                             aria-label="@($"Status: {context.Status}")">
+                    @context.Status
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Created" Sortable="true" IsDefaultSortColumn="true"
+                            InitialSortDirection="SortDirection.Descending"
+                            SortBy="@(GridSort<BackupJob>.ByDescending(j => j.CreatedAtUtc))">
+                <span title="@context.CreatedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.CreatedAtUtc)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Duration" Sortable="true"
+                            SortBy="@(GridSort<BackupJob>.ByDescending(j => (j.CompletedAtUtc ?? DateTimeOffset.UtcNow) - j.CreatedAtUtc))">
+                @FormatDuration(context)
+            </TemplateColumn>
+            <TemplateColumn Title="Size" Sortable="true"
+                            SortBy="@(GridSort<BackupJob>.ByDescending(j => j.SizeBytes ?? 0))">
+                @(context.Status is BackupJobStatus.Pending or BackupJobStatus.Running
+                    ? "\u2014"
+                    : TimeFormatHelper.FormatBytes(context.SizeBytes))
+            </TemplateColumn>
+            <TemplateColumn Title="Events" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<BackupJob>.ByDescending(j => j.EventCount ?? 0))">
+                @(context.Status is BackupJobStatus.Pending or BackupJobStatus.Running
+                    ? "\u2014"
+                    : context.EventCount?.ToString("N0") ?? "\u2014")
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <div @onclick:stopPropagation>
+                    <AuthorizedView MinimumRole="AdminRole.Admin">
+                        @if (context.Status == BackupJobStatus.Completed && !context.IsValidated)
+                        {
+                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                          OnClick="@(() => OpenValidateDialog(context))"
+                                          aria-label="Validate backup">
+                                Validate
+                            </FluentButton>
+                        }
+                        @if (context.Status == BackupJobStatus.Completed && context.IsValidated)
+                        {
+                            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                                          OnClick="@(() => OpenRestoreDialog(context))"
+                                          aria-label="Restore from backup">
+                                Restore
+                            </FluentButton>
+                        }
+                    </AuthorizedView>
+                </div>
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        @* Expanded error detail for failed job *@
+        @if (_expandedJob is not null && _expandedJob.Status == BackupJobStatus.Failed && _expandedJob.ErrorMessage is not null)
+        {
+            <FluentCard Class="backup-error-detail" aria-label="Error details">
+                <pre style="margin: 0; white-space: pre-wrap;">@_expandedJob.ErrorMessage</pre>
+            </FluentCard>
+        }
+    }
+}
+
+@* Create Backup Dialog *@
+@if (_showCreateDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Create Backup" @ondialogdismiss="CloseCreateDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Create Backup</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_createTenantId"
+                             Label="Tenant ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Tenant ID" />
+            <FluentTextField @bind-Value="_createDescription"
+                             Label="Description (optional)"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Description" />
+            <FluentCheckbox @bind-Value="_createIncludeSnapshots"
+                            Label="Include Snapshots"
+                            Style="margin-bottom: 12px;" />
+            @if (HasActiveBackupForTenant)
+            {
+                <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                    Backup already in progress for this tenant.
+                </p>
+            }
+            @if (HasActiveRestoreForTenant)
+            {
+                <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                    Restore in progress for this tenant. Wait for completion before creating a new backup.
+                </p>
+            }
+            @if (!string.IsNullOrWhiteSpace(_createTenantId))
+            {
+                <p style="margin: 0 0 12px; font-size: 14px;">
+                    This will back up all event streams for tenant <strong>@_createTenantId</strong>.
+                </p>
+            }
+            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Backup is a resource-intensive operation that runs asynchronously.
+                    It may temporarily increase I/O usage and state store read load.
+                </p>
+            </FluentCard>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnCreateBackupConfirm"
+                          Disabled="@(!CanCreateBackup || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Start Backup</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Validate Backup Confirmation Dialog *@
+@if (_showValidateDialog && _validateTarget is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Validate Backup" @ondialogdismiss="CloseValidateDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Validate Backup @TruncateId(_validateTarget.BackupId)?</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>
+                This will verify event sequence integrity, snapshot consistency, and metadata completeness.
+                Validation runs asynchronously.
+            </p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseValidateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnValidateConfirm"
+                          Disabled="@_isOperating">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Validate</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Restore Dialog (Multi-Step) *@
+@if (_showRestoreDialog && _restoreTarget is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Restore from Backup" @ondialogdismiss="CloseRestoreDialog"
+                  Style="min-width: 450px; max-width: 550px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Restore from Backup @TruncateId(_restoreTarget.BackupId)</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;" role="group" aria-label="Restore steps">
+                <FluentBadge Appearance="@(_restoreStep == 1 ? Appearance.Accent : Appearance.Neutral)"
+                             aria-current="@(_restoreStep == 1 ? "step" : null)">
+                    Step 1: Confirm
+                </FluentBadge>
+                <FluentBadge Appearance="@(_restoreStep == 2 ? Appearance.Accent : Appearance.Neutral)"
+                             aria-current="@(_restoreStep == 2 ? "step" : null)">
+                    Step 2: Options
+                </FluentBadge>
+            </div>
+            @if (_restoreStep == 1)
+            {
+                <p><strong>Backup Details:</strong></p>
+                <ul style="font-size: 14px; margin: 0 0 12px;">
+                    <li>Tenant: <span class="monospace">@_restoreTarget.TenantId</span></li>
+                    <li>Created: @_restoreTarget.CreatedAtUtc.ToString("u")</li>
+                    <li>Events: @(_restoreTarget.EventCount?.ToString("N0") ?? "N/A")</li>
+                    <li>Size: @TimeFormatHelper.FormatBytes(_restoreTarget.SizeBytes)</li>
+                </ul>
+                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 12px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Restoring will re-inject events from this backup into a parallel restore stream.
+                        Original event streams are never overwritten.
+                    </p>
+                </FluentCard>
+                @if (HasActiveBackupForRestoreTenant)
+                {
+                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                        Backup in progress for this tenant. Wait for completion before restoring.
+                    </p>
+                }
+                @if (HasActiveRestoreForRestoreTenant)
+                {
+                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                        Restore already in progress for this tenant. Wait for completion before starting another restore.
+                    </p>
+                }
+                <FluentCheckbox @bind-Value="_restoreAcknowledged"
+                                Label="I understand this will create restored state in the event store"
+                                Style="margin-bottom: 8px;" />
+            }
+            else if (_restoreStep == 2)
+            {
+                <FluentTextField @bind-Value="_restorePointInTime"
+                                 Label="Point-in-time (UTC, optional)"
+                                 Placeholder="e.g. 2026-03-20T14:30:00Z"
+                                 Style="width: 100%; margin-bottom: 4px;"
+                                 aria-label="Point-in-time restore timestamp" />
+                @if (_restorePointInTimeError is not null)
+                {
+                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">
+                        @_restorePointInTimeError
+                    </p>
+                }
+                <FluentCheckbox @bind-Value="_restoreDryRun"
+                                Label="Dry Run (validate without applying)"
+                                Style="margin-bottom: 12px;" />
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseRestoreDialog">Cancel</FluentButton>
+            @if (_restoreStep == 1)
+            {
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="GoToRestoreStep2"
+                              Disabled="@(!_restoreAcknowledged || HasActiveBackupForRestoreTenant || HasActiveRestoreForRestoreTenant)">
+                    Next
+                </FluentButton>
+            }
+            else
+            {
+                <FluentButton Appearance="Appearance.Outline" OnClick="GoToRestoreStep1">Back</FluentButton>
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="OnRestoreConfirm"
+                              Disabled="@_isOperating">
+                    @if (_isOperating)
+                    {
+                        <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    }
+                    else
+                    {
+                        <span>Start Restore</span>
+                    }
+                </FluentButton>
+            }
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Export Stream Dialog *@
+@if (_showExportDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Export Stream" @ondialogdismiss="CloseExportDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Export Stream</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_exportTenantId"
+                             Label="Tenant ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Tenant ID" />
+            <FluentTextField @bind-Value="_exportDomain"
+                             Label="Domain" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Domain" />
+            <FluentTextField @bind-Value="_exportAggregateId"
+                             Label="Aggregate ID" Required="true"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Aggregate ID" />
+            <FluentSelect TOption="string" @bind-Value="_exportFormat"
+                          Label="Format"
+                          Style="width: 100%; margin-bottom: 12px;"
+                          aria-label="Export format">
+                <FluentOption TOption="string" Value="@("JSON")">JSON</FluentOption>
+                <FluentOption TOption="string" Value="@("CloudEvents")">CloudEvents</FluentOption>
+            </FluentSelect>
+            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Export is limited to the most recent 50,000 events per stream.
+                    If the stream exceeds this limit, older events will be truncated.
+                </p>
+            </FluentCard>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseExportDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnExportConfirm"
+                          Disabled="@(!CanExport || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Export</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Import Stream Dialog *@
+@if (_showImportDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Import Stream" @ondialogdismiss="CloseImportDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Import Stream</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
+                <InputFile OnChange="OnImportFileSelected"
+                           accept=".json"
+                           style="display: block; width: 100%;" />
+                <p style="font-size: 13px; color: var(--neutral-foreground-hint); margin: 8px 0 0;">
+                    Select a previously exported JSON file (max 10 MB).
+                </p>
+            </FluentCard>
+            @if (_importPreview is not null)
+            {
+                <p style="font-size: 14px; margin: 0 0 8px;"><strong>Preview:</strong></p>
+                <pre style="font-size: 13px; margin: 0 0 12px; background: var(--neutral-layer-card-container); padding: 8px; border-radius: 4px;">@_importPreview</pre>
+            }
+            @if (_importError is not null)
+            {
+                <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">@_importError</p>
+            }
+            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Importing will append events to the target stream using new sequence numbers.
+                    Existing events are never overwritten. Duplicate events (matching EventId) are automatically skipped.
+                </p>
+            </FluentCard>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseImportDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnImportConfirm"
+                          Disabled="@(!CanImport || _isOperating)">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Import</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@code {
+    private IReadOnlyList<BackupJob>? _jobs;
+    private IReadOnlyList<BackupJob> _filteredJobs = [];
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _disposed;
+    private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+    private string? _tenantFilter;
+    private string? _tenantFilterInput;
+    private Timer? _debounceTimer;
+    private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _operationCts;
+    private bool _isOperating;
+    private BackupJob? _expandedJob;
+
+    // Create backup dialog state
+    private bool _showCreateDialog;
+    private string? _createTenantId;
+    private string? _createDescription;
+    private bool _createIncludeSnapshots = true;
+
+    // Validate dialog state
+    private bool _showValidateDialog;
+    private BackupJob? _validateTarget;
+
+    // Restore dialog state
+    private bool _showRestoreDialog;
+    private BackupJob? _restoreTarget;
+    private int _restoreStep = 1;
+    private bool _restoreAcknowledged;
+    private string? _restorePointInTime;
+    private string? _restorePointInTimeError;
+    private bool _restoreDryRun;
+
+    // Export dialog state
+    private bool _showExportDialog;
+    private string? _exportTenantId;
+    private string? _exportDomain;
+    private string? _exportAggregateId;
+    private string _exportFormat = "JSON";
+
+    // Import dialog state
+    private bool _showImportDialog;
+    private string? _importContent;
+    private string? _importTenantId;
+    private string? _importPreview;
+    private string? _importError;
+
+    private void UpdateFilteredJobs()
+    {
+        _filteredJobs = _jobs?
+            .Where(j => string.IsNullOrEmpty(_tenantFilter)
+                || j.TenantId.StartsWith(_tenantFilter, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(j => j.CreatedAtUtc)
+            .ToList() ?? [];
+    }
+
+    private int ActiveBackupCount =>
+        (_jobs ?? []).Count(j => j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
+
+    private int CompletedLast30Days =>
+        (_jobs ?? []).Count(j => j.Status == BackupJobStatus.Completed
+            && j.CreatedAtUtc >= DateTimeOffset.UtcNow.AddDays(-30));
+
+    private bool CanCreateBackup =>
+        !string.IsNullOrWhiteSpace(_createTenantId)
+        && !HasActiveBackupForTenant
+        && !HasActiveRestoreForTenant;
+
+    private bool HasActiveBackupForTenant =>
+        !string.IsNullOrWhiteSpace(_createTenantId)
+        && _jobs is not null
+        && _jobs.Any(j =>
+            string.Equals(j.TenantId, _createTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            && j.JobType == BackupJobType.Backup
+            && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
+
+    private bool HasActiveRestoreForTenant =>
+        !string.IsNullOrWhiteSpace(_createTenantId)
+        && _jobs is not null
+        && _jobs.Any(j =>
+            string.Equals(j.TenantId, _createTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            && j.JobType == BackupJobType.Restore
+            && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
+
+    private bool HasActiveBackupForRestoreTenant =>
+        _restoreTarget is not null
+        && _jobs is not null
+        && _jobs.Any(j =>
+            string.Equals(j.TenantId, _restoreTarget.TenantId, StringComparison.OrdinalIgnoreCase)
+            && j.JobType == BackupJobType.Backup
+            && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
+
+    private bool HasActiveRestoreForRestoreTenant =>
+        _restoreTarget is not null
+        && _jobs is not null
+        && _jobs.Any(j =>
+            string.Equals(j.TenantId, _restoreTarget.TenantId, StringComparison.OrdinalIgnoreCase)
+            && j.JobType == BackupJobType.Restore
+            && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
+
+    private bool CanExport =>
+        !string.IsNullOrWhiteSpace(_exportTenantId)
+        && !string.IsNullOrWhiteSpace(_exportDomain)
+        && !string.IsNullOrWhiteSpace(_exportAggregateId);
+
+    private bool CanImport =>
+        _importContent is not null && _importTenantId is not null && _importError is null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        _tenantFilterInput = _tenantFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        _isLoading = _jobs is null;
+        try
+        {
+            IReadOnlyList<BackupJob> result = await BackupApi
+                .GetBackupJobsAsync(null, ct)
+                .ConfigureAwait(false);
+            _jobs = result;
+            UpdateFilteredJobs();
+            _apiUnavailable = false;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Insufficient permissions to view backup jobs.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = $"Unable to load backup jobs ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync();
+    }
+
+    private void OnTenantFilterChanged()
+    {
+        _debounceTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnDebounceElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _tenantFilter = string.IsNullOrWhiteSpace(_tenantFilterInput)
+                ? null
+                : _tenantFilterInput.Trim();
+            UpdateFilteredJobs();
+            UpdateUrl();
+            StateHasChanged();
+        });
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _tenantFilter = query["tenant"];
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        string url = queryParams.Count > 0 ? $"/backups?{string.Join('&', queryParams)}" : "/backups";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private void OnRowClick(BackupJob? job)
+    {
+        if (job is null || job.Status != BackupJobStatus.Failed)
+        {
+            _expandedJob = null;
+            return;
+        }
+
+        _expandedJob = _expandedJob == job ? null : job;
+    }
+
+    private static string TruncateId(string id)
+        => id.Length > 8 ? id[..8] + "\u2026" : id;
+
+    private string FormatTotalBackupSize()
+    {
+        IEnumerable<BackupJob> completed = (_jobs ?? []).Where(j => j.Status == BackupJobStatus.Completed);
+        if (!completed.Any())
+        {
+            return "N/A";
+        }
+
+        long? totalBytes = completed
+            .Where(j => j.SizeBytes is not null)
+            .Sum(j => j.SizeBytes);
+
+        return totalBytes is null or 0
+            ? "N/A"
+            : TimeFormatHelper.FormatBytes(totalBytes);
+    }
+
+    private string FormatLastSuccessful()
+    {
+        BackupJob? lastCompleted = (_jobs ?? [])
+            .Where(j => j.Status == BackupJobStatus.Completed)
+            .OrderByDescending(j => j.CreatedAtUtc)
+            .FirstOrDefault();
+
+        return lastCompleted is null
+            ? "Never"
+            : TimeFormatHelper.FormatRelativeTime(lastCompleted.CreatedAtUtc);
+    }
+
+    private static string FormatDuration(BackupJob job)
+    {
+        return job.Status switch
+        {
+            BackupJobStatus.Pending => "\u2014",
+            BackupJobStatus.Running or BackupJobStatus.Validating => "Running...",
+            BackupJobStatus.Completed or BackupJobStatus.Failed when job.CompletedAtUtc is not null =>
+                FormatTimeSpan(job.CompletedAtUtc.Value - job.CreatedAtUtc),
+            _ => "\u2014",
+        };
+    }
+
+    private static string FormatTimeSpan(TimeSpan duration)
+    {
+        if (duration < TimeSpan.Zero)
+        {
+            return "\u2014";
+        }
+
+        if (duration.TotalMinutes < 1)
+        {
+            return $"{(int)duration.TotalSeconds}s";
+        }
+
+        return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
+    }
+
+    private static (Appearance Appearance, string CssClass) GetStatusBadge(BackupJobStatus status) =>
+        status switch
+        {
+            BackupJobStatus.Pending => (Appearance.Accent, ""),
+            BackupJobStatus.Running => (Appearance.Lightweight, "backup-status-running"),
+            BackupJobStatus.Completed => (Appearance.Accent, "backup-status-completed"),
+            BackupJobStatus.Failed => (Appearance.Accent, "backup-status-failed"),
+            BackupJobStatus.Validating => (Appearance.Lightweight, "backup-status-validating"),
+            _ => (Appearance.Accent, ""),
+        };
+
+    // ---- Create Backup Dialog ----
+    private void OpenCreateBackupDialog()
+    {
+        _createTenantId = string.Empty;
+        _createDescription = string.Empty;
+        _createIncludeSnapshots = true;
+        _showCreateDialog = true;
+    }
+
+    private void CloseCreateDialog() => _showCreateDialog = false;
+
+    private async Task OnCreateBackupConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+        try
+        {
+            AdminOperationResult? result = await BackupApi.TriggerBackupAsync(
+                _createTenantId!.Trim(),
+                string.IsNullOrWhiteSpace(_createDescription) ? null : _createDescription.Trim(),
+                _createIncludeSnapshots,
+                _operationCts.Token);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"Backup started for {_createTenantId}. Refresh to check status.");
+                _showCreateDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to trigger backup.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle cancellation
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // ---- Validate Dialog ----
+    private void OpenValidateDialog(BackupJob job)
+    {
+        _validateTarget = job;
+        _showValidateDialog = true;
+    }
+
+    private void CloseValidateDialog() => _showValidateDialog = false;
+
+    private async Task OnValidateConfirm()
+    {
+        if (_validateTarget is null) return;
+
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+        try
+        {
+            AdminOperationResult? result = await BackupApi.ValidateBackupAsync(
+                _validateTarget.BackupId,
+                _operationCts.Token);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"Validation started for backup {TruncateId(_validateTarget.BackupId)}.");
+                _showValidateDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to start validation.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle cancellation
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // ---- Restore Dialog ----
+    private void OpenRestoreDialog(BackupJob job)
+    {
+        _restoreTarget = job;
+        _restoreStep = 1;
+        _restoreAcknowledged = false;
+        _restorePointInTime = null;
+        _restorePointInTimeError = null;
+        _restoreDryRun = false;
+        _showRestoreDialog = true;
+    }
+
+    private void CloseRestoreDialog() => _showRestoreDialog = false;
+    private void GoToRestoreStep2() => _restoreStep = 2;
+    private void GoToRestoreStep1() => _restoreStep = 1;
+
+    private async Task OnRestoreConfirm()
+    {
+        if (_restoreTarget is null) return;
+
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+        try
+        {
+            DateTimeOffset? pointInTime = null;
+            if (!string.IsNullOrWhiteSpace(_restorePointInTime))
+            {
+                if (DateTimeOffset.TryParse(_restorePointInTime, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTimeOffset parsed))
+                {
+                    if (parsed > DateTimeOffset.UtcNow)
+                    {
+                        _restorePointInTimeError = "Point-in-time cannot be in the future.";
+                        _isOperating = false;
+                        StateHasChanged();
+                        return;
+                    }
+
+                    pointInTime = parsed;
+                    _restorePointInTimeError = null;
+                }
+                else
+                {
+                    _restorePointInTimeError = "Invalid date format. Use ISO 8601 (e.g. 2026-03-20T14:30:00Z).";
+                    _isOperating = false;
+                    StateHasChanged();
+                    return;
+                }
+            }
+
+            _restorePointInTimeError = null;
+
+            AdminOperationResult? result = await BackupApi.TriggerRestoreAsync(
+                _restoreTarget.BackupId,
+                pointInTime,
+                _restoreDryRun,
+                _operationCts.Token);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess($"Restore initiated from backup {TruncateId(_restoreTarget.BackupId)}.");
+                _showRestoreDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to start restore.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle cancellation
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // ---- Export Dialog ----
+    private void OpenExportDialog()
+    {
+        _exportTenantId = string.Empty;
+        _exportDomain = string.Empty;
+        _exportAggregateId = string.Empty;
+        _exportFormat = "JSON";
+        _showExportDialog = true;
+    }
+
+    private void CloseExportDialog() => _showExportDialog = false;
+
+    private async Task OnExportConfirm()
+    {
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+        try
+        {
+            StreamExportResult? result = await BackupApi.ExportStreamAsync(
+                new StreamExportRequest(
+                    _exportTenantId!.Trim(),
+                    _exportDomain!.Trim(),
+                    _exportAggregateId!.Trim(),
+                    _exportFormat),
+                _operationCts.Token);
+
+            if (result?.Success == true && result.Content is not null && result.FileName is not null)
+            {
+                await JSRuntime.InvokeVoidAsync("blazorDownloadFile", result.FileName, result.Content);
+                ToastService.ShowSuccess($"Exported {result.EventCount} events.");
+                _showExportDialog = false;
+            }
+            else
+            {
+                ToastService.ShowError(result?.ErrorMessage ?? "Failed to export stream.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle cancellation
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    // ---- Import Dialog ----
+    private void OpenImportDialog()
+    {
+        _importContent = null;
+        _importTenantId = null;
+        _importPreview = null;
+        _importError = null;
+        _showImportDialog = true;
+    }
+
+    private void CloseImportDialog() => _showImportDialog = false;
+
+    private async Task OnImportFileSelected(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        _importPreview = null;
+        _importContent = null;
+        _importTenantId = null;
+
+        try
+        {
+            using System.IO.Stream stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using System.IO.StreamReader reader = new(stream);
+            string content = await reader.ReadToEndAsync();
+
+            // Try to parse for preview
+            try
+            {
+                using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(content);
+                System.Text.Json.JsonElement root = doc.RootElement;
+                string? tenantId = root.TryGetProperty("TenantId", out System.Text.Json.JsonElement tid) ? tid.GetString() : null;
+                string? domain = root.TryGetProperty("Domain", out System.Text.Json.JsonElement dom) ? dom.GetString() : null;
+                string? aggregateId = root.TryGetProperty("AggregateId", out System.Text.Json.JsonElement aid) ? aid.GetString() : null;
+                int eventCount = root.TryGetProperty("Events", out System.Text.Json.JsonElement evts) && evts.ValueKind == System.Text.Json.JsonValueKind.Array
+                    ? evts.GetArrayLength()
+                    : 0;
+
+                if (tenantId is null || domain is null || aggregateId is null)
+                {
+                    _importError = "Invalid export file format. Expected JSON with TenantId, Domain, AggregateId, and Events array.";
+                    return;
+                }
+
+                _importTenantId = tenantId;
+                _importContent = content;
+                _importPreview = $"Tenant: {tenantId}\nDomain: {domain}\nAggregate: {aggregateId}\nEvents: {eventCount}";
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                _importError = "Invalid export file format. Expected JSON with TenantId, Domain, AggregateId, and Events array.";
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _importError = $"Failed to read file: {ex.Message}";
+        }
+    }
+
+    private async Task OnImportConfirm()
+    {
+        if (_importContent is null || _importTenantId is null) return;
+
+        _isOperating = true;
+        StateHasChanged();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        _operationCts = new CancellationTokenSource();
+        try
+        {
+            AdminOperationResult? result = await BackupApi.ImportStreamAsync(
+                _importTenantId,
+                _importContent,
+                _operationCts.Token);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess(result.Message ?? "Import completed successfully.");
+                _showImportDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to import stream.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle cancellation
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+        if (_debounceTimer is not null)
+        {
+            await _debounceTimer.DisposeAsync();
+        }
+    }
+}

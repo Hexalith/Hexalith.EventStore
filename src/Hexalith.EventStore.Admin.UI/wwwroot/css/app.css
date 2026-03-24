@@ -425,3 +425,39 @@ body {
     padding: 12px;
     margin-bottom: 16px;
 }
+
+/* Backup status badges */
+.backup-status-running {
+    animation: backup-pulse 1.5s ease-in-out infinite;
+    background-color: var(--hexalith-status-warning) !important;
+    color: white !important;
+}
+
+.backup-status-completed {
+    background-color: var(--hexalith-status-success) !important;
+    color: white !important;
+}
+
+.backup-status-failed {
+    background-color: var(--hexalith-status-error) !important;
+    color: white !important;
+}
+
+.backup-status-validating {
+    animation: backup-pulse 1.5s ease-in-out infinite;
+    background-color: var(--hexalith-status-inflight) !important;
+    color: white !important;
+}
+
+@keyframes backup-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.backup-error-detail {
+    font-family: var(--body-font), 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    background-color: var(--neutral-layer-card-container);
+    padding: 12px;
+    margin-bottom: 16px;
+}
