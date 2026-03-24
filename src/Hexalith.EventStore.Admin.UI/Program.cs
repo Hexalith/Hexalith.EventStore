@@ -37,6 +37,7 @@ builder.Services.AddScoped<AdminTypeCatalogApiClient>();
 builder.Services.AddScoped<AdminStorageApiClient>();
 builder.Services.AddScoped<AdminSnapshotApiClient>();
 builder.Services.AddScoped<AdminCompactionApiClient>();
+builder.Services.AddScoped<AdminBackupApiClient>();
 
 // Dashboard polling refresh service
 builder.Services.AddScoped<DashboardRefreshService>();

@@ -33,6 +33,10 @@ public static class CommandPaletteCatalog
         new("Snapshots", "Snapshot Policies", "/snapshots"),
         new("Actions", "Compaction", "/compaction"),
         new("Compaction", "Compaction Manager", "/compaction"),
+        new("Actions", "Backups", "/backups"),
+        new("Backups", "Backup & Restore", "/backups"),
+        new("Backups", "Export Stream", "/backups"),
+        new("Backups", "Import Stream", "/backups"),
     ];
 
     public static IReadOnlyList<CommandPaletteItem> AllItems => _allItems;
