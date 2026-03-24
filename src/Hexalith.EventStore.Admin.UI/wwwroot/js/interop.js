@@ -89,6 +89,15 @@ window.hexalithAdmin = {
         this._viewportChangeHandlers.delete(listenerId);
     },
 
+    copyToClipboard: async function (text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
     focusCommandPaletteSearch: function () {
         const searchElement = document.querySelector(
             ".command-palette-search input, .command-palette-search",

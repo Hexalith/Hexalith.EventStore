@@ -100,14 +100,29 @@ body {
 
 /* Breadcrumb styling */
 .admin-breadcrumb {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 8px 24px;
     border-bottom: 1px solid var(--neutral-stroke-divider-rest);
     font-size: 13px;
 }
 
+.breadcrumb-segments {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .admin-breadcrumb a {
     color: var(--accent-foreground-rest);
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .admin-breadcrumb a:hover {
@@ -121,6 +136,37 @@ body {
 
 .admin-breadcrumb .current {
     color: var(--neutral-foreground-rest);
+    white-space: nowrap;
+}
+
+.breadcrumb-copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: var(--layer-corner-radius);
+    color: var(--neutral-foreground-hint);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.breadcrumb-copy-btn:hover {
+    color: var(--accent-foreground-rest);
+    background: var(--neutral-fill-stealth-hover);
+}
+
+.breadcrumb-truncation-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--neutral-foreground-hint);
+    padding: 0;
+}
+
+.breadcrumb-truncation-btn:hover {
+    color: var(--accent-foreground-rest);
 }
 
 /* Warning banner for narrow screens */
