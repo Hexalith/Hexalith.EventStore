@@ -23,10 +23,24 @@ public class AdminApiException : Exception
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="AdminApiException"/> class with an HTTP status code.
+    /// </summary>
+    public AdminApiException(string message, int httpStatusCode)
+        : base(message)
+    {
+        HttpStatusCode = httpStatusCode;
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiException"/> class.
     /// </summary>
     public AdminApiException()
         : base()
     {
     }
+
+    /// <summary>
+    /// Gets the HTTP status code that caused this exception, or <c>null</c> if not HTTP-related.
+    /// </summary>
+    public int? HttpStatusCode { get; }
 }
