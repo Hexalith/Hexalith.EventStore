@@ -39,8 +39,17 @@ public class StubPageTests : AdminUITestContext {
 
     [Fact]
     public void DeadLettersPage_RendersCorrectContent() {
+        // Register AdminDeadLetterApiClient (DeadLetters page is now a full implementation, not a stub)
+        AdminDeadLetterApiClient mockDeadLetterApi = Substitute.For<AdminDeadLetterApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminDeadLetterApiClient>.Instance);
+        _ = mockDeadLetterApi.GetDeadLettersAsync(
+            Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters.DeadLetterEntry>([], 0, null)));
+        Services.AddScoped(_ => mockDeadLetterApi);
+
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.DeadLetters> cut = Render<Hexalith.EventStore.Admin.UI.Pages.DeadLetters>();
-        cut.Markup.ShouldContain("No dead letters. All commands processed successfully.");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No dead letters. All commands processed successfully."), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
