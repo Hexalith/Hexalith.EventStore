@@ -39,6 +39,9 @@ public static class CommandPaletteCatalog
         new("Backups", "Backup & Restore", "/backups"),
         new("Backups", "Export Stream", "/backups"),
         new("Backups", "Import Stream", "/backups"),
+        new("Actions", "Consistency", "/consistency"),
+        new("Consistency", "Consistency Checker", "/consistency"),
+        new("Consistency", "Verify Event Store Integrity", "/consistency"),
     ];
 
     public static IReadOnlyList<CommandPaletteItem> AllItems => _allItems;

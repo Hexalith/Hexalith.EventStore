@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-03-20 (story 13-1 done)
+# last_updated: 2026-03-25 (story 16-7 done)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-25 # story 16-6 done, story 16-7 ready-for-dev
+last_updated: 2026-03-25 # story 16-7 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -181,19 +181,19 @@ development_status:
   epic-15-retrospective: optional
 
   # Epic 16: Admin Web UI — DBA Operations
-  epic-16: in-progress
+  epic-16: done
   16-1-storage-growth-analyzer-with-treemap: done
   16-2-snapshot-management-and-auto-snapshot-policies: done
   16-3-compaction-manager: done
   16-4-backup-and-restore-console: done
   16-5-tenant-management-quotas-onboarding-comparison: done
   16-6-dead-letter-queue-manager: done
-  16-7-consistency-checker: ready-for-dev
+  16-7-consistency-checker: done
   epic-16-retrospective: optional
 
   # Epic 17: Admin CLI (eventstore-admin)
-  epic-17: backlog
-  17-1-cli-scaffold-system-commandline-global-options: backlog
+  epic-17: in-progress
+  17-1-cli-scaffold-system-commandline-global-options: ready-for-dev
   17-2-stream-subcommand-query-list-events-state: backlog
   17-3-projection-subcommand-list-status-pause-resume-reset: backlog
   17-4-health-subcommand-exit-codes-for-cicd: backlog
