@@ -93,30 +93,33 @@ public class AdminApiClient : IDisposable
             throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
         }
 
-        int statusCode = (int)response.StatusCode;
-        switch (statusCode)
+        using (response)
         {
-            case 401:
-                throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})");
-            case 403:
-                throw new AdminApiException($"Access denied. Insufficient permissions. (URL: {resolvedUrl})");
-            case 404:
-                throw new AdminApiException($"Endpoint not found at {resolvedUrl}{path}. Verify the Admin API version matches the CLI version.");
-            case >= 500:
-                throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})");
-        }
+            int statusCode = (int)response.StatusCode;
+            switch (statusCode)
+            {
+                case 401:
+                    throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})");
+                case 403:
+                    throw new AdminApiException($"Access denied. Insufficient permissions. (URL: {resolvedUrl})");
+                case 404:
+                    throw new AdminApiException($"Endpoint not found at {resolvedUrl}{path}. Verify the Admin API version matches the CLI version.");
+                case >= 500:
+                    throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})");
+            }
 
-        _ = response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
 
-        string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            return JsonSerializer.Deserialize<T>(json, JsonDefaults.Options)
-                ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
-        }
-        catch (JsonException ex)
-        {
-            throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return JsonSerializer.Deserialize<T>(json, JsonDefaults.Options)
+                    ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
+            }
+            catch (JsonException ex)
+            {
+                throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
+            }
         }
     }
 
