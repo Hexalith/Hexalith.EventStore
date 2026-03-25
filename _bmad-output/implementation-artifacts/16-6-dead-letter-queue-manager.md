@@ -1,6 +1,6 @@
 # Story 16.6: Dead-Letter Queue Manager
 
-Status: ready-for-dev
+Status: done
 
 Size: Medium — ~8 new/modified files, 5 task groups, 14 ACs, ~26 tests (~8-12 hours estimated). Core new work: AdminDeadLetterApiClient (Task 1), full DeadLetters.razor page replacing the placeholder (Task 2), NavMenu entry (Task 3), bUnit tests (Task 4), Aspire verification (Task 5). Backend already implemented: DeadLetterEntry DTO, IDeadLetterQueryService, IDeadLetterCommandService, DaprDeadLetterQueryService, DaprDeadLetterCommandService, AdminDeadLettersController.
 
@@ -52,36 +52,36 @@ so that **I can diagnose command failures, recover from infrastructure issues by
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create AdminDeadLetterApiClient** (AC: 1, 4, 7, 8, 9, 12)
-  - [ ] 1.1 Create `src/Hexalith.EventStore.Admin.UI/Services/AdminDeadLetterApiClient.cs` — follow the exact pattern of `AdminCompactionApiClient.cs`:
+- [x] **Task 1: Create AdminDeadLetterApiClient** (AC: 1, 4, 7, 8, 9, 12)
+  - [x]1.1 Create `src/Hexalith.EventStore.Admin.UI/Services/AdminDeadLetterApiClient.cs` — follow the exact pattern of `AdminCompactionApiClient.cs`:
     ```csharp
     public class AdminDeadLetterApiClient(
         IHttpClientFactory httpClientFactory,
         ILogger<AdminDeadLetterApiClient> logger)
     ```
     Named HttpClient: `"AdminApi"`. All methods virtual for testing.
-  - [ ] 1.2 `GetDeadLettersAsync(string? tenantId, int count = 100, string? continuationToken = null, CancellationToken ct)` — calls `GET api/v1/admin/dead-letters?tenantId={}&count={}&continuationToken={}`. Returns `PagedResult<DeadLetterEntry>`. Omit query params when null/default.
-  - [ ] 1.3 `RetryDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct)` — calls `POST api/v1/admin/dead-letters/{tenantId}/retry`. Body: serialize as `{ "messageIds": [...] }` — the server deserializes into `DeadLetterActionRequest` (defined at `src/Hexalith.EventStore.Admin.Server/Models/DeadLetterActionRequest.cs`, a record with `[Required] IReadOnlyList<string> MessageIds`). Use `JsonContent.Create(new { MessageIds = messageIds })`. Returns `AdminOperationResult`.
-  - [ ] 1.4 `SkipDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct)` — calls `POST api/v1/admin/dead-letters/{tenantId}/skip`. Same body/return pattern as 1.3.
-  - [ ] 1.5 `ArchiveDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct)` — calls `POST api/v1/admin/dead-letters/{tenantId}/archive`. Same body/return pattern as 1.3.
-  - [ ] 1.6 Error handling: 401 → `UnauthorizedAccessException`, 403 → `ForbiddenAccessException`, 503 → `ServiceUnavailableException`. All other HTTP errors → `ServiceUnavailableException` (log and wrap). Same pattern as `AdminCompactionApiClient.HandleErrorStatus`.
-  - [ ] 1.7 Register `AdminDeadLetterApiClient` in DI. Add `builder.Services.AddScoped<AdminDeadLetterApiClient>();` in `src/Hexalith.EventStore.Admin.UI/Program.cs` after line 40 (where `AdminBackupApiClient` is registered). Follow the exact same `AddScoped` pattern as the other API clients on lines 37-40.
+  - [x]1.2 `GetDeadLettersAsync(string? tenantId, int count = 100, string? continuationToken = null, CancellationToken ct)` — calls `GET api/v1/admin/dead-letters?tenantId={}&count={}&continuationToken={}`. Returns `PagedResult<DeadLetterEntry>`. Omit query params when null/default.
+  - [x]1.3 `RetryDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct)` — calls `POST api/v1/admin/dead-letters/{tenantId}/retry`. Body: serialize as `{ "messageIds": [...] }` — the server deserializes into `DeadLetterActionRequest` (defined at `src/Hexalith.EventStore.Admin.Server/Models/DeadLetterActionRequest.cs`, a record with `[Required] IReadOnlyList<string> MessageIds`). Use `JsonContent.Create(new { MessageIds = messageIds })`. Returns `AdminOperationResult`.
+  - [x]1.4 `SkipDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct)` — calls `POST api/v1/admin/dead-letters/{tenantId}/skip`. Same body/return pattern as 1.3.
+  - [x]1.5 `ArchiveDeadLettersAsync(string tenantId, IReadOnlyList<string> messageIds, CancellationToken ct)` — calls `POST api/v1/admin/dead-letters/{tenantId}/archive`. Same body/return pattern as 1.3.
+  - [x]1.6 Error handling: 401 → `UnauthorizedAccessException`, 403 → `ForbiddenAccessException`, 503 → `ServiceUnavailableException`. All other HTTP errors → `ServiceUnavailableException` (log and wrap). Same pattern as `AdminCompactionApiClient.HandleErrorStatus`.
+  - [x]1.7 Register `AdminDeadLetterApiClient` in DI. Add `builder.Services.AddScoped<AdminDeadLetterApiClient>();` in `src/Hexalith.EventStore.Admin.UI/Program.cs` after line 40 (where `AdminBackupApiClient` is registered). Follow the exact same `AddScoped` pattern as the other API clients on lines 37-40.
 
-- [ ] **Task 2: Implement DeadLetters.razor page** (AC: 1-10, 12, 13, 14)
-  - [ ] 2.1 Replace the placeholder in `src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor`. Route: `@page "/health/dead-letters"`. Inject: `AdminDeadLetterApiClient`, `NavigationManager`, `IToastService`. Implement `IAsyncDisposable`.
-  - [ ] 2.2 **Header bar** — Title "Dead Letters" with action buttons: "Refresh" (outline, all users). No create/trigger button needed (dead letters are created by the system, not operators).
-  - [ ] 2.3 **IssueBanner** for API error state — same pattern as Compaction.razor.
-  - [ ] 2.4 **Filter bar** — Three filter controls: (1) `FluentTextField` for tenant filter (`?tenant=`), debounced 300ms, passed to API call. (2) `FluentSelect` for failure category presets: "All", "Timeout", "Deserialization", "Authorization", "Other" (`?category=`). Selecting a preset populates the search field; "Other" inverts match. (3) `FluentTextField` for search filter (`?search=`), debounced 300ms, client-side filter on `OriginalCommandType` and `FailureReason` (case-insensitive `Contains`). Tenant filter change resets pagination + selection; search filter and category only filter `_filteredEntries` client-side.
-  - [ ] 2.5 **Stat cards** — Four `StatCard` in `FluentGrid` per AC 2. Computed from loaded entries list.
-  - [ ] 2.6 **DataGrid with checkboxes** — `FluentDataGrid` with `TGridItem="DeadLetterEntry"`. Add a `TemplateColumn` for checkbox as the first column. Per AC 1.
-  - [ ] 2.7 **Row expansion** — Track `_expandedEntry` (nullable `DeadLetterEntry`). `OnRowClick` toggles expansion. Show `FluentCard` below expanded row with full detail per AC 5. Ensure clicking the checkbox does NOT trigger expansion (use `@onclick:stopPropagation` on checkbox).
-  - [ ] 2.8 **Selection state** — `HashSet<string> _selectedIds` tracks selected message IDs. Header checkbox toggles all IDs in `_filteredEntries` (never `_allEntries`). Header uses tri-state: unchecked/indeterminate/checked via computed `CheckState`. Individual checkboxes toggle one. Selection summary bar with count and action buttons per AC 6. Clear `_selectedIds` on: filter change, tenant filter change, bulk action completion (success or partial).
-  - [ ] 2.9 **Bulk action dialogs** — Three `FluentDialog` instances (retry, skip, archive) per AC 7-9. Group selected entries by TenantId (`_allEntries.Where(e => _selectedIds.Contains(e.MessageId)).GroupBy(e => e.TenantId)`) and call API per tenant. Show per-tenant progress in dialog: "Processing tenant 2 of 4..." Handle partial success. Clear `_selectedIds` after completion (success or partial). Disable Refresh button while `_isOperating`.
-  - [ ] 2.10 **Pagination** — "Load More" button when `ContinuationToken != null`. Appends to `_allEntries` list. Shows "Showing X of Y entries" text. Per AC 4.
-  - [ ] 2.11 **URL state** — `ReadUrlParameters()` on init, `UpdateUrl()` on filter change. Per AC 10.
-  - [ ] 2.12 **Data loading** — `LoadDataAsync()` with `CancellationTokenSource` pattern. Error handling for `UnauthorizedAccessException`, `ForbiddenAccessException`, `ServiceUnavailableException`, `HttpRequestException`. Per AC 12.
-  - [ ] 2.13 **Auth guards** — Wrap all action buttons in `AuthorizedView MinimumRole="AdminRole.Operator"`. Per AC 13.
-  - [ ] 2.14 **Accessibility** — `aria-label` on all interactive elements, `aria-live="polite"` on selection summary. Per AC 14.
+- [x] **Task 2: Implement DeadLetters.razor page** (AC: 1-10, 12, 13, 14)
+  - [x]2.1 Replace the placeholder in `src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor`. Route: `@page "/health/dead-letters"`. Inject: `AdminDeadLetterApiClient`, `NavigationManager`, `IToastService`. Implement `IAsyncDisposable`.
+  - [x]2.2 **Header bar** — Title "Dead Letters" with action buttons: "Refresh" (outline, all users). No create/trigger button needed (dead letters are created by the system, not operators).
+  - [x]2.3 **IssueBanner** for API error state — same pattern as Compaction.razor.
+  - [x]2.4 **Filter bar** — Three filter controls: (1) `FluentTextField` for tenant filter (`?tenant=`), debounced 300ms, passed to API call. (2) `FluentSelect` for failure category presets: "All", "Timeout", "Deserialization", "Authorization", "Other" (`?category=`). Selecting a preset populates the search field; "Other" inverts match. (3) `FluentTextField` for search filter (`?search=`), debounced 300ms, client-side filter on `OriginalCommandType` and `FailureReason` (case-insensitive `Contains`). Tenant filter change resets pagination + selection; search filter and category only filter `_filteredEntries` client-side.
+  - [x]2.5 **Stat cards** — Four `StatCard` in `FluentGrid` per AC 2. Computed from loaded entries list.
+  - [x]2.6 **DataGrid with checkboxes** — `FluentDataGrid` with `TGridItem="DeadLetterEntry"`. Add a `TemplateColumn` for checkbox as the first column. Per AC 1.
+  - [x]2.7 **Row expansion** — Track `_expandedEntry` (nullable `DeadLetterEntry`). `OnRowClick` toggles expansion. Show `FluentCard` below expanded row with full detail per AC 5. Ensure clicking the checkbox does NOT trigger expansion (use `@onclick:stopPropagation` on checkbox).
+  - [x]2.8 **Selection state** — `HashSet<string> _selectedIds` tracks selected message IDs. Header checkbox toggles all IDs in `_filteredEntries` (never `_allEntries`). Header uses tri-state: unchecked/indeterminate/checked via computed `CheckState`. Individual checkboxes toggle one. Selection summary bar with count and action buttons per AC 6. Clear `_selectedIds` on: filter change, tenant filter change, bulk action completion (success or partial).
+  - [x]2.9 **Bulk action dialogs** — Three `FluentDialog` instances (retry, skip, archive) per AC 7-9. Group selected entries by TenantId (`_allEntries.Where(e => _selectedIds.Contains(e.MessageId)).GroupBy(e => e.TenantId)`) and call API per tenant. Show per-tenant progress in dialog: "Processing tenant 2 of 4..." Handle partial success. Clear `_selectedIds` after completion (success or partial). Disable Refresh button while `_isOperating`.
+  - [x]2.10 **Pagination** — "Load More" button when `ContinuationToken != null`. Appends to `_allEntries` list. Shows "Showing X of Y entries" text. Per AC 4.
+  - [x]2.11 **URL state** — `ReadUrlParameters()` on init, `UpdateUrl()` on filter change. Per AC 10.
+  - [x]2.12 **Data loading** — `LoadDataAsync()` with `CancellationTokenSource` pattern. Error handling for `UnauthorizedAccessException`, `ForbiddenAccessException`, `ServiceUnavailableException`, `HttpRequestException`. Per AC 12.
+  - [x]2.13 **Auth guards** — Wrap all action buttons in `AuthorizedView MinimumRole="AdminRole.Operator"`. Per AC 13.
+  - [x]2.14 **Accessibility** — `aria-label` on all interactive elements, `aria-live="polite"` on selection summary. Per AC 14.
 
   **State variables:**
   ```csharp
@@ -95,7 +95,8 @@ so that **I can diagnose command failures, recover from infrastructure issues by
   private string? _tenantFilterInput;
   private string? _searchFilter;
   private string? _searchFilterInput;
-  private Timer? _debounceTimer;
+  private Timer? _tenantDebounceTimer;
+  private Timer? _searchDebounceTimer;
   private CancellationTokenSource? _loadCts;
   private bool _isOperating;
   private DeadLetterEntry? _expandedEntry;
@@ -113,46 +114,46 @@ so that **I can diagnose command failures, recover from infrastructure issues by
   private int _bulkProgressTotal;
   ```
 
-- [ ] **Task 3: Navigation entry in NavMenu.razor** (AC: 11)
-  - [ ] 3.1 Add `<FluentNavLink Href="/health/dead-letters" Icon="@(new Icons.Regular.Size20.DocumentDismiss())">Dead Letters</FluentNavLink>` in `NavMenu.razor` after the Health link (after line 14). If `DocumentDismiss` doesn't compile, try `ErrorCircle` or `Warning`.
-  - [ ] 3.2 Verify breadcrumb mapping exists: `["dead-letters"] = "Dead Letters"` in `Breadcrumb.razor` line 64 — already present.
-  - [ ] 3.3 Verify `CommandPaletteCatalog.cs` has "Dead Letters" → `/health/dead-letters` entry — already present (line 14). Add a second entry for search: `new("Dead Letters", "Dead Letter Queue Manager", "/health/dead-letters")`.
+- [x] **Task 3: Navigation entry in NavMenu.razor** (AC: 11)
+  - [x]3.1 Add `<FluentNavLink Href="/health/dead-letters" Icon="@(new Icons.Regular.Size20.DocumentDismiss())">Dead Letters</FluentNavLink>` in `NavMenu.razor` after the Health link (after line 14). If `DocumentDismiss` doesn't compile, try `ErrorCircle` or `Warning`.
+  - [x]3.2 Verify breadcrumb mapping exists: `["dead-letters"] = "Dead Letters"` in `Breadcrumb.razor` line 64 — already present.
+  - [x]3.3 Verify `CommandPaletteCatalog.cs` has "Dead Letters" → `/health/dead-letters` entry — already present (line 14). Add a second entry for search: `new("Dead Letters", "Dead Letter Queue Manager", "/health/dead-letters")`.
 
-- [ ] **Task 4: bUnit tests** (AC: 1-14)
-  - [ ] **Merge-blocking tests:**
-  - [ ] 4.1 `DeadLetters_ShowsLoadingSkeletons_WhenLoading` — Four `SkeletonCard` visible during initial load.
-  - [ ] 4.2 `DeadLetters_ShowsEmptyState_WhenNoEntries` — `EmptyState` with correct title when API returns empty.
-  - [ ] 4.3 `DeadLetters_ShowsDataGrid_WhenEntriesExist` — Grid renders with correct columns and entry data.
-  - [ ] 4.4 `DeadLetters_ShowsStatCards_WhenLoaded` — Four stat cards with computed values (total, tenants, oldest, high retry).
-  - [ ] 4.5 `DeadLetters_FiltersVisibleEntries_WhenTenantFilterApplied` — Tenant filter restricts visible rows.
-  - [ ] 4.6 `DeadLetters_FiltersVisibleEntries_WhenSearchFilterApplied` — Search filter matches command type and failure reason.
-  - [ ] 4.7 `DeadLetters_ExpandsRowDetail_OnRowClick` — Click shows full detail `FluentCard` below the row.
-  - [ ] 4.8 `DeadLetters_ShowsRetryDialog_WhenRetryClicked` — Retry button opens confirmation dialog with correct count.
-  - [ ] 4.9 `DeadLetters_CallsRetryApi_OnConfirm` — API called with correct tenant grouping; success toast shown.
-  - [ ] 4.10 `DeadLetters_ShowsSkipDialog_WhenSkipClicked` — Skip button opens dialog with "permanently" bold.
-  - [ ] 4.11 `DeadLetters_ShowsArchiveDialog_WhenArchiveClicked` — Archive button opens dialog.
-  - [ ] 4.12 `DeadLetters_ShowsIssueBanner_WhenApiUnavailable` — Error banner shown on `ServiceUnavailableException`.
-  - [ ] 4.13 `DeadLetters_CheckboxClick_DoesNotTriggerRowExpansion` — Clicking checkbox does NOT expand the detail row (stopPropagation guard).
-  - [ ] **Recommended tests:**
-  - [ ] 4.14 `DeadLetters_SelectAll_TogglesAllVisibleCheckboxes` — Header checkbox selects/deselects all.
-  - [ ] 4.15 `DeadLetters_IndividualCheckbox_TogglesSelection` — Row checkbox adds/removes from selection.
-  - [ ] 4.16 `DeadLetters_SelectionBar_ShowsCountAndButtons` — Selection summary bar with correct count.
-  - [ ] 4.17 `DeadLetters_HidesActionButtons_ForReadOnlyUser` — No retry/skip/archive buttons for ReadOnly role.
-  - [ ] 4.18 `DeadLetters_ShowsActionButtons_ForOperatorUser` — Buttons visible for Operator role.
-  - [ ] 4.19 `DeadLetters_LoadMore_AppendsEntries` — "Load More" adds second page to list.
-  - [ ] 4.20 `DeadLetters_HidesLoadMore_WhenNoContinuationToken` — No button when last page.
-  - [ ] 4.21 `DeadLetters_PersistsFiltersInUrl` — URL updated with tenant/search query params.
-  - [ ] 4.22 `DeadLetters_ReadsFiltersFromUrl_OnInit` — Filters pre-applied from URL on load.
-  - [ ] 4.23 `DeadLetters_HandlesPartialFailure_OnRetry` — Warning toast on mixed success/failure.
-  - [ ] 4.24 `DeadLetters_SelectionClearsOnFilterChange` — Changing tenant or search filter resets `_selectedIds` to empty.
-  - [ ] 4.25 `DeadLetters_TenantFilterResetsPagination` — Changing tenant filter clears `_allEntries`, resets `_continuationToken`, and reloads from page 1.
-  - [ ] 4.26 `DeadLetters_SkipAndArchive_GroupByTenantLikeRetry` — Skip and archive bulk actions group by TenantId and handle partial failure (smoke test for shared logic).
+- [x] **Task 4: bUnit tests** (AC: 1-14)
+  - [x]**Merge-blocking tests:**
+  - [x]4.1 `DeadLetters_ShowsLoadingSkeletons_WhenLoading` — Four `SkeletonCard` visible during initial load.
+  - [x]4.2 `DeadLetters_ShowsEmptyState_WhenNoEntries` — `EmptyState` with correct title when API returns empty.
+  - [x]4.3 `DeadLetters_ShowsDataGrid_WhenEntriesExist` — Grid renders with correct columns and entry data.
+  - [x]4.4 `DeadLetters_ShowsStatCards_WhenLoaded` — Four stat cards with computed values (total, tenants, oldest, high retry).
+  - [x]4.5 `DeadLetters_FiltersVisibleEntries_WhenTenantFilterApplied` — Tenant filter restricts visible rows.
+  - [x]4.6 `DeadLetters_FiltersVisibleEntries_WhenSearchFilterApplied` — Search filter matches command type and failure reason.
+  - [x]4.7 `DeadLetters_ExpandsRowDetail_OnRowClick` — Click shows full detail `FluentCard` below the row.
+  - [x]4.8 `DeadLetters_ShowsRetryDialog_WhenRetryClicked` — Retry button opens confirmation dialog with correct count.
+  - [x]4.9 `DeadLetters_CallsRetryApi_OnConfirm` — API called with correct tenant grouping; success toast shown.
+  - [x]4.10 `DeadLetters_ShowsSkipDialog_WhenSkipClicked` — Skip button opens dialog with "permanently" bold.
+  - [x]4.11 `DeadLetters_ShowsArchiveDialog_WhenArchiveClicked` — Archive button opens dialog.
+  - [x]4.12 `DeadLetters_ShowsIssueBanner_WhenApiUnavailable` — Error banner shown on `ServiceUnavailableException`.
+  - [x]4.13 `DeadLetters_CheckboxClick_DoesNotTriggerRowExpansion` — Clicking checkbox does NOT expand the detail row (stopPropagation guard).
+  - [x]**Recommended tests:**
+  - [x]4.14 `DeadLetters_SelectAll_TogglesAllVisibleCheckboxes` — Header checkbox selects/deselects all.
+  - [x]4.15 `DeadLetters_IndividualCheckbox_TogglesSelection` — Row checkbox adds/removes from selection.
+  - [x]4.16 `DeadLetters_SelectionBar_ShowsCountAndButtons` — Selection summary bar with correct count.
+  - [x]4.17 `DeadLetters_HidesActionButtons_ForReadOnlyUser` — No retry/skip/archive buttons for ReadOnly role.
+  - [x]4.18 `DeadLetters_ShowsActionButtons_ForOperatorUser` — Buttons visible for Operator role.
+  - [x]4.19 `DeadLetters_LoadMore_AppendsEntries` — "Load More" adds second page to list.
+  - [x]4.20 `DeadLetters_HidesLoadMore_WhenNoContinuationToken` — No button when last page.
+  - [x]4.21 `DeadLetters_PersistsFiltersInUrl` — URL updated with tenant/search query params.
+  - [x]4.22 `DeadLetters_ReadsFiltersFromUrl_OnInit` — Filters pre-applied from URL on load.
+  - [x]4.23 `DeadLetters_HandlesPartialFailure_OnRetry` — Warning toast on mixed success/failure.
+  - [x]4.24 `DeadLetters_SelectionClearsOnFilterChange` — Changing tenant or search filter resets `_selectedIds` to empty.
+  - [x]4.25 `DeadLetters_TenantFilterResetsPagination` — Changing tenant filter clears `_allEntries`, resets `_continuationToken`, and reloads from page 1.
+  - [x]4.26 `DeadLetters_SkipAndArchive_GroupByTenantLikeRetry` — Skip and archive bulk actions group by TenantId and handle partial failure (smoke test for shared logic).
 
   Test file: `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DeadLettersTests.cs` (follow pattern of existing bUnit test files in the same folder). Mock `AdminDeadLetterApiClient` (all methods are virtual).
 
-- [ ] **Task 5: Aspire topology verification** (AC: 12)
-  - [ ] 5.1 Run `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings.
-  - [ ] 5.2 Verify the DeadLetters page loads in Aspire AppHost and connects to `AdminDeadLetterApiClient` → `AdminDeadLettersController` → DAPR services.
+- [x] **Task 5: Aspire topology verification** (AC: 12)
+  - [x]5.1 Run `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings.
+  - [x]5.2 Verify the DeadLetters page loads in Aspire AppHost and connects to `AdminDeadLetterApiClient` → `AdminDeadLettersController` → DAPR services.
 
 ## Dev Notes
 
@@ -240,9 +241,29 @@ Dead Letters is at `/health/dead-letters` — it's a health/observability sub-pa
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
+- Follow-up code-review fixes migrated selection controls back to `FluentCheckbox` using `CheckState`/`CheckStateChanged` for tri-state header behavior.
+- bUnit interaction was stabilized by invoking component callbacks (`ValueChanged` and `CheckStateChanged`) in tests rather than relying on native input markup.
 
 ### Completion Notes List
+- Task 1: Created `AdminDeadLetterApiClient` with `GetDeadLettersAsync`, `RetryDeadLettersAsync`, `SkipDeadLettersAsync`, `ArchiveDeadLettersAsync` following `AdminCompactionApiClient` pattern. Registered in DI.
+- Task 2: Replaced placeholder `DeadLetters.razor` with full implementation: data grid with pagination (Load More), 4 stat cards, tenant/search/category filters with 300ms debounce, row expansion detail, checkbox selection with select-all header, 3 bulk action dialogs (retry/skip/archive) with per-tenant progress, URL state persistence, auth guards, `IAsyncDisposable`.
+- Task 3: Added "Dead Letters" nav link after Health in NavMenu.razor with `DocumentDismiss` icon. Added second command palette entry for searchability. Breadcrumb already mapped.
+- Task 4: 26 bUnit tests (13 merge-blocking + 13 recommended) are passing, and tests were strengthened to validate real row expansion, checkbox propagation behavior, URL filtering, and stale-row refresh regression.
+- Task 5: Post-review hardening completed: fixed stale refresh state handling, split debounce timers to prevent tenant/search races, corrected category "Other" filtering behavior, made heading focusable, and rendered expanded detail inline in the grid.
+- Validation: `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --filter "FullyQualifiedName~DeadLettersPageTests"` and `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests` both passed.
+
+### Change Log
+- 2026-03-25: Initial implementation of Dead-Letter Queue Manager (Story 16-6)
+- 2026-03-25: Post-review fixes applied and story moved to done after full Admin UI test pass.
 
 ### File List
+- `src/Hexalith.EventStore.Admin.UI/Services/AdminDeadLetterApiClient.cs` (new)
+- `src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor` (modified — replaced placeholder)
+- `src/Hexalith.EventStore.Admin.UI/Program.cs` (modified — added DI registration)
+- `src/Hexalith.EventStore.Admin.UI/Layout/NavMenu.razor` (modified — added nav link)
+- `src/Hexalith.EventStore.Admin.UI/Components/CommandPaletteCatalog.cs` (modified — added search entry)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DeadLettersPageTests.cs` (new)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/StubPageTests.cs` (modified — updated for full page)

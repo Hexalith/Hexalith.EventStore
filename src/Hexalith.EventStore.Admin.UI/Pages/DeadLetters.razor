@@ -1,8 +1,881 @@
 @page "/health/dead-letters"
 
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminDeadLetterApiClient DeadLetterApi
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
 <PageTitle>Dead Letters - Hexalith EventStore</PageTitle>
 
-<h1 style="font-size: 24px; margin: 0 0 16px;">Dead Letters</h1>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;" tabindex="0">Dead Letters</h1>
+    <div style="display: flex; gap: 8px;">
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      Disabled="@_isOperating"
+                      aria-label="Refresh dead-letter entries">
+            Refresh
+        </FluentButton>
+    </div>
+</div>
 
-<EmptyState Title="No dead letters. All commands processed successfully."
-            Description="Failed commands will appear here for investigation and replay." />
+@* Error state *@
+<IssueBanner Visible="@_apiUnavailable"
+             Title="Unable to load dead-letter entries"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Filter bar *@
+<div class="storage-filter-bar" style="display: flex; gap: 12px; align-items: end; margin-bottom: 16px;">
+    <FluentTextField @bind-Value="_tenantFilterInput"
+                     @bind-Value:after="OnTenantFilterChanged"
+                     Placeholder="Filter by tenant ID..."
+                     aria-label="Filter by tenant ID"
+                     style="min-width: 220px;" />
+    <FluentSelect TOption="string"
+                  @bind-SelectedOption="_failureCategory"
+                  @bind-SelectedOption:after="OnCategoryChanged"
+                  aria-label="Failure category preset"
+                  style="min-width: 160px;">
+        <FluentOption Value="@("All")">All</FluentOption>
+        <FluentOption Value="@("Timeout")">Timeout</FluentOption>
+        <FluentOption Value="@("Deserialization")">Deserialization</FluentOption>
+        <FluentOption Value="@("Authorization")">Authorization</FluentOption>
+        <FluentOption Value="@("Other")">Other</FluentOption>
+    </FluentSelect>
+    <FluentTextField @bind-Value="_searchFilterInput"
+                     @bind-Value:after="OnSearchFilterChanged"
+                     Placeholder="Search command type or failure reason..."
+                     aria-label="Search dead letters"
+                     style="min-width: 280px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Dead Letters"
+                      Value="@_totalCount.ToString("N0")"
+                      Severity="neutral"
+                      Title="Total dead-letter entries" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Tenants Affected"
+                      Value="@TenantsAffected.ToString("N0")"
+                      Severity="@(TenantsAffected > 0 ? "warning" : "neutral")"
+                      Title="Distinct tenants with dead-letter entries" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Oldest Entry"
+                      Value="@OldestEntryText"
+                      Severity="neutral"
+                      Title="@OldestEntryTooltip" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="High Retry (3+)"
+                      Value="@HighRetryCount.ToString("N0")"
+                      Severity="@(HighRetryCount > 0 ? "error" : "neutral")"
+                      Title="Entries retried 3 or more times" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Data grid *@
+@if (!_isLoading)
+{
+    @if (_filteredEntries.Count == 0 && _allEntries.Count == 0)
+    {
+        <EmptyState Title="No dead letters. All commands processed successfully."
+                    Description="Failed commands will appear here for investigation and replay." />
+    }
+    else if (_filteredEntries.Count == 0)
+    {
+        <EmptyState Title="No matching dead letters"
+                    Description="Try adjusting your search or filter criteria." />
+    }
+    else
+    {
+        @* Selection summary bar *@
+        @if (_selectedIds.Count > 0)
+        {
+            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; margin-bottom: 8px; background: var(--neutral-layer-card-container); border-radius: 4px;"
+                 aria-live="polite">
+                <strong>@_selectedIds.Count</strong> <span>selected</span>
+                <AuthorizedView MinimumRole="AdminRole.Operator">
+                    <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                                  OnClick="@(() => OpenBulkDialog("retry"))"
+                                  aria-label="Retry selected entries">
+                        Retry Selected
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  OnClick="@(() => OpenBulkDialog("skip"))"
+                                  aria-label="Skip selected entries">
+                        Skip Selected
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  OnClick="@(() => OpenBulkDialog("archive"))"
+                                  aria-label="Archive selected entries">
+                        Archive Selected
+                    </FluentButton>
+                </AuthorizedView>
+            </div>
+        }
+
+        <p style="font-size: 13px; color: var(--neutral-foreground-hint); margin: 0 0 8px;">
+            Showing @_allEntries.Count of @_totalCount entries
+        </p>
+
+        <FluentDataGrid Items="@_filteredEntries.AsQueryable()" TGridItem="DeadLetterEntry"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Dead-letter entries"
+                        OnRowClick="@(row => OnRowClick(row.Item))">
+            <TemplateColumn Title="" Style="width: 40px;">
+                <HeaderCellItemTemplate>
+                    <div @onclick:stopPropagation="true">
+                        <FluentCheckbox ThreeState="true"
+                                        ShowIndeterminate="true"
+                                        CheckState="@HeaderCheckState"
+                                        CheckStateChanged="@OnHeaderCheckStateChanged"
+                                        aria-label="Select all visible entries" />
+                    </div>
+                </HeaderCellItemTemplate>
+                <ChildContent>
+                    <div @onclick:stopPropagation="true">
+                        <FluentCheckbox Value="@_selectedIds.Contains(context.MessageId)"
+                                        ValueChanged="@(selected => OnRowCheckChanged(context.MessageId, selected))"
+                                        aria-label="@($"Select {context.MessageId}")" />
+                    </div>
+                </ChildContent>
+            </TemplateColumn>
+            <TemplateColumn Title="Message ID" Sortable="false">
+                <span class="monospace" title="@context.MessageId">@Truncate(context.MessageId, 8)</span>
+            </TemplateColumn>
+            <PropertyColumn Property="@(e => e.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
+            <PropertyColumn Property="@(e => e.Domain)" Title="Domain" Sortable="true" />
+            <TemplateColumn Title="Aggregate ID" Sortable="false">
+                <span class="monospace" title="@context.AggregateId">@Truncate(context.AggregateId, 8)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Command Type" Sortable="true"
+                            SortBy="@(GridSort<DeadLetterEntry>.ByAscending(e => GetShortTypeName(e.OriginalCommandType)))">
+                <span title="@context.OriginalCommandType">@GetShortTypeName(context.OriginalCommandType)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Failure Reason" Sortable="false">
+                <span title="@context.FailureReason">@Truncate(context.FailureReason, 60)</span>
+                @if (_expandedEntry?.MessageId == context.MessageId)
+                {
+                    <FluentCard Style="margin-top: 8px; padding: 12px;" aria-label="Dead-letter entry details">
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13px;">
+                            <strong>Message ID:</strong>
+                            <span class="monospace">@context.MessageId</span>
+                            <strong>Tenant ID:</strong>
+                            <span class="monospace">@context.TenantId</span>
+                            <strong>Domain:</strong>
+                            <span>@context.Domain</span>
+                            <strong>Aggregate ID:</strong>
+                            <span class="monospace">@context.AggregateId</span>
+                            <strong>Command Type:</strong>
+                            <span>@context.OriginalCommandType</span>
+                            <strong>Correlation ID:</strong>
+                            <span class="monospace">@context.CorrelationId</span>
+                            <strong>Failed At:</strong>
+                            <span>@context.FailedAtUtc.ToString("u")</span>
+                            <strong>Retry Count:</strong>
+                            <span>@context.RetryCount</span>
+                        </div>
+                        <FluentCard Style="margin-top: 8px; background: var(--neutral-layer-card-container); padding: 8px;">
+                            <strong>Failure Reason:</strong>
+                            <pre style="margin: 6px 0 0; white-space: pre-wrap; font-family: var(--body-font); font-size: 12px;">@context.FailureReason</pre>
+                        </FluentCard>
+                    </FluentCard>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Failed At" Sortable="true" IsDefaultSortColumn="true"
+                            InitialSortDirection="SortDirection.Descending"
+                            SortBy="@(GridSort<DeadLetterEntry>.ByDescending(e => e.FailedAtUtc))">
+                <span title="@context.FailedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.FailedAtUtc)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Retry Count" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<DeadLetterEntry>.ByDescending(e => e.RetryCount))">
+                @context.RetryCount
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        @* Load More *@
+        @if (_continuationToken is not null)
+        {
+            <div style="text-align: center; margin-bottom: 24px;">
+                <FluentButton Appearance="Appearance.Outline" OnClick="LoadMoreAsync"
+                              aria-label="Load more dead-letter entries">
+                    Load More
+                </FluentButton>
+            </div>
+        }
+    }
+}
+
+@* Retry Dialog *@
+@if (_showRetryDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Retry dead-letter entries" @ondialogdismiss="CloseDialogs"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Retry Dead Letters</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>Retry @_selectedIds.Count dead-letter command(s)? These commands will be resubmitted for processing.</p>
+            @if (_isOperating)
+            {
+                <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
+                </p>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="OnRetryConfirm" Disabled="@_isOperating">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Retry</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Skip Dialog *@
+@if (_showSkipDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Skip dead-letter entries" @ondialogdismiss="CloseDialogs"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Skip Dead Letters</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>Skip @_selectedIds.Count dead-letter command(s)? These commands will be <strong>permanently</strong> removed from the dead-letter queue and will NOT be retried.</p>
+            @if (_isOperating)
+            {
+                <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
+                </p>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="OnSkipConfirm" Disabled="@_isOperating">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Skip</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Archive Dialog *@
+@if (_showArchiveDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Archive dead-letter entries" @ondialogdismiss="CloseDialogs"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Archive Dead Letters</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>Archive @_selectedIds.Count dead-letter command(s)? These commands will be moved to the archive. They can be reviewed later but will no longer appear in the active queue.</p>
+            @if (_isOperating)
+            {
+                <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
+                </p>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="OnArchiveConfirm" Disabled="@_isOperating">
+                @if (_isOperating)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Archive</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@code {
+    private static readonly string[] _knownCategories = ["timeout", "deserialization", "authorization"];
+
+    private List<DeadLetterEntry> _allEntries = [];
+    private IReadOnlyList<DeadLetterEntry> _filteredEntries = [];
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _disposed;
+    private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+    private string? _tenantFilter;
+    private string? _tenantFilterInput;
+    private string? _searchFilter;
+    private string? _searchFilterInput;
+    private Timer? _tenantDebounceTimer;
+    private Timer? _searchDebounceTimer;
+    private CancellationTokenSource? _loadCts;
+    private bool _isOperating;
+    private DeadLetterEntry? _expandedEntry;
+    private HashSet<string> _selectedIds = [];
+    private HashSet<string> _loadedMessageIds = [];
+    private string? _continuationToken;
+    private int _totalCount;
+    private string? _failureCategory = "All";
+
+    // Dialog state
+    private bool _showRetryDialog;
+    private bool _showSkipDialog;
+    private bool _showArchiveDialog;
+    private int _bulkProgressCurrent;
+    private int _bulkProgressTotal;
+
+    // Computed properties
+    private int TenantsAffected => _allEntries.Select(e => e.TenantId).Distinct().Count();
+
+    private string OldestEntryText => _allEntries.Count == 0
+        ? "None"
+        : TimeFormatHelper.FormatRelativeTime(_allEntries.Min(e => e.FailedAtUtc));
+
+    private string OldestEntryTooltip => _allEntries.Count == 0
+        ? "No entries"
+        : _allEntries.Min(e => e.FailedAtUtc).ToString("u");
+
+    private int HighRetryCount => _allEntries.Count(e => e.RetryCount >= 3);
+
+    private bool? HeaderCheckState
+    {
+        get
+        {
+            if (_filteredEntries.Count == 0 || _selectedIds.Count == 0)
+            {
+                return false;
+            }
+
+            int selectedVisible = _filteredEntries.Count(e => _selectedIds.Contains(e.MessageId));
+            if (selectedVisible == 0)
+            {
+                return false;
+            }
+
+            return selectedVisible == _filteredEntries.Count
+                ? true
+                : null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        _tenantFilterInput = _tenantFilter;
+        _searchFilterInput = _searchFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        _isLoading = _allEntries.Count == 0;
+        _allEntries = [];
+        _filteredEntries = [];
+        _loadedMessageIds = [];
+        _continuationToken = null;
+        _totalCount = 0;
+        _expandedEntry = null;
+
+        try
+        {
+            PagedResult<DeadLetterEntry> result = await DeadLetterApi
+                .GetDeadLettersAsync(_tenantFilter, 100, null, ct)
+                .ConfigureAwait(false);
+            foreach (DeadLetterEntry entry in result.Items)
+            {
+                if (_loadedMessageIds.Add(entry.MessageId))
+                {
+                    _allEntries.Add(entry);
+                }
+            }
+
+            _totalCount = result.TotalCount;
+            _continuationToken = result.ContinuationToken;
+            UpdateFilteredEntries();
+            _apiUnavailable = false;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Authentication required. Please sign in again.";
+            UpdateFilteredEntries();
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Insufficient permissions to view dead-letter entries.";
+            UpdateFilteredEntries();
+        }
+        catch (HttpRequestException ex)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = $"Unable to load dead-letter entries ({(int?)ex.StatusCode ?? 0}).";
+            UpdateFilteredEntries();
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
+            UpdateFilteredEntries();
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_continuationToken is null)
+        {
+            return;
+        }
+
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        try
+        {
+            PagedResult<DeadLetterEntry> result = await DeadLetterApi
+                .GetDeadLettersAsync(_tenantFilter, 100, _continuationToken, ct)
+                .ConfigureAwait(false);
+            foreach (DeadLetterEntry entry in result.Items)
+            {
+                if (_loadedMessageIds.Add(entry.MessageId))
+                {
+                    _allEntries.Add(entry);
+                }
+            }
+
+            _totalCount = result.TotalCount;
+            _continuationToken = result.ContinuationToken;
+            UpdateFilteredEntries();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+            ToastService.ShowError("Failed to load more entries.");
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void UpdateFilteredEntries()
+    {
+        IEnumerable<DeadLetterEntry> filtered = _allEntries;
+
+        if (string.Equals(_failureCategory, "Other", StringComparison.OrdinalIgnoreCase))
+        {
+            filtered = filtered.Where(e =>
+                !_knownCategories.Any(cat =>
+                    e.FailureReason.Contains(cat, StringComparison.OrdinalIgnoreCase)));
+        }
+        else if (!string.IsNullOrWhiteSpace(_failureCategory)
+            && !string.Equals(_failureCategory, "All", StringComparison.OrdinalIgnoreCase))
+        {
+            string category = _failureCategory;
+            filtered = filtered.Where(e =>
+                e.FailureReason.Contains(category, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchFilter))
+        {
+            string search = _searchFilter;
+            filtered = filtered.Where(e =>
+                e.OriginalCommandType.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || e.FailureReason.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredEntries = filtered.ToList();
+    }
+
+    private async Task OnManualRefresh()
+    {
+        _selectedIds = [];
+        await LoadDataAsync();
+    }
+
+    private void OnTenantFilterChanged()
+    {
+        _tenantDebounceTimer?.Dispose();
+        _tenantDebounceTimer = new Timer(OnTenantDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnTenantDebounceElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _tenantFilter = string.IsNullOrWhiteSpace(_tenantFilterInput)
+                ? null
+                : _tenantFilterInput.Trim();
+            _selectedIds = [];
+            UpdateUrl();
+            await LoadDataAsync();
+        });
+    }
+
+    private void OnSearchFilterChanged()
+    {
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new Timer(OnSearchDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnSearchDebounceElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _searchFilter = string.IsNullOrWhiteSpace(_searchFilterInput)
+                ? null
+                : _searchFilterInput.Trim();
+            _selectedIds = [];
+            UpdateFilteredEntries();
+            UpdateUrl();
+            StateHasChanged();
+        });
+    }
+
+    private void OnCategoryChanged()
+    {
+        if (string.Equals(_failureCategory, "All", StringComparison.OrdinalIgnoreCase))
+        {
+            _searchFilterInput = null;
+            _searchFilter = null;
+        }
+        else if (string.Equals(_failureCategory, "Other", StringComparison.OrdinalIgnoreCase))
+        {
+            _searchFilterInput = "other";
+            _searchFilter = null;
+        }
+        else
+        {
+            _searchFilterInput = _failureCategory?.ToLowerInvariant();
+            _searchFilter = _searchFilterInput;
+        }
+
+        _selectedIds = [];
+        UpdateFilteredEntries();
+        UpdateUrl();
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _tenantFilter = query["tenant"];
+        _searchFilter = query["search"];
+        string? category = query["category"];
+        if (!string.IsNullOrEmpty(category))
+        {
+            _failureCategory = category;
+            if (string.Equals(category, "Other", StringComparison.OrdinalIgnoreCase))
+            {
+                _searchFilter = null;
+            }
+            else if (!string.Equals(category, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                _searchFilter = category.ToLowerInvariant();
+            }
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_searchFilter))
+        {
+            queryParams.Add($"search={Uri.EscapeDataString(_searchFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_failureCategory) && !string.Equals(_failureCategory, "All", StringComparison.OrdinalIgnoreCase))
+        {
+            queryParams.Add($"category={Uri.EscapeDataString(_failureCategory)}");
+        }
+
+        string url = queryParams.Count > 0
+            ? $"/health/dead-letters?{string.Join('&', queryParams)}"
+            : "/health/dead-letters";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private void OnRowClick(DeadLetterEntry? entry)
+    {
+        if (entry is null)
+        {
+            _expandedEntry = null;
+            return;
+        }
+
+        _expandedEntry = _expandedEntry == entry ? null : entry;
+    }
+
+    // Selection
+    private void OnHeaderCheckStateChanged(bool? checkState)
+    {
+        bool isChecked = checkState == true;
+        if (isChecked)
+        {
+            foreach (DeadLetterEntry entry in _filteredEntries)
+            {
+                _ = _selectedIds.Add(entry.MessageId);
+            }
+        }
+        else
+        {
+            foreach (DeadLetterEntry entry in _filteredEntries)
+            {
+                _ = _selectedIds.Remove(entry.MessageId);
+            }
+        }
+    }
+
+    private void OnRowCheckChanged(string messageId, bool selected)
+    {
+        if (selected)
+        {
+            _ = _selectedIds.Add(messageId);
+        }
+        else
+        {
+            _ = _selectedIds.Remove(messageId);
+        }
+    }
+
+    // Bulk action dialogs
+    private void OpenBulkDialog(string action)
+    {
+        _showRetryDialog = string.Equals(action, "retry", StringComparison.OrdinalIgnoreCase);
+        _showSkipDialog = string.Equals(action, "skip", StringComparison.OrdinalIgnoreCase);
+        _showArchiveDialog = string.Equals(action, "archive", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void CloseDialogs()
+    {
+        if (_isOperating)
+        {
+            return;
+        }
+
+        _showRetryDialog = false;
+        _showSkipDialog = false;
+        _showArchiveDialog = false;
+    }
+
+    private async Task OnRetryConfirm() =>
+        await ExecuteBulkActionAsync("retry", (tenantId, ids, ct) => DeadLetterApi.RetryDeadLettersAsync(tenantId, ids, ct));
+
+    private async Task OnSkipConfirm() =>
+        await ExecuteBulkActionAsync("skip", (tenantId, ids, ct) => DeadLetterApi.SkipDeadLettersAsync(tenantId, ids, ct));
+
+    private async Task OnArchiveConfirm() =>
+        await ExecuteBulkActionAsync("archive", (tenantId, ids, ct) => DeadLetterApi.ArchiveDeadLettersAsync(tenantId, ids, ct));
+
+    private async Task ExecuteBulkActionAsync(
+        string actionName,
+        Func<string, IReadOnlyList<string>, CancellationToken, Task<AdminOperationResult?>> apiCall)
+    {
+        _isOperating = true;
+        StateHasChanged();
+
+        int totalCount = _selectedIds.Count;
+        IReadOnlyList<IGrouping<string, DeadLetterEntry>> tenantGroups = _allEntries
+            .Where(e => _selectedIds.Contains(e.MessageId))
+            .GroupBy(e => e.TenantId)
+            .ToList();
+
+        _bulkProgressTotal = tenantGroups.Count;
+        _bulkProgressCurrent = 0;
+
+        int successCount = 0;
+        int failCount = 0;
+        string? lastError = null;
+
+        try
+        {
+            foreach (IGrouping<string, DeadLetterEntry> group in tenantGroups)
+            {
+                _bulkProgressCurrent++;
+                StateHasChanged();
+
+                try
+                {
+                    AdminOperationResult? result = await apiCall(
+                        group.Key,
+                        group.Select(e => e.MessageId).ToList(),
+                        CancellationToken.None);
+
+                    if (result?.Success == true)
+                    {
+                        successCount += group.Count();
+                    }
+                    else
+                    {
+                        failCount += group.Count();
+                        lastError = result?.Message ?? $"Failed to {actionName} entries.";
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    failCount += group.Count();
+                    lastError = ex.Message;
+                }
+            }
+
+            // Report results
+            string capitalizedAction = char.ToUpperInvariant(actionName[0]) + actionName[1..];
+            string pastTense = actionName switch
+            {
+                "retry" => "Retried",
+                "skip" => "Skipped",
+                "archive" => "Archived",
+                _ => capitalizedAction,
+            };
+
+            if (failCount == 0)
+            {
+                // Full success
+                ToastService.ShowSuccess($"{pastTense} {totalCount} dead-letter command(s).");
+                _selectedIds = [];
+                CloseAllDialogs();
+                await LoadDataAsync();
+            }
+            else if (successCount > 0)
+            {
+                // Partial failure
+                ToastService.ShowWarning($"{pastTense} {successCount} commands. {failCount} failed: {lastError}");
+                _selectedIds = [];
+                CloseAllDialogs();
+                await LoadDataAsync();
+            }
+            else
+            {
+                // Full failure — stay on dialog, keep selection
+                ToastService.ShowError($"Failed to {actionName} entries: {lastError}");
+            }
+        }
+        finally
+        {
+            _isOperating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseAllDialogs()
+    {
+        _showRetryDialog = false;
+        _showSkipDialog = false;
+        _showArchiveDialog = false;
+    }
+
+    // Helpers
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
+
+    private static string GetShortTypeName(string fullTypeName)
+    {
+        int lastDot = fullTypeName.LastIndexOf('.');
+        return lastDot >= 0 ? fullTypeName[(lastDot + 1)..] : fullTypeName;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        if (_tenantDebounceTimer is not null)
+        {
+            await _tenantDebounceTimer.DisposeAsync();
+        }
+
+        if (_searchDebounceTimer is not null)
+        {
+            await _searchDebounceTimer.DisposeAsync();
+        }
+    }
+}
