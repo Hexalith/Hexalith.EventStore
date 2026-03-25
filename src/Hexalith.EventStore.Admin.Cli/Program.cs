@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Commands;
+using Hexalith.EventStore.Admin.Cli.Commands.Projection;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 
 GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
@@ -14,7 +15,7 @@ rootCommand.Options.Add(binding.OutputOption);
 
 rootCommand.Subcommands.Add(HealthCommand.Create(binding));
 rootCommand.Subcommands.Add(StreamCommand.Create(binding));
-rootCommand.Subcommands.Add(StubCommands.Create("projection", "List, pause, resume, and reset projections"));
+rootCommand.Subcommands.Add(ProjectionCommand.Create(binding));
 rootCommand.Subcommands.Add(StubCommands.Create("tenant", "List tenants, view quotas, and verify isolation"));
 rootCommand.Subcommands.Add(StubCommands.Create("snapshot", "Manage aggregate snapshots"));
 rootCommand.Subcommands.Add(StubCommands.Create("backup", "Trigger and manage backups"));

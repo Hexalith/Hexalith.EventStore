@@ -182,6 +182,84 @@ public class AdminApiClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Sends a POST request with an optional JSON body and deserializes the JSON response.
+    /// Treats both HTTP 200 and 202 as success.
+    /// </summary>
+    /// <exception cref="AdminApiException">Thrown for all API communication errors with user-friendly messages.</exception>
+    public async Task<TResponse> PostAsync<TResponse>(string path, object? body, CancellationToken cancellationToken)
+    {
+        string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
+        HttpResponseMessage response;
+        try
+        {
+            StringContent content = new(
+                body is not null
+                    ? JsonSerializer.Serialize(body, JsonDefaults.Options)
+                    : "{}",
+                System.Text.Encoding.UTF8,
+                "application/json");
+            response = await _httpClient.PostAsync(path, content, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
+        {
+            throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
+            }
+
+            throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
+        }
+
+        using (response)
+        {
+            int statusCode = (int)response.StatusCode;
+            switch (statusCode)
+            {
+                case 401:
+                    throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})", 401);
+                case 403:
+                    throw new AdminApiException($"Access denied. Insufficient permissions. (URL: {resolvedUrl})", 403);
+                case 404:
+                    throw new AdminApiException($"Resource not found at {resolvedUrl}{path}.", 404);
+                case >= 500:
+                    throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})", statusCode);
+            }
+
+            // Treat both 200 and 202 as success
+            if (statusCode is not (200 or 202))
+            {
+                _ = response.EnsureSuccessStatusCode();
+            }
+
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
+                    ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
+            }
+            catch (JsonException ex)
+            {
+                throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sends a POST request with no body and deserializes the JSON response.
+    /// </summary>
+    /// <exception cref="AdminApiException">Thrown for all API communication errors with user-friendly messages.</exception>
+    public async Task<TResponse> PostAsync<TResponse>(string path, CancellationToken cancellationToken)
+        => await PostAsync<TResponse>(path, null, cancellationToken).ConfigureAwait(false);
+
     /// <inheritdoc/>
     public void Dispose()
     {
