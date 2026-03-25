@@ -7,7 +7,6 @@ namespace Hexalith.EventStore.Admin.Cli.Tests;
 public class StubCommandsTests
 {
     [Theory]
-    [InlineData("stream", "Query, list, and inspect event streams")]
     [InlineData("projection", "List, pause, resume, and reset projections")]
     [InlineData("tenant", "List tenants, view quotas, and verify isolation")]
     [InlineData("snapshot", "Manage aggregate snapshots")]
