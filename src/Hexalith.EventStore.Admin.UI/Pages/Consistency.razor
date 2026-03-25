@@ -1,0 +1,878 @@
+@page "/consistency"
+
+@using System.Text.Json
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.Abstractions.Models.Consistency
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminConsistencyApiClient ConsistencyApi
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Consistency - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">Consistency</h1>
+    <div style="display: flex; gap: 8px;">
+        <AuthorizedView MinimumRole="AdminRole.Operator">
+            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                          OnClick="OpenTriggerDialog"
+                          aria-label="Run consistency check">
+                Run Check
+            </FluentButton>
+        </AuthorizedView>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      aria-label="Refresh consistency checks">
+            Refresh
+        </FluentButton>
+    </div>
+</div>
+
+@* Error state *@
+<IssueBanner Visible="@_apiUnavailable"
+             Title="Unable to load consistency checks"
+             Description="@_apiErrorMessage"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Filters *@
+<div class="storage-filter-bar" style="display: flex; gap: 12px; margin-bottom: 16px;">
+    <FluentTextField @bind-Value="_tenantFilterInput"
+                     @bind-Value:after="OnTenantFilterChanged"
+                     Placeholder="Filter by tenant ID..."
+                     aria-label="Filter by tenant ID"
+                     style="min-width: 240px;" />
+    <FluentTextField @bind-Value="_domainFilterInput"
+                     @bind-Value:after="OnDomainFilterChanged"
+                     Placeholder="Filter by domain..."
+                     aria-label="Filter by domain"
+                     style="min-width: 240px;" />
+</div>
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Checks"
+                      Value="@TotalChecks.ToString("N0")"
+                      Severity="neutral"
+                      Title="Total consistency checks" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Last Check"
+                      Value="@LastCheckDisplay"
+                      Severity="neutral"
+                      Title="Time of most recent completed check" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Anomalies"
+                      Value="@TotalAnomalies.ToString("N0")"
+                      Severity="@(TotalAnomalies > 0 ? "warning" : "neutral")"
+                      Title="Total anomalies found across all completed checks" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Running Now"
+                      Value="@RunningCount.ToString("N0")"
+                      Severity="@(RunningCount > 0 ? "accent" : "neutral")"
+                      Title="Checks currently running" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Check grid *@
+@if (!_isLoading)
+{
+    @if (_filteredChecks.Count == 0)
+    {
+        <EmptyState Title="No consistency checks yet"
+                    Description="No checks have been run yet for your visible scope." />
+    }
+    else
+    {
+        <FluentDataGrid Items="@_filteredChecks.AsQueryable()" TGridItem="ConsistencyCheckSummary"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="Consistency checks"
+                        OnRowClick="@(row => OnRowClick(row.Item))">
+            <TemplateColumn Title="Check ID" Class="monospace" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.CheckId))">
+                <span title="@context.CheckId">@context.CheckId[..Math.Min(8, context.CheckId.Length)]</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Tenant" Class="monospace" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.TenantId ?? ""))">
+                @(context.TenantId ?? "All")
+            </TemplateColumn>
+            <TemplateColumn Title="Domain" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.Domain ?? ""))">
+                @(context.Domain ?? "All")
+            </TemplateColumn>
+            <TemplateColumn Title="Status" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.Status))">
+                @{
+                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                }
+                <FluentBadge Appearance="@appearance"
+                             Class="@cssClass"
+                             aria-label="@($"Status: {context.Status}")">
+                    @if (context.Status == ConsistencyCheckStatus.Running)
+                    {
+                        <FluentProgressRing Style="width: 12px; height: 12px; margin-right: 4px;" />
+                    }
+                    @context.Status
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Streams" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.StreamsChecked))">
+                @context.StreamsChecked.ToString("N0")
+            </TemplateColumn>
+            <TemplateColumn Title="Anomalies" Align="Align.End" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.AnomaliesFound))">
+                @if (context.AnomaliesFound > 0)
+                {
+                    <strong style="color: var(--error);">@context.AnomaliesFound.ToString("N0")</strong>
+                }
+                else
+                {
+                    @context.AnomaliesFound.ToString("N0")
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Started" Sortable="true" IsDefaultSortColumn="true"
+                            InitialSortDirection="SortDirection.Descending"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.StartedAtUtc))">
+                <span title="@context.StartedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.StartedAtUtc)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Duration" Sortable="true"
+                            SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => (c.CompletedAtUtc ?? DateTimeOffset.UtcNow) - c.StartedAtUtc))">
+                @FormatDuration(context)
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                @if (context.Status is ConsistencyCheckStatus.Pending or ConsistencyCheckStatus.Running)
+                {
+                    <AuthorizedView MinimumRole="AdminRole.Operator">
+                        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                      OnClick="@(() => OpenCancelDialog(context.CheckId))"
+                                      OnClick:stopPropagation="true"
+                                      aria-label="Cancel check">
+                            Cancel
+                        </FluentButton>
+                    </AuthorizedView>
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+}
+
+@* Expanded check detail *@
+@if (_expandedCheck is not null && _expandedCheckResult is not null)
+{
+    <FluentCard aria-label="Check details" Style="margin-bottom: 24px; padding: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+            <div><strong>Check ID:</strong> <span class="monospace">@_expandedCheckResult.CheckId</span></div>
+            <div><strong>Status:</strong> @_expandedCheckResult.Status</div>
+            <div><strong>Tenant:</strong> @(_expandedCheckResult.TenantId ?? "All")</div>
+            <div><strong>Domain:</strong> @(_expandedCheckResult.Domain ?? "All")</div>
+            <div><strong>Started:</strong> @_expandedCheckResult.StartedAtUtc.ToString("u")</div>
+            <div><strong>Completed:</strong> @(_expandedCheckResult.CompletedAtUtc?.ToString("u") ?? "—")</div>
+            <div><strong>Streams Checked:</strong> @_expandedCheckResult.StreamsChecked.ToString("N0")</div>
+            <div><strong>Anomalies Found:</strong> @_expandedCheckResult.AnomaliesFound.ToString("N0")</div>
+        </div>
+
+        @if (_expandedCheckResult.Status is ConsistencyCheckStatus.Completed or ConsistencyCheckStatus.Cancelled)
+        {
+            <div style="margin-bottom: 12px;">
+                @if (_expandedCheckResult.Truncated)
+                {
+                    <p style="color: var(--warning); font-size: 13px;">
+                        Results truncated — @_expandedCheckResult.AnomaliesFound anomalies found, showing first 500.
+                    </p>
+                }
+                <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                              OnClick="@(() => ExportCheckResultAsync(_expandedCheckResult))"
+                              aria-label="Export check results">
+                    Export
+                </FluentButton>
+            </div>
+        }
+
+        @if (_expandedCheckResult.Status == ConsistencyCheckStatus.Running)
+        {
+            <p aria-live="polite">Checking streams... @_expandedCheckResult.StreamsChecked checked so far.</p>
+        }
+
+        @if (_expandedCheckResult.ErrorMessage is not null)
+        {
+            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 12px;">
+                <pre style="margin: 0; white-space: pre-wrap;">@_expandedCheckResult.ErrorMessage</pre>
+            </FluentCard>
+        }
+
+        @if (_expandedCheckResult.Anomalies.Count > 0)
+        {
+            <FluentDataGrid Items="@_expandedCheckResult.Anomalies.AsQueryable()" TGridItem="ConsistencyAnomaly"
+                            Style="width: 100%;"
+                            aria-label="Anomalies"
+                            OnRowClick="@(row => OpenAnomalyDetail(row.Item))">
+                <TemplateColumn Title="Severity" Sortable="true"
+                                SortBy="@(GridSort<ConsistencyAnomaly>.ByDescending(a => a.Severity))">
+                    @{
+                        (Appearance anomApp, string anomCss) = GetAnomalySeverityBadge(context.Severity);
+                    }
+                    <FluentBadge Appearance="@anomApp" Class="@anomCss"
+                                 aria-label="@($"Severity: {context.Severity}")">
+                        @context.Severity
+                    </FluentBadge>
+                </TemplateColumn>
+                <PropertyColumn Property="@(a => a.CheckType)" Title="Check Type" Sortable="true" />
+                <PropertyColumn Property="@(a => a.TenantId)" Title="Tenant" Class="monospace" Sortable="true" />
+                <PropertyColumn Property="@(a => a.Domain)" Title="Domain" Sortable="true" />
+                <TemplateColumn Title="Aggregate ID" Class="monospace" Sortable="true"
+                                SortBy="@(GridSort<ConsistencyAnomaly>.ByAscending(a => a.AggregateId))">
+                    <span title="@context.AggregateId">@context.AggregateId[..Math.Min(12, context.AggregateId.Length)]</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Description" Sortable="true"
+                                SortBy="@(GridSort<ConsistencyAnomaly>.ByAscending(a => a.Description))">
+                    <span title="@context.Description">@(context.Description.Length > 60 ? context.Description[..60] + "..." : context.Description)</span>
+                </TemplateColumn>
+            </FluentDataGrid>
+        }
+    </FluentCard>
+}
+
+@* Anomaly detail modal *@
+@if (_selectedAnomaly is not null)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Anomaly Detail" @ondialogdismiss="CloseAnomalyDetail"
+                  Style="min-width: 500px; max-width: 700px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Anomaly Detail</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                <div><strong>Anomaly ID:</strong> <span class="monospace">@_selectedAnomaly.AnomalyId</span></div>
+                <div><strong>Check Type:</strong> @_selectedAnomaly.CheckType</div>
+                <div><strong>Severity:</strong> @_selectedAnomaly.Severity</div>
+                <div><strong>Tenant:</strong> <span class="monospace">@_selectedAnomaly.TenantId</span></div>
+                <div><strong>Domain:</strong> @_selectedAnomaly.Domain</div>
+                <div><strong>Aggregate ID:</strong> <span class="monospace">@_selectedAnomaly.AggregateId</span></div>
+                @if (_selectedAnomaly.ExpectedSequence is not null)
+                {
+                    <div><strong>Expected Sequence:</strong> @_selectedAnomaly.ExpectedSequence</div>
+                }
+                @if (_selectedAnomaly.ActualSequence is not null)
+                {
+                    <div><strong>Actual Sequence:</strong> @_selectedAnomaly.ActualSequence</div>
+                }
+            </div>
+            <div style="margin-bottom: 12px;">
+                <strong>Description:</strong>
+                <p>@_selectedAnomaly.Description</p>
+            </div>
+            @if (_selectedAnomaly.Details is not null)
+            {
+                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px;">
+                    <pre style="margin: 0; white-space: pre-wrap; font-family: var(--font-monospace);">@_selectedAnomaly.Details</pre>
+                </FluentCard>
+            }
+            <div style="margin-top: 12px;">
+                <FluentAnchor Href="@($"/streams?tenant={Uri.EscapeDataString(_selectedAnomaly.TenantId)}&domain={Uri.EscapeDataString(_selectedAnomaly.Domain)}&aggregate={Uri.EscapeDataString(_selectedAnomaly.AggregateId)}")"
+                              Appearance="Appearance.Hypertext">
+                    Go to Stream
+                </FluentAnchor>
+            </div>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseAnomalyDetail">Close</FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Trigger Check Dialog *@
+@if (_showTriggerDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Run Consistency Check" @ondialogdismiss="CloseTriggerDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Run Consistency Check</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <FluentTextField @bind-Value="_triggerTenantId"
+                             Label="Tenant ID (optional)"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Tenant ID" />
+            <FluentTextField @bind-Value="_triggerDomain"
+                             Label="Domain (optional)"
+                             Style="width: 100%; margin-bottom: 12px;"
+                             aria-label="Domain" />
+            <div style="margin-bottom: 12px;">
+                <label style="font-weight: 600; margin-bottom: 8px; display: block;">Check Types</label>
+                <FluentCheckbox @bind-Value="_checkSequenceContinuity" Label="Sequence Continuity" />
+                <FluentCheckbox @bind-Value="_checkSnapshotIntegrity" Label="Snapshot Integrity" />
+                <FluentCheckbox @bind-Value="_checkProjectionPositions" Label="Projection Positions" />
+                <FluentCheckbox @bind-Value="_checkMetadataConsistency" Label="Metadata Consistency" />
+            </div>
+            @if (!HasAnyCheckType)
+            {
+                <p style="color: var(--error); font-size: 13px; margin: 0 0 12px;">
+                    At least one check type must be selected.
+                </p>
+            }
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnTriggerConfirm"
+                          Disabled="@(!HasAnyCheckType || _isTriggering)">
+                @if (_isTriggering)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Start Check</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@* Cancel Check Dialog *@
+@if (_showCancelDialog)
+{
+    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
+                  aria-label="Cancel Consistency Check" @ondialogdismiss="CloseCancelDialog"
+                  Style="min-width: 400px; max-width: 500px;">
+        <FluentDialogHeader>
+            <h3 style="margin: 0;">Cancel Consistency Check</h3>
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <p>Cancel this consistency check? Results collected so far will be preserved.</p>
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCancelDialog">Keep Running</FluentButton>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="OnCancelConfirm"
+                          Disabled="@_isCancelling">
+                @if (_isCancelling)
+                {
+                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                }
+                else
+                {
+                    <span>Cancel Check</span>
+                }
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+}
+
+@code {
+    private IReadOnlyList<ConsistencyCheckSummary> _allChecks = [];
+    private IReadOnlyList<ConsistencyCheckSummary> _filteredChecks = [];
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _disposed;
+    private string _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
+    private string? _tenantFilter;
+    private string? _tenantFilterInput;
+    private string? _domainFilter;
+    private string? _domainFilterInput;
+    private Timer? _debounceTimer;
+    private Timer? _autoRefreshTimer;
+    private CancellationTokenSource? _loadCts;
+    private ConsistencyCheckSummary? _expandedCheck;
+    private ConsistencyCheckResult? _expandedCheckResult;
+    private ConsistencyAnomaly? _selectedAnomaly;
+
+    // Trigger dialog state
+    private bool _showTriggerDialog;
+    private string? _triggerTenantId;
+    private string? _triggerDomain;
+    private bool _checkSequenceContinuity = true;
+    private bool _checkSnapshotIntegrity = true;
+    private bool _checkProjectionPositions = true;
+    private bool _checkMetadataConsistency = true;
+    private bool _isTriggering;
+
+    // Cancel dialog state
+    private bool _showCancelDialog;
+    private string? _cancelCheckId;
+    private bool _isCancelling;
+
+    // Computed properties
+    private int TotalChecks => _allChecks.Count;
+
+    private string LastCheckDisplay
+    {
+        get
+        {
+            ConsistencyCheckSummary? lastCompleted = _allChecks
+                .Where(c => c.CompletedAtUtc is not null)
+                .OrderByDescending(c => c.CompletedAtUtc)
+                .FirstOrDefault();
+            return lastCompleted?.CompletedAtUtc is not null
+                ? TimeFormatHelper.FormatRelativeTime(lastCompleted.CompletedAtUtc.Value)
+                : "Never";
+        }
+    }
+
+    private int TotalAnomalies => _allChecks
+        .Where(c => c.Status == ConsistencyCheckStatus.Completed)
+        .Sum(c => c.AnomaliesFound);
+
+    private int RunningCount => _allChecks.Count(c => c.Status == ConsistencyCheckStatus.Running);
+
+    private bool HasAnyCheckType =>
+        _checkSequenceContinuity || _checkSnapshotIntegrity
+        || _checkProjectionPositions || _checkMetadataConsistency;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        _tenantFilterInput = _tenantFilter;
+        _domainFilterInput = _domainFilter;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        CancellationToken ct = _loadCts.Token;
+
+        _isLoading = _allChecks.Count == 0;
+        try
+        {
+            IReadOnlyList<ConsistencyCheckSummary> result = await ConsistencyApi
+                .GetChecksAsync(_tenantFilter, ct)
+                .ConfigureAwait(false);
+            _allChecks = result;
+            UpdateFilteredChecks();
+            _apiUnavailable = false;
+            _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
+            ManageAutoRefresh();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Insufficient permissions to view consistency checks.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = $"Unable to load consistency checks ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _apiUnavailable = true;
+            _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void UpdateFilteredChecks()
+    {
+        _filteredChecks = _allChecks
+            .Where(c => string.IsNullOrEmpty(_domainFilter)
+                || (c.Domain?.StartsWith(_domainFilter, StringComparison.OrdinalIgnoreCase) ?? false))
+            .OrderByDescending(c => c.StartedAtUtc)
+            .ToList();
+    }
+
+    private void ManageAutoRefresh()
+    {
+        if (_allChecks.Any(c => c.Status == ConsistencyCheckStatus.Running))
+        {
+            _autoRefreshTimer ??= new Timer(OnAutoRefreshElapsed, null, 10000, 10000);
+        }
+        else
+        {
+            _autoRefreshTimer?.Dispose();
+            _autoRefreshTimer = null;
+        }
+    }
+
+    private void OnAutoRefreshElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            await LoadDataAsync();
+        });
+    }
+
+    private async Task OnManualRefresh()
+    {
+        _expandedCheck = null;
+        _expandedCheckResult = null;
+        await LoadDataAsync();
+    }
+
+    // Filter handling
+    private void OnTenantFilterChanged()
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnTenantDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnTenantDebounceElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _tenantFilter = string.IsNullOrWhiteSpace(_tenantFilterInput)
+                ? null
+                : _tenantFilterInput.Trim();
+            UpdateUrl();
+            await LoadDataAsync();
+        });
+    }
+
+    private void OnDomainFilterChanged()
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(OnDomainDebounceElapsed, null, 300, Timeout.Infinite);
+    }
+
+    private void OnDomainDebounceElapsed(object? state)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _domainFilter = string.IsNullOrWhiteSpace(_domainFilterInput)
+                ? null
+                : _domainFilterInput.Trim();
+            UpdateFilteredChecks();
+            UpdateUrl();
+            StateHasChanged();
+        });
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        _tenantFilter = query["tenant"];
+        _domainFilter = query["domain"];
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParams = [];
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_domainFilter))
+        {
+            queryParams.Add($"domain={Uri.EscapeDataString(_domainFilter)}");
+        }
+
+        string url = queryParams.Count > 0 ? $"/consistency?{string.Join('&', queryParams)}" : "/consistency";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    // Row expansion
+    private async Task OnRowClick(ConsistencyCheckSummary? check)
+    {
+        if (check is null)
+        {
+            _expandedCheck = null;
+            _expandedCheckResult = null;
+            return;
+        }
+
+        if (_expandedCheck?.CheckId == check.CheckId)
+        {
+            _expandedCheck = null;
+            _expandedCheckResult = null;
+            return;
+        }
+
+        _expandedCheck = check;
+        _expandedCheckResult = await ConsistencyApi.GetCheckResultAsync(check.CheckId);
+    }
+
+    // Anomaly detail
+    private void OpenAnomalyDetail(ConsistencyAnomaly? anomaly)
+    {
+        _selectedAnomaly = anomaly;
+    }
+
+    private void CloseAnomalyDetail()
+    {
+        _selectedAnomaly = null;
+    }
+
+    // Trigger dialog
+    private void OpenTriggerDialog()
+    {
+        _triggerTenantId = string.Empty;
+        _triggerDomain = string.Empty;
+        _checkSequenceContinuity = true;
+        _checkSnapshotIntegrity = true;
+        _checkProjectionPositions = true;
+        _checkMetadataConsistency = true;
+        _showTriggerDialog = true;
+    }
+
+    private void CloseTriggerDialog()
+    {
+        _showTriggerDialog = false;
+    }
+
+    private async Task OnTriggerConfirm()
+    {
+        _isTriggering = true;
+        StateHasChanged();
+        try
+        {
+            List<ConsistencyCheckType> checkTypes = [];
+            if (_checkSequenceContinuity) checkTypes.Add(ConsistencyCheckType.SequenceContinuity);
+            if (_checkSnapshotIntegrity) checkTypes.Add(ConsistencyCheckType.SnapshotIntegrity);
+            if (_checkProjectionPositions) checkTypes.Add(ConsistencyCheckType.ProjectionPositions);
+            if (_checkMetadataConsistency) checkTypes.Add(ConsistencyCheckType.MetadataConsistency);
+
+            string? tenantId = string.IsNullOrWhiteSpace(_triggerTenantId) ? null : _triggerTenantId.Trim();
+            string? domain = string.IsNullOrWhiteSpace(_triggerDomain) ? null : _triggerDomain.Trim();
+
+            AdminOperationResult? result = await ConsistencyApi.TriggerCheckAsync(tenantId, domain, checkTypes);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess("Consistency check started.");
+                _showTriggerDialog = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to trigger consistency check.");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            ToastService.ShowError(ex.Message);
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ToastService.ShowError("Authentication required. Please sign in again.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            ToastService.ShowError("Access denied. Insufficient permissions.");
+        }
+        catch (HttpRequestException ex)
+        {
+            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle
+        }
+        finally
+        {
+            _isTriggering = false;
+            StateHasChanged();
+        }
+    }
+
+    // Cancel dialog
+    private void OpenCancelDialog(string checkId)
+    {
+        _cancelCheckId = checkId;
+        _showCancelDialog = true;
+    }
+
+    private void CloseCancelDialog()
+    {
+        _showCancelDialog = false;
+        _cancelCheckId = null;
+    }
+
+    private async Task OnCancelConfirm()
+    {
+        if (_cancelCheckId is null)
+        {
+            return;
+        }
+
+        _isCancelling = true;
+        StateHasChanged();
+        try
+        {
+            AdminOperationResult? result = await ConsistencyApi.CancelCheckAsync(_cancelCheckId);
+
+            if (result?.Success == true)
+            {
+                ToastService.ShowSuccess("Consistency check cancelled.");
+                _showCancelDialog = false;
+                _cancelCheckId = null;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ToastService.ShowError(result?.Message ?? "Failed to cancel consistency check.");
+            }
+        }
+        catch (ServiceUnavailableException)
+        {
+            ToastService.ShowError("Admin service unavailable. Try again later.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently handle
+        }
+        finally
+        {
+            _isCancelling = false;
+            StateHasChanged();
+        }
+    }
+
+    // Export
+    private async Task ExportCheckResultAsync(ConsistencyCheckResult result)
+    {
+        try
+        {
+            string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            string fileName = $"consistency-check-{result.CheckId}.json";
+            await JSRuntime.InvokeVoidAsync("blazorDownloadFile", fileName, json);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Export failed: {ex.Message}");
+        }
+    }
+
+    // Status badge helpers
+    private static (Appearance Appearance, string CssClass) GetStatusBadge(ConsistencyCheckStatus status) =>
+        status switch
+        {
+            ConsistencyCheckStatus.Pending => (Appearance.Accent, ""),
+            ConsistencyCheckStatus.Running => (Appearance.Lightweight, "consistency-status-running"),
+            ConsistencyCheckStatus.Completed => (Appearance.Accent, "consistency-status-completed"),
+            ConsistencyCheckStatus.Failed => (Appearance.Accent, "consistency-status-failed"),
+            ConsistencyCheckStatus.Cancelled => (Appearance.Lightweight, "consistency-status-cancelled"),
+            _ => (Appearance.Accent, ""),
+        };
+
+    private static (Appearance Appearance, string CssClass) GetAnomalySeverityBadge(AnomalySeverity severity) =>
+        severity switch
+        {
+            AnomalySeverity.Warning => (Appearance.Lightweight, "anomaly-severity-warning"),
+            AnomalySeverity.Error => (Appearance.Accent, "anomaly-severity-error"),
+            AnomalySeverity.Critical => (Appearance.Accent, "anomaly-severity-critical"),
+            _ => (Appearance.Accent, ""),
+        };
+
+    private static string FormatDuration(ConsistencyCheckSummary check)
+    {
+        return check.Status switch
+        {
+            ConsistencyCheckStatus.Pending => "\u2014",
+            ConsistencyCheckStatus.Running => "Running...",
+            ConsistencyCheckStatus.Completed or ConsistencyCheckStatus.Failed or ConsistencyCheckStatus.Cancelled
+                when check.CompletedAtUtc is not null =>
+                FormatTimeSpan(check.CompletedAtUtc.Value - check.StartedAtUtc),
+            _ => "\u2014",
+        };
+    }
+
+    private static string FormatTimeSpan(TimeSpan duration)
+    {
+        if (duration < TimeSpan.Zero)
+        {
+            return "\u2014";
+        }
+
+        if (duration.TotalMinutes < 1)
+        {
+            return $"{(int)duration.TotalSeconds}s";
+        }
+
+        return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        if (_debounceTimer is not null)
+        {
+            await _debounceTimer.DisposeAsync();
+        }
+
+        if (_autoRefreshTimer is not null)
+        {
+            await _autoRefreshTimer.DisposeAsync();
+        }
+    }
+}

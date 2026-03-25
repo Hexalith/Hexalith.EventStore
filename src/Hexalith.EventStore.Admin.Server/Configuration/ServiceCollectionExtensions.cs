@@ -134,6 +134,8 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<ITenantCommandService, DaprTenantCommandService>();
         services.TryAddScoped<IBackupQueryService, DaprBackupQueryService>();
         services.TryAddScoped<IBackupCommandService, DaprBackupCommandService>();
+        services.TryAddScoped<IConsistencyQueryService, DaprConsistencyQueryService>();
+        services.TryAddScoped<IConsistencyCommandService, DaprConsistencyCommandService>();
 
         return services;
     }
