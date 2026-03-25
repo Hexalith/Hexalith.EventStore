@@ -18,6 +18,7 @@
     <Project Path="src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj" />
     <Project Path="src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj" />
     <Project Path="src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj" />
+    <Project Path="src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj" />
@@ -31,5 +32,6 @@
     <Project Path="tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.Admin.Cli.Tests/Hexalith.EventStore.Admin.Cli.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,41 @@
+using System.CommandLine;
+
+using Hexalith.EventStore.Admin.Cli.Commands;
+
+namespace Hexalith.EventStore.Admin.Cli.Tests;
+
+public class StubCommandsTests
+{
+    [Theory]
+    [InlineData("stream", "Query, list, and inspect event streams")]
+    [InlineData("projection", "List, pause, resume, and reset projections")]
+    [InlineData("tenant", "List tenants, view quotas, and verify isolation")]
+    [InlineData("snapshot", "Manage aggregate snapshots")]
+    [InlineData("backup", "Trigger and manage backups")]
+    [InlineData("config", "Manage connection profiles and CLI configuration")]
+    public async Task StubCommands_PrintNotImplemented_AndReturnZero(string name, string description)
+    {
+        // Arrange
+        Command command = StubCommands.Create(name, description);
+        RootCommand root = new("test");
+        root.Subcommands.Add(command);
+
+        // Capture stderr
+        StringWriter stderr = new();
+        Console.SetError(stderr);
+
+        try
+        {
+            // Act
+            int exitCode = await root.Parse([name]).InvokeAsync();
+
+            // Assert
+            exitCode.ShouldBe(ExitCodes.Success);
+            stderr.ToString().ShouldContain("Not yet implemented");
+        }
+        finally
+        {
+            Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+        }
+    }
+}
