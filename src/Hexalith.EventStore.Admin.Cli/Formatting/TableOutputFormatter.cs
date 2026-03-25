@@ -14,12 +14,21 @@ public class TableOutputFormatter : IOutputFormatter
         ArgumentNullException.ThrowIfNull(item);
 
         // Single object renders as key/value pairs (Property | Value)
-        IReadOnlyList<(string Header, Func<object, string> Accessor)> props = columns is not null
-            ? BuildAccessorsFromColumns(columns, typeof(T))
-            : BuildAccessorsFromType(typeof(T));
+        IReadOnlyList<(string Header, Func<object, string> Accessor, ColumnDefinition? Def)> props = columns is not null
+            ? BuildAccessorsWithDefs(columns, typeof(T))
+            : BuildAccessorsFromType(typeof(T)).Select(p => (p.Header, p.Accessor, (ColumnDefinition?)null)).ToList();
 
         List<(string Key, string Value)> rows = props
-            .Select(p => (p.Header, p.Accessor(item)))
+            .Select(p =>
+            {
+                string value = p.Accessor(item);
+                if (p.Def?.MaxWidth is int maxWidth && maxWidth > 0)
+                {
+                    value = Truncate(value, maxWidth);
+                }
+
+                return (p.Header, value);
+            })
             .ToList();
 
         if (rows.Count == 0)

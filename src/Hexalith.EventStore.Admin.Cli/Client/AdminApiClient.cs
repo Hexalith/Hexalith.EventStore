@@ -120,6 +120,68 @@ public class AdminApiClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Sends a GET request and deserializes the JSON response, returning null on HTTP 404.
+    /// All other HTTP errors are handled identically to <see cref="GetAsync{T}"/>.
+    /// </summary>
+    /// <exception cref="AdminApiException">Thrown for all API communication errors except 404.</exception>
+    public async Task<T?> TryGetAsync<T>(string path, CancellationToken cancellationToken)
+        where T : class
+    {
+        string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
+        {
+            throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
+            }
+
+            throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
+        }
+
+        using (response)
+        {
+            int statusCode = (int)response.StatusCode;
+            switch (statusCode)
+            {
+                case 401:
+                    throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})");
+                case 403:
+                    throw new AdminApiException($"Access denied. Insufficient permissions. (URL: {resolvedUrl})");
+                case 404:
+                    return null;
+                case >= 500:
+                    throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})");
+            }
+
+            _ = response.EnsureSuccessStatusCode();
+
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return JsonSerializer.Deserialize<T>(json, JsonDefaults.Options)
+                    ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
+            }
+            catch (JsonException ex)
+            {
+                throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
+            }
+        }
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
