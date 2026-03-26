@@ -17,4 +17,11 @@ public interface IDeadLetterQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A paginated list of dead-letter entries.</returns>
     Task<PagedResult<DeadLetterEntry>> ListDeadLettersAsync(string? tenantId, int count, string? continuationToken, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the total count of dead-letter entries across all tenants.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The dead-letter entry count.</returns>
+    Task<int> GetDeadLetterCountAsync(CancellationToken ct = default);
 }

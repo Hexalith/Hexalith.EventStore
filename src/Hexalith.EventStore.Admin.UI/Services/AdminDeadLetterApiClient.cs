@@ -18,6 +18,34 @@ public class AdminDeadLetterApiClient(
     ILogger<AdminDeadLetterApiClient> logger)
 {
     /// <summary>
+    /// Gets the total count of dead-letter entries across all tenants.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The dead-letter count, or null on failure.</returns>
+    public virtual async Task<int?> GetDeadLetterCountAsync(CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        try
+        {
+            using HttpResponseMessage response = await client
+                .GetAsync("api/v1/admin/dead-letters/count", ct)
+                .ConfigureAwait(false);
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<int>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to fetch dead-letter count");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets dead-letter entries, optionally filtered by tenant, with pagination support.
     /// </summary>
     /// <param name="tenantId">Optional tenant filter.</param>

@@ -21,6 +21,11 @@
             Actor Inspector
         </FluentButton>
         <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="@(() => NavigationManager.NavigateTo("/dapr/pubsub"))"
+                      aria-label="Open Pub/Sub Metrics">
+            Pub/Sub Metrics
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh DAPR dashboard">
             Refresh

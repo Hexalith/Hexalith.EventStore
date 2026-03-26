@@ -40,6 +40,28 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<int> GetDeadLetterCountAsync(CancellationToken ct = default)
+    {
+        string indexKey = "admin:dead-letters:all";
+        try
+        {
+            List<DeadLetterEntry>? result = await _daprClient
+                .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+                .ConfigureAwait(false);
+            return result?.Count ?? 0;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read dead letter count from '{IndexKey}'.", indexKey);
+            return 0;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<PagedResult<DeadLetterEntry>> ListDeadLettersAsync(
         string? tenantId,
         int count,

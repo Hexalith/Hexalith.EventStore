@@ -24,6 +24,34 @@ public class AdminDeadLettersController(
     ILogger<AdminDeadLettersController> logger) : ControllerBase
 {
     /// <summary>
+    /// Gets the total count of dead-letter entries across all tenants.
+    /// </summary>
+    [HttpGet("count")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetDeadLetterCount(CancellationToken ct = default)
+    {
+        try
+        {
+            int count = await deadLetterQueryService
+                .GetDeadLetterCountAsync(ct)
+                .ConfigureAwait(false);
+            return Ok(count);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetDeadLetterCount), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetDeadLetterCount), ex);
+        }
+    }
+
+    /// <summary>
     /// Lists dead-letter entries, optionally filtered by tenant.
     /// </summary>
     [HttpGet]
