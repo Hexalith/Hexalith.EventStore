@@ -16,7 +16,7 @@ public class StorageToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _storageJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StorageTools.GetStorageOverview(client);
+        string result = await StorageTools.GetStorageOverview(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -29,7 +29,7 @@ public class StorageToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await StorageTools.GetStorageOverview(client);
+        string result = await StorageTools.GetStorageOverview(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -45,7 +45,7 @@ public class StorageToolsTests
             _storageJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await StorageTools.GetStorageOverview(client, tenantId: "tenant1");
+        _ = await StorageTools.GetStorageOverview(client, new InvestigationSession(), tenantId: "tenant1");
 
         capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=tenant1");

@@ -15,7 +15,7 @@ public class ToolHelperTests
     [InlineData(HttpStatusCode.UnprocessableEntity, "invalid-operation")]
     [InlineData(HttpStatusCode.InternalServerError, "server-error")]
     [InlineData(HttpStatusCode.BadGateway, "server-error")]
-    [InlineData(HttpStatusCode.ServiceUnavailable, "server-error")]
+    [InlineData(HttpStatusCode.ServiceUnavailable, "service-unavailable")]
     public void HandleHttpException_CategorizesStatusCodes(HttpStatusCode statusCode, string expectedStatus)
     {
         var ex = new HttpRequestException("Test error", null, statusCode);
@@ -87,7 +87,6 @@ public class ToolHelperTests
     [Theory]
     [InlineData(HttpStatusCode.InternalServerError)]
     [InlineData(HttpStatusCode.BadGateway)]
-    [InlineData(HttpStatusCode.ServiceUnavailable)]
     public void HandleHttpException_5xxStatusCodes_IncludeStatusCodeInMessage(HttpStatusCode statusCode)
     {
         var ex = new HttpRequestException("Server error", null, statusCode);
@@ -193,5 +192,17 @@ public class ToolHelperTests
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-operation");
         doc.RootElement.GetProperty("message").GetString()!.ShouldContain("Operation rejected");
+    }
+
+    [Fact]
+    public void HandleHttpException_503_ReturnsTenantServiceUnavailableMessage()
+    {
+        var ex = new HttpRequestException("Service unavailable", null, HttpStatusCode.ServiceUnavailable);
+
+        string result = ToolHelper.HandleHttpException(ex);
+
+        using JsonDocument doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("service-unavailable");
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Tenant service temporarily unavailable. Retry shortly.");
     }
 }

@@ -18,7 +18,7 @@ public class TypeCatalogToolsTests
         using HttpClient httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
-        string result = await TypeCatalogTools.ListTypes(client);
+        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("eventTypes").GetArrayLength().ShouldBe(1);
@@ -36,7 +36,7 @@ public class TypeCatalogToolsTests
         using HttpClient httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
-        string result = await TypeCatalogTools.ListTypes(client);
+        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         // Successful categories still have their data
@@ -56,7 +56,7 @@ public class TypeCatalogToolsTests
         using HttpClient httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
-        string result = await TypeCatalogTools.ListTypes(client);
+        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -77,7 +77,7 @@ public class TypeCatalogToolsTests
         using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
         var client = new AdminApiClient(httpClient);
 
-        _ = await TypeCatalogTools.ListTypes(client, domain: "Orders");
+        _ = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), domain: "Orders");
 
         capturedUris.Count.ShouldBe(3);
         capturedUris.ShouldAllBe(u => u!.PathAndQuery.Contains("domain=Orders"));

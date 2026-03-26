@@ -19,7 +19,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _streamsJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client);
+        string result = await StreamTools.ListStreams(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -31,7 +31,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client);
+        string result = await StreamTools.ListStreams(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -44,7 +44,7 @@ public class StreamToolsTests
             new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client);
+        string result = await StreamTools.ListStreams(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
@@ -56,7 +56,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _timelineJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetStreamEvents(client, "t1", "Orders", "o1");
+        string result = await StreamTools.GetStreamEvents(client, new InvestigationSession(), "t1", "Orders", "o1");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -68,7 +68,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _stateJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetStreamState(client, "t1", "Orders", "o1", 3);
+        string result = await StreamTools.GetStreamState(client, new InvestigationSession(), "t1", "Orders", "o1", 3);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -81,7 +81,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetStreamState(client, "t1", "Orders", "o1", 999);
+        string result = await StreamTools.GetStreamState(client, new InvestigationSession(), "t1", "Orders", "o1", 999);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -93,7 +93,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _eventDetailJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetEventDetail(client, "t1", "Orders", "o1", 1);
+        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 1);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -105,7 +105,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetEventDetail(client, "t1", "Orders", "o1", 999);
+        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 999);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -117,7 +117,7 @@ public class StreamToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _streamsJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client);
+        string result = await StreamTools.ListStreams(client, new InvestigationSession());
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }

@@ -19,7 +19,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checksJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client);
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.ValueKind.ShouldBe(JsonValueKind.Array);
@@ -32,7 +32,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _emptyChecksJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client);
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.ValueKind.ShouldBe(JsonValueKind.Array);
@@ -49,7 +49,7 @@ public class ConsistencyToolsTests
             _checksJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await ConsistencyTools.ListChecks(client, "tenant1");
+        _ = await ConsistencyTools.ListChecks(client, new InvestigationSession(), "tenant1");
 
         capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=tenant1");
@@ -61,7 +61,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client);
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -74,7 +74,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checkResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, "chk-1");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -87,7 +87,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, "nonexistent");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "nonexistent");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -100,7 +100,7 @@ public class ConsistencyToolsTests
             new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, "chk-1");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
@@ -112,7 +112,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _truncatedCheckResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, "chk-2");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-2");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("truncated").GetBoolean().ShouldBeTrue();
@@ -125,7 +125,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checksJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client);
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -136,7 +136,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checkResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, "chk-1");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1");
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -149,7 +149,7 @@ public class ConsistencyToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checkResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, checkId);
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), checkId);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();

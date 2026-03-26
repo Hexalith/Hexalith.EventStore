@@ -17,11 +17,19 @@ internal static class StreamTools
     [Description("List recently active event streams, optionally filtered by tenant and domain")]
     public static async Task<string> ListStreams(
         AdminApiClient adminApiClient,
-        [Description("Filter by tenant ID")] string? tenantId = null,
-        [Description("Filter by domain")] string? domain = null,
+        InvestigationSession session,
+        [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
+        [Description("Filter by domain (uses session context if omitted)")] string? domain = null,
         [Description("Max streams to return (default 100)")] int count = 100,
         CancellationToken cancellationToken = default)
     {
+        tenantId = NormalizeOptionalScope(tenantId);
+        domain = NormalizeOptionalScope(domain);
+
+        InvestigationSession.Snapshot snapshot = session.GetSnapshot();
+        tenantId ??= snapshot.TenantId;
+        domain ??= snapshot.Domain;
+
         try
         {
             var result = await adminApiClient.GetRecentlyActiveStreamsAsync(tenantId, domain, count, cancellationToken).ConfigureAwait(false);
@@ -42,6 +50,7 @@ internal static class StreamTools
     [Description("Get the command/event/query timeline for a specific event stream")]
     public static async Task<string> GetStreamEvents(
         AdminApiClient adminApiClient,
+        InvestigationSession session,
         [Description("Tenant ID")] string tenantId,
         [Description("Domain name")] string domain,
         [Description("Aggregate ID")] string aggregateId,
@@ -76,6 +85,7 @@ internal static class StreamTools
     [Description("Get the aggregate state reconstructed at a specific sequence number (point-in-time state exploration)")]
     public static async Task<string> GetStreamState(
         AdminApiClient adminApiClient,
+        InvestigationSession session,
         [Description("Tenant ID")] string tenantId,
         [Description("Domain name")] string domain,
         [Description("Aggregate ID")] string aggregateId,
@@ -108,6 +118,7 @@ internal static class StreamTools
     [Description("Get full details of a specific event including its payload and metadata")]
     public static async Task<string> GetEventDetail(
         AdminApiClient adminApiClient,
+        InvestigationSession session,
         [Description("Tenant ID")] string tenantId,
         [Description("Domain name")] string domain,
         [Description("Aggregate ID")] string aggregateId,
@@ -132,4 +143,7 @@ internal static class StreamTools
             return ToolHelper.HandleException(ex);
         }
     }
+
+    private static string? NormalizeOptionalScope(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
