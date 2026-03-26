@@ -99,6 +99,7 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
           dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
           dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
 
       - name: Tool Install Smoke Test
         run: |
@@ -144,6 +145,7 @@ jobs:
             'Sample.Tests': 'tests/Hexalith.EventStore.Sample.Tests/TestResults/**/test-results.trx',
             'SignalR.Tests': 'tests/Hexalith.EventStore.SignalR.Tests/TestResults/**/test-results.trx',
             'Admin.Cli.Tests': 'tests/Hexalith.EventStore.Admin.Cli.Tests/TestResults/**/test-results.trx',
+            'Admin.Mcp.Tests': 'tests/Hexalith.EventStore.Admin.Mcp.Tests/TestResults/**/test-results.trx',
           }
           tier2_suites = {
             'Server.Tests': 'tests/Hexalith.EventStore.Server.Tests/TestResults/**/integration-results.trx',

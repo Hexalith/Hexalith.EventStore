@@ -1,6 +1,6 @@
 # Story 18.1: MCP Server Scaffold — stdio Transport
 
-Status: ready-for-dev
+Status: done
 
 Size: Medium — 1 new project (Admin.Mcp), 1 new test project (Admin.Mcp.Tests), solution file updates, CI/CD updates, Directory.Packages.props update, 5 task groups, 14 ACs, ~15-17 tests (~6-8 hours estimated). Creates the foundational MCP server scaffold that exposes EventStore admin operations as AI-callable tools via stdio transport, with HttpClient connectivity to the Admin API.
 
@@ -55,11 +55,11 @@ so that **I can discover available tools, connect to the event store, and subseq
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add ModelContextProtocol to Directory.Packages.props** (AC: #10)
-  - [ ] 1.1 Add `<ItemGroup Label="MCP">` with `<PackageVersion Include="ModelContextProtocol" Version="1.1.0" />` to `Directory.Packages.props`
+- [x] **Task 1: Add ModelContextProtocol to Directory.Packages.props** (AC: #10)
+  - [x] 1.1 Add `<ItemGroup Label="MCP">` with `<PackageVersion Include="ModelContextProtocol" Version="1.1.0" />` to `Directory.Packages.props`
 
-- [ ] **Task 2: Create the Admin.Mcp project** (AC: #1, #2, #3, #4, #5, #6, #11)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj`:
+- [x] **Task 2: Create the Admin.Mcp project** (AC: #1, #2, #3, #4, #5, #6, #11)
+  - [x] 2.1 Create `src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj`:
     ```xml
     <Project Sdk="Microsoft.NET.Sdk">
 
@@ -86,14 +86,14 @@ so that **I can discover available tools, connect to the event store, and subseq
 
     </Project>
     ```
-  - [ ] 2.2 Create `src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.cs` — typed HttpClient wrapper:
+  - [x] 2.2 Create `src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.cs` — typed HttpClient wrapper:
     - Internal class `AdminApiClient` with constructor taking `HttpClient`
     - Method `GetSystemHealthAsync(CancellationToken)` calling `GET /api/v1/admin/health`
     - Returns deserialized `SystemHealthReport` from Admin.Abstractions
     - Uses `System.Net.Http.Json` extensions (`GetFromJsonAsync<T>`)
     - All public methods are `async Task<T>` with `ConfigureAwait(false)`
     - Additional convenience methods can be added in stories 18.2-18.5 as needed
-  - [ ] 2.3 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs`:
+  - [x] 2.3 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs`:
     ```csharp
     using System.ComponentModel;
     using System.Text.Json;
@@ -125,7 +125,7 @@ so that **I can discover available tools, connect to the event store, and subseq
     - On other HTTP errors (4xx/5xx): status `"error"`, details include HTTP status code and reason phrase
     - On `HttpRequestException` (connection refused, DNS, timeout): status `"unreachable"`, details include exception message
     - Tool NEVER throws — always returns valid JSON regardless of failure mode
-  - [ ] 2.4 Create `src/Hexalith.EventStore.Admin.Mcp/Program.cs`:
+  - [x] 2.4 Create `src/Hexalith.EventStore.Admin.Mcp/Program.cs`:
     ```csharp
     using System.Reflection;
 
@@ -210,14 +210,14 @@ so that **I can discover available tools, connect to the event store, and subseq
     - The `options.ServerInfo` sets the server name and version visible during MCP capability negotiation.
     - `WithToolsFromAssembly()` discovers all `[McpServerToolType]` classes in the assembly automatically.
 
-- [ ] **Task 3: Create the Admin.Mcp.Tests project** (AC: #8, #13)
-  - [ ] 3.1 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj` following existing test project patterns (xunit, Shouldly, NSubstitute, Microsoft.NET.Test.Sdk, coverlet.collector). Reference `Hexalith.EventStore.Admin.Mcp` via ProjectReference.
-  - [ ] 3.2 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientTests.cs`:
+- [x] **Task 3: Create the Admin.Mcp.Tests project** (AC: #8, #13)
+  - [x] 3.1 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj` following existing test project patterns (xunit, Shouldly, NSubstitute, Microsoft.NET.Test.Sdk, coverlet.collector). Reference `Hexalith.EventStore.Admin.Mcp` via ProjectReference.
+  - [x] 3.2 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientTests.cs`:
     - Test that `GetSystemHealthAsync` sends GET to correct path `/api/v1/admin/health`
     - Use `HttpMessageHandler` mock (NSubstitute or manual `DelegatingHandler`) to verify request URI and headers
     - Verify `Accept: application/json` header is present on outgoing requests
     - Verify `Authorization: Bearer <token>` header is present on outgoing requests
-  - [ ] 3.3 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ConfigurationValidationTests.cs`:
+  - [x] 3.3 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ConfigurationValidationTests.cs`:
     - **This is the highest-risk user path — first-time setup failures must produce clear diagnostics.**
     - Test: both `EVENTSTORE_ADMIN_URL` and `EVENTSTORE_ADMIN_TOKEN` missing — error output mentions both variable names, exit code is non-zero
     - Test: only `EVENTSTORE_ADMIN_URL` missing — error output mentions `EVENTSTORE_ADMIN_URL` specifically
@@ -226,34 +226,34 @@ so that **I can discover available tools, connect to the event store, and subseq
     - Test: both set with valid values — process does NOT exit with the env-var validation error code within 2 seconds (it will block on stdin, which is correct — the test asserts the absence of a validation error, NOT that the server fully starts)
     - **CRITICAL: The "both set" test must use a short timeout (2s) and assert the process has NOT exited with error. Do NOT wait for the process to complete — it will hang on stdin forever. Kill the process after the assertion.**
     - Implementation: invoke the CLI binary via `Process.Start("dotnet", "<assembly.dll>")` with controlled environment variables, capture stderr, assert on exit code and error message content. Follow the `VersionFlagTests` pattern from Admin.Cli.Tests (Task 2.4 of story 17-8).
-  - [ ] 3.4 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ServerToolsTests.cs`:
+  - [x] 3.4 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ServerToolsTests.cs`:
     - Test `Ping` returns valid JSON with `"reachable"` status when API returns healthy response (mock `AdminApiClient` via NSubstitute)
     - Test `Ping` returns valid JSON with `"unreachable"` status when `AdminApiClient` throws `HttpRequestException`
     - Test `Ping` returns valid JSON with `"unauthorized"` status when `AdminApiClient` throws `HttpRequestException` wrapping a 401 response (use `HttpRequestException` with `StatusCode` property set to `HttpStatusCode.Unauthorized`)
     - Test `Ping` returns valid JSON with `"error"` status when `AdminApiClient` throws for a 500 response
     - Verify all returned JSON is parseable and contains `serverName`, `adminApiStatus` fields
-  - [ ] 3.5 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AssemblyMetadataTests.cs`:
+  - [x] 3.5 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AssemblyMetadataTests.cs`:
     - Test assembly name is `Hexalith.EventStore.Admin.Mcp`
     - Test assembly has entry point (is Exe)
     - Test `AssemblyInformationalVersionAttribute` is present
-  - [ ] 3.6 Run all existing tests to verify zero regressions:
+  - [x] 3.6 Run all existing tests to verify zero regressions:
     - `dotnet test Hexalith.EventStore.slnx --configuration Release`
 
-- [ ] **Task 4: Update solution file and CI/CD** (AC: #7, #9)
-  - [ ] 4.1 Add both new projects to `Hexalith.EventStore.slnx`:
+- [x] **Task 4: Update solution file and CI/CD** (AC: #7, #9)
+  - [x] 4.1 Add both new projects to `Hexalith.EventStore.slnx`:
     - In `/src/` folder: `src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj`
     - In `/tests/` folder: `tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj`
-  - [ ] 4.2 Modify `.github/workflows/ci.yml` — "Unit Tests (Tier 1)" step:
+  - [x] 4.2 Modify `.github/workflows/ci.yml` — "Unit Tests (Tier 1)" step:
     - Add line: `dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"`
-  - [ ] 4.3 Modify `.github/workflows/ci.yml` — "Test Summary" Python script:
+  - [x] 4.3 Modify `.github/workflows/ci.yml` — "Test Summary" Python script:
     - Add `'Admin.Mcp.Tests': 'tests/Hexalith.EventStore.Admin.Mcp.Tests/TestResults/**/test-results.trx'` to the `tier1_suites` dictionary
 
-- [ ] **Task 5: Verify end-to-end scaffold** (AC: #12, #13, #14)
-  - [ ] 5.1 Build solution: `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
-  - [ ] 5.2 Run all Tier 1 tests — all green
-  - [ ] 5.3 Manual smoke test: set env vars and run `dotnet run --project src/Hexalith.EventStore.Admin.Mcp/` — verify it starts and waits for MCP input on stdin (it will hang waiting for input, which is correct stdio behavior)
-  - [ ] 5.4 Manual smoke test: run WITHOUT env vars — verify clear error message to stderr and non-zero exit code
-  - [ ] 5.5 Manual smoke test: close stdin (Ctrl+D / pipe EOF) — verify server exits cleanly without errors
+- [x] **Task 5: Verify end-to-end scaffold** (AC: #12, #13, #14)
+  - [x] 5.1 Build solution: `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
+  - [x] 5.2 Run all Tier 1 tests — all green
+  - [x] 5.3 Manual smoke test: set env vars and run `dotnet run --project src/Hexalith.EventStore.Admin.Mcp/` — verify it starts and waits for MCP input on stdin (it will hang waiting for input, which is correct stdio behavior)
+  - [x] 5.4 Manual smoke test: run WITHOUT env vars — verify clear error message to stderr and non-zero exit code
+  - [x] 5.5 Manual smoke test: close stdin (Ctrl+D / pipe EOF) — verify server exits cleanly without errors
 
 ## Dev Notes
 
@@ -415,8 +415,40 @@ After this story, AI agents configure the MCP server like this (Claude Desktop e
 
 ### Agent Model Used
 
+Claude Opus 4.6 (1M context)
+
 ### Debug Log References
+
+- Build error CS0051: `ServerTools` was `public` but referenced `internal` `AdminApiClient` — fixed by making `ServerTools` internal (MCP SDK discovers via reflection regardless of accessibility).
+- Build error CS1061: `AddHttpClient<T>` not found — `Microsoft.Extensions.Http` package was missing; added to both csproj and `Directory.Packages.props`.
+- Pre-existing IntegrationTests build error (CS0433: ambiguous `Program` type between AppHost and Sample) — not caused by this story, not addressed.
 
 ### Completion Notes List
 
+- Created `src/Hexalith.EventStore.Admin.Mcp/` project with stdio MCP transport, typed AdminApiClient with IHttpClientFactory, and Ping tool with differentiated connectivity status (reachable/unauthorized/error/unreachable).
+- Created `tests/Hexalith.EventStore.Admin.Mcp.Tests/` with 19 tests across 4 test classes: AdminApiClientTests (3), ConfigurationValidationTests (6), ServerToolsTests (7), AssemblyMetadataTests (3).
+- All Tier 1 tests pass including 19 Admin.Mcp tests.
+- Smoke tests verified: missing env vars produce clear stderr error with exit code 1; valid env vars start server; EOF on stdin triggers clean shutdown with exit code 0.
+- Added `Microsoft.Extensions.Http` v10.0.0 to `Directory.Packages.props` (required for typed HttpClient registration via `AddHttpClient<T>`).
+
 ### File List
+
+- `src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj` — NEW
+- `src/Hexalith.EventStore.Admin.Mcp/Program.cs` — NEW
+- `src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.cs` — NEW
+- `src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs` — NEW
+- `tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj` — NEW
+- `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientTests.cs` — NEW
+- `tests/Hexalith.EventStore.Admin.Mcp.Tests/ConfigurationValidationTests.cs` — NEW
+- `tests/Hexalith.EventStore.Admin.Mcp.Tests/ServerToolsTests.cs` — NEW
+- `tests/Hexalith.EventStore.Admin.Mcp.Tests/AssemblyMetadataTests.cs` — NEW
+- `Hexalith.EventStore.slnx` — MODIFIED (added both new projects)
+- `Directory.Packages.props` — MODIFIED (added ModelContextProtocol 1.1.0, Microsoft.Extensions.Http 10.0.0)
+- `.github/workflows/ci.yml` — MODIFIED (added Admin.Mcp.Tests to Tier 1 and test summary)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED (story status updated)
+- `_bmad-output/implementation-artifacts/18-1-mcp-server-scaffold-stdio-transport.md` — MODIFIED (task checkboxes, dev agent record, status)
+
+### Change Log
+
+- 2026-03-26: Implemented MCP server scaffold with stdio transport, Admin API HttpClient, Ping tool, and 16 unit tests (Story 18-1)
+- 2026-03-26: Code review fixes — added catch for JsonException and TaskCanceledException in Ping, added MCP server description (AC #3), fixed GetEntryAssembly→typeof(ServerTools).Assembly for consistent version, added null health response handling, restricted URI validation to HTTP(S) schemes, added 3 new tests (timeout, malformed JSON, non-HTTP scheme). Total: 19 tests.
