@@ -11,6 +11,8 @@ public class ToolHelperTests
     [InlineData(HttpStatusCode.Unauthorized, "unauthorized")]
     [InlineData(HttpStatusCode.Forbidden, "unauthorized")]
     [InlineData(HttpStatusCode.NotFound, "not-found")]
+    [InlineData(HttpStatusCode.Conflict, "conflict")]
+    [InlineData(HttpStatusCode.UnprocessableEntity, "invalid-operation")]
     [InlineData(HttpStatusCode.InternalServerError, "server-error")]
     [InlineData(HttpStatusCode.BadGateway, "server-error")]
     [InlineData(HttpStatusCode.ServiceUnavailable, "server-error")]
@@ -148,5 +150,48 @@ public class ToolHelperTests
         result.ShouldNotBeNull();
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("message").GetString()!.ShouldContain("p2");
+    }
+
+    [Fact]
+    public void SerializePreview_ProducesCorrectShape()
+    {
+        string result = ToolHelper.SerializePreview(
+            "projection-pause",
+            "Pause projection 'OrderSummary' for tenant 'acme'",
+            "POST /api/v1/admin/projections/acme/OrderSummary/pause",
+            new { tenantId = "acme", projectionName = "OrderSummary" },
+            "This will stop the projection.");
+
+        using JsonDocument doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
+        doc.RootElement.GetProperty("action").GetString().ShouldBe("projection-pause");
+        doc.RootElement.GetProperty("description").GetString()!.ShouldContain("OrderSummary");
+        doc.RootElement.GetProperty("endpoint").GetString()!.ShouldContain("POST");
+        doc.RootElement.GetProperty("parameters").GetProperty("tenantId").GetString().ShouldBe("acme");
+        doc.RootElement.GetProperty("warning").GetString()!.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void HandleHttpException_409_ReturnsConflict()
+    {
+        var ex = new HttpRequestException("Projection already paused", null, HttpStatusCode.Conflict);
+
+        string result = ToolHelper.HandleHttpException(ex);
+
+        using JsonDocument doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("conflict");
+        doc.RootElement.GetProperty("message").GetString()!.ShouldContain("Operation conflict");
+    }
+
+    [Fact]
+    public void HandleHttpException_422_ReturnsInvalidOperation()
+    {
+        var ex = new HttpRequestException("Cannot pause already-paused projection", null, HttpStatusCode.UnprocessableEntity);
+
+        string result = ToolHelper.HandleHttpException(ex);
+
+        using JsonDocument doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-operation");
+        doc.RootElement.GetProperty("message").GetString()!.ShouldContain("Operation rejected");
     }
 }

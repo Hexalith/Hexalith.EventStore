@@ -29,6 +29,23 @@ internal static class ToolHelper
         => JsonSerializer.Serialize(data, JsonOptions);
 
     /// <summary>
+    /// Serializes an approval gate preview response to JSON.
+    /// </summary>
+    /// <param name="action">The action identifier (e.g., "projection-pause").</param>
+    /// <param name="description">A human-readable description of what the operation would do.</param>
+    /// <param name="endpoint">The HTTP endpoint that would be called.</param>
+    /// <param name="parameters">The operation parameters.</param>
+    /// <param name="warning">Risk context specific to the operation.</param>
+    /// <returns>A JSON string with the preview shape.</returns>
+    internal static string SerializePreview(
+        string action,
+        string description,
+        string endpoint,
+        object parameters,
+        string warning)
+        => SerializeResult(new { preview = true, action, description, endpoint, parameters, warning });
+
+    /// <summary>
     /// Serializes a standard error response to JSON.
     /// </summary>
     /// <param name="adminApiStatus">The error status category.</param>
@@ -82,6 +99,10 @@ internal static class ToolHelper
             => SerializeError("unauthorized", "Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN."),
         HttpStatusCode.NotFound
             => SerializeError("not-found", ex.Message),
+        HttpStatusCode.Conflict
+            => SerializeError("conflict", $"Operation conflict: {ex.Message}"),
+        HttpStatusCode.UnprocessableEntity
+            => SerializeError("invalid-operation", $"Operation rejected: {ex.Message}"),
         not null when (int)ex.StatusCode >= 500
             => SerializeError("server-error", $"HTTP {(int)ex.StatusCode} {ex.StatusCode}"),
         null

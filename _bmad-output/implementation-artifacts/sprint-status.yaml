@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-26 # story 18-3 done
+last_updated: 2026-03-26 # story 18-4 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -208,8 +208,8 @@ development_status:
   18-1-mcp-server-scaffold-stdio-transport: done
   18-2-read-tools-stream-state-projection-schema-metrics: done
   18-3-diagnostic-tools-causation-diff-consistency: done
-  18-4-write-tools-with-approval-gates: ready-for-dev
-  18-5-tenant-context-and-investigation-session-state: backlog
+  18-4-write-tools-with-approval-gates: done
+  18-5-tenant-context-and-investigation-session-state: ready-for-dev
   epic-18-retrospective: optional
 
   # Epic 19: Admin — DAPR Infrastructure Visibility
