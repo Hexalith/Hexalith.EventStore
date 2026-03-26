@@ -131,6 +131,7 @@ public class GlobalOptionsTests : IDisposable
         root.Options.Add(binding.TokenOption);
         root.Options.Add(binding.FormatOption);
         root.Options.Add(binding.OutputOption);
+        root.Options.Add(binding.ProfileOption);
         return root;
     }
 }
