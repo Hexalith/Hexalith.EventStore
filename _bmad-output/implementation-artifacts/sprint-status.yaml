@@ -200,7 +200,7 @@ development_status:
   17-5-tenant-subcommand-list-quotas-verify: done
   17-6-snapshot-and-backup-subcommands: done
   17-7-connection-profiles-and-shell-completions: done
-  17-8-dotnet-tool-packaging-and-distribution: review
+  17-8-dotnet-tool-packaging-and-distribution: done
   epic-17-retrospective: optional
 
   # Epic 18: Admin MCP Server

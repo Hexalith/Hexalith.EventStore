@@ -1,6 +1,6 @@
 # Story 17.8: .NET Tool Packaging and Distribution
 
-Status: review
+Status: done
 
 Size: Small-Medium — 3 modified source files (.csproj, Program.cs, ci.yml), 2 modified config files (release.yml, .config/dotnet-tools.json), 2 new test files, 4 task groups, 10 ACs, 6 new tests (~4-6 hours estimated). Finalizes the Admin CLI as a production-ready .NET global tool by adding CLI-specific NuGet metadata, a `--version` flag, CI/CD pipeline coverage for Admin.Cli.Tests, a tool-install smoke test, and local tool manifest entry.
 
