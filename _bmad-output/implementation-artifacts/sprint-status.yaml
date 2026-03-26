@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-26 # story 17-6 done
+last_updated: 2026-03-26 # story 17-7 done (code review passed)
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -199,8 +199,8 @@ development_status:
   17-4-health-subcommand-exit-codes-for-cicd: done
   17-5-tenant-subcommand-list-quotas-verify: done
   17-6-snapshot-and-backup-subcommands: done
-  17-7-connection-profiles-and-shell-completions: ready-for-dev
-  17-8-dotnet-tool-packaging-and-distribution: backlog
+  17-7-connection-profiles-and-shell-completions: done
+  17-8-dotnet-tool-packaging-and-distribution: ready-for-dev
   epic-17-retrospective: optional
 
   # Epic 18: Admin MCP Server

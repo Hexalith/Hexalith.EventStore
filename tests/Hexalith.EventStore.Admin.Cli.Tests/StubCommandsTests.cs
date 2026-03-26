@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Cli.Commands;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests;
 
+[Collection("ConsoleTests")]
 public class StubCommandsTests
 {
     [Theory]
@@ -11,7 +12,6 @@ public class StubCommandsTests
     [InlineData("tenant", "List tenants, view quotas, and verify isolation")]
     [InlineData("snapshot", "Manage aggregate snapshots")]
     [InlineData("backup", "Trigger and manage backups")]
-    [InlineData("config", "Manage connection profiles and CLI configuration")]
     public async Task StubCommands_PrintNotImplemented_AndReturnZero(string name, string description)
     {
         // Arrange
