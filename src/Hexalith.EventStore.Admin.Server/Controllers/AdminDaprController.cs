@@ -75,6 +75,89 @@ public class AdminDaprController(
         }
     }
 
+    /// <summary>
+    /// Gets actor runtime information including registered types, active counts, and configuration.
+    /// </summary>
+    [HttpGet("actors")]
+    [ProducesResponseType(typeof(DaprActorRuntimeInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetActorRuntimeInfoAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            DaprActorRuntimeInfo result = await daprService
+                .GetActorRuntimeInfoAsync(ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetActorRuntimeInfoAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetActorRuntimeInfoAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets the state of a specific actor instance.
+    /// </summary>
+    /// <param name="actorType">The actor type name.</param>
+    /// <param name="actorId">The actor instance ID (query parameter to support colon-delimited IDs).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("actors/{actorType}/state")]
+    [ProducesResponseType(typeof(DaprActorInstanceState), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetActorInstanceStateAsync(
+        string actorType, [FromQuery(Name = "id")] string actorId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(actorType) || string.IsNullOrWhiteSpace(actorId))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Both actorType and id query parameter are required.",
+                Instance = HttpContext.Request.Path,
+            });
+        }
+
+        try
+        {
+            DaprActorInstanceState? result = await daprService
+                .GetActorInstanceStateAsync(actorType, actorId, ct)
+                .ConfigureAwait(false);
+
+            if (result is null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Not Found",
+                    Detail = $"Actor type '{actorType}' is not recognized or all state keys returned not-found.",
+                    Instance = HttpContext.Request.Path,
+                });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetActorInstanceStateAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetActorInstanceStateAsync), ex);
+        }
+    }
+
     private static bool IsServiceUnavailable(Exception ex)
         => ex is HttpRequestException or TimeoutException
             || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode is

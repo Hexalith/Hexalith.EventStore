@@ -21,14 +21,17 @@ public class DaprInfrastructureQueryServiceTests
 {
     private static DaprInfrastructureQueryService CreateService(
         DaprClient? daprClient = null,
-        AdminServerOptions? serverOptions = null)
+        AdminServerOptions? serverOptions = null,
+        IHttpClientFactory? httpClientFactory = null)
     {
         daprClient ??= Substitute.For<DaprClient>();
         serverOptions ??= new AdminServerOptions();
+        httpClientFactory ??= Substitute.For<IHttpClientFactory>();
         IOptions<AdminServerOptions> options = Options.Create(serverOptions);
 
         return new DaprInfrastructureQueryService(
             daprClient,
+            httpClientFactory,
             options,
             NullLogger<DaprInfrastructureQueryService>.Instance);
     }

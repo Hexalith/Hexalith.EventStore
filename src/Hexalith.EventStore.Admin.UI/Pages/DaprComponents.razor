@@ -14,11 +14,18 @@
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
     <h1 style="margin: 0;">DAPR Infrastructure</h1>
-    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
-                  OnClick="OnManualRefresh"
-                  aria-label="Refresh DAPR dashboard">
-        Refresh
-    </FluentButton>
+    <div style="display: flex; gap: 8px;">
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="@(() => NavigationManager.NavigateTo("/dapr/actors"))"
+                      aria-label="Open Actor Inspector">
+            Actor Inspector
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="OnManualRefresh"
+                      aria-label="Refresh DAPR dashboard">
+            Refresh
+        </FluentButton>
+    </div>
 </div>
 
 @* Error state: API unavailable and no cached data *@

@@ -138,6 +138,12 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<IConsistencyCommandService, DaprConsistencyCommandService>();
         services.TryAddScoped<IDaprInfrastructureQueryService, DaprInfrastructureQueryService>();
 
+        // Named HttpClient for remote DAPR sidecar metadata queries (story 19-2)
+        services.AddHttpClient("DaprSidecar", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
         return services;
     }
 }
