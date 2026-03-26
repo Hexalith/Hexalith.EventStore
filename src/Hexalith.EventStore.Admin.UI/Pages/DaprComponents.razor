@@ -1,0 +1,363 @@
+@page "/dapr"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.Abstractions.Models.Health
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IAsyncDisposable
+
+@inject AdminDaprApiClient ApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>DAPR - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">DAPR Infrastructure</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="OnManualRefresh"
+                  aria-label="Refresh DAPR dashboard">
+        Refresh
+    </FluentButton>
+</div>
+
+@* Error state: API unavailable and no cached data *@
+<IssueBanner Visible="@(_apiUnavailable && _cachedSidecar is null)"
+             Title="Unable to load DAPR infrastructure"
+             Description="The admin backend service may be unavailable. Check DAPR sidecar connectivity."
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Stale data indicator *@
+<IssueBanner Visible="@(_isStale && _cachedSidecar is not null)"
+             Title="@_staleBannerTitle"
+             Description="" />
+
+@* Sidecar stat cards (AC1) *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else if (_sidecar is not null)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="App ID"
+                      Value="@_sidecar.AppId"
+                      Severity="neutral"
+                      Title="DAPR sidecar app ID" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Runtime Version"
+                      Value="@_sidecar.RuntimeVersion"
+                      Severity="neutral"
+                      Title="DAPR runtime version" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Components"
+                      Value="@_sidecar.ComponentCount.ToString()"
+                      Severity="success"
+                      Title="Number of registered DAPR components" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Subscriptions"
+                      Value="@(_sidecar.SubscriptionCount > 0 ? _sidecar.SubscriptionCount.ToString() : "N/A")"
+                      Severity="neutral"
+                      Subtitle="@(_sidecar.HttpEndpointCount > 0 ? $"{_sidecar.HttpEndpointCount} HTTP endpoints" : "HTTP endpoints: N/A")"
+                      Title="Number of active subscriptions" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Empty state (AC9) *@
+@if (!_isLoading && (_sidecar is null || _components.Count == 0) && !_apiUnavailable)
+{
+    <EmptyState Title="No DAPR components detected"
+                Description="DAPR sidecar is not available or has no registered components. Check sidecar connectivity and ensure DAPR is running alongside the application." />
+}
+
+@* Component grid (AC2, AC3, AC4, AC5) *@
+@if (!_isLoading && _components.Count > 0)
+{
+    @* Filters (AC3) *@
+    <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+        <FluentSearch @bind-Value="_searchFilter"
+                      @bind-Value:after="OnFilterChanged"
+                      Placeholder="Filter by name or type..."
+                      style="min-width: 200px;"
+                      aria-label="Filter components by name or type" />
+        <FluentSelect TOption="string"
+                      Value="@_categoryFilter"
+                      ValueChanged="OnCategoryFilterChanged"
+                      style="min-width: 150px;"
+                      aria-label="Filter by component category">
+            <FluentOption Value="">All Categories</FluentOption>
+            <FluentOption Value="StateStore">State Store</FluentOption>
+            <FluentOption Value="PubSub">Pub/Sub</FluentOption>
+            <FluentOption Value="Binding">Binding</FluentOption>
+            <FluentOption Value="Configuration">Configuration</FluentOption>
+            <FluentOption Value="Lock">Lock</FluentOption>
+            <FluentOption Value="SecretStore">Secret Store</FluentOption>
+            <FluentOption Value="Middleware">Middleware</FluentOption>
+        </FluentSelect>
+    </div>
+
+    <FluentDataGrid Items="@FilteredComponents" TGridItem="DaprComponentDetail"
+                    Style="width: 100%; margin-bottom: 24px;"
+                    aria-label="DAPR component details"
+                    OnRowClick="@OnRowClick">
+        <PropertyColumn Property="@(c => c.Category)" Title="Category" Sortable="true"
+                        IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+        <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
+        <PropertyColumn Property="@(c => c.ComponentType)" Title="Type" Sortable="true" />
+        <PropertyColumn Property="@(c => c.Version)" Title="Version" Sortable="true" />
+        <TemplateColumn Title="Status"
+                        SortBy="@(GridSort<DaprComponentDetail>.ByDescending(c => (int)c.Status))">
+            <StatusBadge Severity="@GetHealthSeverity(context.Status)"
+                         Status="@context.Status.ToString()"
+                         AriaLabelPrefix="Component status" />
+        </TemplateColumn>
+    </FluentDataGrid>
+
+    @* Expandable detail panel (AC4) *@
+    @if (_selectedComponent is not null)
+    {
+        <FluentCard style="margin-bottom: 24px; padding: 16px;">
+            <h3 style="margin: 0 0 12px;">@_selectedComponent.ComponentName</h3>
+            <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                <div>
+                    <strong>Type:</strong> @_selectedComponent.ComponentType
+                </div>
+                <div>
+                    <strong>Version:</strong> @(string.IsNullOrEmpty(_selectedComponent.Version) ? "N/A" : _selectedComponent.Version)
+                </div>
+                <div>
+                    <strong>Category:</strong> @_selectedComponent.Category
+                </div>
+            </div>
+            @if (_selectedComponent.Capabilities.Count > 0)
+            {
+                <div style="margin-top: 12px;">
+                    <strong>Capabilities:</strong>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                        @foreach (string cap in _selectedComponent.Capabilities)
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral">@cap</FluentBadge>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div style="margin-top: 12px;">
+                    <strong>Capabilities:</strong> <span style="color: var(--neutral-foreground-hint);">None reported</span>
+                </div>
+            }
+            <div style="margin-top: 12px;">
+                <strong>Scopes:</strong> <span style="color: var(--neutral-foreground-hint);">All (no scope restriction)</span>
+            </div>
+        </FluentCard>
+    }
+}
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _isStale;
+    private DaprSidecarInfo? _sidecar;
+    private DaprSidecarInfo? _cachedSidecar;
+    private IReadOnlyList<DaprComponentDetail> _components = [];
+    private DaprComponentDetail? _selectedComponent;
+    private DateTimeOffset _lastRefreshUtc;
+    private string? _searchFilter;
+    private string _categoryFilter = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the component type filter from query string (AC10).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? Type { get; set; }
+
+    private string _staleBannerTitle => $"DAPR data may be stale \u2014 last updated {FormatTimeAgo(_lastRefreshUtc)}";
+
+    private static readonly Dictionary<string, DaprComponentCategory> _typeMapping = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["state"] = DaprComponentCategory.StateStore,
+        ["pubsub"] = DaprComponentCategory.PubSub,
+        ["binding"] = DaprComponentCategory.Binding,
+        ["configuration"] = DaprComponentCategory.Configuration,
+        ["lock"] = DaprComponentCategory.Lock,
+        ["secretstore"] = DaprComponentCategory.SecretStore,
+        ["middleware"] = DaprComponentCategory.Middleware,
+    };
+
+    private IQueryable<DaprComponentDetail> FilteredComponents
+    {
+        get
+        {
+            IEnumerable<DaprComponentDetail> filtered = _components;
+
+            if (!string.IsNullOrEmpty(_categoryFilter)
+                && Enum.TryParse<DaprComponentCategory>(_categoryFilter, out DaprComponentCategory cat))
+            {
+                filtered = filtered.Where(c => c.Category == cat);
+            }
+
+            if (!string.IsNullOrEmpty(_searchFilter))
+            {
+                string search = _searchFilter;
+                filtered = filtered.Where(c =>
+                    c.ComponentName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || c.ComponentType.Contains(search, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return filtered
+                .OrderBy(c => (int)c.Category)
+                .ThenBy(c => c.ComponentName)
+                .AsQueryable();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // AC10: apply deep link filter
+        if (!string.IsNullOrEmpty(Type) && _typeMapping.TryGetValue(Type, out DaprComponentCategory category))
+        {
+            _categoryFilter = category.ToString();
+        }
+
+        await LoadDataAsync();
+        _ = PollAsync(); // fire-and-forget
+    }
+
+    private async Task PollAsync()
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+            {
+                await InvokeAsync(async () =>
+                {
+                    try { await LoadDataAsync(); StateHasChanged(); }
+                    catch (ObjectDisposedException) { }
+                    catch (Exception) { _apiUnavailable = _cachedSidecar is null; _isStale = _cachedSidecar is not null; }
+                });
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            DaprSidecarInfo? sidecar = await ApiClient.GetSidecarInfoAsync(_cts.Token);
+            IReadOnlyList<DaprComponentDetail> components = await ApiClient.GetComponentsAsync(_cts.Token);
+
+            _sidecar = sidecar;
+            _components = components;
+            _apiUnavailable = false;
+            _isStale = false;
+            _lastRefreshUtc = DateTimeOffset.UtcNow;
+
+            if (sidecar is not null)
+            {
+                _cachedSidecar = sidecar;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposal or navigation cancellation — do not treat as API failure
+        }
+        catch (Exception)
+        {
+            _isStale = _cachedSidecar is not null;
+            _apiUnavailable = _cachedSidecar is null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync();
+    }
+
+    private void OnFilterChanged()
+    {
+        StateHasChanged();
+    }
+
+    private void OnCategoryFilterChanged(string value)
+    {
+        _categoryFilter = value;
+        StateHasChanged();
+    }
+
+    private void OnRowClick(FluentDataGridRow<DaprComponentDetail> row)
+    {
+        if (row.Item is null)
+        {
+            return;
+        }
+
+        _selectedComponent = _selectedComponent?.ComponentName == row.Item.ComponentName ? null : row.Item;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+
+    private static string GetHealthSeverity(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "success",
+        HealthStatus.Degraded => "warning",
+        HealthStatus.Unhealthy => "error",
+        _ => "neutral",
+    };
+
+    private static string FormatTimeAgo(DateTimeOffset timestamp)
+    {
+        if (timestamp == default)
+        {
+            return "Never";
+        }
+
+        TimeSpan elapsed = DateTimeOffset.UtcNow - timestamp;
+        if (elapsed < TimeSpan.Zero || elapsed.TotalSeconds < 60)
+        {
+            return "just now";
+        }
+
+        if (elapsed.TotalMinutes < 60)
+        {
+            int minutes = (int)elapsed.TotalMinutes;
+            return $"{minutes} min ago";
+        }
+
+        if (elapsed.TotalHours < 24)
+        {
+            int hours = (int)elapsed.TotalHours;
+            return $"{hours} {(hours == 1 ? "hour" : "hours")} ago";
+        }
+
+        return timestamp.ToString("yyyy-MM-dd");
+    }
+}
