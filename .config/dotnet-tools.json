@@ -8,6 +8,13 @@
         "defaultdocumentation"
       ],
       "rollForward": false
+    },
+    "hexalith.eventstore.admin.cli": {
+      "version": "1.0.0",
+      "commands": [
+        "eventstore-admin"
+      ],
+      "rollForward": false
     }
   }
 }

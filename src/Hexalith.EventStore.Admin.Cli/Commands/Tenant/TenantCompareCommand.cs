@@ -19,7 +19,7 @@ public static class TenantCompareCommand
         Argument<string[]> tenantIdsArg = new("tenantIds")
         {
             Description = "Tenant IDs to compare",
-            Arity = new ArgumentArity(2, int.MaxValue),
+            Arity = new ArgumentArity(2, 100),
         };
 
         Command command = new("compare", "Compare usage across tenants");
