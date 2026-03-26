@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Reflection;
 
 using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Commands;
@@ -9,6 +10,15 @@ using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Commands.Config;
 using Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 using Hexalith.EventStore.Admin.Cli.Profiles;
+
+if (args.Length == 1 && (args[0] == "--version" || args[0] == "-v"))
+{
+    string version = Assembly.GetExecutingAssembly()
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+        ?.InformationalVersion ?? "0.0.0";
+    Console.WriteLine(version);
+    return ExitCodes.Success;
+}
 
 GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
 

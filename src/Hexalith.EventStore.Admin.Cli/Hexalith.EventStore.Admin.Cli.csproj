@@ -7,6 +7,8 @@
     <IsPackable>true</IsPackable>
     <RootNamespace>Hexalith.EventStore.Admin.Cli</RootNamespace>
     <AssemblyName>Hexalith.EventStore.Admin.Cli</AssemblyName>
+    <Description>Hexalith EventStore administration CLI — manage streams, projections, snapshots, backups, tenants, and health checks from the terminal. Supports JSON/CSV/table output, exit codes for CI/CD, connection profiles, and shell completions.</Description>
+    <PackageTags>eventsourcing;dapr;cqrs;eventstore;dotnet;cli;admin;devops</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

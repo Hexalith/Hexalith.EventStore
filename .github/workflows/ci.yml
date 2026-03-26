@@ -98,6 +98,22 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
           dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
           dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Tool Install Smoke Test
+        run: |
+          dotnet pack src/Hexalith.EventStore.Admin.Cli/ --no-build --configuration Release --output ./smoke-test-nupkgs
+          dotnet tool install --global Hexalith.EventStore.Admin.Cli --add-source ./smoke-test-nupkgs --version "1.0.0"
+          eventstore-admin --version
+          eventstore-admin --help | grep -q "health"
+          eventstore-admin --help | grep -q "stream"
+          eventstore-admin --help | grep -q "projection"
+          eventstore-admin --help | grep -q "tenant"
+          eventstore-admin --help | grep -q "snapshot"
+          eventstore-admin --help | grep -q "backup"
+          eventstore-admin --help | grep -q "config"
+          ! eventstore-admin nonexistent-command 2>&1
+          dotnet tool uninstall --global Hexalith.EventStore.Admin.Cli
 
       - name: Install DAPR CLI
         run: |
@@ -127,6 +143,7 @@ jobs:
             'Testing.Tests': 'tests/Hexalith.EventStore.Testing.Tests/TestResults/**/test-results.trx',
             'Sample.Tests': 'tests/Hexalith.EventStore.Sample.Tests/TestResults/**/test-results.trx',
             'SignalR.Tests': 'tests/Hexalith.EventStore.SignalR.Tests/TestResults/**/test-results.trx',
+            'Admin.Cli.Tests': 'tests/Hexalith.EventStore.Admin.Cli.Tests/TestResults/**/test-results.trx',
           }
           tier2_suites = {
             'Server.Tests': 'tests/Hexalith.EventStore.Server.Tests/TestResults/**/integration-results.trx',
