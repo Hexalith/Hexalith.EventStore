@@ -1,6 +1,6 @@
 # Story 18.2: Read Tools — Stream State, Projection, Schema, Metrics
 
-Status: ready-for-dev
+Status: done
 
 Size: Large — Extends 1 existing project (Admin.Mcp), extends 1 existing test project (Admin.Mcp.Tests), adds ~10 MCP tools across 4 tool classes, extends AdminApiClient with ~15 new methods via partial classes, ~45-55 tests across 10 test classes (~8-12 hours estimated). Implements the core read-only MCP tool surface that enables AI agents to query streams, inspect projections, discover schemas, and check system metrics.
 
@@ -64,8 +64,8 @@ so that **I can autonomously investigate event sourcing issues, understand the d
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Extend AdminApiClient with partial classes** (AC: #13)
-  - [ ] 1.1 Refactor `AdminApiClient.cs` to be `partial class`. Add a private helper method for error-safe HTTP GET:
+- [x] **Task 1: Extend AdminApiClient with partial classes** (AC: #13)
+  - [x] 1.1 Refactor `AdminApiClient.cs` to be `partial class`. Add a private helper method for error-safe HTTP GET:
     ```csharp
     internal async Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken)
     ```
@@ -76,34 +76,34 @@ so that **I can autonomously investigate event sourcing issues, understand the d
     ```
     This calls `GetAsync<IReadOnlyList<T>>` and returns `Array.Empty<T>()` when the result is `null`.
     **Single-entity endpoints** (`stream-state`, `stream-event-detail`, `projection-detail`): When `GetAsync<T>` returns `null` for a single entity, tools must return a `"not-found"` error JSON via `ToolHelper.SerializeError("not-found", "...")` — not serialize `null` as JSON. The Admin API returns 404 for missing entities, which `GetFromJsonAsync` may surface as an `HttpRequestException` with `StatusCode = 404` OR as `null` depending on the response body. Handle both paths.
-  - [ ] 1.2 Create `AdminApiClient.Streams.cs` — partial class with stream query methods:
+  - [x] 1.2 Create `AdminApiClient.Streams.cs` — partial class with stream query methods:
     - `GetRecentlyActiveStreamsAsync(string? tenantId, string? domain, int count, CancellationToken)` → calls `GET /api/v1/admin/streams?count={count}&tenantId={tenantId}&domain={domain}`
     - `GetStreamTimelineAsync(string tenantId, string domain, string aggregateId, long? fromSequence, long? toSequence, int count, CancellationToken)` → calls `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/timeline?fromSequence={from}&toSequence={to}&count={count}`
     - `GetAggregateStateAsync(string tenantId, string domain, string aggregateId, long sequenceNumber, CancellationToken)` → calls `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/state?sequenceNumber={n}`
     - `GetEventDetailAsync(string tenantId, string domain, string aggregateId, long sequenceNumber, CancellationToken)` → calls `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber}`
-  - [ ] 1.3 Create `AdminApiClient.Projections.cs` — partial class with projection query methods:
+  - [x] 1.3 Create `AdminApiClient.Projections.cs` — partial class with projection query methods:
     - `ListProjectionsAsync(string? tenantId, CancellationToken)` → calls `GET /api/v1/admin/projections?tenantId={tenantId}`
     - `GetProjectionDetailAsync(string tenantId, string projectionName, CancellationToken)` → calls `GET /api/v1/admin/projections/{tenantId}/{projectionName}`
-  - [ ] 1.4 Create `AdminApiClient.Types.cs` — partial class with type catalog methods:
+  - [x] 1.4 Create `AdminApiClient.Types.cs` — partial class with type catalog methods:
     - `ListEventTypesAsync(string? domain, CancellationToken)` → calls `GET /api/v1/admin/types/events?domain={domain}`
     - `ListCommandTypesAsync(string? domain, CancellationToken)` → calls `GET /api/v1/admin/types/commands?domain={domain}`
     - `ListAggregateTypesAsync(string? domain, CancellationToken)` → calls `GET /api/v1/admin/types/aggregates?domain={domain}`
-  - [ ] 1.5 Create `AdminApiClient.Storage.cs` — partial class with storage/metrics methods:
+  - [x] 1.5 Create `AdminApiClient.Storage.cs` — partial class with storage/metrics methods:
     - `GetDaprComponentStatusAsync(CancellationToken)` → calls `GET /api/v1/admin/health/dapr`
     - `GetStorageOverviewAsync(string? tenantId, CancellationToken)` → calls `GET /api/v1/admin/storage/overview?tenantId={tenantId}`
-  - [ ] 1.6 All methods use `System.Net.Http.Json` extensions (`GetFromJsonAsync<T>`). All methods are `async Task<T?>` with `CancellationToken`. All path segments are URI-encoded via `Uri.EscapeDataString()`.
+  - [x] 1.6 All methods use `System.Net.Http.Json` extensions (`GetFromJsonAsync<T>`). All methods are `async Task<T?>` with `CancellationToken`. All path segments are URI-encoded via `Uri.EscapeDataString()`.
 
-- [ ] **Task 2: Create shared error-handling helper** (AC: #11) — **Must be completed BEFORE Tasks 3-6** so tool classes can use ToolHelper from the start.
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs` — `internal static` helper class with:
+- [x] **Task 2: Create shared error-handling helper** (AC: #11) — **Must be completed BEFORE Tasks 3-6** so tool classes can use ToolHelper from the start.
+  - [x] 2.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs` — `internal static` helper class with:
     - `static JsonSerializerOptions JsonOptions` — shared serializer options (camelCase, indented, enum-as-string)
     - `static string SerializeResult<T>(T data)` — serializes success response to JSON
     - `static string SerializeError(string adminApiStatus, string message)` — serializes error response with standard shape `{ "error": true, "adminApiStatus": "...", "message": "..." }`
     - `static string HandleHttpException(HttpRequestException ex)` — categorizes HttpRequestException into `"unauthorized"` (401/403), `"not-found"` (404), `"server-error"` (5xx), or `"unreachable"` (no status code / connection error) and returns error JSON
     - `static string HandleException(Exception ex)` — entry point that catches BOTH `HttpRequestException` (delegates to `HandleHttpException`) AND `TaskCanceledException` (returns `"timeout"` status with message `"Request timed out after 10 seconds"`). The 10-second HttpClient timeout throws `TaskCanceledException`, NOT `HttpRequestException` — this is a common .NET gotcha. All tool catch blocks should use `HandleException` as the outer handler.
-  - [ ] 2.2 Refactor the existing `ServerTools.Ping` method to use `ToolHelper` for error serialization (keeping Ping's richer response structure for the connectivity-specific fields like `serverName` and `serverVersion`). Do NOT over-abstract the success path — Ping's custom response shape is intentional and should remain bespoke. Also add `[McpServerTool(Name = "ping")]` to the existing Ping method for naming consistency with all new tools.
+  - [x] 2.2 Refactor the existing `ServerTools.Ping` method to use `ToolHelper` for error serialization (keeping Ping's richer response structure for the connectivity-specific fields like `serverName` and `serverVersion`). Do NOT over-abstract the success path — Ping's custom response shape is intentional and should remain bespoke. Also add `[McpServerTool(Name = "ping")]` to the existing Ping method for naming consistency with all new tools.
 
-- [ ] **Task 3: Create Stream MCP tools** (AC: #1, #2, #3, #4, #11, #12)
-  - [ ] 2.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/StreamTools.cs`:
+- [x] **Task 3: Create Stream MCP tools** (AC: #1, #2, #3, #4, #11, #12)
+  - [x] 2.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/StreamTools.cs`:
     ```csharp
     [McpServerToolType]
     public static class StreamTools
@@ -150,17 +150,17 @@ so that **I can autonomously investigate event sourcing issues, understand the d
             CancellationToken cancellationToken = default) { ... }
     }
     ```
-  - [ ] 2.2 Each method follows the same error-handling pattern as `ServerTools.Ping`:
+  - [x] 2.2 Each method follows the same error-handling pattern as `ServerTools.Ping`:
     - Try calling `AdminApiClient` method
     - Serialize result to JSON via `JsonSerializer.Serialize(data, JsonOptions)`
     - Wrap in try/catch with `catch (Exception ex) { return ToolHelper.HandleException(ex); }`
     - This catches both `HttpRequestException` (with status code differentiation) and `TaskCanceledException` (timeout)
     - For single-entity tools (`stream-state`, `stream-event-detail`): check for null result BEFORE serializing and return `ToolHelper.SerializeError("not-found", "...")` instead
     - NEVER throw — always return valid JSON string
-  - [ ] 2.3 Create a shared `JsonOptions` static property (or reuse if already exists) with `PropertyNamingPolicy = JsonNamingPolicy.CamelCase` and `WriteIndented = true` for readable AI agent output.
+  - [x] 2.3 Create a shared `JsonOptions` static property (or reuse if already exists) with `PropertyNamingPolicy = JsonNamingPolicy.CamelCase` and `WriteIndented = true` for readable AI agent output.
 
-- [ ] **Task 4: Create Projection MCP tools** (AC: #5, #6, #11, #12)
-  - [ ] 3.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs`:
+- [x] **Task 4: Create Projection MCP tools** (AC: #5, #6, #11, #12)
+  - [x] 3.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs`:
     ```csharp
     [McpServerToolType]
     public static class ProjectionTools
@@ -182,8 +182,8 @@ so that **I can autonomously investigate event sourcing issues, understand the d
     }
     ```
 
-- [ ] **Task 5: Create Type Catalog MCP tool** (AC: #7, #11, #12)
-  - [ ] 4.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/TypeCatalogTools.cs`:
+- [x] **Task 5: Create Type Catalog MCP tool** (AC: #7, #11, #12)
+  - [x] 4.1 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/TypeCatalogTools.cs`:
     ```csharp
     [McpServerToolType]
     public static class TypeCatalogTools
@@ -196,7 +196,7 @@ so that **I can autonomously investigate event sourcing issues, understand the d
             CancellationToken cancellationToken = default) { ... }
     }
     ```
-  - [ ] 5.2 The `types-list` tool makes three parallel API calls via `Task.WhenAll` for event types, command types, and aggregate types, then combines them into a single JSON response. **Implementation hint:** Declare three separately-typed task variables before awaiting:
+  - [x] 5.2 The `types-list` tool makes three parallel API calls via `Task.WhenAll` for event types, command types, and aggregate types, then combines them into a single JSON response. **Implementation hint:** Declare three separately-typed task variables before awaiting:
     ```csharp
     var eventTypesTask = adminApiClient.ListEventTypesAsync(domain, cancellationToken);
     var commandTypesTask = adminApiClient.ListCommandTypesAsync(domain, cancellationToken);
@@ -211,10 +211,10 @@ so that **I can autonomously investigate event sourcing issues, understand the d
       "aggregateTypes": [...]
     }
     ```
-  - [ ] 5.3 If one of the three calls fails, include the error for that category and return whatever succeeded. Do not fail the entire tool.
+  - [x] 5.3 If one of the three calls fails, include the error for that category and return whatever succeeded. Do not fail the entire tool.
 
-- [ ] **Task 6: Create Metrics & Health MCP tools** (AC: #8, #9, #10, #11, #12)
-  - [ ] 5.1 Add tools to the existing `src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs` (which already has `Ping`):
+- [x] **Task 6: Create Metrics & Health MCP tools** (AC: #8, #9, #10, #11, #12)
+  - [x] 5.1 Add tools to the existing `src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs` (which already has `Ping`):
     ```csharp
     [McpServerTool(Name = "health-status")]
     [Description("Get comprehensive system health including event throughput, error rates, and DAPR component status")]
@@ -228,7 +228,7 @@ so that **I can autonomously investigate event sourcing issues, understand the d
         AdminApiClient adminApiClient,
         CancellationToken cancellationToken = default) { ... }
     ```
-  - [ ] 5.2 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/StorageTools.cs`:
+  - [x] 5.2 Create `src/Hexalith.EventStore.Admin.Mcp/Tools/StorageTools.cs`:
     ```csharp
     [McpServerToolType]
     public static class StorageTools
@@ -242,28 +242,28 @@ so that **I can autonomously investigate event sourcing issues, understand the d
     }
     ```
 
-- [ ] **Task 8: Create tests for AdminApiClient partial classes** (AC: #13)
-  - [ ] 7.1 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientStreamTests.cs`:
+- [x] **Task 8: Create tests for AdminApiClient partial classes** (AC: #13)
+  - [x] 7.1 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientStreamTests.cs`:
     - Test `GetRecentlyActiveStreamsAsync` sends GET to correct path with query parameters
     - Test `GetStreamTimelineAsync` sends GET to correct path with URI-encoded segments
     - Test `GetAggregateStateAsync` sends GET to correct path with sequenceNumber query param
     - Test `GetEventDetailAsync` sends GET to correct path with sequence in URL path
     - Test query parameters are omitted when null (no `&tenantId=&domain=` in URL)
     - **`[Theory]` with edge-case aggregate IDs** for URI encoding: use `[InlineData]` with values like `"simple-id"`, `"id/with/slashes"`, `"id with spaces"`, `"id+plus"`, `"unicod\u00e9"`, and a 256-char long ID. Verify `Uri.EscapeDataString()` produces correct path segments for each.
-  - [ ] 7.2 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientProjectionTests.cs`:
+  - [x] 7.2 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientProjectionTests.cs`:
     - Test `ListProjectionsAsync` sends GET to correct path, with and without tenantId
     - Test `GetProjectionDetailAsync` sends GET to correct path with URI-encoded projection name
-  - [ ] 7.3 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientTypeTests.cs`:
+  - [x] 7.3 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientTypeTests.cs`:
     - Test `ListEventTypesAsync` sends GET to `/api/v1/admin/types/events`
     - Test `ListCommandTypesAsync` sends GET to `/api/v1/admin/types/commands`
     - Test `ListAggregateTypesAsync` sends GET to `/api/v1/admin/types/aggregates`
     - Test domain filter query parameter when provided
-  - [ ] 7.4 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientStorageTests.cs`:
+  - [x] 7.4 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientStorageTests.cs`:
     - Test `GetDaprComponentStatusAsync` sends GET to `/api/v1/admin/health/dapr`
     - Test `GetStorageOverviewAsync` sends GET to `/api/v1/admin/storage/overview`
 
-- [ ] **Task 9: Create tests for MCP tools** (AC: #1-#12)
-  - [ ] 8.1 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/StreamToolsTests.cs`:
+- [x] **Task 9: Create tests for MCP tools** (AC: #1-#12)
+  - [x] 8.1 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/StreamToolsTests.cs`:
     - Test `ListStreams` returns valid JSON with stream data on success
     - Test `ListStreams` returns error JSON with `"unreachable"` on HttpRequestException
     - Test `ListStreams` returns error JSON with `"unauthorized"` on 401
@@ -271,35 +271,35 @@ so that **I can autonomously investigate event sourcing issues, understand the d
     - Test `GetStreamState` returns valid JSON with aggregate state
     - Test `GetEventDetail` returns valid JSON with event detail
     - Test all tools return parseable JSON (deserializable to JsonDocument)
-  - [ ] 8.2 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ProjectionToolsTests.cs`:
+  - [x] 8.2 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ProjectionToolsTests.cs`:
     - Test `ListProjections` returns valid JSON with projection list
     - Test `ListProjections` returns error JSON on failure
     - Test `GetProjectionDetail` returns valid JSON with projection detail
     - Test `GetProjectionDetail` returns `"not-found"` error on 404
-  - [ ] 8.3 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/TypeCatalogToolsTests.cs`:
+  - [x] 8.3 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/TypeCatalogToolsTests.cs`:
     - Test `ListTypes` returns combined JSON with eventTypes, commandTypes, aggregateTypes arrays
     - Test `ListTypes` handles partial failure (one API call fails, others succeed) — **verify that successful categories' data is still present in the response AND the failed category includes an error entry with the failure reason**
     - Test `ListTypes` returns error JSON when all calls fail
     - Test domain filter parameter is passed through
-  - [ ] 8.4 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/StorageToolsTests.cs`:
+  - [x] 8.4 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/StorageToolsTests.cs`:
     - Test `GetStorageOverview` returns valid JSON with storage data
     - Test `GetStorageOverview` returns error JSON on failure
     - Test tenantId filter parameter
-  - [ ] 8.5 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/HealthToolsTests.cs`:
+  - [x] 8.5 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/HealthToolsTests.cs`:
     - Test `GetHealthStatus` returns valid JSON with full health report
     - Test `GetDaprHealth` returns valid JSON with DAPR component list
     - Test error handling for both tools
-  - [ ] 8.6 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ToolHelperTests.cs` — **dedicated test class for `ToolHelper.HandleHttpException`**:
+  - [x] 8.6 Create `tests/Hexalith.EventStore.Admin.Mcp.Tests/ToolHelperTests.cs` — **dedicated test class for `ToolHelper.HandleHttpException`**:
     - `[Theory]` with all HTTP status codes: 401, 403 → `"unauthorized"`; 404 → `"not-found"`; 500, 502, 503 → `"server-error"` with status code in message; null StatusCode → `"unreachable"`; `TaskCanceledException` → `"timeout"`
     - Test `SerializeResult<T>` produces valid camelCase JSON
     - Test `SerializeError` produces standard error shape with all required fields
     - **This is higher-value than repeating error tests in every tool class.** Individual tool tests can focus on success paths and tool-specific behavior; defer error-path coverage to this centralized test class.
-  - [ ] 8.7 All tool tests use `MockHttpMessageHandler` to provide canned JSON responses (mock the HttpMessageHandler, not the client itself, since AdminApiClient is a concrete class). Consider extracting the existing `MockHttpMessageHandler` inner class from `AdminApiClientTests.cs` into a shared `TestHelpers/MockHttpMessageHandler.cs` file if the duplication across test classes becomes unwieldy. The CLI tests' `QueuedMockHttpMessageHandler` pattern (queuing multiple responses) may be useful for the `types-list` partial failure tests that require 3 sequential HTTP responses.
+  - [x] 8.7 All tool tests use `MockHttpMessageHandler` to provide canned JSON responses (mock the HttpMessageHandler, not the client itself, since AdminApiClient is a concrete class). Consider extracting the existing `MockHttpMessageHandler` inner class from `AdminApiClientTests.cs` into a shared `TestHelpers/MockHttpMessageHandler.cs` file if the duplication across test classes becomes unwieldy. The CLI tests' `QueuedMockHttpMessageHandler` pattern (queuing multiple responses) may be useful for the `types-list` partial failure tests that require 3 sequential HTTP responses.
 
-- [ ] **Task 10: Verify end-to-end** (AC: #14)
-  - [ ] 9.1 Build solution: `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
-  - [ ] 9.2 Run all Tier 1 tests — all green
-  - [ ] 9.3 Verify all 10 new tools appear in `tools/list` response (the MCP SDK's `WithToolsFromAssembly()` discovers all `[McpServerToolType]` classes automatically)
+- [x] **Task 10: Verify end-to-end** (AC: #14)
+  - [x] 9.1 Build solution: `dotnet build Hexalith.EventStore.slnx --configuration Release` — zero warnings
+  - [x] 9.2 Run all Tier 1 tests — all green
+  - [x] 9.3 Verify all 10 new tools appear in `tools/list` response (the MCP SDK's `WithToolsFromAssembly()` discovers all `[McpServerToolType]` classes automatically)
 
 ## Dev Notes
 
@@ -458,8 +458,80 @@ Recent commits follow consistent patterns:
 
 ### Agent Model Used
 
+Claude Opus 4.6 (1M context)
+
 ### Debug Log References
+
+- Fixed accessibility: Tool classes changed from `public` to `internal` to match `AdminApiClient` visibility
+- Fixed `PagedResult<T>` namespace: `Models.Common` not `Models`
+- Fixed null-return tests: `GetFromJsonAsync` throws on 204 empty body; switched to `"null"` JSON body for null-return simulation
 
 ### Completion Notes List
 
+- **Task 1**: Made `AdminApiClient` partial, added `GetAsync<T>` and `GetListAsync<T>` helpers, created 4 partial class files (Streams, Projections, Types, Storage) with 11 new API methods
+- **Task 2**: Created `ToolHelper.cs` with `SerializeResult`, `SerializeError`, `HandleHttpException`, `HandleException`. Added `[McpServerTool(Name = "ping")]` to existing Ping method. Kept Ping's bespoke response shape.
+- **Task 3**: Created `StreamTools.cs` with 4 tools: `stream-list`, `stream-events`, `stream-state`, `stream-event-detail`. Single-entity tools return `"not-found"` on null.
+- **Task 4**: Created `ProjectionTools.cs` with 2 tools: `projection-list`, `projection-detail`
+- **Task 5**: Created `TypeCatalogTools.cs` with `types-list` combined tool using `Task.WhenAll` for parallel API calls with partial failure support
+- **Task 6**: Added `health-status` and `health-dapr` to `ServerTools.cs`, created `StorageTools.cs` with `storage-overview`
+- **Task 8**: Created 4 AdminApiClient test classes (Stream, Projection, Type, Storage) verifying correct paths, query params, URI encoding, and null param omission
+- **Task 9**: Created 6 tool test classes (StreamTools, ProjectionTools, TypeCatalogTools, StorageTools, HealthTools, ToolHelper) covering success, error, null-return, partial failure, and all HTTP status code categories
+- **Task 10**: Solution builds with zero warnings (pre-existing IntegrationTests error unrelated). All Tier 1 tests pass: 82 Admin.Mcp tests (43 existing + 39 new), 806 total across all Tier 1 projects
+- Extracted shared `MockHttpMessageHandler` and `QueuedMockHttpMessageHandler` to `TestHelpers/` for reuse across test classes
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.Streams.cs
+- src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.Projections.cs
+- src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.Types.cs
+- src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.Storage.cs
+- src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs
+- src/Hexalith.EventStore.Admin.Mcp/Tools/StreamTools.cs
+- src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs
+- src/Hexalith.EventStore.Admin.Mcp/Tools/TypeCatalogTools.cs
+- src/Hexalith.EventStore.Admin.Mcp/Tools/StorageTools.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/TestHelpers/MockHttpMessageHandler.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientStreamTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientProjectionTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientTypeTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientStorageTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/StreamToolsTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/ProjectionToolsTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/TypeCatalogToolsTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/StorageToolsTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/HealthToolsTests.cs
+- tests/Hexalith.EventStore.Admin.Mcp.Tests/ToolHelperTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Admin.Mcp/AdminApiClient.cs (added `partial`, `GetAsync<T>`, `GetListAsync<T>`)
+- src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs (added `[McpServerTool(Name = "ping")]`, `GetHealthStatus`, `GetDaprHealth`)
+- _bmad-output/implementation-artifacts/sprint-status.yaml (status update)
+
+### Change Log
+
+- 2026-03-26: Implemented story 18-2 — Added 10 MCP read tools (stream-list, stream-events, stream-state, stream-event-detail, projection-list, projection-detail, types-list, health-status, health-dapr, storage-overview), extended AdminApiClient with partial classes, created ToolHelper for standardized error handling, added 39 new tests (82 total for Admin.Mcp)
+- 2026-03-26: Code review complete (3-layer adversarial review) — 8 patches applied, 2 bad-spec noted, 2 deferred, 12 rejected as noise
+
+### Review Record
+
+**Review Model:** Claude Opus 4.6 (1M context)
+**Review Method:** 3-layer adversarial (Blind Hunter, Edge Case Hunter, Acceptance Auditor)
+**Raw findings:** 38 total across 3 layers
+**After triage:** 0 intent-gap, 2 bad-spec, 8 patch, 2 defer, 12 rejected
+
+**Patches applied during review:**
+1. **P-1**: Added null checks to `StorageTools.GetStorageOverview`, `StreamTools.ListStreams`, `StreamTools.GetStreamEvents` for consistent error shape
+2. **P-2**: Refactored `ServerTools.Ping` to use `ToolHelper.JsonOptions` for serialization consistency (camelCase, indented)
+3. **P-3**: Changed `QueuedMockHttpMessageHandler` from `Queue<T>` to `ConcurrentQueue<T>` for thread safety with `Task.WhenAll`
+4. **P-4**: Added unicode (`\u00e9`) and 256-char aggregate ID test cases per spec requirement
+5. **P-5**: Added `JsonException` arm to `ToolHelper.HandleException` for malformed server responses
+6. **P-6**: Added `ToolHelper.ValidateRequired` helper and validation in 4 tool methods for empty path-segment parameters
+7. **P-7**: Fixed misleading `GetAsync<T>` XML doc comment about 204 handling
+8. **P-8**: Added 5 new tests: generic Exception, JsonException, ValidateRequired (valid/empty/whitespace)
+
+**Bad-spec items (noted, not blocking):**
+- BS-1: `TaskCanceledException` conflation — spec prescribes mapping all to "timeout" but masks genuine cancellation
+- BS-2: `TypeCatalogTools` partial failure doesn't address `IsCanceled` task state
+
+**Post-review test count:** 89 tests (46 new total), all green, zero warnings

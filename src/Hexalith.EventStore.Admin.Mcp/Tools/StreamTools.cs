@@ -1,0 +1,135 @@
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
+
+using System.ComponentModel;
+
+using ModelContextProtocol.Server;
+
+/// <summary>
+/// MCP tools for querying event streams.
+/// </summary>
+[McpServerToolType]
+internal static class StreamTools
+{
+    /// <summary>
+    /// List recently active event streams, optionally filtered by tenant and domain.
+    /// </summary>
+    [McpServerTool(Name = "stream-list")]
+    [Description("List recently active event streams, optionally filtered by tenant and domain")]
+    public static async Task<string> ListStreams(
+        AdminApiClient adminApiClient,
+        [Description("Filter by tenant ID")] string? tenantId = null,
+        [Description("Filter by domain")] string? domain = null,
+        [Description("Max streams to return (default 100)")] int count = 100,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await adminApiClient.GetRecentlyActiveStreamsAsync(tenantId, domain, count, cancellationToken).ConfigureAwait(false);
+            return result is null
+                ? ToolHelper.SerializeError("not-found", "No stream data returned")
+                : ToolHelper.SerializeResult(result);
+        }
+        catch (Exception ex)
+        {
+            return ToolHelper.HandleException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Get the command/event/query timeline for a specific event stream.
+    /// </summary>
+    [McpServerTool(Name = "stream-events")]
+    [Description("Get the command/event/query timeline for a specific event stream")]
+    public static async Task<string> GetStreamEvents(
+        AdminApiClient adminApiClient,
+        [Description("Tenant ID")] string tenantId,
+        [Description("Domain name")] string domain,
+        [Description("Aggregate ID")] string aggregateId,
+        [Description("Start from sequence number")] long? fromSequence = null,
+        [Description("End at sequence number")] long? toSequence = null,
+        [Description("Max entries to return (default 100)")] int count = 100,
+        CancellationToken cancellationToken = default)
+    {
+        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"), (domain, "domain"), (aggregateId, "aggregateId"));
+        if (validation is not null)
+        {
+            return validation;
+        }
+
+        try
+        {
+            var result = await adminApiClient.GetStreamTimelineAsync(tenantId, domain, aggregateId, fromSequence, toSequence, count, cancellationToken).ConfigureAwait(false);
+            return result is null
+                ? ToolHelper.SerializeError("not-found", $"No timeline found for {domain}/{aggregateId}")
+                : ToolHelper.SerializeResult(result);
+        }
+        catch (Exception ex)
+        {
+            return ToolHelper.HandleException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Get the aggregate state reconstructed at a specific sequence number (point-in-time state exploration).
+    /// </summary>
+    [McpServerTool(Name = "stream-state")]
+    [Description("Get the aggregate state reconstructed at a specific sequence number (point-in-time state exploration)")]
+    public static async Task<string> GetStreamState(
+        AdminApiClient adminApiClient,
+        [Description("Tenant ID")] string tenantId,
+        [Description("Domain name")] string domain,
+        [Description("Aggregate ID")] string aggregateId,
+        [Description("Sequence number to reconstruct state at")] long sequenceNumber,
+        CancellationToken cancellationToken = default)
+    {
+        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"), (domain, "domain"), (aggregateId, "aggregateId"));
+        if (validation is not null)
+        {
+            return validation;
+        }
+
+        try
+        {
+            var result = await adminApiClient.GetAggregateStateAsync(tenantId, domain, aggregateId, sequenceNumber, cancellationToken).ConfigureAwait(false);
+            return result is null
+                ? ToolHelper.SerializeError("not-found", $"No aggregate state found for {domain}/{aggregateId} at sequence {sequenceNumber}")
+                : ToolHelper.SerializeResult(result);
+        }
+        catch (Exception ex)
+        {
+            return ToolHelper.HandleException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Get full details of a specific event including its payload and metadata.
+    /// </summary>
+    [McpServerTool(Name = "stream-event-detail")]
+    [Description("Get full details of a specific event including its payload and metadata")]
+    public static async Task<string> GetEventDetail(
+        AdminApiClient adminApiClient,
+        [Description("Tenant ID")] string tenantId,
+        [Description("Domain name")] string domain,
+        [Description("Aggregate ID")] string aggregateId,
+        [Description("Event sequence number")] long sequenceNumber,
+        CancellationToken cancellationToken = default)
+    {
+        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"), (domain, "domain"), (aggregateId, "aggregateId"));
+        if (validation is not null)
+        {
+            return validation;
+        }
+
+        try
+        {
+            var result = await adminApiClient.GetEventDetailAsync(tenantId, domain, aggregateId, sequenceNumber, cancellationToken).ConfigureAwait(false);
+            return result is null
+                ? ToolHelper.SerializeError("not-found", $"No event found for {domain}/{aggregateId} at sequence {sequenceNumber}")
+                : ToolHelper.SerializeResult(result);
+        }
+        catch (Exception ex)
+        {
+            return ToolHelper.HandleException(ex);
+        }
+    }
+}
