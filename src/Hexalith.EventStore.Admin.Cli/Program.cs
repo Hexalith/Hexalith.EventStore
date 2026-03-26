@@ -2,7 +2,9 @@ using System.CommandLine;
 
 using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Commands;
+using Hexalith.EventStore.Admin.Cli.Commands.Backup;
 using Hexalith.EventStore.Admin.Cli.Commands.Projection;
+using Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 
@@ -18,8 +20,8 @@ rootCommand.Subcommands.Add(HealthCommand.Create(binding));
 rootCommand.Subcommands.Add(StreamCommand.Create(binding));
 rootCommand.Subcommands.Add(ProjectionCommand.Create(binding));
 rootCommand.Subcommands.Add(TenantCommand.Create(binding));
-rootCommand.Subcommands.Add(StubCommands.Create("snapshot", "Manage aggregate snapshots"));
-rootCommand.Subcommands.Add(StubCommands.Create("backup", "Trigger and manage backups"));
+rootCommand.Subcommands.Add(SnapshotCommand.Create(binding));
+rootCommand.Subcommands.Add(BackupCommand.Create(binding));
 rootCommand.Subcommands.Add(StubCommands.Create("config", "Manage connection profiles and CLI configuration"));
 
 try
