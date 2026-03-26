@@ -84,4 +84,33 @@ internal sealed partial class AdminApiClient
         string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/events/{sequenceNumber}";
         return await GetAsync<EventDetail>(path, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Diffs aggregate state between two sequence positions, showing which fields changed.
+    /// </summary>
+    public async Task<AggregateStateDiff?> DiffAggregateStateAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long fromSequence,
+        long toSequence,
+        CancellationToken cancellationToken)
+    {
+        string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/diff?fromSequence={fromSequence}&toSequence={toSequence}";
+        return await GetAsync<AggregateStateDiff>(path, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Traces the full causation chain for an event at the specified sequence number.
+    /// </summary>
+    public async Task<CausationChain?> TraceCausationChainAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken cancellationToken)
+    {
+        string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/causation?sequenceNumber={sequenceNumber}";
+        return await GetAsync<CausationChain>(path, cancellationToken).ConfigureAwait(false);
+    }
 }
