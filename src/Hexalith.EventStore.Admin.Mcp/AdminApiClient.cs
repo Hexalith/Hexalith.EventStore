@@ -2,6 +2,7 @@ namespace Hexalith.EventStore.Admin.Mcp;
 
 using System.Net.Http.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
 /// <summary>
@@ -46,6 +47,42 @@ internal sealed partial class AdminApiClient
     {
         return await _httpClient
             .GetFromJsonAsync<T>(path, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sends a POST request with no body and deserializes the response.
+    /// </summary>
+    /// <param name="path">The request URI path.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The deserialized operation result, or <c>null</c>.</returns>
+    internal async Task<AdminOperationResult?> PostAsync(string path, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _httpClient
+            .PostAsync(path, content: null, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await response.Content
+            .ReadFromJsonAsync<AdminOperationResult>(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sends a POST request with a JSON body and deserializes the response.
+    /// </summary>
+    /// <typeparam name="TRequest">The request body type.</typeparam>
+    /// <param name="path">The request URI path.</param>
+    /// <param name="body">The request body to serialize as JSON.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The deserialized operation result, or <c>null</c>.</returns>
+    internal async Task<AdminOperationResult?> PostAsync<TRequest>(string path, TRequest body, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _httpClient
+            .PostAsJsonAsync(path, body, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await response.Content
+            .ReadFromJsonAsync<AdminOperationResult>(cancellationToken)
             .ConfigureAwait(false);
     }
 
