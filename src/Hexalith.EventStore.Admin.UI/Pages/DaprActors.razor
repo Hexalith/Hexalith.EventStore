@@ -1,0 +1,382 @@
+@page "/dapr/actors"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IAsyncDisposable
+
+@inject AdminActorApiClient ApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>DAPR Actor Inspector - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+        &larr; DAPR Infrastructure
+    </FluentAnchor>
+</div>
+
+<h1 style="margin: 0 0 16px;">DAPR Actor Inspector</h1>
+
+@* Error state: API unavailable *@
+<IssueBanner Visible="@(_error is not null && _runtimeInfo is null)"
+             Title="Unable to load actor information"
+             Description="@(_error ?? "The admin backend service may be unavailable.")"
+             ActionLabel="Retry"
+             OnAction="LoadRuntimeInfoAsync" />
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else if (_runtimeInfo is not null)
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Registered Types"
+                      Value="@_runtimeInfo.ActorTypes.Count.ToString()"
+                      Severity="@(_runtimeInfo.ActorTypes.Count > 0 ? "success" : "neutral")"
+                      Title="Number of registered DAPR actor types" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Total Active Actors"
+                      Value="@_runtimeInfo.TotalActiveActors.ToString()"
+                      Severity="neutral"
+                      Title="Total number of active actor instances" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Total State Size"
+                      Value="@(_inspectedState is not null ? TimeFormatHelper.FormatBytes(_inspectedState.TotalSizeBytes) : "N/A")"
+                      Severity="neutral"
+                      Title="Total state size of inspected actor" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Empty states (AC8) *@
+@if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count == 0 && !_runtimeInfo.IsRemoteMetadataAvailable)
+{
+    <EmptyState Title="No actor types found"
+                Description="Configure 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings to inspect actors from the EventStore server's DAPR sidecar." />
+}
+else if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count == 0 && _runtimeInfo.IsRemoteMetadataAvailable)
+{
+    <EmptyState Title="No actor types registered"
+                Description="The EventStore server may not be running." />
+}
+
+@* Actor type grid (AC1) *@
+@if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count > 0)
+{
+    <h2 style="margin: 0 0 12px;">Actor Types</h2>
+    <FluentDataGrid Items="@ActorTypeItems" TGridItem="DaprActorTypeInfo"
+                    Style="width: 100%; margin-bottom: 24px;"
+                    aria-label="Registered DAPR actor types"
+                    OnRowClick="@OnActorTypeRowClick">
+        <PropertyColumn Property="@(a => a.TypeName)" Title="Type Name" Sortable="true"
+                        IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+        <TemplateColumn Title="Active Instances" Sortable="true"
+                        SortBy="@(GridSort<DaprActorTypeInfo>.ByAscending(a => a.ActiveCount))">
+            @(context.ActiveCount >= 0 ? context.ActiveCount.ToString() : "N/A")
+        </TemplateColumn>
+        <PropertyColumn Property="@(a => a.Description)" Title="Description" Sortable="false" />
+    </FluentDataGrid>
+
+    @* Configuration card (AC2) *@
+    <h2 style="margin: 0 0 12px;">Runtime Configuration</h2>
+    <FluentCard style="margin-bottom: 24px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <strong>Actor Runtime</strong>
+            @if (IsCustomConfig(_runtimeInfo.Configuration))
+            {
+                <StatusBadge Status="Configured" Severity="success" AriaLabelPrefix="Configuration status" />
+            }
+            else
+            {
+                <StatusBadge Status="Defaults" Severity="inflight" AriaLabelPrefix="Configuration status" />
+            }
+        </div>
+        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0;">
+            <dt style="font-weight: 600;">Idle Timeout</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.IdleTimeout</dd>
+            <dt style="font-weight: 600;">Scan Interval</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.ScanInterval</dd>
+            <dt style="font-weight: 600;">Drain Ongoing Call Timeout</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.DrainOngoingCallTimeout</dd>
+            <dt style="font-weight: 600;">Drain Rebalanced Actors</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.DrainRebalancedActors</dd>
+            <dt style="font-weight: 600;">Reentrancy Enabled</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.ReentrancyEnabled</dd>
+            <dt style="font-weight: 600;">Reentrancy Max Stack Depth</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.ReentrancyMaxStackDepth</dd>
+        </dl>
+        <div style="margin-top: 12px; color: var(--neutral-foreground-hint); font-size: 0.85em;">
+            Placement: DAPR consistent-hashing (not queryable via API)
+        </div>
+    </FluentCard>
+
+    @* Instance lookup (AC3) *@
+    <h2 style="margin: 0 0 12px;">Instance Lookup</h2>
+    <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;">
+        <FluentSelect TOption="string"
+                      Value="@_selectedActorType"
+                      ValueChanged="OnActorTypeSelected"
+                      Label="Actor Type"
+                      style="min-width: 200px;"
+                      aria-label="Select actor type">
+            <FluentOption Value="">Select actor type...</FluentOption>
+            @foreach (DaprActorTypeInfo actorType in _runtimeInfo.ActorTypes)
+            {
+                <FluentOption Value="@actorType.TypeName">@actorType.TypeName</FluentOption>
+            }
+        </FluentSelect>
+        <FluentTextField @bind-Value="_actorId"
+                         Label="Actor ID"
+                         Placeholder="@GetActorIdPlaceholder()"
+                         style="min-width: 300px;"
+                         aria-label="Enter actor instance ID" />
+        <FluentButton Appearance="Appearance.Accent"
+                      Disabled="@(string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))"
+                      Loading="@_isInspecting"
+                      OnClick="InspectActorAsync"
+                      aria-label="Inspect actor instance">
+            Inspect
+        </FluentButton>
+    </div>
+}
+
+@* Not-found banner (AC8) *@
+<IssueBanner Visible="@_actorNotFound"
+             Title="Actor instance not found"
+             Description="The actor may be inactive or the ID may be incorrect." />
+
+@* State viewer (AC4, AC5) *@
+@if (_inspectedState is not null)
+{
+    <h2 style="margin: 0 0 12px;">Actor State</h2>
+    <div style="margin-bottom: 8px; color: var(--neutral-foreground-hint); font-size: 0.85em;">
+        State shown reflects last persisted values. If the actor is currently processing a command, displayed state may be stale.
+    </div>
+    <FluentGrid Spacing="3" style="margin-bottom: 16px;">
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Total State Size"
+                      Value="@TimeFormatHelper.FormatBytes(_inspectedState.TotalSizeBytes)"
+                      Severity="neutral"
+                      Title="Total size across all state entries" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Inspected At"
+                      Value="@_inspectedState.InspectedAtUtc.ToString("HH:mm:ss UTC")"
+                      Severity="neutral"
+                      Title="Time of inspection" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <div style="display: flex; align-items: center; height: 100%;">
+                <FluentButton Appearance="Appearance.Outline"
+                              Loading="@_isInspecting"
+                              OnClick="InspectActorAsync"
+                              aria-label="Refresh actor state">
+                    Refresh
+                </FluentButton>
+            </div>
+        </FluentGridItem>
+    </FluentGrid>
+
+    @foreach (DaprActorStateEntry entry in _inspectedState.StateEntries)
+    {
+        <FluentCard style="margin-bottom: 12px; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="font-family: monospace;">@entry.Key</strong>
+                <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">
+                    @TimeFormatHelper.FormatBytes(entry.EstimatedSizeBytes)
+                </span>
+            </div>
+            @if (entry.Found && entry.JsonValue is not null)
+            {
+                <JsonViewer Json="@entry.JsonValue" Collapsed="false" MaxHeight="400" />
+            }
+            else if (entry.Key.Contains('{'))
+            {
+                <div style="color: var(--neutral-foreground-hint); font-style: italic;">
+                    Dynamic key family &mdash; specific entries depend on actor state.
+                </div>
+            }
+            else
+            {
+                <div style="color: var(--neutral-foreground-hint); font-style: italic;">
+                    No data
+                </div>
+            }
+        </FluentCard>
+    }
+}
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private DaprActorRuntimeInfo? _runtimeInfo;
+    private DaprActorInstanceState? _inspectedState;
+    private string? _selectedActorType;
+    private string? _actorId;
+    private bool _isLoading = true;
+    private bool _isInspecting;
+    private bool _actorNotFound;
+    private string? _error;
+
+    /// <summary>
+    /// Gets or sets the actor type from query string for deep linking (AC10).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// Gets or sets the actor ID from query string for deep linking (AC10).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "id")]
+    public string? Id { get; set; }
+
+    private IQueryable<DaprActorTypeInfo> ActorTypeItems =>
+        (_runtimeInfo?.ActorTypes ?? [])
+            .OrderBy(a => a.TypeName)
+            .AsQueryable();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRuntimeInfoAsync();
+
+        // AC10: Deep linking support
+        if (Type is not null)
+        {
+            _selectedActorType = Type;
+        }
+
+        if (Type is not null && Id is not null)
+        {
+            _actorId = Id;
+            await InspectActorAsync();
+        }
+
+        _ = PollAsync(); // fire-and-forget
+    }
+
+    private async Task PollAsync()
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+            {
+                await InvokeAsync(async () =>
+                {
+                    try { await LoadRuntimeInfoAsync(); StateHasChanged(); }
+                    catch (ObjectDisposedException) { }
+                    catch (Exception) { /* Prevent unobserved exception from killing the poll loop */ }
+                });
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task LoadRuntimeInfoAsync()
+    {
+        try
+        {
+            _runtimeInfo = await ApiClient.GetActorRuntimeInfoAsync(_cts.Token);
+            _error = _runtimeInfo is null ? "Failed to load actor runtime information." : null;
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposal or navigation cancellation
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task InspectActorAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))
+        {
+            return;
+        }
+
+        _isInspecting = true;
+        _actorNotFound = false;
+        _inspectedState = null;
+
+        try
+        {
+            _inspectedState = await ApiClient.GetActorInstanceStateAsync(
+                _selectedActorType, _actorId, _cts.Token);
+
+            _actorNotFound = _inspectedState is null
+                || (_inspectedState.StateEntries.Count > 0
+                    && _inspectedState.StateEntries.All(e => !e.Found));
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposal or navigation cancellation
+        }
+        catch (Exception)
+        {
+            _actorNotFound = true;
+        }
+        finally
+        {
+            _isInspecting = false;
+        }
+    }
+
+    private void OnActorTypeSelected(string value)
+    {
+        _selectedActorType = value;
+    }
+
+    private void OnActorTypeRowClick(FluentDataGridRow<DaprActorTypeInfo> row)
+    {
+        if (row.Item is not null)
+        {
+            _selectedActorType = row.Item.TypeName;
+        }
+    }
+
+    private string GetActorIdPlaceholder()
+    {
+        if (_runtimeInfo is null || string.IsNullOrEmpty(_selectedActorType))
+        {
+            return "actor-id";
+        }
+
+        DaprActorTypeInfo? actorType = _runtimeInfo.ActorTypes
+            .FirstOrDefault(a => a.TypeName == _selectedActorType);
+        return actorType?.ActorIdFormat ?? "actor-id";
+    }
+
+    private static bool IsCustomConfig(DaprActorRuntimeConfig config)
+        => config.IdleTimeout != TimeSpan.FromMinutes(60)
+            || config.ScanInterval != TimeSpan.FromSeconds(30)
+            || config.DrainOngoingCallTimeout != TimeSpan.FromSeconds(60)
+            || !config.DrainRebalancedActors
+            || config.ReentrancyEnabled
+            || config.ReentrancyMaxStackDepth != 32;
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+}

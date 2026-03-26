@@ -20,4 +20,20 @@ public interface IDaprInfrastructureQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The sidecar info, or null if the sidecar is unavailable.</returns>
     Task<DaprSidecarInfo?> GetSidecarInfoAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets actor runtime information including registered types, active counts, and configuration.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The actor runtime info.</returns>
+    Task<DaprActorRuntimeInfo> GetActorRuntimeInfoAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the state of a specific actor instance by reading known state keys from the DAPR state store.
+    /// </summary>
+    /// <param name="actorType">The actor type name.</param>
+    /// <param name="actorId">The actor instance ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The actor instance state, or null if the actor type is unknown.</returns>
+    Task<DaprActorInstanceState?> GetActorInstanceStateAsync(string actorType, string actorId, CancellationToken ct = default);
 }

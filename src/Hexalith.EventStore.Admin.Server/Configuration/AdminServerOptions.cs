@@ -50,4 +50,14 @@ public sealed class AdminServerOptions
     /// Gets or sets the observability logs dashboard URL. Null disables the link.
     /// </summary>
     public string? LogsUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the DAPR HTTP endpoint of the EventStore server sidecar for cross-sidecar metadata queries.
+    /// When null, only local sidecar metadata is attempted.
+    /// </summary>
+    /// <remarks>
+    /// In Aspire orchestration, this endpoint is injected automatically via the Aspire extension.
+    /// </remarks>
+    // TODO: production deployment may require DAPR service invocation for cross-sidecar metadata
+    public string? EventStoreDaprHttpEndpoint { get; set; }
 }

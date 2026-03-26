@@ -51,10 +51,16 @@ public static class HexalithEventStoreExtensions {
         // AppPort is intentionally omitted so the CommunityToolkit auto-detects
         // the app's actual port from the Aspire resource model. Hardcoding AppPort
         // breaks Aspire Testing, which randomizes project ports.
+        // DaprHttpPort is fixed (3501) so Admin.Server can query the CommandApi
+        // sidecar's metadata endpoint for actor type discovery (story 19-2).
+        // IDaprSidecarResource does not implement IResourceWithEndpoints in
+        // CommunityToolkit 13.0.0, so a dynamic endpoint reference is not possible.
+        const int CommandApiDaprHttpPort = 3501;
         _ = commandApi
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "commandapi",
+                    DaprHttpPort = CommandApiDaprHttpPort,
                     Config = commandApiDaprConfigPath,
                 })
                 .WithReference(stateStore)
@@ -67,6 +73,7 @@ public static class HexalithEventStoreExtensions {
         // reference the pub/sub component.
         _ = adminServer
             .WithReference(commandApi)
+            .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", "http://localhost:" + CommandApiDaprHttpPort)
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "admin-server",
