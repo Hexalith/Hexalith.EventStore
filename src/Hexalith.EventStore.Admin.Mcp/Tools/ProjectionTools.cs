@@ -17,9 +17,13 @@ internal static class ProjectionTools
     [Description("List all projections with their current status, lag, and error counts")]
     public static async Task<string> ListProjections(
         AdminApiClient adminApiClient,
-        [Description("Filter by tenant ID")] string? tenantId = null,
+        InvestigationSession session,
+        [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
+        tenantId = NormalizeOptionalScope(tenantId);
+        tenantId ??= session.GetSnapshot().TenantId;
+
         try
         {
             var result = await adminApiClient.ListProjectionsAsync(tenantId, cancellationToken).ConfigureAwait(false);
@@ -38,6 +42,7 @@ internal static class ProjectionTools
     [Description("Get detailed projection information including recent errors and configuration")]
     public static async Task<string> GetProjectionDetail(
         AdminApiClient adminApiClient,
+        InvestigationSession session,
         [Description("Tenant ID")] string tenantId,
         [Description("Projection name")] string projectionName,
         CancellationToken cancellationToken = default)
@@ -60,4 +65,7 @@ internal static class ProjectionTools
             return ToolHelper.HandleException(ex);
         }
     }
+
+    private static string? NormalizeOptionalScope(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -103,6 +103,8 @@ internal static class ToolHelper
             => SerializeError("conflict", $"Operation conflict: {ex.Message}"),
         HttpStatusCode.UnprocessableEntity
             => SerializeError("invalid-operation", $"Operation rejected: {ex.Message}"),
+        HttpStatusCode.ServiceUnavailable
+            => SerializeError("service-unavailable", "Tenant service temporarily unavailable. Retry shortly."),
         not null when (int)ex.StatusCode >= 500
             => SerializeError("server-error", $"HTTP {(int)ex.StatusCode} {ex.StatusCode}"),
         null

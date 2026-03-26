@@ -17,9 +17,13 @@ internal static class StorageTools
     [Description("Get storage usage overview including event counts, sizes, and per-tenant breakdown")]
     public static async Task<string> GetStorageOverview(
         AdminApiClient adminApiClient,
-        [Description("Filter by tenant ID")] string? tenantId = null,
+        InvestigationSession session,
+        [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
+        tenantId = NormalizeOptionalScope(tenantId);
+        tenantId ??= session.GetSnapshot().TenantId;
+
         try
         {
             var result = await adminApiClient.GetStorageOverviewAsync(tenantId, cancellationToken).ConfigureAwait(false);
@@ -32,4 +36,7 @@ internal static class StorageTools
             return ToolHelper.HandleException(ex);
         }
     }
+
+    private static string? NormalizeOptionalScope(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

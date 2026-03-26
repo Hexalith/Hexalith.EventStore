@@ -17,7 +17,7 @@ public class ProjectionToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _projectionListJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionTools.ListProjections(client);
+        string result = await ProjectionTools.ListProjections(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.ValueKind.ShouldBe(JsonValueKind.Array);
@@ -29,7 +29,7 @@ public class ProjectionToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionTools.ListProjections(client);
+        string result = await ProjectionTools.ListProjections(client, new InvestigationSession());
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -41,7 +41,7 @@ public class ProjectionToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _projectionDetailJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionTools.GetProjectionDetail(client, "t1", "OrderSummary");
+        string result = await ProjectionTools.GetProjectionDetail(client, new InvestigationSession(), "t1", "OrderSummary");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -53,7 +53,7 @@ public class ProjectionToolsTests
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionTools.GetProjectionDetail(client, "t1", "NonExistent");
+        string result = await ProjectionTools.GetProjectionDetail(client, new InvestigationSession(), "t1", "NonExistent");
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");

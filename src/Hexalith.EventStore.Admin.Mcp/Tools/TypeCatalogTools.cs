@@ -17,9 +17,13 @@ internal static class TypeCatalogTools
     [Description("Discover all registered event types, command types, and aggregate types in the domain model")]
     public static async Task<string> ListTypes(
         AdminApiClient adminApiClient,
-        [Description("Filter by domain")] string? domain = null,
+        InvestigationSession session,
+        [Description("Filter by domain (uses session context if omitted)")] string? domain = null,
         CancellationToken cancellationToken = default)
     {
+        domain = NormalizeOptionalScope(domain);
+        domain ??= session.GetSnapshot().Domain;
+
         try
         {
             var eventTypesTask = adminApiClient.ListEventTypesAsync(domain, cancellationToken);
@@ -88,4 +92,7 @@ internal static class TypeCatalogTools
             return ToolHelper.HandleException(ex);
         }
     }
+
+    private static string? NormalizeOptionalScope(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

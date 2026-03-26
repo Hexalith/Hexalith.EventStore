@@ -17,9 +17,13 @@ internal static class ConsistencyTools
     [Description("List data integrity checks with status, scope, and anomaly counts")]
     public static async Task<string> ListChecks(
         AdminApiClient adminApiClient,
-        [Description("Filter by tenant ID")] string? tenantId = null,
+        InvestigationSession session,
+        [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
+        tenantId = NormalizeOptionalScope(tenantId);
+        tenantId ??= session.GetSnapshot().TenantId;
+
         try
         {
             var result = await adminApiClient.GetConsistencyChecksAsync(tenantId, cancellationToken).ConfigureAwait(false);
@@ -38,6 +42,7 @@ internal static class ConsistencyTools
     [Description("Get detailed data integrity check results including anomalies, severity levels, and affected streams")]
     public static async Task<string> GetCheckDetail(
         AdminApiClient adminApiClient,
+        InvestigationSession session,
         [Description("Consistency check ID")] string checkId,
         CancellationToken cancellationToken = default)
     {
@@ -59,4 +64,7 @@ internal static class ConsistencyTools
             return ToolHelper.HandleException(ex);
         }
     }
+
+    private static string? NormalizeOptionalScope(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

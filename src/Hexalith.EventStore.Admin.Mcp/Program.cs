@@ -62,6 +62,9 @@ builder.Services.AddHttpClient<AdminApiClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
+// Register InvestigationSession as singleton for MCP session context
+builder.Services.AddSingleton<InvestigationSession>();
+
 // Register MCP server with stdio transport
 builder.Services
     .AddMcpServer(options =>
