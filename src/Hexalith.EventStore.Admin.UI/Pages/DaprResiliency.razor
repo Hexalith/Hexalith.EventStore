@@ -1,0 +1,341 @@
+@page "/dapr/resiliency"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@inject AdminResiliencyApiClient ResiliencyClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ILogger<DaprResiliency> Logger
+
+<PageTitle>DAPR Resiliency Policies - Hexalith EventStore</PageTitle>
+
+@* Header with back-link *@
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+        &larr; DAPR Infrastructure
+    </FluentAnchor>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">DAPR Resiliency Policies</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="ReloadAsync"
+                  Disabled="@_isLoading"
+                  aria-label="Reload resiliency configuration">
+        @(_isLoading ? "Loading..." : "Reload")
+    </FluentButton>
+</div>
+
+@* Error state: fetch failed *@
+<IssueBanner Visible="@(_spec is null && !_isLoading)"
+             Title="Unable to load resiliency information"
+             Description="The admin backend service may be unavailable."
+             ActionLabel="Retry"
+             OnAction="ReloadAsync" />
+
+@* Error state: config path not set (AC8) *@
+@if (!_isLoading && _spec is not null && !_spec.IsConfigurationAvailable && _spec.ErrorMessage is null)
+{
+    <EmptyState Title="Resiliency configuration not available"
+                Description="Configure 'AdminServer:ResiliencyConfigPath' in appsettings to point to the DAPR resiliency YAML file." />
+}
+
+@* Error state: parse error with raw YAML preserved (AC8) *@
+@if (!_isLoading && _spec is not null && _spec.ErrorMessage is not null)
+{
+    <IssueBanner Visible="true"
+                 Title="Resiliency configuration error"
+                 Description="@_spec.ErrorMessage" />
+}
+
+@* Summary stat cards (AC9) *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Retry Policies"
+                      Value="@(_spec?.IsConfigurationAvailable == true ? _spec.RetryPolicies.Count.ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of configured retry policies" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Timeout Policies"
+                      Value="@(_spec?.IsConfigurationAvailable == true ? _spec.TimeoutPolicies.Count.ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of configured timeout policies" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Circuit Breakers"
+                      Value="@(_spec?.IsConfigurationAvailable == true ? _spec.CircuitBreakerPolicies.Count.ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of configured circuit breaker policies" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Target Bindings"
+                      Value="@(_spec?.IsConfigurationAvailable == true ? _spec.TargetBindings.Count.ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of target-to-policy assignments" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Retry policies section (AC1) *@
+@if (!_isLoading && _spec?.IsConfigurationAvailable == true)
+{
+    <h2 style="margin: 0 0 12px;">Retry Policies</h2>
+    @if (_spec.RetryPolicies.Count == 0)
+    {
+        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+            No retry policies defined.
+        </div>
+    }
+    else
+    {
+        <FluentGrid Spacing="3" style="margin-bottom: 24px;">
+            @foreach (DaprRetryPolicy policy in _spec.RetryPolicies)
+            {
+                <FluentGridItem xs="12" sm="6" md="4">
+                    <FluentCard id="@($"policy-{policy.Name}")" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong>@policy.Name</strong>
+                            <FluentBadge Appearance="@(policy.Strategy == "exponential" ? Appearance.Accent : Appearance.Neutral)">
+                                @policy.Strategy
+                            </FluentBadge>
+                        </div>
+                        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0;">
+                            <dt style="font-weight: 600;">Max Retries</dt>
+                            <dd style="margin: 0; font-family: monospace;">@policy.MaxRetries</dd>
+                            @if (!string.IsNullOrEmpty(policy.MaxInterval))
+                            {
+                                <dt style="font-weight: 600;">Max Interval</dt>
+                                <dd style="margin: 0; font-family: monospace;">@policy.MaxInterval</dd>
+                            }
+                            @if (!string.IsNullOrEmpty(policy.Duration))
+                            {
+                                <dt style="font-weight: 600;">Duration</dt>
+                                <dd style="margin: 0; font-family: monospace;">@policy.Duration</dd>
+                            }
+                        </dl>
+                    </FluentCard>
+                </FluentGridItem>
+            }
+        </FluentGrid>
+    }
+
+    @* Timeout policies section (AC2) *@
+    <h2 style="margin: 0 0 12px;">Timeout Policies</h2>
+    @if (_spec.TimeoutPolicies.Count == 0)
+    {
+        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+            No timeout policies defined.
+        </div>
+    }
+    else
+    {
+        <FluentGrid Spacing="3" style="margin-bottom: 24px;">
+            @foreach (DaprTimeoutPolicy policy in _spec.TimeoutPolicies)
+            {
+                <FluentGridItem xs="12" sm="6" md="4">
+                    <FluentCard id="@($"policy-{policy.Name}")" style="padding: 16px;">
+                        <strong style="display: block; margin-bottom: 8px;">@policy.Name</strong>
+                        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0;">
+                            <dt style="font-weight: 600;">Timeout</dt>
+                            <dd style="margin: 0; font-family: monospace;">@policy.Value</dd>
+                        </dl>
+                    </FluentCard>
+                </FluentGridItem>
+            }
+        </FluentGrid>
+    }
+
+    @* Circuit breaker policies section (AC3) *@
+    <h2 style="margin: 0 0 12px;">Circuit Breakers</h2>
+    @if (_spec.CircuitBreakerPolicies.Count == 0)
+    {
+        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+            No circuit breaker policies defined.
+        </div>
+    }
+    else
+    {
+        <FluentGrid Spacing="3" style="margin-bottom: 24px;">
+            @foreach (DaprCircuitBreakerPolicy policy in _spec.CircuitBreakerPolicies)
+            {
+                <FluentGridItem xs="12" sm="6">
+                    <FluentCard id="@($"policy-{policy.Name}")" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <strong>@policy.Name</strong>
+                            <FluentBadge Appearance="Appearance.Lightweight" Color="Color.Warning">
+                                @policy.Trip
+                            </FluentBadge>
+                        </div>
+                        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0;">
+                            <dt style="font-weight: 600;">Half-Open Probes</dt>
+                            <dd style="margin: 0; font-family: monospace;">@policy.MaxRequests</dd>
+                            <dt style="font-weight: 600;">Sampling Window</dt>
+                            <dd style="margin: 0; font-family: monospace;">@policy.Interval</dd>
+                            <dt style="font-weight: 600;">Open Duration</dt>
+                            <dd style="margin: 0; font-family: monospace;">@policy.Timeout</dd>
+                            <dt style="font-weight: 600;">Trip Threshold</dt>
+                            <dd style="margin: 0;">
+                                <FluentBadge Appearance="Appearance.Lightweight" Color="Color.Warning">
+                                    @policy.Trip
+                                </FluentBadge>
+                            </dd>
+                        </dl>
+                    </FluentCard>
+                </FluentGridItem>
+            }
+        </FluentGrid>
+    }
+
+    @* Target assignment grid (AC4) *@
+    <h2 style="margin: 0 0 12px;">Target Assignments</h2>
+    @if (_spec.TargetBindings.Count == 0)
+    {
+        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+            No target assignments defined.
+        </div>
+    }
+    else
+    {
+        <FluentDataGrid Items="@_spec.TargetBindings.AsQueryable()" TGridItem="DaprResiliencyTargetBinding"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="DAPR resiliency target assignments">
+            <PropertyColumn Property="@(b => b.TargetName)" Title="Target Name" Sortable="true"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+            <TemplateColumn Title="Target Type" Sortable="true"
+                            SortBy="@(GridSort<DaprResiliencyTargetBinding>.ByAscending(b => b.TargetType))">
+                <FluentBadge Appearance="@(context.TargetType == "App" ? Appearance.Accent : Appearance.Neutral)">
+                    @context.TargetType
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Direction">
+                @(context.Direction ?? "\u2014")
+            </TemplateColumn>
+            <TemplateColumn Title="Retry Policy">
+                @if (context.RetryPolicy is not null)
+                {
+                    <FluentAnchor Href="@($"#policy-{context.RetryPolicy}")" Appearance="Appearance.Hypertext">
+                        @context.RetryPolicy
+                    </FluentAnchor>
+                }
+                else
+                {
+                    <span>&mdash;</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Timeout Policy">
+                @if (context.TimeoutPolicy is not null)
+                {
+                    <FluentAnchor Href="@($"#policy-{context.TimeoutPolicy}")" Appearance="Appearance.Hypertext">
+                        @context.TimeoutPolicy
+                    </FluentAnchor>
+                }
+                else
+                {
+                    <span>&mdash;</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Circuit Breaker">
+                @if (context.CircuitBreakerPolicy is not null)
+                {
+                    <FluentAnchor Href="@($"#policy-{context.CircuitBreakerPolicy}")" Appearance="Appearance.Hypertext">
+                        @context.CircuitBreakerPolicy
+                    </FluentAnchor>
+                }
+                else
+                {
+                    <span>&mdash;</span>
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+
+    @* YAML source viewer (AC5) *@
+    @if (!string.IsNullOrEmpty(_spec.RawYamlContent))
+    {
+        <FluentAccordion style="margin-bottom: 24px;">
+            <FluentAccordionItem Heading="Raw YAML Configuration">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  OnClick="CopyYamlToClipboardAsync"
+                                  aria-label="Copy YAML to clipboard">
+                        Copy to Clipboard
+                    </FluentButton>
+                </div>
+                <pre style="background: var(--neutral-layer-2); padding: 16px; border-radius: 4px; overflow-x: auto; margin: 0;"><code>@_spec.RawYamlContent</code></pre>
+            </FluentAccordionItem>
+        </FluentAccordion>
+    }
+}
+
+@* Parse error with raw YAML still visible (AC8) *@
+@if (!_isLoading && _spec is not null && _spec.ErrorMessage is not null && !string.IsNullOrEmpty(_spec.RawYamlContent))
+{
+    <h2 style="margin: 0 0 12px;">Raw YAML (parse failed)</h2>
+    <pre style="background: var(--neutral-layer-2); padding: 16px; border-radius: 4px; overflow-x: auto; margin-bottom: 24px;"><code>@_spec.RawYamlContent</code></pre>
+}
+
+@code {
+    private DaprResiliencySpec? _spec;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _spec = await ResiliencyClient.GetResiliencySpecAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // Navigation cancellation — do not treat as failure
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to fetch resiliency spec");
+            _spec = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task CopyYamlToClipboardAsync()
+    {
+        if (_spec?.RawYamlContent is not null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _spec.RawYamlContent);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to copy YAML to clipboard");
+            }
+        }
+    }
+
+}

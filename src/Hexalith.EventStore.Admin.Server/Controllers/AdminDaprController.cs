@@ -185,6 +185,29 @@ public class AdminDaprController(
         }
     }
 
+    /// <summary>
+    /// Gets the DAPR resiliency specification including retry, timeout, and circuit breaker policies.
+    /// </summary>
+    [HttpGet("resiliency")]
+    [ProducesResponseType(typeof(DaprResiliencySpec), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetResiliencySpecAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            DaprResiliencySpec result = await daprService
+                .GetResiliencySpecAsync(ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetResiliencySpecAsync), ex);
+        }
+    }
+
     private static bool IsServiceUnavailable(Exception ex)
         => ex is HttpRequestException or TimeoutException
             || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode is
