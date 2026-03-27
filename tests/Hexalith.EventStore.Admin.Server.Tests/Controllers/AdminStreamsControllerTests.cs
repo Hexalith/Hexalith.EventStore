@@ -161,6 +161,66 @@ public class AdminStreamsControllerTests
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
     }
 
+    [Fact]
+    public async Task GetEventStepFrame_ReturnsOk_WhenFrameAvailable()
+    {
+        DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
+        var expected = new EventStepFrame(
+            "t", "d", "a", 3, "CounterIncremented", timestamp,
+            "corr-1", "cause-1", "user-1",
+            "{\"Amount\":1}", "{\"Count\":3}",
+            [new FieldChange("Count", "2", "3")], 5);
+        _service.GetEventStepFrameAsync("t", "d", "a", 3L, Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 3);
+
+        var okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task GetEventStepFrame_InvalidAtParam_Returns400()
+    {
+        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 0);
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task GetEventStepFrame_NegativeAtParam_Returns400()
+    {
+        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", -1);
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task GetEventStepFrame_ServiceThrowsArgumentException_Returns400()
+    {
+        _service.GetEventStepFrameAsync("t", "d", "a", 999L, Arg.Any<CancellationToken>())
+            .Throws(new ArgumentException("Sequence beyond stream"));
+
+        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 999);
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task GetEventStepFrame_ServiceUnavailable_Returns503()
+    {
+        _service.GetEventStepFrameAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "test")));
+
+        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 1);
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
     private static ClaimsPrincipal CreatePrincipal(string adminRole, params string[] tenants)
     {
         var claims = new List<Claim> { new(AdminClaimTypes.AdminRole, adminRole) };

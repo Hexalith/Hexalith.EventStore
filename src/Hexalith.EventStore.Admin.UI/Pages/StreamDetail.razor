@@ -85,6 +85,13 @@ else
                       Title="Binary search for state divergence">
             Bisect
         </FluentButton>
+        <FluentButton Appearance="Appearance.Outline"
+                      OnClick="@OpenStepDebugger"
+                      Icon="@(new Icons.Regular.Size20.PlayCircle())"
+                      aria-label="Open step-through debugger"
+                      Title="Step through events with state changes">
+            Step Through
+        </FluentButton>
     </FluentStack>
 
     <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
@@ -94,7 +101,20 @@ else
                        @bind-CompareMode="_compareMode"
                        @bind-CompareMode:after="OnCompareModeChanged" />
 
-    @if (_bisectMode)
+    @if (_stepMode)
+    {
+        @* Step-through debugger replaces the detail panel *@
+        <div style="margin-top: 16px;">
+            <EventDebugger TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                           InitialSequence="@_stepSequence"
+                           OnClose="CloseStepDebugger"
+                           OnNavigateToEvent="OnStepNavigateToEvent"
+                           OnNavigateToBlame="@(new EventCallback<long>(this, OnStepNavigateToBlame))"
+                           OnNavigateToBisect="@(new EventCallback<(long, long)>(this, OnStepNavigateToBisect))"
+                           OnSequenceChanged="OnStepSequenceChanged" />
+        </div>
+    }
+    else if (_bisectMode)
     {
         @* Bisect tool replaces the detail panel *@
         <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
@@ -212,6 +232,10 @@ else
     private long? _bisectGood;
     private long? _bisectBad;
 
+    // Step debugger state
+    private bool _stepMode;
+    private long? _stepSequence;
+
     // Inspector modal state
     private bool _showInspectorModal;
     private long? _inspectorSequence;
@@ -255,6 +279,9 @@ else
     [SupplyParameterFromQuery(Name = "bisect")]
     public string? QueryBisect { get; set; }
 
+    [SupplyParameterFromQuery(Name = "step")]
+    public long? QueryStep { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -267,8 +294,13 @@ else
             _selectedEntryType = t;
         }
 
-        // Parse deep links with precedence: bisect > blame > diff
-        if (!string.IsNullOrEmpty(QueryBisect) && TryParseDiffParam(QueryBisect, out long bisectGood, out long bisectBad))
+        // Parse deep links with precedence: step > bisect > blame > diff
+        if (QueryStep.HasValue && QueryStep.Value >= 1)
+        {
+            _stepMode = true;
+            _stepSequence = QueryStep.Value;
+        }
+        else if (!string.IsNullOrEmpty(QueryBisect) && TryParseDiffParam(QueryBisect, out long bisectGood, out long bisectBad))
         {
             _bisectMode = true;
             _bisectGood = bisectGood;
@@ -562,6 +594,60 @@ else
         UpdateUrl();
     }
 
+    private void OpenStepDebugger()
+    {
+        _stepMode = true;
+        _stepSequence = _selectedSequence ?? 1;
+        _bisectMode = false;
+        _blameMode = false;
+        _diffMode = false;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void CloseStepDebugger()
+    {
+        _stepMode = false;
+        _stepSequence = null;
+        UpdateUrl();
+    }
+
+    private void OnStepNavigateToEvent(long sequenceNumber)
+    {
+        _stepMode = false;
+        _stepSequence = null;
+        _selectedSequence = sequenceNumber;
+        _selectedEntry = _timelineEntries
+            .FirstOrDefault(e => e.SequenceNumber == sequenceNumber);
+        UpdateUrl();
+    }
+
+    private void OnStepNavigateToBlame(long sequenceNumber)
+    {
+        _stepMode = false;
+        _stepSequence = null;
+        _blameMode = true;
+        _blameSequence = sequenceNumber;
+        UpdateUrl();
+    }
+
+    private void OnStepNavigateToBisect((long Good, long Bad) range)
+    {
+        _stepMode = false;
+        _stepSequence = null;
+        _bisectMode = true;
+        _bisectGood = range.Good;
+        _bisectBad = range.Bad;
+        UpdateUrl();
+    }
+
+    private void OnStepSequenceChanged(long sequenceNumber)
+    {
+        _stepSequence = sequenceNumber;
+        UpdateUrl();
+    }
+
     private void OnCompareModeChanged()
     {
         if (!_compareMode)
@@ -617,7 +703,11 @@ else
     {
         if (e.Key == "Escape")
         {
-            if (_bisectMode)
+            if (_stepMode)
+            {
+                CloseStepDebugger();
+            }
+            else if (_bisectMode)
             {
                 CloseBisectTool();
             }
@@ -664,7 +754,11 @@ else
             queryParams.Add($"correlation={Uri.EscapeDataString(_correlationFilter)}");
         }
 
-        if (_bisectMode && _bisectGood.HasValue && _bisectBad.HasValue)
+        if (_stepMode && _stepSequence.HasValue)
+        {
+            queryParams.Add($"step={_stepSequence.Value}");
+        }
+        else if (_bisectMode && _bisectGood.HasValue && _bisectBad.HasValue)
         {
             queryParams.Add($"bisect={_bisectGood.Value}-{_bisectBad.Value}");
         }

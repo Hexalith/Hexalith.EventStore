@@ -1,0 +1,782 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@inject AdminStreamApiClient ApiClient
+@implements IAsyncDisposable
+
+<div class="event-debugger" tabindex="0" @ref="_containerRef" @onkeydown="HandleKeyDown"
+     role="region" aria-label="Event step-through debugger">
+
+    @* Header bar *@
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 12px;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0;">Event Debugger</h3>
+        </div>
+        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close debugger">
+            Close
+        </FluentButton>
+    </FluentStack>
+
+    @if (_loading && _frame is null)
+    {
+        <SkeletonCard />
+    }
+    else if (_emptyStream)
+    {
+        <EmptyState Title="Stream has no events"
+                    Description="Stream has no events — nothing to step through." />
+    }
+    else if (_error is not null)
+    {
+        <IssueBanner Visible="true" Title="Error" Description="@_error" />
+    }
+    else if (_frame is not null)
+    {
+        @* Position display *@
+        <div style="text-align: center; margin-bottom: 8px; font-size: 14px;">
+            <strong>Event @_frame.SequenceNumber of @_frame.TotalEvents</strong>
+            <span> — @_frame.EventTypeName</span>
+        </div>
+
+        @* Navigation controls *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" HorizontalAlignment="HorizontalAlignment.Center"
+                     VerticalAlignment="VerticalAlignment.Center" Style="margin-bottom: 12px;">
+            <FluentButton Appearance="Appearance.Outline" OnClick="GoToFirst"
+                          Disabled="@(!_frame.HasPrevious || _loading)"
+                          Title="First event (Home)" aria-label="First event">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Previous())" />
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" OnClick="GoToPrevious"
+                          Disabled="@(!_frame.HasPrevious || _loading)"
+                          Title="Previous event (←)" aria-label="Previous event">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" />
+            </FluentButton>
+            @if (_autoPlaying)
+            {
+                <FluentButton Appearance="Appearance.Accent" OnClick="PauseAutoPlay"
+                              Title="Pause (Space)" aria-label="Pause auto-play">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Pause())" />
+                </FluentButton>
+            }
+            else
+            {
+                <FluentButton Appearance="Appearance.Outline" OnClick="StartAutoPlay"
+                              Disabled="@(!_frame.HasNext || _loading)"
+                              Title="Play (Space)" aria-label="Start auto-play">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Play())" />
+                </FluentButton>
+            }
+            <FluentButton Appearance="Appearance.Outline" OnClick="GoToNext"
+                          Disabled="@(!_frame.HasNext || _loading)"
+                          Title="Next event (→)" aria-label="Next event">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" />
+            </FluentButton>
+            <FluentButton Appearance="Appearance.Outline" OnClick="GoToLast"
+                          Disabled="@(!_frame.HasNext || _loading)"
+                          Title="Last event (End)" aria-label="Last event">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Next())" />
+            </FluentButton>
+
+            @* Speed selector *@
+            <FluentSelect TOption="string" @bind-Value="_autoPlaySpeedStr"
+                          Style="width: 110px; margin-left: 8px;"
+                          aria-label="Auto-play speed">
+                <FluentOption TOption="string" Value="2000">Slow</FluentOption>
+                <FluentOption TOption="string" Value="1000">Normal</FluentOption>
+                <FluentOption TOption="string" Value="500">Fast</FluentOption>
+                <FluentOption TOption="string" Value="200">Fastest</FluentOption>
+            </FluentSelect>
+
+            @* Jump-to input *@
+            <FluentNumberField @bind-Value="_jumpToSequence" Min="1"
+                               Style="width: 100px; margin-left: 8px;"
+                               aria-label="Jump to sequence number" />
+            <FluentButton Appearance="Appearance.Outline" OnClick="JumpToSequence"
+                          Disabled="@(_loading)"
+                          aria-label="Go to sequence">
+                Go
+            </FluentButton>
+        </FluentStack>
+
+        @* Watch field pause notification *@
+        @if (_watchPauseMessage is not null)
+        {
+            <IssueBanner Visible="true" Title="Watch" Description="@_watchPauseMessage" />
+        }
+
+        @* Loading indicator for step transitions *@
+        @if (_loading)
+        {
+            <SkeletonCard />
+        }
+
+        @* Event info panel *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center"
+                     Style="margin-bottom: 12px; font-size: 13px; flex-wrap: wrap;">
+            <span><strong>@_frame.EventTypeName</strong></span>
+            <span>@FormatTimestamp(_frame.Timestamp)</span>
+            <span class="monospace" title="@_frame.CorrelationId" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;">
+                @_frame.CorrelationId
+            </span>
+            <span>@_frame.UserId</span>
+            <FluentButton Appearance="Appearance.Lightweight" OnClick="ShowEventPayload"
+                          aria-label="View full event payload">
+                View Full Event
+            </FluentButton>
+        </FluentStack>
+
+        @* Watch fields feature *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" VerticalAlignment="VerticalAlignment.Center"
+                     Style="margin-bottom: 8px; flex-wrap: wrap;">
+            <FluentButton Appearance="Appearance.Lightweight" OnClick="ToggleWatchPanel"
+                          aria-label="Watch fields">
+                Watch Fields
+            </FluentButton>
+            @foreach (string watchPath in _watchedFields)
+            {
+                <FluentBadge Appearance="Appearance.Accent">
+                    @watchPath
+                    <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => RemoveWatchField(watchPath))"
+                                  aria-label="@($"Remove watch: {watchPath}")"
+                                  Style="padding: 0; min-width: auto; margin-left: 4px;">x</FluentButton>
+                </FluentBadge>
+            }
+        </FluentStack>
+
+        @if (_showWatchPanel)
+        {
+            <div style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px;">
+                <FluentSearch @bind-Value="_watchFieldInput"
+                              Placeholder="Enter field path to watch (semicolon-separated)..."
+                              Style="max-width: 400px; margin-bottom: 4px;"
+                              aria-label="Watch field path input" />
+                <FluentButton Appearance="Appearance.Outline" OnClick="AddWatchFields"
+                              aria-label="Add watch fields">
+                    Add
+                </FluentButton>
+            </div>
+        }
+
+        @* Section 1: Field Changes *@
+        @if (_frame.FieldChanges.Count > 0)
+        {
+            <h4 style="margin: 12px 0 4px 0;">
+                @if (_frame.SequenceNumber == 1)
+                {
+                    <span>Initial State (@_frame.FieldChanges.Count fields set)</span>
+                }
+                else
+                {
+                    <span>Changes at This Event (@_frame.FieldChanges.Count fields changed)</span>
+                }
+            </h4>
+
+            <FluentSearch @bind-Value="_fieldSearchTerm"
+                          @bind-Value:after="OnFieldSearchChanged"
+                          Placeholder="Filter by field path..."
+                          Style="margin-bottom: 4px; max-width: 400px;"
+                          aria-label="Search field changes" />
+
+            <FluentDataGrid Items="@GetFilteredFieldChanges()"
+                            TGridItem="FieldChange"
+                            GridTemplateColumns="2fr 1fr 1fr"
+                            aria-label="Field changes table">
+                <TemplateColumn Title="Field Path">
+                    <span class="monospace" style="@GetWatchHighlightStyle(context.FieldPath)">
+                        @context.FieldPath
+                    </span>
+                </TemplateColumn>
+                <TemplateColumn Title="Old Value">
+                    @if (_frame.SequenceNumber == 1)
+                    {
+                        <span style="color: var(--neutral-foreground-hint);">&mdash;</span>
+                    }
+                    else
+                    {
+                        <span class="monospace" title="@context.OldValue">
+                            @TruncateValue(context.OldValue)
+                        </span>
+                    }
+                </TemplateColumn>
+                <TemplateColumn Title="New Value">
+                    <span class="monospace" title="@context.NewValue">
+                        @TruncateValue(context.NewValue)
+                    </span>
+                </TemplateColumn>
+            </FluentDataGrid>
+        }
+
+        @* Section 2: Current State *@
+        <h4 style="margin: 12px 0 4px 0;">Aggregate State at Sequence @_frame.SequenceNumber</h4>
+        <JsonViewer Json="@_frame.StateJson" AriaLabel="@($"Aggregate state at sequence {_frame.SequenceNumber}")" />
+
+        @* Navigation links *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 12px;">
+            <FluentButton Appearance="Appearance.Lightweight"
+                          OnClick="@(() => OnNavigateToEvent.InvokeAsync(_frame.SequenceNumber))"
+                          aria-label="View event detail">
+                View Event Detail
+            </FluentButton>
+            @if (OnNavigateToBlame.HasDelegate)
+            {
+                <FluentButton Appearance="Appearance.Lightweight"
+                              OnClick="@(() => OnNavigateToBlame.InvokeAsync(_frame.SequenceNumber))"
+                              aria-label="Run blame at this sequence">
+                    Blame at Seq @_frame.SequenceNumber
+                </FluentButton>
+            }
+            @if (OnNavigateToBisect.HasDelegate)
+            {
+                <FluentButton Appearance="Appearance.Lightweight"
+                              OnClick="@(() => OnNavigateToBisect.InvokeAsync((_frame.SequenceNumber > 1 ? 1 : 0, _frame.SequenceNumber)))"
+                              aria-label="Bisect up to this sequence">
+                    Bisect to Seq @_frame.SequenceNumber
+                </FluentButton>
+            }
+        </FluentStack>
+    }
+
+    @* Event payload dialog *@
+    <FluentDialog @bind-Hidden="_payloadDialogHidden" Modal="true" aria-label="Event payload">
+        <FluentDialogHeader>
+            Event Payload — Sequence @(_frame?.SequenceNumber)
+        </FluentDialogHeader>
+        <FluentDialogBody>
+            <JsonViewer Json="@_frame?.EventPayloadJson" AriaLabel="Event payload JSON" MaxHeight="500" />
+        </FluentDialogBody>
+        <FluentDialogFooter>
+            <FluentButton Appearance="Appearance.Accent" OnClick="@(() => _payloadDialogHidden = true)">
+                Close
+            </FluentButton>
+        </FluentDialogFooter>
+    </FluentDialog>
+</div>
+
+@code {
+    private EventStepFrame? _frame;
+    private bool _loading = true;
+    private bool _emptyStream;
+    private string? _error;
+    private string? _watchPauseMessage;
+    private bool _autoPlaying;
+    private string _autoPlaySpeedStr = "1000";
+    private int AutoPlaySpeed => int.TryParse(_autoPlaySpeedStr, out int speed) ? speed : 1000;
+    private long? _jumpToSequence = 1;
+    private string _fieldSearchTerm = string.Empty;
+    private bool _payloadDialogHidden = true;
+
+    // Watch fields
+    private List<string> _watchedFields = [];
+    private bool _showWatchPanel;
+    private string _watchFieldInput = string.Empty;
+
+    // Auto-play and cancellation
+    private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _autoPlayCts;
+    private ElementReference _containerRef;
+    private bool _firstRender = true;
+    private bool _disposed;
+
+    // URL update throttling for auto-play
+    private long _pendingUrlSequence;
+    private CancellationTokenSource? _urlThrottleCts;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter]
+    public long? InitialSequence { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToBlame { get; set; }
+
+    [Parameter]
+    public EventCallback<(long, long)> OnNavigateToBisect { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnSequenceChanged { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        long startSeq = InitialSequence ?? 1;
+        if (_frame is null || _firstRender)
+        {
+            await LoadFrameAsync(startSeq);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _firstRender = false;
+            try
+            {
+                await _containerRef.FocusAsync();
+            }
+            catch
+            {
+                // Focus may fail if element is not yet rendered
+            }
+        }
+    }
+
+    private async Task LoadFrameAsync(long sequenceNumber)
+    {
+        // Cancel any in-flight request
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+
+        _loading = true;
+        _error = null;
+        _watchPauseMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            _frame = await ApiClient.GetEventStepFrameAsync(
+                TenantId, Domain, AggregateId, sequenceNumber, _cts.Token);
+
+            if (_frame is null)
+            {
+                _emptyStream = true;
+            }
+            else if (_frame.TotalEvents == 0)
+            {
+                _emptyStream = true;
+                _frame = null;
+            }
+            else
+            {
+                _jumpToSequence = _frame.SequenceNumber;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _error = "Frame load timed out — the aggregate state may be too large to reconstruct.";
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            _error = $"Sequence {sequenceNumber} is beyond the stream's events.";
+        }
+        catch
+        {
+            _error = "Unable to load event frame — check server connectivity.";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task NavigateToSequence(long sequenceNumber)
+    {
+        StopAutoPlay();
+        await LoadFrameAsync(sequenceNumber);
+        await NotifySequenceChanged(sequenceNumber, throttle: false);
+    }
+
+    private async Task GoToFirst() => await NavigateToSequence(1);
+
+    private async Task GoToPrevious()
+    {
+        if (_frame is not null && _frame.HasPrevious)
+        {
+            await NavigateToSequence(_frame.SequenceNumber - 1);
+        }
+    }
+
+    private async Task GoToNext()
+    {
+        if (_frame is not null && _frame.HasNext)
+        {
+            await NavigateToSequence(_frame.SequenceNumber + 1);
+        }
+    }
+
+    private async Task GoToLast()
+    {
+        if (_frame is not null)
+        {
+            await NavigateToSequence(_frame.TotalEvents);
+        }
+    }
+
+    private async Task JumpToSequence()
+    {
+        if (_jumpToSequence.HasValue && _jumpToSequence.Value >= 1
+            && (_frame is null || _jumpToSequence.Value <= _frame.TotalEvents))
+        {
+            await NavigateToSequence(_jumpToSequence.Value);
+        }
+    }
+
+    private async Task StartAutoPlay()
+    {
+        if (_autoPlaying || _frame is null || !_frame.HasNext)
+        {
+            return;
+        }
+
+        _autoPlaying = true;
+        _autoPlayCts?.Cancel();
+        _autoPlayCts?.Dispose();
+        _autoPlayCts = new CancellationTokenSource();
+        CancellationToken token = _autoPlayCts.Token;
+
+        // Start URL throttle timer
+        StartUrlThrottle();
+
+        StateHasChanged();
+
+        // Fire-and-forget on the Blazor sync context (no Task.Run — avoids thread-safety issues)
+        _ = RunAutoPlayLoopAsync(token);
+    }
+
+    private async Task RunAutoPlayLoopAsync(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested && _frame is not null && _frame.HasNext)
+            {
+                long nextSeq = _frame.SequenceNumber + 1;
+
+                _loading = true;
+                StateHasChanged();
+
+                try
+                {
+                    _frame = await ApiClient.GetEventStepFrameAsync(
+                        TenantId, Domain, AggregateId, nextSeq, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    _error = "Frame load timed out — the aggregate state may be too large to reconstruct.";
+                    break;
+                }
+                catch
+                {
+                    _error = "Unable to load event frame — check server connectivity.";
+                    break;
+                }
+                finally
+                {
+                    _loading = false;
+                }
+
+                if (_frame is null)
+                {
+                    break;
+                }
+
+                // Track pending URL update (throttled)
+                _pendingUrlSequence = _frame.SequenceNumber;
+                _jumpToSequence = _frame.SequenceNumber;
+
+                // Check watched fields for auto-pause (exact match only)
+                string? pausedField = CheckWatchedFieldExactMatch();
+                if (pausedField is not null)
+                {
+                    _watchPauseMessage = $"Paused — watched field '{pausedField}' changed.";
+                    StateHasChanged();
+                    break;
+                }
+
+                StateHasChanged();
+
+                // Wait configured delay before next step
+                try
+                {
+                    await Task.Delay(AutoPlaySpeed, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _autoPlaying = false;
+            // Flush pending URL update immediately when auto-play stops
+            if (!_disposed)
+            {
+                await FlushUrlUpdate();
+            }
+
+            StopUrlThrottle();
+            StateHasChanged();
+        }
+    }
+
+    private void PauseAutoPlay()
+    {
+        StopAutoPlay();
+        StateHasChanged();
+    }
+
+    private void StopAutoPlay()
+    {
+        _autoPlayCts?.Cancel();
+        _autoPlayCts?.Dispose();
+        _autoPlayCts = null;
+        _autoPlaying = false;
+    }
+
+    // URL update throttling for auto-play
+    private void StartUrlThrottle()
+    {
+        _urlThrottleCts?.Cancel();
+        _urlThrottleCts?.Dispose();
+        _urlThrottleCts = new CancellationTokenSource();
+        CancellationToken token = _urlThrottleCts.Token;
+
+        // Fire-and-forget on the Blazor sync context (no Task.Run)
+        _ = RunUrlThrottleLoopAsync(token);
+    }
+
+    private async Task RunUrlThrottleLoopAsync(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000, token);
+                if (!_disposed)
+                {
+                    await FlushUrlUpdate();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on dispose
+        }
+    }
+
+    private void StopUrlThrottle()
+    {
+        _urlThrottleCts?.Cancel();
+        _urlThrottleCts?.Dispose();
+        _urlThrottleCts = null;
+    }
+
+    private async Task FlushUrlUpdate()
+    {
+        if (_disposed || _pendingUrlSequence <= 0 || !OnSequenceChanged.HasDelegate)
+        {
+            return;
+        }
+
+        long seq = _pendingUrlSequence;
+        _pendingUrlSequence = 0;
+        await OnSequenceChanged.InvokeAsync(seq);
+    }
+
+    private async Task NotifySequenceChanged(long sequenceNumber, bool throttle)
+    {
+        if (throttle)
+        {
+            _pendingUrlSequence = sequenceNumber;
+        }
+        else
+        {
+            _pendingUrlSequence = 0;
+            if (OnSequenceChanged.HasDelegate)
+            {
+                await OnSequenceChanged.InvokeAsync(sequenceNumber);
+            }
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+            case "ArrowUp":
+                await GoToPrevious();
+                break;
+            case "ArrowRight":
+            case "ArrowDown":
+                await GoToNext();
+                break;
+            case " ":
+                if (_autoPlaying)
+                {
+                    PauseAutoPlay();
+                }
+                else
+                {
+                    await StartAutoPlay();
+                }
+
+                break;
+            case "Home":
+                await GoToFirst();
+                break;
+            case "End":
+                await GoToLast();
+                break;
+            case "Escape":
+                await HandleClose();
+                break;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        StopAutoPlay();
+        await OnClose.InvokeAsync();
+    }
+
+    // Watch fields
+    private void ToggleWatchPanel()
+    {
+        _showWatchPanel = !_showWatchPanel;
+    }
+
+    private void AddWatchFields()
+    {
+        if (string.IsNullOrWhiteSpace(_watchFieldInput))
+        {
+            return;
+        }
+
+        string[] paths = _watchFieldInput.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (string path in paths)
+        {
+            if (!_watchedFields.Contains(path, StringComparer.Ordinal))
+            {
+                _watchedFields.Add(path);
+            }
+        }
+
+        _watchFieldInput = string.Empty;
+        StateHasChanged();
+    }
+
+    private void RemoveWatchField(string path)
+    {
+        _watchedFields.Remove(path);
+        _watchPauseMessage = null;
+        StateHasChanged();
+    }
+
+    private string? CheckWatchedFieldExactMatch()
+    {
+        if (_watchedFields.Count == 0 || _frame is null)
+        {
+            return null;
+        }
+
+        foreach (FieldChange change in _frame.FieldChanges)
+        {
+            if (_watchedFields.Contains(change.FieldPath, StringComparer.Ordinal))
+            {
+                return change.FieldPath;
+            }
+        }
+
+        return null;
+    }
+
+    private string GetWatchHighlightStyle(string fieldPath)
+    {
+        if (_watchedFields.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        // Display highlighting uses case-insensitive substring match
+        foreach (string watched in _watchedFields)
+        {
+            if (fieldPath.Contains(watched, StringComparison.OrdinalIgnoreCase))
+            {
+                return "background-color: var(--accent-fill-rest); color: var(--accent-foreground-rest); padding: 0 4px; border-radius: 2px;";
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private IQueryable<FieldChange> GetFilteredFieldChanges()
+    {
+        if (_frame is null)
+        {
+            return Enumerable.Empty<FieldChange>().AsQueryable();
+        }
+
+        IEnumerable<FieldChange> changes = _frame.FieldChanges;
+
+        if (!string.IsNullOrWhiteSpace(_fieldSearchTerm))
+        {
+            changes = changes.Where(fc => fc.FieldPath.Contains(_fieldSearchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Sort watched fields to top (substring match for display)
+        if (_watchedFields.Count > 0)
+        {
+            changes = changes
+                .OrderByDescending(fc => _watchedFields.Any(w => fc.FieldPath.Contains(w, StringComparison.OrdinalIgnoreCase)))
+                .ThenBy(fc => fc.FieldPath, StringComparer.Ordinal);
+        }
+
+        return changes.AsQueryable();
+    }
+
+    private void OnFieldSearchChanged()
+    {
+        StateHasChanged();
+    }
+
+    private void ShowEventPayload()
+    {
+        _payloadDialogHidden = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        StopAutoPlay();
+        StopUrlThrottle();
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        await ValueTask.CompletedTask;
+    }
+
+    private static string TruncateValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Length > 60 ? string.Concat(value.AsSpan(0, 57), "...") : value;
+    }
+
+    private static string FormatTimestamp(DateTimeOffset timestamp)
+        => timestamp == DateTimeOffset.MinValue ? string.Empty : TimeFormatHelper.FormatRelativeTime(timestamp);
+}

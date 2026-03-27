@@ -267,6 +267,53 @@ public class AdminStreamsController(
     }
 
     /// <summary>
+    /// Gets a single step-through debugging frame combining event metadata, aggregate state,
+    /// and field changes at the specified sequence position.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/step")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(EventStepFrame), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetEventStepFrame(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long at,
+        CancellationToken ct = default)
+    {
+        if (at < 1)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1.");
+        }
+
+        try
+        {
+            EventStepFrame result = await streamQueryService
+                .GetEventStepFrameAsync(tenantId, domain, aggregateId, at, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
+                : Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetEventStepFrame), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetEventStepFrame), ex);
+        }
+    }
+
+    /// <summary>
     /// Gets detailed information about a single event.
     /// </summary>
     [HttpGet("{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}")]

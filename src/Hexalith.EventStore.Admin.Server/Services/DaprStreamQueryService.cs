@@ -224,6 +224,42 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<EventStepFrame> GetEventStepFrameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default)
+    {
+        if (sequenceNumber < 1)
+        {
+            throw new ArgumentException("sequenceNumber must be >= 1.");
+        }
+
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/step?at={sequenceNumber}";
+
+        try
+        {
+            // Use 30-second timeout (same as blame — single state reconstruction + diff is comparable workload)
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            EventStepFrame? result = await InvokeCommandApiAsync<EventStepFrame>(
+                HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
+            return result ?? new EventStepFrame(tenantId, domain, aggregateId, sequenceNumber, string.Empty, DateTimeOffset.MinValue, string.Empty, string.Empty, string.Empty, "{}", "{}", [], 0);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get event step frame for {TenantId}/{Domain}/{AggregateId} at {SequenceNumber}.", tenantId, domain, aggregateId, sequenceNumber);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<BisectResult> BisectAsync(
         string tenantId,
         string domain,
