@@ -273,4 +273,65 @@ public class DaprStreamQueryServiceTests {
         result.ShouldNotBeNull();
         result.TenantId.ShouldBe("tenant1");
     }
+
+    [Fact]
+    public async Task GetEventStepFrameAsync_ThrowsArgumentException_WhenSequenceNumberLessThanOne()
+    {
+        DaprStreamQueryService service = CreateService();
+
+        await Should.ThrowAsync<ArgumentException>(
+            () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 0));
+    }
+
+    [Fact]
+    public async Task GetEventStepFrameAsync_ThrowsException_WhenCommandApiUnavailable()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.InvokeMethodAsync<EventStepFrame>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Service unavailable"));
+
+        DaprStreamQueryService service = CreateService(daprClient);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 5));
+    }
+
+    [Fact]
+    public async Task GetEventStepFrameAsync_ReturnsFallback_WhenResultIsNull()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.InvokeMethodAsync<EventStepFrame>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns((EventStepFrame?)null);
+
+        DaprStreamQueryService service = CreateService(daprClient);
+
+        EventStepFrame result = await service.GetEventStepFrameAsync(
+            "tenant1", "orders", "order-1", 5);
+
+        result.ShouldNotBeNull();
+        result.TenantId.ShouldBe("tenant1");
+        result.TotalEvents.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetEventStepFrameAsync_PropagatesCancellation()
+    {
+        using CancellationTokenSource cts = new();
+        await cts.CancelAsync();
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.InvokeMethodAsync<EventStepFrame>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns<EventStepFrame?>(_ => throw new OperationCanceledException());
+
+        DaprStreamQueryService service = CreateService(daprClient);
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 5, cts.Token));
+    }
 }

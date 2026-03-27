@@ -277,6 +277,7 @@
     private CancellationTokenSource? _autoPlayCts;
     private ElementReference _containerRef;
     private bool _firstRender = true;
+    private bool _disposed;
 
     // URL update throttling for auto-play
     private long _pendingUrlSequence;
@@ -419,7 +420,8 @@
 
     private async Task JumpToSequence()
     {
-        if (_jumpToSequence.HasValue && _jumpToSequence.Value >= 1)
+        if (_jumpToSequence.HasValue && _jumpToSequence.Value >= 1
+            && (_frame is null || _jumpToSequence.Value <= _frame.TotalEvents))
         {
             await NavigateToSequence(_jumpToSequence.Value);
         }
@@ -443,88 +445,89 @@
 
         StateHasChanged();
 
-        _ = Task.Run(async () =>
+        // Fire-and-forget on the Blazor sync context (no Task.Run — avoids thread-safety issues)
+        _ = RunAutoPlayLoopAsync(token);
+    }
+
+    private async Task RunAutoPlayLoopAsync(CancellationToken token)
+    {
+        try
         {
-            try
+            while (!token.IsCancellationRequested && _frame is not null && _frame.HasNext)
             {
-                while (!token.IsCancellationRequested && _frame is not null && _frame.HasNext)
+                long nextSeq = _frame.SequenceNumber + 1;
+
+                _loading = true;
+                StateHasChanged();
+
+                try
                 {
-                    long nextSeq = _frame.SequenceNumber + 1;
-
-                    // Cancel any previous in-flight request
-                    _cts?.Cancel();
-                    _cts?.Dispose();
-                    _cts = new CancellationTokenSource();
-                    using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, token);
-
-                    _loading = true;
-                    await InvokeAsync(StateHasChanged);
-
-                    try
-                    {
-                        _frame = await ApiClient.GetEventStepFrameAsync(
-                            TenantId, Domain, AggregateId, nextSeq, linked.Token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        if (token.IsCancellationRequested)
-                        {
-                            break;
-                        }
-
-                        _error = "Frame load timed out — the aggregate state may be too large to reconstruct.";
-                        break;
-                    }
-                    catch
-                    {
-                        _error = "Unable to load event frame — check server connectivity.";
-                        break;
-                    }
-                    finally
-                    {
-                        _loading = false;
-                    }
-
-                    if (_frame is null)
+                    _frame = await ApiClient.GetEventStepFrameAsync(
+                        TenantId, Domain, AggregateId, nextSeq, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (token.IsCancellationRequested)
                     {
                         break;
                     }
 
-                    // Track pending URL update (throttled)
-                    _pendingUrlSequence = _frame.SequenceNumber;
-                    _jumpToSequence = _frame.SequenceNumber;
+                    _error = "Frame load timed out — the aggregate state may be too large to reconstruct.";
+                    break;
+                }
+                catch
+                {
+                    _error = "Unable to load event frame — check server connectivity.";
+                    break;
+                }
+                finally
+                {
+                    _loading = false;
+                }
 
-                    // Check watched fields for auto-pause (exact match only)
-                    string? pausedField = CheckWatchedFieldExactMatch();
-                    if (pausedField is not null)
-                    {
-                        _watchPauseMessage = $"Paused — watched field '{pausedField}' changed.";
-                        await InvokeAsync(StateHasChanged);
-                        break;
-                    }
+                if (_frame is null)
+                {
+                    break;
+                }
 
-                    await InvokeAsync(StateHasChanged);
+                // Track pending URL update (throttled)
+                _pendingUrlSequence = _frame.SequenceNumber;
+                _jumpToSequence = _frame.SequenceNumber;
 
-                    // Wait configured delay before next step
-                    try
-                    {
-                        await Task.Delay(AutoPlaySpeed, token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
+                // Check watched fields for auto-pause (exact match only)
+                string? pausedField = CheckWatchedFieldExactMatch();
+                if (pausedField is not null)
+                {
+                    _watchPauseMessage = $"Paused — watched field '{pausedField}' changed.";
+                    StateHasChanged();
+                    break;
+                }
+
+                StateHasChanged();
+
+                // Wait configured delay before next step
+                try
+                {
+                    await Task.Delay(AutoPlaySpeed, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
             }
-            finally
+        }
+        finally
+        {
+            _autoPlaying = false;
+            // Flush pending URL update immediately when auto-play stops
+            if (!_disposed)
             {
-                _autoPlaying = false;
-                // Flush pending URL update immediately when auto-play stops
                 await FlushUrlUpdate();
-                StopUrlThrottle();
-                await InvokeAsync(StateHasChanged);
             }
-        });
+
+            StopUrlThrottle();
+            StateHasChanged();
+        }
     }
 
     private void PauseAutoPlay()
@@ -549,21 +552,27 @@
         _urlThrottleCts = new CancellationTokenSource();
         CancellationToken token = _urlThrottleCts.Token;
 
-        _ = Task.Run(async () =>
+        // Fire-and-forget on the Blazor sync context (no Task.Run)
+        _ = RunUrlThrottleLoopAsync(token);
+    }
+
+    private async Task RunUrlThrottleLoopAsync(CancellationToken token)
+    {
+        try
         {
-            try
+            while (!token.IsCancellationRequested)
             {
-                while (!token.IsCancellationRequested)
+                await Task.Delay(1000, token);
+                if (!_disposed)
                 {
-                    await Task.Delay(1000, token);
                     await FlushUrlUpdate();
                 }
             }
-            catch (OperationCanceledException)
-            {
-                // Expected on dispose
-            }
-        });
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on dispose
+        }
     }
 
     private void StopUrlThrottle()
@@ -575,12 +584,14 @@
 
     private async Task FlushUrlUpdate()
     {
-        if (_pendingUrlSequence > 0 && OnSequenceChanged.HasDelegate)
+        if (_disposed || _pendingUrlSequence <= 0 || !OnSequenceChanged.HasDelegate)
         {
-            long seq = _pendingUrlSequence;
-            _pendingUrlSequence = 0;
-            await InvokeAsync(() => OnSequenceChanged.InvokeAsync(seq));
+            return;
         }
+
+        long seq = _pendingUrlSequence;
+        _pendingUrlSequence = 0;
+        await OnSequenceChanged.InvokeAsync(seq);
     }
 
     private async Task NotifySequenceChanged(long sequenceNumber, bool throttle)
@@ -747,6 +758,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         StopAutoPlay();
         StopUrlThrottle();
         _cts?.Cancel();
@@ -766,14 +778,5 @@
     }
 
     private static string FormatTimestamp(DateTimeOffset timestamp)
-    {
-        if (timestamp == DateTimeOffset.MinValue)
-        {
-            return string.Empty;
-        }
-
-        return timestamp.Date == DateTimeOffset.UtcNow.Date
-            ? timestamp.ToString("HH:mm:ss")
-            : timestamp.ToString("MMM dd HH:mm");
-    }
+        => timestamp == DateTimeOffset.MinValue ? string.Empty : TimeFormatHelper.FormatRelativeTime(timestamp);
 }

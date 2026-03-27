@@ -240,9 +240,9 @@ public sealed class DaprStreamQueryService : IStreamQueryService
 
         try
         {
-            // Use default timeout (30 seconds) — single state reconstruction + diff is comparable to blame workload
+            // Use 30-second timeout (same as blame — single state reconstruction + diff is comparable workload)
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             EventStepFrame? result = await InvokeCommandApiAsync<EventStepFrame>(
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);

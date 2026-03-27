@@ -232,6 +232,50 @@ public class StreamDetailPageTests : AdminUITestContext
             .Returns(Task.FromResult(result));
     }
 
+    [Fact]
+    public void StreamDetail_RendersStepThroughButton()
+    {
+        // Arrange
+        SetupTimeline(CreateTimelineResult(5));
+
+        // Act
+        IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Step Through"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Step Through");
+    }
+
+    [Fact]
+    public async Task StreamDetail_StepThroughButton_OpensDebugger()
+    {
+        // Arrange
+        SetupTimeline(CreateTimelineResult(5));
+        EventStepFrame frame = new(
+            "test-tenant", "counter", "agg-001",
+            1, "CounterIncremented",
+            DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1",
+            "{\"Amount\":1}", "{\"Count\":1}",
+            [], 5);
+        _ = _mockApiClient.GetEventStepFrameAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventStepFrame?>(frame));
+
+        // Act — render then click the Step Through button
+        IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Step Through"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement stepButton = cut.FindAll("fluent-button")
+            .First(b => b.TextContent.Contains("Step Through"));
+        await cut.InvokeAsync(() => stepButton.Click());
+
+        // Assert — EventDebugger should be rendered
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Event Debugger"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("Event Debugger");
+    }
+
     private static PagedResult<TimelineEntry> CreateTimelineResult(int count)
     {
         List<TimelineEntry> entries = [];

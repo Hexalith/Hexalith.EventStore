@@ -25,3 +25,11 @@
 - **D3: JsonDiff uses string comparison (not DeepEquals)** — Final field-change extraction at the divergent event uses string-based diff, not semantic JSON comparison. The core bisect loop correctly uses JsonElement.DeepEquals. Pre-existing in blame/diff (D5 from 20-1).
 - **D4: ConfigureAwait(false) in Blazor component** — BisectTool.razor uses ConfigureAwait(false) in LoadFieldsAsync and StartBisectAsync then accesses component state. Project-wide pattern (D3 from 20-1).
 - **D5: No upper bound on maxSteps/maxFields query params** — Attacker can pass MAX_INT to bypass field count protection. Defense-in-depth concern gated by DAPR network isolation (D6 from 20-1).
+
+## Deferred from: code review of 20-3-step-through-event-debugger (2026-03-27)
+
+- **D1: All admin stream endpoints (blame, bisect, step, diff) use O(N) JSON merge for state reconstruction instead of snapshot-accelerated actor state** — Each request replays all events from event 0. With 100-event snapshot intervals, actor-backed reconstruction would be O(snapshot_interval) per call. Requires actor API changes to expose snapshot-aware state reconstruction for admin queries. Should be addressed as a single cross-cutting story for all endpoints together.
+- **W1: `totalEvents` from last `SequenceNumber` not `allEvents.Length`** — If sequences are non-contiguous, `HasNext`/`HasPrevious` computed properties give wrong results and navigation hits 404s. Pre-existing pattern shared by blame/bisect endpoints. Requires actor API to provide true event count.
+- **W2: `GetEventsAsync(0)` loads entire stream into memory** — Admin step endpoint loads all events for the aggregate on every request. No pagination. Pre-existing pattern (same as D2 from 20-1).
+- **W3: `DeepMerge`/`FlattenJson` have no recursion depth limit** — Deeply nested event payloads could cause `StackOverflowException`. Pre-existing code used by blame/bisect/step endpoints.
+- **W4: `FieldChange` constructor throws on empty `FieldPath`** — `JsonDiff` can produce empty-string field paths from malformed JSON keys, causing `ArgumentException` that surfaces as HTTP 500. Pre-existing in `JsonDiff`/`FieldChange`.

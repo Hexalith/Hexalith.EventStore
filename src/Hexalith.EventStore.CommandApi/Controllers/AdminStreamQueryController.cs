@@ -432,6 +432,8 @@ public class AdminStreamQueryController(
                     break;
                 }
 
+                ct.ThrowIfCancellationRequested();
+
                 if (evt.SequenceNumber == at)
                 {
                     // Capture state at N-1 before applying the last event

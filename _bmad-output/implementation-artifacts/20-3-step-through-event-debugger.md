@@ -1,6 +1,6 @@
 # Story 20.3: Step-Through Event Debugger
 
-Status: review
+Status: done
 
 Size: Medium-Large — 1 new model in Admin.Abstractions, extends `IStreamQueryService` with step-frame method, adds step-frame computation endpoint to CommandApi, adds REST facade to `AdminStreamsController`, extends `AdminStreamApiClient`, creates `EventDebugger.razor` component integrated into `StreamDetail.razor` with deep linking and keyboard navigation. Creates ~5-6 test classes across 3 test projects (~30-40 tests). Third story in Epic 20's Advanced Debugging suite.
 
@@ -348,6 +348,23 @@ Claude Opus 4.6 (1M context)
 - Watch fields with exact-match pause during auto-play, substring-match highlighting in display
 - Keyboard navigation: Arrow keys, Home/End, Space (play/pause), Escape (close)
 - Deep linking: `?step={seq}` with mutual exclusion precedence `step > bisect > blame > diff`
+
+### Review Findings
+
+- [x] [Review][Decision] D1: State reconstruction uses O(N) JSON merge instead of snapshot-accelerated actor state (AC3a) — **Resolved: Accept + defer.** Consistent with blame/bisect. Tracked as cross-cutting tech-debt in deferred-work.md for all admin endpoints together.
+- [x] [Review][Patch] P1: Auto-play `Task.Run` race conditions — replaced `Task.Run` with sync-context async methods, added `_disposed` guard, removed `InvokeAsync` wrappers [EventDebugger.razor] ✓ Fixed
+- [x] [Review][Patch] P2: `FormatTimestamp` — replaced with `TimeFormatHelper.FormatRelativeTime` (fixes timezone mismatch + uses shared helper) [EventDebugger.razor] ✓ Fixed
+- [x] [Review][Patch] P3: `JumpToSequence` — added upper-bound `<= TotalEvents` validation [EventDebugger.razor] ✓ Fixed
+- [x] [Review][Patch] P4: Added `ct.ThrowIfCancellationRequested()` inside O(N) state reconstruction loop [AdminStreamQueryController.cs] ✓ Fixed
+- [x] [Review][Patch] P5: Changed to hardcoded 30s timeout (matching blame pattern) instead of `_options.ServiceInvocationTimeoutSeconds` [DaprStreamQueryService.cs] ✓ Fixed
+- [x] [Review][Patch] P6: Added 4 tests: arg validation, command API unavailable, null result fallback, cancellation propagation [DaprStreamQueryServiceTests.cs] ✓ Fixed
+- [x] [Review][Patch] P7: Added 2 tests: step button renders, step button opens debugger [StreamDetailPageTests.cs] ✓ Fixed
+- [x] [Review][Patch] P8: Added 2 tests: auto-play disabled at last event, auto-play advances to next frame [EventDebuggerTests.cs] ✓ Fixed
+- [x] [Review][Patch] P9: Added 3 tests: watch-field pause on exact match, watch panel open/close, field highlighting [EventDebuggerTests.cs] ✓ Fixed
+- [x] [Review][Defer] W1: `totalEvents` from last `SequenceNumber` — non-contiguous sequences break `HasNext`/`HasPrevious` [AdminStreamQueryController.cs:404] — deferred, pre-existing pattern in blame/bisect
+- [x] [Review][Defer] W2: `GetEventsAsync(0)` loads entire stream into memory — no pagination for admin queries [AdminStreamQueryController.cs:396] — deferred, pre-existing pattern
+- [x] [Review][Defer] W3: `DeepMerge`/`FlattenJson` no recursion depth limit — StackOverflowException risk on deeply nested payloads — deferred, pre-existing code
+- [x] [Review][Defer] W4: `FieldChange` constructor throws on empty `FieldPath` from malformed JSON keys — deferred, pre-existing in JsonDiff
 
 ### File List
 
