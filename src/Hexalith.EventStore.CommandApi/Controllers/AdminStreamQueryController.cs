@@ -30,6 +30,8 @@ public class AdminStreamQueryController(
     IActorProxyFactory actorProxyFactory,
     ILogger<AdminStreamQueryController> logger) : ControllerBase
 {
+    private const int DefaultMaxBisectFields = 1_000;
+    private const int DefaultMaxBisectSteps = 30;
     private const int DefaultMaxEvents = 10_000;
     private const int DefaultMaxFields = 5_000;
 
@@ -143,6 +145,224 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
+    /// Performs a binary search through event history to find the exact event where aggregate state
+    /// diverged from expected field values. Reconstructs state at O(log N) midpoints for comparison.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/bisect")]
+    [ProducesResponseType(typeof(BisectResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> BisectAggregateState(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long good,
+        [FromQuery] long bad,
+        [FromQuery] string? fields,
+        [FromQuery] int maxSteps = DefaultMaxBisectSteps,
+        [FromQuery] int maxFields = DefaultMaxBisectFields,
+        CancellationToken ct = default)
+    {
+        if (good < 0)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'good' must be >= 0.");
+        }
+
+        if (bad <= 0)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'bad' must be > 0.");
+        }
+
+        if (good >= bad)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'good' must be less than 'bad'.");
+        }
+
+        if (maxSteps <= 0)
+        {
+            maxSteps = DefaultMaxBisectSteps;
+        }
+
+        if (maxFields <= 0)
+        {
+            maxFields = DefaultMaxBisectFields;
+        }
+
+        // Parse comma-separated field paths
+        IReadOnlyList<string> fieldPaths = string.IsNullOrWhiteSpace(fields)
+            ? []
+            : fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        try
+        {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+
+            if (allEvents.Length == 0)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Stream not found or has no events.");
+            }
+
+            long actualMaxSequence = allEvents[^1].SequenceNumber;
+            if (good > actualMaxSequence)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: $"Parameter 'good' ({good}) exceeds stream length ({actualMaxSequence}).");
+            }
+
+            if (bad > actualMaxSequence)
+            {
+                bad = actualMaxSequence;
+            }
+
+            // Reconstruct state at the good sequence to establish expected field values
+            JsonObject goodState = ReconstructState(allEvents, good);
+            Dictionary<string, string> allLeafFields = FlattenJson(goodState, string.Empty);
+
+            // If good state is empty (e.g., good=0), use bad state's fields as the watch set
+            // to avoid vacuous comparisons where all midpoints report "good"
+            if (allLeafFields.Count == 0 && fieldPaths.Count == 0)
+            {
+                JsonObject badState = ReconstructState(allEvents, bad);
+                allLeafFields = FlattenJson(badState, string.Empty);
+            }
+
+            // Determine watched fields
+            List<string> watchedFieldPaths;
+            if (fieldPaths.Count > 0)
+            {
+                watchedFieldPaths = fieldPaths.ToList();
+            }
+            else
+            {
+                // All leaf fields
+                if (allLeafFields.Count > maxFields)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        title: "Bad Request",
+                        detail: $"State has {allLeafFields.Count} fields — specify field paths to narrow the comparison (max {maxFields} fields).");
+                }
+
+                watchedFieldPaths = [.. allLeafFields.Keys];
+            }
+
+            // Extract expected values from good state
+            Dictionary<string, JsonElement> expectedValues = ExtractFieldValues(goodState, watchedFieldPaths);
+
+            // Binary search
+            long goodSeq = good;
+            long badSeq = bad;
+            var steps = new List<BisectStep>();
+            int step = 0;
+
+            while (badSeq - goodSeq > 1 && step < maxSteps)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                step++;
+                long mid = goodSeq + ((badSeq - goodSeq) / 2);
+
+                // Reconstruct state at midpoint
+                JsonObject midState = ReconstructState(allEvents, mid);
+                Dictionary<string, JsonElement> midValues = ExtractFieldValues(midState, watchedFieldPaths);
+
+                // Compare field values using JsonElement.DeepEquals
+                int divergentCount = CountDivergentFields(midValues, expectedValues);
+
+                if (divergentCount == 0)
+                {
+                    steps.Add(new BisectStep(step, mid, "good", 0));
+                    goodSeq = mid;
+                }
+                else
+                {
+                    steps.Add(new BisectStep(step, mid, "bad", divergentCount));
+                    badSeq = mid;
+                }
+            }
+
+            bool isTruncated = badSeq - goodSeq > 1;
+
+            // Get divergent event metadata and field changes
+            ServerEventEnvelope? divergentEvent = allEvents.FirstOrDefault(e => e.SequenceNumber == badSeq);
+            List<FieldChange> divergentFieldChanges = [];
+
+            if (divergentEvent is not null)
+            {
+                // Diff state at badSeq-1 vs badSeq to get the exact field changes at the divergent event
+                JsonObject stateBeforeDivergent = ReconstructState(allEvents, badSeq - 1);
+                JsonObject stateAtDivergent = ReconstructState(allEvents, badSeq);
+
+                Dictionary<string, (string NewValue, string OldValue)> allChanges = JsonDiff(
+                    stateBeforeDivergent,
+                    stateAtDivergent,
+                    string.Empty);
+
+                // Filter to only watched fields
+                foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in allChanges)
+                {
+                    if (watchedFieldPaths.Count == 0 || watchedFieldPaths.Contains(change.Key, StringComparer.Ordinal))
+                    {
+                        divergentFieldChanges.Add(new FieldChange(
+                            change.Key,
+                            change.Value.OldValue,
+                            change.Value.NewValue));
+                    }
+                }
+            }
+
+            BisectResult result = new(
+                TenantId: tenantId,
+                Domain: domain,
+                AggregateId: aggregateId,
+                GoodSequence: goodSeq,
+                DivergentSequence: badSeq,
+                DivergentTimestamp: divergentEvent?.Timestamp ?? DateTimeOffset.MinValue,
+                DivergentEventType: divergentEvent?.EventTypeName ?? string.Empty,
+                DivergentCorrelationId: divergentEvent?.CorrelationId ?? string.Empty,
+                DivergentUserId: divergentEvent?.UserId ?? string.Empty,
+                DivergentFieldChanges: divergentFieldChanges,
+                WatchedFieldPaths: watchedFieldPaths,
+                Steps: steps,
+                TotalSteps: step,
+                IsTruncated: isTruncated);
+
+            return Ok(result);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to bisect aggregate state for {TenantId}/{Domain}/{AggregateId} (good={Good}, bad={Bad}).",
+                tenantId, domain, aggregateId, good, bad);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to compute bisect result.");
+        }
+    }
+
+    /// <summary>
     /// Implements the incremental O(N) blame algorithm.
     /// Maintains a running JSON state and diffs after each event to track which event
     /// last changed each field.
@@ -248,6 +468,100 @@ public class AdminStreamQueryController(
             Fields: fields,
             IsTruncated: isTruncated,
             IsFieldsTruncated: isFieldsTruncated);
+    }
+
+    /// <summary>
+    /// Counts how many watched fields differ between midpoint values and expected values
+    /// using <see cref="JsonElement.DeepEquals"/> for semantic JSON comparison.
+    /// </summary>
+    private static int CountDivergentFields(
+        Dictionary<string, JsonElement> midValues,
+        Dictionary<string, JsonElement> expectedValues)
+    {
+        int count = 0;
+        foreach (KeyValuePair<string, JsonElement> expected in expectedValues)
+        {
+            if (!midValues.TryGetValue(expected.Key, out JsonElement midValue)
+                || !JsonElement.DeepEquals(midValue, expected.Value))
+            {
+                count++;
+            }
+        }
+
+        // Also count fields present in midValues but not in expectedValues
+        foreach (string key in midValues.Keys)
+        {
+            if (!expectedValues.ContainsKey(key))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Extracts field values from a JSON state object for the specified field paths.
+    /// Parses each leaf value as a <see cref="JsonElement"/> for semantic comparison.
+    /// </summary>
+    private static Dictionary<string, JsonElement> ExtractFieldValues(
+        JsonObject state,
+        IReadOnlyList<string> fieldPaths)
+    {
+        Dictionary<string, string> allLeafFields = FlattenJson(state, string.Empty);
+        var result = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        foreach (string fieldPath in fieldPaths)
+        {
+            if (allLeafFields.TryGetValue(fieldPath, out string? jsonValue))
+            {
+                try
+                {
+                    using JsonDocument doc = JsonDocument.Parse(jsonValue);
+                    result[fieldPath] = doc.RootElement.Clone();
+                }
+                catch (JsonException)
+                {
+                    // If the value cannot be parsed, treat as a raw string
+                    using JsonDocument fallbackDoc = JsonDocument.Parse($"\"{jsonValue}\"");
+                    result[fieldPath] = fallbackDoc.RootElement.Clone();
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Reconstructs aggregate state by replaying events up to the specified sequence number.
+    /// Uses the same JSON merge strategy as the blame algorithm.
+    /// </summary>
+    private static JsonObject ReconstructState(ServerEventEnvelope[] allEvents, long upToSequence)
+    {
+        var state = new JsonObject();
+        foreach (ServerEventEnvelope evt in allEvents)
+        {
+            if (evt.SequenceNumber > upToSequence)
+            {
+                break;
+            }
+
+            try
+            {
+                JsonNode? eventPayload = JsonNode.Parse(evt.Payload);
+                if (eventPayload is JsonObject payloadObj)
+                {
+                    DeepMerge(state, payloadObj);
+                }
+            }
+            catch (JsonException)
+            {
+                // Event payload is not valid JSON — skip
+                continue;
+            }
+        }
+
+        return state;
     }
 
     /// <summary>

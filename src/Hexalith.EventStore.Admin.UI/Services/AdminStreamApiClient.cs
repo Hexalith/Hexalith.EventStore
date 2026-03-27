@@ -327,6 +327,60 @@ public class AdminStreamApiClient(
     }
 
     /// <summary>
+    /// Performs a binary search through event history to find the exact event where aggregate state diverged.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="goodSequence">Known-good sequence (state was correct here).</param>
+    /// <param name="badSequence">Known-bad sequence (state diverged by this point).</param>
+    /// <param name="fieldPaths">Optional field paths to watch. When null or empty, all leaf fields are compared.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The bisect result, or null if not available.</returns>
+    public virtual async Task<BisectResult?> BisectAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long goodSequence,
+        long badSequence,
+        IReadOnlyList<string>? fieldPaths,
+        CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/bisect?good={goodSequence}&bad={badSequence}";
+        if (fieldPaths is { Count: > 0 })
+        {
+            url += $"&fields={Uri.EscapeDataString(string.Join(",", fieldPaths))}";
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<BisectResult>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to fetch bisect result from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the aggregate state at the nearest event at or before a given timestamp.
     /// Uses client-side resolution: fetches timeline pages to find the nearest entry,
     /// then calls GetAggregateStateAtPositionAsync. Caps at 3 timeline API calls.

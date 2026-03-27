@@ -108,6 +108,28 @@ public class AdminServerOptionsValidatorTests
         result.FailureMessage.ShouldContain(nameof(AdminServerOptions.MaxBlameFields));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_InvalidMaxBisectSteps_ReturnsFail(int value)
+    {
+        var options = new AdminServerOptions { MaxBisectSteps = value };
+        ValidateOptionsResult result = _validator.Validate(null, options);
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain(nameof(AdminServerOptions.MaxBisectSteps));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_InvalidMaxBisectFields_ReturnsFail(int value)
+    {
+        var options = new AdminServerOptions { MaxBisectFields = value };
+        ValidateOptionsResult result = _validator.Validate(null, options);
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain(nameof(AdminServerOptions.MaxBisectFields));
+    }
+
     [Fact]
     public void Validate_NullOptions_ThrowsArgumentNullException()
     {

@@ -224,6 +224,65 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<BisectResult> BisectAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long goodSequence,
+        long badSequence,
+        IReadOnlyList<string>? fieldPaths,
+        CancellationToken ct = default)
+    {
+        if (goodSequence < 0)
+        {
+            throw new ArgumentException("goodSequence must be >= 0.");
+        }
+
+        if (badSequence < 0)
+        {
+            throw new ArgumentException("badSequence must be >= 0.");
+        }
+
+        if (goodSequence >= badSequence)
+        {
+            throw new ArgumentException("goodSequence must be less than badSequence.");
+        }
+
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/bisect";
+        var queryParams = new List<string>
+        {
+            $"good={goodSequence}",
+            $"bad={badSequence}",
+            $"maxSteps={_options.MaxBisectSteps}",
+            $"maxFields={_options.MaxBisectFields}",
+        };
+
+        if (fieldPaths is { Count: > 0 })
+        {
+            queryParams.Add($"fields={Uri.EscapeDataString(string.Join(",", fieldPaths))}");
+        }
+
+        endpoint += "?" + string.Join("&", queryParams);
+
+        try
+        {
+            // Use 60-second timeout for bisect (longer than blame's 30s because bisect performs O(log N) state reconstructions)
+            BisectResult? result = await InvokeCommandApiAsync<BisectResult>(
+                HttpMethod.Get, endpoint, ct, timeoutSeconds: 60).ConfigureAwait(false);
+            return result ?? new BisectResult(tenantId, domain, aggregateId, goodSequence, badSequence, DateTimeOffset.MinValue, string.Empty, string.Empty, string.Empty, [], [], [], 0, false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to bisect aggregate state for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<EventDetail> GetEventDetailAsync(
         string tenantId,
         string domain,
@@ -299,10 +358,11 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     private async Task<TResponse?> InvokeCommandApiAsync<TResponse>(
         HttpMethod method,
         string endpoint,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? timeoutSeconds = null)
     {
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+        cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
             method, _options.CommandApiAppId, endpoint)

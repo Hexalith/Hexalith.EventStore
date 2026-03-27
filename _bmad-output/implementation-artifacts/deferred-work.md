@@ -17,3 +17,11 @@
 - **D6: `maxEvents`/`maxFields` bypass via direct CommandApi access** — Query parameters have no upper bound validation. Defense-in-depth concern gated by DAPR network isolation.
 - **D7: JSON arrays treated as opaque leaf values** — Array-heavy aggregate state shows entire arrays as single changed fields rather than element-level diffs. No array diff algorithm in scope for v1.
 - **D8: Test tasks 8.5-8.8 incomplete** — Truncation edge case tests, core value proposition test, BlameViewer component tests, and StreamDetail blame integration tests remain unimplemented. Should be completed before final merge.
+
+## Deferred from: code review of 20-2-bisect-tool-binary-search-state-divergence (2026-03-27)
+
+- **D1: O(N*logN) state reconstruction performance** — ReconstructState replays from event 0 at each bisect midpoint. O(S*N) total work for S steps and N events. Pre-existing pattern shared by blame/diff endpoints. Requires actor API range query support to optimize.
+- **D2: DeepMerge doesn't handle field deletion** — JSON merge can only add/update fields, not remove them. Bisect state reconstruction may include stale fields. Pre-existing limitation (D4 from 20-1).
+- **D3: JsonDiff uses string comparison (not DeepEquals)** — Final field-change extraction at the divergent event uses string-based diff, not semantic JSON comparison. The core bisect loop correctly uses JsonElement.DeepEquals. Pre-existing in blame/diff (D5 from 20-1).
+- **D4: ConfigureAwait(false) in Blazor component** — BisectTool.razor uses ConfigureAwait(false) in LoadFieldsAsync and StartBisectAsync then accesses component state. Project-wide pattern (D3 from 20-1).
+- **D5: No upper bound on maxSteps/maxFields query params** — Attacker can pass MAX_INT to bypass field count protection. Defense-in-depth concern gated by DAPR network isolation (D6 from 20-1).
