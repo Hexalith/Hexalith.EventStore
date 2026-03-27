@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 using Dapr.Client;
 
@@ -345,6 +346,45 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<SandboxResult?> SandboxCommandAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        SandboxCommandRequest request,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.CommandType))
+        {
+            throw new ArgumentException("CommandType is required.");
+        }
+
+        if (request.AtSequence.HasValue && request.AtSequence.Value < 0)
+        {
+            throw new ArgumentException("AtSequence must be >= 0 when provided.");
+        }
+
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/sandbox";
+
+        try
+        {
+            SandboxResult? result = await InvokeCommandApiAsync<SandboxCommandRequest, SandboxResult>(
+                endpoint, request, ct).ConfigureAwait(false);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to execute sandbox command for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<CausationChain> TraceCausationChainAsync(
         string tenantId,
         string domain,
@@ -409,6 +449,30 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
+
+        return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
+    }
+
+    private async Task<TResponse?> InvokeCommandApiAsync<TRequest, TResponse>(
+        string endpoint,
+        TRequest body,
+        CancellationToken ct,
+        int? timeoutSeconds = null)
+    {
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
+
+        using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
+            HttpMethod.Post, _options.CommandApiAppId, endpoint)
+            ?? new HttpRequestMessage(HttpMethod.Post, endpoint);
+
+        string? token = _authContext.GetToken();
+        if (token is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        request.Content = JsonContent.Create(body);
 
         return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
     }

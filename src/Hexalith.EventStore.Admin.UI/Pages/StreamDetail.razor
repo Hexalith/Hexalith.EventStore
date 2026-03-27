@@ -92,6 +92,13 @@ else
                       Title="Step through events with state changes">
             Step Through
         </FluentButton>
+        <FluentButton Appearance="Appearance.Outline"
+                      OnClick="@OpenSandbox"
+                      Icon="@(new Icons.Regular.Size20.BeakerSettings())"
+                      aria-label="Open command sandbox"
+                      Title="Test a command as dry run">
+            Sandbox
+        </FluentButton>
     </FluentStack>
 
     <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
@@ -101,7 +108,17 @@ else
                        @bind-CompareMode="_compareMode"
                        @bind-CompareMode:after="OnCompareModeChanged" />
 
-    @if (_stepMode)
+    @if (_sandboxMode)
+    {
+        @* Command sandbox replaces the detail panel *@
+        <div style="margin-top: 16px;">
+            <CommandSandbox TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                            InitialSequence="@_sandboxSequence"
+                            OnClose="CloseSandbox"
+                            OnNavigateToEvent="OnSandboxNavigateToEvent" />
+        </div>
+    }
+    else if (_stepMode)
     {
         @* Step-through debugger replaces the detail panel *@
         <div style="margin-top: 16px;">
@@ -236,6 +253,10 @@ else
     private bool _stepMode;
     private long? _stepSequence;
 
+    // Sandbox state
+    private bool _sandboxMode;
+    private long? _sandboxSequence;
+
     // Inspector modal state
     private bool _showInspectorModal;
     private long? _inspectorSequence;
@@ -282,6 +303,9 @@ else
     [SupplyParameterFromQuery(Name = "step")]
     public long? QueryStep { get; set; }
 
+    [SupplyParameterFromQuery(Name = "sandbox")]
+    public string? QuerySandbox { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -294,8 +318,13 @@ else
             _selectedEntryType = t;
         }
 
-        // Parse deep links with precedence: step > bisect > blame > diff
-        if (QueryStep.HasValue && QueryStep.Value >= 1)
+        // Parse deep links with precedence: sandbox > step > bisect > blame > diff
+        if (!string.IsNullOrEmpty(QuerySandbox))
+        {
+            _sandboxMode = true;
+            _sandboxSequence = long.TryParse(QuerySandbox, out long sandboxSeq) ? sandboxSeq : null;
+        }
+        else if (QueryStep.HasValue && QueryStep.Value >= 1)
         {
             _stepMode = true;
             _stepSequence = QueryStep.Value;
@@ -648,6 +677,36 @@ else
         UpdateUrl();
     }
 
+    private void OpenSandbox()
+    {
+        _sandboxMode = true;
+        _sandboxSequence = _selectedSequence; // null means latest
+        _stepMode = false;
+        _bisectMode = false;
+        _blameMode = false;
+        _diffMode = false;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void CloseSandbox()
+    {
+        _sandboxMode = false;
+        _sandboxSequence = null;
+        UpdateUrl();
+    }
+
+    private void OnSandboxNavigateToEvent(long sequenceNumber)
+    {
+        _sandboxMode = false;
+        _sandboxSequence = null;
+        _selectedSequence = sequenceNumber;
+        _selectedEntry = _timelineEntries
+            .FirstOrDefault(e => e.SequenceNumber == sequenceNumber);
+        UpdateUrl();
+    }
+
     private void OnCompareModeChanged()
     {
         if (!_compareMode)
@@ -703,7 +762,11 @@ else
     {
         if (e.Key == "Escape")
         {
-            if (_stepMode)
+            if (_sandboxMode)
+            {
+                CloseSandbox();
+            }
+            else if (_stepMode)
             {
                 CloseStepDebugger();
             }
@@ -754,7 +817,18 @@ else
             queryParams.Add($"correlation={Uri.EscapeDataString(_correlationFilter)}");
         }
 
-        if (_stepMode && _stepSequence.HasValue)
+        if (_sandboxMode)
+        {
+            if (_sandboxSequence.HasValue)
+            {
+                queryParams.Add($"sandbox={_sandboxSequence.Value}");
+            }
+            else
+            {
+                queryParams.Add("sandbox=true");
+            }
+        }
+        else if (_stepMode && _stepSequence.HasValue)
         {
             queryParams.Add($"step={_stepSequence.Value}");
         }

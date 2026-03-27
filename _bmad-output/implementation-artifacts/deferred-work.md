@@ -33,3 +33,8 @@
 - **W2: `GetEventsAsync(0)` loads entire stream into memory** — Admin step endpoint loads all events for the aggregate on every request. No pagination. Pre-existing pattern (same as D2 from 20-1).
 - **W3: `DeepMerge`/`FlattenJson` have no recursion depth limit** — Deeply nested event payloads could cause `StackOverflowException`. Pre-existing code used by blame/bisect/step endpoints.
 - **W4: `FieldChange` constructor throws on empty `FieldPath`** — `JsonDiff` can produce empty-string field paths from malformed JSON keys, causing `ArgumentException` that surfaces as HTTP 500. Pre-existing in `JsonDiff`/`FieldChange`.
+
+## Deferred from: code review of 20-4-command-sandbox-test-harness (2026-03-27)
+
+- **IssueBanner lacks severity parameter** — Info/success/warning banners all render as warning style. Sandbox (and all Epic 20 components) cannot distinguish severity visually. Pre-existing component limitation — all IssueBanner usages across the project have the same constraint.
+- **IStreamQueryService.SandboxCommandAsync returns nullable vs spec non-nullable** — The nullable return (`SandboxResult?`) is a pragmatic choice allowing the Admin.Server facade to return 404 on null. Changing the interface contract requires broader refactoring of the delegation pattern across all IStreamQueryService implementations.

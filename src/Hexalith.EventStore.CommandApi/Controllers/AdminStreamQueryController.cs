@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -5,8 +7,12 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.DomainServices;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -28,6 +34,7 @@ namespace Hexalith.EventStore.CommandApi.Controllers;
 [Tags("Admin - Stream Queries")]
 public class AdminStreamQueryController(
     IActorProxyFactory actorProxyFactory,
+    IDomainServiceInvoker domainServiceInvoker,
     ILogger<AdminStreamQueryController> logger) : ControllerBase
 {
     private const int DefaultMaxBisectFields = 1_000;
@@ -504,6 +511,290 @@ public class AdminStreamQueryController(
                 title: "Internal Server Error",
                 detail: "Failed to compute event step frame.");
         }
+    }
+
+    /// <summary>
+    /// Executes a command in sandbox (dry-run) mode against reconstructed aggregate state.
+    /// Invokes the domain service Handle method via DAPR but does NOT persist any events.
+    /// Returns the events that would be produced, the resulting state, and a state diff.
+    /// </summary>
+    [HttpPost("{tenantId}/{domain}/{aggregateId}/sandbox")]
+    [ProducesResponseType(typeof(SandboxResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SandboxCommand(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromBody] SandboxCommandRequest request,
+        CancellationToken ct = default)
+    {
+        if (request is null)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Request body is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CommandType))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "CommandType is required.");
+        }
+
+        // Default empty payload to "{}"
+        string payloadJson = string.IsNullOrEmpty(request.PayloadJson) ? "{}" : request.PayloadJson;
+
+        // Validate payload is valid JSON
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(payloadJson);
+        }
+        catch (JsonException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "PayloadJson is not valid JSON.");
+        }
+
+        if (request.AtSequence.HasValue && request.AtSequence.Value < 0)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "AtSequence must be >= 0 when provided.");
+        }
+
+        long sw = Stopwatch.GetTimestamp();
+
+        try
+        {
+            // Step 2: Reconstruct state
+            ServerEventEnvelope[] allEvents;
+            JsonObject inputState;
+            long atSequence;
+
+            if (request.AtSequence == 0)
+            {
+                // Empty initial state — no stream lookup needed
+                allEvents = [];
+                inputState = new JsonObject();
+                atSequence = 0;
+            }
+            else
+            {
+                var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+                IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                    new ActorId(identity.ActorId), "AggregateActor");
+
+                allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+
+                if (allEvents.Length == 0)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status404NotFound,
+                        title: "Not Found",
+                        detail: "Stream not found or has no events.");
+                }
+
+                long actualMaxSequence = allEvents[^1].SequenceNumber;
+
+                if (request.AtSequence.HasValue)
+                {
+                    atSequence = request.AtSequence.Value;
+                    if (atSequence > actualMaxSequence)
+                    {
+                        return Problem(
+                            statusCode: StatusCodes.Status400BadRequest,
+                            title: "Bad Request",
+                            detail: $"AtSequence ({atSequence}) exceeds stream length ({actualMaxSequence}).");
+                    }
+                }
+                else
+                {
+                    atSequence = actualMaxSequence;
+                }
+
+                inputState = ReconstructState(allEvents, atSequence);
+            }
+
+            ct.ThrowIfCancellationRequested();
+
+            // Step 3: Invoke domain service
+            CommandEnvelope commandEnvelope = new(
+                MessageId: Guid.NewGuid().ToString(),
+                TenantId: tenantId,
+                Domain: domain,
+                AggregateId: aggregateId,
+                CommandType: request.CommandType,
+                Payload: Encoding.UTF8.GetBytes(payloadJson),
+                CorrelationId: string.IsNullOrEmpty(request.CorrelationId) ? Guid.NewGuid().ToString() : request.CorrelationId,
+                CausationId: null,
+                UserId: string.IsNullOrEmpty(request.UserId) ? "sandbox-user" : request.UserId,
+                Extensions: null);
+
+            DomainResult domainResult;
+            try
+            {
+                object? currentState = atSequence == 0 ? null : inputState;
+                domainResult = await domainServiceInvoker.InvokeAsync(commandEnvelope, currentState, ct).ConfigureAwait(false);
+            }
+            catch (DomainServiceNotFoundException ex)
+            {
+                long elapsedError = (long)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
+                return Ok(new SandboxResult(
+                    TenantId: tenantId,
+                    Domain: domain,
+                    AggregateId: aggregateId,
+                    AtSequence: atSequence,
+                    CommandType: request.CommandType,
+                    Outcome: "error",
+                    ProducedEvents: [],
+                    ResultingStateJson: string.Empty,
+                    StateChanges: [],
+                    ErrorMessage: $"No domain service registered for domain '{domain}' in tenant '{tenantId}'. {ex.Message}",
+                    ExecutionTimeMs: elapsedError));
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                long elapsedError = (long)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
+                return Ok(new SandboxResult(
+                    TenantId: tenantId,
+                    Domain: domain,
+                    AggregateId: aggregateId,
+                    AtSequence: atSequence,
+                    CommandType: request.CommandType,
+                    Outcome: "error",
+                    ProducedEvents: [],
+                    ResultingStateJson: string.Empty,
+                    StateChanges: [],
+                    ErrorMessage: $"Domain service invocation failed: {ex.Message}",
+                    ExecutionTimeMs: elapsedError));
+            }
+
+            // Step 4 & 5: Parse result and compute resulting state + diff
+            string outcome;
+            List<SandboxEvent> producedEvents = [];
+            string resultingStateJson = string.Empty;
+            List<FieldChange> stateChanges = [];
+
+            if (domainResult.IsRejection)
+            {
+                outcome = "rejected";
+                producedEvents = ExtractSandboxEvents(domainResult.Events);
+            }
+            else if (domainResult.IsNoOp)
+            {
+                outcome = "accepted";
+                resultingStateJson = inputState.ToJsonString();
+            }
+            else
+            {
+                // Success — apply events and compute diff
+                outcome = "accepted";
+                producedEvents = ExtractSandboxEvents(domainResult.Events);
+
+                // Apply produced events to input state to compute resulting state
+                JsonObject resultingState = (JsonObject?)JsonNode.Parse(inputState.ToJsonString()) ?? new JsonObject();
+                foreach (SandboxEvent sandboxEvent in producedEvents)
+                {
+                    try
+                    {
+                        JsonNode? eventNode = JsonNode.Parse(sandboxEvent.PayloadJson);
+                        if (eventNode is JsonObject eventObj)
+                        {
+                            DeepMerge(resultingState, eventObj);
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        // Skip malformed event payloads
+                        continue;
+                    }
+                }
+
+                resultingStateJson = resultingState.ToJsonString();
+
+                // Compute state diff
+                Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(inputState, resultingState, string.Empty);
+                stateChanges = changes
+                    .Select(c => new FieldChange(c.Key, c.Value.OldValue, c.Value.NewValue))
+                    .OrderBy(fc => fc.FieldPath, StringComparer.Ordinal)
+                    .ToList();
+            }
+
+            long elapsedMs = (long)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
+
+            SandboxResult result = new(
+                TenantId: tenantId,
+                Domain: domain,
+                AggregateId: aggregateId,
+                AtSequence: atSequence,
+                CommandType: request.CommandType,
+                Outcome: outcome,
+                ProducedEvents: producedEvents,
+                ResultingStateJson: resultingStateJson,
+                StateChanges: stateChanges,
+                ErrorMessage: null,
+                ExecutionTimeMs: elapsedMs);
+
+            return Ok(result);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to execute sandbox command for {TenantId}/{Domain}/{AggregateId}.",
+                tenantId, domain, aggregateId);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to execute sandbox command.");
+        }
+    }
+
+    /// <summary>
+    /// Extracts sandbox event representations from domain result events.
+    /// Falls back to the event's runtime type name when <see cref="ISerializedEventPayload"/> is not implemented.
+    /// </summary>
+    private static List<SandboxEvent> ExtractSandboxEvents(IReadOnlyList<IEventPayload> events)
+    {
+        List<SandboxEvent> result = new(events.Count);
+        for (int i = 0; i < events.Count; i++)
+        {
+            IEventPayload evt = events[i];
+            string eventTypeName;
+            string eventPayloadJson;
+
+            if (evt is ISerializedEventPayload serialized)
+            {
+                eventTypeName = serialized.EventTypeName;
+                eventPayloadJson = Encoding.UTF8.GetString(serialized.PayloadBytes);
+            }
+            else
+            {
+                eventTypeName = evt.GetType().Name;
+                eventPayloadJson = "{}";
+            }
+
+            result.Add(new SandboxEvent(
+                Index: i,
+                EventTypeName: eventTypeName,
+                PayloadJson: eventPayloadJson,
+                IsRejection: evt is IRejectionEvent));
+        }
+
+        return result;
     }
 
     /// <summary>
