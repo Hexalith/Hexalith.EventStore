@@ -1,0 +1,440 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Microsoft.JSInterop
+@using TraceMapModel = Hexalith.EventStore.Admin.Abstractions.Models.Streams.CorrelationTraceMap
+@implements IAsyncDisposable
+@inject AdminStreamApiClient ApiClient
+@inject IJSRuntime JSRuntime
+
+<div class="correlation-trace-map" role="region" aria-label="Correlation trace map">
+    @* Header bar *@
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 12px;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0;">Correlation Trace Map</h3>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" VerticalAlignment="VerticalAlignment.Center">
+                <span class="monospace" style="font-size: 13px;">@CorrelationId</span>
+                <FluentButton Appearance="Appearance.Lightweight"
+                              Title="Copy correlation ID"
+                              OnClick="CopyCorrelationIdAsync"
+                              aria-label="Copy correlation ID">
+                    &#x1F4CB;
+                </FluentButton>
+            </FluentStack>
+        </div>
+        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close trace map">
+            Close
+        </FluentButton>
+    </FluentStack>
+
+    @if (_loading)
+    {
+        <SkeletonCard />
+    }
+    else if (_error is not null)
+    {
+        <IssueBanner Message="@_error" />
+    }
+    else if (_traceMap is not null)
+    {
+        @* Scan capped warning *@
+        @if (_traceMap.ScanCapped && _traceMap.ScanCapMessage is not null)
+        {
+            <IssueBanner Message="@_traceMap.ScanCapMessage" />
+        }
+
+        @* Command status unknown warning *@
+        @if (_traceMap.CommandStatus == "Unknown" && _traceMap.ProducedEvents.Count == 0)
+        {
+            <IssueBanner Message="No trace data found for this correlation ID. The command status may have expired (24-hour default TTL). Alternative investigation paths: (1) Filter the stream timeline by this correlation ID using the correlation filter. (2) Check the external observability tool (Zipkin/Jaeger/Aspire) for distributed trace details. (3) Search structured logs by correlation ID." />
+        }
+        else if (_traceMap.CommandStatus == "Unknown")
+        {
+            <div style="padding: 8px 16px; margin-bottom: 12px; background: var(--neutral-layer-2); border-left: 3px solid var(--accent-fill-rest); font-size: 13px;">
+                Command status not found &mdash; the status record may have expired or the correlation ID is invalid. Events below were found by scanning the aggregate stream.
+            </div>
+        }
+
+        @* Command lifecycle pipeline *@
+        <div style="margin-bottom: 16px;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" VerticalAlignment="VerticalAlignment.Center"
+                         Wrap="true" Style="margin-bottom: 8px;">
+                @foreach (PipelineStage stage in _pipelineStages)
+                {
+                    @if (stage.Position > 1)
+                    {
+                        <span style="color: var(--neutral-foreground-hint); font-size: 14px;">&rarr;</span>
+                    }
+                    <FluentBadge Appearance="@(stage.IsCurrent || stage.IsCompleted ? Appearance.Accent : Appearance.Outline)"
+                                 Class="@(stage.IsFailed ? "pipeline-stage-failed" : "")"
+                                 Style="@(stage.IsCurrent ? "font-weight: bold;" : "")"
+                                 title="@stage.Label">
+                        @stage.Label
+                    </FluentBadge>
+                }
+            </FluentStack>
+
+            @* Command details *@
+            <div style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                @if (!string.IsNullOrEmpty(_traceMap.CommandType))
+                {
+                    <div><strong>@_traceMap.CommandType</strong></div>
+                }
+                @if (!string.IsNullOrEmpty(_traceMap.UserId))
+                {
+                    <span>User: @_traceMap.UserId</span>
+                }
+                @if (_traceMap.DurationMs.HasValue)
+                {
+                    <span style="margin-left: 12px;">
+                        @(_traceMap.CommandStatus == "Completed" ? "Completed" : _traceMap.CommandStatus) in @(_traceMap.DurationMs.Value)ms
+                    </span>
+                }
+                else if (_traceMap.CommandStatus == "Processing")
+                {
+                    <span style="margin-left: 12px;">Status: Processing (in-flight)</span>
+                }
+                else if (_traceMap.CommandStatus == "Unknown")
+                {
+                    <span style="margin-left: 12px;">Status: Unknown (expired)</span>
+                }
+            </div>
+        </div>
+
+        @* Events section *@
+        <div style="margin-bottom: 16px;">
+            <h4 style="margin: 0 0 8px 0;">
+                @if (_traceMap.ProducedEvents.Count > 0)
+                {
+                    @($"Produced Events ({_traceMap.ProducedEvents.Count})")
+                }
+                else
+                {
+                    @("No Events Found")
+                }
+            </h4>
+
+            @if (_traceMap.ProducedEvents.Count > 0)
+            {
+                <FluentDataGrid Items="@_traceMap.ProducedEvents.AsQueryable()"
+                                TGridItem="TraceMapEvent"
+                                GridTemplateColumns="60px 2fr 120px 100px 80px"
+                                aria-label="Produced events table">
+                    <PropertyColumn Property="@(e => e.SequenceNumber)" Title="#" Class="monospace" />
+                    <TemplateColumn Title="Event Type">
+                        <FluentButton Appearance="Appearance.Lightweight"
+                                      OnClick="@(() => HandleNavigateToEvent(context.SequenceNumber))"
+                                      title="Navigate to event at sequence"
+                                      Style="font-family: var(--monospace-font); font-weight: bold;">
+                            @context.EventTypeName
+                        </FluentButton>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Timestamp">
+                        <span title="@context.Timestamp.ToString("O")">
+                            @TimeFormatHelper.FormatRelativeTime(context.Timestamp)
+                        </span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Causation ID">
+                        <span class="monospace" title="@(context.CausationId ?? "")">
+                            @TruncateId(context.CausationId)
+                        </span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Rejection">
+                        @if (context.IsRejection)
+                        {
+                            <FluentBadge Appearance="Appearance.Accent" Class="pipeline-stage-failed">Rejection</FluentBadge>
+                        }
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+            else if (_traceMap.CommandStatus != "Unknown")
+            {
+                <EmptyState Title="No events found"
+                            Description="No events found in the aggregate stream for this correlation ID." />
+            }
+        </div>
+
+        @* Projections section *@
+        @if (_traceMap.AffectedProjections.Count > 0)
+        {
+            <div style="margin-bottom: 16px;">
+                <h4 style="margin: 0 0 8px 0;">Affected Projections (@_traceMap.AffectedProjections.Count)</h4>
+                <FluentDataGrid Items="@_traceMap.AffectedProjections.AsQueryable()"
+                                TGridItem="TraceMapProjection"
+                                GridTemplateColumns="2fr 120px 120px"
+                                aria-label="Affected projections table">
+                    <PropertyColumn Property="@(p => p.ProjectionName)" Title="Projection Name" />
+                    <TemplateColumn Title="Status">
+                        <FluentBadge Appearance="Appearance.Accent"
+                                     Class="@GetProjectionStatusClass(context.Status)">
+                            @context.Status
+                        </FluentBadge>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Last Processed Seq">
+                        <span class="monospace">@(context.LastProcessedSequence?.ToString() ?? "\u2014")</span>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </div>
+        }
+
+        @* External observability link *@
+        @if (_traceMap.ExternalTraceUrl is not null)
+        {
+            <div style="margin-bottom: 16px;">
+                <FluentButton Appearance="Appearance.Outline"
+                              OnClick="@(() => OpenExternalTrace())"
+                              aria-label="View in external tracer">
+                    View in External Tracer
+                </FluentButton>
+            </div>
+        }
+
+        @* Timing summary footer *@
+        <div style="font-size: 12px; color: var(--neutral-foreground-hint); border-top: 1px solid var(--neutral-stroke-rest); padding-top: 8px;">
+            @if (_traceMap.CommandReceivedAt.HasValue)
+            {
+                <span>Command received @TimeFormatHelper.FormatRelativeTime(_traceMap.CommandReceivedAt.Value) &mdash; @_traceMap.CommandType</span>
+            }
+            @if (_traceMap.DurationMs.HasValue)
+            {
+                <span style="margin-left: 12px;">Duration: @(_traceMap.DurationMs.Value)ms</span>
+            }
+            @if (!string.IsNullOrEmpty(_traceMap.Domain) && !string.IsNullOrEmpty(_traceMap.AggregateId))
+            {
+                <div>Aggregate: @_traceMap.Domain/@_traceMap.AggregateId (@_traceMap.TotalStreamEvents total events)</div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .correlation-trace-map .pipeline-stage-failed {
+        --accent-fill-rest: var(--error, #d13438);
+        color: white;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string CorrelationId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Domain { get; set; }
+
+    [Parameter]
+    public string? AggregateId { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToEvent { get; set; }
+
+    private TraceMapModel? _traceMap;
+    private bool _loading = true;
+    private string? _error;
+    private List<PipelineStage> _pipelineStages = [];
+    private CancellationTokenSource? _cts;
+
+    private string _prevTenantId = string.Empty;
+    private string _prevCorrelationId = string.Empty;
+    private string? _prevDomain;
+    private string? _prevAggregateId;
+    private int _loadVersion;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_prevTenantId == TenantId
+            && _prevCorrelationId == CorrelationId
+            && _prevDomain == Domain
+            && _prevAggregateId == AggregateId)
+        {
+            return;
+        }
+
+        _prevTenantId = TenantId;
+        _prevCorrelationId = CorrelationId;
+        _prevDomain = Domain;
+        _prevAggregateId = AggregateId;
+        await LoadTraceMapAsync();
+    }
+
+    private async Task LoadTraceMapAsync()
+    {
+        int loadVersion = ++_loadVersion;
+        _loading = true;
+        _error = null;
+        _traceMap = null;
+        _pipelineStages = [];
+        StateHasChanged();
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        CancellationToken token = _cts.Token;
+
+        try
+        {
+            _traceMap = await ApiClient.GetCorrelationTraceMapAsync(
+                TenantId, CorrelationId, Domain, AggregateId, token).ConfigureAwait(false);
+
+            if (loadVersion != _loadVersion || token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (_traceMap is null)
+            {
+                _error = "Unable to load trace map \u2014 check server connectivity.";
+            }
+            else
+            {
+                _pipelineStages = BuildPipelineStages(_traceMap.CommandStatus);
+            }
+        }
+        catch (OperationCanceledException) when (loadVersion != _loadVersion || token.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            _error = "Trace map timed out \u2014 the aggregate stream may be very large.";
+        }
+        catch
+        {
+            _error = "Unable to load trace map \u2014 check server connectivity.";
+        }
+        finally
+        {
+            if (loadVersion != _loadVersion)
+            {
+                return;
+            }
+
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static List<PipelineStage> BuildPipelineStages(string commandStatus)
+    {
+        // Map command status to pipeline position
+        string[] normalStages = ["Received", "Processing", "EventsStored", "EventsPublished", "Completed"];
+        string[] displayLabels = ["Received", "Processing", "Events Stored", "Events Published", "Completed"];
+        string[] failedTerminals = ["Rejected", "PublishFailed", "TimedOut"];
+
+        int completedUpTo = commandStatus switch
+        {
+            "Received" => 0,
+            "Processing" => 1,
+            "EventsStored" => 2,
+            "EventsPublished" => 3,
+            "Completed" => 4,
+            "Rejected" => 1, // Failed at processing stage
+            "PublishFailed" => 3, // Failed at publish stage
+            "TimedOut" => 1, // Failed at processing stage
+            _ => -1, // Unknown
+        };
+
+        bool isFailed = failedTerminals.Contains(commandStatus);
+        List<PipelineStage> stages = [];
+
+        for (int i = 0; i < normalStages.Length; i++)
+        {
+            bool isCompleted = i < completedUpTo;
+            bool isCurrent = i == completedUpTo;
+
+            // For failed statuses, replace the terminal stage
+            if (isFailed && isCurrent)
+            {
+                string failedLabel = commandStatus switch
+                {
+                    "Rejected" => "Rejected",
+                    "PublishFailed" => "Publish Failed",
+                    "TimedOut" => "Timed Out",
+                    _ => commandStatus,
+                };
+
+                stages.Add(new PipelineStage(i + 1, failedLabel, IsCompleted: false, IsCurrent: true, IsFailed: true));
+                break;
+            }
+
+            stages.Add(new PipelineStage(i + 1, displayLabels[i], isCompleted, isCurrent && !isFailed, IsFailed: false));
+
+            if (isCurrent && !isFailed)
+            {
+                // Add remaining future stages
+                for (int j = i + 1; j < normalStages.Length; j++)
+                {
+                    stages.Add(new PipelineStage(j + 1, displayLabels[j], IsCompleted: false, IsCurrent: false, IsFailed: false));
+                }
+
+                break;
+            }
+        }
+
+        // If unknown status, show all stages as muted
+        if (completedUpTo < 0)
+        {
+            stages.Clear();
+            for (int i = 0; i < displayLabels.Length; i++)
+            {
+                stages.Add(new PipelineStage(i + 1, displayLabels[i], IsCompleted: false, IsCurrent: false, IsFailed: false));
+            }
+        }
+
+        return stages;
+    }
+
+    private async Task CopyCorrelationIdAsync()
+    {
+        await JSRuntime.InvokeAsync<bool>("hexalithAdmin.copyToClipboard", CorrelationId);
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleNavigateToEvent(long sequenceNumber)
+    {
+        await OnNavigateToEvent.InvokeAsync(sequenceNumber);
+    }
+
+    private async Task OpenExternalTrace()
+    {
+        if (_traceMap?.ExternalTraceUrl is not null)
+        {
+            await JSRuntime.InvokeVoidAsync("open", _traceMap.ExternalTraceUrl, "_blank");
+        }
+    }
+
+    private static string TruncateId(string? id)
+        => string.IsNullOrEmpty(id) ? "\u2014" : id.Length > 8 ? id[..8] + "\u2026" : id;
+
+    private static string GetProjectionStatusClass(string status)
+        => status.ToLowerInvariant() switch
+        {
+            "processed" => "",
+            "pending" => "",
+            "faulted" => "pipeline-stage-failed",
+            _ => "",
+        };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_cts is not null)
+        {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
+
+    private record PipelineStage(int Position, string Label, bool IsCompleted, bool IsCurrent, bool IsFailed);
+}

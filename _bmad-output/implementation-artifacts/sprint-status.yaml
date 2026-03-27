@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-27 # story 20-4 done
+last_updated: 2026-03-27 # story 20-5 done
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -222,10 +222,10 @@ development_status:
   epic-19-retrospective: optional
 
   # Epic 20: Admin — Advanced Debugging
-  epic-20: in-progress
+  epic-20: done
   20-1-blame-view-per-field-provenance: done
   20-2-bisect-tool-binary-search-state-divergence: done
   20-3-step-through-event-debugger: done
   20-4-command-sandbox-test-harness: done
-  20-5-correlation-id-trace-map: ready-for-dev
+  20-5-correlation-id-trace-map: done
   epic-20-retrospective: optional

@@ -99,6 +99,14 @@ else
                       Title="Test a command as dry run">
             Sandbox
         </FluentButton>
+        <FluentButton Appearance="Appearance.Outline"
+                      OnClick="@OpenTraceMap"
+                      Icon="@(new Icons.Regular.Size20.BranchFork())"
+                      Disabled="@(!_selectedSequence.HasValue)"
+                      aria-label="Open trace map"
+                      Title="@(_selectedSequence.HasValue ? "Trace correlation ID for selected event" : "Select an event to trace its correlation ID")">
+            Trace Map
+        </FluentButton>
     </FluentStack>
 
     <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
@@ -116,6 +124,18 @@ else
                             InitialSequence="@_sandboxSequence"
                             OnClose="CloseSandbox"
                             OnNavigateToEvent="OnSandboxNavigateToEvent" />
+        </div>
+    }
+    else if (_traceMode && !string.IsNullOrEmpty(_traceCorrelationId))
+    {
+        @* Correlation trace map replaces the detail panel *@
+        <div style="margin-top: 16px;">
+            <CorrelationTraceMap TenantId="@TenantId"
+                                CorrelationId="@_traceCorrelationId"
+                                Domain="@Domain"
+                                AggregateId="@AggregateId"
+                                OnClose="CloseTraceMap"
+                                OnNavigateToEvent="OnTraceNavigateToEvent" />
         </div>
     }
     else if (_stepMode)
@@ -257,6 +277,10 @@ else
     private bool _sandboxMode;
     private long? _sandboxSequence;
 
+    // Trace map state
+    private bool _traceMode;
+    private string? _traceCorrelationId;
+
     // Inspector modal state
     private bool _showInspectorModal;
     private long? _inspectorSequence;
@@ -306,6 +330,9 @@ else
     [SupplyParameterFromQuery(Name = "sandbox")]
     public string? QuerySandbox { get; set; }
 
+    [SupplyParameterFromQuery(Name = "trace")]
+    public string? QueryTrace { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -318,11 +345,16 @@ else
             _selectedEntryType = t;
         }
 
-        // Parse deep links with precedence: sandbox > step > bisect > blame > diff
+        // Parse deep links with precedence: sandbox > trace > step > bisect > blame > diff
         if (!string.IsNullOrEmpty(QuerySandbox))
         {
             _sandboxMode = true;
             _sandboxSequence = long.TryParse(QuerySandbox, out long sandboxSeq) ? sandboxSeq : null;
+        }
+        else if (!string.IsNullOrEmpty(QueryTrace))
+        {
+            _traceMode = true;
+            _traceCorrelationId = QueryTrace;
         }
         else if (QueryStep.HasValue && QueryStep.Value >= 1)
         {
@@ -378,14 +410,14 @@ else
         {
             <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
                               SequenceNumber="@_selectedEntry.SequenceNumber"
-                              OnCopyCorrelation="@OnCorrelationFilterFromDetail"
+                              OnCopyCorrelation="@OpenTraceMapForCorrelation"
                               OnInspectState="@OnInspectStateFromDetail"
                               OnDiffRequested="@OnDiffFromDetail"
                               AutoTraceCausation="@(QueryView == "causation")" />
         }
         else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
         {
-            <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OnCorrelationFilterFromDetail" />
+            <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OpenTraceMapForCorrelation" />
         }
     };
 
@@ -707,6 +739,52 @@ else
         UpdateUrl();
     }
 
+    private void OpenTraceMap()
+    {
+        if (_selectedEntry is null)
+        {
+            return;
+        }
+
+        _traceMode = true;
+        _traceCorrelationId = _selectedEntry.CorrelationId;
+        _sandboxMode = false;
+        _stepMode = false;
+        _bisectMode = false;
+        _blameMode = false;
+        _diffMode = false;
+        UpdateUrl();
+    }
+
+    private void OpenTraceMapForCorrelation(string correlationId)
+    {
+        _traceMode = true;
+        _traceCorrelationId = correlationId;
+        _sandboxMode = false;
+        _stepMode = false;
+        _bisectMode = false;
+        _blameMode = false;
+        _diffMode = false;
+        UpdateUrl();
+    }
+
+    private void CloseTraceMap()
+    {
+        _traceMode = false;
+        _traceCorrelationId = null;
+        UpdateUrl();
+    }
+
+    private void OnTraceNavigateToEvent(long sequenceNumber)
+    {
+        _traceMode = false;
+        _traceCorrelationId = null;
+        _selectedSequence = sequenceNumber;
+        _selectedEntry = _timelineEntries
+            .FirstOrDefault(e => e.SequenceNumber == sequenceNumber);
+        UpdateUrl();
+    }
+
     private void OnCompareModeChanged()
     {
         if (!_compareMode)
@@ -765,6 +843,10 @@ else
             if (_sandboxMode)
             {
                 CloseSandbox();
+            }
+            else if (_traceMode)
+            {
+                CloseTraceMap();
             }
             else if (_stepMode)
             {
@@ -827,6 +909,10 @@ else
             {
                 queryParams.Add("sandbox=true");
             }
+        }
+        else if (_traceMode && !string.IsNullOrEmpty(_traceCorrelationId))
+        {
+            queryParams.Add($"trace={Uri.EscapeDataString(_traceCorrelationId)}");
         }
         else if (_stepMode && _stepSequence.HasValue)
         {

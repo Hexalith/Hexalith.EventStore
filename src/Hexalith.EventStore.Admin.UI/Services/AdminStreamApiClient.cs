@@ -584,6 +584,63 @@ public class AdminStreamApiClient(
     }
 
     /// <summary>
+    /// Gets the correlation trace map for a given correlation ID.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="correlationId">The correlation ID to trace.</param>
+    /// <param name="domain">Optional domain hint for events-first scanning.</param>
+    /// <param name="aggregateId">Optional aggregate ID hint for events-first scanning.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The correlation trace map, or null if not available.</returns>
+    public virtual async Task<CorrelationTraceMap?> GetCorrelationTraceMapAsync(
+        string tenantId,
+        string correlationId,
+        string? domain,
+        string? aggregateId,
+        CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/traces/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(correlationId)}";
+        var queryParams = new List<string>();
+        if (!string.IsNullOrEmpty(domain))
+        {
+            queryParams.Add($"domain={Uri.EscapeDataString(domain)}");
+        }
+
+        if (!string.IsNullOrEmpty(aggregateId))
+        {
+            queryParams.Add($"aggregateId={Uri.EscapeDataString(aggregateId)}");
+        }
+
+        if (queryParams.Count > 0)
+        {
+            url += "?" + string.Join("&", queryParams);
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<CorrelationTraceMap>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to fetch correlation trace map from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the registered aggregate types, optionally filtered by domain.
     /// </summary>
     /// <param name="domain">Optional domain filter.</param>
