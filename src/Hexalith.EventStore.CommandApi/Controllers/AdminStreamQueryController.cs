@@ -363,6 +363,148 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
+    /// Computes a single step-through debugging frame for an aggregate's event history.
+    /// Returns event metadata, aggregate state at the specified sequence, and field changes from the previous sequence.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/step")]
+    [ProducesResponseType(typeof(EventStepFrame), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEventStepFrame(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long at,
+        CancellationToken ct = default)
+    {
+        if (at < 1)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'at' must be >= 1.");
+        }
+
+        try
+        {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+
+            if (allEvents.Length == 0)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Stream not found or has no events.");
+            }
+
+            long totalEvents = allEvents[^1].SequenceNumber;
+            if (at > totalEvents)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: $"Sequence {at} is beyond the stream's {totalEvents} events.");
+            }
+
+            ct.ThrowIfCancellationRequested();
+
+            // Find the event at the requested sequence
+            ServerEventEnvelope? targetEvent = allEvents.FirstOrDefault(e => e.SequenceNumber == at);
+            if (targetEvent is null)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"Event at sequence {at} not found.");
+            }
+
+            // Single-pass optimization: reconstruct state at N and capture state at N-1 during the same replay
+            JsonObject stateAtPrev = new();
+            JsonObject stateAtCurrent = new();
+            foreach (ServerEventEnvelope evt in allEvents)
+            {
+                if (evt.SequenceNumber > at)
+                {
+                    break;
+                }
+
+                if (evt.SequenceNumber == at)
+                {
+                    // Capture state at N-1 before applying the last event
+                    stateAtPrev = (JsonObject?)JsonNode.Parse(stateAtCurrent.ToJsonString()) ?? new JsonObject();
+                }
+
+                try
+                {
+                    JsonNode? eventPayload = JsonNode.Parse(evt.Payload);
+                    if (eventPayload is JsonObject payloadObj)
+                    {
+                        DeepMerge(stateAtCurrent, payloadObj);
+                    }
+                }
+                catch (JsonException)
+                {
+                    continue;
+                }
+            }
+
+            string stateJson = stateAtCurrent.ToJsonString();
+
+            // Compute field changes between previous state and current state
+            Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(stateAtPrev, stateAtCurrent, string.Empty);
+            List<FieldChange> fieldChanges = changes
+                .Select(c => new FieldChange(c.Key, c.Value.OldValue, c.Value.NewValue))
+                .OrderBy(fc => fc.FieldPath, StringComparer.Ordinal)
+                .ToList();
+
+            // Get event payload as JSON string
+            string eventPayloadJson;
+            try
+            {
+                eventPayloadJson = System.Text.Encoding.UTF8.GetString(targetEvent.Payload);
+            }
+            catch
+            {
+                eventPayloadJson = "{}";
+            }
+
+            EventStepFrame frame = new(
+                TenantId: tenantId,
+                Domain: domain,
+                AggregateId: aggregateId,
+                SequenceNumber: at,
+                EventTypeName: targetEvent.EventTypeName ?? string.Empty,
+                Timestamp: targetEvent.Timestamp,
+                CorrelationId: targetEvent.CorrelationId ?? string.Empty,
+                CausationId: targetEvent.CausationId ?? string.Empty,
+                UserId: targetEvent.UserId ?? string.Empty,
+                EventPayloadJson: eventPayloadJson,
+                StateJson: stateJson,
+                FieldChanges: fieldChanges,
+                TotalEvents: totalEvents);
+
+            return Ok(frame);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to compute step frame for {TenantId}/{Domain}/{AggregateId} at {At}.",
+                tenantId, domain, aggregateId, at);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to compute event step frame.");
+        }
+    }
+
+    /// <summary>
     /// Implements the incremental O(N) blame algorithm.
     /// Maintains a running JSON state and diffs after each event to track which event
     /// last changed each field.

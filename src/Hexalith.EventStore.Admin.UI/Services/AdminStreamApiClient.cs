@@ -381,6 +381,53 @@ public class AdminStreamApiClient(
     }
 
     /// <summary>
+    /// Gets a single step-through debugging frame combining event metadata, aggregate state,
+    /// and field changes at the specified sequence position.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="sequenceNumber">The sequence number (1-based) to retrieve.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The event step frame, or null if not available.</returns>
+    public virtual async Task<EventStepFrame?> GetEventStepFrameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/step?at={sequenceNumber}";
+
+        try
+        {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<EventStepFrame>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to fetch event step frame from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the aggregate state at the nearest event at or before a given timestamp.
     /// Uses client-side resolution: fetches timeline pages to find the nearest entry,
     /// then calls GetAggregateStateAtPositionAsync. Caps at 3 timeline API calls.

@@ -91,6 +91,18 @@ public interface IStreamQueryService
     Task<BisectResult> BisectAsync(string tenantId, string domain, string aggregateId, long goodSequence, long badSequence, IReadOnlyList<string>? fieldPaths, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets a single step-through debugging frame combining event metadata, aggregate state,
+    /// and field changes at the specified sequence position.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="domain">The domain name.</param>
+    /// <param name="aggregateId">The aggregate identifier.</param>
+    /// <param name="sequenceNumber">The sequence number (1-based) to retrieve.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The event step frame at the specified position.</returns>
+    Task<EventStepFrame> GetEventStepFrameAsync(string tenantId, string domain, string aggregateId, long sequenceNumber, CancellationToken ct = default);
+
+    /// <summary>
     /// Traces the causation chain starting from a specific event (FR72).
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
