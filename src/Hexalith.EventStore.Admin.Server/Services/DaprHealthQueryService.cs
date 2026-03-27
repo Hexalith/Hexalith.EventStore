@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
@@ -173,6 +174,64 @@ public sealed class DaprHealthQueryService : IHealthQueryService
         {
             _logger.LogWarning(ex, "Failed to get DAPR component status.");
             return [];
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<DaprComponentHealthTimeline> GetComponentHealthHistoryAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        string? componentName,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            // Calculate which day keys to query
+            List<string> dayKeys = [];
+            for (DateTimeOffset date = from.UtcDateTime.Date; date.Date <= to.UtcDateTime.Date; date = date.AddDays(1))
+            {
+                dayKeys.Add($"admin:health-history:{date:yyyyMMdd}");
+            }
+
+            // Read all day partitions in parallel
+            Task<DaprComponentHealthTimeline>[] tasks = dayKeys
+                .Select(key => _daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+                    _options.StateStoreName, key, cancellationToken: ct))
+                .ToArray();
+
+            DaprComponentHealthTimeline[] results = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+            // Merge and filter
+            List<DaprHealthHistoryEntry> allEntries = results
+                .Where(t => t?.Entries is not null)
+                .SelectMany(t => t!.Entries)
+                .Where(e => e.CapturedAtUtc >= from && e.CapturedAtUtc <= to)
+                .Where(e => componentName is null
+                    || e.ComponentName.Equals(componentName, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(e => e.CapturedAtUtc)
+                .ToList();
+
+            // Apply entry cap to prevent excessive memory/payload on large queries
+            bool isTruncated = allEntries.Count > _options.MaxHealthHistoryEntriesPerQuery;
+            if (isTruncated)
+            {
+                allEntries = allEntries
+                    .OrderByDescending(e => e.CapturedAtUtc)
+                    .Take(_options.MaxHealthHistoryEntriesPerQuery)
+                    .OrderBy(e => e.CapturedAtUtc)
+                    .ToList();
+            }
+
+            return new DaprComponentHealthTimeline(allEntries.AsReadOnly(), HasData: allEntries.Count > 0, IsTruncated: isTruncated);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get DAPR component health history.");
+            return DaprComponentHealthTimeline.Empty;
         }
     }
 }

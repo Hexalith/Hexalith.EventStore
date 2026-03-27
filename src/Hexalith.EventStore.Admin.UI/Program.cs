@@ -45,6 +45,7 @@ builder.Services.AddScoped<AdminDaprApiClient>();
 builder.Services.AddScoped<AdminActorApiClient>();
 builder.Services.AddScoped<AdminPubSubApiClient>();
 builder.Services.AddScoped<AdminResiliencyApiClient>();
+builder.Services.AddScoped<AdminHealthHistoryApiClient>();
 
 // Dashboard polling refresh service
 builder.Services.AddScoped<DashboardRefreshService>();

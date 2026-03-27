@@ -1,0 +1,718 @@
+@page "/dapr/health-history"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.Abstractions.Models.Health
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IDisposable
+
+@inject AdminHealthHistoryApiClient HistoryClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>DAPR Health History - Hexalith EventStore</PageTitle>
+
+@* Header with back-link *@
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+        &larr; DAPR Infrastructure
+    </FluentAnchor>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">DAPR Health History</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="RefreshAsync"
+                  Disabled="@_isLoading"
+                  aria-label="Refresh health history">
+        @(_isLoading ? "Loading..." : "Refresh")
+    </FluentButton>
+</div>
+
+@* Error state: API unavailable *@
+<IssueBanner Visible="@(_errorMessage is not null && !_isLoading)"
+             Title="Unable to retrieve health history"
+             Description="@(_errorMessage ?? "State store unavailable.")"
+             ActionLabel="Retry"
+             OnAction="RefreshAsync" />
+
+@* Truncation warning *@
+@if (_timeline?.IsTruncated == true)
+{
+    <IssueBanner Visible="true"
+                 Title="Results truncated"
+                 Description="Results truncated — narrow the time range or filter by component for complete data." />
+}
+
+@* Time range picker (AC7) *@
+<div style="display: flex; gap: 8px; margin-bottom: 16px;" role="group" aria-label="Time range selection">
+    @foreach (var range in _timeRanges)
+    {
+        <FluentButton Appearance="@(_selectedRange == range.Key ? Appearance.Accent : Appearance.Outline)"
+                      Size="ButtonSize.Small"
+                      OnClick="@(() => SelectRangeAsync(range.Key))"
+                      aria-label="@($"Show {range.Value} of health history")">
+            @range.Value
+        </FluentButton>
+    }
+</div>
+
+@* Summary stat cards (AC8) *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+    }
+    else
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Total Components"
+                      Value="@(_timeline?.HasData == true ? _componentNames.Count.ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of monitored DAPR components" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Currently Healthy"
+                      Value="@(_timeline?.HasData == true ? GetCurrentlyHealthyCount().ToString() : "N/A")"
+                      Severity="@(_timeline?.HasData == true ? "success" : "neutral")"
+                      Title="Components currently reporting healthy status" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Status Changes"
+                      Value="@(_timeline?.HasData == true ? _transitions.Count.ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of status transitions in selected time range" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Uptime %"
+                      Value="@(_timeline?.HasData == true ? $"{GetAverageUptime():F1}%" : "N/A")"
+                      Severity="@GetUptimeSeverity()"
+                      Title="Average uptime across all components" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Empty states *@
+@if (!_isLoading && _timeline is null && _errorMessage is null)
+{
+    <EmptyState Title="Health history collection is disabled"
+                Description="Set 'AdminServer:HealthHistoryEnabled' to 'true' in appsettings to enable background health snapshot collection." />
+}
+@if (!_isLoading && _timeline is not null && !_timeline.HasData)
+{
+    <EmptyState Title="No health history available yet"
+                Description="Health snapshots are collected every 60 seconds. Data will appear after the first collection cycle." />
+}
+
+@* Heatmap (AC4) *@
+@if (!_isLoading && _timeline?.HasData == true)
+{
+    <h2 style="margin: 0 0 12px;">Timeline Heatmap</h2>
+    <div class="health-heatmap"
+         role="grid"
+         aria-label="DAPR component health history heatmap"
+         style="display: grid; grid-template-columns: 180px repeat(@_timeSlots.Count, 1fr); gap: 1px; background: var(--neutral-stroke-rest); border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; overflow: hidden; margin-bottom: 24px;">
+
+        @* Header row: time labels *@
+        <div style="background: var(--neutral-layer-2); padding: 4px 8px;"></div>
+        @foreach (var slot in _timeSlots)
+        {
+            <div role="columnheader" style="background: var(--neutral-layer-2); font-size: 10px; text-align: center; padding: 4px 0;">
+                @slot.Label
+            </div>
+        }
+
+        @* Component rows *@
+        @foreach (var component in _componentNames)
+        {
+            <div role="row" style="background: var(--neutral-layer-2); padding: 4px 8px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                 @onclick="() => SelectComponent(component)"
+                 title="@component">
+                @component
+            </div>
+            @foreach (var slot in _timeSlots)
+            {
+                var cellStatus = GetWorstStatus(component, slot);
+                var cellColor = StatusToColor(cellStatus);
+                <div role="gridcell"
+                     style="background: @cellColor; min-height: 24px; cursor: pointer;"
+                     title="@component | @slot.Label\u2013@slot.End.ToString(slot.Start.Date == slot.End.Date ? "HH:mm" : "MMM dd HH:mm") | @GetStatusSummary(component, slot)"
+                     @onclick="() => FilterByCell(component, slot)">
+                </div>
+            }
+        }
+    </div>
+
+    @* Component drill-down panel (AC6) *@
+    @if (_selectedComponent is not null)
+    {
+        <FluentCard style="padding: 16px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h3 style="margin: 0;">@_selectedComponent</h3>
+                    <StatusBadge DisplayConfig="@StatusBadge.StatusDisplayConfig.FromHealthStatus(GetCurrentStatus(_selectedComponent))"
+                                 AriaLabelPrefix="Component status" />
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  OnClick="@(() => NavigationManager.NavigateTo($"/dapr?type={GetComponentCategory(_selectedComponent)}"))"
+                                  aria-label="View component details">
+                        View Component
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  OnClick="ClearComponentSelection"
+                                  aria-label="Close component detail">
+                        Close
+                    </FluentButton>
+                </div>
+            </div>
+            <FluentGrid Spacing="3">
+                <FluentGridItem xs="12" sm="4">
+                    <StatCard Label="Uptime"
+                              Value="@($"{GetComponentUptime(_selectedComponent):F1}%")"
+                              Severity="@GetComponentUptimeSeverity(_selectedComponent)"
+                              Title="Uptime for selected time range" />
+                </FluentGridItem>
+                <FluentGridItem xs="12" sm="8">
+                    <div style="padding: 16px;">
+                        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Status Distribution</div>
+                        @{
+                            var dist = GetStatusDistribution(_selectedComponent);
+                        }
+                        <div style="height: 24px; border-radius: 4px; overflow: hidden; display: flex;" title="@($"Healthy: {dist.Healthy:F0}% | Degraded: {dist.Degraded:F0}% | Unhealthy: {dist.Unhealthy:F0}%")">
+                            @if (dist.Healthy > 0)
+                            {
+                                <div style="width: @($"{dist.Healthy}%"); background: var(--hexalith-status-success);"></div>
+                            }
+                            @if (dist.Degraded > 0)
+                            {
+                                <div style="width: @($"{dist.Degraded}%"); background: var(--hexalith-status-warning);"></div>
+                            }
+                            @if (dist.Unhealthy > 0)
+                            {
+                                <div style="width: @($"{dist.Unhealthy}%"); background: var(--hexalith-status-error);"></div>
+                            }
+                        </div>
+                    </div>
+                </FluentGridItem>
+            </FluentGrid>
+        </FluentCard>
+    }
+
+    @* Transition log (AC5) *@
+    <h2 style="margin: 0 0 12px;">Status Transitions</h2>
+
+    @if (_cellFilter is not null)
+    {
+        <div style="margin-bottom: 12px;">
+            <FluentBadge Appearance="Appearance.Accent">
+                Filtered: @_cellFilter.Value.Component @_cellFilter.Value.Slot.Label
+            </FluentBadge>
+            <FluentButton Appearance="Appearance.Lightweight" Size="ButtonSize.Small"
+                          OnClick="ClearCellFilter"
+                          aria-label="Clear filter"
+                          style="margin-left: 8px;">
+                Clear
+            </FluentButton>
+        </div>
+    }
+
+    <div style="margin-bottom: 12px;">
+        <FluentSearch @bind-Value="_transitionSearch"
+                      @bind-Value:after="OnTransitionSearchChanged"
+                      Placeholder="Filter by component name..."
+                      aria-label="Filter transitions by component name" />
+    </div>
+
+    @if (_filteredTransitions.Count == 0)
+    {
+        <div style="color: var(--neutral-foreground-hint); font-style: italic; margin-bottom: 24px;">
+            No status transitions in the selected time range.
+        </div>
+    }
+    else
+    {
+        <FluentDataGrid Items="@_filteredTransitions.AsQueryable()" TGridItem="StatusTransition"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="DAPR component health status transitions">
+            <PropertyColumn Property="@(t => FormatTimestamp(t.Timestamp))" Title="Timestamp" Sortable="true"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending" />
+            <TemplateColumn Title="Component" Sortable="true"
+                            SortBy="@(GridSort<StatusTransition>.ByAscending(t => t.ComponentName))">
+                <span style="cursor: pointer; text-decoration: underline;" @onclick="() => SelectComponent(context.ComponentName)">
+                    @context.ComponentName
+                </span>
+            </TemplateColumn>
+            <TemplateColumn Title="Previous Status">
+                <StatusBadge DisplayConfig="@StatusBadge.StatusDisplayConfig.FromHealthStatus(context.PreviousStatus)"
+                             AriaLabelPrefix="Previous status" />
+            </TemplateColumn>
+            <TemplateColumn Title="New Status">
+                <StatusBadge DisplayConfig="@StatusBadge.StatusDisplayConfig.FromHealthStatus(context.NewStatus)"
+                             AriaLabelPrefix="New status" />
+            </TemplateColumn>
+            <PropertyColumn Property="@(t => FormatDuration(t.DurationInPreviousStatus))" Title="Duration" />
+        </FluentDataGrid>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Component { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Range { get; set; }
+
+    private static readonly Dictionary<string, string> _timeRanges = new()
+    {
+        ["1h"] = "1 Hour",
+        ["6h"] = "6 Hours",
+        ["24h"] = "24 Hours",
+        ["3d"] = "3 Days",
+        ["7d"] = "7 Days",
+    };
+
+    private string _selectedRange = "24h";
+    private DaprComponentHealthTimeline? _timeline;
+    private string? _selectedComponent;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _transitionSearch;
+    private (string Component, TimeSlot Slot)? _cellFilter;
+
+    private List<string> _componentNames = [];
+    private List<TimeSlot> _timeSlots = [];
+    private List<StatusTransition> _transitions = [];
+    private List<StatusTransition> _filteredTransitions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Range) && _timeRanges.ContainsKey(Range))
+        {
+            _selectedRange = Range;
+        }
+
+        if (!string.IsNullOrEmpty(Component))
+        {
+            _selectedComponent = Component;
+        }
+
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            (DateTimeOffset from, DateTimeOffset to) = GetTimeRange(_selectedRange);
+            _timeline = await HistoryClient.GetHealthHistoryAsync(from, to, component: _selectedComponent, ct: default);
+
+            if (_timeline?.HasData == true)
+            {
+                _componentNames = _timeline.Entries
+                    .Select(e => e.ComponentName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                _timeSlots = ComputeTimeSlots(from, to, _selectedRange);
+                _transitions = ComputeTransitions(_timeline);
+                UpdateFilteredTransitions();
+            }
+            else
+            {
+                _componentNames = [];
+                _timeSlots = [];
+                _transitions = [];
+                _filteredTransitions = [];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _timeline = null;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectRangeAsync(string range)
+    {
+        _selectedRange = range;
+        _cellFilter = null;
+        await LoadDataAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private void SelectComponent(string component)
+    {
+        _selectedComponent = component;
+        StateHasChanged();
+    }
+
+    private void ClearComponentSelection()
+    {
+        _selectedComponent = null;
+        StateHasChanged();
+    }
+
+    private void FilterByCell(string component, TimeSlot slot)
+    {
+        _cellFilter = (component, slot);
+        _selectedComponent = component;
+        UpdateFilteredTransitions();
+        StateHasChanged();
+    }
+
+    private void ClearCellFilter()
+    {
+        _cellFilter = null;
+        UpdateFilteredTransitions();
+        StateHasChanged();
+    }
+
+    private void OnTransitionSearchChanged()
+    {
+        UpdateFilteredTransitions();
+        StateHasChanged();
+    }
+
+    private void UpdateFilteredTransitions()
+    {
+        IEnumerable<StatusTransition> filtered = _transitions;
+
+        if (_cellFilter is not null)
+        {
+            string comp = _cellFilter.Value.Component;
+            DateTimeOffset start = _cellFilter.Value.Slot.Start;
+            DateTimeOffset end = _cellFilter.Value.Slot.End;
+            filtered = filtered.Where(t =>
+                t.ComponentName.Equals(comp, StringComparison.OrdinalIgnoreCase)
+                && t.Timestamp >= start && t.Timestamp < end);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_transitionSearch))
+        {
+            filtered = filtered.Where(t =>
+                t.ComponentName.Contains(_transitionSearch, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredTransitions = filtered.ToList();
+    }
+
+    private static (DateTimeOffset From, DateTimeOffset To) GetTimeRange(string range)
+    {
+        DateTimeOffset to = DateTimeOffset.UtcNow;
+        DateTimeOffset from = range switch
+        {
+            "1h" => to.AddHours(-1),
+            "6h" => to.AddHours(-6),
+            "24h" => to.AddHours(-24),
+            "3d" => to.AddDays(-3),
+            "7d" => to.AddDays(-7),
+            _ => to.AddHours(-24),
+        };
+        return (from, to);
+    }
+
+    private static List<TimeSlot> ComputeTimeSlots(DateTimeOffset from, DateTimeOffset to, string range)
+    {
+        TimeSpan granularity = range switch
+        {
+            "1h" => TimeSpan.FromMinutes(5),
+            "6h" => TimeSpan.FromMinutes(15),
+            "24h" => TimeSpan.FromHours(1),
+            "3d" => TimeSpan.FromHours(3),
+            "7d" => TimeSpan.FromHours(6),
+            _ => TimeSpan.FromHours(1),
+        };
+
+        List<TimeSlot> slots = [];
+        DateTimeOffset current = from;
+        while (current < to)
+        {
+            DateTimeOffset end = current + granularity;
+            if (end > to)
+            {
+                end = to;
+            }
+
+            string label = range switch
+            {
+                "1h" or "6h" or "24h" => current.ToString("HH:mm"),
+                _ => current.ToString("MMM dd HH:mm"),
+            };
+            slots.Add(new TimeSlot(current, end, label));
+            current = end;
+        }
+
+        return slots;
+    }
+
+    private HealthStatus? GetWorstStatus(string component, TimeSlot slot)
+    {
+        if (_timeline?.Entries is null)
+        {
+            return null;
+        }
+
+        var entries = _timeline.Entries
+            .Where(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase)
+                && e.CapturedAtUtc >= slot.Start && e.CapturedAtUtc < slot.End)
+            .ToList();
+
+        if (entries.Count == 0)
+        {
+            return null;
+        }
+
+        if (entries.Any(e => e.Status == HealthStatus.Unhealthy))
+        {
+            return HealthStatus.Unhealthy;
+        }
+
+        if (entries.Any(e => e.Status == HealthStatus.Degraded))
+        {
+            return HealthStatus.Degraded;
+        }
+
+        return HealthStatus.Healthy;
+    }
+
+    private string GetStatusSummary(string component, TimeSlot slot)
+    {
+        if (_timeline?.Entries is null)
+        {
+            return "No data";
+        }
+
+        var entries = _timeline.Entries
+            .Where(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase)
+                && e.CapturedAtUtc >= slot.Start && e.CapturedAtUtc < slot.End)
+            .ToList();
+
+        if (entries.Count == 0)
+        {
+            return "No data";
+        }
+
+        int healthy = entries.Count(e => e.Status == HealthStatus.Healthy);
+        int degraded = entries.Count(e => e.Status == HealthStatus.Degraded);
+        int unhealthy = entries.Count(e => e.Status == HealthStatus.Unhealthy);
+        return $"Healthy: {healthy}, Degraded: {degraded}, Unhealthy: {unhealthy}";
+    }
+
+    private static string StatusToColor(HealthStatus? status) => status switch
+    {
+        HealthStatus.Healthy => "var(--hexalith-status-success)",
+        HealthStatus.Degraded => "var(--hexalith-status-warning)",
+        HealthStatus.Unhealthy => "var(--hexalith-status-error)",
+        _ => "var(--hexalith-status-neutral)",
+    };
+
+    private static List<StatusTransition> ComputeTransitions(DaprComponentHealthTimeline timeline)
+    {
+        List<StatusTransition> transitions = [];
+        Dictionary<string, (HealthStatus Status, DateTimeOffset Time)> lastStatusByComponent = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (DaprHealthHistoryEntry entry in timeline.Entries.OrderBy(e => e.CapturedAtUtc))
+        {
+            if (lastStatusByComponent.TryGetValue(entry.ComponentName, out var last))
+            {
+                if (last.Status != entry.Status)
+                {
+                    transitions.Add(new StatusTransition(
+                        entry.CapturedAtUtc,
+                        entry.ComponentName,
+                        PreviousStatus: last.Status,
+                        NewStatus: entry.Status,
+                        DurationInPreviousStatus: entry.CapturedAtUtc - last.Time));
+
+                    lastStatusByComponent[entry.ComponentName] = (entry.Status, entry.CapturedAtUtc);
+                }
+            }
+            else
+            {
+                lastStatusByComponent[entry.ComponentName] = (entry.Status, entry.CapturedAtUtc);
+            }
+        }
+
+        return transitions.OrderByDescending(t => t.Timestamp).ToList();
+    }
+
+    private int GetCurrentlyHealthyCount()
+    {
+        if (_timeline?.Entries is null || _timeline.Entries.Count == 0)
+        {
+            return 0;
+        }
+
+        return _componentNames.Count(c =>
+        {
+            DaprHealthHistoryEntry? latest = _timeline.Entries
+                .Where(e => e.ComponentName.Equals(c, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(e => e.CapturedAtUtc)
+                .FirstOrDefault();
+            return latest?.Status == HealthStatus.Healthy;
+        });
+    }
+
+    private HealthStatus GetCurrentStatus(string component)
+    {
+        DaprHealthHistoryEntry? latest = _timeline?.Entries?
+            .Where(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(e => e.CapturedAtUtc)
+            .FirstOrDefault();
+        return latest?.Status ?? HealthStatus.Unhealthy;
+    }
+
+    private string GetComponentCategory(string component)
+    {
+        DaprHealthHistoryEntry? entry = _timeline?.Entries?
+            .FirstOrDefault(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase));
+        if (entry?.ComponentType is not null)
+        {
+            string prefix = entry.ComponentType.Split('.').FirstOrDefault() ?? "";
+            return prefix switch
+            {
+                "state" => "StateStore",
+                "pubsub" => "PubSub",
+                "bindings" => "Binding",
+                "secretstores" => "SecretStore",
+                "configuration" => "Configuration",
+                _ => prefix,
+            };
+        }
+
+        return "";
+    }
+
+    private double GetAverageUptime()
+    {
+        if (_componentNames.Count == 0)
+        {
+            return 0;
+        }
+
+        return _componentNames.Average(GetComponentUptime);
+    }
+
+    private double GetComponentUptime(string component)
+    {
+        if (_timeline?.Entries is null)
+        {
+            return 0;
+        }
+
+        var entries = _timeline.Entries
+            .Where(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (entries.Count == 0)
+        {
+            return 0;
+        }
+
+        int healthy = entries.Count(e => e.Status == HealthStatus.Healthy);
+        return (double)healthy / entries.Count * 100;
+    }
+
+    private string GetUptimeSeverity()
+    {
+        if (_timeline?.HasData != true)
+        {
+            return "neutral";
+        }
+
+        double uptime = GetAverageUptime();
+        return uptime switch
+        {
+            >= 99.9 => "success",
+            >= 99.0 => "warning",
+            _ => "error",
+        };
+    }
+
+    private string GetComponentUptimeSeverity(string component)
+    {
+        double uptime = GetComponentUptime(component);
+        return uptime switch
+        {
+            >= 99.9 => "success",
+            >= 99.0 => "warning",
+            _ => "error",
+        };
+    }
+
+    private (double Healthy, double Degraded, double Unhealthy) GetStatusDistribution(string component)
+    {
+        if (_timeline?.Entries is null)
+        {
+            return (0, 0, 0);
+        }
+
+        var entries = _timeline.Entries
+            .Where(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (entries.Count == 0)
+        {
+            return (0, 0, 0);
+        }
+
+        double total = entries.Count;
+        double healthy = entries.Count(e => e.Status == HealthStatus.Healthy) / total * 100;
+        double degraded = entries.Count(e => e.Status == HealthStatus.Degraded) / total * 100;
+        double unhealthy = entries.Count(e => e.Status == HealthStatus.Unhealthy) / total * 100;
+        return (healthy, degraded, unhealthy);
+    }
+
+    private static string FormatTimestamp(DateTimeOffset timestamp)
+    {
+        return timestamp.Date == DateTimeOffset.UtcNow.Date
+            ? timestamp.ToString("HH:mm:ss")
+            : timestamp.ToString("MMM dd HH:mm");
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalMinutes < 1)
+        {
+            return $"{duration.Seconds}s";
+        }
+
+        if (duration.TotalHours < 1)
+        {
+            return $"{(int)duration.TotalMinutes}m";
+        }
+
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+    }
+
+    public void Dispose()
+    {
+        // No resources to dispose — no timer
+    }
+
+    private record TimeSlot(DateTimeOffset Start, DateTimeOffset End, string Label);
+
+    private record StatusTransition(
+        DateTimeOffset Timestamp,
+        string ComponentName,
+        HealthStatus PreviousStatus,
+        HealthStatus NewStatus,
+        TimeSpan DurationInPreviousStatus);
+}
