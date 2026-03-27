@@ -70,6 +70,16 @@ else
         <StatCard Label="Has Snapshot" Value="@(_hasSnapshot ? "Yes" : "No")" />
     </div>
 
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-bottom: 8px;">
+        <FluentButton Appearance="Appearance.Outline"
+                      OnClick="@OpenBlameViewer"
+                      Icon="@(new Icons.Regular.Size20.PersonSearch())"
+                      aria-label="Open blame view"
+                      Title="Show per-field provenance">
+            Blame
+        </FluentButton>
+    </FluentStack>
+
     <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
                        @bind-SelectedEntryType:after="OnFilterChanged"
                        @bind-CorrelationFilter="_correlationFilter"
@@ -77,7 +87,17 @@ else
                        @bind-CompareMode="_compareMode"
                        @bind-CompareMode:after="OnCompareModeChanged" />
 
-    @if (_diffMode)
+    @if (_blameMode)
+    {
+        @* Blame viewer replaces the detail panel *@
+        <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
+            <BlameViewer TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                         AtSequence="@_blameSequence"
+                         OnClose="CloseBlameViewer"
+                         OnNavigateToEvent="OnBlameNavigateToEvent" />
+        </div>
+    }
+    else if (_diffMode)
     {
         @* Diff viewer replaces the detail panel *@
         <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
@@ -164,6 +184,10 @@ else
     private long _diffFrom;
     private long _diffTo;
 
+    // Blame viewer state
+    private bool _blameMode;
+    private long? _blameSequence;
+
     // Inspector modal state
     private bool _showInspectorModal;
     private long? _inspectorSequence;
@@ -201,6 +225,9 @@ else
     [SupplyParameterFromQuery(Name = "inspect")]
     public long? QueryInspect { get; set; }
 
+    [SupplyParameterFromQuery(Name = "blame")]
+    public string? QueryBlame { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -213,8 +240,14 @@ else
             _selectedEntryType = t;
         }
 
-        // Parse ?diff=5-15 deep link (normalized: Min-Max)
-        if (!string.IsNullOrEmpty(QueryDiff) && TryParseDiffParam(QueryDiff, out long diffFrom, out long diffTo))
+        // Parse ?blame={seq|latest} deep link — blame takes precedence over diff (AC9)
+        if (!string.IsNullOrEmpty(QueryBlame))
+        {
+            _blameMode = true;
+            _blameSequence = long.TryParse(QueryBlame, out long blameSeq) ? blameSeq : null;
+        }
+        // Parse ?diff=5-15 deep link (normalized: Min-Max) — only if blame is not active
+        else if (!string.IsNullOrEmpty(QueryDiff) && TryParseDiffParam(QueryDiff, out long diffFrom, out long diffTo))
         {
             _diffMode = true;
             _diffFrom = diffFrom;
@@ -418,6 +451,33 @@ else
         UpdateUrl();
     }
 
+    private void OpenBlameViewer()
+    {
+        _blameMode = true;
+        _blameSequence = _selectedSequence; // null means latest
+        _diffMode = false;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void CloseBlameViewer()
+    {
+        _blameMode = false;
+        _blameSequence = null;
+        UpdateUrl();
+    }
+
+    private void OnBlameNavigateToEvent(long sequenceNumber)
+    {
+        _blameMode = false;
+        _blameSequence = null;
+        _selectedSequence = sequenceNumber;
+        _selectedEntry = _timelineEntries
+            .FirstOrDefault(e => e.SequenceNumber == sequenceNumber);
+        UpdateUrl();
+    }
+
     private void OnCompareModeChanged()
     {
         if (!_compareMode)
@@ -473,7 +533,11 @@ else
     {
         if (e.Key == "Escape")
         {
-            if (_diffMode)
+            if (_blameMode)
+            {
+                CloseBlameViewer();
+            }
+            else if (_diffMode)
             {
                 CloseDiffViewer();
             }
@@ -512,7 +576,18 @@ else
             queryParams.Add($"correlation={Uri.EscapeDataString(_correlationFilter)}");
         }
 
-        if (_diffMode)
+        if (_blameMode)
+        {
+            if (_blameSequence.HasValue)
+            {
+                queryParams.Add($"blame={_blameSequence.Value}");
+            }
+            else
+            {
+                queryParams.Add("blame=latest");
+            }
+        }
+        else if (_diffMode)
         {
             queryParams.Add($"diff={_diffFrom}-{_diffTo}");
         }

@@ -124,6 +124,43 @@ public class AdminStreamsControllerTests
         problemDetails.Detail.ShouldBe("An unexpected error occurred."); // generic message, no exception details leaked
     }
 
+    [Fact]
+    public async Task GetAggregateBlame_ReturnsOk_WhenBlameAvailable()
+    {
+        var expected = new AggregateBlameView(
+            "t", "d", "a", 5, DateTimeOffset.UtcNow,
+            [new FieldProvenance("Count", "5", "4", 5, DateTimeOffset.UtcNow, "Incr", "c", "u")],
+            false, false);
+        _service.GetAggregateBlameAsync("t", "d", "a", 5L, Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.GetAggregateBlame("t", "d", "a", 5);
+
+        var okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task GetAggregateBlame_InvalidAtParam_Returns400()
+    {
+        IActionResult result = await _sut.GetAggregateBlame("t", "d", "a", 0);
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task GetAggregateBlame_ServiceUnavailable_Returns503()
+    {
+        _service.GetAggregateBlameAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+            .Throws(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "test")));
+
+        IActionResult result = await _sut.GetAggregateBlame("t", "d", "a", null);
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
     private static ClaimsPrincipal CreatePrincipal(string adminRole, params string[] tenants)
     {
         var claims = new List<Claim> { new(AdminClaimTypes.AdminRole, adminRole) };

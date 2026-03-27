@@ -66,6 +66,17 @@ public interface IStreamQueryService
     Task<EventDetail> GetEventDetailAsync(string tenantId, string domain, string aggregateId, long sequenceNumber, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets the per-field blame (provenance) for an aggregate's state at a given sequence position (FR70+).
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="domain">The domain name.</param>
+    /// <param name="aggregateId">The aggregate identifier.</param>
+    /// <param name="atSequence">The sequence position to compute blame at. Null means latest.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The aggregate blame view with per-field provenance.</returns>
+    Task<AggregateBlameView> GetAggregateBlameAsync(string tenantId, string domain, string aggregateId, long? atSequence, CancellationToken ct = default);
+
+    /// <summary>
     /// Traces the causation chain starting from a specific event (FR72).
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>

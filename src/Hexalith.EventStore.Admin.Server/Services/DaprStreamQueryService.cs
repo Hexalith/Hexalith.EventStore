@@ -184,6 +184,46 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<AggregateBlameView> GetAggregateBlameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long? atSequence,
+        CancellationToken ct = default)
+    {
+        string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/blame";
+        var queryParams = new List<string>();
+        if (atSequence.HasValue)
+        {
+            queryParams.Add($"at={atSequence.Value}");
+        }
+
+        queryParams.Add($"maxEvents={_options.MaxBlameEvents}");
+        queryParams.Add($"maxFields={_options.MaxBlameFields}");
+        endpoint += "?" + string.Join("&", queryParams);
+
+        try
+        {
+            // Use 30-second timeout for blame (longer than default because blame replays the entire event stream)
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            AggregateBlameView? result = await InvokeCommandApiAsync<AggregateBlameView>(
+                HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
+            return result ?? new AggregateBlameView(tenantId, domain, aggregateId, atSequence ?? 0, DateTimeOffset.MinValue, [], false, false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to compute blame for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<EventDetail> GetEventDetailAsync(
         string tenantId,
         string domain,

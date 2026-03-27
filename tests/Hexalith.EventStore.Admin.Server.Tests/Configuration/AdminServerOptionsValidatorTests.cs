@@ -86,6 +86,28 @@ public class AdminServerOptionsValidatorTests
         result.Failures!.Count().ShouldBeGreaterThanOrEqualTo(3);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_InvalidMaxBlameEvents_ReturnsFail(int value)
+    {
+        var options = new AdminServerOptions { MaxBlameEvents = value };
+        ValidateOptionsResult result = _validator.Validate(null, options);
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain(nameof(AdminServerOptions.MaxBlameEvents));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_InvalidMaxBlameFields_ReturnsFail(int value)
+    {
+        var options = new AdminServerOptions { MaxBlameFields = value };
+        ValidateOptionsResult result = _validator.Validate(null, options);
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain(nameof(AdminServerOptions.MaxBlameFields));
+    }
+
     [Fact]
     public void Validate_NullOptions_ThrowsArgumentNullException()
     {

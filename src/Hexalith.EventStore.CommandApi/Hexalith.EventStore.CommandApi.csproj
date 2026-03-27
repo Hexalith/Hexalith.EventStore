@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hexalith.EventStore.Admin.Abstractions\Hexalith.EventStore.Admin.Abstractions.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
