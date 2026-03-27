@@ -103,6 +103,18 @@ public interface IStreamQueryService
     Task<EventStepFrame> GetEventStepFrameAsync(string tenantId, string domain, string aggregateId, long sequenceNumber, CancellationToken ct = default);
 
     /// <summary>
+    /// Executes a command in sandbox (dry-run) mode against reconstructed aggregate state.
+    /// Invokes the domain service Handle method but does NOT persist any events.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="domain">The domain name.</param>
+    /// <param name="aggregateId">The aggregate identifier.</param>
+    /// <param name="request">The sandbox command request containing command type, payload, and target sequence.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The sandbox execution result with produced events, resulting state, and state diff.</returns>
+    Task<SandboxResult?> SandboxCommandAsync(string tenantId, string domain, string aggregateId, SandboxCommandRequest request, CancellationToken ct = default);
+
+    /// <summary>
     /// Traces the causation chain starting from a specific event (FR72).
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>

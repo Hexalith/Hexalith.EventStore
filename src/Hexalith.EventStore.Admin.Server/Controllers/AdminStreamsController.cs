@@ -385,6 +385,58 @@ public class AdminStreamsController(
         }
     }
 
+    /// <summary>
+    /// Executes a command in sandbox (dry-run) mode against reconstructed aggregate state.
+    /// No events are persisted — the domain service Handle method is invoked to show what would happen.
+    /// </summary>
+    [HttpPost("{tenantId}/{domain}/{aggregateId}/sandbox")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(SandboxResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SandboxCommand(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromBody] SandboxCommandRequest request,
+        CancellationToken ct = default)
+    {
+        if (request is null)
+        {
+            return CreateProblemResult(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Request body is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CommandType))
+        {
+            return CreateProblemResult(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "CommandType is required.");
+        }
+
+        try
+        {
+            SandboxResult? result = await streamQueryService
+                .SandboxCommandAsync(tenantId, domain, aggregateId, request, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
+                : Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(SandboxCommand), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(SandboxCommand), ex);
+        }
+    }
+
     private string? ResolveTenantScope(string? requestedTenantId)
     {
         if (requestedTenantId is not null)

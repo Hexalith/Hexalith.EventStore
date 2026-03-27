@@ -428,6 +428,53 @@ public class AdminStreamApiClient(
     }
 
     /// <summary>
+    /// Executes a command in sandbox (dry-run) mode against reconstructed aggregate state.
+    /// No events are persisted.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="request">The sandbox command request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The sandbox result, or null if not available.</returns>
+    public virtual async Task<SandboxResult?> SandboxCommandAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        SandboxCommandRequest request,
+        CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/sandbox";
+
+        try
+        {
+            using HttpResponseMessage response = await client.PostAsJsonAsync(url, request, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<SandboxResult>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to execute sandbox command from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the aggregate state at the nearest event at or before a given timestamp.
     /// Uses client-side resolution: fetches timeline pages to find the nearest entry,
     /// then calls GetAggregateStateAtPositionAsync. Caps at 3 timeline API calls.
