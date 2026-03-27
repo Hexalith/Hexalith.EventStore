@@ -1,6 +1,6 @@
 # Story 20.3: Step-Through Event Debugger
 
-Status: dev-complete
+Status: review
 
 Size: Medium-Large — 1 new model in Admin.Abstractions, extends `IStreamQueryService` with step-frame method, adds step-frame computation endpoint to CommandApi, adds REST facade to `AdminStreamsController`, extends `AdminStreamApiClient`, creates `EventDebugger.razor` component integrated into `StreamDetail.razor` with deep linking and keyboard navigation. Creates ~5-6 test classes across 3 test projects (~30-40 tests). Third story in Epic 20's Advanced Debugging suite.
 
@@ -110,44 +110,44 @@ so that **I can understand exactly how aggregate state evolved event-by-event, o
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create EventStepFrame model in Admin.Abstractions (AC: #1)
-  - [ ] 1.1 Create `EventStepFrame` record in `Models/Streams/EventStepFrame.cs` with all properties, null-coalescing, `HasPrevious`/`HasNext` computed properties, and `ToString()` redaction
-- [ ] Task 2: Add step-frame computation endpoint to CommandApi (AC: #3a)
-  - [ ] 2.1 **First**: examine how `DaprStreamQueryService.GetAggregateBlameAsync()` constructs its `InvokeMethodAsync` URL, then find the matching CommandApi controller — the step endpoint goes in that same controller
-  - [ ] 2.2 Add `GET .../step?at={seq}` endpoint in that same controller, composing existing state reconstruction + event detail + diff logic
-  - [ ] 2.3 Handle sequence 1 edge case: diff from empty state `{}` to state at 1
-  - [ ] 2.4 Retrieve total event count from stream metadata
-- [ ] Task 3: Extend stream query service (AC: #2, #3b)
-  - [ ] 3.1 Add `GetEventStepFrameAsync` to `IStreamQueryService` interface
-  - [ ] 3.2 Implement `GetEventStepFrameAsync` in `DaprStreamQueryService` (delegates to CommandApi, uses default 30-second timeout from `ServiceInvocationTimeoutSeconds`)
-- [ ] Task 4: Add REST facade endpoint on Admin.Server (AC: #4)
-  - [ ] 4.1 Add `GetEventStepFrameAsync` endpoint to `AdminStreamsController` — validate `at >= 1`, delegate to service
-- [ ] Task 5: Create UI API client method (AC: #5)
-  - [ ] 5.1 Add `GetEventStepFrameAsync` to `AdminStreamApiClient` — URL-encode segments, standard error handling
-- [ ] Task 6: Create EventDebugger component (AC: #6, #9)
-  - [ ] 6.1 Create `EventDebugger.razor` in `Admin.UI/Components/` — implement navigation controls, position display, event info panel
-  - [ ] 6.2 Implement state display section with `JsonViewer` and field changes table with `FluentDataGrid<FieldChange>`
-  - [ ] 6.3 Implement keyboard navigation via `@onkeydown` on focused container
-  - [ ] 6.4 Implement auto-play with configurable speed, using `Task.Delay` loop with `CancellationTokenSource`
-  - [ ] 6.5 Implement watch fields feature — field path input, badge chips, auto-pause on watched field change
-  - [ ] 6.6 Wire `OnNavigateToEvent`, `OnNavigateToBlame`, `OnNavigateToBisect` callbacks
-  - [ ] 6.7 Implement `IAsyncDisposable` for in-flight API call and auto-play timer cancellation
-- [ ] Task 7: Integrate into StreamDetail page (AC: #7, #8)
-  - [ ] 7.1 Add "Step Through" button to `StreamDetail.razor` toolbar
-  - [ ] 7.2 Add `?step={seq}` deep link support via `[SupplyParameterFromQuery(Name = "step")]`
-  - [ ] 7.3 Wire EventDebugger into the detail panel area, handle callbacks
-  - [ ] 7.4 Update mutual exclusion: `step` > `bisect` > `blame` > `diff` precedence
-  - [ ] 7.5 Update URL as user steps through events (call `UpdateUrl` on each step navigation)
-- [ ] Task 8: Write tests (all ACs)
-  - [ ] 8.1 Model tests in Admin.Abstractions.Tests (`Models/Streams/EventStepFrameTests.cs`) — constructor with valid inputs, null-coalescing defaults, `HasPrevious`/`HasNext` computed properties, `ToString()` redaction, serialization round-trip
-  - [ ] 8.2 Service query tests in Admin.Server.Tests (`Services/`) — verify delegation to CommandApi, timeout behavior, argument validation
-  - [ ] 8.3 Controller tests in Admin.Server.Tests (`Controllers/`) — parameter validation (`at < 1` → 400), authorization policy, response types
-  - [ ] 8.4 Edge case tests: (a) sequence 1 (first event) — `FieldChanges` represent initial state population, `HasPrevious` is false; (b) last event — `HasNext` is false; (c) single-event stream — `HasPrevious` and `HasNext` both false; (d) sequence exceeds stream length — 400 error; (e) snapshot invariance — verify identical `FieldChanges` and `StateJson` with and without snapshots at the step position, confirms snapshot acceleration doesn't affect correctness
-  - [ ] 8.5 EventDebugger component tests in Admin.UI.Tests (`Components/EventDebuggerTests.cs`) — VCR button states (disabled at boundaries), position display with event type name, keyboard navigation (verify auto-focus on open via `FocusAsync`), field changes rendering
-  - [ ] 8.6 Auto-play tests: play starts advancing, pause stops, speed change takes effect, stops at last event, pauses on watched field change, concurrent step cancellation — rapid-fire Next clicks while auto-play is fetching verify that pending requests are cancelled via `CancellationTokenSource` without race conditions or duplicate renders
-  - [ ] 8.7 StreamDetail step integration tests in Admin.UI.Tests (`Pages/`) — `?step` + `?bisect` + `?blame` + `?diff` mutual exclusion test (step takes precedence), button renders, EventDebugger opens
-  - [ ] 8.8 Timeout handling test: simulate exceeding 30-second timeout (via `OperationCanceledException`) — verify UI shows `IssueBanner` with "Frame load timed out" message
-  - [ ] 8.9 Watch fields test: adding/removing watch fields, substring highlighting in changes table, exact-match auto-pause trigger (watching `Count` pauses on `Count` change but NOT on `ItemCount` change)
+- [x] Task 1: Create EventStepFrame model in Admin.Abstractions (AC: #1)
+  - [x] 1.1 Create `EventStepFrame` record in `Models/Streams/EventStepFrame.cs` with all properties, null-coalescing, `HasPrevious`/`HasNext` computed properties, and `ToString()` redaction
+- [x] Task 2: Add step-frame computation endpoint to CommandApi (AC: #3a)
+  - [x] 2.1 **First**: examine how `DaprStreamQueryService.GetAggregateBlameAsync()` constructs its `InvokeMethodAsync` URL, then find the matching CommandApi controller — the step endpoint goes in that same controller
+  - [x] 2.2 Add `GET .../step?at={seq}` endpoint in that same controller, composing existing state reconstruction + event detail + diff logic
+  - [x] 2.3 Handle sequence 1 edge case: diff from empty state `{}` to state at 1
+  - [x] 2.4 Retrieve total event count from stream metadata
+- [x] Task 3: Extend stream query service (AC: #2, #3b)
+  - [x] 3.1 Add `GetEventStepFrameAsync` to `IStreamQueryService` interface
+  - [x] 3.2 Implement `GetEventStepFrameAsync` in `DaprStreamQueryService` (delegates to CommandApi, uses default 30-second timeout from `ServiceInvocationTimeoutSeconds`)
+- [x] Task 4: Add REST facade endpoint on Admin.Server (AC: #4)
+  - [x] 4.1 Add `GetEventStepFrameAsync` endpoint to `AdminStreamsController` — validate `at >= 1`, delegate to service
+- [x] Task 5: Create UI API client method (AC: #5)
+  - [x] 5.1 Add `GetEventStepFrameAsync` to `AdminStreamApiClient` — URL-encode segments, standard error handling
+- [x] Task 6: Create EventDebugger component (AC: #6, #9)
+  - [x] 6.1 Create `EventDebugger.razor` in `Admin.UI/Components/` — implement navigation controls, position display, event info panel
+  - [x] 6.2 Implement state display section with `JsonViewer` and field changes table with `FluentDataGrid<FieldChange>`
+  - [x] 6.3 Implement keyboard navigation via `@onkeydown` on focused container
+  - [x] 6.4 Implement auto-play with configurable speed, using `Task.Delay` loop with `CancellationTokenSource`
+  - [x] 6.5 Implement watch fields feature — field path input, badge chips, auto-pause on watched field change
+  - [x] 6.6 Wire `OnNavigateToEvent`, `OnNavigateToBlame`, `OnNavigateToBisect` callbacks
+  - [x] 6.7 Implement `IAsyncDisposable` for in-flight API call and auto-play timer cancellation
+- [x] Task 7: Integrate into StreamDetail page (AC: #7, #8)
+  - [x] 7.1 Add "Step Through" button to `StreamDetail.razor` toolbar
+  - [x] 7.2 Add `?step={seq}` deep link support via `[SupplyParameterFromQuery(Name = "step")]`
+  - [x] 7.3 Wire EventDebugger into the detail panel area, handle callbacks
+  - [x] 7.4 Update mutual exclusion: `step` > `bisect` > `blame` > `diff` precedence
+  - [x] 7.5 Update URL as user steps through events (call `UpdateUrl` on each step navigation)
+- [x] Task 8: Write tests (all ACs)
+  - [x] 8.1 Model tests in Admin.Abstractions.Tests (`Models/Streams/EventStepFrameTests.cs`) — constructor with valid inputs, null-coalescing defaults, `HasPrevious`/`HasNext` computed properties, `ToString()` redaction, serialization round-trip
+  - [x] 8.2 Service query tests in Admin.Server.Tests (`Services/`) — verify delegation to CommandApi, timeout behavior, argument validation
+  - [x] 8.3 Controller tests in Admin.Server.Tests (`Controllers/`) — parameter validation (`at < 1` → 400), authorization policy, response types
+  - [x] 8.4 Edge case tests: (a) sequence 1 (first event) — `FieldChanges` represent initial state population, `HasPrevious` is false; (b) last event — `HasNext` is false; (c) single-event stream — `HasPrevious` and `HasNext` both false; (d) sequence exceeds stream length — 400 error; (e) snapshot invariance — verify identical `FieldChanges` and `StateJson` with and without snapshots at the step position, confirms snapshot acceleration doesn't affect correctness
+  - [x] 8.5 EventDebugger component tests in Admin.UI.Tests (`Components/EventDebuggerTests.cs`) — VCR button states (disabled at boundaries), position display with event type name, keyboard navigation (verify auto-focus on open via `FocusAsync`), field changes rendering
+  - [x] 8.6 Auto-play tests: play starts advancing, pause stops, speed change takes effect, stops at last event, pauses on watched field change, concurrent step cancellation — rapid-fire Next clicks while auto-play is fetching verify that pending requests are cancelled via `CancellationTokenSource` without race conditions or duplicate renders
+  - [x] 8.7 StreamDetail step integration tests in Admin.UI.Tests (`Pages/`) — `?step` + `?bisect` + `?blame` + `?diff` mutual exclusion test (step takes precedence), button renders, EventDebugger opens
+  - [x] 8.8 Timeout handling test: simulate exceeding 30-second timeout (via `OperationCanceledException`) — verify UI shows `IssueBanner` with "Frame load timed out" message
+  - [x] 8.9 Watch fields test: adding/removing watch fields, substring highlighting in changes table, exact-match auto-pause trigger (watching `Count` pauses on `Count` change but NOT on `ItemCount` change)
 
 ## Dev Notes
 
