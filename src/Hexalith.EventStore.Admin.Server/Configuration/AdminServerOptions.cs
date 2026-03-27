@@ -92,4 +92,16 @@ public sealed class AdminServerOptions
     /// Results exceeding this cap are truncated to the most recent entries.
     /// </summary>
     public int MaxHealthHistoryEntriesPerQuery { get; set; } = 50_000;
+
+    /// <summary>
+    /// Gets or sets the maximum number of events to replay for blame computation. Default: 10,000.
+    /// When a stream exceeds this limit, blame is computed from a partial window and IsTruncated is set.
+    /// </summary>
+    public int MaxBlameEvents { get; set; } = 10_000;
+
+    /// <summary>
+    /// Gets or sets the maximum number of fields to include in blame results. Default: 5,000.
+    /// When state has more leaf fields, only the most recently changed fields are included and IsFieldsTruncated is set.
+    /// </summary>
+    public int MaxBlameFields { get; set; } = 5_000;
 }

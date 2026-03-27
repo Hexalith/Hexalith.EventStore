@@ -1,0 +1,300 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+@inject AdminStreamApiClient ApiClient
+
+<div class="blame-viewer" role="region" aria-label="@($"Blame view at sequence {_atSequence}")">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 12px;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0;">
+                Blame View at Sequence <span class="monospace">#@_atSequence</span>
+            </h3>
+            @if (!_loading && _blame is not null && _blame.Timestamp != DateTimeOffset.MinValue)
+            {
+                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                    @FormatTimestamp(_blame.Timestamp)
+                </span>
+            }
+        </div>
+        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close blame view">
+            Close
+        </FluentButton>
+    </FluentStack>
+
+    @if (_loading)
+    {
+        <SkeletonCard />
+    }
+    else if (_error is not null)
+    {
+        <IssueBanner Message="@_error" />
+    }
+    else if (_blame is not null && _blame.Fields.Count == 0 && _blame.AtSequence == 0)
+    {
+        <EmptyState Title="No events in stream"
+                    Description="Blame view requires at least one event." />
+    }
+    else if (_blame is not null && _blame.Fields.Count == 0)
+    {
+        <EmptyState Title="Aggregate state has no fields at this position"
+                    Description="The aggregate state is empty at the requested sequence." />
+    }
+    else if (_blame is not null)
+    {
+        @* Summary row *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 12px;">
+            <StatCard Label="Fields Tracked" Value="@_blame.Fields.Count.ToString()" />
+            <StatCard Label="Distinct Events" Value="@_distinctEvents.ToString()" />
+        </FluentStack>
+
+        @* Truncation warnings *@
+        @if (_blame.IsTruncated)
+        {
+            <IssueBanner Message="Blame computed from a partial event window — fields showing sequence '-1' were last changed before this window." />
+        }
+        @if (_blame.IsFieldsTruncated)
+        {
+            <IssueBanner Message="State has more fields than the maximum — showing the most recently changed fields only." />
+        }
+
+        @* Search *@
+        <FluentSearch @bind-Value="_searchTerm"
+                      @bind-Value:after="OnSearchChanged"
+                      Placeholder="Filter by field path..."
+                      Style="margin-bottom: 8px; max-width: 400px;"
+                      aria-label="Search fields" />
+
+        @* Field table *@
+        <FluentDataGrid Items="@_filteredFields.AsQueryable()"
+                        TGridItem="FieldProvenance"
+                        GridTemplateColumns="2fr 1fr 1fr 1.5fr 80px 100px 80px"
+                        aria-label="Per-field provenance table">
+            <PropertyColumn Property="@(f => f.FieldPath)" Title="Field Path" Class="monospace" Sortable="true" />
+            <TemplateColumn Title="Current Value" Sortable="false">
+                <span class="monospace" title="@context.CurrentValue">
+                    @TruncateValue(context.CurrentValue)
+                </span>
+            </TemplateColumn>
+            <TemplateColumn Title="Previous Value" Sortable="false">
+                @if (string.IsNullOrEmpty(context.PreviousValue))
+                {
+                    <span style="color: var(--neutral-foreground-hint);">&mdash;</span>
+                }
+                else
+                {
+                    <span class="monospace" title="@context.PreviousValue">
+                        @TruncateValue(context.PreviousValue)
+                    </span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Last Changed By" Sortable="true" SortBy="@_sortByEventType">
+                @if (context.LastChangedAtSequence == -1)
+                {
+                    <span style="color: var(--neutral-foreground-hint);">before window</span>
+                }
+                else
+                {
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                  OnClick="@(() => HandleNavigateToEvent(context.LastChangedAtSequence))"
+                                  title="@($"Navigate to event at sequence {context.LastChangedAtSequence}")"
+                                  Style="padding: 0; min-width: auto; text-align: left;">
+                        @context.LastChangedByEventType
+                    </FluentButton>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="At Seq" Sortable="true" SortBy="@_sortBySequence">
+                @if (context.LastChangedAtSequence == -1)
+                {
+                    <span style="color: var(--neutral-foreground-hint);">&lt; window</span>
+                }
+                else
+                {
+                    <span class="monospace">@context.LastChangedAtSequence</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Timestamp" Sortable="true" SortBy="@_sortByTimestamp">
+                @if (context.LastChangedAtSequence == -1)
+                {
+                    <span style="color: var(--neutral-foreground-hint);">&mdash;</span>
+                }
+                else
+                {
+                    <span>@FormatEventTimestamp(context.LastChangedAtTimestamp)</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="User" Sortable="true" SortBy="@_sortByUser">
+                @if (string.IsNullOrEmpty(context.LastChangedByUserId))
+                {
+                    <span style="color: var(--neutral-foreground-hint);">&mdash;</span>
+                }
+                else
+                {
+                    <span>@context.LastChangedByUserId</span>
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+</div>
+
+@code {
+    private AggregateBlameView? _blame;
+    private bool _loading = true;
+    private string? _error;
+    private string _searchTerm = string.Empty;
+    private List<FieldProvenance> _filteredFields = [];
+    private int _distinctEvents;
+    private long _atSequence;
+
+    private readonly GridSort<FieldProvenance> _sortByEventType = GridSort<FieldProvenance>.ByAscending(f => f.LastChangedByEventType);
+    private readonly GridSort<FieldProvenance> _sortBySequence = GridSort<FieldProvenance>.ByDescending(f => f.LastChangedAtSequence);
+    private readonly GridSort<FieldProvenance> _sortByTimestamp = GridSort<FieldProvenance>.ByDescending(f => f.LastChangedAtTimestamp);
+    private readonly GridSort<FieldProvenance> _sortByUser = GridSort<FieldProvenance>.ByAscending(f => f.LastChangedByUserId);
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter]
+    public long? AtSequence { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToEvent { get; set; }
+
+    private string _prevTenantId = string.Empty;
+    private string _prevDomain = string.Empty;
+    private string _prevAggregateId = string.Empty;
+    private long? _prevAtSequence;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_prevTenantId == TenantId && _prevDomain == Domain
+            && _prevAggregateId == AggregateId && _prevAtSequence == AtSequence)
+        {
+            return;
+        }
+
+        _prevTenantId = TenantId;
+        _prevDomain = Domain;
+        _prevAggregateId = AggregateId;
+        _prevAtSequence = AtSequence;
+        await LoadBlameAsync();
+    }
+
+    private async Task LoadBlameAsync()
+    {
+        _loading = true;
+        _error = null;
+        _blame = null;
+        _filteredFields = [];
+        _distinctEvents = 0;
+        StateHasChanged();
+
+        try
+        {
+            _blame = await ApiClient.GetAggregateBlameAsync(
+                TenantId, Domain, AggregateId, AtSequence, default).ConfigureAwait(false);
+
+            if (_blame is null)
+            {
+                _error = "Unable to compute blame view — check server connectivity.";
+            }
+            else
+            {
+                _atSequence = _blame.AtSequence;
+                _distinctEvents = _blame.Fields
+                    .Where(f => f.LastChangedAtSequence > -1)
+                    .Select(f => f.LastChangedAtSequence)
+                    .Distinct()
+                    .Count();
+                ApplyFilter();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _error = "Blame computation timed out — try a shorter range.";
+        }
+        catch
+        {
+            _error = "Unable to compute blame view — check server connectivity.";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        if (_blame is null)
+        {
+            _filteredFields = [];
+            return;
+        }
+
+        _filteredFields = string.IsNullOrWhiteSpace(_searchTerm)
+            ? _blame.Fields.ToList()
+            : _blame.Fields
+                .Where(f => f.FieldPath.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+    }
+
+    private void OnSearchChanged()
+    {
+        ApplyFilter();
+        StateHasChanged();
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleNavigateToEvent(long sequenceNumber)
+    {
+        await OnNavigateToEvent.InvokeAsync(sequenceNumber);
+    }
+
+    private static string TruncateValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Length > 60 ? string.Concat(value.AsSpan(0, 57), "...") : value;
+    }
+
+    private static string FormatTimestamp(DateTimeOffset timestamp)
+    {
+        if (timestamp == DateTimeOffset.MinValue)
+        {
+            return string.Empty;
+        }
+
+        return timestamp.Date == DateTimeOffset.UtcNow.Date
+            ? timestamp.ToString("HH:mm:ss")
+            : timestamp.ToString("MMM dd HH:mm");
+    }
+
+    private static string FormatEventTimestamp(DateTimeOffset timestamp)
+    {
+        if (timestamp == DateTimeOffset.MinValue)
+        {
+            return "—";
+        }
+
+        return timestamp.Date == DateTimeOffset.UtcNow.Date
+            ? timestamp.ToString("HH:mm:ss")
+            : timestamp.ToString("MMM dd HH:mm");
+    }
+}

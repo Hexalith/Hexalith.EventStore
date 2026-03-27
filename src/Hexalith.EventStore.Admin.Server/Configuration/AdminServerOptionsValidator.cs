@@ -44,6 +44,16 @@ public sealed class AdminServerOptionsValidator : IValidateOptions<AdminServerOp
             (failures ??= []).Add($"{nameof(options.MaxHealthHistoryEntriesPerQuery)} must be greater than zero.");
         }
 
+        if (options.MaxBlameEvents <= 0)
+        {
+            (failures ??= []).Add($"{nameof(options.MaxBlameEvents)} must be greater than zero.");
+        }
+
+        if (options.MaxBlameFields <= 0)
+        {
+            (failures ??= []).Add($"{nameof(options.MaxBlameFields)} must be greater than zero.");
+        }
+
         return failures is null
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

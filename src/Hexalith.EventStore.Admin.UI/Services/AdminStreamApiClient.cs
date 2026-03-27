@@ -281,6 +281,52 @@ public class AdminStreamApiClient(
     }
 
     /// <summary>
+    /// Gets per-field blame (provenance) for an aggregate's state at a given sequence position.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="atSequence">Sequence position to compute blame at. Null means latest.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The aggregate blame view, or null if not available.</returns>
+    public virtual async Task<AggregateBlameView?> GetAggregateBlameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long? atSequence,
+        CancellationToken ct = default)
+    {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/blame";
+        if (atSequence.HasValue)
+        {
+            url += $"?at={atSequence.Value}";
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            HandleErrorStatus(response);
+            return await response.Content
+                .ReadFromJsonAsync<AggregateBlameView>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not ServiceUnavailableException
+            and not OperationCanceledException)
+        {
+            logger.LogError(ex, "Failed to fetch aggregate blame from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the aggregate state at the nearest event at or before a given timestamp.
     /// Uses client-side resolution: fetches timeline pages to find the nearest entry,
     /// then calls GetAggregateStateAtPositionAsync. Caps at 3 timeline API calls.

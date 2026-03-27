@@ -224,6 +224,21 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
+    public async Task GetAggregateBlameAsync_ThrowsException_WhenCommandApiUnavailable()
+    {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.InvokeMethodAsync<AggregateBlameView>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Service unavailable"));
+
+        DaprStreamQueryService service = CreateService(daprClient);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetAggregateBlameAsync("tenant1", "orders", "order-1", 5));
+    }
+
+    [Fact]
     public async Task GetRecentlyActiveStreamsAsync_PropagatesCancellation()
     {
         using CancellationTokenSource cts = new();

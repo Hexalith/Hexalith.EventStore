@@ -163,6 +163,48 @@ public class AdminStreamsController(
     }
 
     /// <summary>
+    /// Gets per-field blame (provenance) for an aggregate's state.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/blame")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(AggregateBlameView), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetAggregateBlame(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long? at,
+        CancellationToken ct = default)
+    {
+        if (at.HasValue && at.Value < 1)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1 when provided.");
+        }
+
+        try
+        {
+            AggregateBlameView result = await streamQueryService
+                .GetAggregateBlameAsync(tenantId, domain, aggregateId, at, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
+                : Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetAggregateBlame), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetAggregateBlame), ex);
+        }
+    }
+
+    /// <summary>
     /// Gets detailed information about a single event.
     /// </summary>
     [HttpGet("{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}")]
