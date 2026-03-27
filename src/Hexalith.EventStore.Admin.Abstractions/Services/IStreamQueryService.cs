@@ -124,4 +124,15 @@ public interface IStreamQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The causation chain.</returns>
     Task<CausationChain> TraceCausationChainAsync(string tenantId, string domain, string aggregateId, long sequenceNumber, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the correlation trace map for a given correlation ID, showing the complete command lifecycle (FR72).
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="correlationId">The correlation ID to trace.</param>
+    /// <param name="domain">Optional domain hint for events-first scanning when command status has expired.</param>
+    /// <param name="aggregateId">Optional aggregate ID hint for events-first scanning when command status has expired.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The correlation trace map.</returns>
+    Task<CorrelationTraceMap> GetCorrelationTraceMapAsync(string tenantId, string correlationId, string? domain, string? aggregateId, CancellationToken ct = default);
 }

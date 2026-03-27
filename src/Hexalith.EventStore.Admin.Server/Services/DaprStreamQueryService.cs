@@ -410,6 +410,54 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<CorrelationTraceMap> GetCorrelationTraceMapAsync(
+        string tenantId,
+        string correlationId,
+        string? domain,
+        string? aggregateId,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+
+        string endpoint = $"api/v1/admin/traces/{E(tenantId)}/{E(correlationId)}";
+        var queryParams = new List<string>();
+        if (!string.IsNullOrEmpty(domain))
+        {
+            queryParams.Add($"domain={E(domain)}");
+        }
+
+        if (!string.IsNullOrEmpty(aggregateId))
+        {
+            queryParams.Add($"aggregateId={E(aggregateId)}");
+        }
+
+        if (queryParams.Count > 0)
+        {
+            endpoint += "?" + string.Join("&", queryParams);
+        }
+
+        try
+        {
+            // Use 30-second timeout (trace map scans potentially large event streams)
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            CorrelationTraceMap? result = await InvokeCommandApiAsync<CorrelationTraceMap>(
+                HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
+            return result ?? new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, "Unable to retrieve trace map from CommandApi.", null, 0, false, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get correlation trace map for {TenantId}/{CorrelationId}.", tenantId, correlationId);
+            return new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, $"Failed to retrieve trace map: {ex.Message}", null, 0, false, null);
+        }
+    }
+
     private static string E(string value) => Uri.EscapeDataString(value);
 
     private static AggregateStateSnapshot CreateEmptyAggregateStateSnapshot(
