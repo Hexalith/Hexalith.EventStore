@@ -68,4 +68,28 @@ public sealed class AdminServerOptions
     /// When null, the resiliency viewer shows "configuration not available" with setup guidance.
     /// </summary>
     public string? ResiliencyConfigPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether background health history collection is enabled. Default: true.
+    /// </summary>
+    public bool HealthHistoryEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the interval in seconds between health snapshot captures. Default: 60.
+    /// Minimum: 10. Values below 10 are clamped to 10 to prevent excessive state store writes.
+    /// </summary>
+    public int HealthHistoryCaptureIntervalSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Gets or sets the number of days to retain health history in state store. Default: 7.
+    /// Older entries are cleaned up daily. Minimum: 1. Maximum: 30.
+    /// </summary>
+    public int HealthHistoryRetentionDays { get; set; } = 7;
+
+    /// <summary>
+    /// Gets or sets the maximum number of history entries returned per query. Default: 50,000.
+    /// Prevents excessive memory usage on large time-range queries with many components.
+    /// Results exceeding this cap are truncated to the most recent entries.
+    /// </summary>
+    public int MaxHealthHistoryEntriesPerQuery { get; set; } = 50_000;
 }

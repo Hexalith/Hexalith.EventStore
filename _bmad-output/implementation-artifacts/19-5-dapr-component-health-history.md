@@ -1,6 +1,6 @@
 # Story 19.5: DAPR Component Health History
 
-Status: ready-for-dev
+Status: done
 
 Size: Medium-Large — Creates a `BackgroundService`-based health snapshot collector (`DaprHealthHistoryCollector`), new models (`DaprComponentHealthSnapshot`, `DaprComponentHealthTimeline`, `DaprHealthHistoryEntry`) in Admin.Abstractions, extends `IHealthQueryService` with `GetComponentHealthHistoryAsync`, adds `GET /api/v1/admin/health/dapr/history` endpoint to `AdminHealthController`, creates `AdminHealthHistoryApiClient` UI HTTP client, creates `DaprHealthHistory.razor` dashboard page with CSS-based timeline heatmap + status transition log + per-component drill-down + time-range picker, adds "Health History" button to `DaprComponents.razor`. Creates ~6-8 test classes across 3-4 test projects (~30-40 tests). Completes Epic 19's DAPR Infrastructure Visibility suite.
 
@@ -52,30 +52,45 @@ so that **I can identify recurring failure patterns (e.g., nightly degradation d
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create new models in Admin.Abstractions (AC: #1, #2, #3, #4, #5, #6, #8)
-  - [ ] 1.1 Create `DaprHealthHistoryEntry` record in `Models/Dapr/DaprHealthHistoryEntry.cs`
-  - [ ] 1.2 Create `DaprComponentHealthTimeline` record in `Models/Dapr/DaprComponentHealthTimeline.cs`
-  - [ ] 1.3 Add `HealthHistoryEnabled`, `HealthHistoryCaptureIntervalSeconds`, `HealthHistoryRetentionDays`, `MaxHealthHistoryEntriesPerQuery` properties to `AdminServerOptions`
-- [ ] Task 2: Create background health snapshot collector (AC: #1, #2)
-  - [ ] 2.1 Create `DaprHealthHistoryCollector` as `BackgroundService` in Admin.Server `Services/DaprHealthHistoryCollector.cs`
-  - [ ] 2.2 Register `DaprHealthHistoryCollector` as hosted service in `AddAdminServer()` method
-- [ ] Task 3: Extend health query service (AC: #3)
-  - [ ] 3.1 Add `GetComponentHealthHistoryAsync(DateTimeOffset from, DateTimeOffset to, string? componentName, CancellationToken ct)` to `IHealthQueryService`
-  - [ ] 3.2 Implement `GetComponentHealthHistoryAsync` in `DaprHealthQueryService`
-- [ ] Task 4: Add REST endpoint to existing controller (AC: #3)
-  - [ ] 4.1 Add `GetComponentHealthHistoryAsync` endpoint to `AdminHealthController`
-- [ ] Task 5: Create UI API client (AC: #3)
-  - [ ] 5.1 Create `AdminHealthHistoryApiClient` in Admin.UI `Services/AdminHealthHistoryApiClient.cs`
-  - [ ] 5.2 Register `AdminHealthHistoryApiClient` as scoped in `Program.cs` (after existing API client registrations)
-- [ ] Task 6: Create health history page (AC: #4, #5, #6, #7, #8, #9, #10, #11)
-  - [ ] 6.1 Create `DaprHealthHistory.razor` page in Admin.UI `Pages/`
-  - [ ] 6.2 Add "Health History" button to `DaprComponents.razor` (from story 19-1)
-- [ ] Task 7: Write tests (all ACs)
-  - [ ] 7.1 Model tests in Admin.Abstractions.Tests (`Models/Dapr/`)
-  - [ ] 7.2 Background collector tests in Admin.Server.Tests (`Services/`)
-  - [ ] 7.3 Service history query tests in Admin.Server.Tests (`Services/`)
-  - [ ] 7.4 Controller tests in Admin.Server.Tests (`Controllers/`)
-  - [ ] 7.5 UI page tests in Admin.UI.Tests (`Pages/`)
+- [x] Task 1: Create new models in Admin.Abstractions (AC: #1, #2, #3, #4, #5, #6, #8)
+  - [x] 1.1 Create `DaprHealthHistoryEntry` record in `Models/Dapr/DaprHealthHistoryEntry.cs`
+  - [x] 1.2 Create `DaprComponentHealthTimeline` record in `Models/Dapr/DaprComponentHealthTimeline.cs`
+  - [x] 1.3 Add `HealthHistoryEnabled`, `HealthHistoryCaptureIntervalSeconds`, `HealthHistoryRetentionDays`, `MaxHealthHistoryEntriesPerQuery` properties to `AdminServerOptions`
+- [x] Task 2: Create background health snapshot collector (AC: #1, #2)
+  - [x] 2.1 Create `DaprHealthHistoryCollector` as `BackgroundService` in Admin.Server `Services/DaprHealthHistoryCollector.cs`
+  - [x] 2.2 Register `DaprHealthHistoryCollector` as hosted service in `AddAdminServer()` method
+- [x] Task 3: Extend health query service (AC: #3)
+  - [x] 3.1 Add `GetComponentHealthHistoryAsync(DateTimeOffset from, DateTimeOffset to, string? componentName, CancellationToken ct)` to `IHealthQueryService`
+  - [x] 3.2 Implement `GetComponentHealthHistoryAsync` in `DaprHealthQueryService`
+- [x] Task 4: Add REST endpoint to existing controller (AC: #3)
+  - [x] 4.1 Add `GetComponentHealthHistoryAsync` endpoint to `AdminHealthController`
+- [x] Task 5: Create UI API client (AC: #3)
+  - [x] 5.1 Create `AdminHealthHistoryApiClient` in Admin.UI `Services/AdminHealthHistoryApiClient.cs`
+  - [x] 5.2 Register `AdminHealthHistoryApiClient` as scoped in `Program.cs` (after existing API client registrations)
+- [x] Task 6: Create health history page (AC: #4, #5, #6, #7, #8, #9, #10, #11)
+  - [x] 6.1 Create `DaprHealthHistory.razor` page in Admin.UI `Pages/`
+  - [x] 6.2 Add "Health History" button to `DaprComponents.razor` (from story 19-1)
+- [x] Task 7: Write tests (all ACs)
+  - [x] 7.1 Model tests in Admin.Abstractions.Tests (`Models/Dapr/`)
+  - [x] 7.2 Background collector tests in Admin.Server.Tests (`Services/`)
+  - [x] 7.3 Service history query tests in Admin.Server.Tests (`Services/`)
+  - [x] 7.4 Controller tests in Admin.Server.Tests (`Controllers/`)
+  - [x] 7.5 UI page tests in Admin.UI.Tests (`Pages/`)
+
+### Review Findings
+
+- [x] [Review][Patch] `from > to` inverted time range not validated in controller — FIXED: added `from > to` validation returning 400 Bad Request [AdminHealthController.cs]
+- [x] [Review][Patch] `DaprHealthHistoryEntry` constructor validation throws on deserialization — FIXED: replaced throwing validation with null-coalescing to `string.Empty` for deserialization safety [DaprHealthHistoryEntry.cs]
+- [x] [Review][Patch] API client swallows errors and returns `null` → UI incorrectly shows "disabled" — FIXED: API client now re-throws non-auth errors; only returns `null` for `NotImplemented` (disabled) [AdminHealthHistoryApiClient.cs]
+- [x] [Review][Patch] `from`/`to` query parameters not URL-encoded in API client — FIXED: wrapped with `Uri.EscapeDataString` [AdminHealthHistoryApiClient.cs]
+- [x] [Review][Patch] `ComputeTransitions` dictionary uses case-sensitive default comparer — FIXED: uses `StringComparer.OrdinalIgnoreCase` [DaprHealthHistory.razor]
+- [x] [Review][Patch] UI page does not pass `component` query parameter to API call — FIXED: passes `_selectedComponent` to `GetHealthHistoryAsync` [DaprHealthHistory.razor]
+- [x] [Review][Patch] Heatmap tooltip shows single time point instead of time range — FIXED: shows `Start–End` range format [DaprHealthHistory.razor]
+- [x] [Review][Patch] `MaxHealthHistoryEntriesPerQuery` has no validation — FIXED: added `> 0` check in `AdminServerOptionsValidator` [AdminServerOptionsValidator.cs]
+- [x] [Review][Defer] Unbounded state store growth per day partition — no cap on entries per day key; with low intervals and many components the day-partition JSON can grow large — deferred, accepted design in spec
+- [x] [Review][Defer] `DaprComponentHealthTimeline.HasData` flag is redundant with `Entries.Count > 0` — creates a consistency invariant the type cannot enforce; `with` expressions allow inconsistent state — deferred, pre-existing design pattern
+- [x] [Review][Defer] `IHealthQueryService.GetComponentHealthHistoryAsync` has no range guard at service level — controller limits to 7 days but a future direct caller could pass multi-year ranges generating hundreds of parallel state store reads — deferred, no non-controller callers exist yet
+- [x] [Review][Defer] Missing interactive UI tests vs spec expectations — spec lists "time range buttons trigger data reload", "component click opens drill-down", "deep link parameters applied on load" as expected tests; not implemented — deferred, test enhancement
 
 ## Dev Notes
 
@@ -721,8 +736,50 @@ tests/Hexalith.EventStore.Admin.UI.Tests/
 
 ### Agent Model Used
 
+Claude Opus 4.6 (1M context)
+
 ### Debug Log References
+
+- All 1,822 Tier 1 tests pass (0 failures, 0 regressions)
+- Full solution builds with 0 warnings on relevant projects (2 pre-existing errors in Admin.Cli and IntegrationTests are unrelated)
 
 ### Completion Notes List
 
+- Created `DaprHealthHistoryEntry` and `DaprComponentHealthTimeline` immutable records with constructor validation following existing model patterns
+- Extended `AdminServerOptions` with 4 health history configuration properties (enabled, interval, retention, max entries)
+- Created `DaprHealthHistoryCollector` as first `BackgroundService` in Admin.Server — uses `IServiceScopeFactory` for scoped DI, 15s initial delay, periodic 60s capture, day-partitioned state store keys, daily retention cleanup
+- Registered collector as hosted service in `AddAdminServer()` DI method
+- Extended `IHealthQueryService` with `GetComponentHealthHistoryAsync` — parallel day-partition reads, time-range and component filtering, entry truncation with `IsTruncated` flag
+- Added `GET api/v1/admin/health/dapr/history` endpoint with 7-day max range validation, optional component filter, default 24h range
+- Created `AdminHealthHistoryApiClient` with same `HandleErrorStatus` pattern as existing API clients
+- Created `DaprHealthHistory.razor` page with: CSS Grid heatmap (5 time granularities), status transition log with `FluentDataGrid`, per-component drill-down panel with uptime % and status distribution bar, time-range picker (5 presets), 4 summary stat cards, deep linking via `[SupplyParameterFromQuery]`, loading/empty/error/truncation states
+- Added "Health History" button to `DaprComponents.razor` navigation bar
+- Wrote 30+ new tests across 6 test files (model validation, collector behavior, service queries, controller endpoints, UI page rendering)
+
+### Change Log
+
+- 2026-03-27: Implemented story 19-5 DAPR Component Health History — all tasks complete, all tests pass
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprHealthHistoryEntry.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprComponentHealthTimeline.cs
+- src/Hexalith.EventStore.Admin.Server/Services/DaprHealthHistoryCollector.cs
+- src/Hexalith.EventStore.Admin.UI/Services/AdminHealthHistoryApiClient.cs
+- src/Hexalith.EventStore.Admin.UI/Pages/DaprHealthHistory.razor
+- tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Dapr/DaprHealthHistoryEntryTests.cs
+- tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Dapr/DaprComponentHealthTimelineTests.cs
+- tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs
+- tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthQueryServiceHistoryTests.cs
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminHealthControllerHistoryTests.cs
+- tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DaprHealthHistoryPageTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Admin.Server/Configuration/AdminServerOptions.cs
+- src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs
+- src/Hexalith.EventStore.Admin.Server/Services/DaprHealthQueryService.cs
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminHealthController.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Services/IHealthQueryService.cs
+- src/Hexalith.EventStore.Admin.UI/Pages/DaprComponents.razor
+- src/Hexalith.EventStore.Admin.UI/Program.cs

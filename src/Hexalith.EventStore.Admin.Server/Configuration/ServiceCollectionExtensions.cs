@@ -144,6 +144,9 @@ public static class ServiceCollectionExtensions {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
 
+        // Background health history collector (story 19-5)
+        services.AddHostedService<DaprHealthHistoryCollector>();
+
         return services;
     }
 }

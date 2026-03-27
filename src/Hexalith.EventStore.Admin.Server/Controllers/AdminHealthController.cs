@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
@@ -72,6 +73,61 @@ public class AdminHealthController(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return UnexpectedError(nameof(GetDaprComponentStatus), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets DAPR component health history for a time range.
+    /// </summary>
+    [HttpGet("dapr/history")]
+    [ProducesResponseType(typeof(DaprComponentHealthTimeline), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetComponentHealthHistoryAsync(
+        [FromQuery] DateTimeOffset? from = null,
+        [FromQuery] DateTimeOffset? to = null,
+        [FromQuery] string? component = null,
+        CancellationToken ct = default)
+    {
+        DateTimeOffset effectiveFrom = from ?? DateTimeOffset.UtcNow.AddHours(-24);
+        DateTimeOffset effectiveTo = to ?? DateTimeOffset.UtcNow;
+
+        if (effectiveFrom > effectiveTo)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid time range",
+                Detail = "'from' must be earlier than 'to'.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        if ((effectiveTo - effectiveFrom).TotalDays > 7)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Time range too large",
+                Detail = "Maximum queryable range is 7 days.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        try
+        {
+            DaprComponentHealthTimeline timeline = await healthQueryService
+                .GetComponentHealthHistoryAsync(effectiveFrom, effectiveTo, component, ct)
+                .ConfigureAwait(false);
+            return Ok(timeline);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetComponentHealthHistoryAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetComponentHealthHistoryAsync), ex);
         }
     }
 

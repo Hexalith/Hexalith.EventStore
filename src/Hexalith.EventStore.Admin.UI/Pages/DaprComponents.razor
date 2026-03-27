@@ -31,6 +31,11 @@
             Resiliency Policies
         </FluentButton>
         <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="@(() => NavigationManager.NavigateTo("/dapr/health-history"))"
+                      aria-label="Open Health History">
+            Health History
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh DAPR dashboard">
             Refresh
