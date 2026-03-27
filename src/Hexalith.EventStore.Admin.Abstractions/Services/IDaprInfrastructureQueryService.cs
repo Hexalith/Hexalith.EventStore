@@ -43,4 +43,11 @@ public interface IDaprInfrastructureQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The pub/sub overview.</returns>
     Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the DAPR resiliency specification by reading and parsing the resiliency YAML configuration file.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The resiliency spec. Never null — returns <see cref="DaprResiliencySpec.Unavailable"/> when not configured.</returns>
+    Task<DaprResiliencySpec> GetResiliencySpecAsync(CancellationToken ct = default);
 }

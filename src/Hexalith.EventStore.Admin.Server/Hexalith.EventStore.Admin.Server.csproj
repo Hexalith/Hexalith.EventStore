@@ -7,20 +7,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.EventStore.Admin.Server.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference
-      Include="../Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
-    <ProjectReference
-      Include="../Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
+    <ProjectReference Include="../Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
+    <ProjectReference Include="../Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapr.Client" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
 </Project>

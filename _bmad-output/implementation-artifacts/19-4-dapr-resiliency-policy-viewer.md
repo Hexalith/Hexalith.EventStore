@@ -1,6 +1,6 @@
 # Story 19.4: DAPR Resiliency Policy Viewer
 
-Status: ready-for-dev
+Status: done
 
 Size: Medium — Creates new resiliency models (`DaprResiliencySpec`, `DaprRetryPolicy`, `DaprTimeoutPolicy`, `DaprCircuitBreakerPolicy`, `DaprResiliencyTarget`, `DaprResiliencyTargetBinding`) in Admin.Abstractions, extends `IDaprInfrastructureQueryService` with `GetResiliencySpecAsync`, adds `GET /api/v1/admin/dapr/resiliency` endpoint to `AdminDaprController`, creates `AdminResiliencyApiClient` UI HTTP client, creates `DaprResiliency.razor` dashboard page with policy cards (retry, timeout, circuit breaker) + target assignment grid + YAML source viewer, adds "Resiliency Policies" button to `DaprComponents.razor`. Creates ~5–7 test classes across 3–4 test projects (~25–35 tests). Extends story 19-1/19-2/19-3's DAPR infrastructure foundation.
 
@@ -47,30 +47,39 @@ so that **I can verify that resiliency configuration is correct, understand the 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create new models in Admin.Abstractions (AC: #1, #2, #3, #4, #6, #9)
-  - [ ] 1.1 Create `DaprRetryPolicy` record in `Models/Dapr/DaprRetryPolicy.cs`
-  - [ ] 1.2 Create `DaprTimeoutPolicy` record in `Models/Dapr/DaprTimeoutPolicy.cs`
-  - [ ] 1.3 Create `DaprCircuitBreakerPolicy` record in `Models/Dapr/DaprCircuitBreakerPolicy.cs`
-  - [ ] 1.4 Create `DaprResiliencyTargetBinding` record in `Models/Dapr/DaprResiliencyTargetBinding.cs`
-  - [ ] 1.5 Create `DaprResiliencySpec` record in `Models/Dapr/DaprResiliencySpec.cs`
-- [ ] Task 2: Extend service interface and implementation (AC: #6)
-  - [ ] 2.0 **MANDATORY pre-step:** Add `YamlDotNet` package reference to `Hexalith.EventStore.Admin.Server.csproj` (already in `Directory.Packages.props` at version 16.3.0 — only needs `<PackageReference Include="YamlDotNet" />` in the csproj).
-  - [ ] 2.1 Add `ResiliencyConfigPath` property to `AdminServerOptions` (nullable string, default: null)
-  - [ ] 2.2 Add `GetResiliencySpecAsync(CancellationToken ct)` to `IDaprInfrastructureQueryService` — **NOTE: returns non-nullable `DaprResiliencySpec`** (see "Return Type Design" section in Dev Notes)
-  - [ ] 2.3 Implement `GetResiliencySpecAsync` in `DaprInfrastructureQueryService`
-- [ ] Task 3: Add REST endpoint to existing controller (AC: #6)
-  - [ ] 3.1 Add `GetResiliencySpecAsync` endpoint to `AdminDaprController`
-- [ ] Task 4: Create UI API client (AC: #6)
-  - [ ] 4.1 Create `AdminResiliencyApiClient` in Admin.UI `Services/AdminResiliencyApiClient.cs`
-  - [ ] 4.2 Register `AdminResiliencyApiClient` as scoped in `Program.cs` (after existing API client registrations)
-- [ ] Task 5: Create resiliency policies page (AC: #1, #2, #3, #4, #5, #7, #8, #9)
-  - [ ] 5.1 Create `DaprResiliency.razor` page in Admin.UI `Pages/`
-  - [ ] 5.2 Add "Resiliency Policies" button to `DaprComponents.razor` (from story 19-1)
-- [ ] Task 6: Write tests (all ACs)
-  - [ ] 6.1 Model tests in Admin.Abstractions.Tests (`Models/Dapr/`)
-  - [ ] 6.2 Service tests in Admin.Server.Tests (`Services/`)
-  - [ ] 6.3 Controller tests in Admin.Server.Tests (`Controllers/`)
-  - [ ] 6.4 UI page tests in Admin.UI.Tests (`Pages/`)
+- [x] Task 1: Create new models in Admin.Abstractions (AC: #1, #2, #3, #4, #6, #9)
+  - [x] 1.1 Create `DaprRetryPolicy` record in `Models/Dapr/DaprRetryPolicy.cs`
+  - [x] 1.2 Create `DaprTimeoutPolicy` record in `Models/Dapr/DaprTimeoutPolicy.cs`
+  - [x] 1.3 Create `DaprCircuitBreakerPolicy` record in `Models/Dapr/DaprCircuitBreakerPolicy.cs`
+  - [x] 1.4 Create `DaprResiliencyTargetBinding` record in `Models/Dapr/DaprResiliencyTargetBinding.cs`
+  - [x] 1.5 Create `DaprResiliencySpec` record in `Models/Dapr/DaprResiliencySpec.cs`
+- [x] Task 2: Extend service interface and implementation (AC: #6)
+  - [x] 2.0 **MANDATORY pre-step:** Add `YamlDotNet` package reference to `Hexalith.EventStore.Admin.Server.csproj` (already in `Directory.Packages.props` at version 16.3.0 — only needs `<PackageReference Include="YamlDotNet" />` in the csproj).
+  - [x] 2.1 Add `ResiliencyConfigPath` property to `AdminServerOptions` (nullable string, default: null)
+  - [x] 2.2 Add `GetResiliencySpecAsync(CancellationToken ct)` to `IDaprInfrastructureQueryService` — **NOTE: returns non-nullable `DaprResiliencySpec`** (see "Return Type Design" section in Dev Notes)
+  - [x] 2.3 Implement `GetResiliencySpecAsync` in `DaprInfrastructureQueryService`
+- [x] Task 3: Add REST endpoint to existing controller (AC: #6)
+  - [x] 3.1 Add `GetResiliencySpecAsync` endpoint to `AdminDaprController`
+- [x] Task 4: Create UI API client (AC: #6)
+  - [x] 4.1 Create `AdminResiliencyApiClient` in Admin.UI `Services/AdminResiliencyApiClient.cs`
+  - [x] 4.2 Register `AdminResiliencyApiClient` as scoped in `Program.cs` (after existing API client registrations)
+- [x] Task 5: Create resiliency policies page (AC: #1, #2, #3, #4, #5, #7, #8, #9)
+  - [x] 5.1 Create `DaprResiliency.razor` page in Admin.UI `Pages/`
+  - [x] 5.2 Add "Resiliency Policies" button to `DaprComponents.razor` (from story 19-1)
+- [x] Task 6: Write tests (all ACs)
+  - [x] 6.1 Model tests in Admin.Abstractions.Tests (`Models/Dapr/`)
+  - [x] 6.2 Service tests in Admin.Server.Tests (`Services/`)
+  - [x] 6.3 Controller tests in Admin.Server.Tests (`Controllers/`)
+  - [x] 6.4 UI page tests in Admin.UI.Tests (`Pages/`)
+
+### Review Findings
+
+- [x] [Review][Decision] AC2: Timeout values displayed as raw YAML strings ("5s") — Accepted: raw DAPR notation is standard for operator audience and matches YAML cross-referencing.
+- [x] [Review][Decision] AC4: Policy names use `FluentAnchor` instead of `FluentBadge` — Accepted: anchor scroll works correctly, wrapping badge in anchor risks styling/a11y issues.
+- [x] [Review][Patch] FileInfo.Length pre-check has TOCTOU race + unhandled exceptions — Fixed: removed FileInfo pre-check, validate content length after read
+- [x] [Review][Patch] Duplicate InternalsVisibleTo declaration — Fixed: removed redundant `Properties/AssemblyInfo.cs`
+- [x] [Review][Patch] Empty IDisposable implementation — Fixed: removed `@implements IDisposable` and empty `Dispose()` from `DaprResiliency.razor`
+- [x] [Review][Patch] No warning logged for unrecognized policy sections — Fixed: added warning logging for unknown keys under `spec.policies`
 
 ## Dev Notes
 
@@ -780,10 +789,53 @@ Recent commits established:
 
 ### Agent Model Used
 
-(to be filled by dev agent)
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+No debug issues encountered.
+
 ### Completion Notes List
 
+- All 5 model records created with constructor validation following existing DaprComponentDetail/DaprSubscriptionInfo patterns
+- YamlDotNet added to Admin.Server.csproj (centrally managed version 16.3.0)
+- YAML parsing uses YamlStream (RepresentationModel) for flexible handling of DAPR's polymorphic timeout structure (simple string + nested object forms)
+- Target flattening correctly produces separate bindings for directional components (outbound/inbound)
+- No PeriodicTimer — resiliency config is static, manual reload only
+- DaprResiliencySpec uses result-object pattern with factory methods for 4 error states (Unavailable, NotFound, ReadError, ParseError)
+- InternalsVisibleTo added to Admin.Server.csproj for direct ParseResiliencyYaml testing
+- 54 new tests total: 34 model tests, 9 service tests (YAML parsing), 3 controller tests, 8 UI page tests
+- All 1058 existing tests pass with zero regressions (345 Abstractions + 311 Server + 402 UI)
+- Pre-existing CS0433 build error in IntegrationTests (Program type ambiguity) confirmed on main — not caused by this story
+
+### Change Log
+
+- 2026-03-27: Story 19-4 implemented — DAPR resiliency policy viewer with policy cards, target grid, YAML source viewer, and comprehensive tests
+
 ### File List
+
+**New files:**
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprRetryPolicy.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprTimeoutPolicy.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprCircuitBreakerPolicy.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprResiliencyTargetBinding.cs
+- src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprResiliencySpec.cs
+- src/Hexalith.EventStore.Admin.UI/Services/AdminResiliencyApiClient.cs
+- src/Hexalith.EventStore.Admin.UI/Pages/DaprResiliency.razor
+- src/Hexalith.EventStore.Admin.Server/Properties/AssemblyInfo.cs
+- tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Dapr/DaprRetryPolicyTests.cs
+- tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Dapr/DaprCircuitBreakerPolicyTests.cs
+- tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Dapr/DaprResiliencySpecTests.cs
+- tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprResiliencyQueryServiceTests.cs
+- tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminDaprControllerResiliencyTests.cs
+- tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DaprResiliencyPageTests.cs
+
+**Modified files:**
+- src/Hexalith.EventStore.Admin.Abstractions/Services/IDaprInfrastructureQueryService.cs (added GetResiliencySpecAsync)
+- src/Hexalith.EventStore.Admin.Server/Configuration/AdminServerOptions.cs (added ResiliencyConfigPath)
+- src/Hexalith.EventStore.Admin.Server/Controllers/AdminDaprController.cs (added resiliency endpoint)
+- src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs (YAML parsing implementation)
+- src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (YamlDotNet + InternalsVisibleTo)
+- src/Hexalith.EventStore.Admin.UI/Pages/DaprComponents.razor (added Resiliency Policies button)
+- src/Hexalith.EventStore.Admin.UI/Program.cs (registered AdminResiliencyApiClient)
+- Directory.Packages.props (YamlDotNet version entry — added by dotnet add)

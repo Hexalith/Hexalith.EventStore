@@ -26,6 +26,11 @@
             Pub/Sub Metrics
         </FluentButton>
         <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                      OnClick="@(() => NavigationManager.NavigateTo("/dapr/resiliency"))"
+                      aria-label="Open Resiliency Policies">
+            Resiliency Policies
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh DAPR dashboard">
             Refresh

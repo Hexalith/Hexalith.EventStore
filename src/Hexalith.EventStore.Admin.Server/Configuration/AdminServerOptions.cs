@@ -60,4 +60,12 @@ public sealed class AdminServerOptions
     /// </remarks>
     // TODO: production deployment may require DAPR service invocation for cross-sidecar metadata
     public string? EventStoreDaprHttpEndpoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets the file path to the DAPR resiliency YAML configuration.
+    /// In Aspire development: set via configuration injection (e.g., "DaprComponents/resiliency.yaml").
+    /// In production: set to the mounted resiliency YAML path (e.g., "/dapr/components/resiliency.yaml").
+    /// When null, the resiliency viewer shows "configuration not available" with setup guidance.
+    /// </summary>
+    public string? ResiliencyConfigPath { get; set; }
 }
