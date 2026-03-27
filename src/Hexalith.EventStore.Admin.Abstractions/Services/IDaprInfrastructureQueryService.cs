@@ -36,4 +36,11 @@ public interface IDaprInfrastructureQueryService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The actor instance state, or null if the actor type is unknown.</returns>
     Task<DaprActorInstanceState?> GetActorInstanceStateAsync(string actorType, string actorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets an overview of pub/sub infrastructure including components, subscriptions, and remote metadata availability.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The pub/sub overview.</returns>
+    Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default);
 }

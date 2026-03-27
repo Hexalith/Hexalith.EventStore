@@ -40,6 +40,15 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<int> GetDeadLetterCountAsync(CancellationToken ct = default)
+    {
+        List<DeadLetterEntry>? result = await _daprClient
+            .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, "admin:dead-letters:all", cancellationToken: ct)
+            .ConfigureAwait(false);
+        return result?.Count ?? 0;
+    }
+
+    /// <inheritdoc/>
     public async Task<PagedResult<DeadLetterEntry>> ListDeadLettersAsync(
         string? tenantId,
         int count,

@@ -158,6 +158,33 @@ public class AdminDaprController(
         }
     }
 
+    /// <summary>
+    /// Gets an overview of DAPR pub/sub infrastructure including components, subscriptions, and metadata availability.
+    /// </summary>
+    [HttpGet("pubsub")]
+    [ProducesResponseType(typeof(DaprPubSubOverview), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetPubSubOverviewAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            DaprPubSubOverview result = await daprService
+                .GetPubSubOverviewAsync(ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetPubSubOverviewAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetPubSubOverviewAsync), ex);
+        }
+    }
+
     private static bool IsServiceUnavailable(Exception ex)
         => ex is HttpRequestException or TimeoutException
             || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode is

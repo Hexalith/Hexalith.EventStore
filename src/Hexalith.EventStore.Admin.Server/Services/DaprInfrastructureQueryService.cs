@@ -316,6 +316,118 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             DateTimeOffset.UtcNow);
     }
 
+    /// <inheritdoc/>
+    public async Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default)
+    {
+        // 1. Get pub/sub components from local sidecar metadata (no health probes — presence = healthy)
+        List<DaprComponentDetail> pubSubComponents = [];
+        try
+        {
+            DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+            if (metadata?.Components is not null)
+            {
+                foreach (DaprComponentsMetadata c in metadata.Components)
+                {
+                    if (!string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.Type)
+                        && DaprComponentCategoryHelper.FromComponentType(c.Type) == DaprComponentCategory.PubSub)
+                    {
+                        pubSubComponents.Add(new DaprComponentDetail(
+                            c.Name,
+                            c.Type,
+                            DaprComponentCategory.PubSub,
+                            c.Version ?? string.Empty,
+                            HealthStatus.Healthy,
+                            DateTimeOffset.UtcNow,
+                            c.Capabilities ?? []));
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DAPR sidecar metadata unavailable — cannot list pub/sub components.");
+        }
+
+        // 2. Get subscriptions from remote EventStore server sidecar via HTTP
+        List<DaprSubscriptionInfo> subscriptions = [];
+        bool isRemoteMetadataAvailable = false;
+
+        if (!string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
+        {
+            try
+            {
+                HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
+
+                string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
+                using HttpResponseMessage response = await httpClient
+                    .GetAsync($"{baseUrl}/v1.0/metadata", ct)
+                    .ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                using JsonDocument doc = await JsonDocument.ParseAsync(
+                    await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
+                    cancellationToken: ct).ConfigureAwait(false);
+
+                if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
+                    && subscriptionsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement sub in subscriptionsElement.EnumerateArray())
+                    {
+                        string? pubsubName = sub.TryGetProperty("pubsubName", out JsonElement pn) ? pn.GetString() : null;
+                        string? topic = sub.TryGetProperty("topic", out JsonElement t) ? t.GetString() : null;
+                        string? type = sub.TryGetProperty("type", out JsonElement ty) ? ty.GetString() : null;
+                        string? deadLetterTopic = sub.TryGetProperty("deadLetterTopic", out JsonElement dlt) ? dlt.GetString() : null;
+
+                        // Extract route from rules.rules[].path
+                        string route = "/";
+                        if (sub.TryGetProperty("rules", out JsonElement rulesElement)
+                            && rulesElement.TryGetProperty("rules", out JsonElement rulesArray))
+                        {
+                            foreach (JsonElement rule in rulesArray.EnumerateArray())
+                            {
+                                if (rule.TryGetProperty("path", out JsonElement pathElement))
+                                {
+                                    string? path = pathElement.GetString();
+                                    if (!string.IsNullOrEmpty(path))
+                                    {
+                                        route = path;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(pubsubName) && !string.IsNullOrEmpty(topic))
+                        {
+                            subscriptions.Add(new DaprSubscriptionInfo(
+                                pubsubName,
+                                topic,
+                                route,
+                                type ?? "UNKNOWN",
+                                string.IsNullOrWhiteSpace(deadLetterTopic) ? null : deadLetterTopic));
+                        }
+                    }
+                }
+
+                isRemoteMetadataAvailable = true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Remote DAPR sidecar metadata unavailable at {Endpoint} — subscription data will be empty.", _options.EventStoreDaprHttpEndpoint);
+            }
+        }
+
+        return new DaprPubSubOverview(pubSubComponents, subscriptions, isRemoteMetadataAvailable);
+    }
+
     // DAPR internal actor state key convention — verify after SDK upgrades
     private static string ComposeActorStateKey(string appId, string actorType, string actorId, string stateKey)
         => $"{appId}||{actorType}||{actorId}||{stateKey}";

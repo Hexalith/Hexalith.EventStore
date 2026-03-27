@@ -1,0 +1,454 @@
+@page "/dapr/pubsub"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.Abstractions.Models.Health
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+
+@implements IAsyncDisposable
+
+@inject AdminPubSubApiClient PubSubClient
+@inject AdminDeadLetterApiClient DeadLetterClient
+@inject AdminStreamApiClient StreamClient
+@inject NavigationManager NavigationManager
+@inject ILogger<DaprPubSub> Logger
+
+<PageTitle>DAPR Pub/Sub Metrics - Hexalith EventStore</PageTitle>
+
+@* Header with back-link and refresh *@
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+        &larr; DAPR Infrastructure
+    </FluentAnchor>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h1 style="margin: 0;">DAPR Pub/Sub Delivery Metrics</h1>
+    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                  OnClick="OnManualRefresh"
+                  aria-label="Refresh pub/sub metrics">
+        Refresh
+    </FluentButton>
+</div>
+
+@* Error state: API unavailable *@
+<IssueBanner Visible="@(_error is not null && _overview is null)"
+             Title="Unable to load pub/sub information"
+             Description="@(_error ?? "The admin backend service may be unavailable.")"
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+@* Summary stat cards (AC1, AC2, AC4) *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3"><SkeletonCard /></FluentGridItem>
+    }
+    else if (_overview is not null)
+    {
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Pub/Sub Components"
+                      Value="@_overview.PubSubComponents.Count.ToString()"
+                      Severity="@(_overview.PubSubComponents.Count > 0 ? "success" : "neutral")"
+                      Title="Number of registered pub/sub components" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Active Subscriptions"
+                      Value="@(_overview.IsRemoteMetadataAvailable ? _overview.Subscriptions.Count.ToString() : "N/A")"
+                      Severity="@(_overview.IsRemoteMetadataAvailable && _overview.Subscriptions.Count > 0 ? "success" : "neutral")"
+                      Title="Number of active DAPR subscriptions" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Unique Topics"
+                      Value="@(_overview.IsRemoteMetadataAvailable ? _overview.Subscriptions.Select(s => s.Topic).Distinct().Count().ToString() : "N/A")"
+                      Severity="neutral"
+                      Title="Number of distinct subscription topics" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="3">
+            <StatCard Label="Dead Letters"
+                      Value="@(_deadLetterCount.HasValue ? _deadLetterCount.Value.ToString() : "N/A")"
+                      Severity="@GetDeadLetterSeverity()"
+                      Title="Total dead-letter entries" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Empty state: No pub/sub components (AC9) *@
+@if (!_isLoading && _overview is not null && _overview.PubSubComponents.Count == 0 && _error is null)
+{
+    <EmptyState Title="No pub/sub components found"
+                Description="Check DAPR component configuration. Ensure pub/sub components (e.g., pubsub.redis, pubsub.kafka) are registered in the DAPR component manifests." />
+}
+
+@* Pub/sub component cards (AC1) *@
+@if (!_isLoading && _overview is not null && _overview.PubSubComponents.Count > 0)
+{
+    <h2 style="margin: 0 0 12px;">Pub/Sub Components</h2>
+    <FluentGrid Spacing="3" style="margin-bottom: 24px;">
+        @foreach (DaprComponentDetail component in _overview.PubSubComponents)
+        {
+            <FluentGridItem xs="12" sm="6" md="@(_overview.PubSubComponents.Count == 1 ? 12 : 6)">
+                <FluentCard class="@GetComponentCardClass(component.ComponentName)" style="padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong>@component.ComponentName</strong>
+                        <StatusBadge Severity="@GetHealthSeverity(component.Status)"
+                                     Status="@component.Status.ToString()"
+                                     AriaLabelPrefix="Component status" />
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: var(--neutral-foreground-hint);">Type:</span> @component.ComponentType
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: var(--neutral-foreground-hint);">Version:</span> @(string.IsNullOrEmpty(component.Version) ? "N/A" : component.Version)
+                    </div>
+                    @if (component.Capabilities.Count > 0)
+                    {
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                            @foreach (string cap in component.Capabilities)
+                            {
+                                <FluentBadge Appearance="Appearance.Neutral">@cap</FluentBadge>
+                            }
+                        </div>
+                    }
+                </FluentCard>
+            </FluentGridItem>
+        }
+    </FluentGrid>
+}
+
+@* Subscription grid (AC2) *@
+@if (!_isLoading && _overview is not null)
+{
+    <h2 style="margin: 0 0 12px;">Subscriptions</h2>
+
+    @* Remote metadata unavailable banner (AC9) *@
+    <IssueBanner Visible="@(!_overview.IsRemoteMetadataAvailable)"
+                 Title="EventStore sidecar unreachable"
+                 Description="Subscription data unavailable. Configure 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings." />
+
+    @if (_overview.Subscriptions.Count > 0)
+    {
+        <div style="margin-bottom: 12px;">
+            <FluentSearch @bind-Value="_searchFilter"
+                          @bind-Value:after="OnFilterChanged"
+                          Placeholder="Filter by topic or route..."
+                          style="min-width: 200px;"
+                          aria-label="Filter subscriptions by topic or route" />
+        </div>
+
+        <FluentDataGrid Items="@FilteredSubscriptions" TGridItem="DaprSubscriptionInfo"
+                        Style="width: 100%; margin-bottom: 24px;"
+                        aria-label="DAPR pub/sub subscriptions">
+            <PropertyColumn Property="@(s => s.Topic)" Title="Topic" Sortable="true"
+                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+            <PropertyColumn Property="@(s => s.Route)" Title="Route" Sortable="true" />
+            <PropertyColumn Property="@(s => s.PubSubName)" Title="PubSub Component" Sortable="true" />
+            <PropertyColumn Property="@(s => s.SubscriptionType)" Title="Type" Sortable="true" />
+            <TemplateColumn Title="Dead Letter Topic" Sortable="false">
+                @(context.DeadLetterTopic ?? "None")
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+    else if (_overview.IsRemoteMetadataAvailable)
+    {
+        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+            No active subscriptions registered on the EventStore server sidecar.
+        </div>
+    }
+}
+
+@* Topic topology and publication pipeline reference cards (AC3) *@
+@if (!_isLoading && _overview is not null && _overview.PubSubComponents.Count > 0)
+{
+    <h2 style="margin: 0 0 12px;">Reference</h2>
+    <FluentAccordion style="margin-bottom: 24px;">
+        <FluentAccordionItem Heading="Topic Topology &amp; Publication Pipeline">
+            <FluentCard style="padding: 16px; margin-bottom: 16px;">
+                <h3 style="margin: 0 0 12px;">Topic Topology</h3>
+                <dl style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0;">
+                    <dt style="font-weight: 600;">Event topic pattern</dt>
+                    <dd style="margin: 0; font-family: monospace;">{tenant}.{domain}.events</dd>
+                    <dt style="font-weight: 600;">Dead-letter topic pattern</dt>
+                    <dd style="margin: 0; font-family: monospace;">deadletter.{tenant}.{domain}.events</dd>
+                    <dt style="font-weight: 600;">Delivery semantics</dt>
+                    <dd style="margin: 0;">At-least-once &middot; CloudEvents 1.0 &middot; Subscribers must be idempotent</dd>
+                    <dt style="font-weight: 600;">Pub/sub component</dt>
+                    <dd style="margin: 0;">@(_overview.PubSubComponents.FirstOrDefault()?.ComponentName ?? "N/A")</dd>
+                </dl>
+            </FluentCard>
+
+            <FluentCard style="padding: 16px;">
+                <h3 style="margin: 0 0 12px;">Publication Pipeline</h3>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <FluentBadge Appearance="Appearance.Accent" style="padding: 6px 12px;">EventsStored</FluentBadge>
+                    <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
+                    <FluentBadge Appearance="Appearance.Accent" style="padding: 6px 12px;">EventsPublished</FluentBadge>
+                    <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
+                    <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-success); color: white;">Completed</FluentBadge>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="color: var(--neutral-foreground-hint); margin-left: 24px;">&darr; on failure</span>
+                    <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-error); color: white;">PublishFailed</FluentBadge>
+                    <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
+                    <span>Dead-letter routing &mdash; investigate via Dead Letter Manager</span>
+                </div>
+            </FluentCard>
+        </FluentAccordionItem>
+    </FluentAccordion>
+}
+
+@* Observability deep-link cards (AC5) *@
+@if (!_isLoading && _overview is not null)
+{
+    <h2 style="margin: 0 0 12px;">Observability</h2>
+    <FluentGrid Spacing="3" style="margin-bottom: 24px;">
+        <FluentGridItem xs="12" sm="4">
+            <FluentCard style="padding: 16px; text-align: center;">
+                <strong>Traces</strong>
+                <div style="margin-top: 8px;">
+                    @if (!string.IsNullOrEmpty(_observabilityLinks?.TraceUrl))
+                    {
+                        <FluentAnchor Href="@_observabilityLinks.TraceUrl" Target="_blank"
+                                      Appearance="Appearance.Accent"
+                                      aria-label="Open trace dashboard">
+                            Open Trace Dashboard
+                        </FluentAnchor>
+                    }
+                    else
+                    {
+                        <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">Configure observability URL to enable</span>
+                    }
+                </div>
+            </FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="4">
+            <FluentCard style="padding: 16px; text-align: center;">
+                <strong>Metrics</strong>
+                <div style="margin-top: 8px;">
+                    @if (!string.IsNullOrEmpty(_observabilityLinks?.MetricsUrl))
+                    {
+                        <FluentAnchor Href="@_observabilityLinks.MetricsUrl" Target="_blank"
+                                      Appearance="Appearance.Accent"
+                                      aria-label="Open metrics dashboard">
+                            Open Metrics Dashboard
+                        </FluentAnchor>
+                    }
+                    else
+                    {
+                        <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">Configure observability URL to enable</span>
+                    }
+                </div>
+            </FluentCard>
+        </FluentGridItem>
+        <FluentGridItem xs="12" sm="4">
+            <FluentCard style="padding: 16px; text-align: center;">
+                <strong>Logs</strong>
+                <div style="margin-top: 8px;">
+                    @if (!string.IsNullOrEmpty(_observabilityLinks?.LogsUrl))
+                    {
+                        <FluentAnchor Href="@_observabilityLinks.LogsUrl" Target="_blank"
+                                      Appearance="Appearance.Accent"
+                                      aria-label="Open logs dashboard">
+                            Open Logs Dashboard
+                        </FluentAnchor>
+                    }
+                    else
+                    {
+                        <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">Configure observability URL to enable</span>
+                    }
+                </div>
+            </FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+}
+
+@* Dead-letter management card (AC4) *@
+@if (!_isLoading && _overview is not null)
+{
+    <FluentCard style="padding: 16px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>Dead Letter Management</strong>
+                <div style="margin-top: 4px;">
+                    Dead letters:
+                    <span style="font-weight: 600; color: @GetDeadLetterColor();">
+                        @(_deadLetterCount.HasValue ? _deadLetterCount.Value.ToString() : "N/A")
+                    </span>
+                </div>
+            </div>
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="@(() => NavigationManager.NavigateTo("/deadletters"))"
+                          aria-label="Navigate to Dead Letter Manager">
+                Manage Dead Letters
+            </FluentButton>
+        </div>
+    </FluentCard>
+}
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private DaprPubSubOverview? _overview;
+    private int? _deadLetterCount;
+    private ObservabilityLinks? _observabilityLinks;
+    private bool _isLoading = true;
+    private string? _error;
+    private string? _searchFilter;
+    private IQueryable<DaprSubscriptionInfo>? _filteredSubscriptionsCache;
+
+    /// <summary>
+    /// Gets or sets the pub/sub component name for deep linking (AC9).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "component")]
+    public string? Component { get; set; }
+
+    private IQueryable<DaprSubscriptionInfo> FilteredSubscriptions
+        => _filteredSubscriptionsCache ??= BuildFilteredSubscriptions();
+
+    private IQueryable<DaprSubscriptionInfo> BuildFilteredSubscriptions()
+    {
+        IEnumerable<DaprSubscriptionInfo> filtered = _overview?.Subscriptions ?? [];
+
+        if (!string.IsNullOrEmpty(_searchFilter))
+        {
+            string search = _searchFilter;
+            filtered = filtered.Where(s =>
+                s.Topic.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || s.Route.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return filtered.OrderBy(s => s.Topic).AsQueryable();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadObservabilityLinksAsync();
+        await LoadDataAsync();
+        _ = PollAsync(); // fire-and-forget
+    }
+
+    private async Task LoadObservabilityLinksAsync()
+    {
+        try
+        {
+            SystemHealthReport? health = await StreamClient.GetSystemHealthAsync(_cts.Token);
+            _observabilityLinks = health?.ObservabilityLinks;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch observability links"); }
+    }
+
+    private async Task PollAsync()
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+            {
+                await InvokeAsync(async () =>
+                {
+                    try { await LoadDataAsync(); StateHasChanged(); }
+                    catch (ObjectDisposedException) { }
+                    catch (Exception ex) { Logger.LogWarning(ex, "Poll cycle failed"); }
+                });
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        DaprPubSubOverview? overviewResult = null;
+        int? deadLetterResult = null;
+        string? errorMessage = null;
+
+        async Task FetchOverviewAsync()
+        {
+            try { overviewResult = await PubSubClient.GetPubSubOverviewAsync(_cts.Token); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch pub/sub overview"); errorMessage = ex.Message; }
+        }
+
+        async Task FetchDeadLetterCountAsync()
+        {
+            try { deadLetterResult = await DeadLetterClient.GetDeadLetterCountAsync(_cts.Token); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch dead-letter count"); }
+        }
+
+        await Task.WhenAll(FetchOverviewAsync(), FetchDeadLetterCountAsync());
+
+        _overview = overviewResult;
+        _deadLetterCount = deadLetterResult;
+        _filteredSubscriptionsCache = null;
+        _error = overviewResult is null ? (errorMessage ?? "Failed to load pub/sub overview.") : null;
+        _isLoading = false;
+    }
+
+    private async Task OnManualRefresh()
+    {
+        await LoadDataAsync();
+    }
+
+    private void OnFilterChanged()
+    {
+        _filteredSubscriptionsCache = null;
+        StateHasChanged();
+    }
+
+    private string GetComponentCardClass(string componentName)
+    {
+        if (!string.IsNullOrEmpty(Component)
+            && string.Equals(componentName, Component, StringComparison.OrdinalIgnoreCase))
+        {
+            return "highlighted-card";
+        }
+
+        return string.Empty;
+    }
+
+    private string GetDeadLetterSeverity()
+    {
+        if (!_deadLetterCount.HasValue)
+        {
+            return "neutral";
+        }
+
+        return _deadLetterCount.Value == 0 ? "success" : "warning";
+    }
+
+    private string GetDeadLetterColor()
+    {
+        if (!_deadLetterCount.HasValue)
+        {
+            return "var(--neutral-foreground-rest)";
+        }
+
+        return _deadLetterCount.Value == 0
+            ? "var(--hexalith-status-success)"
+            : "var(--hexalith-status-warning)";
+    }
+
+    private static string GetHealthSeverity(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "success",
+        HealthStatus.Degraded => "warning",
+        HealthStatus.Unhealthy => "error",
+        _ => "neutral",
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+}
+
+<style>
+    .highlighted-card {
+        border: 2px solid var(--accent-fill-rest);
+        box-shadow: 0 0 8px var(--accent-fill-rest);
+    }
+</style>
