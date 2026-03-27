@@ -19,6 +19,7 @@ public class DaprPubSubPageTests : AdminUITestContext
 {
     private readonly AdminPubSubApiClient _mockPubSubClient;
     private readonly AdminDeadLetterApiClient _mockDeadLetterClient;
+    private readonly AdminStreamApiClient _mockStreamClient;
 
     public DaprPubSubPageTests()
     {
@@ -28,8 +29,12 @@ public class DaprPubSubPageTests : AdminUITestContext
         _mockDeadLetterClient = Substitute.For<AdminDeadLetterApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminDeadLetterApiClient>.Instance);
+        _mockStreamClient = Substitute.For<AdminStreamApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminStreamApiClient>.Instance);
         Services.AddScoped(_ => _mockPubSubClient);
         Services.AddScoped(_ => _mockDeadLetterClient);
+        Services.AddScoped(_ => _mockStreamClient);
     }
 
     [Fact]
@@ -194,6 +199,26 @@ public class DaprPubSubPageTests : AdminUITestContext
 
         // Assert
         cut.Markup.ShouldContain("Refresh");
+    }
+
+    [Fact]
+    public void PubSubPage_RendersObservabilityLinks_WhenUrlsConfigured()
+    {
+        // Arrange
+        SetupSuccessfulResponse();
+        ObservabilityLinks links = new("https://traces.example.com", "https://metrics.example.com", "https://logs.example.com");
+        SystemHealthReport health = new(HealthStatus.Healthy, 100, 5.0, 0.1, [], links);
+        _ = _mockStreamClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+
+        // Act
+        IRenderedComponent<DaprPubSub> cut = Render<DaprPubSub>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Open Trace Dashboard"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Open Trace Dashboard");
+        cut.Markup.ShouldContain("Open Metrics Dashboard");
+        cut.Markup.ShouldContain("Open Logs Dashboard");
     }
 
     // ===== Helper methods =====

@@ -184,6 +184,22 @@ public class DaprPubSubQueryServiceTests
         result.Subscriptions[1].Route.ShouldBe("/projections/notify");
     }
 
+    [Fact]
+    public async Task GetPubSubOverviewAsync_HandlesGracefully_WhenRemoteReturnsMalformedJson()
+    {
+        // Arrange
+        DaprMetadata metadata = CreateMetadata([]);
+        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        SetupRemoteSidecar("not valid json {{{");
+
+        // Act
+        DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
+
+        // Assert — graceful degradation, not an exception
+        result.Subscriptions.ShouldBeEmpty();
+        result.IsRemoteMetadataAvailable.ShouldBeFalse();
+    }
+
     // ===== Helpers =====
 
     private void SetupRemoteSidecar(string jsonResponse)

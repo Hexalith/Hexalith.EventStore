@@ -356,7 +356,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         List<DaprSubscriptionInfo> subscriptions = [];
         bool isRemoteMetadataAvailable = false;
 
-        if (!string.IsNullOrEmpty(_options.EventStoreDaprHttpEndpoint))
+        if (!string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
         {
             try
             {
@@ -372,7 +372,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
                     cancellationToken: ct).ConfigureAwait(false);
 
-                if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement))
+                if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
+                    && subscriptionsElement.ValueKind == JsonValueKind.Array)
                 {
                     foreach (JsonElement sub in subscriptionsElement.EnumerateArray())
                     {

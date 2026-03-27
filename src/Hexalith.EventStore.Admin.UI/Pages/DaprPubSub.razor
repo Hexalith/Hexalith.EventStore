@@ -296,6 +296,7 @@
     private bool _isLoading = true;
     private string? _error;
     private string? _searchFilter;
+    private IQueryable<DaprSubscriptionInfo>? _filteredSubscriptionsCache;
 
     /// <summary>
     /// Gets or sets the pub/sub component name for deep linking (AC9).
@@ -304,27 +305,39 @@
     public string? Component { get; set; }
 
     private IQueryable<DaprSubscriptionInfo> FilteredSubscriptions
+        => _filteredSubscriptionsCache ??= BuildFilteredSubscriptions();
+
+    private IQueryable<DaprSubscriptionInfo> BuildFilteredSubscriptions()
     {
-        get
+        IEnumerable<DaprSubscriptionInfo> filtered = _overview?.Subscriptions ?? [];
+
+        if (!string.IsNullOrEmpty(_searchFilter))
         {
-            IEnumerable<DaprSubscriptionInfo> filtered = _overview?.Subscriptions ?? [];
-
-            if (!string.IsNullOrEmpty(_searchFilter))
-            {
-                string search = _searchFilter;
-                filtered = filtered.Where(s =>
-                    s.Topic.Contains(search, StringComparison.OrdinalIgnoreCase)
-                    || s.Route.Contains(search, StringComparison.OrdinalIgnoreCase));
-            }
-
-            return filtered.OrderBy(s => s.Topic).AsQueryable();
+            string search = _searchFilter;
+            filtered = filtered.Where(s =>
+                s.Topic.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || s.Route.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
+
+        return filtered.OrderBy(s => s.Topic).AsQueryable();
     }
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadObservabilityLinksAsync();
         await LoadDataAsync();
         _ = PollAsync(); // fire-and-forget
+    }
+
+    private async Task LoadObservabilityLinksAsync()
+    {
+        try
+        {
+            SystemHealthReport? health = await StreamClient.GetSystemHealthAsync(_cts.Token);
+            _observabilityLinks = health?.ObservabilityLinks;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch observability links"); }
     }
 
     private async Task PollAsync()
@@ -347,42 +360,29 @@
 
     private async Task LoadDataAsync()
     {
-        // Fetch pub/sub overview, dead-letter count, and observability links independently
         DaprPubSubOverview? overviewResult = null;
         int? deadLetterResult = null;
-        ObservabilityLinks? linksResult = null;
         string? errorMessage = null;
 
-        Task overviewTask = Task.Run(async () =>
+        async Task FetchOverviewAsync()
         {
             try { overviewResult = await PubSubClient.GetPubSubOverviewAsync(_cts.Token); }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch pub/sub overview"); errorMessage = ex.Message; }
-        });
+        }
 
-        Task deadLetterTask = Task.Run(async () =>
+        async Task FetchDeadLetterCountAsync()
         {
             try { deadLetterResult = await DeadLetterClient.GetDeadLetterCountAsync(_cts.Token); }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch dead-letter count"); }
-        });
+        }
 
-        Task linksTask = Task.Run(async () =>
-        {
-            try
-            {
-                SystemHealthReport? health = await StreamClient.GetSystemHealthAsync(_cts.Token);
-                linksResult = health?.ObservabilityLinks;
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { Logger.LogWarning(ex, "Failed to fetch observability links"); }
-        });
-
-        await Task.WhenAll(overviewTask, deadLetterTask, linksTask);
+        await Task.WhenAll(FetchOverviewAsync(), FetchDeadLetterCountAsync());
 
         _overview = overviewResult;
         _deadLetterCount = deadLetterResult;
-        _observabilityLinks = linksResult;
+        _filteredSubscriptionsCache = null;
         _error = overviewResult is null ? (errorMessage ?? "Failed to load pub/sub overview.") : null;
         _isLoading = false;
     }
@@ -394,6 +394,7 @@
 
     private void OnFilterChanged()
     {
+        _filteredSubscriptionsCache = null;
         StateHasChanged();
     }
 
@@ -448,6 +449,6 @@
 <style>
     .highlighted-card {
         border: 2px solid var(--accent-fill-rest);
-        box-shadow: 0 0 8px rgba(var(--accent-fill-rest-rgb), 0.3);
+        box-shadow: 0 0 8px var(--accent-fill-rest);
     }
 </style>

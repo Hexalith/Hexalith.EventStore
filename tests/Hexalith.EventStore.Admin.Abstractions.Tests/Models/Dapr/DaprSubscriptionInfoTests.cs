@@ -24,6 +24,14 @@ public class DaprSubscriptionInfoTests
         info.DeadLetterTopic.ShouldBeNull();
     }
 
+    [Fact]
+    public void Constructor_WithEmptyDeadLetterTopic_CreatesInstance()
+    {
+        var info = new DaprSubscriptionInfo("pubsub", "*.*.events", "/events/handle", "DECLARATIVE", "");
+
+        info.DeadLetterTopic.ShouldBe("");
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

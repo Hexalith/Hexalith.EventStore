@@ -1,6 +1,6 @@
 # Story 19.3: DAPR Pub/Sub Delivery Metrics
 
-Status: review
+Status: done
 
 Size: Medium — Creates new `DaprSubscriptionInfo` and `DaprPubSubOverview` models in Admin.Abstractions, extends `IDaprInfrastructureQueryService` with `GetPubSubOverviewAsync`, adds `GET /api/v1/admin/dapr/pubsub` endpoint to `AdminDaprController`, creates `AdminPubSubApiClient` UI HTTP client, creates `DaprPubSub.razor` dashboard page with pub/sub component cards + subscription grid + topic topology summary + dead-letter integration + observability deep links, adds "Pub/Sub Metrics" button to `DaprComponents.razor`. Creates ~5–7 test classes across 3–4 test projects (~25–30 tests, ~6–8 hours estimated). Extends story 19-1/19-2's DAPR infrastructure foundation.
 
@@ -545,6 +545,24 @@ Claude Opus 4.6 (1M context)
 - Task 4: Created `AdminPubSubApiClient` with same pattern as `AdminActorApiClient`. Added `GetDeadLetterCountAsync` to `IDeadLetterQueryService` interface, implemented in `DaprDeadLetterQueryService` (reads "admin:dead-letters:all" index count), added `GET /api/v1/admin/dead-letters/count` endpoint, added client method to `AdminDeadLetterApiClient`
 - Task 5: Created `DaprPubSub.razor` page with all 9 ACs: stat cards, component cards, subscription grid with search filter, topic topology reference (collapsible), publication pipeline visualization, observability deep-link cards, dead-letter management card, 30s PeriodicTimer polling, empty/error states, deep linking via `?component=` query parameter. Added "Pub/Sub Metrics" button to `DaprComponents.razor` adjacent to "Actor Inspector"
 - Task 6: 43 new tests across 5 test files — all pass. Full regression suite: 1,728 tests pass with zero failures
+
+### Review Findings
+
+- [x] [Review][Decision] **Dead-letter count masks state store failures as "0 dead letters"** — Fixed via Option A: removed catch-all returning 0 in `DaprDeadLetterQueryService`; exceptions now propagate to controller (returns 503) → client returns null → UI shows "N/A"
+- [x] [Review][Patch] **Task.Run wrapping I/O-bound async calls in LoadDataAsync** — Fixed: replaced Task.Run with local async functions in Task.WhenAll
+- [x] [Review][Patch] **JSON subscriptions ValueKind not checked before EnumerateArray** — Fixed: added `ValueKind == JsonValueKind.Array` guard
+- [x] [Review][Patch] **FilteredSubscriptions recomputes LINQ chain on every access** — Fixed: added `_filteredSubscriptionsCache` field with invalidation on data/filter change
+- [x] [Review][Patch] **Observability URLs fetched every 30s via full SystemHealthReport** — Fixed: moved to `LoadObservabilityLinksAsync()` called once in OnInitializedAsync
+- [x] [Review][Patch] **HTTP endpoint check uses IsNullOrEmpty instead of IsNullOrWhiteSpace** — Fixed
+- [x] [Review][Patch] **CSS --accent-fill-rest-rgb custom property may not exist in all Fluent UI themes** — Fixed: replaced with safe `var(--accent-fill-rest)` token
+- [x] [Review][Patch] **Missing test: malformed JSON from remote sidecar** — Fixed: added `GetPubSubOverviewAsync_HandlesGracefully_WhenRemoteReturnsMalformedJson` test
+- [x] [Review][Patch] **Missing test: empty DeadLetterTopic string acceptance at model level** — Fixed: added `Constructor_WithEmptyDeadLetterTopic_CreatesInstance` test
+- [x] [Review][Patch] **Missing test: observability deep-link rendering when URLs configured** — Fixed: added `PubSubPage_RendersObservabilityLinks_WhenUrlsConfigured` test with configured mock
+- [x] [Review][Patch] **Auth exceptions silently swallowed in dead-letter client flow** — Skipped: requires global auth error handling strategy (Blazor error boundary); not a standalone fix
+- [x] [Review][Defer] **DisposeAsync doesn't await in-flight tasks / no double-disposal guard** — pre-existing pattern from DaprComponents.razor and DaprActors.razor
+- [x] [Review][Defer] **DisposeAsync doesn't call GC.SuppressFinalize** — pre-existing pattern across all admin UI pages
+- [x] [Review][Defer] **Unconsumed response body on HandleErrorStatus error prevents HTTP/1.1 connection reuse** — pre-existing pattern across all API clients
+- [x] [Review][Defer] **Dead-letter state store loads full List<DeadLetterEntry> index for count** — pre-existing architecture from ListDeadLettersAsync; DAPR state store index design
 
 ### Change Log
 

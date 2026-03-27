@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-26 # story 19-3 review
+last_updated: 2026-03-27 # story 19-3 done (code review complete)
 project: Hexalith.EventStore
 # Note: Story 1-3 was already implemented as Story 1-7 under the old epic numbering
 project_key: NOKEY
@@ -216,7 +216,7 @@ development_status:
   epic-19: in-progress
   19-1-dapr-component-status-dashboard: done
   19-2-dapr-actor-inspector: done
-  19-3-dapr-pubsub-delivery-metrics: review
+  19-3-dapr-pubsub-delivery-metrics: done
   19-4-dapr-resiliency-policy-viewer: ready-for-dev
   19-5-dapr-component-health-history: backlog
   epic-19-retrospective: optional
