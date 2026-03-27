@@ -104,4 +104,16 @@ public sealed class AdminServerOptions
     /// When state has more leaf fields, only the most recently changed fields are included and IsFieldsTruncated is set.
     /// </summary>
     public int MaxBlameFields { get; set; } = 5_000;
+
+    /// <summary>
+    /// Gets or sets the maximum number of binary search steps for bisect operations. Default: 30.
+    /// Supports streams up to 2^30 (~1 billion) events.
+    /// </summary>
+    public int MaxBisectSteps { get; set; } = 30;
+
+    /// <summary>
+    /// Gets or sets the maximum number of fields compared per bisect step. Default: 1,000.
+    /// When state has more leaf fields than this limit, the caller must specify field paths to narrow the comparison.
+    /// </summary>
+    public int MaxBisectFields { get; set; } = 1_000;
 }

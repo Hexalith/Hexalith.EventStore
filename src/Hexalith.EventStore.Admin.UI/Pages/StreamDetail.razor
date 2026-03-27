@@ -78,6 +78,13 @@ else
                       Title="Show per-field provenance">
             Blame
         </FluentButton>
+        <FluentButton Appearance="Appearance.Outline"
+                      OnClick="@OpenBisectTool"
+                      Icon="@(new Icons.Regular.Size20.BranchCompare())"
+                      aria-label="Open bisect tool"
+                      Title="Binary search for state divergence">
+            Bisect
+        </FluentButton>
     </FluentStack>
 
     <TimelineFilterBar @bind-SelectedEntryType="_selectedEntryType"
@@ -87,7 +94,19 @@ else
                        @bind-CompareMode="_compareMode"
                        @bind-CompareMode:after="OnCompareModeChanged" />
 
-    @if (_blameMode)
+    @if (_bisectMode)
+    {
+        @* Bisect tool replaces the detail panel *@
+        <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
+            <BisectTool TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
+                        InitialGoodSequence="@_bisectGood"
+                        InitialBadSequence="@_bisectBad"
+                        OnClose="CloseBisectTool"
+                        OnNavigateToEvent="OnBisectNavigateToEvent"
+                        OnNavigateToBlame="OnBisectNavigateToBlame" />
+        </div>
+    }
+    else if (_blameMode)
     {
         @* Blame viewer replaces the detail panel *@
         <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
@@ -188,6 +207,11 @@ else
     private bool _blameMode;
     private long? _blameSequence;
 
+    // Bisect tool state
+    private bool _bisectMode;
+    private long? _bisectGood;
+    private long? _bisectBad;
+
     // Inspector modal state
     private bool _showInspectorModal;
     private long? _inspectorSequence;
@@ -228,6 +252,9 @@ else
     [SupplyParameterFromQuery(Name = "blame")]
     public string? QueryBlame { get; set; }
 
+    [SupplyParameterFromQuery(Name = "bisect")]
+    public string? QueryBisect { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _fromSequence = QueryFrom;
@@ -240,13 +267,19 @@ else
             _selectedEntryType = t;
         }
 
-        // Parse ?blame={seq|latest} deep link — blame takes precedence over diff (AC9)
-        if (!string.IsNullOrEmpty(QueryBlame))
+        // Parse deep links with precedence: bisect > blame > diff
+        if (!string.IsNullOrEmpty(QueryBisect) && TryParseDiffParam(QueryBisect, out long bisectGood, out long bisectBad))
+        {
+            _bisectMode = true;
+            _bisectGood = bisectGood;
+            _bisectBad = bisectBad;
+        }
+        else if (!string.IsNullOrEmpty(QueryBlame))
         {
             _blameMode = true;
             _blameSequence = long.TryParse(QueryBlame, out long blameSeq) ? blameSeq : null;
         }
-        // Parse ?diff=5-15 deep link (normalized: Min-Max) — only if blame is not active
+        // Parse ?diff=5-15 deep link (normalized: Min-Max) — only if bisect and blame are not active
         else if (!string.IsNullOrEmpty(QueryDiff) && TryParseDiffParam(QueryDiff, out long diffFrom, out long diffTo))
         {
             _diffMode = true;
@@ -478,6 +511,57 @@ else
         UpdateUrl();
     }
 
+    private void OpenBisectTool()
+    {
+        _bisectMode = true;
+        // If an event is selected, pre-fill bad with that sequence and good with 0
+        if (_selectedSequence.HasValue)
+        {
+            _bisectBad = _selectedSequence.Value;
+            _bisectGood = 0;
+        }
+        else
+        {
+            _bisectGood = null;
+            _bisectBad = null;
+        }
+
+        _blameMode = false;
+        _diffMode = false;
+        _selectedSequence = null;
+        _selectedEntry = null;
+        UpdateUrl();
+    }
+
+    private void CloseBisectTool()
+    {
+        _bisectMode = false;
+        _bisectGood = null;
+        _bisectBad = null;
+        UpdateUrl();
+    }
+
+    private void OnBisectNavigateToEvent(long sequenceNumber)
+    {
+        _bisectMode = false;
+        _bisectGood = null;
+        _bisectBad = null;
+        _selectedSequence = sequenceNumber;
+        _selectedEntry = _timelineEntries
+            .FirstOrDefault(e => e.SequenceNumber == sequenceNumber);
+        UpdateUrl();
+    }
+
+    private void OnBisectNavigateToBlame(long sequenceNumber)
+    {
+        _bisectMode = false;
+        _bisectGood = null;
+        _bisectBad = null;
+        _blameMode = true;
+        _blameSequence = sequenceNumber;
+        UpdateUrl();
+    }
+
     private void OnCompareModeChanged()
     {
         if (!_compareMode)
@@ -533,7 +617,11 @@ else
     {
         if (e.Key == "Escape")
         {
-            if (_blameMode)
+            if (_bisectMode)
+            {
+                CloseBisectTool();
+            }
+            else if (_blameMode)
             {
                 CloseBlameViewer();
             }
@@ -576,7 +664,11 @@ else
             queryParams.Add($"correlation={Uri.EscapeDataString(_correlationFilter)}");
         }
 
-        if (_blameMode)
+        if (_bisectMode && _bisectGood.HasValue && _bisectBad.HasValue)
+        {
+            queryParams.Add($"bisect={_bisectGood.Value}-{_bisectBad.Value}");
+        }
+        else if (_blameMode)
         {
             if (_blameSequence.HasValue)
             {

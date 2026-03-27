@@ -77,6 +77,20 @@ public interface IStreamQueryService
     Task<AggregateBlameView> GetAggregateBlameAsync(string tenantId, string domain, string aggregateId, long? atSequence, CancellationToken ct = default);
 
     /// <summary>
+    /// Performs a binary search through event history to find the exact event where aggregate state
+    /// diverged from expected field values.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="domain">The domain name.</param>
+    /// <param name="aggregateId">The aggregate identifier.</param>
+    /// <param name="goodSequence">The known-good sequence (state was correct here).</param>
+    /// <param name="badSequence">The known-bad sequence (state diverged by this point).</param>
+    /// <param name="fieldPaths">Optional field paths to watch. When null or empty, all leaf fields are compared.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The bisect result identifying the divergent event.</returns>
+    Task<BisectResult> BisectAsync(string tenantId, string domain, string aggregateId, long goodSequence, long badSequence, IReadOnlyList<string>? fieldPaths, CancellationToken ct = default);
+
+    /// <summary>
     /// Traces the causation chain starting from a specific event (FR72).
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>

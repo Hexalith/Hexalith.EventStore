@@ -54,6 +54,16 @@ public sealed class AdminServerOptionsValidator : IValidateOptions<AdminServerOp
             (failures ??= []).Add($"{nameof(options.MaxBlameFields)} must be greater than zero.");
         }
 
+        if (options.MaxBisectSteps <= 0)
+        {
+            (failures ??= []).Add($"{nameof(options.MaxBisectSteps)} must be greater than zero.");
+        }
+
+        if (options.MaxBisectFields <= 0)
+        {
+            (failures ??= []).Add($"{nameof(options.MaxBisectFields)} must be greater than zero.");
+        }
+
         return failures is null
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

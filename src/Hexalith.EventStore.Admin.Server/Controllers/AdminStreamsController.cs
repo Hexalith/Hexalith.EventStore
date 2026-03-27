@@ -205,6 +205,68 @@ public class AdminStreamsController(
     }
 
     /// <summary>
+    /// Performs a binary search through event history to find the exact event where aggregate state diverged.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/bisect")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(BisectResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> BisectAggregateState(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long good,
+        [FromQuery] long bad,
+        [FromQuery] string? fields,
+        CancellationToken ct = default)
+    {
+        if (good < 0)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'good' must be >= 0.");
+        }
+
+        if (bad <= 0)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'bad' must be > 0.");
+        }
+
+        if (good >= bad)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'good' must be less than 'bad'.");
+        }
+
+        IReadOnlyList<string>? fieldPaths = string.IsNullOrWhiteSpace(fields)
+            ? null
+            : fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        try
+        {
+            BisectResult result = await streamQueryService
+                .BisectAsync(tenantId, domain, aggregateId, good, bad, fieldPaths, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
+                : Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(BisectAggregateState), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(BisectAggregateState), ex);
+        }
+    }
+
+    /// <summary>
     /// Gets detailed information about a single event.
     /// </summary>
     [HttpGet("{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}")]
