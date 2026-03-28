@@ -167,7 +167,7 @@ public class DaprResiliencySpecTests
         };
         var targetBindings = new List<DaprResiliencyTargetBinding>
         {
-            new("commandapi", "App", "Outbound", "defaultRetry", "defaultTimeout", "defaultBreaker"),
+            new("eventstore", "App", "Outbound", "defaultRetry", "defaultTimeout", "defaultBreaker"),
         };
 
         var spec = new DaprResiliencySpec(

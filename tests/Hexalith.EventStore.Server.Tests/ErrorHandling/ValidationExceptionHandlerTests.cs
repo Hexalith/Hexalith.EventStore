@@ -4,7 +4,7 @@ using System.Text.Json;
 using FluentValidation;
 using FluentValidation.Results;
 
-using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.ErrorHandling;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

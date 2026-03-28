@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
 /// <summary>
 /// Tier 3 contract tests validating domain service hot reload: independent restart
-/// without requiring CommandApi or EventStore actor system restart.
+/// without requiring EventStore or EventStore actor system restart.
 /// Validates DAPR service discovery recovery, command flow continuity across restart,
 /// and graceful handling of commands submitted during the restart window.
 /// </summary>
@@ -31,14 +31,14 @@ public class HotReloadTests {
 
     /// <summary>
     /// AC #1, #2: Verify that the sample domain service can be stopped and restarted
-    /// independently without restarting the CommandApi or EventStore actor system.
+    /// independently without restarting the EventStore or EventStore actor system.
     /// Commands submitted before and after restart both complete successfully.
     /// </summary>
     [Fact]
     public async Task ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully() {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken ct = cts.Token;
-        HttpClient client = _fixture.CommandApiClient;
+        HttpClient client = _fixture.EventStoreClient;
 
         // Phase 1 (baseline): Send IncrementCounter command, verify Completed with events
         string aggregateId = $"counter-hotreload-{Guid.NewGuid():N}";
@@ -53,15 +53,15 @@ public class HotReloadTests {
         status1.TryGetProperty("eventCount", out JsonElement ec1).ShouldBeTrue();
         ec1.GetInt32().ShouldBeGreaterThan(0, "Baseline command should produce events");
 
-        // AC #5: Verify CommandApi is responsive before restart
-        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
+        // AC #5: Verify EventStore is responsive before restart
+        await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
 
         // Phase 2 (restart): Stop sample domain service, then restart it
         _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
-        // AC #5: CommandApi should remain responsive while domain service is stopped
-        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
+        // AC #5: EventStore should remain responsive while domain service is stopped
+        await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
 
         _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-start", ct);
@@ -93,8 +93,8 @@ public class HotReloadTests {
         status3.GetProperty("status").GetString().ShouldBe("Completed",
             "Decrement after post-restart increment should complete, proving command flow continuity across restart");
 
-        // AC #5: CommandApi should still be responsive after restart cycle
-        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
+        // AC #5: EventStore should still be responsive after restart cycle
+        await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
     }
 
     // ------------------------------------------------------------------
@@ -111,7 +111,7 @@ public class HotReloadTests {
     public async Task ProcessCommand_DuringDomainServiceRestart_HandledByResiliency() {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken ct = cts.Token;
-        HttpClient client = _fixture.CommandApiClient;
+        HttpClient client = _fixture.EventStoreClient;
 
         // Stop sample domain service
         _ = await _fixture.App.ResourceCommands
@@ -147,33 +147,33 @@ public class HotReloadTests {
     }
 
     // ------------------------------------------------------------------
-    // Task 4: CommandApi resilience test (AC #5)
+    // Task 4: EventStore resilience test (AC #5)
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// AC #5: Verify that CommandApi remains responsive throughout the domain service
+    /// AC #5: Verify that EventStore remains responsive throughout the domain service
     /// restart cycle. Health endpoint returns 200 and new commands are accepted (202).
     /// </summary>
     [Fact]
-    public async Task CommandApi_DuringDomainServiceRestart_RemainsResponsive() {
+    public async Task EventStore_DuringDomainServiceRestart_RemainsResponsive() {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken ct = cts.Token;
-        HttpClient client = _fixture.CommandApiClient;
+        HttpClient client = _fixture.EventStoreClient;
 
         // Stop sample domain service
         _ = await _fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", "resource-stop", ct);
 
-        // AC #5 (Task 4.3): Assert CommandApi remains reachable while domain service is stopped.
-        await ContractTestHelpers.AssertCommandApiResponsiveAsync(client);
+        // AC #5 (Task 4.3): Assert EventStore remains reachable while domain service is stopped.
+        await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
 
-        // AC #5 (Task 4.4): Assert CommandApi can accept new commands while domain service is down.
+        // AC #5 (Task 4.4): Assert EventStore can accept new commands while domain service is down.
         string aggregateIdWhileDown = $"counter-apicheck-down-{Guid.NewGuid():N}";
         string correlationIdWhileDown = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
             client, tenant: "tenant-a", domain: "counter",
             aggregateId: aggregateIdWhileDown, commandType: "IncrementCounter");
         correlationIdWhileDown.ShouldNotBeNullOrWhiteSpace(
-            "CommandApi should return a tracking correlationId while domain service is down (AC #5, Task 4.4)");
+            "EventStore should return a tracking correlationId while domain service is down (AC #5, Task 4.4)");
 
         // Restart sample domain service
         _ = await _fixture.App.ResourceCommands
@@ -189,6 +189,6 @@ public class HotReloadTests {
             client, tenant: "tenant-a", domain: "counter",
             aggregateId: aggregateId, commandType: "IncrementCounter");
         correlationId.ShouldNotBeNullOrWhiteSpace(
-            "CommandApi should return a tracking correlationId after restart");
+            "EventStore should return a tracking correlationId after restart");
     }
 }

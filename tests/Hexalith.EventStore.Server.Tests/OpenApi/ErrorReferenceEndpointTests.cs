@@ -1,10 +1,10 @@
-extern alias commandapi;
+extern alias eventstore;
 
 using System.Net;
 using System.Reflection;
 
-using commandapi::Hexalith.EventStore.CommandApi.ErrorHandling;
-using commandapi::Hexalith.EventStore.CommandApi.OpenApi;
+using eventstore::Hexalith.EventStore.ErrorHandling;
+using eventstore::Hexalith.EventStore.OpenApi;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -58,7 +58,7 @@ public class ErrorReferenceEndpointTests : IClassFixture<OpenApiWebApplicationFa
 
     [Fact]
     public async Task ErrorReferencePage_RemainsAvailable_WhenOpenApiIsDisabled() {
-        using WebApplicationFactory<commandapi::Program> factory = _factory.WithWebHostBuilder(builder =>
+        using WebApplicationFactory<eventstore::Program> factory = _factory.WithWebHostBuilder(builder =>
             _ = builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:OpenApi:Enabled"] = "false",
             })));

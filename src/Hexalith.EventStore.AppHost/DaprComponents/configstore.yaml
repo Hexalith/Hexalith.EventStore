@@ -3,7 +3,7 @@
 # Redis-backed configuration store for domain service registrations.
 #
 # Component Scoping:
-#   Access is scoped to commandapi and domain services that need configuration.
+#   Access is scoped to eventstore and domain services that need configuration.
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -17,4 +17,4 @@ spec:
     - name: redisPassword
       value: "{env:REDIS_PASSWORD}"
 scopes:
-  - commandapi
+  - eventstore

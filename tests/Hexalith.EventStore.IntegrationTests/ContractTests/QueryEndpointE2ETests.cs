@@ -45,7 +45,7 @@ public class QueryEndpointE2ETests {
         };
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -79,7 +79,7 @@ public class QueryEndpointE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -106,7 +106,7 @@ public class QueryEndpointE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -148,7 +148,7 @@ public class QueryEndpointE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert

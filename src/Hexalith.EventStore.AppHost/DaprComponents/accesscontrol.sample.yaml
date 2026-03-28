@@ -4,7 +4,7 @@
 # governs which CALLERS may invoke the sample domain service through Dapr.
 #
 # Allowed callers in the local topology:
-#   - commandapi: actor host / domain service invoker. Uses POST-only Dapr service
+#   - eventstore: actor host / domain service invoker. Uses POST-only Dapr service
 #     invocation to process domain commands.
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
@@ -15,7 +15,7 @@ spec:
     defaultAction: allow  # Allow-by-default in self-hosted mode; change to deny with mTLS
     trustDomain: "public"
     policies:
-      - appId: commandapi
+      - appId: eventstore
         defaultAction: deny
         trustDomain: "public"
         namespace: "default"

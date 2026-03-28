@@ -15,9 +15,9 @@ flowchart TB
     Client([HTTP Client])
 
     subgraph DockerCompose["Docker Compose"]
-        subgraph CommandApiGroup["commandapi network"]
-            CommandApi[Command API Gateway<br/>:8080]
-            CmdSidecar(DAPR Sidecar<br/>commandapi)
+        subgraph EventStoreGroup["eventstore network"]
+            EventStore[Command API Gateway<br/>:8080]
+            CmdSidecar(DAPR Sidecar<br/>eventstore)
         end
 
         subgraph SampleGroup["sample network"]
@@ -29,8 +29,8 @@ flowchart TB
         Keycloak[Keycloak<br/>:8180]
         Placement([DAPR Placement<br/>Service])
 
-        Client -->|REST| CommandApi
-        CommandApi --- CmdSidecar
+        Client -->|REST| EventStore
+        EventStore --- CmdSidecar
         CmdSidecar -->|Service Invocation| SampleSidecar
         SampleSidecar --> Sample
         CmdSidecar -->|State Store| Redis
@@ -45,9 +45,9 @@ flowchart TB
 
 The diagram shows the Docker Compose deployment topology for Hexalith.EventStore.
 
-An HTTP Client sends REST requests to the Command API Gateway container, which listens on port 8080. The Command API Gateway shares a network namespace with its DAPR Sidecar container (app-id: commandapi). The commandapi sidecar handles all infrastructure interactions: persisting events and actor state to the Redis container (port 6379) via the State Store building block, publishing domain events via the Pub/Sub building block (also backed by Redis), and invoking the sample domain service through DAPR Service Invocation.
+An HTTP Client sends REST requests to the Command API Gateway container, which listens on port 8080. The Command API Gateway shares a network namespace with its DAPR Sidecar container (app-id: eventstore). The eventstore sidecar handles all infrastructure interactions: persisting events and actor state to the Redis container (port 6379) via the State Store building block, publishing domain events via the Pub/Sub building block (also backed by Redis), and invoking the sample domain service through DAPR Service Invocation.
 
-The Counter Sample domain service runs in a separate container with its own DAPR Sidecar (app-id: sample). The sample sidecar receives service invocation calls from the commandapi sidecar and forwards them to the domain service. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub.
+The Counter Sample domain service runs in a separate container with its own DAPR Sidecar (app-id: sample). The sample sidecar receives service invocation calls from the eventstore sidecar and forwards them to the domain service. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub.
 
 A DAPR Placement Service container manages actor assignment, ensuring each aggregate identity is processed by exactly one actor instance at a time.
 
@@ -115,7 +115,7 @@ $ PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost
 
 This generates:
 
-- `publish-output/docker/docker-compose.yaml` — service definitions for `commandapi`, `sample`, `keycloak` (when enabled), and an Aspire dashboard
+- `publish-output/docker/docker-compose.yaml` — service definitions for `eventstore`, `sample`, `keycloak` (when enabled), and an Aspire dashboard
 - `publish-output/docker/.env` — parameterized placeholders for container images, ports, and secrets
 
 > **Important:** The generated `docker-compose.yaml` does **not** include DAPR sidecar containers. The `CommunityToolkit.Aspire.Hosting.Dapr` package is a local development orchestration tool — its DAPR configuration does not carry through to Docker Compose publishing. You must add DAPR sidecars manually, as described in the next sections.
@@ -126,7 +126,7 @@ The Aspire publisher generates a compose file with this general structure (abbre
 
 ```yaml
 services:
-    commandapi:
+    eventstore:
         image: ${COMMANDAPI_IMAGE}
         ports:
             - "8080:8080"
@@ -155,13 +155,13 @@ services:
 > **Note:** Exact field names and structure depend on the Aspire SDK version (currently 13.1.x). Always use the generated output rather than copying this example verbatim. Two changes are typically needed in the generated file:
 >
 > 1. **Keycloak:** Change `command: ["start", "--import-realm"]` to `command: ["start-dev", "--import-realm"]` for HTTP-only local deployments. The `start` command requires HTTPS configuration.
-> 2. **Port mappings:** The generated file may use `expose` instead of `ports` for `commandapi`. Add `ports: ["8080:8080"]` to make the API accessible from the host.
+> 2. **Port mappings:** The generated file may use `expose` instead of `ports` for `eventstore`. Add `ports: ["8080:8080"]` to make the API accessible from the host.
 
 ### Customize for Production Use
 
 To adapt the generated compose file for production deployment:
 
-1. **Replace image placeholders** in `.env` with your container registry paths (e.g., `COMMANDAPI_IMAGE=myregistry.azurecr.io/hexalith-commandapi:1.0.0`)
+1. **Replace image placeholders** in `.env` with your container registry paths (e.g., `COMMANDAPI_IMAGE=myregistry.azurecr.io/hexalith-eventstore:1.0.0`)
 2. **Add DAPR sidecar containers** as described in [Deploy the Application](#deploy-the-application)
 3. **Swap DAPR components** from Redis to production backends (see [Configure DAPR Components](#configure-dapr-components))
 4. **Configure external OIDC** instead of Keycloak (see [deploy/README.md](../../deploy/README.md#external-oidc-configuration-for-production) for environment variables)
@@ -180,7 +180,7 @@ $ mkdir -p publish-output/docker/dapr-config
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml publish-output/docker/dapr-config/
-$ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.admin-server.yaml publish-output/docker/dapr-config/
+$ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.eventstore-admin.yaml publish-output/docker/dapr-config/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.sample.yaml publish-output/docker/dapr-config/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml publish-output/docker/dapr-components/
@@ -206,11 +206,11 @@ Add the following service definitions to the generated `docker-compose.yaml`. Ea
 services:
     # ... (existing generated services above)
 
-    commandapi-dapr:
+    eventstore-dapr:
         image: "daprio/daprd:latest"
-        network_mode: "service:commandapi"
+        network_mode: "service:eventstore"
         depends_on:
-            - commandapi
+            - eventstore
         volumes:
             - ./dapr-components:/components
             - ./dapr-config:/config
@@ -218,7 +218,7 @@ services:
             [
                 "./daprd",
                 "-app-id",
-                "commandapi",
+                "eventstore",
                 "-app-port",
                 "8080",
                 "-placement-host-address",
@@ -229,11 +229,11 @@ services:
                 "/config/accesscontrol.yaml",
             ]
 
-    admin-server-dapr:
+    eventstore-admin-dapr:
         image: "daprio/daprd:latest"
-        network_mode: "service:admin-server"
+        network_mode: "service:eventstore-admin"
         depends_on:
-            - admin-server
+            - eventstore-admin
         volumes:
             - ./dapr-components:/components
             - ./dapr-config:/config
@@ -241,13 +241,13 @@ services:
             [
                 "./daprd",
                 "-app-id",
-                "admin-server",
+                "eventstore-admin",
                 "-app-port",
                 "8090",
                 "-components-path",
                 "/components",
                 "-config",
-                "/config/accesscontrol.admin-server.yaml",
+                "/config/accesscontrol.eventstore-admin.yaml",
             ]
 
     sample-dapr:
@@ -283,15 +283,15 @@ services:
             - "6379:6379"
 ```
 
-> **Note:** The `network_mode: "service:commandapi"` directive makes the DAPR sidecar share the same network namespace as the application container. This means the sidecar is accessible at `localhost:3500` from inside the application container — exactly how DAPR expects to communicate.
+> **Note:** The `network_mode: "service:eventstore"` directive makes the DAPR sidecar share the same network namespace as the application container. This means the sidecar is accessible at `localhost:3500` from inside the application container — exactly how DAPR expects to communicate.
 
 ### Step 2b: Register Domain Services for the Sample
 
-The Counter sample domain service registration is only configured in `appsettings.Development.json`. Since Docker Compose runs in Production mode, you must add the registration via environment variables on the `commandapi` service:
+The Counter sample domain service registration is only configured in `appsettings.Development.json`. Since Docker Compose runs in Production mode, you must add the registration via environment variables on the `eventstore` service:
 
 ```yaml
 services:
-    commandapi:
+    eventstore:
         environment:
             # ... (existing environment variables)
             # Counter sample domain service registration
@@ -310,7 +310,7 @@ Edit the `.env` file in `publish-output/docker/` to set required values:
 
 ```bash
 # Container images (replace with your registry paths or use local builds)
-COMMANDAPI_IMAGE=hexalith-commandapi:latest
+COMMANDAPI_IMAGE=hexalith-eventstore:latest
 SAMPLE_IMAGE=hexalith-sample:latest
 
 # Redis (matches DAPR component default)
@@ -324,7 +324,7 @@ AUTH_AUTHORITY=http://keycloak:8080/realms/hexalith
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
 >
 > ```bash
-> $ dotnet publish src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-commandapi -p:ContainerImageTag=latest
+> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag=latest
 > $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag=latest
 > ```
 
@@ -345,8 +345,8 @@ $ docker compose logs -f
 
 Look for these key log messages:
 
-- `commandapi-dapr` — `component loaded. name: statestore` and `component loaded. name: pubsub`
-- `commandapi` — `Now listening on: http://[::]:8080`
+- `eventstore-dapr` — `component loaded. name: statestore` and `component loaded. name: pubsub`
+- `eventstore` — `Now listening on: http://[::]:8080`
 - `placement` — `placement service started`
 
 Press `Ctrl+C` to stop following logs.
@@ -377,7 +377,7 @@ To swap backends, copy the desired production component files into `dapr-compone
 ```bash
 $ cp deploy/dapr/statestore-postgresql.yaml publish-output/docker/dapr-components/statestore.yaml
 $ cp deploy/dapr/pubsub-rabbitmq.yaml publish-output/docker/dapr-components/pubsub.yaml
-$ docker compose restart commandapi-dapr admin-server-dapr sample-dapr
+$ docker compose restart eventstore-dapr eventstore-admin-dapr sample-dapr
 ```
 
 For per-backend environment variables and connection string formats, see [deploy/README.md](../../deploy/README.md#per-backend-configuration).
@@ -390,11 +390,11 @@ Event data is physically stored in whatever backend the DAPR state store compone
 
 Events, snapshots, and actor state are stored as Redis keys following the composite key pattern:
 
-- **Event streams:** `commandapi||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`
-- **Snapshots:** `commandapi||{tenant}||{domain}||{aggregateId}||snapshot`
-- **Actor state:** `commandapi||{tenant}||{domain}||{aggregateId}||actor`
-- **Command status:** `commandapi||{tenant}||{domain}||{aggregateId}||status||{correlationId}` (24-hour TTL)
-- **Idempotency records:** `commandapi||{tenant}||{domain}||{aggregateId}||idempotency||{causationId}`
+- **Event streams:** `eventstore||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`
+- **Snapshots:** `eventstore||{tenant}||{domain}||{aggregateId}||snapshot`
+- **Actor state:** `eventstore||{tenant}||{domain}||{aggregateId}||actor`
+- **Command status:** `eventstore||{tenant}||{domain}||{aggregateId}||status||{correlationId}` (24-hour TTL)
+- **Idempotency records:** `eventstore||{tenant}||{domain}||{aggregateId}||idempotency||{causationId}`
 
 Inspect Redis keys while the system is running:
 
@@ -407,7 +407,7 @@ $ docker compose exec redis redis-cli KEYS "*"
 When using the PostgreSQL state store, DAPR creates a `state` table in the configured database. Each key-value pair becomes a row with columns for `key`, `value` (JSONB), `etag`, and `expiredate`.
 
 ```bash
-$ docker exec -it postgres psql -U dapr -d eventstore -c "SELECT key FROM state WHERE key LIKE 'commandapi||%' LIMIT 10;"
+$ docker exec -it postgres psql -U dapr -d eventstore -c "SELECT key FROM state WHERE key LIKE 'eventstore||%' LIMIT 10;"
 ```
 
 ### Azure Cosmos DB
@@ -524,7 +524,7 @@ Estimated resource requirements for running the full Docker Compose topology on 
 | ---------------------------- | -------------- | ----------- | ------------------------------- |
 | Command API Gateway          | 0.5 core       | 256 MB      | Minimal                         |
 | Counter Sample               | 0.25 core      | 128 MB      | Minimal                         |
-| DAPR Sidecar (commandapi)    | 0.25 core      | 128 MB      | Minimal                         |
+| DAPR Sidecar (eventstore)    | 0.25 core      | 128 MB      | Minimal                         |
 | DAPR Sidecar (sample)        | 0.1 core       | 64 MB       | Minimal                         |
 | DAPR Placement Service       | 0.1 core       | 64 MB       | Minimal                         |
 | Redis                        | 0.25 core      | 256 MB      | 1 GB+ (depends on event volume) |
@@ -582,7 +582,7 @@ One of DAPR's core benefits is infrastructure portability. You can switch from R
 4. Restart the DAPR sidecars to pick up the new component:
 
     ```bash
-    $ docker compose restart commandapi-dapr admin-server-dapr sample-dapr
+    $ docker compose restart eventstore-dapr eventstore-admin-dapr sample-dapr
     ```
 
 5. Verify the swap by sending a test command and checking PostgreSQL:
@@ -620,19 +620,19 @@ Stop conflicting processes or change port mappings in `docker-compose.yaml`.
 **Causes:**
 
 - DAPR placement service is not running — verify the `placement` container is running: `docker compose ps placement`
-- Component YAML files have syntax errors — check sidecar logs: `docker compose logs commandapi-dapr`
+- Component YAML files have syntax errors — check sidecar logs: `docker compose logs eventstore-dapr`
 - Redis is not reachable from the sidecar — verify `redis` container is running and `REDIS_HOST` is set to `redis:6379` (Docker service name, not `localhost`)
 
 ### Container Networking
 
 **Symptom:** DAPR sidecars cannot reach Redis or other services.
 
-**Fix:** Ensure all services are on the same Docker Compose network. By default, `docker compose` creates a network for all services defined in the same file. If using `network_mode: "service:commandapi"`, the sidecar inherits the network of the application container.
+**Fix:** Ensure all services are on the same Docker Compose network. By default, `docker compose` creates a network for all services defined in the same file. If using `network_mode: "service:eventstore"`, the sidecar inherits the network of the application container.
 
 Verify connectivity:
 
 ```bash
-$ docker compose exec commandapi-dapr wget -qO- http://redis:6379 || echo "Connection refused (expected for raw Redis)"
+$ docker compose exec eventstore-dapr wget -qO- http://redis:6379 || echo "Connection refused (expected for raw Redis)"
 ```
 
 ### State Store Component Not Loading
@@ -642,14 +642,14 @@ $ docker compose exec commandapi-dapr wget -qO- http://redis:6379 || echo "Conne
 **Fix:** Check sidecar logs for component loading errors:
 
 ```bash
-$ docker compose logs commandapi-dapr | grep -i "component"
+$ docker compose logs eventstore-dapr | grep -i "component"
 ```
 
 Common causes:
 
 - YAML syntax error in the component file
 - Missing environment variables referenced by `{env:VARIABLE_NAME}`
-- Component scoping excludes the app-id (the `scopes` list must include `commandapi`)
+- Component scoping excludes the app-id (the `scopes` list must include `eventstore`)
 
 ### Keycloak Token Errors
 
@@ -658,7 +658,7 @@ Common causes:
 **Fix:**
 
 - Verify Keycloak is running: `curl -s http://localhost:8180/realms/hexalith/.well-known/openid-configuration | jq .issuer`
-- Ensure the `Authentication__JwtBearer__Authority` environment variable on `commandapi` points to `http://keycloak:8080/realms/hexalith` (Docker service name, not `localhost`)
+- Ensure the `Authentication__JwtBearer__Authority` environment variable on `eventstore` points to `http://keycloak:8080/realms/hexalith` (Docker service name, not `localhost`)
 - Check token expiry — Keycloak tokens expire after 5 minutes by default. Request a fresh token.
 
 ## Next Steps

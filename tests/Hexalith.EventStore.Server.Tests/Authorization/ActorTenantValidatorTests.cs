@@ -4,9 +4,9 @@ using System.Security.Claims;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-using Hexalith.EventStore.CommandApi.Authorization;
-using Hexalith.EventStore.CommandApi.Configuration;
-using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors.Authorization;
 
 using Microsoft.Extensions.Logging;

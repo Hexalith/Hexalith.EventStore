@@ -81,7 +81,7 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration)
         string audience = configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
         string signingKey = configuration["EventStore:Authentication:SigningKey"]
             ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required for development token generation.");
-        string subject = configuration["EventStore:Authentication:Subject"] ?? "admin-ui";
+        string subject = configuration["EventStore:Authentication:Subject"] ?? "eventstore-admin-ui";
 
         string[] tenants = configuration.GetSection("EventStore:Authentication:Tenants").Get<string[]>()
             ?? ["tenant-a"];

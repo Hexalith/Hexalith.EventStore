@@ -34,7 +34,7 @@ public class QueryValidationE2ETests {
             "tenant-a", "counter", "GetOrderDetails");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -70,7 +70,7 @@ public class QueryValidationE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert - HTTP 200, NOT 403
@@ -101,7 +101,7 @@ public class QueryValidationE2ETests {
         };
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -128,7 +128,7 @@ public class QueryValidationE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -151,7 +151,7 @@ public class QueryValidationE2ETests {
             "tenant-a", "counter", "GetOrderDetails", aggregateId: "order-123");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert

@@ -20,7 +20,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
 
     /// <summary>
     /// Verifies that a real OIDC token can be acquired from Keycloak
-    /// for the admin test user and used to call the CommandApi successfully.
+    /// for the admin test user and used to call the EventStore successfully.
     /// This is the primary smoke test for the Keycloak integration (Task 8.6).
     /// </summary>
     [Fact]
@@ -46,7 +46,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
         httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(httpRequest);
 
         // Assert: 202 Accepted means the full auth pipeline (Keycloak OIDC discovery,
@@ -76,7 +76,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
 
         // No Authorization header set
 
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(httpRequest);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

@@ -19,7 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprActorQueryServiceTests
 {
     private const string StateStoreName = "statestore";
-    private const string CommandApiAppId = "commandapi";
+    private const string EventStoreAppId = "eventstore";
 
     private static DaprInfrastructureQueryService CreateService(
         DaprClient? daprClient = null,
@@ -30,7 +30,7 @@ public class DaprActorQueryServiceTests
         serverOptions ??= new AdminServerOptions
         {
             StateStoreName = StateStoreName,
-            CommandApiAppId = CommandApiAppId,
+            EventStoreAppId = EventStoreAppId,
         };
         httpClientFactory ??= Substitute.For<IHttpClientFactory>();
         IOptions<AdminServerOptions> options = Options.Create(serverOptions);
@@ -155,7 +155,7 @@ public class DaprActorQueryServiceTests
     public async Task GetActorInstanceStateAsync_ReadsStateKeys_ForETagActor()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        string composedKey = $"{CommandApiAppId}||ETagActor||Proj:Tenant1||etag";
+        string composedKey = $"{EventStoreAppId}||ETagActor||Proj:Tenant1||etag";
 
         daprClient.GetStateAsync<string>(
             StateStoreName,
@@ -202,7 +202,7 @@ public class DaprActorQueryServiceTests
     public async Task GetActorInstanceStateAsync_ComputesTotalSize()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        string composedKey = $"{CommandApiAppId}||ETagActor||Proj:T1||etag";
+        string composedKey = $"{EventStoreAppId}||ETagActor||Proj:T1||etag";
 
         daprClient.GetStateAsync<string>(
             StateStoreName,
@@ -243,7 +243,7 @@ public class DaprActorQueryServiceTests
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         string actorId = "tenant1:mydomain:aggregate-123";
-        string composedKey = $"{CommandApiAppId}||AggregateActor||{actorId}||pending_command_count";
+        string composedKey = $"{EventStoreAppId}||AggregateActor||{actorId}||pending_command_count";
 
         daprClient.GetStateAsync<string>(
             StateStoreName,
@@ -273,7 +273,7 @@ public class DaprActorQueryServiceTests
         string actorId = "t1:domain:agg1";
 
         // The metadata key should be resolved to "t1:domain:agg1:metadata"
-        string metadataKey = $"{CommandApiAppId}||AggregateActor||{actorId}||{actorId}:metadata";
+        string metadataKey = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:metadata";
         daprClient.GetStateAsync<string>(
             StateStoreName,
             metadataKey,

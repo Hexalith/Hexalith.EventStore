@@ -13,7 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IProjectionQueryService"/>.
-/// Projection registry reads use state store; detail reads delegate to CommandApi.
+/// Projection registry reads use state store; detail reads delegate to EventStore.
 /// </summary>
 public sealed class DaprProjectionQueryService : IProjectionQueryService
 {
@@ -89,7 +89,7 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
-                HttpMethod.Get, _options.CommandApiAppId, endpoint)
+                HttpMethod.Get, _options.EventStoreAppId, endpoint)
                 ?? new HttpRequestMessage(HttpMethod.Get, endpoint);
 
             string? token = _authContext.GetToken();

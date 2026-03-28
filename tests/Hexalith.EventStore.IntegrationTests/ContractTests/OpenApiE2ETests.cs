@@ -28,7 +28,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_IncludesQueryEndpoint() {
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .GetAsync("/openapi/v1.json");
 
         // Assert
@@ -49,7 +49,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_IncludesCommandValidationEndpoint() {
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .GetAsync("/openapi/v1.json");
 
         // Assert
@@ -70,7 +70,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_IncludesQueryValidationEndpoint() {
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .GetAsync("/openapi/v1.json");
 
         // Assert
@@ -91,7 +91,7 @@ public class OpenApiE2ETests {
     [Fact]
     public async Task OpenApiJson_ValidationEndpointResponseSchema_UsesBooleanAndNullableString() {
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .GetAsync("/openapi/v1.json");
 
         // Assert

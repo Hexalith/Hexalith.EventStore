@@ -1,7 +1,7 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.ErrorHandling;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

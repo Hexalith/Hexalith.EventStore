@@ -1,17 +1,17 @@
-# DAPR Access Control Configuration for the CommandApi sidecar -- Production (D4, FR34, NFR15)
+# DAPR Access Control Configuration for the EventStore sidecar -- Production (D4, FR34, NFR15)
 # =============================================================================================
-# This Configuration CRD is bound ONLY to the commandapi sidecar and therefore governs which
-# CALLERS may invoke CommandApi endpoints through DAPR service invocation.
+# This Configuration CRD is bound ONLY to the eventstore sidecar and therefore governs which
+# CALLERS may invoke EventStore endpoints through DAPR service invocation.
 #
 # Allowed callers in the production topology:
-#   - admin-server: Admin REST API host. Needs GET/POST/PUT to delegate admin reads and writes
-#     to CommandApi (ADR-P4).
+#   - eventstore-admin: Admin REST API host. Needs GET/POST/PUT to delegate admin reads and writes
+#     to EventStore (ADR-P4).
 #
 # Security Posture: defaultAction: deny (secure by default, D4)
 # Trust Domain: Configure for production environment (see trustDomain below)
 # Namespace: Configure for production Kubernetes namespace (see namespace below)
 #
-# Bind this config ONLY to the CommandApi workload. Other receiving services (admin-server,
+# Bind this config ONLY to the EventStore workload. Other receiving services (eventstore-admin,
 # sample, future domain services) should each have their own DAPR Configuration CRD so caller
 # policies apply only to the intended inbound surface.
 apiVersion: dapr.io/v1alpha1
@@ -27,18 +27,18 @@ spec:
     # from this trust domain. Mismatched trust domains are rejected at TLS handshake.
     trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
     policies:
-      # admin-server: Admin API host -- invokes commandapi for write delegation (ADR-P4).
-      # Admin.Server delegates reads and writes through CommandApi endpoints exposed over DAPR.
-      - appId: admin-server
+      # eventstore-admin: Admin API host -- invokes eventstore for write delegation (ADR-P4).
+      # Admin.Server delegates reads and writes through EventStore endpoints exposed over DAPR.
+      - appId: eventstore-admin
         defaultAction: deny  # Deny any operations not explicitly listed
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
-        # Replace with production Kubernetes namespace where commandapi is deployed
+        # Replace with production Kubernetes namespace where eventstore is deployed
         # (or set DAPR_NAMESPACE env var).
         namespace: "{env:DAPR_NAMESPACE|hexalith}"
         operations:
-          # Admin.Server delegates reads and writes through CommandApi using GET/POST/PUT.
+          # Admin.Server delegates reads and writes through EventStore using GET/POST/PUT.
           # Wildcard (/**) allows the existing admin passthrough endpoints while the
-          # command surface remains protected by CommandApi authorization.
+          # command surface remains protected by EventStore authorization.
           - name: /**
             httpVerb: ['GET', 'POST', 'PUT']
             action: allow

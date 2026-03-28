@@ -44,7 +44,7 @@ public class ErrorResponseTests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -77,7 +77,7 @@ public class ErrorResponseTests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -117,7 +117,7 @@ public class ErrorResponseTests {
         };
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -167,7 +167,7 @@ public class ErrorResponseTests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -199,7 +199,7 @@ public class ErrorResponseTests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert

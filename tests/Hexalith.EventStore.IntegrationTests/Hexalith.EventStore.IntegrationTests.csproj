@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.CommandApi\Hexalith.EventStore.CommandApi.csproj">
-      <Aliases>commandapi</Aliases>
+    <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj">
+      <Aliases>eventstore</Aliases>
     </ProjectReference>
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />

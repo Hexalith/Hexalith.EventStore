@@ -30,12 +30,12 @@ public class AdminServerOptionsValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
-    public void Validate_EmptyCommandApiAppId_ReturnsFail(string value)
+    public void Validate_EmptyEventStoreAppId_ReturnsFail(string value)
     {
-        var options = new AdminServerOptions { CommandApiAppId = value };
+        var options = new AdminServerOptions { EventStoreAppId = value };
         ValidateOptionsResult result = _validator.Validate(null, options);
         result.Failed.ShouldBeTrue();
-        result.FailureMessage.ShouldContain(nameof(AdminServerOptions.CommandApiAppId));
+        result.FailureMessage.ShouldContain(nameof(AdminServerOptions.EventStoreAppId));
     }
 
     [Theory]
@@ -77,7 +77,7 @@ public class AdminServerOptionsValidatorTests
         var options = new AdminServerOptions
         {
             StateStoreName = "",
-            CommandApiAppId = "",
+            EventStoreAppId = "",
             MaxTimelineEvents = 0,
         };
         ValidateOptionsResult result = _validator.Validate(null, options);

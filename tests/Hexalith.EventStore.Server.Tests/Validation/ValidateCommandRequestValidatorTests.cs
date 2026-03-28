@@ -1,5 +1,5 @@
 
-using Hexalith.EventStore.CommandApi.Validation;
+using Hexalith.EventStore.Validation;
 using Hexalith.EventStore.Contracts.Validation;
 
 using Shouldly;

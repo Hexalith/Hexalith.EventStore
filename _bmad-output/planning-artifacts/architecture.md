@@ -147,10 +147,10 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 #### ADR-P4: Admin Tooling — Three-Interface Architecture Over Single DAPR API
 
 - **Context:** The event store needs administration capabilities for three personas (developer, DBA, AI agent) across three interfaces (Web UI, CLI, MCP). All must access the same data and operations.
-- **Decision:** Single Admin.Server project hosts both the REST API and Blazor Web UI. It connects to the event store via DAPR (state store reads, service invocation to CommandApi for writes, SignalR for real-time). CLI and MCP are thin HTTP clients calling the Admin API — they never access DAPR directly.
+- **Decision:** Single Admin.Server project hosts both the REST API and Blazor Web UI. It connects to the event store via DAPR (state store reads, service invocation to EventStore for writes, SignalR for real-time). CLI and MCP are thin HTTP clients calling the Admin API — they never access DAPR directly.
 - **Rationale:** One DAPR sidecar, one auth configuration, one deployment unit for the API+UI. CLI and MCP are lightweight, independently versionable clients. State store key access reuses identical key derivation from Contracts (`AggregateIdentity`), requiring `InternalsVisibleTo` on Server project for `CommandStatusConstants` and `CommandArchiveConstants`.
 - **Alternatives Rejected:** (a) Three independent DAPR-connected services — tripled operational surface, duplicated auth. (b) GraphQL gateway — added complexity without clear benefit at current scale; can be layered later. (c) Direct DAPR access from CLI/MCP — would require DAPR sidecar per client, impractical for developer laptops and AI agent environments.
-- **Constraints:** Admin.Server gets read-only access to the event store state store. Write operations (replay, projection reset) are delegated to CommandApi via `DaprClient.InvokeMethodAsync`. This ensures the command pipeline's security and validation layers are never bypassed.
+- **Constraints:** Admin.Server gets read-only access to the event store state store. Write operations (replay, projection reset) are delegated to EventStore via `DaprClient.InvokeMethodAsync`. This ensures the command pipeline's security and validation layers are never bypassed.
 
 #### ADR-P5: Admin Web UI — Observability Deep-Link Strategy Over Embedded Dashboards
 
@@ -178,9 +178,9 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 | Actors                  | 1:1 aggregate processing                          | Single-threaded turn-based concurrency; 60-min idle timeout; consistent hashing placement           |
 | State Store             | Event persistence + actor state + snapshots       | Must support key-value + ETag concurrency; transaction support varies by backend                    |
 | Pub/Sub                 | Event distribution                                | CloudEvents 1.0; at-least-once delivery; topic-per-tenant-per-domain                                |
-| Configuration           | Domain service registration + admin tool settings | Tenant + domain + version -> service endpoint mapping; observability tool URLs for admin deep links |
+| Configuration           | Admin tool settings + optional domain service routing overrides | Observability tool URLs for admin deep links; domain service routing overrides (opt-in — convention-based routing is the zero-config default) |
 | Resiliency              | Retry, circuit breaker, timeout                   | Applied at sidecar level; no custom retry logic in application code                                 |
-| Service Invocation (v2) | Admin.Server -> CommandApi for write operations   | mTLS via DAPR; admin-server app-id allowed in CommandApi access control policy                      |
+| Service Invocation (v2) | Admin.Server -> EventStore for write operations   | mTLS via DAPR; eventstore-admin app-id allowed in EventStore access control policy                  |
 
 **Infrastructure Constraints:**
 
@@ -230,11 +230,11 @@ Hexalith.Tenants is itself an event-sourced service built on Hexalith.EventStore
 | 5   | **Infrastructure Portability**    | State store, pub/sub, config store                                                                                              | All persistence and messaging through DAPR abstractions; no direct backend access; backend-specific behavior documented in compatibility matrix                                                                                                             |
 | 6   | **Event Envelope Consistency**    | Persistence, distribution, domain service contract, client SDK                                                                  | 11-field metadata schema is irreversible; EventStore owns all metadata population; extension bag for unforeseen needs                                                                                                                                       |
 | 7   | **Crash Recovery**                | Actor processing, state machine, pub/sub delivery                                                                               | Checkpointed state machine must resume from correct stage; no duplicate event persistence; events eventually published after pub/sub recovery                                                                                                               |
-| 8   | **Configuration-Driven Behavior** | Domain service registration, snapshot intervals, tenant routing                                                                 | DAPR config store for runtime configuration; dynamic updates without system restart (NFR20)                                                                                                                                                                 |
+| 8   | **Convention-First with Configuration Overrides** | Domain service routing (convention default), snapshot intervals, tenant routing                                         | Convention-based routing by default (AppId = domain name); DAPR config store opt-in for overrides; dynamic updates without system restart (NFR20)                                                                                                            |
 | 9   | **Versioning**                    | Event envelope (MAJOR), domain service contract (MAJOR), API (v1 path prefix), NuGet packages (SemVer, monorepo single version) | Envelope changes are irreversible; all packages versioned together; API versioned in URL path                                                                                                                                                               |
 | 10  | **Testability**                   | All components across three tiers                                                                                               | Unit tests: pure functions, no DAPR dependency; Integration tests: DAPR test containers; Contract tests: full Aspire topology. Architecture must support clean test boundaries at each tier.                                                                |
-| 11  | **Admin Data Access**             | Admin.Server state store reads, Admin API controllers, CLI/MCP clients                                                          | All EventStore admin reads go through DAPR state store using identical key derivation from Contracts (`AggregateIdentity`). All EventStore admin writes delegated to CommandApi via DAPR service invocation — never bypass the command pipeline. Tenant operations (FR77) are delegated to Hexalith.Tenants via its Client SDK — EventStore does not own tenant state. |
-| 12  | **Admin Authentication**          | Admin API, Web UI, CLI, MCP                                                                                                     | Web UI: JWT Bearer (same OIDC as CommandApi). CLI: API key or JWT via `--token` flag. MCP: API key via environment variable. Role-based: read-only (developer), operator (DBA), admin (infrastructure). Tenant-scoped access matches existing SEC-3 pattern |
+| 11  | **Admin Data Access**             | Admin.Server state store reads, Admin API controllers, CLI/MCP clients                                                          | All EventStore admin reads go through DAPR state store using identical key derivation from Contracts (`AggregateIdentity`). All EventStore admin writes delegated to EventStore via DAPR service invocation — never bypass the command pipeline. Tenant operations (FR77) are delegated to Hexalith.Tenants via its Client SDK — EventStore does not own tenant state. |
+| 12  | **Admin Authentication**          | Admin API, Web UI, CLI, MCP                                                                                                     | Web UI: JWT Bearer (same OIDC as EventStore). CLI: API key or JWT via `--token` flag. MCP: API key via environment variable. Role-based: read-only (developer), operator (DBA), admin (infrastructure). Tenant-scoped access matches existing SEC-3 pattern |
 | 13  | **Observability Integration**     | Admin Web UI, Admin API                                                                                                         | Domain-aware summary views with deep links to external tools. URLs configured via DAPR config store. Admin.Server emits its own OpenTelemetry traces under `Hexalith.EventStore.Admin` source, visible in Aspire Dashboard alongside core pipeline traces   |
 
 ### Scale & Complexity Assessment
@@ -296,7 +296,7 @@ dotnet new aspire-apphost -n Hexalith.EventStore.AppHost -o src/Hexalith.EventSt
 dotnet new classlib -n Hexalith.EventStore.Aspire -o src/Hexalith.EventStore.Aspire -f net10.0
 
 # Command API Host (ASP.NET Core -- hosts actors + REST endpoints)
-dotnet new webapi -n Hexalith.EventStore.CommandApi -o src/Hexalith.EventStore.CommandApi -f net10.0
+dotnet new webapi -n Hexalith.EventStore -o src/Hexalith.EventStore -f net10.0
 
 # Sample Domain Service (reference implementation)
 dotnet new webapi -n Hexalith.EventStore.Sample -o samples/Hexalith.EventStore.Sample -f net10.0
@@ -319,7 +319,7 @@ Hexalith.EventStore/
 │   ├── Hexalith.EventStore.Server/          # Core actor processing pipeline
 │   ├── Hexalith.EventStore.Aspire/          # Aspire AppHost integration and service defaults
 │   ├── Hexalith.EventStore.Testing/         # Test helpers, in-memory DAPR mocks, assertions
-│   ├── Hexalith.EventStore.CommandApi/      # ASP.NET Core host (DAPR actors + REST API)
+│   ├── Hexalith.EventStore/      # ASP.NET Core host (DAPR actors + REST API)
 │   ├── Hexalith.EventStore.ServiceDefaults/ # Shared resilience, telemetry, health checks
 │   └── Hexalith.EventStore.AppHost/         # Aspire orchestration (full local topology)
 ├── samples/
@@ -335,12 +335,12 @@ Hexalith.EventStore/
 
 | Package                                         | Project(s)         | Version |
 | ----------------------------------------------- | ------------------ | ------- |
-| `Dapr.Actors.AspNetCore`                        | CommandApi, Server | 1.16.x  |
+| `Dapr.Actors.AspNetCore`                        | EventStore, Server | 1.16.x  |
 | `Dapr.Client`                                   | Server, Client     | 1.16.1  |
-| `Dapr.AspNetCore`                               | CommandApi         | 1.16.1  |
+| `Dapr.AspNetCore`                               | EventStore         | 1.16.1  |
 | `CommunityToolkit.Aspire.Hosting.Dapr`          | AppHost            | 13.0.0  |
-| `MediatR`                                       | Server, CommandApi | latest  |
-| `Microsoft.AspNetCore.Authentication.JwtBearer` | CommandApi         | 10.0.x  |
+| `MediatR`                                       | Server, EventStore | latest  |
+| `Microsoft.AspNetCore.Authentication.JwtBearer` | EventStore         | 10.0.x  |
 
 **Build & Versioning:**
 
@@ -382,7 +382,7 @@ Hexalith.EventStore/
 | Runtime           | .NET 10 LTS, C# 14, DAPR 1.16+, Aspire 13.1                          | PRD + version verification |
 | API Style         | REST with `/api/v1/` path prefix                                     | PRD                        |
 | Auth Model        | JWT with six-layer defense in depth                                  | PRD                        |
-| Package Structure | 5 NuGet packages + CommandApi host + Aspire orchestration            | PRD + Starter              |
+| Package Structure | 5 NuGet packages + EventStore host + Aspire orchestration            | PRD + Starter              |
 | Testing           | xUnit, three-tier (unit/integration/contract)                        | PRD + Starter              |
 | Observability     | OpenTelemetry (traces, metrics, structured logs)                     | PRD                        |
 | Hosting           | Aspire publishers (Docker Compose, Kubernetes, Azure Container Apps) | PRD                        |
@@ -435,7 +435,7 @@ Hexalith.EventStore/
 
 #### D4: DAPR Access Control -- Per-App-ID Allow List
 
-- **Policy:** CommandApi app can invoke actor services and domain services. Domain services can invoke nothing directly (they are called, never call out)
+- **Policy:** EventStore app can invoke actor services and domain services. Domain services can invoke nothing directly (they are called, never call out)
 - **Enforcement:** DAPR access control policy YAML with `allowedOperations` by `appId`
 - **Rationale:** Simplest model that enforces the intended call graph. Fine-grained per-operation policies add YAML maintenance burden without security benefit for v1's straightforward topology
 
@@ -455,10 +455,10 @@ Hexalith.EventStore/
 #### D7: Domain Service Invocation -- DAPR Service Invocation
 
 - **Mechanism:** Actor calls domain service via `DaprClient.InvokeMethodAsync<TRequest, TResponse>`
-- **Service discovery:** Domain service endpoint resolved from DAPR config store registration (`tenant:domain:version -> appId + method`)
+- **Service discovery:** Convention-based by default — AppId = domain name, MethodName = "process" (zero configuration). Override hierarchy: (1) static registrations in appsettings.json (for local dev/test), (2) DAPR config store (opt-in via `DomainServiceOptions.ConfigStoreName`, for per-tenant routing in complex scenarios), (3) convention fallback. Config store is disabled by default (`ConfigStoreName = null`)
 - **Security:** mTLS between sidecars (automatic with DAPR)
 - **Resiliency:** DAPR resiliency policies (retry with backoff, circuit breaker, timeout) applied at sidecar level
-- **Rationale:** Leverages DAPR's built-in service discovery, mTLS, and resiliency. No custom HTTP client management. Domain services are any HTTP endpoint with a DAPR sidecar
+- **Rationale:** Convention-first design enables zero-configuration for simple implementations (e.g., "tenants" domain routes to AppId "tenants" automatically). Leverages DAPR's built-in service discovery, mTLS, and resiliency. No custom HTTP client management. Domain services are any HTTP endpoint with a DAPR sidecar
 
 #### D8: Rate Limiting -- ASP.NET Core Built-In Middleware
 
@@ -488,9 +488,9 @@ Hexalith.EventStore/
 - **Decision:** Add `Aspire.Hosting.Keycloak` to the AppHost with a checked-in realm export (`hexalith-realm.json`) containing pre-configured client, protocol mappers, and test users. E2E tests acquire real OIDC tokens via Resource Owner Password Grant and validate through the full auth pipeline.
 - **Key Components:**
     - **Package:** `Aspire.Hosting.Keycloak` in AppHost (hosting only -- no `Aspire.Keycloak.Authentication` client package needed; existing `ConfigureJwtBearerOptions` OIDC discovery path is sufficient)
-    - **Port:** `8180` (avoids conflict with `commandapi` on `8080`)
+    - **Port:** `8180` (avoids conflict with `eventstore` on `8080`)
     - **Realm:** `hexalith` with client `hexalith-eventstore`, OIDC protocol mappers for `tenants`, `domains`, `permissions` (JSON array claims matching `EventStoreClaimsTransformation` expectations)
-    - **CommandApi wiring:** Environment variable overrides set `Authority` to Keycloak realm URL, triggering existing OIDC discovery at `ConfigureJwtBearerOptions:50-54`. Zero auth code changes
+    - **EventStore wiring:** Environment variable overrides set `Authority` to Keycloak realm URL, triggering existing OIDC discovery at `ConfigureJwtBearerOptions:50-54`. Zero auth code changes
 - **Test Users (realm-as-code):**
 
 | User             | Tenants            | Domains           | Permissions                                   | E2E Scenario                 |
@@ -525,7 +525,7 @@ Hexalith.EventStore/
 1. **Contracts package first** -- Event envelope (11 fields + IRejectionEvent), identity scheme, command/event types, rejection event naming convention
 2. **Testing package early** -- In-memory DAPR mocks (InMemoryStateManager, FakeDomainServiceInvoker), assertion utilities. Built early so all subsequent packages can be test-driven
 3. **Server package** -- Actor processing pipeline (thin orchestrator with 5-step delegation), D1 storage, D3 error contract, D7 invocation, checkpointed state machine
-4. **CommandApi host** -- REST endpoints with D5 error format, D8 rate limiting, D2 status storage with TTL, health checks (DAPR sidecar + config store)
+4. **EventStore host** -- REST endpoints with D5 error format, D8 rate limiting, D2 status storage with TTL, health checks (DAPR sidecar + config store)
 5. **Client package** -- Domain service SDK implementing the pure function contract
 6. **Sample domain service** -- Reference implementation demonstrating D3 (rejection events), serves as de-facto template for domain service developers
 7. **Aspire + AppHost** -- Orchestration with DAPR sidecars, D6 topic naming, local DAPR component configs
@@ -676,7 +676,7 @@ public async Task<CommandResult> ProcessCommandAsync(CommandEnvelope command)
 **Dependency Injection Registration Order:**
 
 ```csharp
-// In CommandApi Program.cs
+// In EventStore Program.cs
 builder.AddServiceDefaults();           // Aspire: resilience, telemetry, health
 builder.Services.AddAuthentication();   // JWT
 builder.Services.AddAuthorization();    // Policies
@@ -717,7 +717,7 @@ builder.Services.AddActors();           // DAPR actors
 
 | Activity          | Name Pattern                      | Example                           |
 | ----------------- | --------------------------------- | --------------------------------- |
-| Command API       | `EventStore.CommandApi.{verb}`    | `EventStore.CommandApi.Submit`    |
+| Command API       | `EventStore.EventStore.{verb}`    | `EventStore.EventStore.Submit`    |
 | Actor processing  | `EventStore.Actor.{operation}`    | `EventStore.Actor.ProcessCommand` |
 | Domain invocation | `EventStore.DomainService.Invoke` | `EventStore.DomainService.Invoke` |
 | Event persistence | `EventStore.Events.Persist`       | `EventStore.Events.Persist`       |
@@ -839,8 +839,8 @@ Hexalith.EventStore/
 │   │       ├── SnapshotOptions.cs              # Snapshot intervals
 │   │       └── ServiceCollectionExtensions.cs  # AddEventStoreServer()
 │   │
-│   ├── Hexalith.EventStore.CommandApi/         # Host: ASP.NET Core + DAPR actors
-│   │   ├── Hexalith.EventStore.CommandApi.csproj
+│   ├── Hexalith.EventStore/         # Host: ASP.NET Core + DAPR actors
+│   │   ├── Hexalith.EventStore.csproj
 │   │   ├── Program.cs                          # DI registration order per patterns
 │   │   ├── Properties/
 │   │   │   └── launchSettings.json
@@ -951,15 +951,15 @@ Hexalith.EventStore/
 
 ### Architectural Boundaries
 
-**API Boundary (CommandApi):**
+**API Boundary (EventStore):**
 
-The CommandApi is the sole external entry point. All external interactions flow through REST endpoints. No component behind this boundary is directly accessible from outside.
+The EventStore is the sole external entry point. All external interactions flow through REST endpoints. No component behind this boundary is directly accessible from outside.
 
 ```text
 External Consumers
     │
     ▼
-[CommandApi] ── REST /api/v1/* ──► [MediatR Pipeline] ──► [Actor Host]
+[EventStore] ── REST /api/v1/* ──► [MediatR Pipeline] ──► [Actor Host]
     │                                                          │
     │ reads                                              DAPR service
     ▼                                                    invocation
@@ -977,28 +977,28 @@ Contracts ◄── Client        (domain service developers reference both)
 Server ────► Contracts      (server depends on contracts, never reverse)
     ▲
     │
-CommandApi ─► Server        (host depends on server, never reverse)
+EventStore ─► Server        (host depends on server, never reverse)
     │
     ▼
-Aspire ────► CommandApi     (AppHost references deployable projects)
+Aspire ────► EventStore     (AppHost references deployable projects)
 
 Testing ───► Contracts      (test helpers depend on contracts only)
              Server         (fakes implement server interfaces)
 ```
 
-**Rule:** Dependencies flow inward. `Contracts` has zero dependencies on other Hexalith packages. `Server` depends only on `Contracts`. `CommandApi` depends on `Server` + `Contracts`. No circular dependencies.
+**Rule:** Dependencies flow inward. `Contracts` has zero dependencies on other Hexalith packages. `Server` depends only on `Contracts`. `EventStore` depends on `Server` + `Contracts`. No circular dependencies.
 
 ### Requirements to Structure Mapping
 
 | FR Category                            | Primary Project              | Key Directories                                                   |
 | -------------------------------------- | ---------------------------- | ----------------------------------------------------------------- |
-| Command Processing (FR1-FR8)           | CommandApi + Server          | `CommandApi/Controllers/`, `Server/Commands/`, `Server/Pipeline/` |
+| Command Processing (FR1-FR8)           | EventStore + Server          | `EventStore/Controllers/`, `Server/Commands/`, `Server/Pipeline/` |
 | Event Management (FR9-FR16)            | Server + Contracts           | `Server/Events/`, `Server/Actors/`, `Contracts/Events/`           |
 | Event Distribution (FR17-FR20)         | Server                       | `Server/Events/EventPublisher.cs`                                 |
 | Domain Service Integration (FR21-FR25) | Server + Client              | `Server/DomainServices/`, `Client/Handlers/`                      |
 | Identity & Multi-Tenancy (FR26-FR29)   | Contracts + Server           | `Contracts/Identity/`, `Server/Security/`                         |
-| Security & Authorization (FR30-FR34)   | CommandApi + Server          | `CommandApi/Middleware/`, `Server/Pipeline/`, `Server/Security/`  |
-| Observability & Operations (FR35-FR39) | ServiceDefaults + CommandApi | `ServiceDefaults/Extensions.cs`, `CommandApi/HealthChecks/`       |
+| Security & Authorization (FR30-FR34)   | EventStore + Server          | `EventStore/Middleware/`, `Server/Pipeline/`, `Server/Security/`  |
+| Observability & Operations (FR35-FR39) | ServiceDefaults + EventStore | `ServiceDefaults/Extensions.cs`, `EventStore/HealthChecks/`       |
 | Developer Experience (FR40-FR47)       | AppHost + Sample + Testing   | `AppHost/Program.cs`, `samples/`, `tests/`                        |
 
 **Cross-Cutting Concern Locations:**
@@ -1006,9 +1006,9 @@ Testing ───► Contracts      (test helpers depend on contracts only)
 | Concern                | Files                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Multi-Tenant Isolation | `Contracts/Identity/`, `Server/Security/`, `Server/Actors/AggregateActor.cs`, `AppHost/DaprComponents/`                                                                      |
-| Observability          | `ServiceDefaults/Extensions.cs`, `Server/Pipeline/LoggingBehavior.cs`, `CommandApi/Middleware/CorrelationIdMiddleware.cs`                                                    |
-| Six-Layer Auth         | `CommandApi/Program.cs` (layers 1-3), `Server/Pipeline/AuthorizationBehavior.cs` (layer 4), `Server/Actors/AggregateActor.cs` (layer 5), `AppHost/DaprComponents/` (layer 6) |
-| Error Handling         | `CommandApi/ErrorHandling/GlobalExceptionHandler.cs`, `Server/Actors/AggregateActor.cs` (D3), `Server/Pipeline/`                                                             |
+| Observability          | `ServiceDefaults/Extensions.cs`, `Server/Pipeline/LoggingBehavior.cs`, `EventStore/Middleware/CorrelationIdMiddleware.cs`                                                    |
+| Six-Layer Auth         | `EventStore/Program.cs` (layers 1-3), `Server/Pipeline/AuthorizationBehavior.cs` (layer 4), `Server/Actors/AggregateActor.cs` (layer 5), `AppHost/DaprComponents/` (layer 6) |
+| Error Handling         | `EventStore/ErrorHandling/GlobalExceptionHandler.cs`, `Server/Actors/AggregateActor.cs` (D3), `Server/Pipeline/`                                                             |
 
 ### Data Flow
 
@@ -1100,10 +1100,10 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 
 | Category                   | FRs       | Coverage                                                                                                 |
 | -------------------------- | --------- | -------------------------------------------------------------------------------------------------------- |
-| Command Processing         | FR1-FR8   | CommandApi controllers, MediatR pipeline, actor routing, idempotency check, dead-letter topic            |
+| Command Processing         | FR1-FR8   | EventStore controllers, MediatR pipeline, actor routing, idempotency check, dead-letter topic            |
 | Event Management           | FR9-FR16  | EventPersister (D1 write-once keys), EventStreamReader, SnapshotManager (100-event default), actor ACID  |
 | Event Distribution         | FR17-FR20 | EventPublisher (D6 topic naming), CloudEvents 1.0, at-least-once delivery, persist-then-publish          |
-| Domain Service Integration | FR21-FR25 | DaprDomainServiceInvoker (D7), DomainServiceResolver (config store), pure function contract (D3)         |
+| Domain Service Integration | FR21-FR25 | DaprDomainServiceInvoker (D7), DomainServiceResolver (convention-first, config store opt-in), pure function contract (D3) |
 | Identity & Multi-Tenancy   | FR26-FR29 | AggregateIdentity (canonical tuple), triple-layer isolation, tenant-scoped state store keys              |
 | Security & Authorization   | FR30-FR34 | Six-layer auth (JWT → Claims → Endpoint → MediatR → Actor → DAPR), TenantValidator (SEC-2)               |
 | Observability & Operations | FR35-FR39 | OpenTelemetry activities, structured logging pattern, health checks (sidecar + config store + readiness) |
@@ -1125,7 +1125,7 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 | ------------------------------------ | ------ | ---------------------------------------------------------------------------------------- |
 | All blocking gaps resolved           | Pass   | GAP-1 through GAP-3 resolved by D1, D2, D3                                               |
 | All design-phase gaps resolved       | Pass   | GAP-4 through GAP-9 resolved by D4-D8 + patterns                                         |
-| No circular dependencies             | Pass   | Contracts → (no deps), Server → Contracts, CommandApi → Server                           |
+| No circular dependencies             | Pass   | Contracts → (no deps), Server → Contracts, EventStore → Server                           |
 | All enforcement rules testable       | Pass   | 15 rules, each verifiable via unit or integration tests                                  |
 | All security constraints enforceable | Pass   | 5 SEC constraints, each with explicit enforcement point                                  |
 | All terminal statuses defined        | Pass   | Completed, Rejected, PublishFailed, TimedOut                                             |

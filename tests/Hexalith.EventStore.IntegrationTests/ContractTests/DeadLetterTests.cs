@@ -57,7 +57,7 @@ public class DeadLetterTests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act - submit should be accepted (routing happens asynchronously via actors)
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         if (response.StatusCode != HttpStatusCode.Accepted) {
@@ -114,7 +114,7 @@ public class DeadLetterTests {
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         if (response.StatusCode != HttpStatusCode.Accepted) {
@@ -197,7 +197,7 @@ public class DeadLetterTests {
             using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            using HttpResponseMessage statusResponse = await _fixture.CommandApiClient
+            using HttpResponseMessage statusResponse = await _fixture.EventStoreClient
                 .SendAsync(statusRequest).ConfigureAwait(false);
 
             if (statusResponse.StatusCode == HttpStatusCode.OK) {

@@ -1,6 +1,6 @@
 
-using Hexalith.EventStore.CommandApi.Configuration;
-using Hexalith.EventStore.CommandApi.Validation;
+using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Validation;
 
 using Microsoft.Extensions.Options;
 

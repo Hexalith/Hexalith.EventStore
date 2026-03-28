@@ -17,7 +17,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprProjectionCommandServiceTests {
-    private const string CommandApiAppId = "commandapi";
+    private const string EventStoreAppId = "eventstore";
 
     private static DaprProjectionCommandService CreateService(
         DaprClient? daprClient = null,
@@ -26,7 +26,7 @@ public class DaprProjectionCommandServiceTests {
         authContext ??= new NullAdminAuthContext();
 
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            CommandApiAppId = CommandApiAppId,
+            EventStoreAppId = EventStoreAppId,
         });
 
         return new DaprProjectionCommandService(
@@ -37,7 +37,7 @@ public class DaprProjectionCommandServiceTests {
     }
 
     [Fact]
-    public async Task PauseProjectionAsync_DelegatesToCommandApi() {
+    public async Task PauseProjectionAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -54,7 +54,7 @@ public class DaprProjectionCommandServiceTests {
     }
 
     [Fact]
-    public async Task ResumeProjectionAsync_DelegatesToCommandApi() {
+    public async Task ResumeProjectionAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -87,7 +87,7 @@ public class DaprProjectionCommandServiceTests {
     }
 
     [Fact]
-    public async Task ResetProjectionAsync_DelegatesToCommandApi() {
+    public async Task ResetProjectionAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -104,7 +104,7 @@ public class DaprProjectionCommandServiceTests {
     }
 
     [Fact]
-    public async Task ReplayProjectionAsync_DelegatesToCommandApi() {
+    public async Task ReplayProjectionAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 

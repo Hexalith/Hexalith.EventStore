@@ -34,7 +34,7 @@ public class CrossEndpointFlowE2ETests {
         using HttpRequestMessage validateRequest = ContractTestHelpers.CreateCommandValidationRequest(
             "tenant-a", "counter", "IncrementCounter");
 
-        using HttpResponseMessage validateResponse = await _fixture.CommandApiClient
+        using HttpResponseMessage validateResponse = await _fixture.EventStoreClient
             .SendAsync(validateRequest);
 
         validateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -44,13 +44,13 @@ public class CrossEndpointFlowE2ETests {
         // Step 2: Submit the same command
         string aggregateId = $"cross-flow-{Guid.NewGuid():N}";
         string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
-            _fixture.CommandApiClient, "tenant-a", "counter", aggregateId, "IncrementCounter");
+            _fixture.EventStoreClient, "tenant-a", "counter", aggregateId, "IncrementCounter");
 
         correlationId.ShouldNotBeNullOrEmpty();
 
         // Step 3: Poll status to Completed
         JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            _fixture.CommandApiClient, correlationId, "tenant-a");
+            _fixture.EventStoreClient, correlationId, "tenant-a");
 
         status.GetProperty("status").GetString().ShouldBe("Completed");
     }
@@ -81,7 +81,7 @@ public class CrossEndpointFlowE2ETests {
         };
         validateRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        using HttpResponseMessage validateResponse = await _fixture.CommandApiClient
+        using HttpResponseMessage validateResponse = await _fixture.EventStoreClient
             .SendAsync(validateRequest);
 
         validateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -105,7 +105,7 @@ public class CrossEndpointFlowE2ETests {
         };
         submitRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        using HttpResponseMessage submitResponse = await _fixture.CommandApiClient
+        using HttpResponseMessage submitResponse = await _fixture.EventStoreClient
             .SendAsync(submitRequest);
 
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden);

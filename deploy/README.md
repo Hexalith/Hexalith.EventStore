@@ -13,8 +13,8 @@ deploy/
     pubsub-kafka.yaml             # Kafka pub/sub (production)
     pubsub-servicebus.yaml        # Azure Service Bus pub/sub (production)
     resiliency.yaml               # Production resiliency policies
-    accesscontrol.yaml            # CommandApi access control (deny-by-default)
-    accesscontrol.admin-server.yaml # Admin.Server access control (deny-by-default)
+    accesscontrol.yaml            # EventStore access control (deny-by-default)
+    accesscontrol.eventstore-admin.yaml # Admin.Server access control (deny-by-default)
     accesscontrol.sample.yaml     # Sample domain-service access control (deny-by-default)
     subscription-sample-counter.yaml       # Sample subscription template
     subscription-projection-changed.yaml   # Projection change subscription
@@ -117,7 +117,7 @@ Set these before applying production templates to avoid unresolved/literal place
 | Aspect            | Local Dev (`AppHost/DaprComponents/`)             | Production (`deploy/dapr/`)                               |
 | ----------------- | ------------------------------------------------- | --------------------------------------------------------- |
 | Access Control    | `defaultAction: allow` (no mTLS)                  | `defaultAction: deny` + mTLS (SPIFFE trust domain)        |
-| Component Scoping | Explicit scopes (e.g., `commandapi`)              | Explicit `scopes: ["commandapi"]` on every component      |
+| Component Scoping | Explicit scopes (e.g., `eventstore`)              | Explicit `scopes: ["eventstore"]` on every component      |
 | Secrets           | `appsettings.json` / env vars                     | K8s Secrets / Azure Key Vault                             |
 | TLS               | None (local loopback)                             | mTLS via DAPR sidecar (NFR9)                              |
 | Resiliency        | Constant retry (3 retries, 1s), shorter intervals | Exponential retry (10 retries, 15s max), longer intervals |
@@ -152,7 +152,7 @@ Recommended approaches by platform:
     kubectl apply -f pubsub-rabbitmq.yaml
     kubectl apply -f resiliency.yaml
     kubectl apply -f accesscontrol.yaml
-    kubectl apply -f accesscontrol.admin-server.yaml
+    kubectl apply -f accesscontrol.eventstore-admin.yaml
     kubectl apply -f accesscontrol.sample.yaml
     ```
 
@@ -162,11 +162,11 @@ Recommended approaches by platform:
     ```yaml
     annotations:
         dapr.io/enabled: "true"
-        dapr.io/app-id: "commandapi"
+        dapr.io/app-id: "eventstore"
         dapr.io/config: "accesscontrol"
     ```
 
-    Use `dapr.io/config: "accesscontrol-admin-server"` for the `admin-server` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
+    Use `dapr.io/config: "accesscontrol-eventstore-admin"` for the `eventstore-admin` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
 
 ### Azure Container Apps (Aspire Publisher)
 
@@ -202,11 +202,11 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **Generated output:** `docker-compose.yaml` + `.env` file containing parameterized placeholders for container images, ports, and secrets.
 
-**Services generated:** `commandapi`, `admin-server`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
+**Services generated:** `eventstore`, `eventstore-admin`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
 
 **DAPR sidecar handling:** `CommunityToolkit.Aspire.Hosting.Dapr` is a local dev orchestration tool. The Docker Compose publisher does **NOT** generate DAPR sidecar containers. To add DAPR support:
 
-1. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume. Place `accesscontrol.yaml`, `accesscontrol.admin-server.yaml`, and `accesscontrol.sample.yaml` (DAPR `Configuration` resources, `kind: Configuration`) in a separate `dapr-config/` directory to avoid DAPR loading them as components.
+1. Copy production DAPR components from `deploy/dapr/` into a `dapr-components/` directory mounted as a volume. Place `accesscontrol.yaml`, `accesscontrol.eventstore-admin.yaml`, and `accesscontrol.sample.yaml` (DAPR `Configuration` resources, `kind: Configuration`) in a separate `dapr-config/` directory to avoid DAPR loading them as components.
 2. Resolve environment variable placeholders in the `.env` file with production values.
 3. Add sidecar containers via a `docker-compose.override.yml` file (keeps Aspire-generated `docker-compose.yaml` unchanged and reviewable):
 
@@ -214,9 +214,9 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 ```yaml
 services:
-    commandapi-dapr:
+    eventstore-dapr:
         image: "daprio/daprd:1.16.1"
-        network_mode: "service:commandapi"
+        network_mode: "service:eventstore"
         volumes:
             - ./dapr-components:/components
             - ./dapr-config:/config
@@ -224,7 +224,7 @@ services:
             [
                 "./daprd",
                 "-app-id",
-                "commandapi",
+                "eventstore",
                 "-app-port",
                 "8080",
                 "-components-path",
@@ -232,9 +232,9 @@ services:
                 "-config",
                 "/config/accesscontrol.yaml",
             ]
-    admin-server-dapr:
+    eventstore-admin-dapr:
         image: "daprio/daprd:1.16.1"
-        network_mode: "service:admin-server"
+        network_mode: "service:eventstore-admin"
         volumes:
             - ./dapr-components:/components
             - ./dapr-config:/config
@@ -242,13 +242,13 @@ services:
             [
                 "./daprd",
                 "-app-id",
-                "admin-server",
+                "eventstore-admin",
                 "-app-port",
                 "8090",
                 "-components-path",
                 "/components",
                 "-config",
-                "/config/accesscontrol.admin-server.yaml",
+                "/config/accesscontrol.eventstore-admin.yaml",
             ]
     sample-dapr:
         image: "daprio/daprd:1.16.1"
@@ -290,7 +290,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **Note:** `EnableKeycloak=false` is required because the Kubernetes publisher does not support bind mounts (used by Keycloak's realm import). For production Kubernetes deployments, use an external OIDC provider instead of Keycloak (see [External OIDC Configuration](#external-oidc-configuration-for-production)).
 
-**Generated output:** Helm chart with `Chart.yaml`, `values.yaml`, and templates containing Deployments, Services, and ConfigMaps for `commandapi`, `admin-server`, and `sample`.
+**Generated output:** Helm chart with `Chart.yaml`, `values.yaml`, and templates containing Deployments, Services, and ConfigMaps for `eventstore`, `eventstore-admin`, and `sample`.
 
 **DAPR annotation handling:** The Kubernetes publisher does **NOT** auto-generate DAPR annotations on pod templates. To add DAPR support:
 
@@ -302,12 +302,12 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
             metadata:
                 annotations:
                     dapr.io/enabled: "true"
-                    dapr.io/app-id: "commandapi"
+                    dapr.io/app-id: "eventstore"
                     dapr.io/app-port: "8080"
                     dapr.io/config: "accesscontrol"
     ```
 
-    Use `dapr.io/config: "accesscontrol-admin-server"` for the `admin-server` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
+    Use `dapr.io/config: "accesscontrol-eventstore-admin"` for the `eventstore-admin` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
 
 2. Install the DAPR operator in your Kubernetes cluster.
 3. Apply production DAPR components as Kubernetes CRDs:
@@ -317,7 +317,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
     kubectl apply -f deploy/dapr/pubsub-rabbitmq.yaml
     kubectl apply -f deploy/dapr/resiliency.yaml
     kubectl apply -f deploy/dapr/accesscontrol.yaml
-    kubectl apply -f deploy/dapr/accesscontrol.admin-server.yaml
+    kubectl apply -f deploy/dapr/accesscontrol.eventstore-admin.yaml
     kubectl apply -f deploy/dapr/accesscontrol.sample.yaml
     ```
 
@@ -341,7 +341,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **Note:** `EnableKeycloak=false` is recommended for production ACA deployments. Use an external OIDC provider.
 
-**Generated output:** Bicep modules including: `main.bicep` (subscription-scoped orchestrator), ACR module (Azure Container Registry), Container Apps Environment module, and per-service modules (`commandapi.bicep`, `sample.bicep`) with managed identity.
+**Generated output:** Bicep modules including: `main.bicep` (subscription-scoped orchestrator), ACR module (Azure Container Registry), Container Apps Environment module, and per-service modules (`eventstore.bicep`, `sample.bicep`) with managed identity.
 
 **DAPR configuration handling:** The Bicep output does **NOT** include DAPR configuration. Azure Container Apps has native DAPR support that must be configured separately:
 
@@ -352,7 +352,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 ### External OIDC Configuration for Production
 
-Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production auth, configure an external OIDC provider via these environment variables on the `commandapi` container:
+Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production auth, configure an external OIDC provider via these environment variables on the `eventstore` container:
 
 | Variable                                          | Description                 | Example                                           |
 | ------------------------------------------------- | --------------------------- | ------------------------------------------------- |
@@ -386,7 +386,7 @@ When adding a new domain service to the production deployment:
 2. **Do NOT** add it to pub/sub component scopes -- domain services have zero pub/sub access (D4)
 3. Create a dedicated `accesscontrol.<service>.yaml` for the new receiving sidecar, using `accesscontrol.sample.yaml` as the template
 4. Bind that config only to the new workload via its DAPR config setting or annotation
-5. If the domain service needs to receive invocations from commandapi, ensure its `defaultAction: deny` policy allows only the specific operations needed
+5. If the domain service needs to receive invocations from eventstore, ensure its `defaultAction: deny` policy allows only the specific operations needed
 6. Update subscription files if the domain service processes events from specific topics
 
 ## Adding New Subscriber Services
@@ -413,7 +413,7 @@ The NFR29 portability guarantee means any DAPR-compatible backend works — not 
     - `actorStateStore: "true"` (required for DAPR actors)
     - Connection credentials via `{env:VAR_NAME}` references (never hardcode)
 4. The component `metadata.name` **must** be `statestore` (matches what the application code references)
-5. Add `scopes: ["commandapi"]` (D4 requirement — only commandapi accesses the state store)
+5. Add `scopes: ["eventstore"]` (D4 requirement — only eventstore accesses the state store)
 6. Verify the backend supports ETag-based optimistic concurrency (D1 hard requirement)
 
 ### Pub/Sub
@@ -425,7 +425,7 @@ The NFR29 portability guarantee means any DAPR-compatible backend works — not 
     - `publishingScopes` and `subscriptionScopes` (copy from existing pub/sub configs)
     - Connection credentials via `{env:VAR_NAME}` references
 4. The component `metadata.name` **must** be `pubsub` (matches what the application code references)
-5. Add `scopes` list: `["commandapi", "{env:SUBSCRIBER_APP_ID}", "{env:OPS_MONITOR_APP_ID}"]` — must include `commandapi` (publisher) plus any authorized subscriber app-ids
+5. Add `scopes` list: `["eventstore", "{env:SUBSCRIBER_APP_ID}", "{env:OPS_MONITOR_APP_ID}"]` — must include `eventstore` (publisher) plus any authorized subscriber app-ids
 6. Verify the backend supports CloudEvents 1.0 and at-least-once delivery
  <!-- End of deployment README -->
 

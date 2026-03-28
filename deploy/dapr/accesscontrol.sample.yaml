@@ -4,7 +4,7 @@
 # CALLERS may invoke the sample domain service through DAPR service invocation.
 #
 # Allowed callers in the production topology:
-#   - commandapi: actor host / domain service invoker. Uses POST-only DAPR service invocation
+#   - eventstore: actor host / domain service invoker. Uses POST-only DAPR service invocation
 #     to process domain commands.
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
@@ -15,7 +15,7 @@ spec:
     defaultAction: deny  # Deny-by-default in production with mTLS identity
     trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
     policies:
-      - appId: commandapi
+      - appId: eventstore
         defaultAction: deny
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
         namespace: "{env:DAPR_NAMESPACE|hexalith}"

@@ -9,9 +9,9 @@ The query pipeline (contracts, routing, caching, SignalR notifications) is fully
 Two projection modes will be supported:
 
 - **Mode A (Pub/Sub, domain-driven)**: Domain service subscribes to events via DAPR pub/sub, builds and stores its own read model, exposes a query endpoint. Not covered in this spec.
-- **Mode B (Server-managed, pull-based)**: CommandApi manages the projection lifecycle — polls the event stream, sends new events to the domain service, caches returned state. **This spec covers Mode B.**
+- **Mode B (Server-managed, pull-based)**: EventStore manages the projection lifecycle — polls the event stream, sends new events to the domain service, caches returned state. **This spec covers Mode B.**
 
-The domain microservice owns both the Apply logic and the projection state. CommandApi orchestrates delivery and serves queries. The domain microservice technical layer stays thin.
+The domain microservice owns both the Apply logic and the projection state. EventStore orchestrates delivery and serves queries. The domain microservice technical layer stays thin.
 
 ## Design
 
@@ -28,7 +28,7 @@ Events persisted by AggregateActor
        no  --> Background IHostedService polls per tenant:domain:aggregateId
         |
         v
-CommandApi reads new events since last-sent checkpoint
+EventStore reads new events since last-sent checkpoint
 (via AggregateActor.GetEventsAsync — encapsulated, no DAPR key coupling)
         |
         v
@@ -114,7 +114,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - Returns the current state after applying the new events
 - **Idempotency**: domain service must handle duplicate event delivery (events include SequenceNumber for dedup)
 
-**Rationale for `JsonElement State`**: Projection state is domain-specific. CommandApi treats it as opaque bytes — it stores and serves it without understanding the schema. This keeps the Server project decoupled from domain types.
+**Rationale for `JsonElement State`**: Projection state is domain-specific. EventStore treats it as opaque bytes — it stores and serves it without understanding the schema. This keeps the Server project decoupled from domain types.
 
 #### 6. Convention-Based Discovery
 

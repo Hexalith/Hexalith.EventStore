@@ -1,4 +1,4 @@
-extern alias commandapi;
+extern alias eventstore;
 
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using CommandApiProgram = commandapi::Program;
+using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// <summary>
@@ -16,7 +16,7 @@ namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// Used by all integration tests that need authenticated requests.
 /// Overrides Dapr store registrations with InMemory implementations for tests.
 /// </summary>
-public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
+public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<EventStoreProgram> {
     /// <summary>Gets the shared InMemoryCommandStatusStore instance used across all tests.</summary>
     public InMemoryCommandStatusStore StatusStore { get; } = new();
 

@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Admin.Server.OpenApi;
 
 /// <summary>
 /// Adds common response documentation (401, 403, 503) to admin operations.
-/// Scoped to api/v1/admin/ prefix to avoid affecting CommandApi endpoints in co-hosted scenarios.
+/// Scoped to api/v1/admin/ prefix to avoid affecting EventStore endpoints in co-hosted scenarios.
 /// </summary>
 public sealed class AdminOperationTransformer : IOpenApiOperationTransformer
 {

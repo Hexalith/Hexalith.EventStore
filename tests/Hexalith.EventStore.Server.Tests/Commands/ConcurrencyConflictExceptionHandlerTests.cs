@@ -1,7 +1,7 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;

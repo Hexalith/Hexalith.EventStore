@@ -21,7 +21,7 @@ Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system
 
 Adds the Hexalith EventStore topology to the distributed application builder\.
 This provisions DAPR state store \(in\-memory with actor support\), DAPR pub/sub,
-and wires the CommandApi and Admin.Server services with DAPR sidecars\.
+and wires the EventStore and Admin.Server services with DAPR sidecars\.
 
 ```csharp
 public static Hexalith.EventStore.Aspire.HexalithEventStoreResources AddHexalithEventStore(this Aspire.Hosting.IDistributedApplicationBuilder builder, Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> commandApi, Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> adminServer, string? commandApiDaprConfigPath = null, string? adminServerDaprConfigPath = null);
@@ -35,7 +35,7 @@ The distributed application builder\.
 
 `commandApi` [Aspire\.Hosting\.ApplicationModel\.IResourceBuilder&lt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")[Aspire\.Hosting\.ApplicationModel\.ProjectResource](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.projectresource "Aspire.Hosting.ApplicationModel.ProjectResource")[&gt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")
 
-The CommandApi project resource builder\.
+The EventStore project resource builder\.
 
 `adminServer` [Aspire\.Hosting\.ApplicationModel\.IResourceBuilder&lt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")[Aspire\.Hosting\.ApplicationModel\.ProjectResource](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.projectresource "Aspire.Hosting.ApplicationModel.ProjectResource")[&gt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")
 
@@ -43,7 +43,7 @@ The Admin.Server project resource builder\.
 
 `commandApiDaprConfigPath` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string "System.String")
 
-Path to the Dapr sidecar configuration file loaded by the CommandApi sidecar\.
+Path to the Dapr sidecar configuration file loaded by the EventStore sidecar\.
 
 `adminServerDaprConfigPath` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string "System.String")
 

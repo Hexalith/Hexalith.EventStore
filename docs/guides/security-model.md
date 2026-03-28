@@ -75,7 +75,7 @@ The diagram shows a command request flowing through six sequential security laye
 
 5. Layer 5 (Actor Tenant Validation) verifies that the command's tenant matches the actor identity before loading any state from the state store. This prevents tenant escape during actor rebalancing.
 
-6. Layer 6 (DAPR Access Control) enforces service-to-service policies at the sidecar level. Only the commandapi app-id is allowed to invoke domain services, using mTLS with SPIFFE identity validation. Domain services return event payloads only.
+6. Layer 6 (DAPR Access Control) enforces service-to-service policies at the sidecar level. Only the eventstore app-id is allowed to invoke domain services, using mTLS with SPIFFE identity validation. Domain services return event payloads only.
 
 Each layer independently rejects unauthorized requests — a failure at any layer stops the request from proceeding further.
 
@@ -244,15 +244,15 @@ DAPR access control policies restrict which services can communicate with each o
 
 Production uses one access-control file per receiving sidecar:
 
-- `deploy/dapr/accesscontrol.yaml` — CommandApi inbound policy
-- `deploy/dapr/accesscontrol.admin-server.yaml` — Admin.Server inbound policy
+- `deploy/dapr/accesscontrol.yaml` — EventStore inbound policy
+- `deploy/dapr/accesscontrol.eventstore-admin.yaml` — Admin.Server inbound policy
 - `deploy/dapr/accesscontrol.sample.yaml` — sample domain-service inbound policy
 
-The CommandApi sidecar config is:
+The EventStore sidecar config is:
 
 ```yaml
-# DAPR Access Control Configuration for the CommandApi sidecar -- Production
-# Bound ONLY to the CommandApi sidecar.
+# DAPR Access Control Configuration for the EventStore sidecar -- Production
+# Bound ONLY to the EventStore sidecar.
 #
 # Security Posture: defaultAction: deny (secure by default)
 apiVersion: dapr.io/v1alpha1
@@ -270,33 +270,33 @@ spec:
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
 
         policies:
-            # admin-server: trusted caller for CommandApi admin passthrough.
-            - appId: admin-server
+            # eventstore-admin: trusted caller for EventStore admin passthrough.
+            - appId: eventstore-admin
               defaultAction: deny
               trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
               namespace: "{env:DAPR_NAMESPACE|hexalith}"
               operations:
-                  # Admin.Server delegates reads and writes through CommandApi.
+                  # Admin.Server delegates reads and writes through EventStore.
                   - name: /**
                     httpVerb: ["GET", "POST", "PUT"]
                     action: allow
 ```
 
-`accesscontrol.admin-server.yaml` sets `defaultAction: deny` with `policies: []`, because no peer workload should invoke Admin.Server over DAPR.
+`accesscontrol.eventstore-admin.yaml` sets `defaultAction: deny` with `policies: []`, because no peer workload should invoke Admin.Server over DAPR.
 
-`accesscontrol.sample.yaml` contains the POST-only `commandapi` caller policy that allows CommandApi to invoke the sample domain service.
+`accesscontrol.sample.yaml` contains the POST-only `eventstore` caller policy that allows EventStore to invoke the sample domain service.
 
 ### Key Security Properties
 
 - **Deny-by-default (D4):** The `defaultAction: deny` at the top level blocks any service invocation not explicitly listed in a policy.
 - **SPIFFE trust domain:** mTLS (mutual TLS) is enforced between all sidecars. The `trustDomain` field configures which SPIFFE identity certificates are accepted. Sidecars with certificates from a different trust domain are rejected at the TLS handshake — before any application-level policy evaluation.
-- **POST-only domain invocation:** The sample/domain-service sidecar policy allows only POST requests from `commandapi`. GET, PUT, and DELETE are blocked.
-- **Admin passthrough isolation:** The CommandApi sidecar allows only `admin-server` to call its admin passthrough surface with the exact verbs currently required: GET, POST, and PUT.
-- **Domain service isolation:** Domain services have zero allowed operations — they cannot invoke any other service, access the state store, or publish to pub/sub. They receive commands from `commandapi` and return event payloads. Nothing else.
+- **POST-only domain invocation:** The sample/domain-service sidecar policy allows only POST requests from `eventstore`. GET, PUT, and DELETE are blocked.
+- **Admin passthrough isolation:** The EventStore sidecar allows only `eventstore-admin` to call its admin passthrough surface with the exact verbs currently required: GET, POST, and PUT.
+- **Domain service isolation:** Domain services have zero allowed operations — they cannot invoke any other service, access the state store, or publish to pub/sub. They receive commands from `eventstore` and return event payloads. Nothing else.
 
 ### Azure Container Apps Difference
 
-Azure Container Apps does not support DAPR `accesscontrol.yaml`. Instead, equivalent security is achieved through DAPR component scoping — restricting which app-ids can access each DAPR component (state store, pub/sub). Only the `commandapi` app-id is listed in component scopes. See the [Azure Container Apps Deployment Guide](deployment-azure-container-apps.md) for component scoping configuration.
+Azure Container Apps does not support DAPR `accesscontrol.yaml`. Instead, equivalent security is achieved through DAPR component scoping — restricting which app-ids can access each DAPR component (state store, pub/sub). Only the `eventstore` app-id is listed in component scopes. See the [Azure Container Apps Deployment Guide](deployment-azure-container-apps.md) for component scoping configuration.
 
 ## Multi-Tenant Isolation
 
@@ -440,7 +440,7 @@ Store secrets in a `.env` file at the project root (already in `.gitignore`). Re
 
 ```yaml
 services:
-    commandapi:
+    eventstore:
         environment:
             - Authentication__JwtBearer__SigningKey=${JWT_SIGNING_KEY}
 ```
@@ -469,7 +469,7 @@ Use **Managed Identity** (recommended) to eliminate connection strings entirely 
 
 ```bash
 az containerapp secret set \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --secrets "redis-password=keyvaultref:<key-vault-uri>/secrets/redis-password,identityref:<managed-identity-id>"
 ```
@@ -501,7 +501,7 @@ Verify every item before deploying to production:
 | TLS 1.2+ enforced              | HTTPS on all external endpoints                             | Required by NFR9                                           |
 | Rate limiting configured       | `PermitLimit` tuned per tenant load expectations            | Default: 100 requests/60 seconds                           |
 | Payload redaction verified     | No event payloads in structured logs                        | Required by NFR12/SEC-5                                    |
-| Component scoping configured   | State store and pub/sub scoped to `commandapi` only         | Prevents domain services from direct infrastructure access |
+| Component scoping configured   | State store and pub/sub scoped to `eventstore` only         | Prevents domain services from direct infrastructure access |
 | Custom claims configured       | Identity provider emits `tenants`, `domains`, `permissions` | Required for domain/permission authorization               |
 | Extension metadata limits set  | `EventStore:ExtensionMetadata` configured for production    | Defaults are conservative but review for your use case     |
 

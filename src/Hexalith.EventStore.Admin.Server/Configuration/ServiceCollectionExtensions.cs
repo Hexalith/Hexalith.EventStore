@@ -71,7 +71,7 @@ public static class ServiceCollectionExtensions {
                     Description = "Administration API for Hexalith EventStore — stream browsing, projection management, type catalog, health monitoring, storage operations, dead-letter management, and tenant administration. Requires JWT Bearer authentication with role-based access control (ReadOnly, Operator, Admin). Error reference documentation is available at /api/v1/admin/problems/{error-type} on this server.",
                 };
 
-                // Add JWT Bearer security scheme (same pattern as CommandApi)
+                // Add JWT Bearer security scheme (same pattern as EventStore)
                 OpenApiComponents components = document.Components ??= new OpenApiComponents();
                 components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
                 components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme

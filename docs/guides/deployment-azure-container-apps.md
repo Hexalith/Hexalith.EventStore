@@ -44,9 +44,9 @@ flowchart TB
     subgraph Azure["Azure Subscription"]
         subgraph RG["Resource Group"]
             subgraph ACAEnv["Container Apps Environment<br/>(Managed DAPR)"]
-                subgraph CmdApp["commandapi Container App"]
-                    CommandApi[Command API Gateway<br/>:8080]
-                    CmdSidecar(Managed DAPR Sidecar<br/>app-id: commandapi)
+                subgraph CmdApp["eventstore Container App"]
+                    EventStore[Command API Gateway<br/>:8080]
+                    CmdSidecar(Managed DAPR Sidecar<br/>app-id: eventstore)
                 end
 
                 subgraph SampleApp["sample Container App"]
@@ -64,9 +64,9 @@ flowchart TB
         end
     end
 
-    Client -->|REST + JWT| CommandApi
+    Client -->|REST + JWT| EventStore
     Client -.->|Token Request| EntraID
-    CommandApi --- CmdSidecar
+    EventStore --- CmdSidecar
     CmdSidecar -->|Service Invocation| SampleSidecar
     SampleSidecar --> Sample
     CmdSidecar -->|State Store API| CosmosDB
@@ -89,11 +89,11 @@ Within an Azure Subscription, a Resource Group contains all deployment resources
 
 1. **Container Apps Environment** with managed DAPR: The central hosting environment that provides built-in DAPR runtime management, internal DNS for service-to-service communication, and automatic mTLS between container apps.
 
-2. **commandapi Container App**: Runs the Command API Gateway on port 8080 with an Azure-managed DAPR sidecar (app-id: commandapi). The sidecar handles all infrastructure interactions: persisting events and actor state to Azure Cosmos DB via the state store building block, publishing domain events to Azure Service Bus via the pub/sub building block, and invoking the sample domain service through DAPR service invocation.
+2. **eventstore Container App**: Runs the Command API Gateway on port 8080 with an Azure-managed DAPR sidecar (app-id: eventstore). The sidecar handles all infrastructure interactions: persisting events and actor state to Azure Cosmos DB via the state store building block, publishing domain events to Azure Service Bus via the pub/sub building block, and invoking the sample domain service through DAPR service invocation.
 
-3. **sample Container App**: Runs the Counter Sample domain service with its own Azure-managed DAPR sidecar (app-id: sample). The sample sidecar receives service invocation calls from the commandapi sidecar. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub (D4).
+3. **sample Container App**: Runs the Counter Sample domain service with its own Azure-managed DAPR sidecar (app-id: sample). The sample sidecar receives service invocation calls from the eventstore sidecar. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub (D4).
 
-4. **DAPR Components**: Configured at the Container Apps Environment level (not per-app). These define the state store (Cosmos DB) and pub/sub (Service Bus) connections with component scoping to restrict access to commandapi only.
+4. **DAPR Components**: Configured at the Container Apps Environment level (not per-app). These define the state store (Cosmos DB) and pub/sub (Service Bus) connections with component scoping to restrict access to eventstore only.
 
 5. **Azure Container Registry (ACR)**: Stores the container images for both container apps.
 
@@ -164,8 +164,8 @@ The publisher generates Bicep modules with this general structure:
 publish-output/azure/
   main.bicep                    # Subscription-scoped orchestrator
   main.parameters.bicepparam    # Parameter file with defaults
-  commandapi/
-    commandapi.module.bicep     # Container App definition for commandapi
+  eventstore/
+    eventstore.module.bicep     # Container App definition for eventstore
   sample/
     sample.module.bicep         # Container App definition for sample
   acr/
@@ -256,11 +256,11 @@ Build container images using the .NET SDK container publishing feature (no Docke
 az acr login --name hexalithacr
 
 # Build container images
-dotnet publish src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-commandapi -p:ContainerImageTag=latest
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-eventstore -p:ContainerImageTag=latest
 dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-sample -p:ContainerImageTag=latest
 
 # Push to ACR
-docker push hexalithacr.azurecr.io/hexalith-commandapi:latest
+docker push hexalithacr.azurecr.io/hexalith-eventstore:latest
 docker push hexalithacr.azurecr.io/hexalith-sample:latest
 ```
 
@@ -274,7 +274,7 @@ Azure Container Apps has **native managed DAPR** support. Components are configu
 
 The Aspire ACA publisher does **not** generate DAPR configuration. The `WithDaprSidecar()` calls from `CommunityToolkit.Aspire.Hosting.Dapr` are effective for local development only. The generated Bicep will not include:
 
-- `dapr: { enabled: true, appId: 'commandapi', ... }` in container app configuration
+- `dapr: { enabled: true, appId: 'eventstore', ... }` in container app configuration
 - `Microsoft.App/managedEnvironments/daprComponents` resources
 
 **Workaround:** Configure DAPR via post-deployment CLI commands (recommended) or supplementary Bicep modules.
@@ -297,7 +297,7 @@ spec:
     - name: url
       value: "https://mycosmosdb.documents.azure.com:443/"
 scopes:
-  - commandapi
+  - eventstore
 ```
 
 ACA equivalent (simplified schema):
@@ -315,7 +315,7 @@ metadata:
   - name: azureClientId
     value: "<managed-identity-client-id>"
 scopes:
-  - commandapi
+  - eventstore
 ```
 
 ### State Store: Azure Cosmos DB (Tier 1 — Recommended)
@@ -342,7 +342,7 @@ metadata:
   - name: azureClientId
     value: "<managed-identity-client-id>"
 scopes:
-  - commandapi
+  - eventstore
 EOF
 ```
 
@@ -368,7 +368,7 @@ metadata:
   - name: deadLetterTopic
     value: "deadletter"
 scopes:
-  - commandapi
+  - eventstore
 EOF
 ```
 
@@ -392,7 +392,7 @@ EOF
 
 ### Component Scoping
 
-All DAPR components include `scopes: ['commandapi']` to restrict access. Only the `commandapi` app-id can access the state store and pub/sub — domain services have zero infrastructure access (D4).
+All DAPR components include `scopes: ['eventstore']` to restrict access. Only the `eventstore` app-id can access the state store and pub/sub — domain services have zero infrastructure access (D4).
 
 ### Access Control: ACA-Equivalent Security
 
@@ -443,13 +443,13 @@ Set `azureClientId` to the managed identity client ID in each DAPR component's m
 
 Each container app needs DAPR enabled individually with app-specific settings.
 
-### Enable DAPR on commandapi
+### Enable DAPR on eventstore
 
 ```bash
 az containerapp dapr enable \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
-  --dapr-app-id commandapi \
+  --dapr-app-id eventstore \
   --dapr-app-port 8080 \
   --dapr-app-protocol http
 ```
@@ -470,13 +470,13 @@ az containerapp dapr enable \
 If using Bicep, add the DAPR configuration block to each container app resource:
 
 ```bicep
-resource commandapi 'Microsoft.App/containerApps@2025-01-01' = {
+resource eventstore 'Microsoft.App/containerApps@2025-01-01' = {
   // ... existing properties
   properties: {
     configuration: {
       dapr: {
         enabled: true
-        appId: 'commandapi'
+        appId: 'eventstore'
         appPort: 8080
         appProtocol: 'http'
       }
@@ -510,11 +510,11 @@ Azure Container Apps deployments should use Microsoft Entra ID (Azure AD) for OI
 - **Issuer:** `https://login.microsoftonline.com/{tenant-id}/v2.0`
 - **Audience:** `api://hexalith-eventstore` (the Application ID URI)
 
-### Set Environment Variables on the commandapi Container App
+### Set Environment Variables on the eventstore Container App
 
 ```bash
 az containerapp update \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --set-env-vars \
     "Authentication__JwtBearer__Authority=https://login.microsoftonline.com/{tenant-id}/v2.0" \
@@ -589,11 +589,11 @@ Apply DAPR components to the Container Apps Environment (see [Configure DAPR Com
 Enable DAPR on each container app and set authentication environment variables:
 
 ```bash
-# Enable DAPR on commandapi
+# Enable DAPR on eventstore
 az containerapp dapr enable \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
-  --dapr-app-id commandapi \
+  --dapr-app-id eventstore \
   --dapr-app-port 8080 \
   --dapr-app-protocol http
 
@@ -605,9 +605,9 @@ az containerapp dapr enable \
   --dapr-app-port 8080 \
   --dapr-app-protocol http
 
-# Set domain service registration and auth env vars on commandapi
+# Set domain service registration and auth env vars on eventstore
 az containerapp update \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --set-env-vars \
     "EventStore__DomainServices__Registrations__tenant-a|counter|v1__AppId=sample" \
@@ -632,7 +632,7 @@ See [Verify System Health](#verify-system-health) below.
 
 ```bash
 FQDN=$(az containerapp show \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --query properties.configuration.ingress.fqdn \
   -o tsv)
@@ -656,7 +656,7 @@ curl -s "https://$FQDN/ready"
 
 ```bash
 az containerapp logs show \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --type system
 ```
@@ -672,7 +672,7 @@ Look for DAPR sidecar log entries confirming component loading:
 |-------|---------|----------|
 | Environment provisioned | `az containerapp env show --name hexalith-env --resource-group hexalith-rg` | `provisioningState: Succeeded` |
 | DAPR components loaded | `az containerapp env dapr-component list --name hexalith-env --resource-group hexalith-rg -o table` | statestore, pubsub listed |
-| Container apps running | `az containerapp show --name commandapi --resource-group hexalith-rg --query properties.runningStatus` | `Running` |
+| Container apps running | `az containerapp show --name eventstore --resource-group hexalith-rg --query properties.runningStatus` | `Running` |
 | `/health` returns 200 | `curl -s "https://$FQDN/health"` | `Healthy` |
 | Can get Entra ID token | `az account get-access-token --resource api://hexalith-eventstore` | Valid JWT |
 | Can submit command | POST to `https://$FQDN/api/v1/commands` | HTTP 202 Accepted |
@@ -725,7 +725,7 @@ Expected response (HTTP 202 Accepted):
 
 ### Verify the Event in Cosmos DB
 
-Check the Azure Portal → Cosmos DB → Data Explorer → `eventstore` database → `actorstate` container. Look for documents with keys matching `commandapi||tenant-a||counter||counter-1||*`.
+Check the Azure Portal → Cosmos DB → Data Explorer → `eventstore` database → `actorstate` container. Look for documents with keys matching `eventstore||tenant-a||counter||counter-1||*`.
 
 ## Where Is My Data?
 
@@ -733,13 +733,13 @@ Event data is physically stored in whatever backend the DAPR state store compone
 
 ### Azure Cosmos DB (Recommended for ACA)
 
-Events are stored as documents in the configured Cosmos DB container. Each document contains `id` (the composite key), `value` (the serialized state), and `_etag` for optimistic concurrency. Keys follow the composite pattern: `commandapi||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`.
+Events are stored as documents in the configured Cosmos DB container. Each document contains `id` (the composite key), `value` (the serialized state), and `_etag` for optimistic concurrency. Keys follow the composite pattern: `eventstore||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`.
 
-- **Event streams:** `commandapi||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`
-- **Snapshots:** `commandapi||{tenant}||{domain}||{aggregateId}||snapshot`
-- **Actor state:** `commandapi||{tenant}||{domain}||{aggregateId}||actor`
+- **Event streams:** `eventstore||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`
+- **Snapshots:** `eventstore||{tenant}||{domain}||{aggregateId}||snapshot`
+- **Actor state:** `eventstore||{tenant}||{domain}||{aggregateId}||actor`
 - **Command status:** `{tenant}:{correlationId}:status` (24-hour TTL)
-- **Idempotency records:** `commandapi||{tenant}||{domain}||{aggregateId}||idempotency||{causationId}`
+- **Idempotency records:** `eventstore||{tenant}||{domain}||{aggregateId}||idempotency||{causationId}`
 
 ### Azure PostgreSQL Flexible Server
 
@@ -753,7 +753,7 @@ For the full backend compatibility matrix and key patterns, see [deploy/README.m
 
 | Component | vCPU | Memory | Notes |
 |-----------|------|--------|-------|
-| commandapi | 0.5 | 1Gi | Handles command processing and actor state |
+| eventstore | 0.5 | 1Gi | Handles command processing and actor state |
 | sample | 0.25 | 0.5Gi | Domain service (lightweight) |
 | DAPR sidecars | Managed | Managed | Azure manages sidecar resources automatically |
 
@@ -765,12 +765,12 @@ Container Apps support multiple scaling triggers:
 - **KEDA-based scaling** — scale based on Azure Service Bus queue length, custom metrics
 - **Min/max replicas** — set boundaries for auto-scaling
 
-**Critical: Actor constraint.** The commandapi container app uses DAPR actors for aggregate processing. Actors require at least one running instance — `minReplicas` **must** be >= 1. Scale-to-zero is **not supported** for actor-enabled apps.
+**Critical: Actor constraint.** The eventstore container app uses DAPR actors for aggregate processing. Actors require at least one running instance — `minReplicas` **must** be >= 1. Scale-to-zero is **not supported** for actor-enabled apps.
 
 ```bash
-# Set scaling rules for commandapi (actors require minReplicas >= 1)
+# Set scaling rules for eventstore (actors require minReplicas >= 1)
 az containerapp update \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --min-replicas 1 \
   --max-replicas 5
@@ -799,7 +799,7 @@ az containerapp update \
 | **Consumption** | Per-second vCPU + memory | Development, variable workloads |
 | **Dedicated** | Reserved capacity | Production, predictable workloads |
 
-- **Development environment:** Estimate ~$30–50/month with minimal traffic (consumption plan). commandapi must run at least 1 replica (actors); sample can scale to zero
+- **Development environment:** Estimate ~$30–50/month with minimal traffic (consumption plan). eventstore must run at least 1 replica (actors); sample can scale to zero
 - **Production:** Depends on traffic volume and replica count. Use Azure Cost Management for detailed estimates
 
 ## Infrastructure Differences: Docker vs Kubernetes vs Azure Container Apps
@@ -842,7 +842,7 @@ The same zero-code-change backend swap principle applies in Azure Container Apps
       - name: actorStateStore
         value: "true"
     scopes:
-      - commandapi
+      - eventstore
     EOF
     ```
 
@@ -869,14 +869,14 @@ For the full list of supported backends and their configuration, see [deploy/REA
 
 ```bash
 az containerapp logs show \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --type system
 ```
 
 Common causes:
 
-- **Image pull failure** — ACR credentials not configured, image tag not found. Verify: `az acr repository show-tags --name hexalithacr --repository hexalith-commandapi`
+- **Image pull failure** — ACR credentials not configured, image tag not found. Verify: `az acr repository show-tags --name hexalithacr --repository hexalith-eventstore`
 - **Insufficient permissions** — container app managed identity cannot pull from ACR. Assign AcrPull role: `az role assignment create --assignee <identity-id> --role AcrPull --scope <acr-resource-id>`
 - **Port mismatch** — ingress target port doesn't match the container's listening port (8080)
 
@@ -905,7 +905,7 @@ Common causes:
 
 Common causes:
 
-- **Identity not assigned** — verify managed identity is assigned to the container app: `az containerapp identity show --name commandapi --resource-group hexalith-rg`
+- **Identity not assigned** — verify managed identity is assigned to the container app: `az containerapp identity show --name eventstore --resource-group hexalith-rg`
 - **Role assignments not propagated** — Azure role assignments can take up to 10 minutes to propagate. Wait and retry
 - **Wrong resource scope** — role assignment must be at the correct scope (e.g., Cosmos DB account level, not resource group)
 - **Wrong client ID** — if using user-assigned identity, verify `azureClientId` in DAPR component metadata matches the identity's client ID
@@ -916,13 +916,13 @@ Common causes:
 
 Common causes:
 
-- **Ingress not enabled** — enable external ingress: `az containerapp ingress enable --name commandapi --resource-group hexalith-rg --type external --target-port 8080 --transport auto`
+- **Ingress not enabled** — enable external ingress: `az containerapp ingress enable --name eventstore --resource-group hexalith-rg --type external --target-port 8080 --transport auto`
 - **Target port mismatch** — the ingress target port must match the container's listening port (8080)
 - **Custom domain** — additional DNS and TLS configuration needed for custom domains
 
 ### Service Invocation Failures
 
-**Symptom:** commandapi cannot invoke the sample domain service.
+**Symptom:** eventstore cannot invoke the sample domain service.
 
 Common causes:
 
@@ -944,7 +944,7 @@ Or via CLI:
 
 ```bash
 az containerapp logs show \
-  --name commandapi \
+  --name eventstore \
   --resource-group hexalith-rg \
   --type console \
   --follow
@@ -954,7 +954,7 @@ az containerapp logs show \
 
 ### Pricing Plans
 
-- **Consumption plan** — per-second vCPU and memory usage. Scale-to-zero means zero compute cost when idle (but not for actor-enabled apps like commandapi)
+- **Consumption plan** — per-second vCPU and memory usage. Scale-to-zero means zero compute cost when idle (but not for actor-enabled apps like eventstore)
 - **Dedicated plan** — reserved capacity with predictable pricing for production workloads
 
 ### Cost Optimization Tips

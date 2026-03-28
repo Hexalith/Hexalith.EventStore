@@ -15,7 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IProjectionCommandService"/>.
-/// All write methods delegate to CommandApi via DAPR service invocation — never writes directly.
+/// All write methods delegate to EventStore via DAPR service invocation — never writes directly.
 /// </summary>
 public sealed class DaprProjectionCommandService : IProjectionCommandService
 {
@@ -54,7 +54,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
         string tenantId,
         string projectionName,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             $"api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/pause",
             new { tenantId },
             ct).ConfigureAwait(false);
@@ -64,7 +64,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
         string tenantId,
         string projectionName,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             $"api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/resume",
             new { tenantId },
             ct).ConfigureAwait(false);
@@ -75,7 +75,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
         string projectionName,
         long? fromPosition,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             $"api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/reset",
             new { tenantId, fromPosition },
             ct).ConfigureAwait(false);
@@ -87,12 +87,12 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
         long fromPosition,
         long toPosition,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             $"api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/replay",
             new { tenantId, fromPosition, toPosition },
             ct).ConfigureAwait(false);
 
-    private async Task<AdminOperationResult> InvokeCommandApiPostAsync<TRequest>(
+    private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
         string endpoint,
         TRequest request,
         CancellationToken ct)
@@ -103,7 +103,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
-                _options.CommandApiAppId, endpoint, request)
+                _options.EventStoreAppId, endpoint, request)
                 ?? CreateFallbackRequest(endpoint, request);
 
             string? token = _authContext.GetToken();
@@ -116,11 +116,11 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
                 .InvokeMethodAsync<AdminOperationResult>(httpRequest, cts.Token)
                 .ConfigureAwait(false);
 
-            return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from CommandApi", "NULL_RESPONSE");
+            return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("CommandApi endpoint '{Endpoint}' timed out.", endpoint);
+            _logger.LogWarning("EventStore endpoint '{Endpoint}' timed out.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, "Service invocation timed out", "TIMEOUT");
         }
         catch (OperationCanceledException)
@@ -129,7 +129,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to invoke CommandApi endpoint '{Endpoint}'.", endpoint);
+            _logger.LogWarning(ex, "Failed to invoke EventStore endpoint '{Endpoint}'.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
         }
     }

@@ -1,8 +1,8 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.Models;
-using Hexalith.EventStore.CommandApi.Validation;
+using Hexalith.EventStore.Models;
+using Hexalith.EventStore.Validation;
 
 using Shouldly;
 

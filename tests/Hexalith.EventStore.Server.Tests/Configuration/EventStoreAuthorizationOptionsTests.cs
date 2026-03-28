@@ -1,5 +1,5 @@
 
-using Hexalith.EventStore.CommandApi.Configuration;
+using Hexalith.EventStore.Configuration;
 
 using Microsoft.Extensions.Options;
 

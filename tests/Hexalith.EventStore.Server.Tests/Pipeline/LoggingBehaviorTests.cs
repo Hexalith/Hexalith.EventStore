@@ -1,7 +1,7 @@
 
 using System.Diagnostics;
 
-using Hexalith.EventStore.CommandApi.Pipeline;
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using MediatR;
@@ -34,7 +34,7 @@ public class LoggingBehaviorTests : IDisposable {
         _behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(_logger, _httpContextAccessor);
 
         _activityListener = new ActivityListener {
-            ShouldListenTo = source => source.Name == "Hexalith.EventStore.CommandApi",
+            ShouldListenTo = source => source.Name == "Hexalith.EventStore",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStarted = activity => _capturedActivities.Add(activity),
         };
@@ -165,7 +165,7 @@ public class LoggingBehaviorTests : IDisposable {
 
         // Assert - filter by operation name AND correlation ID to avoid parallel test interference
         Activity? activity = _capturedActivities.FirstOrDefault(
-            a => a.OperationName == "EventStore.CommandApi.Submit"
+            a => a.OperationName == "EventStore.Submit"
                 && Equals(a.GetTagItem("eventstore.correlation_id"), "test-correlation-id"));
         _ = activity.ShouldNotBeNull();
         activity.GetTagItem("eventstore.tenant_id").ShouldBe("test-tenant");
@@ -184,7 +184,7 @@ public class LoggingBehaviorTests : IDisposable {
 
         // Assert - filter by operation name AND correlation ID to avoid parallel test interference
         Activity? activity = _capturedActivities.FirstOrDefault(
-            a => a.OperationName == "EventStore.CommandApi.Submit"
+            a => a.OperationName == "EventStore.Submit"
                 && Equals(a.GetTagItem("eventstore.correlation_id"), "test-correlation-id"));
         _ = activity.ShouldNotBeNull();
         activity.Status.ShouldBe(ActivityStatusCode.Error);

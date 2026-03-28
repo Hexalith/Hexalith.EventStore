@@ -1,7 +1,7 @@
 
 using Dapr.Client;
 
-using Hexalith.EventStore.CommandApi.HealthChecks;
+using Hexalith.EventStore.HealthChecks;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;

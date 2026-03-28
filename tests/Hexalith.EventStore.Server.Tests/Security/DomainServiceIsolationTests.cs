@@ -190,8 +190,9 @@ public class DomainServiceIsolationTests {
     // --- Empty config response means no registration was found ---
 
     [Fact]
-    public async Task DomainServiceResolver_EmptyConfigResponse_ReturnsNull() {
+    public async Task DomainServiceResolver_EmptyConfigResponse_ReturnsConventionRouting() {
         // Arrange -- config store responds successfully but has no matching registration.
+        // Falls through to convention-based routing (AppId = domain, MethodName = "process").
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
@@ -205,13 +206,15 @@ public class DomainServiceIsolationTests {
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders", "v1");
 
-        // Assert -- returns null (no silent fallback to shared/default service)
-        result.ShouldBeNull();
+        // Assert -- convention fallback: AppId = domain, MethodName = "process"
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
     }
 
     [Fact]
-    public async Task DomainServiceResolver_ConfigStoreUnavailable_PropagatesException() {
-        // Arrange -- config store is unavailable, which differs from a clean miss.
+    public async Task DomainServiceResolver_ConfigStoreUnavailable_FallsBackToConvention() {
+        // Arrange -- config store is unavailable; falls through to convention-based routing.
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetConfiguration(
             Arg.Any<string>(),
@@ -222,10 +225,13 @@ public class DomainServiceIsolationTests {
 
         var resolver = new DomainServiceResolver(daprClient, Options.Create(DefaultOptions), NullLogger<DomainServiceResolver>.Instance);
 
-        // Act / Assert
-        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
-            () => resolver.ResolveAsync("tenant-a", "orders", "v1"));
-        exception.Message.ShouldContain("config store unavailable");
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders", "v1");
+
+        // Assert -- convention fallback when config store is unavailable
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
     }
 
     [Fact]

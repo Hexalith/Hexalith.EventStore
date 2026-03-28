@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Sample.BlazorUI.Services;
 public sealed record CounterStatusResult(int Count, string? ETag);
 
 /// <summary>
-/// Queries the CommandApi for counter projection status.
+/// Queries the EventStore for counter projection status.
 /// Handles ETag-based caching (HTTP 304) to minimize unnecessary data transfer.
 /// </summary>
 public sealed class CounterQueryService(IHttpClientFactory httpClientFactory) {

@@ -46,7 +46,7 @@ public class AuthenticationTests {
         };
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -80,7 +80,7 @@ public class AuthenticationTests {
         using HttpRequestMessage request = CreateCommandRequest(token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert - should be 403 (no submit permission)
@@ -101,7 +101,7 @@ public class AuthenticationTests {
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -126,7 +126,7 @@ public class AuthenticationTests {
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert

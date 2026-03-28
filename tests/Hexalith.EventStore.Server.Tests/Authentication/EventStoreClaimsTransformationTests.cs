@@ -2,7 +2,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.Authentication;
+using Hexalith.EventStore.Authentication;
 
 using Microsoft.Extensions.Logging;
 

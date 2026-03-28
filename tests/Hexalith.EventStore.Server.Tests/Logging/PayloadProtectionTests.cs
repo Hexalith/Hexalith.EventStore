@@ -3,8 +3,8 @@ using System.Diagnostics;
 
 using Dapr.Actors.Runtime;
 
-using Hexalith.EventStore.CommandApi.Middleware;
-using Hexalith.EventStore.CommandApi.Pipeline;
+using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;

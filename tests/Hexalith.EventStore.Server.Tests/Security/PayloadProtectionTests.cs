@@ -96,7 +96,7 @@ public class PayloadProtectionTests {
     public void LoggingBehavior_AllLogStatements_NeverReferencePayload() {
         string sourcePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-            "src", "Hexalith.EventStore.CommandApi", "Pipeline", "LoggingBehavior.cs"));
+            "src", "Hexalith.EventStore", "Pipeline", "LoggingBehavior.cs"));
 
         File.Exists(sourcePath).ShouldBeTrue($"Source file not found: {sourcePath}");
 

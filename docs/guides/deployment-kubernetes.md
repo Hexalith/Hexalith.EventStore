@@ -48,9 +48,9 @@ flowchart TB
         end
 
         subgraph HexalithNS["hexalith namespace"]
-            subgraph CmdPod["commandapi Pod (2/2)"]
-                CommandApi[Command API Gateway<br/>:8080]
-                CmdSidecar(DAPR Sidecar<br/>app-id: commandapi)
+            subgraph CmdPod["eventstore Pod (2/2)"]
+                EventStore[Command API Gateway<br/>:8080]
+                CmdSidecar(DAPR Sidecar<br/>app-id: eventstore)
             end
 
             subgraph SamplePod["sample Pod (2/2)"]
@@ -65,7 +65,7 @@ flowchart TB
         PubSub[(External Pub/Sub<br/>RabbitMQ / Kafka / Service Bus)]
     end
 
-    Client -->|REST + JWT| CommandApi
+    Client -->|REST + JWT| EventStore
     Client -.->|Token Request| OIDC
     CmdSidecar -->|State Store API| StateStore
     CmdSidecar -->|Pub/Sub API| PubSub
@@ -92,8 +92,8 @@ The Kubernetes cluster contains two namespaces:
     - **Sentry** — issues and rotates mTLS certificates for service-to-service communication
 
 2. **hexalith namespace**: Contains two application pods:
-    - **commandapi Pod** (shows 2/2 containers — app + DAPR sidecar): The Command API Gateway listens on port 8080. Its DAPR sidecar (app-id: commandapi) handles all infrastructure interactions: persisting events and actor state to the external state store, publishing domain events via pub/sub, and invoking the sample domain service through DAPR service invocation.
-    - **sample Pod** (shows 2/2 containers — app + DAPR sidecar): The Counter Sample domain service runs with its own DAPR sidecar (app-id: sample). The sample sidecar receives service invocation calls from the commandapi sidecar. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub (D4).
+    - **eventstore Pod** (shows 2/2 containers — app + DAPR sidecar): The Command API Gateway listens on port 8080. Its DAPR sidecar (app-id: eventstore) handles all infrastructure interactions: persisting events and actor state to the external state store, publishing domain events via pub/sub, and invoking the sample domain service through DAPR service invocation.
+    - **sample Pod** (shows 2/2 containers — app + DAPR sidecar): The Counter Sample domain service runs with its own DAPR sidecar (app-id: sample). The sample sidecar receives service invocation calls from the eventstore sidecar. The sample domain service has zero infrastructure access — it cannot read or write to the state store or pub/sub (D4).
 
 The external state store (PostgreSQL or Azure Cosmos DB) and external pub/sub (RabbitMQ, Kafka, or Azure Service Bus) run outside the cluster or as separate managed services. DAPR Sentry provides mTLS certificates to both application sidecars for encrypted service-to-service communication.
 
@@ -129,7 +129,7 @@ For local development, create a minikube cluster with sufficient resources:
 minikube start --cpus=4 --memory=8192 --driver=docker
 ```
 
-> **Minimum cluster requirements:** 2 nodes (or a single node with equivalent resources), 4 GB RAM each. The cluster needs capacity for commandapi + sample + DAPR system pods + state store + pub/sub backends.
+> **Minimum cluster requirements:** 2 nodes (or a single node with equivalent resources), 4 GB RAM each. The cluster needs capacity for eventstore + sample + DAPR system pods + state store + pub/sub backends.
 
 ## Install DAPR on Kubernetes
 
@@ -212,7 +212,7 @@ publish-output/k8s/
   Chart.yaml                  # Helm chart metadata
   values.yaml                 # Parameterized values (image tags, replica counts, resource limits)
   templates/
-    commandapi.yaml           # Deployment + Service for Command API Gateway
+    eventstore.yaml           # Deployment + Service for Command API Gateway
     sample.yaml               # Deployment + Service for Counter Sample
 ```
 
@@ -222,9 +222,9 @@ Edit `values.yaml` to configure your deployment:
 
 ```yaml
 # Container image registry and tags
-commandapi:
+eventstore:
     image:
-        repository: myregistry.azurecr.io/hexalith-commandapi
+        repository: myregistry.azurecr.io/hexalith-eventstore
         tag: "1.0.0"
     replicas: 1
     resources:
@@ -260,7 +260,7 @@ Unlike Docker Compose (where images can be built locally), Kubernetes clusters p
 Use the .NET SDK container publishing feature (no Dockerfile required):
 
 ```bash
-dotnet publish src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-commandapi -p:ContainerImageTag=latest
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag=latest
 dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag=latest
 ```
 
@@ -269,8 +269,8 @@ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csp
 Tag and push to your registry:
 
 ```bash
-docker tag hexalith-commandapi:latest myregistry.azurecr.io/hexalith-commandapi:latest
-docker push myregistry.azurecr.io/hexalith-commandapi:latest
+docker tag hexalith-eventstore:latest myregistry.azurecr.io/hexalith-eventstore:latest
+docker push myregistry.azurecr.io/hexalith-eventstore:latest
 
 docker tag hexalith-sample:latest myregistry.azurecr.io/hexalith-sample:latest
 docker push myregistry.azurecr.io/hexalith-sample:latest
@@ -282,11 +282,11 @@ For local development clusters that don't pull from external registries:
 
 ```bash
 # minikube
-minikube image load hexalith-commandapi:latest
+minikube image load hexalith-eventstore:latest
 minikube image load hexalith-sample:latest
 
 # kind
-kind load docker-image hexalith-commandapi:latest
+kind load docker-image hexalith-eventstore:latest
 kind load docker-image hexalith-sample:latest
 ```
 
@@ -296,22 +296,22 @@ Update `values.yaml` with the correct image repository and tag to match the push
 
 The Kubernetes publisher does **not** auto-generate DAPR annotations or Kubernetes health probes. You must add these manually to each Deployment's pod template spec in the generated Helm chart templates.
 
-### commandapi Deployment
+### eventstore Deployment
 
-Add the following to `templates/commandapi.yaml` at `spec.template.metadata.annotations` and `spec.template.spec.containers`:
+Add the following to `templates/eventstore.yaml` at `spec.template.metadata.annotations` and `spec.template.spec.containers`:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: commandapi
+    name: eventstore
 spec:
     template:
         metadata:
             annotations:
                 # --- DAPR annotations (add these) ---
                 dapr.io/enabled: "true"
-                dapr.io/app-id: "commandapi"
+                dapr.io/app-id: "eventstore"
                 dapr.io/app-port: "8080"
                 dapr.io/config: "accesscontrol"
                 dapr.io/sidecar-cpu-request: "100m"
@@ -320,7 +320,7 @@ spec:
                 dapr.io/sidecar-memory-limit: "256Mi"
         spec:
             containers:
-                - name: commandapi
+                - name: eventstore
                   # ... (existing image, env, ports from generated template)
                   resources:
                       requests:
@@ -439,7 +439,7 @@ kubectl apply -f deploy/dapr/pubsub-servicebus.yaml -n hexalith
 ```bash
 kubectl apply -f deploy/dapr/resiliency.yaml -n hexalith
 kubectl apply -f deploy/dapr/accesscontrol.yaml -n hexalith
-kubectl apply -f deploy/dapr/accesscontrol.admin-server.yaml -n hexalith
+kubectl apply -f deploy/dapr/accesscontrol.eventstore-admin.yaml -n hexalith
 kubectl apply -f deploy/dapr/accesscontrol.sample.yaml -n hexalith
 kubectl apply -f deploy/dapr/subscription-sample-counter.yaml -n hexalith
 ```
@@ -448,7 +448,7 @@ kubectl apply -f deploy/dapr/subscription-sample-counter.yaml -n hexalith
 
 ### Component Scoping
 
-The production DAPR component files already include `scopes: [commandapi]` on state store, pub/sub, and config store CRDs. This restricts access to commandapi only — domain services have zero infrastructure access (D4).
+The production DAPR component files already include `scopes: [eventstore]` on state store, pub/sub, and config store CRDs. This restricts access to eventstore only — domain services have zero infrastructure access (D4).
 
 > **Warning:** `DAPR_TRUST_DOMAIN` and `DAPR_NAMESPACE` in the `accesscontrol*.yaml` files **must** be explicitly set. The fallback defaults (`hexalith.io` and `hexalith`) are reference values only — `hexalith.io` is a real domain and not safe for production use without intentional configuration. See [Adapt DAPR Components for Kubernetes Secrets](#adapt-dapr-components-for-kubernetes-secrets) for how to provide these values.
 
@@ -523,19 +523,19 @@ spec:
 auth:
     secretStore: kubernetes-secrets
 scopes:
-    - commandapi
+    - eventstore
 ```
 
 #### Step 4: Verify Component Loading
 
 ```bash
-kubectl logs <commandapi-pod> -c daprd -n hexalith | grep "component loaded"
+kubectl logs <eventstore-pod> -c daprd -n hexalith | grep "component loaded"
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
-> kubectl logs <commandapi-pod> -c daprd -n hexalith | Select-String "component loaded"
+> kubectl logs <eventstore-pod> -c daprd -n hexalith | Select-String "component loaded"
 > ```
 
 ### Approach B: Sidecar Environment Variable Injection
@@ -545,7 +545,7 @@ Use the `dapr.io/env` annotation to inject environment variables directly into t
 ```yaml
 annotations:
     dapr.io/enabled: "true"
-    dapr.io/app-id: "commandapi"
+    dapr.io/app-id: "eventstore"
     dapr.io/env: "POSTGRES_CONNECTION_STRING=host=mydb;port=5432;username=dapr;password=secret;database=eventstore,DAPR_TRUST_DOMAIN=your-trust-domain.example.com,DAPR_NAMESPACE=hexalith"
 ```
 
@@ -553,11 +553,11 @@ annotations:
 
 ### Subscriber and Monitor App IDs
 
-The production pub/sub components reference `{env:SUBSCRIBER_APP_ID}` and `{env:OPS_MONITOR_APP_ID}` for external subscriber scoping. For minimal deployments without external subscribers, remove these entries from the `scopes`, `publishingScopes`, and `subscriptionScopes` fields in the pub/sub component YAML. This simplifies the deployment to only `commandapi` as the pub/sub user.
+The production pub/sub components reference `{env:SUBSCRIBER_APP_ID}` and `{env:OPS_MONITOR_APP_ID}` for external subscriber scoping. For minimal deployments without external subscribers, remove these entries from the `scopes`, `publishingScopes`, and `subscriptionScopes` fields in the pub/sub component YAML. This simplifies the deployment to only `eventstore` as the pub/sub user.
 
 ## Configure External OIDC Authentication
 
-Kubernetes deployments require an external OIDC provider. Set the following environment variables on the `commandapi` Deployment:
+Kubernetes deployments require an external OIDC provider. Set the following environment variables on the `eventstore` Deployment:
 
 ```yaml
 env:
@@ -614,7 +614,7 @@ If you receive **401 Unauthorized** on all requests, check:
 1. **Is the Authority URL reachable from inside the pod?** The pod must be able to reach the OIDC discovery endpoint at `{Authority}/.well-known/openid-configuration`. Test from inside the pod:
 
     ```bash
-    kubectl exec <commandapi-pod> -n hexalith -- wget -qO- "https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration"
+    kubectl exec <eventstore-pod> -n hexalith -- wget -qO- "https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration"
     ```
 
 2. **Is SigningKey cleared?** If `Authentication__JwtBearer__SigningKey` is set in `appsettings.json` or environment variables, clear it explicitly:
@@ -672,7 +672,7 @@ Wait until all pods show `2/2` containers Ready (application + DAPR sidecar):
 
 ```text
 NAME                          READY   STATUS    RESTARTS   AGE
-commandapi-7d8f9b6c4-x2k9p   2/2     Running   0          45s
+eventstore-7d8f9b6c4-x2k9p   2/2     Running   0          45s
 sample-5c4d7e8f9-m3n7q        2/2     Running   0          45s
 ```
 
@@ -682,10 +682,10 @@ sample-5c4d7e8f9-m3n7q        2/2     Running   0          45s
 
 ### Application Health Endpoints
 
-Port-forward to the commandapi Service:
+Port-forward to the eventstore Service:
 
 ```bash
-kubectl port-forward svc/commandapi 8080:8080 -n hexalith
+kubectl port-forward svc/eventstore 8080:8080 -n hexalith
 ```
 
 In a separate terminal, check the health endpoints:
@@ -703,10 +703,10 @@ curl -s http://localhost:8080/ready
 
 ### DAPR Sidecar Health
 
-Port-forward directly to the commandapi pod for sidecar access:
+Port-forward directly to the eventstore pod for sidecar access:
 
 ```bash
-kubectl port-forward pod/<commandapi-pod> 3500:3500 -n hexalith
+kubectl port-forward pod/<eventstore-pod> 3500:3500 -n hexalith
 ```
 
 ```bash
@@ -717,7 +717,7 @@ curl -s http://localhost:3500/v1.0/healthz
 Alternatively, check sidecar health without port-forwarding:
 
 ```bash
-kubectl exec <commandapi-pod> -c daprd -n hexalith -- wget -qO- http://localhost:3500/v1.0/healthz
+kubectl exec <eventstore-pod> -c daprd -n hexalith -- wget -qO- http://localhost:3500/v1.0/healthz
 ```
 
 ### Verify Component Loading
@@ -725,13 +725,13 @@ kubectl exec <commandapi-pod> -c daprd -n hexalith -- wget -qO- http://localhost
 Check DAPR sidecar logs for component loading confirmation (the sidecar container name is `daprd`):
 
 ```bash
-kubectl logs <commandapi-pod> -c daprd -n hexalith | grep "component loaded"
+kubectl logs <eventstore-pod> -c daprd -n hexalith | grep "component loaded"
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
-> kubectl logs <commandapi-pod> -c daprd -n hexalith | Select-String "component loaded"
+> kubectl logs <eventstore-pod> -c daprd -n hexalith | Select-String "component loaded"
 > ```
 
 Expected output should show `statestore` and `pubsub` components loaded successfully.
@@ -749,7 +749,7 @@ Expected output should show `statestore` and `pubsub` components loaded successf
 
 ## Send a Test Command
 
-With the port-forward active (`kubectl port-forward svc/commandapi 8080:8080 -n hexalith`):
+With the port-forward active (`kubectl port-forward svc/eventstore 8080:8080 -n hexalith`):
 
 ### Get an Access Token
 
@@ -804,7 +804,7 @@ Expected response (HTTP 202 Accepted):
 For PostgreSQL:
 
 ```bash
-kubectl exec <postgres-pod> -n hexalith -- psql -U dapr -d eventstore -c "SELECT key FROM state WHERE key LIKE 'commandapi||%' LIMIT 5;"
+kubectl exec <postgres-pod> -n hexalith -- psql -U dapr -d eventstore -c "SELECT key FROM state WHERE key LIKE 'eventstore||%' LIMIT 5;"
 ```
 
 For Cosmos DB, check the Azure Portal or use the Cosmos DB CLI to query the container.
@@ -815,7 +815,7 @@ Event data is physically stored in whatever backend the DAPR state store compone
 
 ### PostgreSQL
 
-DAPR creates a `state` table in the configured database. Each key-value pair becomes a row with columns for `key`, `value` (JSONB), `etag`, and `expiredate`. Keys follow the composite pattern: `commandapi||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`.
+DAPR creates a `state` table in the configured database. Each key-value pair becomes a row with columns for `key`, `value` (JSONB), `etag`, and `expiredate`. Keys follow the composite pattern: `eventstore||{tenant}||{domain}||{aggregateId}||events||{sequenceNumber}`.
 
 ### Azure Cosmos DB
 
@@ -829,21 +829,21 @@ For the full backend compatibility matrix and key patterns, see [deploy/README.m
 
 | Component  | CPU Request | CPU Limit | Memory Request | Memory Limit |
 | ---------- | ----------- | --------- | -------------- | ------------ |
-| commandapi | 250m        | 1000m     | 256Mi          | 512Mi        |
+| eventstore | 250m        | 1000m     | 256Mi          | 512Mi        |
 | sample     | 100m        | 500m      | 128Mi          | 256Mi        |
 
-> **Note:** .NET runtime respects container memory limits. Set at least 512Mi for commandapi to avoid GC pressure under load.
+> **Note:** .NET runtime respects container memory limits. Set at least 512Mi for eventstore to avoid GC pressure under load.
 
 ### DAPR Sidecar Resources (via Annotations)
 
 | Sidecar            | CPU Request | CPU Limit | Memory Request | Memory Limit |
 | ------------------ | ----------- | --------- | -------------- | ------------ |
-| commandapi sidecar | 100m        | 300m      | 128Mi          | 256Mi        |
+| eventstore sidecar | 100m        | 300m      | 128Mi          | 256Mi        |
 | sample sidecar     | 100m        | 300m      | 128Mi          | 256Mi        |
 
 ### Minimal Cluster Sizing
 
-For running commandapi + sample + DAPR system pods + a state store + a pub/sub backend:
+For running eventstore + sample + DAPR system pods + a state store + a pub/sub backend:
 
 - **Nodes:** 2 nodes (or 1 node with equivalent resources)
 - **RAM per node:** 4 GB minimum
@@ -876,7 +876,7 @@ For running commandapi + sample + DAPR system pods + a state store + a pub/sub b
 
 ## Expose the Service
 
-By default, the commandapi Service is only accessible within the cluster. To expose it externally:
+By default, the eventstore Service is only accessible within the cluster. To expose it externally:
 
 ### Kubernetes Ingress (nginx/traefik)
 
@@ -884,7 +884,7 @@ By default, the commandapi Service is only accessible within the cluster. To exp
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-    name: commandapi-ingress
+    name: eventstore-ingress
     namespace: hexalith
     annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
@@ -902,7 +902,7 @@ spec:
                     pathType: Prefix
                     backend:
                         service:
-                            name: commandapi
+                            name: eventstore
                             port:
                                 number: 8080
 ```
@@ -912,10 +912,10 @@ spec:
 For cloud environments (AKS, EKS, GKE):
 
 ```bash
-kubectl patch svc commandapi -n hexalith -p '{"spec": {"type": "LoadBalancer"}}'
+kubectl patch svc eventstore -n hexalith -p '{"spec": {"type": "LoadBalancer"}}'
 ```
 
-> **Note:** TLS termination should be configured at the ingress or load balancer level. Do not expose the commandapi HTTP endpoint directly to the internet without TLS.
+> **Note:** TLS termination should be configured at the ingress or load balancer level. Do not expose the eventstore HTTP endpoint directly to the internet without TLS.
 
 ## Backend Swap
 
@@ -949,7 +949,7 @@ The same zero-code-change backend swap principle from Docker Compose applies to 
 4. Restart the pods to pick up the new component:
 
     ```bash
-    kubectl rollout restart deployment commandapi -n hexalith
+    kubectl rollout restart deployment eventstore -n hexalith
     kubectl rollout restart deployment sample -n hexalith
     ```
 
@@ -1013,13 +1013,13 @@ kubectl get pods -n dapr-system -l app=dapr-placement-server
 
 ### Service Invocation Failures
 
-**Symptom:** commandapi cannot invoke the sample domain service.
+**Symptom:** eventstore cannot invoke the sample domain service.
 
 **Causes:**
 
 - `app-id` must match the Kubernetes Service name — verify the `dapr.io/app-id` annotation matches
 - Namespace alignment — both pods must be in the same namespace, or use the full DNS name
-- Access control policy — verify `accesscontrol.sample.yaml` allows commandapi to invoke the sample service and that `accesscontrol.yaml` is bound only to the CommandApi sidecar
+- Access control policy — verify `accesscontrol.sample.yaml` allows eventstore to invoke the sample service and that `accesscontrol.yaml` is bound only to the EventStore sidecar
 
 ### 401 Unauthorized on All Requests
 

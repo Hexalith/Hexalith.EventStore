@@ -178,7 +178,7 @@ Follow these steps to restore the event store from a PostgreSQL backup:
 1. **Stop the EventStore application** to prevent new writes during restoration:
 
     ```bash
-    $ kubectl scale deployment commandapi --replicas=0 -n hexalith
+    $ kubectl scale deployment eventstore --replicas=0 -n hexalith
     ```
 
 2. **Restore from logical backup** (pg_dump):
@@ -212,7 +212,7 @@ Follow these steps to restore the event store from a PostgreSQL backup:
 5. **Restart the EventStore application:**
 
     ```bash
-    $ kubectl scale deployment commandapi --replicas=1 -n hexalith
+    $ kubectl scale deployment eventstore --replicas=1 -n hexalith
     ```
 
 6. **Verify actor rehydration** by sending a test command and confirming the aggregate loads its state from restored events.

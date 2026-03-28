@@ -1,4 +1,4 @@
-extern alias commandapi;
+extern alias eventstore;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 
-using CommandApiProgram = commandapi::Program;
+using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.Server.Tests.OpenApi;
 
@@ -23,7 +23,7 @@ namespace Hexalith.EventStore.Server.Tests.OpenApi;
 /// Mocks DAPR dependencies so no sidecar is needed. OpenAPI spec is generated
 /// from code metadata and does not require live DAPR calls.
 /// </summary>
-public class OpenApiWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
+public class OpenApiWebApplicationFactory : WebApplicationFactory<EventStoreProgram> {
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
         _ = builder.UseEnvironment("Development");

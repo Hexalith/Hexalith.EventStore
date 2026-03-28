@@ -144,9 +144,9 @@ public class ResiliencyConfigurationTests {
     public void LocalResiliency_PreservesExistingAppTargets() {
         string content = File.ReadAllText(LocalResiliencyPath);
 
-        // Verify existing commandapi config is preserved
+        // Verify existing eventstore config is preserved
         content.ShouldContain("apps:");
-        content.ShouldContain("commandapi:");
+        content.ShouldContain("eventstore:");
         content.ShouldContain("retry: defaultRetry");
         content.ShouldContain("timeout: daprSidecar");
         content.ShouldContain("circuitBreaker: defaultBreaker");

@@ -1,7 +1,7 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.Validation;
+using Hexalith.EventStore.Validation;
 using Hexalith.EventStore.Contracts.Queries;
 
 using Shouldly;

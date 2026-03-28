@@ -1,4 +1,4 @@
-extern alias commandapi;
+extern alias eventstore;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 
-using CommandApiProgram = commandapi::Program;
+using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.Server.Tests.Integration;
 
@@ -25,7 +25,7 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 /// Configures actor validator names and mocks <see cref="IActorProxyFactory"/>
 /// so no real DAPR sidecar is needed.
 /// </summary>
-public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
+public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<EventStoreProgram> {
     /// <summary>Gets the fake tenant validator actor for per-test configuration.</summary>
     public FakeTenantValidatorActor FakeTenantActor { get; } = new();
 

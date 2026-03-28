@@ -9,8 +9,13 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// Config store poisoning can redirect domain service registrations to malicious endpoints.</para>
 /// </remarks>
 public record DomainServiceOptions {
-    /// <summary>The DAPR config store name. Default: "configstore".</summary>
-    public string ConfigStoreName { get; init; } = "configstore";
+    /// <summary>
+    /// The DAPR config store name for domain service registration overrides.
+    /// Default: null (convention-based routing only — AppId = domain name, MethodName = "process").
+    /// Set to a config store name (e.g., "configstore") to enable config store lookups
+    /// that override convention-based routing for complex scenarios (e.g., per-tenant routing).
+    /// </summary>
+    public string? ConfigStoreName { get; init; }
 
     /// <summary>DAPR sidecar call timeout in seconds. Default: 5 (enforcement rule #14).</summary>
     public int InvocationTimeoutSeconds { get; init; } = 5;

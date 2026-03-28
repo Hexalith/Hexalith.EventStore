@@ -8,7 +8,7 @@
     <Project Path="src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj" />
     <Project Path="src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj" />
     <Project Path="src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj" />
-    <Project Path="src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj" />
+    <Project Path="src/Hexalith.EventStore/Hexalith.EventStore.csproj" />
     <Project Path="src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
     <Project Path="src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
     <Project Path="src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />

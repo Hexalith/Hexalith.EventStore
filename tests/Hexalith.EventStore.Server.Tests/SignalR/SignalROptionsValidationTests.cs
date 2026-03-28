@@ -1,4 +1,4 @@
-using Hexalith.EventStore.CommandApi.SignalR;
+using Hexalith.EventStore.SignalRHub;
 
 using Microsoft.Extensions.Options;
 

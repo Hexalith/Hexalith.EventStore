@@ -10,7 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Admin.Server.Host\Hexalith.EventStore.Admin.Server.Host.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Admin.UI\Hexalith.EventStore.Admin.UI.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.CommandApi\Hexalith.EventStore.CommandApi.csproj" />
+    <ProjectReference Include="..\Hexalith.EventStore\Hexalith.EventStore.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample.BlazorUI\Hexalith.EventStore.Sample.BlazorUI.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj" IsAspireProjectResource="false" />

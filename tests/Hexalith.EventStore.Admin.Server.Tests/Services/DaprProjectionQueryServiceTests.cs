@@ -22,7 +22,7 @@ public class DaprProjectionQueryServiceTests {
         daprClient ??= Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
-            CommandApiAppId = "commandapi",
+            EventStoreAppId = "eventstore",
         });
 
         return new DaprProjectionQueryService(
@@ -72,7 +72,7 @@ public class DaprProjectionQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetProjectionDetailAsync_ReturnsFallback_WhenCommandApiUnavailable() {
+    public async Task GetProjectionDetailAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<ProjectionDetail>(
             Arg.Any<HttpRequestMessage>(),
@@ -127,7 +127,7 @@ public class DaprProjectionQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetProjectionDetailAsync_ReturnsProjectionDetail_WhenCommandApiSucceeds() {
+    public async Task GetProjectionDetailAsync_ReturnsProjectionDetail_WhenEventStoreSucceeds() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         HttpRequestMessage? capturedRequest = null;
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
@@ -154,7 +154,7 @@ public class DaprProjectionQueryServiceTests {
             daprClient,
             Options.Create(new AdminServerOptions {
                 StateStoreName = StateStoreName,
-                CommandApiAppId = "commandapi",
+                EventStoreAppId = "eventstore",
             }),
             authContext,
             NullLogger<DaprProjectionQueryService>.Instance);

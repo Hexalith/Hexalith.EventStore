@@ -1,6 +1,6 @@
-extern alias commandapi;
+extern alias eventstore;
 
-using commandapi::Hexalith.EventStore.CommandApi.Middleware;
+using eventstore::Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Http;
 

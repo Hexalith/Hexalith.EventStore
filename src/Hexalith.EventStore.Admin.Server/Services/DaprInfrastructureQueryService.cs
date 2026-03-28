@@ -437,7 +437,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     private async Task<DaprActorStateEntry> ReadActorStateKeyAsync(
         string actorType, string actorId, string displayKey, string resolvedKey, CancellationToken ct)
     {
-        string composedKey = ComposeActorStateKey(_options.CommandApiAppId, actorType, actorId, resolvedKey);
+        string composedKey = ComposeActorStateKey(_options.EventStoreAppId, actorType, actorId, resolvedKey);
         try
         {
             string? value = await _daprClient

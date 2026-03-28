@@ -45,7 +45,7 @@ public class DaprResiliencyQueryServiceTests
                 trip: consecutiveFailures > 10
           targets:
             apps:
-              commandapi:
+              eventstore:
                 retry: defaultRetry
                 timeout: daprSidecar
                 circuitBreaker: defaultBreaker
@@ -275,7 +275,7 @@ public class DaprResiliencyQueryServiceTests
             spec:
               targets:
                 apps:
-                  commandapi:
+                  eventstore:
                     retry: defaultRetry
                     timeout: daprSidecar
                     circuitBreaker: defaultBreaker
@@ -284,7 +284,7 @@ public class DaprResiliencyQueryServiceTests
         DaprResiliencySpec result = DaprInfrastructureQueryService.ParseResiliencyYaml(yaml);
 
         result.TargetBindings.Count.ShouldBe(1);
-        result.TargetBindings[0].TargetName.ShouldBe("commandapi");
+        result.TargetBindings[0].TargetName.ShouldBe("eventstore");
         result.TargetBindings[0].TargetType.ShouldBe("App");
         result.TargetBindings[0].Direction.ShouldBeNull();
         result.TargetBindings[0].RetryPolicy.ShouldBe("defaultRetry");
@@ -300,8 +300,8 @@ public class DaprResiliencyQueryServiceTests
         // Sorted: App targets first, then Component targets (alphabetical by type then name)
         result.TargetBindings.Count.ShouldBe(4);
 
-        // Row 1: App - commandapi
-        result.TargetBindings[0].TargetName.ShouldBe("commandapi");
+        // Row 1: App - eventstore
+        result.TargetBindings[0].TargetName.ShouldBe("eventstore");
         result.TargetBindings[0].TargetType.ShouldBe("App");
         result.TargetBindings[0].Direction.ShouldBeNull();
         result.TargetBindings[0].RetryPolicy.ShouldBe("defaultRetry");

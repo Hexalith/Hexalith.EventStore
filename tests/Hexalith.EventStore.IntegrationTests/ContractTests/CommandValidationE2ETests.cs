@@ -34,7 +34,7 @@ public class CommandValidationE2ETests {
             "tenant-a", "counter", "IncrementCounter");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -71,7 +71,7 @@ public class CommandValidationE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert - HTTP 200 OK, NOT 403
@@ -102,7 +102,7 @@ public class CommandValidationE2ETests {
         };
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -129,7 +129,7 @@ public class CommandValidationE2ETests {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -152,7 +152,7 @@ public class CommandValidationE2ETests {
             "tenant-a", "counter", "IncrementCounter", aggregateId: "order-123");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert

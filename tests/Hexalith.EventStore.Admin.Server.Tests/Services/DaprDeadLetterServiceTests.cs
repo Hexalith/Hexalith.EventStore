@@ -19,7 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprDeadLetterServiceTests {
     private const string StateStoreName = "statestore";
-    private const string CommandApiAppId = "commandapi";
+    private const string EventStoreAppId = "eventstore";
 
     private static DaprDeadLetterQueryService CreateQueryService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
@@ -36,7 +36,7 @@ public class DaprDeadLetterServiceTests {
     private static DaprDeadLetterCommandService CreateCommandService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            CommandApiAppId = CommandApiAppId,
+            EventStoreAppId = EventStoreAppId,
         });
 
         return new DaprDeadLetterCommandService(
@@ -141,7 +141,7 @@ public class DaprDeadLetterServiceTests {
     }
 
     [Fact]
-    public async Task RetryDeadLettersAsync_DelegatesToCommandApi() {
+    public async Task RetryDeadLettersAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -158,7 +158,7 @@ public class DaprDeadLetterServiceTests {
     }
 
     [Fact]
-    public async Task SkipDeadLettersAsync_DelegatesToCommandApi() {
+    public async Task SkipDeadLettersAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -175,7 +175,7 @@ public class DaprDeadLetterServiceTests {
     }
 
     [Fact]
-    public async Task ArchiveDeadLettersAsync_DelegatesToCommandApi() {
+    public async Task ArchiveDeadLettersAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 

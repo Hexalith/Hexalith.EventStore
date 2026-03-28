@@ -1,5 +1,5 @@
 
-using Hexalith.EventStore.CommandApi.Authentication;
+using Hexalith.EventStore.Authentication;
 
 using Microsoft.Extensions.Options;
 

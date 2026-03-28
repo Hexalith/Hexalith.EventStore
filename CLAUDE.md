@@ -43,7 +43,7 @@ src/
   Hexalith.EventStore.Client         # Client abstractions and DI registration
   Hexalith.EventStore.Server         # Server-side domain processors, DAPR integration
   Hexalith.EventStore.SignalR        # SignalR real-time notifications
-  Hexalith.EventStore.CommandApi     # REST/gRPC API gateway, auth, validation
+  Hexalith.EventStore               # REST/gRPC API gateway, auth, validation
   Hexalith.EventStore.Aspire         # .NET Aspire hosting extensions
   Hexalith.EventStore.AppHost        # Aspire AppHost (DAPR topology orchestrator)
   Hexalith.EventStore.ServiceDefaults# Shared service config, OpenTelemetry

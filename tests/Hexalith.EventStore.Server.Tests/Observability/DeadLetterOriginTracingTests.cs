@@ -5,9 +5,9 @@ using System.Security.Claims;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
-using Hexalith.EventStore.CommandApi.Controllers;
-using Hexalith.EventStore.CommandApi.Middleware;
-using Hexalith.EventStore.CommandApi.Pipeline;
+using Hexalith.EventStore.Controllers;
+using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;

@@ -1,5 +1,5 @@
 
-extern alias commandapi;
+extern alias eventstore;
 
 using System.Net;
 using System.Net.Http.Json;
@@ -25,7 +25,7 @@ using NSubstitute;
 
 using Shouldly;
 
-using CommandApiProgram = commandapi::Program;
+using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.Server.Tests.Integration;
 
@@ -343,7 +343,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     /// <summary>
     /// WebApplicationFactory for ETag actor integration tests.
     /// </summary>
-    public class ETagTestFactory : WebApplicationFactory<CommandApiProgram> {
+    public class ETagTestFactory : WebApplicationFactory<EventStoreProgram> {
         public FakeETagActor FakeETagActor { get; } = new();
         public IActorProxyFactory MockProxyFactory { get; } = Substitute.For<IActorProxyFactory>();
 

@@ -18,7 +18,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprStreamQueryServiceTests {
     private const string StateStoreName = "statestore";
-    private const string CommandApiAppId = "commandapi";
+    private const string EventStoreAppId = "eventstore";
 
     private static DaprStreamQueryService CreateService(
         DaprClient? daprClient = null,
@@ -28,7 +28,7 @@ public class DaprStreamQueryServiceTests {
 
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
-            CommandApiAppId = CommandApiAppId,
+            EventStoreAppId = EventStoreAppId,
         });
 
         return new DaprStreamQueryService(
@@ -118,7 +118,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetStreamTimelineAsync_ReturnsEmpty_WhenCommandApiUnavailable() {
+    public async Task GetStreamTimelineAsync_ReturnsEmpty_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<PagedResult<TimelineEntry>>(
             Arg.Any<HttpRequestMessage>(),
@@ -168,7 +168,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetAggregateStateAtPositionAsync_ReturnsFallback_WhenCommandApiUnavailable() {
+    public async Task GetAggregateStateAtPositionAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<AggregateStateSnapshot>(
             Arg.Any<HttpRequestMessage>(),
@@ -188,7 +188,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task DiffAggregateStateAsync_ReturnsFallback_WhenCommandApiUnavailable() {
+    public async Task DiffAggregateStateAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<AggregateStateDiff>(
             Arg.Any<HttpRequestMessage>(),
@@ -207,7 +207,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task TraceCausationChainAsync_ReturnsFallback_WhenCommandApiUnavailable() {
+    public async Task TraceCausationChainAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<CausationChain>(
             Arg.Any<HttpRequestMessage>(),
@@ -224,7 +224,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetAggregateBlameAsync_ThrowsException_WhenCommandApiUnavailable()
+    public async Task GetAggregateBlameAsync_ThrowsException_WhenEventStoreUnavailable()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<AggregateBlameView>(
@@ -258,7 +258,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetEventDetailAsync_ReturnsFallback_WhenCommandApiUnavailable() {
+    public async Task GetEventDetailAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<EventDetail>(
             Arg.Any<HttpRequestMessage>(),
@@ -284,7 +284,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetEventStepFrameAsync_ThrowsException_WhenCommandApiUnavailable()
+    public async Task GetEventStepFrameAsync_ThrowsException_WhenEventStoreUnavailable()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<EventStepFrame>(

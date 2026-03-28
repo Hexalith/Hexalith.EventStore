@@ -2,7 +2,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 
-using Hexalith.EventStore.CommandApi.Pipeline;
+using Hexalith.EventStore.Pipeline;
 
 using MediatR;
 
