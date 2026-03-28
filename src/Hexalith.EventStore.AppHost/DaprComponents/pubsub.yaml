@@ -9,7 +9,7 @@
 #
 # Layer 1 -- Component Scoping (scopes field):
 #   Controls which app-ids can USE this pub/sub component at all.
-#   Only commandapi and authorized subscriber app-ids are listed.
+#   Only eventstore and authorized subscriber app-ids are listed.
 #   Domain services (sample) have zero pub/sub access (D4).
 #
 # Layer 2 -- Publishing Scoping (publishingScopes metadata):
@@ -25,12 +25,12 @@
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
 #
 # PUBLISHER-SIDE SCOPING (Story 5.1):
-#   commandapi is NOT listed in publishingScopes = can publish to ANY topic.
+#   eventstore is NOT listed in publishingScopes = can publish to ANY topic.
 #   This supports NFR20 (dynamic tenant provisioning without restart).
 #   sample= (empty) denies sample from publishing to any topic.
 #
 # SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
-#   commandapi is NOT listed in subscriptionScopes = can subscribe to all topics.
+#   eventstore is NOT listed in subscriptionScopes = can subscribe to all topics.
 #   sample= (empty) denies sample from subscribing to any topic.
 #   External subscribers are explicitly scoped to authorized tenant topics only.
 #   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
@@ -51,7 +51,7 @@
 #         This restricts the subscriber to ONLY the listed topics (Layer 3).
 #
 # Step 3: Ensure the subscriber is NOT listed in 'publishingScopes'.
-#         External subscribers should NEVER publish -- only commandapi publishes.
+#         External subscribers should NEVER publish -- only eventstore publishes.
 #         If defense-in-depth is needed, add ";my-subscriber=" to deny publishing.
 #
 # Step 4: Dead-letter access is SEPARATE. If the subscriber needs dead-letter
@@ -69,7 +69,7 @@
 # New tenants create new topics dynamically. DAPR YAML scoping is static.
 #
 # Resolution:
-#   - Publisher (commandapi): NOT listed in scoping = unrestricted. Can publish to
+#   - Publisher (eventstore): NOT listed in scoping = unrestricted. Can publish to
 #     any new tenant topic immediately without YAML changes.
 #   - Subscriber: MUST be explicitly granted access per tenant topic in
 #     subscriptionScopes. This requires a YAML config update (acceptable
@@ -106,15 +106,15 @@ spec:
       value: "deadletter"
     # Publishing scoping (Story 5.1, AC #7, AC #12):
     # sample= (empty) denies sample from publishing to any topic.
-    # commandapi is NOT listed = unrestricted publishing to all topics including
+    # eventstore is NOT listed = unrestricted publishing to all topics including
     # dynamic tenant topics and dead-letter topics (NFR20).
-    # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
-    # not a wildcard. Omitting commandapi achieves unrestricted access.
+    # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,
+    # not a wildcard. Omitting eventstore achieves unrestricted access.
     - name: publishingScopes
       value: "sample="
     # Subscription scoping (Story 5.3, FR29):
     # sample= (empty) denies sample from subscribing to any topic.
-    # commandapi is NOT listed = unrestricted subscription to all topics.
+    # eventstore is NOT listed = unrestricted subscription to all topics.
     # External subscribers are scoped to specific tenant topics (see examples below).
     #
     # Example with external subscriber scoped to specific tenant topics:
@@ -123,7 +123,7 @@ spec:
     #   value: "sample=;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
     - name: subscriptionScopes
       value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
-# Component-level scoping: commandapi and explicitly authorized subscriber app-ids
+# Component-level scoping: eventstore and explicitly authorized subscriber app-ids
 # can access this pub/sub component.
 # Domain services (sample) have zero pub/sub access -- cannot publish, subscribe,
 # or interact with this component in any way. This enforces zero-trust posture (D4).
@@ -131,10 +131,10 @@ spec:
 # When adding external subscribers, add their app-id here AND scope their
 # topic access via subscriptionScopes above. Example:
 #   scopes:
-#     - commandapi
+#     - eventstore
 #     - example-subscriber
 #     - ops-monitor
 scopes:
-  - commandapi
+  - eventstore
   - example-subscriber
   - ops-monitor

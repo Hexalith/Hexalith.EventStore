@@ -15,19 +15,19 @@ builder.Services.AddRazorComponents()
 // Fluent UI v4 components
 builder.Services.AddFluentUIComponents();
 
-// EventStore API authentication for protected CommandApi/query endpoints.
+// EventStore API authentication for protected EventStore/query endpoints.
 builder.Services.AddSingleton<EventStoreApiAccessTokenProvider>();
 builder.Services.AddTransient<EventStoreApiAuthorizationHandler>();
 
 // EventStore SignalR client — receives real-time "changed" signals
 builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
     HubUrl = builder.Configuration["EventStore:SignalR:HubUrl"]
-        ?? "https://commandapi/hubs/projection-changes",
+        ?? "https://eventstore/hubs/projection-changes",
     AccessTokenProvider = async () => await sp.GetRequiredService<EventStoreApiAccessTokenProvider>()
         .GetAccessTokenAsync()
         .ConfigureAwait(false),
     ConfigureHttpConnection = connectionOptions => {
-        // In development, accept the CommandApi's dev certificate for SignalR hub connections.
+        // In development, accept the EventStore's dev certificate for SignalR hub connections.
         // HttpMessageHandlerFactory covers HTTP negotiate/long-polling/SSE transports.
         // WebSocketConfiguration covers the WebSocket transport (SignalR's default) — its TLS
         // stack is separate and NOT affected by HttpMessageHandlerFactory.
@@ -49,10 +49,10 @@ builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
 builder.Services.AddSingleton<EventStoreSignalRClient>();
 builder.Services.AddHostedService<SignalRClientStartup>();
 
-// HttpClient for querying CommandApi via Aspire service discovery
+// HttpClient for querying EventStore via Aspire service discovery
 builder.Services.AddHttpClient("EventStoreApi", client =>
-    client.BaseAddress = new Uri(builder.Configuration["EventStore:CommandApiUrl"]
-        ?? "https://commandapi"))
+    client.BaseAddress = new Uri(builder.Configuration["EventStore:EventStoreUrl"]
+        ?? "https://eventstore"))
     .AddHttpMessageHandler<EventStoreApiAuthorizationHandler>();
 
 // Counter query service (shared across all patterns)

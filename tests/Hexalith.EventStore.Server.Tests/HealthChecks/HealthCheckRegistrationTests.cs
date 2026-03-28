@@ -1,7 +1,7 @@
 
 using Dapr.Client;
 
-using Hexalith.EventStore.CommandApi.HealthChecks;
+using Hexalith.EventStore.HealthChecks;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;

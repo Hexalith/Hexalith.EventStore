@@ -64,7 +64,7 @@ public class AdminUITestContext : BunitContext
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["EventStore:AdminServer:SwaggerUrl"] = "https://localhost:8091/swagger/index.html",
-                ["EventStore:AdminServer:BaseUrl"] = "https://admin-server",
+                ["EventStore:AdminServer:BaseUrl"] = "https://eventstore-admin",
             })
             .Build());
         Services.AddCascadingValue(sp =>

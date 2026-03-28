@@ -25,11 +25,11 @@ jobs:
       - name: Login to registry
         run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login registry.hexalith.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-      - name: Build and push commandapi
+      - name: Build and push eventstore
         run: |
-          docker build -f src/Hexalith.EventStore.CommandApi/Dockerfile \
-            -t registry.hexalith.com/commandapi:staging-latest .
-          docker push registry.hexalith.com/commandapi:staging-latest
+          docker build -f src/Hexalith.EventStore.EventStore/Dockerfile \
+            -t registry.hexalith.com/eventstore:staging-latest .
+          docker push registry.hexalith.com/eventstore:staging-latest
 
       - name: Build and push sample
         run: |
@@ -44,7 +44,7 @@ jobs:
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            kubectl rollout restart deployment/commandapi -n eventstore-staging
+            kubectl rollout restart deployment/eventstore -n eventstore-staging
             kubectl rollout restart deployment/sample -n eventstore-staging
-            kubectl rollout status deployment/commandapi -n eventstore-staging --timeout=120s
+            kubectl rollout status deployment/eventstore -n eventstore-staging --timeout=120s
             kubectl rollout status deployment/sample -n eventstore-staging --timeout=120s

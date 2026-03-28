@@ -1,7 +1,7 @@
 
 using System.Security.Claims;
 
-using Hexalith.EventStore.CommandApi.Authorization;
+using Hexalith.EventStore.Authorization;
 
 using Shouldly;
 

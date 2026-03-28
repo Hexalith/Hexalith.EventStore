@@ -39,6 +39,6 @@ spec:
     # Uncomment to use a custom table name:
     # - name: tableName
     #   value: "daprstate"
-# Scope to commandapi only — same security posture as Redis variant.
+# Scope to eventstore only — same security posture as Redis variant.
 scopes:
-  - commandapi
+  - eventstore

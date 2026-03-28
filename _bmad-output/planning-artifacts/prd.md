@@ -832,7 +832,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 ### Domain Service Integration
 
 - FR21: A domain service developer can implement a domain processor as a pure function with the contract `(Command, CurrentState?) -> DomainResult`. The domain service returns only aggregate type (short kebab), event types (.NET types, EventStore converts to kebab), and event payloads (pure business facts). EventStore handles all metadata enrichment
-- FR22: A domain service developer can register their domain service with EventStore by tenant and domain via explicit DAPR configuration entry (specifying tenant ID, domain name, and service invocation endpoint) or automatically via convention-based assembly scanning
+- FR22: A domain service developer's domain service is automatically routed by convention (DAPR AppId matches the domain name, method "process") with zero configuration. Routing can be overridden via static registrations (appsettings.json) or DAPR config store (opt-in via `ConfigStoreName`) for complex scenarios such as per-tenant routing to different services
 - FR23: The system can invoke a registered domain service when processing a command, passing the command and current aggregate state. The domain service returns a `DomainResult` containing aggregate type and event outputs (event type + payload). EventStore enriches each event with all 14 metadata fields per FR11
 - FR24: The system can process commands for at least 2 independent domains within the same EventStore instance
 - FR25: The system can process commands for at least 2 tenants within the same domain, each with isolated event streams

@@ -8,7 +8,7 @@
     from EventStore via SignalR. Each pattern uses the <code>EventStoreSignalRClient</code> to
     subscribe to the "changed" signal — a notification that contains only
     <code>(projectionType, tenantId)</code> with no data payload. Patterns must re-query the
-    CommandApi to get updated data.
+    EventStore to get updated data.
 </p>
 
 <h2>Pattern Comparison</h2>
@@ -47,7 +47,7 @@
             <code>dotnet run --project src/Hexalith.EventStore.AppHost</code>
         </li>
         <li>
-            <strong>Verify CommandApi is running</strong> with SignalR enabled
+            <strong>Verify EventStore is running</strong> with SignalR enabled
             (<code>EventStore:SignalR:Enabled = true</code>). The Aspire topology
             configures this automatically.
         </li>

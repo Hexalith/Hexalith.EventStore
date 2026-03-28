@@ -60,7 +60,7 @@ resource statestore 'Microsoft.App/managedEnvironments/daprComponents@2025-01-01
       }
     ])
     scopes: [
-      'commandapi'
+      'eventstore'
     ]
   }
 }
@@ -92,7 +92,7 @@ resource pubsub 'Microsoft.App/managedEnvironments/daprComponents@2025-01-01' = 
       }
     ])
     scopes: [
-      'commandapi'
+      'eventstore'
     ]
   }
 }

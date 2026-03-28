@@ -25,9 +25,9 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// AC #3, #5: sample domain service attempts to invoke commandapi via DAPR
+    /// AC #3, #5: sample domain service attempts to invoke eventstore via DAPR
     /// service invocation. The access control policy (accesscontrol.yaml) defines
-    /// sample with defaultAction=deny and no allowed operations, so the commandapi
+    /// sample with defaultAction=deny and no allowed operations, so the eventstore
     /// sidecar should reject the call.
     ///
     /// NOTE on AC #5 error code: The AC specifies ERR_PERMISSION_DENIED, but DAPR 1.16
@@ -36,7 +36,7 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
     /// misconfiguration. The denial is functionally correct (HTTP 403 + deny context).
     /// </summary>
     [Fact]
-    public async Task SampleSidecar_InvokeCommandApi_DeniedByAccessControl() {
+    public async Task SampleSidecar_InvokeEventStore_DeniedByAccessControl() {
         // Arrange: get the sample service's DAPR sidecar HTTP endpoint.
         // The sidecar resource is named "{service-name}-dapr" with an "http" endpoint.
         Uri? sampleDaprEndpoint = TryGetSampleDaprEndpoint();
@@ -61,13 +61,13 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
             Encoding.UTF8,
             "application/json");
 
-        // Act: invoke commandapi through the sample sidecar.
+        // Act: invoke eventstore through the sample sidecar.
         // DAPR service invocation: POST /v1.0/invoke/{app-id}/method/{method-path}
         using HttpResponseMessage response = await client
-            .PostAsync("/v1.0/invoke/commandapi/method/api/v1/commands", content);
+            .PostAsync("/v1.0/invoke/eventstore/method/api/v1/commands", content);
 
         // Assert: DAPR access control should deny the call.
-        // The commandapi sidecar evaluates the 'sample' policy (defaultAction: deny, no operations)
+        // The eventstore sidecar evaluates the 'sample' policy (defaultAction: deny, no operations)
         // and returns HTTP 403.
         // DAPR-version-sensitive: DAPR 1.16 returns ERR_DIRECT_INVOKE (not ERR_PERMISSION_DENIED
         // per AC #5). On DAPR upgrades, re-verify these error code patterns.
@@ -108,7 +108,7 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
             "application/json");
 
         using HttpResponseMessage response = await client
-            .PostAsync("/v1.0/invoke/commandapi/method/api/v1/commands", content);
+            .PostAsync("/v1.0/invoke/eventstore/method/api/v1/commands", content);
 
         // The response should be a non-success status (403).
         response.IsSuccessStatusCode.ShouldBeFalse("Expected DAPR to deny the invocation");
@@ -122,7 +122,7 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
         // Full sidecar log-field verification still happens in Aspire telemetry.
         responseBody.ShouldContain("PermissionDenied",
             customMessage: "DAPR denial response should contain deny reason context (AC #6)");
-        responseBody.ShouldContain("commandapi",
+        responseBody.ShouldContain("eventstore",
             customMessage: "DAPR denial response should include target app-id context (AC #6)");
         responseBody.ShouldContain("/api/v1/commands",
             customMessage: "DAPR denial response should include operation path context (AC #6)");

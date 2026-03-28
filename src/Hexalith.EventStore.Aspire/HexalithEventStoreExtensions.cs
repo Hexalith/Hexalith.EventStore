@@ -13,14 +13,14 @@ public static class HexalithEventStoreExtensions {
     /// <summary>
     /// Adds the Hexalith EventStore topology to the distributed application builder.
     /// This provisions DAPR state store (in-memory with actor support), DAPR pub/sub,
-    /// and wires the CommandApi and Admin.Server services with DAPR sidecars.
+    /// and wires the EventStore and Admin.Server services with DAPR sidecars.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
-    /// <param name="commandApi">The CommandApi project resource builder.</param>
+    /// <param name="eventStore">The EventStore project resource builder.</param>
     /// <param name="adminServer">The Admin.Server.Host project resource builder.</param>
-    /// <param name="commandApiDaprConfigPath">
-    /// Path to the Dapr access control configuration file loaded by the CommandApi sidecar.
-    /// This config governs incoming invocations to CommandApi.
+    /// <param name="eventStoreDaprConfigPath">
+    /// Path to the Dapr access control configuration file loaded by the EventStore sidecar.
+    /// This config governs incoming invocations to EventStore.
     /// </param>
     /// <param name="adminServerDaprConfigPath">
     /// Path to the Dapr access control configuration file loaded by the Admin.Server sidecar.
@@ -29,13 +29,13 @@ public static class HexalithEventStoreExtensions {
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<ProjectResource> commandApi,
+        IResourceBuilder<ProjectResource> eventStore,
         IResourceBuilder<ProjectResource> adminServer,
         IResourceBuilder<ProjectResource>? adminUI = null,
-        string? commandApiDaprConfigPath = null,
+        string? eventStoreDaprConfigPath = null,
         string? adminServerDaprConfigPath = null) {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(commandApi);
+        ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentNullException.ThrowIfNull(adminServer);
 
         // Use AddDaprComponent instead of AddDaprStateStore so that WithMetadata
@@ -47,36 +47,36 @@ public static class HexalithEventStoreExtensions {
             .WithMetadata("actorStateStore", "true");
         IResourceBuilder<IDaprComponentResource> pubSub = builder.AddDaprPubSub("pubsub");
 
-        // Wire up CommandApi with DAPR sidecar and component references.
+        // Wire up EventStore with DAPR sidecar and component references.
         // AppPort is intentionally omitted so the CommunityToolkit auto-detects
         // the app's actual port from the Aspire resource model. Hardcoding AppPort
         // breaks Aspire Testing, which randomizes project ports.
-        // DaprHttpPort is fixed (3501) so Admin.Server can query the CommandApi
+        // DaprHttpPort is fixed (3501) so Admin.Server can query the EventStore
         // sidecar's metadata endpoint for actor type discovery (story 19-2).
         // IDaprSidecarResource does not implement IResourceWithEndpoints in
         // CommunityToolkit 13.0.0, so a dynamic endpoint reference is not possible.
-        const int CommandApiDaprHttpPort = 3501;
-        _ = commandApi
+        const int EventStoreDaprHttpPort = 3501;
+        _ = eventStore
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
-                    AppId = "commandapi",
-                    DaprHttpPort = CommandApiDaprHttpPort,
-                    Config = commandApiDaprConfigPath,
+                    AppId = "eventstore",
+                    DaprHttpPort = EventStoreDaprHttpPort,
+                    Config = eventStoreDaprConfigPath,
                 })
                 .WithReference(stateStore)
                 .WithReference(pubSub));
 
         // Wire Admin.Server with DAPR sidecar.
         // Admin.Server needs state store for direct reads (health, admin indexes)
-        // and service invocation to CommandApi for write delegation (ADR-P4).
+        // and service invocation to EventStore for write delegation (ADR-P4).
         // It does not publish or subscribe directly, so it intentionally does not
         // reference the pub/sub component.
         _ = adminServer
-            .WithReference(commandApi)
-            .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", "http://localhost:" + CommandApiDaprHttpPort)
+            .WithReference(eventStore)
+            .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", "http://localhost:" + EventStoreDaprHttpPort)
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
-                    AppId = "admin-server",
+                    AppId = "eventstore-admin",
                     Config = adminServerDaprConfigPath,
                 })
                 .WithReference(stateStore));
@@ -91,6 +91,6 @@ public static class HexalithEventStoreExtensions {
                 .WithExternalHttpEndpoints();
         }
 
-        return new HexalithEventStoreResources(stateStore, pubSub, commandApi, adminServer, adminUI);
+        return new HexalithEventStoreResources(stateStore, pubSub, eventStore, adminServer, adminUI);
     }
 }

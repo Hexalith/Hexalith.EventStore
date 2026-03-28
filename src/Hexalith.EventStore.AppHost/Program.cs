@@ -10,20 +10,20 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 // Resolve DAPR access control configuration paths (D4, FR34).
 // Each receiving service now has its own Configuration CRD so policies apply only
 // to the intended inbound surface instead of every sidecar sharing one config file.
-string commandApiAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.yaml");
-string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.admin-server.yaml");
+string eventStoreAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.yaml");
+string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.eventstore-admin.yaml");
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
 
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
-IResourceBuilder<ProjectResource> commandApi = builder.AddProject<Projects.Hexalith_EventStore_CommandApi>("commandapi");
-IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("admin-server");
-IResourceBuilder<ProjectResource> adminUI = builder.AddProject<Projects.Hexalith_EventStore_Admin_UI>("admin-ui");
+IResourceBuilder<ProjectResource> eventStore = builder.AddProject<Projects.Hexalith_EventStore>("eventstore");
+IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("eventstore-admin");
+IResourceBuilder<ProjectResource> adminUI = builder.AddProject<Projects.Hexalith_EventStore_Admin_UI>("eventstore-admin-ui");
 HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
-    commandApi,
+    eventStore,
     adminServer,
     adminUI,
-    commandApiAccessControlConfigPath,
+    eventStoreAccessControlConfigPath,
     adminServerAccessControlConfigPath);
 
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
@@ -34,7 +34,7 @@ IResourceBuilder<KeycloakResource>? keycloak = null;
 ReferenceExpression? realmUrl = null;
 if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase)) {
     // Realm-as-code: hexalith-realm.json auto-imported on container start.
-    // Port 8180 avoids conflict with commandapi on 8080.
+    // Port 8180 avoids conflict with eventstore on 8080.
     keycloak = builder.AddKeycloak("keycloak", 8180)
         .WithRealmImport("./KeycloakRealms");
 
@@ -43,7 +43,7 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringCompa
     // when Authentication:JwtBearer:Authority is set to the Keycloak realm URL.
     EndpointReference keycloakEndpoint = keycloak.GetEndpoint("http");
     realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
-    _ = commandApi
+    _ = eventStore
         .WithReference(keycloak)
         .WaitFor(keycloak)
         .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
@@ -71,18 +71,18 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
             Config = sampleAccessControlConfigPath,
         }));
 
-// Add Blazor UI sample — consumes CommandApi via Aspire service discovery (Story 18-6).
-// Enables SignalR on CommandApi so the hub is active when the Blazor UI is running.
-_ = commandApi.WithEnvironment("EventStore__SignalR__Enabled", "true");
-EndpointReference commandApiHttps = commandApi.GetEndpoint("https");
+// Add Blazor UI sample — consumes EventStore via Aspire service discovery (Story 18-6).
+// Enables SignalR on EventStore so the hub is active when the Blazor UI is running.
+_ = eventStore.WithEnvironment("EventStore__SignalR__Enabled", "true");
+EndpointReference eventStoreHttps = eventStore.GetEndpoint("https");
 EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
-    .WithReference(commandApi)
-    .WaitFor(commandApi)
+    .WithReference(eventStore)
+    .WaitFor(eventStore)
     .WithExternalHttpEndpoints()
     // SignalR HubConnectionBuilder bypasses Aspire service discovery (it doesn't use HttpClientFactory),
-    // so we must pass the resolved commandapi endpoint URL explicitly.
-    .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{commandApiHttps}/hubs/projection-changes"));
+    // so we must pass the resolved eventstore endpoint URL explicitly.
+    .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"));
 
 if (keycloak is not null && realmUrl is not null) {
     _ = adminServer

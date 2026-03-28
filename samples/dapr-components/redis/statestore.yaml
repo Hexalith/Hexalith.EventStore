@@ -34,8 +34,8 @@ spec:
     # to process commands, so the state store must support actor state.
     - name: actorStateStore
       value: "true"
-# Scope to commandapi only. Domain services (e.g., the sample Counter service)
+# Scope to eventstore only. Domain services (e.g., the sample Counter service)
 # never access the state store directly — they receive commands via service
 # invocation and return events. This enforces the zero-trust architecture.
 scopes:
-  - commandapi
+  - eventstore

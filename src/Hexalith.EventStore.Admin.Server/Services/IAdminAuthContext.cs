@@ -2,7 +2,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// Provides the caller's authorization context for service-to-service calls.
-/// All InvokeMethodAsync calls to CommandApi/Tenants must forward the JWT token,
+/// All InvokeMethodAsync calls to EventStore/Tenants must forward the JWT token,
 /// or the target service will reject with 401/403.
 /// Story 14-3 registers the ASP.NET Core implementation that extracts the token
 /// from IHttpContextAccessor. For Tier 1 tests, mock this interface.

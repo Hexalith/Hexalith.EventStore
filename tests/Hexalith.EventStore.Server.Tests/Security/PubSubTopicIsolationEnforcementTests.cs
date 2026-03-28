@@ -45,7 +45,7 @@ public class PubSubTopicIsolationEnforcementTests {
     // --- Task 3.3: AC #5 (regression) ---
 
     [Fact]
-    public void LocalPubSubYaml_PublishingScopes_OnlyCommandApiCanPublish() {
+    public void LocalPubSubYaml_PublishingScopes_OnlyEventStoreCanPublish() {
         Dictionary<string, object> doc = LoadYaml(LocalPubSubPath);
 
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
@@ -56,10 +56,10 @@ public class PubSubTopicIsolationEnforcementTests {
         publishingScopes!.Contains("sample=").ShouldBeTrue(
             "Local pub/sub publishingScopes must explicitly deny sample publishing access (Story 5.1 regression)");
 
-        // commandapi must NOT appear in publishingScopes (unlisted = unrestricted, NFR20)
-        ShouldNotContainAppId(publishingScopes, "commandapi",
-            "commandapi must NOT be listed in publishingScopes -- unlisted means unrestricted access (NFR20). " +
-            "DAPR does not support wildcards; 'commandapi=*' would restrict to literal topic '*'.");
+        // eventstore must NOT appear in publishingScopes (unlisted = unrestricted, NFR20)
+        ShouldNotContainAppId(publishingScopes, "eventstore",
+            "eventstore must NOT be listed in publishingScopes -- unlisted means unrestricted access (NFR20). " +
+            "DAPR does not support wildcards; 'eventstore=*' would restrict to literal topic '*'.");
     }
 
     // --- Task 3.4: AC #6 ---
@@ -83,9 +83,9 @@ public class PubSubTopicIsolationEnforcementTests {
         subscriptionScopes!.Contains("sample=").ShouldBeTrue(
             "sample must be denied ALL subscription access including dead-letter topics");
 
-        // commandapi must NOT be in subscriptionScopes (unrestricted access to both regular and dead-letter)
-        ShouldNotContainAppId(subscriptionScopes, "commandapi",
-            "commandapi must NOT be listed in subscriptionScopes -- needs unrestricted access " +
+        // eventstore must NOT be in subscriptionScopes (unrestricted access to both regular and dead-letter)
+        ShouldNotContainAppId(subscriptionScopes, "eventstore",
+            "eventstore must NOT be listed in subscriptionScopes -- needs unrestricted access " +
             "to both regular and dead-letter topics");
     }
 
@@ -102,17 +102,17 @@ public class PubSubTopicIsolationEnforcementTests {
         subscriptionScopes.ShouldNotBeEmpty(
             "Production RabbitMQ pub/sub subscriptionScopes must be non-empty to enforce subscriber isolation");
 
-        // commandapi must NOT appear in subscriptionScopes (unlisted = unrestricted)
-        ShouldNotContainAppId(subscriptionScopes!, "commandapi",
-            "Production RabbitMQ: commandapi must NOT be listed in subscriptionScopes -- " +
+        // eventstore must NOT appear in subscriptionScopes (unlisted = unrestricted)
+        ShouldNotContainAppId(subscriptionScopes!, "eventstore",
+            "Production RabbitMQ: eventstore must NOT be listed in subscriptionScopes -- " +
             "unlisted means unrestricted access. DAPR does not support wildcards.");
 
-        // publishingScopes must also exist and not restrict commandapi
+        // publishingScopes must also exist and not restrict eventstore
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
         _ = publishingScopes.ShouldNotBeNull(
             "Production RabbitMQ pub/sub must have publishingScopes metadata");
-        ShouldNotContainAppId(publishingScopes!, "commandapi",
-            "Production RabbitMQ: commandapi must NOT be listed in publishingScopes (NFR20)");
+        ShouldNotContainAppId(publishingScopes!, "eventstore",
+            "Production RabbitMQ: eventstore must NOT be listed in publishingScopes (NFR20)");
     }
 
     // --- Task 3.6: AC #9 ---
@@ -128,17 +128,17 @@ public class PubSubTopicIsolationEnforcementTests {
         subscriptionScopes.ShouldNotBeEmpty(
             "Production Kafka pub/sub subscriptionScopes must be non-empty to enforce subscriber isolation");
 
-        // commandapi must NOT appear in subscriptionScopes (unlisted = unrestricted)
-        ShouldNotContainAppId(subscriptionScopes!, "commandapi",
-            "Production Kafka: commandapi must NOT be listed in subscriptionScopes -- " +
+        // eventstore must NOT appear in subscriptionScopes (unlisted = unrestricted)
+        ShouldNotContainAppId(subscriptionScopes!, "eventstore",
+            "Production Kafka: eventstore must NOT be listed in subscriptionScopes -- " +
             "unlisted means unrestricted access. DAPR does not support wildcards.");
 
-        // publishingScopes must also exist and not restrict commandapi
+        // publishingScopes must also exist and not restrict eventstore
         string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
         _ = publishingScopes.ShouldNotBeNull(
             "Production Kafka pub/sub must have publishingScopes metadata");
-        ShouldNotContainAppId(publishingScopes!, "commandapi",
-            "Production Kafka: commandapi must NOT be listed in publishingScopes (NFR20)");
+        ShouldNotContainAppId(publishingScopes!, "eventstore",
+            "Production Kafka: eventstore must NOT be listed in publishingScopes (NFR20)");
     }
 
     // --- Task 3.7: AC #8, #9 ---
@@ -165,12 +165,12 @@ public class PubSubTopicIsolationEnforcementTests {
         _ = GetComponentMetadataValue(kafkaDoc, "publishingScopes").ShouldNotBeNull(
             "Production Kafka pub/sub must have publishingScopes");
 
-        // All configs must have component-level scopes restricting to commandapi
-        VerifyScopesContainCommandApi(localDoc, "local pub/sub");
-        VerifyScopesContainCommandApi(rabbitDoc, "production RabbitMQ pub/sub");
-        VerifyScopesContainCommandApi(kafkaDoc, "production Kafka pub/sub");
+        // All configs must have component-level scopes restricting to eventstore
+        VerifyScopesContainEventStore(localDoc, "local pub/sub");
+        VerifyScopesContainEventStore(rabbitDoc, "production RabbitMQ pub/sub");
+        VerifyScopesContainEventStore(kafkaDoc, "production Kafka pub/sub");
 
-        // commandapi must NOT be listed in any scoping metadata (unrestricted access)
+        // eventstore must NOT be listed in any scoping metadata (unrestricted access)
         foreach ((Dictionary<string, object> doc, string name) in new[]
         {
             (localDoc, "local"),
@@ -180,10 +180,10 @@ public class PubSubTopicIsolationEnforcementTests {
             string pubScopes = GetComponentMetadataValue(doc, "publishingScopes") ?? string.Empty;
             string subScopes = GetComponentMetadataValue(doc, "subscriptionScopes") ?? string.Empty;
 
-            ShouldNotContainAppId(pubScopes, "commandapi",
-                $"{name}: commandapi must NOT be listed in publishingScopes");
-            ShouldNotContainAppId(subScopes, "commandapi",
-                $"{name}: commandapi must NOT be listed in subscriptionScopes");
+            ShouldNotContainAppId(pubScopes, "eventstore",
+                $"{name}: eventstore must NOT be listed in publishingScopes");
+            ShouldNotContainAppId(subScopes, "eventstore",
+                $"{name}: eventstore must NOT be listed in subscriptionScopes");
         }
 
         // All configs must have dead-letter enabled with consistent configuration
@@ -198,10 +198,10 @@ public class PubSubTopicIsolationEnforcementTests {
     // --- Task 3.8: AC #10 (NFR20) ---
 
     [Fact]
-    public void AllPubSubConfigs_CommandApiPublishScope_NotRestricted() {
-        // NFR20: commandapi must be able to publish to any topic (dynamic tenant provisioning).
-        // This is achieved by NOT listing commandapi in publishingScopes (unlisted = unrestricted).
-        // DAPR does NOT support wildcards -- "commandapi=*" would restrict to literal topic "*".
+    public void AllPubSubConfigs_EventStorePublishScope_NotRestricted() {
+        // NFR20: eventstore must be able to publish to any topic (dynamic tenant provisioning).
+        // This is achieved by NOT listing eventstore in publishingScopes (unlisted = unrestricted).
+        // DAPR does NOT support wildcards -- "eventstore=*" would restrict to literal topic "*".
         foreach ((string path, string name) in new[]
         {
             (LocalPubSubPath, "local pub/sub"),
@@ -214,9 +214,9 @@ public class PubSubTopicIsolationEnforcementTests {
             _ = publishingScopes.ShouldNotBeNull(
                 $"{name} must have publishingScopes metadata entry");
 
-            // commandapi must NOT appear in publishingScopes
-            ShouldNotContainAppId(publishingScopes!, "commandapi",
-                $"{name}: commandapi must NOT be listed in publishingScopes -- " +
+            // eventstore must NOT appear in publishingScopes
+            ShouldNotContainAppId(publishingScopes!, "eventstore",
+                $"{name}: eventstore must NOT be listed in publishingScopes -- " +
                 "unlisted means unrestricted publish access to all topics including " +
                 "dynamic tenant topics (NFR20). DAPR does not support wildcards.");
 
@@ -318,11 +318,11 @@ public class PubSubTopicIsolationEnforcementTests {
         return entry is not null ? GetString(entry, "value") : null;
     }
 
-    private static void VerifyScopesContainCommandApi(Dictionary<string, object> doc, string componentName) {
+    private static void VerifyScopesContainEventStore(Dictionary<string, object> doc, string componentName) {
         List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
         _ = scopes.ShouldNotBeNull($"{componentName} must have component-level scopes");
-        scopes.Select(s => s?.ToString()).ShouldContain("commandapi",
-            $"{componentName} scopes must include commandapi");
+        scopes.Select(s => s?.ToString()).ShouldContain("eventstore",
+            $"{componentName} scopes must include eventstore");
     }
 
     private static void VerifySampleExcludedFromScopes(Dictionary<string, object> doc, string componentName) {

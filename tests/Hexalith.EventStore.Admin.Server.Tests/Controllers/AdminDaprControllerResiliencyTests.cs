@@ -39,7 +39,7 @@ public class AdminDaprControllerResiliencyTests
             [new DaprRetryPolicy("defaultRetry", "exponential", 10, null, "15s")],
             [new DaprTimeoutPolicy("daprSidecar", "5s")],
             [new DaprCircuitBreakerPolicy("defaultBreaker", 1, "60s", "60s", "consecutiveFailures > 5")],
-            [new DaprResiliencyTargetBinding("commandapi", "App", null, "defaultRetry", "daprSidecar", "defaultBreaker")],
+            [new DaprResiliencyTargetBinding("eventstore", "App", null, "defaultRetry", "daprSidecar", "defaultBreaker")],
             IsConfigurationAvailable: true,
             RawYamlContent: "spec: ...",
             ErrorMessage: null);

@@ -19,7 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprStorageServiceTests {
     private const string StateStoreName = "statestore";
-    private const string CommandApiAppId = "commandapi";
+    private const string EventStoreAppId = "eventstore";
 
     private static DaprStorageQueryService CreateQueryService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
@@ -36,7 +36,7 @@ public class DaprStorageServiceTests {
     private static DaprStorageCommandService CreateCommandService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            CommandApiAppId = CommandApiAppId,
+            EventStoreAppId = EventStoreAppId,
         });
 
         return new DaprStorageCommandService(
@@ -188,7 +188,7 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task TriggerCompactionAsync_DelegatesToCommandApi() {
+    public async Task TriggerCompactionAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -205,7 +205,7 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task CreateSnapshotAsync_DelegatesToCommandApi() {
+    public async Task CreateSnapshotAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
 
@@ -238,7 +238,7 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_DelegatesToCommandApi() {
+    public async Task SetSnapshotPolicyAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
         HttpRequestMessage? capturedRequest = null;
@@ -254,7 +254,7 @@ public class DaprStorageServiceTests {
         service = new DaprStorageCommandService(
             daprClient,
             Options.Create(new AdminServerOptions {
-                CommandApiAppId = CommandApiAppId,
+                EventStoreAppId = EventStoreAppId,
             }),
             authContext,
             NullLogger<DaprStorageCommandService>.Instance);

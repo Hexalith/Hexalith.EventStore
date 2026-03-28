@@ -8,8 +8,8 @@
     <ProjectReference
       Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference
-      Include="..\..\src\Hexalith.EventStore.CommandApi\Hexalith.EventStore.CommandApi.csproj">
-      <Aliases>global,commandapi</Aliases>
+      Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj">
+      <Aliases>global,eventstore</Aliases>
     </ProjectReference>
     <ProjectReference
       Include="..\..\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />

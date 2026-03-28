@@ -8,7 +8,7 @@ Complete REST and SignalR reference for the Hexalith.EventStore read side, cover
 
 ## Base URL and Authentication
 
-Find the `commandapi` service URL in the Aspire dashboard (typically `https://localhost:{port}` during local development). All HTTP paths in this document are relative to that base URL.
+Find the `eventstore` service URL in the Aspire dashboard (typically `https://localhost:{port}` during local development). All HTTP paths in this document are relative to that base URL.
 
 All HTTP endpoints on this page require a valid JWT Bearer token:
 

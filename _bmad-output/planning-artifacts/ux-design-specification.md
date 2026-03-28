@@ -113,7 +113,7 @@ This loop must feel effortless at every step. The platform's job is to be invisi
 - Blazor Server rendering for v2 dashboard: Real-time SignalR connection to live system state, no offline support needed
 - Responsive for laptop screens (v2): Minimum 1280px width, optimized for 1920px
 - DAPR sidecar as hard runtime dependency: All interactions require the DAPR runtime
-- OpenAPI specification with interactive Swagger UI included in v1 CommandApi for API discoverability
+- OpenAPI specification with interactive Swagger UI included in v1 EventStore for API discoverability
 - Domain service hot reload supported by architecture: domain services restart independently via DAPR service invocation while EventStore continues running
 
 ### Effortless Interactions
@@ -308,7 +308,7 @@ CI/CD pipeline UX with linear stage visualization, duration display per step, ex
 ### Anti-Patterns to Avoid
 
 1. **Query language required for basic searches** -- The v2 event explorer must use a visual filter builder, not a query bar. Alex doesn't write KQL or Lucene queries. Filter by clicking, not by typing syntax.
-2. **Separate documentation site from API** -- Swagger UI must be embedded at `/swagger` on the running CommandApi, not hosted on a separate docs website. The API and its documentation should share the same URL.
+2. **Separate documentation site from API** -- Swagger UI must be embedded at `/swagger` on the running EventStore, not hosted on a separate docs website. The API and its documentation should share the same URL.
 3. **Dashboard showing only current state** -- The event stream IS history. The v2 dashboard must support time-travel exploration ("what was the state at time T?"), not just current system state.
 4. **Silent event delivery failures** -- Every pub/sub delivery failure must be visible. No silent drops. DAPR retry exhaustion must route to dead letter and surface in the v2 dashboard.
 5. **Monolithic settings page** -- v2 dashboard settings must be organized by concern (tenant configuration, domain routing, snapshot policies, rate limits), not presented as one giant form.
@@ -319,7 +319,7 @@ CI/CD pipeline UX with linear stage visualization, duration display per step, ex
 
 **Adopt directly:**
 
-- **Swagger UI with pre-populated examples** at `/swagger` on the CommandApi -- proven pattern, zero custom development, immediate value for Sanjay's onboarding
+- **Swagger UI with pre-populated examples** at `/swagger` on the EventStore -- proven pattern, zero custom development, immediate value for Sanjay's onboarding
 - **RFC 7807 error messages written for the reader** (Stripe principle) -- applies to every error response in the Command API
 - **OpenTelemetry traces flowing through Aspire Dashboard** for v1 operator experience -- already built into the platform, leverage instead of rebuilding
 
@@ -511,7 +511,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 
 | Step | Consumer Action | System Response | UX Surface |
 |------|----------------|----------------|------------|
-| 1 | Open `/swagger` on the running CommandApi | Swagger UI loads with grouped endpoints and example payloads | API (Swagger UI) |
+| 1 | Open `/swagger` on the running EventStore | Swagger UI loads with grouped endpoints and example payloads | API (Swagger UI) |
 | 2 | Click "Try it out" on `POST /commands` | Form pre-populates with sample Counter command payload | API (Swagger UI) |
 | 3 | Add JWT bearer token (if auth enabled) | One-click "Authorize" button in Swagger UI | API (Swagger UI) |
 | 4 | Click "Execute" | `202 Accepted` with `Location` header pointing to status endpoint, `Retry-After: 1` header | API (HTTP response) |
@@ -1969,7 +1969,7 @@ Response header: `Retry-After: 1`
 
 ### Journey 10: DAPR Sidecar Unavailable
 
-**Trigger:** The DAPR sidecar is down or unreachable. The CommandApi cannot route commands.
+**Trigger:** The DAPR sidecar is down or unreachable. The EventStore cannot route commands.
 
 ```
 POST /api/commands
@@ -2008,7 +2008,7 @@ Response header: `Retry-After: 30`
 
 ### v1 API Error Response Enforcement Rules
 
-These rules apply to every HTTP error response from the CommandApi:
+These rules apply to every HTTP error response from the EventStore:
 
 | # | Rule | Rationale |
 |---|------|-----------|
@@ -2027,7 +2027,7 @@ These rules apply to every HTTP error response from the CommandApi:
 
 Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor dashboard). Each item references the spec section it derives from.
 
-### REST API (CommandApi)
+### REST API (EventStore)
 
 | # | Deliverable | Spec Source | Acceptance Criteria |
 |---|-------------|-------------|---------------------|
@@ -2037,7 +2037,7 @@ Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor da
 | A4 | `WWW-Authenticate` header on 401 | Journey 7, Rule E9 | Includes `realm`, `error`, and `error_description` per RFC 6750 |
 | A5 | `Retry-After` header on 409 and 503 | Journeys 9–10, Rule E5 | 409: short interval (1s). 503: longer interval (30s) |
 | A6 | No event sourcing terminology in any error response | Rule E6, Experience Principle "consistent mental model" | Grep test: "aggregate", "event stream", "actor", "DAPR", "sidecar" never appear in ProblemDetails |
-| A7 | OpenAPI 3.1 spec with Swagger UI at `/swagger` | Design System Foundation, UX Pattern Analysis | Swagger UI loads on running CommandApi with grouped endpoints |
+| A7 | OpenAPI 3.1 spec with Swagger UI at `/swagger` | Design System Foundation, UX Pattern Analysis | Swagger UI loads on running EventStore with grouped endpoints |
 | A8 | Pre-populated example payloads in OpenAPI spec | Pattern Analysis "Try-it-now", Act 2 mechanics | Swagger UI "Try it out" pre-fills a valid Counter domain command |
 | A9 | Command status endpoint at `/api/commands/status/{correlationId}` | Act 2 mechanics, Core Experience | Returns current lifecycle state with timestamp |
 | A10 | `202 Accepted` response with `Location` + `Retry-After` headers | Act 2, PRD response codes | `Location` points to status endpoint. `Retry-After: 1` |

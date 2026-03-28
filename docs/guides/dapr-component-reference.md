@@ -21,7 +21,7 @@ Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure co
 ```mermaid
 flowchart TB
     Client["Client Application"]
-    API["CommandAPI\n(app-id: commandapi)"]
+    API["CommandAPI\n(app-id: eventstore)"]
     Sidecar["DAPR Sidecar"]
     SS["State Store\n(Redis / PostgreSQL / Cosmos DB)"]
     PS["Pub/Sub\n(Redis / RabbitMQ / Kafka / Service Bus)"]
@@ -41,7 +41,7 @@ flowchart TB
 <details>
 <summary>Architecture diagram text description</summary>
 
-The diagram shows the data flow through Hexalith.EventStore DAPR components. A client application sends HTTP/gRPC requests to the CommandAPI (app-id: commandapi). The CommandAPI communicates with its DAPR sidecar via the DAPR SDK. The sidecar connects to three infrastructure components: (1) the State Store (Redis, PostgreSQL, or Cosmos DB) for actor state, snapshots, and command status; (2) the Pub/Sub broker (Redis, RabbitMQ, Kafka, or Service Bus) for publishing CloudEvents 1.0 events; and (3) the Configuration Store (Redis) for service registry and dynamic configuration. The sidecar also invokes domain services directly. External subscribers receive events from the pub/sub broker.
+The diagram shows the data flow through Hexalith.EventStore DAPR components. A client application sends HTTP/gRPC requests to the CommandAPI (app-id: eventstore). The CommandAPI communicates with its DAPR sidecar via the DAPR SDK. The sidecar connects to three infrastructure components: (1) the State Store (Redis, PostgreSQL, or Cosmos DB) for actor state, snapshots, and command status; (2) the Pub/Sub broker (Redis, RabbitMQ, Kafka, or Service Bus) for publishing CloudEvents 1.0 events; and (3) the Configuration Store (Redis) for service registry and dynamic configuration. The sidecar also invokes domain services directly. External subscribers receive events from the pub/sub broker.
 
 </details>
 
@@ -51,7 +51,7 @@ The key architecture decisions that affect component configuration:
 | -------- | --------------------------- | -------------------------------------------------------------------------------------------- |
 | D1       | Composite key strategy      | Event stream keys follow `{tenant}:{domain}:{aggregateId}:events:{seq}` pattern              |
 | D2       | Command status TTL          | 24-hour TTL set at application level, not component level                                    |
-| D4       | Deny-by-default access      | Only `commandapi` accesses state store and pub/sub; access control enforces this             |
+| D4       | Deny-by-default access      | Only `eventstore` accesses state store and pub/sub; access control enforces this             |
 | D6       | Topic naming convention     | Topics follow `{tenant}.{domain}.events`; dead-letter: `deadletter.{tenant}.{domain}.events` |
 | D7       | Resiliency at sidecar level | No custom retry logic in application code; DAPR resiliency policies handle all retries       |
 
@@ -59,7 +59,7 @@ The key architecture decisions that affect component configuration:
 
 The state store is the persistence backbone of Hexalith.EventStore. It stores actor state (aggregate state reconstructed from events), event snapshots (periodic state captures for fast rehydration), and command status entries (24-hour TTL tracking). All state store backends must set `actorStateStore: true` to enable the Actors building block.
 
-Component scoping restricts access to `commandapi` only (D4). Domain services have zero state store access.
+Component scoping restricts access to `eventstore` only (D4). Domain services have zero state store access.
 
 ### Redis (Local Development)
 
@@ -86,11 +86,11 @@ spec:
           # REQUIRED: Enables this state store for DAPR Actors building block.
           # Without this, actor activation fails with "no actor state store" error.
           value: "true"
-# Component scoping: only commandapi can access this state store (D4).
-# Actors run in-process under the commandapi app-id.
+# Component scoping: only eventstore can access this state store (D4).
+# Actors run in-process under the eventstore app-id.
 # Domain services (sample) have zero state store access.
 scopes:
-    - commandapi
+    - eventstore
 ```
 
 Persistence guarantees: Redis stores data in-memory by default. Data survives process restarts only if AOF (Append Only File) or RDB (Redis Database) persistence is enabled in your Redis server configuration. For local development, data loss on restart is acceptable. ETag-based optimistic concurrency is supported via Redis `SET NX` semantics. Multi-key transactions use Redis `MULTI/EXEC`.
@@ -116,9 +116,9 @@ spec:
         - name: actorStateStore
           # REQUIRED: Enables this state store for DAPR Actors building block.
           value: "true"
-# Component scoping: only commandapi can access this state store (D4).
+# Component scoping: only eventstore can access this state store (D4).
 scopes:
-    - commandapi
+    - eventstore
 ```
 
 Persistence guarantees: PostgreSQL provides WAL-based (Write-Ahead Logging) durability — committed data survives crashes. Consistency is ACID-strong with full transaction support. ETag optimistic concurrency uses row versioning. Data lives in a relational `state` table. Back up with `pg_dump` or continuous WAL archiving.
@@ -153,9 +153,9 @@ spec:
         - name: actorStateStore
           # REQUIRED: Enables this state store for DAPR Actors building block.
           value: "true"
-# Component scoping: only commandapi can access this state store (D4).
+# Component scoping: only eventstore can access this state store (D4).
 scopes:
-    - commandapi
+    - eventstore
 ```
 
 Azure Container Apps uses a simplified component schema (no `apiVersion`, `kind`, `metadata.name` wrapper). The equivalent ACA DAPR component configuration:
@@ -175,7 +175,7 @@ metadata:
     - name: actorStateStore
       value: "true"
 scopes:
-    - commandapi
+    - eventstore
 ```
 
 Persistence guarantees: Cosmos DB provides multi-region replication with configurable consistency levels — strong, bounded staleness, session, consistent prefix, and eventual. ETag optimistic concurrency uses the `_etag` property on each document. Cross-partition transactions are limited. Data lives as JSON documents. Back up with Azure Backup (continuous or periodic).
@@ -186,8 +186,8 @@ The pub/sub component handles event distribution using CloudEvents 1.0 format. E
 
 All pub/sub backends use the same three-layer scoping architecture:
 
-1. **Layer 1 — Component Scoping** (`scopes` field): Controls which app-ids can use this pub/sub component at all. Only `commandapi` and authorized subscriber app-ids are listed.
-2. **Layer 2 — Publishing Scoping** (`publishingScopes` metadata): Controls which app-ids can publish to which topics. `commandapi` is intentionally NOT listed, giving it unrestricted publish access for dynamic tenant provisioning (NFR20). Subscribers are denied publishing with empty values (`subscriber=`).
+1. **Layer 1 — Component Scoping** (`scopes` field): Controls which app-ids can use this pub/sub component at all. Only `eventstore` and authorized subscriber app-ids are listed.
+2. **Layer 2 — Publishing Scoping** (`publishingScopes` metadata): Controls which app-ids can publish to which topics. `eventstore` is intentionally NOT listed, giving it unrestricted publish access for dynamic tenant provisioning (NFR20). Subscribers are denied publishing with empty values (`subscriber=`).
 3. **Layer 3 — Subscription Scoping** (`subscriptionScopes` metadata): Controls which app-ids can subscribe to which topics. External subscribers are explicitly scoped to their authorized tenant topics.
 
 DAPR does NOT support wildcards in scoping — strict string equality matching only. Apps not listed in a scoping field have unrestricted access (default-open). Apps listed with an empty value (`app=`) are denied all access.
@@ -221,7 +221,7 @@ spec:
           value: "deadletter"
         - name: publishingScopes
           # Layer 2: sample= (empty) denies sample from publishing.
-          # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
+          # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
           value: "sample="
         - name: subscriptionScopes
           # Layer 3: sample= (empty) denies sample from subscribing.
@@ -229,7 +229,7 @@ spec:
           value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Layer 1: Component scoping.
 scopes:
-    - commandapi
+    - eventstore
     - example-subscriber
     - ops-monitor
 ```
@@ -252,7 +252,7 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 #
 # Layer 1 -- Component Scoping (scopes field):
 #   Controls which app-ids can USE this pub/sub component at all.
-#   Only commandapi and authorized subscriber app-ids are listed.
+#   Only eventstore and authorized subscriber app-ids are listed.
 #   Domain services have zero pub/sub access (D4).
 #
 # Layer 2 -- Publishing Scoping (publishingScopes metadata):
@@ -260,7 +260,7 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 #   Format: "app1=topic1,topic2;app2=" (semicolon-separated, empty=deny all).
 #   Apps NOT listed in publishingScopes have unrestricted publish access.
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
-#   Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name, not a wildcard.
+#   Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name, not a wildcard.
 #
 # Layer 3 -- Subscription Scoping (subscriptionScopes metadata):
 #   Controls which app-ids can SUBSCRIBE to which topics.
@@ -269,11 +269,11 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
 #
 # PUBLISHER-SIDE SCOPING (Story 5.1):
-#   commandapi is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
+#   eventstore is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
 #   Production domain services are not in component scopes = zero pub/sub access.
 #
 # SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
-#   commandapi is NOT listed in subscriptionScopes = can subscribe to all topics.
+#   eventstore is NOT listed in subscriptionScopes = can subscribe to all topics.
 #   External subscribers must be explicitly scoped to authorized tenant topics.
 #   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
 #   Unauthorized subscription attempts are rejected at the DAPR sidecar and are
@@ -292,7 +292,7 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 #         Use {env:...} syntax for app-ids to match the existing DAPR env-var pattern.
 #
 # Step 3: Do NOT add the subscriber to 'publishingScopes'.
-#         External subscribers should NEVER publish -- only commandapi publishes.
+#         External subscribers should NEVER publish -- only eventstore publishes.
 #
 # Step 4: Dead-letter access is SEPARATE. Only add dead-letter topics if the
 #         subscriber is an operational/monitoring tool.
@@ -302,7 +302,7 @@ Source: `deploy/dapr/pubsub-rabbitmq.yaml`
 #
 # DYNAMIC TENANT PROVISIONING (NFR20)
 # =====================================
-# Publisher (commandapi): NOT listed in scoping = unrestricted. Can publish to any
+# Publisher (eventstore): NOT listed in scoping = unrestricted. Can publish to any
 #   new tenant topic immediately without YAML changes.
 # Subscriber: MUST be explicitly granted access per tenant topic. This requires a
 #   YAML config update and redeployment (acceptable operational step -- subscriber
@@ -353,9 +353,9 @@ spec:
         - name: deadLetterTopic
           value: "deadletter"
         # Publishing scoping (Story 5.1):
-        # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
-        # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
-        # not a wildcard. Omitting commandapi achieves unrestricted access.
+        # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
+        # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,
+        # not a wildcard. Omitting eventstore achieves unrestricted access.
         #
         # When adding production domain services to component scopes, you MUST add
         # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
@@ -364,7 +364,7 @@ spec:
         - name: publishingScopes
           value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
         # Subscription scoping (Story 5.3, FR29):
-        # commandapi is NOT listed = unrestricted subscription to all topics.
+        # eventstore is NOT listed = unrestricted subscription to all topics.
         # External subscribers must be explicitly added with authorized tenant topics.
         #
         # Example with production subscriber:
@@ -375,17 +375,17 @@ spec:
         # with your actual tenant.domain.events topics before deployment.
         - name: subscriptionScopes
           value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
-# Component-level scoping: commandapi and explicitly authorized subscriber app-ids
+# Component-level scoping: eventstore and explicitly authorized subscriber app-ids
 # can access this pub/sub component. Domain services have zero pub/sub access (D4).
 #
 # When deploying external subscribers, add their production app-id here
 # AND scope their topic access via subscriptionScopes above:
 #   scopes:
-#     - commandapi
+#     - eventstore
 #     - "{env:SUBSCRIBER_APP_ID}"
 #     - "{env:OPS_MONITOR_APP_ID}"
 scopes:
-    - commandapi
+    - eventstore
     - "{env:SUBSCRIBER_APP_ID}"
     - "{env:OPS_MONITOR_APP_ID}"
 ```
@@ -408,7 +408,7 @@ Source: `deploy/dapr/pubsub-kafka.yaml`
 #
 # Layer 1 -- Component Scoping (scopes field):
 #   Controls which app-ids can USE this pub/sub component at all.
-#   Only commandapi and authorized subscriber app-ids are listed.
+#   Only eventstore and authorized subscriber app-ids are listed.
 #   Domain services have zero pub/sub access (D4).
 #
 # Layer 2 -- Publishing Scoping (publishingScopes metadata):
@@ -416,7 +416,7 @@ Source: `deploy/dapr/pubsub-kafka.yaml`
 #   Format: "app1=topic1,topic2;app2=" (semicolon-separated, empty=deny all).
 #   Apps NOT listed in publishingScopes have unrestricted publish access.
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
-#   Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name, not a wildcard.
+#   Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name, not a wildcard.
 #
 # Layer 3 -- Subscription Scoping (subscriptionScopes metadata):
 #   Controls which app-ids can SUBSCRIBE to which topics.
@@ -425,11 +425,11 @@ Source: `deploy/dapr/pubsub-kafka.yaml`
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
 #
 # PUBLISHER-SIDE SCOPING (Story 5.1):
-#   commandapi is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
+#   eventstore is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
 #   Production domain services are not in component scopes = zero pub/sub access.
 #
 # SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
-#   commandapi is NOT listed in subscriptionScopes = can subscribe to all topics.
+#   eventstore is NOT listed in subscriptionScopes = can subscribe to all topics.
 #   External subscribers must be explicitly scoped to authorized tenant topics.
 #   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
 #   Unauthorized subscription attempts are rejected at the DAPR sidecar and are
@@ -448,7 +448,7 @@ Source: `deploy/dapr/pubsub-kafka.yaml`
 #         Use {env:...} syntax for app-ids to match the existing DAPR env-var pattern.
 #
 # Step 3: Do NOT add the subscriber to 'publishingScopes'.
-#         External subscribers should NEVER publish -- only commandapi publishes.
+#         External subscribers should NEVER publish -- only eventstore publishes.
 #
 # Step 4: Dead-letter access is SEPARATE. Only add dead-letter topics if the
 #         subscriber is an operational/monitoring tool.
@@ -458,7 +458,7 @@ Source: `deploy/dapr/pubsub-kafka.yaml`
 #
 # DYNAMIC TENANT PROVISIONING (NFR20)
 # =====================================
-# Publisher (commandapi): NOT listed in scoping = unrestricted. Can publish to any
+# Publisher (eventstore): NOT listed in scoping = unrestricted. Can publish to any
 #   new tenant topic immediately without YAML changes.
 # Subscriber: MUST be explicitly granted access per tenant topic. This requires a
 #   YAML config update and redeployment (acceptable operational step -- subscriber
@@ -509,9 +509,9 @@ spec:
         - name: deadLetterTopic
           value: "deadletter"
         # Publishing scoping (Story 5.1):
-        # commandapi is NOT listed = unrestricted publishing to all topics (NFR20).
-        # NOTE: Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name,
-        # not a wildcard. Omitting commandapi achieves unrestricted access.
+        # eventstore is NOT listed = unrestricted publishing to all topics (NFR20).
+        # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,
+        # not a wildcard. Omitting eventstore achieves unrestricted access.
         #
         # When adding production domain services to component scopes, you MUST add
         # denial entries here: ";{env:DOMAIN_SERVICE_APP_ID}=" to deny publishing.
@@ -520,7 +520,7 @@ spec:
         - name: publishingScopes
           value: "{env:SUBSCRIBER_APP_ID}=;{env:OPS_MONITOR_APP_ID}="
         # Subscription scoping (Story 5.3, FR29):
-        # commandapi is NOT listed = unrestricted subscription to all topics.
+        # eventstore is NOT listed = unrestricted subscription to all topics.
         # External subscribers must be explicitly added with authorized tenant topics.
         #
         # Example with production subscriber:
@@ -531,17 +531,17 @@ spec:
         # with your actual tenant.domain.events topics before deployment.
         - name: subscriptionScopes
           value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
-# Component-level scoping: commandapi and explicitly authorized subscriber app-ids
+# Component-level scoping: eventstore and explicitly authorized subscriber app-ids
 # can access this pub/sub component. Domain services have zero pub/sub access (D4).
 #
 # When deploying external subscribers, add their production app-id here
 # AND scope their topic access via subscriptionScopes above:
 #   scopes:
-#     - commandapi
+#     - eventstore
 #     - "{env:SUBSCRIBER_APP_ID}"
 #     - "{env:OPS_MONITOR_APP_ID}"
 scopes:
-    - commandapi
+    - eventstore
     - "{env:SUBSCRIBER_APP_ID}"
     - "{env:OPS_MONITOR_APP_ID}"
 ```
@@ -564,7 +564,7 @@ Source: `deploy/dapr/pubsub-servicebus.yaml`
 #
 # Layer 1 -- Component Scoping (scopes field):
 #   Controls which app-ids can USE this pub/sub component at all.
-#   Only commandapi and authorized subscriber app-ids are listed.
+#   Only eventstore and authorized subscriber app-ids are listed.
 #   Domain services have zero pub/sub access (D4).
 #
 # Layer 2 -- Publishing Scoping (publishingScopes metadata):
@@ -572,7 +572,7 @@ Source: `deploy/dapr/pubsub-servicebus.yaml`
 #   Format: "app1=topic1,topic2;app2=" (semicolon-separated, empty=deny all).
 #   Apps NOT listed in publishingScopes have unrestricted publish access.
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
-#   Do NOT use "commandapi=*" -- DAPR treats * as a literal topic name, not a wildcard.
+#   Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name, not a wildcard.
 #
 # Layer 3 -- Subscription Scoping (subscriptionScopes metadata):
 #   Controls which app-ids can SUBSCRIBE to which topics.
@@ -581,11 +581,11 @@ Source: `deploy/dapr/pubsub-servicebus.yaml`
 #   NOTE: DAPR does NOT support wildcards (*) in scoping -- strict string match only.
 #
 # PUBLISHER-SIDE SCOPING (Story 5.1):
-#   commandapi is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
+#   eventstore is NOT listed in publishingScopes = can publish to ANY topic (NFR20).
 #   Production domain services are not in component scopes = zero pub/sub access.
 #
 # SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
-#   commandapi is NOT listed in subscriptionScopes = can subscribe to all topics.
+#   eventstore is NOT listed in subscriptionScopes = can subscribe to all topics.
 #   External subscribers must be explicitly scoped to authorized tenant topics.
 #   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
 #   Unauthorized subscription attempts are rejected at the DAPR sidecar and are
@@ -604,7 +604,7 @@ Source: `deploy/dapr/pubsub-servicebus.yaml`
 #         Use {env:...} syntax for app-ids to match the existing DAPR env-var pattern.
 #
 # Step 3: Do NOT add the subscriber to 'publishingScopes'.
-#         External subscribers should NEVER publish -- only commandapi publishes.
+#         External subscribers should NEVER publish -- only eventstore publishes.
 #
 # Step 4: Dead-letter access is SEPARATE. Only add dead-letter topics if the
 #         subscriber is an operational/monitoring tool.
@@ -614,7 +614,7 @@ Source: `deploy/dapr/pubsub-servicebus.yaml`
 #
 # DYNAMIC TENANT PROVISIONING (NFR20)
 # =====================================
-# Publisher (commandapi): NOT listed in scoping = unrestricted. Can publish to any
+# Publisher (eventstore): NOT listed in scoping = unrestricted. Can publish to any
 #   new tenant topic immediately without YAML changes.
 # Subscriber: MUST be explicitly granted access per tenant topic. This requires a
 #   YAML config update and redeployment (acceptable operational step -- subscriber
@@ -668,7 +668,7 @@ spec:
         - name: subscriptionScopes
           value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 scopes:
-    - commandapi
+    - eventstore
     - "{env:SUBSCRIBER_APP_ID}"
     - "{env:OPS_MONITOR_APP_ID}"
 ```
@@ -690,7 +690,7 @@ metadata:
     - name: subscriptionScopes
       value: "{env:SUBSCRIBER_APP_ID}=acme.orders.events,acme.inventory.events;{env:OPS_MONITOR_APP_ID}=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 scopes:
-    - commandapi
+    - eventstore
     - "{env:SUBSCRIBER_APP_ID}"
     - "{env:OPS_MONITOR_APP_ID}"
 ```
@@ -755,13 +755,13 @@ spec:
           # Redis password for configuration-store connection.
           # Leave empty for local development without authentication.
           value: "{env:REDIS_PASSWORD}"
-# Default scope includes `commandapi`; add domain-service app-ids when they consume configuration directly.
+# Default scope includes `eventstore`; add domain-service app-ids when they consume configuration directly.
 # Example:
 # scopes:
-#   - commandapi
+#   - eventstore
 #   - sample
 scopes:
-    - commandapi
+    - eventstore
 ```
 
 The configuration store supports dynamic updates without application restart — when a configuration key changes in Redis, the DAPR sidecar notifies subscribed applications via the Configuration API.
@@ -830,8 +830,8 @@ spec:
                 trip: consecutiveFailures > 10
     targets:
         apps:
-            commandapi:
-                # Apply default policies to commandapi operations.
+            eventstore:
+                # Apply default policies to eventstore operations.
                 retry: defaultRetry
                 timeout: daprSidecar
                 circuitBreaker: defaultBreaker
@@ -862,8 +862,8 @@ Access control defines service-to-service invocation policies. Each DAPR sidecar
 
 Sources:
 
-- `deploy/dapr/accesscontrol.yaml` — CommandApi inbound policy
-- `deploy/dapr/accesscontrol.admin-server.yaml` — Admin.Server inbound policy
+- `deploy/dapr/accesscontrol.yaml` — EventStore inbound policy
+- `deploy/dapr/accesscontrol.eventstore-admin.yaml` — Admin.Server inbound policy
 - `deploy/dapr/accesscontrol.sample.yaml` — sample domain-service inbound policy
 
 ```yaml
@@ -880,9 +880,9 @@ spec:
         # Mismatched trust domains are rejected at TLS handshake.
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
         policies:
-            # admin-server: Trusted caller for CommandApi passthrough.
-            # Admin.Server delegates reads and writes to CommandApi using GET/POST/PUT.
-            - appId: admin-server
+            # eventstore-admin: Trusted caller for EventStore passthrough.
+            # Admin.Server delegates reads and writes to EventStore using GET/POST/PUT.
+            - appId: eventstore-admin
               defaultAction: deny
               trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
               namespace: "{env:DAPR_NAMESPACE|hexalith}"
@@ -893,9 +893,9 @@ spec:
                     action: allow
 ```
 
-`accesscontrol.admin-server.yaml` sets `defaultAction: deny` with an empty `policies: []` list because no peer workload should invoke Admin.Server over DAPR.
+`accesscontrol.eventstore-admin.yaml` sets `defaultAction: deny` with an empty `policies: []` list because no peer workload should invoke Admin.Server over DAPR.
 
-`accesscontrol.sample.yaml` retains the POST-only `commandapi` caller policy for domain-service invocation.
+`accesscontrol.sample.yaml` retains the POST-only `eventstore` caller policy for domain-service invocation.
 
 Azure Container Apps does NOT support `accesscontrol.yaml`. In ACA, equivalent security is achieved through component scoping (the `scopes` field on each component) and ACA's built-in networking isolation.
 

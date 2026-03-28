@@ -14,7 +14,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IHealthQueryService"/>.
-/// Health checks work independently of CommandApi — uses DAPR metadata and state store probes directly.
+/// Health checks work independently of EventStore — uses DAPR metadata and state store probes directly.
 /// </summary>
 public sealed class DaprHealthQueryService : IHealthQueryService
 {
@@ -95,14 +95,14 @@ public sealed class DaprHealthQueryService : IHealthQueryService
             overallStatus = HealthStatus.Unhealthy;
         }
 
-        // 3. CommandApi reachability (short timeout - degraded, not unhealthy)
+        // 3. EventStore reachability (short timeout - degraded, not unhealthy)
         try
         {
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(2));
 
             using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
-                HttpMethod.Get, _options.CommandApiAppId, "health");
+                HttpMethod.Get, _options.EventStoreAppId, "health");
 
             string? token = _authContext.GetToken();
             if (token is not null)
@@ -114,13 +114,13 @@ public sealed class DaprHealthQueryService : IHealthQueryService
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            // CommandApi timeout — degraded but not unhealthy
+            // EventStore timeout — degraded but not unhealthy
             if (overallStatus == HealthStatus.Healthy)
             {
                 overallStatus = HealthStatus.Degraded;
             }
 
-            _logger.LogWarning("CommandApi health check timed out — marking as Degraded.");
+            _logger.LogWarning("EventStore health check timed out — marking as Degraded.");
         }
         catch (OperationCanceledException)
         {
@@ -133,7 +133,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService
                 overallStatus = HealthStatus.Degraded;
             }
 
-            _logger.LogWarning(ex, "CommandApi health check failed — marking as Degraded.");
+            _logger.LogWarning(ex, "EventStore health check failed — marking as Degraded.");
         }
 
         ObservabilityLinks links = new(_options.TraceUrl, _options.MetricsUrl, _options.LogsUrl);

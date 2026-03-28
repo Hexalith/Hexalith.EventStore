@@ -13,4 +13,4 @@ spec:
   routes:
     default: /projections/changed
 scopes:
-  - commandapi
+  - eventstore

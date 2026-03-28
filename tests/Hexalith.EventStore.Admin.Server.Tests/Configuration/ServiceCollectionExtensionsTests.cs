@@ -20,7 +20,7 @@ public class ServiceCollectionExtensionsTests {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["AdminServer:StateStoreName"] = "teststore",
-                ["AdminServer:CommandApiAppId"] = "test-commandapi",
+                ["AdminServer:EventStoreAppId"] = "test-eventstore",
                 ["AdminServer:TenantServiceAppId"] = "test-tenants",
             })
             .Build();
@@ -80,7 +80,7 @@ public class ServiceCollectionExtensionsTests {
             .Value;
 
         options.StateStoreName.ShouldBe("teststore");
-        options.CommandApiAppId.ShouldBe("test-commandapi");
+        options.EventStoreAppId.ShouldBe("test-eventstore");
         options.TenantServiceAppId.ShouldBe("test-tenants");
     }
 
@@ -104,7 +104,7 @@ public class ServiceCollectionExtensionsTests {
             .Value;
 
         options.StateStoreName.ShouldBe("statestore");
-        options.CommandApiAppId.ShouldBe("commandapi");
+        options.EventStoreAppId.ShouldBe("eventstore");
         options.TenantServiceAppId.ShouldBe("tenants");
         options.MaxTimelineEvents.ShouldBe(1000);
         options.ServiceInvocationTimeoutSeconds.ShouldBe(30);

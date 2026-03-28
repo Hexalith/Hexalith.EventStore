@@ -1,14 +1,14 @@
-extern alias commandapi;
+extern alias eventstore;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
-using CommandApiProgram = commandapi::Program;
+using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.Server.Tests.Integration;
 
-public class SignalRHubWebApplicationFactory : WebApplicationFactory<CommandApiProgram> {
+public class SignalRHubWebApplicationFactory : WebApplicationFactory<EventStoreProgram> {
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
         _ = builder.UseEnvironment("Development");

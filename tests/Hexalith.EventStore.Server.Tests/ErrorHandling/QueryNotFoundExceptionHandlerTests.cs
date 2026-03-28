@@ -1,4 +1,4 @@
-using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.AspNetCore.Http;

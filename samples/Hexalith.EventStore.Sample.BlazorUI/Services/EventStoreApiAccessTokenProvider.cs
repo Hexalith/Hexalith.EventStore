@@ -5,9 +5,9 @@ using System.Text.Json;
 namespace Hexalith.EventStore.Sample.BlazorUI.Services;
 
 /// <summary>
-/// Acquires bearer tokens for the protected CommandApi/query endpoints.
+/// Acquires bearer tokens for the protected EventStore/query endpoints.
 /// Uses Keycloak direct access grants when an authority is configured, otherwise
-/// generates the development HS256 token expected by local CommandApi settings.
+/// generates the development HS256 token expected by local EventStore settings.
 /// </summary>
 public sealed class EventStoreApiAccessTokenProvider(IConfiguration configuration) {
     private readonly SemaphoreSlim _tokenLock = new(1, 1);

@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Hexalith.EventStore.CommandApi" />
+    <InternalsVisibleTo Include="Hexalith.EventStore" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing.Tests" />

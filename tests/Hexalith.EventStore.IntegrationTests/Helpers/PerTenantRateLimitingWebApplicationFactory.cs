@@ -1,4 +1,4 @@
-extern alias commandapi;
+extern alias eventstore;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;

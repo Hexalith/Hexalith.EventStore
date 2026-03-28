@@ -15,7 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IStreamQueryService"/>.
-/// Event data reads delegate to CommandApi via InvokeMethodAsync because
+/// Event data reads delegate to EventStore via InvokeMethodAsync because
 /// actor state uses a different key namespace not accessible via plain GetStateAsync.
 /// </summary>
 public sealed class DaprStreamQueryService : IStreamQueryService
@@ -116,7 +116,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
 
         try
         {
-            PagedResult<TimelineEntry>? result = await InvokeCommandApiAsync<PagedResult<TimelineEntry>>(
+            PagedResult<TimelineEntry>? result = await InvokeEventStoreAsync<PagedResult<TimelineEntry>>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? new PagedResult<TimelineEntry>([], 0, null);
         }
@@ -142,7 +142,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/state?at={sequenceNumber}";
         try
         {
-            AggregateStateSnapshot? result = await InvokeCommandApiAsync<AggregateStateSnapshot>(
+            AggregateStateSnapshot? result = await InvokeEventStoreAsync<AggregateStateSnapshot>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "not-found");
         }
@@ -169,7 +169,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/diff?from={fromSequence}&to={toSequence}";
         try
         {
-            AggregateStateDiff? result = await InvokeCommandApiAsync<AggregateStateDiff>(
+            AggregateStateDiff? result = await InvokeEventStoreAsync<AggregateStateDiff>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? new AggregateStateDiff(fromSequence, toSequence, []);
         }
@@ -209,7 +209,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            AggregateBlameView? result = await InvokeCommandApiAsync<AggregateBlameView>(
+            AggregateBlameView? result = await InvokeEventStoreAsync<AggregateBlameView>(
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
             return result ?? new AggregateBlameView(tenantId, domain, aggregateId, atSequence ?? 0, DateTimeOffset.MinValue, [], false, false);
         }
@@ -245,7 +245,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            EventStepFrame? result = await InvokeCommandApiAsync<EventStepFrame>(
+            EventStepFrame? result = await InvokeEventStoreAsync<EventStepFrame>(
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
             return result ?? new EventStepFrame(tenantId, domain, aggregateId, sequenceNumber, string.Empty, DateTimeOffset.MinValue, string.Empty, string.Empty, string.Empty, "{}", "{}", [], 0);
         }
@@ -304,7 +304,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         try
         {
             // Use 60-second timeout for bisect (longer than blame's 30s because bisect performs O(log N) state reconstructions)
-            BisectResult? result = await InvokeCommandApiAsync<BisectResult>(
+            BisectResult? result = await InvokeEventStoreAsync<BisectResult>(
                 HttpMethod.Get, endpoint, ct, timeoutSeconds: 60).ConfigureAwait(false);
             return result ?? new BisectResult(tenantId, domain, aggregateId, goodSequence, badSequence, DateTimeOffset.MinValue, string.Empty, string.Empty, string.Empty, [], [], [], 0, false);
         }
@@ -330,7 +330,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/events/{sequenceNumber}";
         try
         {
-            EventDetail? result = await InvokeCommandApiAsync<EventDetail>(
+            EventDetail? result = await InvokeEventStoreAsync<EventDetail>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "not-found");
         }
@@ -369,7 +369,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
 
         try
         {
-            SandboxResult? result = await InvokeCommandApiAsync<SandboxCommandRequest, SandboxResult>(
+            SandboxResult? result = await InvokeEventStoreAsync<SandboxCommandRequest, SandboxResult>(
                 endpoint, request, ct).ConfigureAwait(false);
             return result;
         }
@@ -395,7 +395,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/causation?at={sequenceNumber}";
         try
         {
-            CausationChain? result = await InvokeCommandApiAsync<CausationChain>(
+            CausationChain? result = await InvokeEventStoreAsync<CausationChain>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? CreateEmptyCausationChain("not-found");
         }
@@ -443,9 +443,9 @@ public sealed class DaprStreamQueryService : IStreamQueryService
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            CorrelationTraceMap? result = await InvokeCommandApiAsync<CorrelationTraceMap>(
+            CorrelationTraceMap? result = await InvokeEventStoreAsync<CorrelationTraceMap>(
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
-            return result ?? new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, "Unable to retrieve trace map from CommandApi.", null, 0, false, null);
+            return result ?? new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, "Unable to retrieve trace map from EventStore.", null, 0, false, null);
         }
         catch (OperationCanceledException)
         {
@@ -479,7 +479,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     private static CausationChain CreateEmptyCausationChain(string status)
         => new($"admin.command.{status}", $"admin-{status}", $"admin-{status}", null, [], []);
 
-    private async Task<TResponse?> InvokeCommandApiAsync<TResponse>(
+    private async Task<TResponse?> InvokeEventStoreAsync<TResponse>(
         HttpMethod method,
         string endpoint,
         CancellationToken ct,
@@ -489,7 +489,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
-            method, _options.CommandApiAppId, endpoint)
+            method, _options.EventStoreAppId, endpoint)
             ?? new HttpRequestMessage(method, endpoint);
 
         string? token = _authContext.GetToken();
@@ -501,7 +501,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
     }
 
-    private async Task<TResponse?> InvokeCommandApiAsync<TRequest, TResponse>(
+    private async Task<TResponse?> InvokeEventStoreAsync<TRequest, TResponse>(
         string endpoint,
         TRequest body,
         CancellationToken ct,
@@ -511,7 +511,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
-            HttpMethod.Post, _options.CommandApiAppId, endpoint)
+            HttpMethod.Post, _options.EventStoreAppId, endpoint)
             ?? new HttpRequestMessage(HttpMethod.Post, endpoint);
 
         string? token = _authContext.GetToken();

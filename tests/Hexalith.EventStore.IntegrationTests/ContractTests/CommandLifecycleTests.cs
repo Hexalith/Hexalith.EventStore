@@ -14,7 +14,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
 /// <summary>
 /// Tier 3 end-to-end contract tests verifying the full command lifecycle across the
-/// complete Aspire topology: CommandApi -> Actor -> Domain Service -> State Store -> Pub/Sub.
+/// complete Aspire topology: EventStore -> Actor -> Domain Service -> State Store -> Pub/Sub.
 /// Uses symmetric key JWT authentication for fast execution (AC #2).
 /// </summary>
 [Trait("Category", "E2E")]
@@ -41,7 +41,7 @@ public class CommandLifecycleTests {
             commandType: "IncrementCounter");
 
         // Act
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -301,7 +301,7 @@ public class CommandLifecycleTests {
         string aggregateId,
         string commandType) {
         using HttpRequestMessage request = CreateCommandRequest(tenant, domain, aggregateId, commandType);
-        using HttpResponseMessage response = await _fixture.CommandApiClient
+        using HttpResponseMessage response = await _fixture.EventStoreClient
             .SendAsync(request).ConfigureAwait(false);
 
         if (response.StatusCode != HttpStatusCode.Accepted) {
@@ -330,7 +330,7 @@ public class CommandLifecycleTests {
             using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            using HttpResponseMessage statusResponse = await _fixture.CommandApiClient
+            using HttpResponseMessage statusResponse = await _fixture.EventStoreClient
                 .SendAsync(statusRequest).ConfigureAwait(false);
 
             if (statusResponse.StatusCode == HttpStatusCode.OK) {

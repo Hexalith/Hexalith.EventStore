@@ -25,7 +25,7 @@ Contains the resource builders created by `AddHexalithEventStore`
 for further customization by the consumer\.
 
 ```csharp
-public HexalithEventStoreResources(Aspire.Hosting.ApplicationModel.IResourceBuilder<CommunityToolkit.Aspire.Hosting.Dapr.IDaprComponentResource> StateStore, Aspire.Hosting.ApplicationModel.IResourceBuilder<CommunityToolkit.Aspire.Hosting.Dapr.IDaprComponentResource> PubSub, Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> CommandApi, Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> AdminServer);
+public HexalithEventStoreResources(Aspire.Hosting.ApplicationModel.IResourceBuilder<CommunityToolkit.Aspire.Hosting.Dapr.IDaprComponentResource> StateStore, Aspire.Hosting.ApplicationModel.IResourceBuilder<CommunityToolkit.Aspire.Hosting.Dapr.IDaprComponentResource> PubSub, Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> EventStore, Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> AdminServer);
 ```
 
 #### Parameters
@@ -38,9 +38,9 @@ The DAPR state store component resource builder\.
 
 The DAPR pub/sub component resource builder\.
 
-`CommandApi` [Aspire\.Hosting\.ApplicationModel\.IResourceBuilder&lt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")[Aspire\.Hosting\.ApplicationModel\.ProjectResource](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.projectresource "Aspire.Hosting.ApplicationModel.ProjectResource")[&gt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")
+`EventStore` [Aspire\.Hosting\.ApplicationModel\.IResourceBuilder&lt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")[Aspire\.Hosting\.ApplicationModel\.ProjectResource](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.projectresource "Aspire.Hosting.ApplicationModel.ProjectResource")[&gt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")
 
-The CommandApi project resource builder\.
+The EventStore project resource builder\.
 
 `AdminServer` [Aspire\.Hosting\.ApplicationModel\.IResourceBuilder&lt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")[Aspire\.Hosting\.ApplicationModel\.ProjectResource](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.projectresource "Aspire.Hosting.ApplicationModel.ProjectResource")[&gt;](https://learn.microsoft.com/en-us/dotnet/api/aspire.hosting.applicationmodel.iresourcebuilder-1 "Aspire.Hosting.ApplicationModel.IResourceBuilder`1")
 
@@ -48,12 +48,12 @@ The Admin.Server project resource builder\.
 
 ### Properties
 
-## HexalithEventStoreResources\.CommandApi Property
+## HexalithEventStoreResources\.EventStore Property
 
-The CommandApi project resource builder\.
+The EventStore project resource builder\.
 
 ```csharp
-public Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> CommandApi { get; init; }
+public Aspire.Hosting.ApplicationModel.IResourceBuilder<Aspire.Hosting.ApplicationModel.ProjectResource> EventStore { get; init; }
 ```
 
 #### Property Value

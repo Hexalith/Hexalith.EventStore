@@ -5,8 +5,8 @@ using Dapr;
 
 using Grpc.Core;
 
-using Hexalith.EventStore.CommandApi.ErrorHandling;
-using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

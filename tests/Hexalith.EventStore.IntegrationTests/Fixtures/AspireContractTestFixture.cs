@@ -18,13 +18,13 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private string? _previousEnableKeycloak;
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
-    private HttpClient? _commandApiClient;
+    private HttpClient? _eventStoreClient;
 
     /// <summary>
-    /// Gets the HTTP client for the CommandApi service.
+    /// Gets the HTTP client for the EventStore service.
     /// Available after <see cref="InitializeAsync"/> completes.
     /// </summary>
-    public HttpClient CommandApiClient => _commandApiClient ?? throw new InvalidOperationException(
+    public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
     /// <summary>
@@ -38,7 +38,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
 
-        // Force Development environment so AppHost children (especially CommandApi)
+        // Force Development environment so AppHost children (especially EventStore)
         // load appsettings.Development.json expected by Tier 3 contract tests.
         _previousAspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
@@ -65,15 +65,15 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);
 
-        // Task 1.4 / AC #1: Wait for commandapi resource to be healthy via Aspire resource notifications.
+        // Task 1.4 / AC #1: Wait for eventstore resource to be healthy via Aspire resource notifications.
         _ = await _app.ResourceNotifications
-            .WaitForResourceHealthyAsync("commandapi", cts.Token)
+            .WaitForResourceHealthyAsync("eventstore", cts.Token)
             .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
             .ConfigureAwait(false);
 
-        // Create HTTP client for CommandApi
-        _commandApiClient = _app.CreateHttpClient("commandapi");
-        _commandApiClient.Timeout = TimeSpan.FromSeconds(60);
+        // Create HTTP client for EventStore
+        _eventStoreClient = _app.CreateHttpClient("eventstore");
+        _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
         // Also wait for the sample domain service to be healthy.
         _ = await _app.ResourceNotifications
@@ -83,7 +83,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
     }
 
     public async Task DisposeAsync() {
-        _commandApiClient?.Dispose();
+        _eventStoreClient?.Dispose();
         if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);
         }

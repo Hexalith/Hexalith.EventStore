@@ -35,7 +35,7 @@ public class WriteHealthCheckJsonResponseTests {
         var report = new HealthReport(entries, TimeSpan.FromMilliseconds(200));
 
         // Act
-        await Extensions.WriteHealthCheckJsonResponse(httpContext, report);
+        await Hexalith.EventStore.ServiceDefaults.Extensions.WriteHealthCheckJsonResponse(httpContext, report);
 
         // Assert
         _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
@@ -79,7 +79,7 @@ public class WriteHealthCheckJsonResponseTests {
         var report = new HealthReport(entries, TimeSpan.FromMilliseconds(10));
 
         // Act -- should NOT throw
-        await Extensions.WriteHealthCheckJsonResponse(httpContext, report);
+        await Hexalith.EventStore.ServiceDefaults.Extensions.WriteHealthCheckJsonResponse(httpContext, report);
 
         // Assert
         _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
@@ -116,7 +116,7 @@ public class WriteHealthCheckJsonResponseTests {
         var report = new HealthReport(entries, TimeSpan.FromMilliseconds(10));
 
         // Act -- should NOT throw
-        await Extensions.WriteHealthCheckJsonResponse(httpContext, report);
+        await Hexalith.EventStore.ServiceDefaults.Extensions.WriteHealthCheckJsonResponse(httpContext, report);
 
         // Assert
         _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);

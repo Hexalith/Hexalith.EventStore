@@ -17,8 +17,8 @@ public class DaprComponentValidationTests {
     private static readonly string StateStorePath = Path.Combine(DaprComponentsDir, "statestore.yaml");
     private static readonly string PubSubPath = Path.Combine(DaprComponentsDir, "pubsub.yaml");
     private static readonly string ResiliencyPath = Path.Combine(DaprComponentsDir, "resiliency.yaml");
-    private static readonly string CommandApiAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.yaml");
-    private static readonly string AdminServerAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.admin-server.yaml");
+    private static readonly string EventStoreAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.yaml");
+    private static readonly string AdminServerAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.eventstore-admin.yaml");
     private static readonly string SampleAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.sample.yaml");
     private static readonly string SubscriptionPath = Path.Combine(DaprComponentsDir, "subscription-sample-counter.yaml");
 
@@ -31,15 +31,15 @@ public class DaprComponentValidationTests {
             .ShouldBe("true", "State store must have actorStateStore enabled for DAPR actor state management");
     }
 
-    // --- Task 5.3: StateStoreComponent_ScopedToCommandApiAndAdminServer ---
+    // --- Task 5.3: StateStoreComponent_ScopedToEventStoreAndAdminServer ---
 
     [Fact]
-    public void StateStoreComponent_ScopedToCommandApiAndAdminServer() {
+    public void StateStoreComponent_ScopedToEventStoreAndAdminServer() {
         Dictionary<string, object> doc = LoadYaml(StateStorePath);
         List<object>? scopes = GetScopes(doc);
         _ = scopes.ShouldNotBeNull("State store must have scopes defined");
-        scopes.Count.ShouldBe(2, "State store scopes must contain exactly two entries (commandapi and admin-server)");
-        scopes.Select(s => s?.ToString()).ShouldBe(["commandapi", "admin-server"], ignoreOrder: true);
+        scopes.Count.ShouldBe(2, "State store scopes must contain exactly two entries (eventstore and eventstore-admin)");
+        scopes.Select(s => s?.ToString()).ShouldBe(["eventstore", "eventstore-admin"], ignoreOrder: true);
     }
 
     // --- Task 5.4: PubSubComponent_HasDeadLetterEnabled ---
@@ -76,42 +76,42 @@ public class DaprComponentValidationTests {
     // --- Task 5.7: AccessControl_DefaultActionIsDeny ---
 
     [Fact]
-    public void CommandApiAccessControl_DefaultActionIsAllowInLocalProfile() {
-        Dictionary<string, object> doc = LoadYaml(CommandApiAccessControlPath);
+    public void EventStoreAccessControl_DefaultActionIsAllowInLocalProfile() {
+        Dictionary<string, object> doc = LoadYaml(EventStoreAccessControlPath);
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString()
-            .ShouldBe("allow", "Local CommandApi access control uses defaultAction: allow in self-hosted profile (no mTLS caller identity)");
+            .ShouldBe("allow", "Local EventStore access control uses defaultAction: allow in self-hosted profile (no mTLS caller identity)");
     }
 
-    // --- Task 5.8: AccessControl_CommandApiCanInvokePostOnly ---
+    // --- Task 5.8: AccessControl_EventStoreCanInvokePostOnly ---
 
     [Fact]
-    public void CommandApiAccessControl_AdminServerCanInvokeGetPostPut() {
-        Dictionary<string, object> doc = LoadYaml(CommandApiAccessControlPath);
+    public void EventStoreAccessControl_AdminServerCanInvokeGetPostPut() {
+        Dictionary<string, object> doc = LoadYaml(EventStoreAccessControlPath);
         List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
         _ = policies.ShouldNotBeNull();
 
         Dictionary<object, object>? adminServerPolicy = policies
             .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(p => GetString(p, "appId") == "admin-server");
-        _ = adminServerPolicy.ShouldNotBeNull("CommandApi access control must have an admin-server policy");
+            .FirstOrDefault(p => GetString(p, "appId") == "eventstore-admin");
+        _ = adminServerPolicy.ShouldNotBeNull("EventStore access control must have an eventstore-admin policy");
 
         List<object>? operations = adminServerPolicy.TryGetValue("operations", out object? ops)
             ? ops as List<object> : null;
-        _ = operations.ShouldNotBeNull("admin-server policy must have operations");
+        _ = operations.ShouldNotBeNull("eventstore-admin policy must have operations");
 
         Dictionary<object, object>? wildcardOp = operations!
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(op => GetString(op, "name") == "/**");
-        _ = wildcardOp.ShouldNotBeNull("admin-server must allow wildcard path /** for CommandApi delegation");
+        _ = wildcardOp.ShouldNotBeNull("eventstore-admin must allow wildcard path /** for EventStore delegation");
 
         List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
         _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
         httpVerbs!.Select(v => v?.ToString()).ShouldContain("GET",
-            "admin-server wildcard must allow GET");
+            "eventstore-admin wildcard must allow GET");
         httpVerbs!.Select(v => v?.ToString()).ShouldContain("POST",
-            "admin-server wildcard must allow POST");
+            "eventstore-admin wildcard must allow POST");
         httpVerbs!.Select(v => v?.ToString()).ShouldContain("PUT",
-            "admin-server wildcard must allow PUT");
+            "eventstore-admin wildcard must allow PUT");
         GetString(wildcardOp, "action").ShouldBe("allow");
     }
 
@@ -130,33 +130,33 @@ public class DaprComponentValidationTests {
     }
 
     [Fact]
-    public void SampleAccessControl_CommandApiCanInvokePostOnly() {
+    public void SampleAccessControl_EventStoreCanInvokePostOnly() {
         Dictionary<string, object> doc = LoadYaml(SampleAccessControlPath);
         List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
         _ = policies.ShouldNotBeNull();
 
-        Dictionary<object, object>? commandApiPolicy = policies
+        Dictionary<object, object>? eventStorePolicy = policies
             .Cast<Dictionary<object, object>>()
-            .FirstOrDefault(p => GetString(p, "appId") == "commandapi");
-        _ = commandApiPolicy.ShouldNotBeNull("Sample access control must have a commandapi policy");
+            .FirstOrDefault(p => GetString(p, "appId") == "eventstore");
+        _ = eventStorePolicy.ShouldNotBeNull("Sample access control must have a eventstore policy");
 
-        GetString(commandApiPolicy, "defaultAction").ShouldBe("deny",
-            "commandapi caller policy must have defaultAction: deny (zero-trust, D4)");
+        GetString(eventStorePolicy, "defaultAction").ShouldBe("deny",
+            "eventstore caller policy must have defaultAction: deny (zero-trust, D4)");
 
-        List<object>? operations = commandApiPolicy.TryGetValue("operations", out object? ops)
+        List<object>? operations = eventStorePolicy.TryGetValue("operations", out object? ops)
             ? ops as List<object> : null;
-        _ = operations.ShouldNotBeNull("commandapi policy must have operations");
-        operations.Count.ShouldBe(1, "Sample access control should allow exactly one wildcard POST operation for commandapi");
+        _ = operations.ShouldNotBeNull("eventstore policy must have operations");
+        operations.Count.ShouldBe(1, "Sample access control should allow exactly one wildcard POST operation for eventstore");
 
         Dictionary<object, object>? wildcardOp = operations!
             .Cast<Dictionary<object, object>>()
             .FirstOrDefault(op => GetString(op, "name") == "/**");
-        _ = wildcardOp.ShouldNotBeNull("commandapi must allow wildcard path /** for domain service invocation (D7)");
+        _ = wildcardOp.ShouldNotBeNull("eventstore must allow wildcard path /** for domain service invocation (D7)");
 
         List<object>? httpVerbs = wildcardOp!.TryGetValue("httpVerb", out object? verbs) ? verbs as List<object> : null;
         _ = httpVerbs.ShouldNotBeNull("Wildcard operation must specify httpVerb");
         httpVerbs.Count.ShouldBe(1, "Sample wildcard operation must allow exactly one verb");
-        httpVerbs[0]?.ToString().ShouldBe("POST", "commandapi wildcard must allow POST only");
+        httpVerbs[0]?.ToString().ShouldBe("POST", "eventstore wildcard must allow POST only");
         GetString(wildcardOp, "action").ShouldBe("allow");
     }
 
@@ -191,8 +191,8 @@ public class DaprComponentValidationTests {
         File.Exists(StateStorePath).ShouldBeTrue($"statestore.yaml must exist at {StateStorePath}");
         File.Exists(PubSubPath).ShouldBeTrue($"pubsub.yaml must exist at {PubSubPath}");
         File.Exists(ResiliencyPath).ShouldBeTrue($"resiliency.yaml must exist at {ResiliencyPath}");
-        File.Exists(CommandApiAccessControlPath).ShouldBeTrue($"accesscontrol.yaml must exist at {CommandApiAccessControlPath}");
-        File.Exists(AdminServerAccessControlPath).ShouldBeTrue($"accesscontrol.admin-server.yaml must exist at {AdminServerAccessControlPath}");
+        File.Exists(EventStoreAccessControlPath).ShouldBeTrue($"accesscontrol.yaml must exist at {EventStoreAccessControlPath}");
+        File.Exists(AdminServerAccessControlPath).ShouldBeTrue($"accesscontrol.eventstore-admin.yaml must exist at {AdminServerAccessControlPath}");
         File.Exists(SampleAccessControlPath).ShouldBeTrue($"accesscontrol.sample.yaml must exist at {SampleAccessControlPath}");
         File.Exists(SubscriptionPath).ShouldBeTrue($"subscription-sample-counter.yaml must exist at {SubscriptionPath}");
     }

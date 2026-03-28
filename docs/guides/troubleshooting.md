@@ -128,7 +128,7 @@ Dapr sidecar is not responding on http://localhost:3500
 5. Check DAPR sidecar logs for component loading errors:
 
     ```bash
-    $ dapr logs --app-id commandapi
+    $ dapr logs --app-id eventstore
     ```
 
 ### .NET SDK Version Mismatch
@@ -228,7 +228,7 @@ These issues occur when the application is running but DAPR sidecar communicatio
     ```yaml
     annotations:
       dapr.io/enabled: "true"
-      dapr.io/app-id: "commandapi"
+      dapr.io/app-id: "eventstore"
       dapr.io/app-port: "8080"
     ```
 
@@ -324,7 +324,7 @@ error connecting to state store: dial tcp 127.0.0.1:6379: connect: connection re
 4. Inspect the dead-letter topic for failed deliveries. Failed messages route to `deadletter.{tenant}.{domain}.events` and include the full command payload, error details, and correlation ID:
 
     ```bash
-    $ dapr logs --app-id commandapi | grep "deadletter"
+    $ dapr logs --app-id eventstore | grep "deadletter"
     ```
 
 5. Consult the [DAPR Component Configuration Reference](dapr-component-reference.md) for pub/sub backend configuration.
@@ -349,7 +349,7 @@ Actor reentrant call not allowed for actor type AggregateActor
 
     ```bash
     # Check actor configuration
-    $ dapr logs --app-id commandapi | grep "actor"
+    $ dapr logs --app-id eventstore | grep "actor"
     ```
 
 4. If you need to handle high-throughput scenarios, consider using the optimistic concurrency conflict handling endpoint (see [Command API Reference](../reference/command-api.md)).
@@ -405,7 +405,7 @@ These issues occur when deploying Hexalith.EventStore using Docker Compose. See 
 ```bash
 $ docker compose ps
 # NAME         STATUS          PORTS
-# commandapi   restarting      ...
+# eventstore   restarting      ...
 ```
 
 **Probable Cause:** The health check endpoint is not ready within the configured interval, or dependency containers (Redis, PostgreSQL) have not started yet.
@@ -415,7 +415,7 @@ $ docker compose ps
 1. Check container logs for startup errors:
 
     ```bash
-    $ docker compose logs commandapi
+    $ docker compose logs eventstore
     $ docker compose logs -f  # Follow all container logs
     ```
 
@@ -501,7 +501,7 @@ System.Net.Http.HttpRequestException: Connection refused (redis:6379)
 3. Verify DNS resolution between containers:
 
     ```bash
-    $ docker compose exec commandapi nslookup redis
+    $ docker compose exec eventstore nslookup redis
     ```
 
 ### Keycloak Startup Issues
@@ -553,7 +553,7 @@ These issues occur when deploying to a Kubernetes cluster with the DAPR operator
 ```bash
 $ kubectl get pods
 # NAME                         READY   STATUS             RESTARTS
-# commandapi-xxxxx             1/2     CrashLoopBackOff   5
+# eventstore-xxxxx             1/2     CrashLoopBackOff   5
 ```
 
 **Probable Cause:** DAPR sidecar injection issues, missing ConfigMaps or Secrets, or container image pull failures.
@@ -569,7 +569,7 @@ $ kubectl get pods
 2. Check the main application container logs:
 
     ```bash
-    $ kubectl logs <pod-name> -c commandapi
+    $ kubectl logs <pod-name> -c eventstore
     ```
 
 3. Check the DAPR sidecar container logs:
@@ -584,7 +584,7 @@ $ kubectl get pods
     metadata:
       annotations:
         dapr.io/enabled: "true"
-        dapr.io/app-id: "commandapi"
+        dapr.io/app-id: "eventstore"
         dapr.io/app-port: "8080"
     ```
 
@@ -601,7 +601,7 @@ $ kubectl get pods
 ```bash
 $ kubectl get pods
 # NAME                         READY   STATUS             RESTARTS
-# commandapi-xxxxx             0/2     ImagePullBackOff   0
+# eventstore-xxxxx             0/2     ImagePullBackOff   0
 ```
 
 **Probable Cause:** The container image tag does not exist in the registry, or the cluster does not have credentials to pull from a private registry.
@@ -755,7 +755,7 @@ Azure.Identity.CredentialUnavailableException: ManagedIdentityCredential authent
 1. Verify managed identity is assigned:
 
     ```bash
-    $ az containerapp identity show --name commandapi --resource-group <rg>
+    $ az containerapp identity show --name eventstore --resource-group <rg>
     ```
 
 2. Check role assignments for the managed identity:
@@ -807,7 +807,7 @@ Azure.RequestFailedException: Status: 403 (Forbidden) - Access denied
 3. Check Key Vault firewall settings. If a firewall is enabled, add the Container App's outbound IP addresses:
 
     ```bash
-    $ az containerapp show --name commandapi --resource-group <rg> --query "properties.outboundIpAddresses"
+    $ az containerapp show --name eventstore --resource-group <rg> --query "properties.outboundIpAddresses"
     ```
 
 ### ACR Authentication
@@ -841,7 +841,7 @@ Failed to pull image: unauthorized: authentication required
 
     ```bash
     $ az containerapp registry set \
-        --name commandapi \
+        --name eventstore \
         --resource-group <rg> \
         --server <registry>.azurecr.io \
         --identity system
@@ -862,13 +862,13 @@ System.InvalidOperationException: Configuration key 'Authentication:JwtBearer:Au
 1. List existing secrets:
 
     ```bash
-    $ az containerapp secret list --name commandapi --resource-group <rg> --output table
+    $ az containerapp secret list --name eventstore --resource-group <rg> --output table
     ```
 
 2. Verify environment variable references in the revision template:
 
     ```bash
-    $ az containerapp show --name commandapi --resource-group <rg> \
+    $ az containerapp show --name eventstore --resource-group <rg> \
         --query "properties.template.containers[0].env"
     ```
 
@@ -877,13 +877,13 @@ System.InvalidOperationException: Configuration key 'Authentication:JwtBearer:Au
     ```bash
     # Set a secret
     $ az containerapp secret set \
-        --name commandapi \
+        --name eventstore \
         --resource-group <rg> \
         --secrets "jwt-authority=https://login.microsoftonline.com/<tenant>/v2.0"
 
     # Reference secret in environment variable
     $ az containerapp update \
-        --name commandapi \
+        --name eventstore \
         --resource-group <rg> \
         --set-env-vars "Authentication__JwtBearer__Authority=secretref:jwt-authority"
     ```
@@ -893,7 +893,7 @@ System.InvalidOperationException: Configuration key 'Authentication:JwtBearer:Au
 **Symptom:** DAPR components are not available in Azure Container Apps. The application cannot access state stores or pub/sub:
 
 ```text
-ERR_DIRECT_INVOKE: app id commandapi not found
+ERR_DIRECT_INVOKE: app id eventstore not found
 ```
 
 **Probable Cause:** DAPR is not enabled on the ACA environment, or component scoping does not include the application name. Azure Container Apps provides DAPR as a managed service — components are configured at the environment level.
@@ -913,9 +913,9 @@ ERR_DIRECT_INVOKE: app id commandapi not found
 
     ```bash
     $ az containerapp dapr enable \
-        --name commandapi \
+        --name eventstore \
         --resource-group <rg> \
-        --dapr-app-id commandapi \
+        --dapr-app-id eventstore \
         --dapr-app-port 8080
     ```
 
@@ -970,11 +970,11 @@ $ dotnet run --project src/Hexalith.EventStore.AppHost 2>&1 | tee aspire-logs.tx
 $ docker compose logs --timestamps > docker-logs.txt 2>&1
 
 # Kubernetes (all pods in namespace)
-$ kubectl logs -l app=commandapi --all-containers --timestamps > k8s-logs.txt 2>&1
+$ kubectl logs -l app=eventstore --all-containers --timestamps > k8s-logs.txt 2>&1
 
 # Azure Container Apps
 $ az containerapp logs show \
-    --name commandapi \
+    --name eventstore \
     --resource-group <rg> \
     --type system \
     --follow > aca-logs.txt 2>&1
@@ -993,7 +993,7 @@ Hexalith.EventStore assigns a correlation ID to every command submission. Use it
     $ docker compose logs | grep "<correlation-id>"
 
     # Kubernetes
-    $ kubectl logs -l app=commandapi --all-containers | grep "<correlation-id>"
+    $ kubectl logs -l app=eventstore --all-containers | grep "<correlation-id>"
     ```
 
 3. **Trace through OpenTelemetry spans** if you have a tracing backend (Zipkin, Jaeger) configured. The correlation ID appears as a span attribute across the complete processing chain.
@@ -1008,7 +1008,7 @@ Hexalith.EventStore assigns a correlation ID to every command submission. Use it
 
     ```bash
     # Topic pattern: deadletter.{tenant}.{domain}.events
-    $ dapr logs --app-id commandapi | grep "deadletter"
+    $ dapr logs --app-id eventstore | grep "deadletter"
     ```
 
 ### Dead-Letter Topic Inspection

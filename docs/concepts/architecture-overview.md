@@ -22,8 +22,8 @@ flowchart TB
     ReadClient([Read-model Client])
 
     subgraph AppHost["Aspire AppHost"]
-        CommandApi[Command API Gateway]
-        CmdSidecar(DAPR Sidecar<br/>commandapi)
+        EventStore[Command API Gateway]
+        CmdSidecar(DAPR Sidecar<br/>eventstore)
         Sample[Domain Service<br/>Counter Sample]
         SampleSidecar(DAPR Sidecar<br/>sample)
         Actor[Aggregate Actor]
@@ -31,11 +31,11 @@ flowchart TB
         SignalRHub[Projection Changed Hub]
         Placement([Actor Placement])
 
-        Client -->|REST| CommandApi
-        ReadClient -->|REST queries| CommandApi
+        Client -->|REST| EventStore
+        ReadClient -->|REST queries| EventStore
         ReadClient <-.->|SignalR| SignalRHub
-        CommandApi --> Actor
-        CommandApi --> Query
+        EventStore --> Actor
+        EventStore --> Query
         Actor --- CmdSidecar
         CmdSidecar -->|Service Invocation| SampleSidecar
         SampleSidecar --> Sample
@@ -43,7 +43,7 @@ flowchart TB
         SampleSidecar -->|Response| CmdSidecar
         CmdSidecar -->|Persist| StateStore[(State Store)]
         CmdSidecar -->|Publish| PubSub{{Pub/Sub}}
-        PubSub -->|Projection changed| CommandApi
+        PubSub -->|Projection changed| EventStore
         CmdSidecar -->|Resolve| ConfigStore[/Config Store/]
         Placement -->|Assign| Actor
     end
@@ -56,9 +56,9 @@ The diagram shows the complete Hexalith.EventStore topology running inside the A
 
 An HTTP Client (shown as a rounded shape) sends REST requests to the Command API Gateway (rectangle), which is the system's single entry point. A read-model client can call the same gateway for query execution and optionally connect to the Projection Changed Hub for lightweight refresh signals. The Command API Gateway routes commands to the Aggregate Actor (rectangle), which is the core processing unit for each aggregate identity.
 
-The Aggregate Actor communicates through its DAPR Sidecar (rounded rectangle, labeled "commandapi"), which handles all infrastructure interactions on the actor's behalf. The commandapi sidecar connects to three infrastructure components: a State Store (cylinder shape) for persisting events, snapshots, and actor state; a Pub/Sub component (hexagon shape) for publishing domain events to downstream subscribers; and a Config Store (parallelogram shape) for resolving which domain service handles commands for a given tenant and domain.
+The Aggregate Actor communicates through its DAPR Sidecar (rounded rectangle, labeled "eventstore"), which handles all infrastructure interactions on the actor's behalf. The eventstore sidecar connects to three infrastructure components: a State Store (cylinder shape) for persisting events, snapshots, and actor state; a Pub/Sub component (hexagon shape) for publishing domain events to downstream subscribers; and a Config Store (parallelogram shape) for resolving which domain service handles commands for a given tenant and domain.
 
-When the actor needs to invoke business logic, the commandapi sidecar uses DAPR Service Invocation to call the sample sidecar (another rounded rectangle), which forwards the request to the Domain Service (rectangle, labeled "Counter Sample"). The Domain Service processes the command using pure business logic and returns events back through the sidecar chain to the actor.
+When the actor needs to invoke business logic, the eventstore sidecar uses DAPR Service Invocation to call the sample sidecar (another rounded rectangle), which forwards the request to the Domain Service (rectangle, labeled "Counter Sample"). The Domain Service processes the command using pure business logic and returns events back through the sidecar chain to the actor.
 
 After events are published, projection handlers can emit a projection-changed notification back to the Command API. The API uses that signal to refresh ETags and, when enabled, broadcast a SignalR message to connected clients that subscribed to the affected projection type and tenant.
 
@@ -113,7 +113,7 @@ Topics follow a tenant-isolated naming pattern. For example, events from the Cou
 
 Service invocation lets one application call another through DAPR sidecars, without needing to know the target's network address. DAPR handles service discovery, load balancing, and mutual TLS automatically.
 
-Hexalith uses service invocation when the Command API Gateway needs to call a domain service. In the quickstart, when you sent `IncrementCounter`, the commandapi sidecar invoked the sample domain service's `/process` endpoint through the sample sidecar. Your domain service received a clean HTTP POST with the command — it never needed to know where the Command API Gateway was running.
+Hexalith uses service invocation when the Command API Gateway needs to call a domain service. In the quickstart, when you sent `IncrementCounter`, the eventstore sidecar invoked the sample domain service's `/process` endpoint through the sample sidecar. Your domain service received a clean HTTP POST with the command — it never needed to know where the Command API Gateway was running.
 
 [Learn more about DAPR Service Invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/)
 
@@ -137,7 +137,7 @@ Hexalith uses the configuration store for **domain service resolution** — mapp
 
 ### Command API Gateway
 
-The Command API Gateway (`commandapi`, port 8080) is the system's entry point. It is a .NET Minimal API application that hosts:
+The Command API Gateway (`eventstore`, port 8080) is the system's entry point. It is a .NET Minimal API application that hosts:
 
 - **REST endpoints** for submitting commands, querying command status, replaying commands, validating command/query authorization, and executing queries
 - **JWT authentication** with claims transformation for tenant-aware authorization
@@ -177,7 +177,7 @@ The defining principle of Hexalith domain services is **zero infrastructure acce
 
 This is not just a sample convention — it is a core Hexalith design principle. Your domain services work identically regardless of what infrastructure DAPR is wired to. To switch from Redis to PostgreSQL, you change one YAML file — zero code changes, zero recompilation.
 
-DAPR enforces component-level scoping so domain services cannot access infrastructure directly. The state store, pub/sub, and config store components are scoped to `commandapi` only — domain services are explicitly denied access at the DAPR level.
+DAPR enforces component-level scoping so domain services cannot access infrastructure directly. The state store, pub/sub, and config store components are scoped to `eventstore` only — domain services are explicitly denied access at the DAPR level.
 
 ### Infrastructure Portability
 

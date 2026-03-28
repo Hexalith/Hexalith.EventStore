@@ -17,7 +17,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IBackupCommandService"/>.
-/// All write methods delegate to CommandApi via DAPR service invocation — never writes directly.
+/// All write methods delegate to EventStore via DAPR service invocation — never writes directly.
 /// </summary>
 public sealed class DaprBackupCommandService : IBackupCommandService
 {
@@ -65,7 +65,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
             urlBuilder.Append($"&description={Uri.EscapeDataString(description)}");
         }
 
-        return await InvokeCommandApiPostAsync<object?>(
+        return await InvokeEventStorePostAsync<object?>(
             urlBuilder.ToString(),
             null,
             ct).ConfigureAwait(false);
@@ -75,7 +75,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
     public async Task<AdminOperationResult> ValidateBackupAsync(
         string backupId,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             $"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/validate",
             new { backupId },
             ct).ConfigureAwait(false);
@@ -86,7 +86,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
         DateTimeOffset? pointInTime,
         bool dryRun,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             $"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/restore",
             new { backupId, pointInTime, dryRun },
             ct).ConfigureAwait(false);
@@ -103,7 +103,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
-                _options.CommandApiAppId,
+                _options.EventStoreAppId,
                 "api/v1/admin/backups/export-stream",
                 request)
                 ?? CreateFallbackRequest(HttpMethod.Post, "api/v1/admin/backups/export-stream", request);
@@ -119,11 +119,11 @@ public sealed class DaprBackupCommandService : IBackupCommandService
                 .InvokeMethodAsync<StreamExportResult>(httpRequest, cts.Token)
                 .ConfigureAwait(false);
 
-            return result ?? new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, "Null response from CommandApi");
+            return result ?? new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, "Null response from EventStore");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("CommandApi export-stream timed out.");
+            _logger.LogWarning("EventStore export-stream timed out.");
             return new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, "Service invocation timed out");
         }
         catch (OperationCanceledException)
@@ -132,7 +132,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to invoke CommandApi export-stream.");
+            _logger.LogWarning(ex, "Failed to invoke EventStore export-stream.");
             return new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, ex.Message);
         }
     }
@@ -142,12 +142,12 @@ public sealed class DaprBackupCommandService : IBackupCommandService
         string tenantId,
         string content,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             "api/v1/admin/backups/import-stream",
             new { tenantId, content },
             ct).ConfigureAwait(false);
 
-    private async Task<AdminOperationResult> InvokeCommandApiPostAsync<TRequest>(
+    private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
         string endpoint,
         TRequest request,
         CancellationToken ct)
@@ -158,7 +158,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
-                _options.CommandApiAppId,
+                _options.EventStoreAppId,
                 endpoint,
                 request)
                 ?? CreateFallbackRequest(HttpMethod.Post, endpoint, request);
@@ -174,11 +174,11 @@ public sealed class DaprBackupCommandService : IBackupCommandService
                 .InvokeMethodAsync<AdminOperationResult>(httpRequest, cts.Token)
                 .ConfigureAwait(false);
 
-            return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from CommandApi", "NULL_RESPONSE");
+            return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("CommandApi endpoint '{Endpoint}' timed out.", endpoint);
+            _logger.LogWarning("EventStore endpoint '{Endpoint}' timed out.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, "Service invocation timed out", "TIMEOUT");
         }
         catch (OperationCanceledException)
@@ -187,7 +187,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to invoke CommandApi endpoint '{Endpoint}'.", endpoint);
+            _logger.LogWarning(ex, "Failed to invoke EventStore endpoint '{Endpoint}'.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
         }
     }

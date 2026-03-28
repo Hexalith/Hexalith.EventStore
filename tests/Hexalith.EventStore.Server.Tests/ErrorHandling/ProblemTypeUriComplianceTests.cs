@@ -1,8 +1,8 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.ErrorHandling;
-using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Testing.Fakes;
@@ -292,7 +292,7 @@ public class ProblemTypeUriComplianceTests {
         // ProblemTypeUris.RateLimitExceeded, not an inline RFC string (Task 7.8)
         string sourceFile = Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-            "src", "Hexalith.EventStore.CommandApi", "Extensions", "ServiceCollectionExtensions.cs");
+            "src", "Hexalith.EventStore", "Extensions", "ServiceCollectionExtensions.cs");
         File.Exists(sourceFile).ShouldBeTrue($"Expected to find source file at '{sourceFile}'.");
 
         string content = File.ReadAllText(sourceFile);

@@ -1,5 +1,5 @@
 
-using Hexalith.EventStore.CommandApi.ErrorHandling;
+using Hexalith.EventStore.ErrorHandling;
 
 using Shouldly;
 

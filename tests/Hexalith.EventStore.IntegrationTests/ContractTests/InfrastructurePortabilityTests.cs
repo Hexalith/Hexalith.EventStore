@@ -93,7 +93,7 @@ public class InfrastructurePortabilityTests {
         submitRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Act - submit via REST API (backend-agnostic)
-        using HttpResponseMessage submitResponse = await _fixture.CommandApiClient
+        using HttpResponseMessage submitResponse = await _fixture.EventStoreClient
             .SendAsync(submitRequest);
 
         if (submitResponse.StatusCode != HttpStatusCode.Accepted) {
@@ -113,7 +113,7 @@ public class InfrastructurePortabilityTests {
             using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            using HttpResponseMessage statusResponse = await _fixture.CommandApiClient
+            using HttpResponseMessage statusResponse = await _fixture.EventStoreClient
                 .SendAsync(statusRequest);
 
             if (statusResponse.StatusCode == HttpStatusCode.OK) {

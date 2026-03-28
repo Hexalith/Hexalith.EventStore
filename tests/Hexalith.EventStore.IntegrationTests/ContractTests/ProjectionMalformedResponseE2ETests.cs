@@ -41,14 +41,14 @@ public class ProjectionMalformedResponseE2ETests {
         string aggregateId = $"projection-fault-{Guid.NewGuid():N}";
 
         string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
-            _fixture.CommandApiClient,
+            _fixture.EventStoreClient,
             "tenant-a",
             "counter",
             aggregateId,
             "IncrementCounter");
 
         JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            _fixture.CommandApiClient,
+            _fixture.EventStoreClient,
             correlationId,
             "tenant-a");
 

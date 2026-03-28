@@ -102,7 +102,7 @@ spec:
     - name: redisHost
       value: "redis:6379"
   scopes:
-    - commandapi
+    - eventstore
 ```
 
 **Kubernetes** — CRD with PostgreSQL and K8s Secrets:
@@ -122,7 +122,7 @@ spec:
         name: postgres-credentials
         key: connection-string
   scopes:
-    - commandapi
+    - eventstore
 ```
 
 **Azure Container Apps** — simplified schema with Cosmos DB and managed identity:
@@ -140,10 +140,10 @@ metadata:
   - name: azureClientId
     value: "<managed-identity-client-id>"
 scopes:
-  - commandapi
+  - eventstore
 ```
 
-Notice: the schema format differs, the backend changes (Redis → PostgreSQL → Cosmos DB), the secret approach changes (env var → K8s Secret → managed identity), but scoping is always `commandapi` only (D4 principle) and the application code is unchanged.
+Notice: the schema format differs, the backend changes (Redis → PostgreSQL → Cosmos DB), the secret approach changes (env var → K8s Secret → managed identity), but scoping is always `eventstore` only (D4 principle) and the application code is unchanged.
 
 ## Choosing Your Deployment Target
 
@@ -197,7 +197,7 @@ These patterns remain identical regardless of deployment target:
 - **Command status key:** `{tenant}:{correlationId}:status` with 24-hour TTL
 - **Topic naming:** `{tenant}.{domain}.events`
 - **Dead-letter routing:** `deadletter.{tenant}.{domain}.events`
-- **Component scoping:** Only the `commandapi` app-id accesses state store and pub/sub (D4)
+- **Component scoping:** Only the `eventstore` app-id accesses state store and pub/sub (D4)
 - **Deny-by-default access control:** Different implementation per environment, same security posture
 
 ## Backend Compatibility Matrix

@@ -67,7 +67,7 @@ public class DaprHealthQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetSystemHealthAsync_ReturnsDegraded_WhenCommandApiUnavailable() {
+    public async Task GetSystemHealthAsync_ReturnsDegraded_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns(CreateMetadata());
@@ -78,7 +78,7 @@ public class DaprHealthQueryServiceTests {
         daprClient.InvokeMethodAsync<string>(
             Arg.Any<HttpRequestMessage>(),
             Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("CommandApi down"));
+            .ThrowsAsync(new InvalidOperationException("EventStore down"));
 
         DaprHealthQueryService service = CreateService(daprClient);
 

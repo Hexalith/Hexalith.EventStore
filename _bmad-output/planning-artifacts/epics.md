@@ -62,7 +62,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 **Domain Service Integration (FR21-FR25)**
 
 - FR21: A domain service developer can implement a domain processor as a pure function: `(Command, CurrentState?) -> DomainResult`. EventStore handles all metadata enrichment
-- FR22: A domain service developer can register their domain service via explicit DAPR configuration or convention-based assembly scanning
+- FR22: A domain service developer's domain service is automatically routed by convention (AppId = domain name, method "process") with zero configuration. Routing overridable via static registrations or DAPR config store (opt-in) for complex scenarios
 - FR23: The system can invoke a registered domain service when processing a command, passing command and current aggregate state
 - FR24: The system can process commands for at least 2 independent domains within the same instance
 - FR25: The system can process commands for at least 2 tenants within the same domain, each with isolated event streams
@@ -189,7 +189,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - D1: Event Storage Strategy -- Single-key-per-event with actor-level ACID writes. Key pattern: `{tenant}:{domain}:{aggId}:events:{seq}`, metadata at `{tenant}:{domain}:{aggId}:metadata`. ETag-based optimistic concurrency on metadata key
 - D2: Command Status Storage -- Dedicated state store key `{tenant}:{correlationId}:status`. Checkpointed state machine: Received -> Processing -> EventsStored -> EventsPublished -> Completed | Rejected | PublishFailed | TimedOut. 24-hour default TTL
 - D3: Domain Service Error Contract -- Errors as events (rejection events via `IRejectionEvent` marker interface). Infrastructure failures only go to dead-letter after DAPR retry exhaustion. Domain services MUST maintain backward-compatible deserialization for all event types
-- D4: DAPR Access Control -- Per-app-id allow list. CommandApi can invoke actor services and domain services
+- D4: DAPR Access Control -- Per-app-id allow list. EventStore can invoke actor services and domain services
 - D5: Error Response Format -- RFC 7807 Problem Details + extensions (correlationId, tenantId, validationErrors)
 - D6: Pub/Sub Topic Naming -- `{tenant}.{domain}.events` dot-separated pattern
 - D7: Domain Service Invocation -- DAPR service invocation (`DaprClient.InvokeMethodAsync`) with mTLS and resiliency policies
@@ -233,7 +233,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 1. Contracts package first
 2. Testing package early
 3. Server package
-4. CommandApi host
+4. EventStore host
 5. Client package
 6. Sample domain service
 7. Aspire + AppHost
@@ -277,7 +277,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 
 **REST API Success Experience (v1)**
 
-- UX-DR12: OpenAPI 3.1 spec with Swagger UI at `/swagger` on running CommandApi, with grouped endpoints
+- UX-DR12: OpenAPI 3.1 spec with Swagger UI at `/swagger` on running EventStore, with grouped endpoints
 - UX-DR13: Pre-populated example payloads in OpenAPI spec -- Swagger UI "Try it out" pre-fills a valid Counter domain command
 - UX-DR14: Command status endpoint at `/api/commands/status/{correlationId}` returning current lifecycle state with timestamp
 - UX-DR15: `202 Accepted` response with `Location` header (pointing to status endpoint) + `Retry-After: 1` header
@@ -834,7 +834,7 @@ So that I can explore and test the API without reading separate documentation.
 
 **Acceptance Criteria:**
 
-**Given** the CommandApi is running,
+**Given** the EventStore is running,
 **When** a consumer navigates to `/swagger`,
 **Then** Swagger UI loads with OpenAPI 3.1 spec (UX-DR12)
 **And** endpoints are grouped logically (Commands, Health).
@@ -969,7 +969,7 @@ So that the internal call graph is enforced and unauthorized component interacti
 
 **Given** DAPR access control policies,
 **When** configured,
-**Then** CommandApi can invoke actor services and domain services (D4, FR34)
+**Then** EventStore can invoke actor services and domain services (D4, FR34)
 **And** domain services cannot invoke other services directly
 **And** the policy is expressed as a per-app-id allow list with `allowedOperations`.
 
@@ -984,7 +984,7 @@ So that the full six-layer auth pipeline is verified at runtime with real IdP-is
 **Given** `Aspire.Hosting.Keycloak` added to AppHost,
 **When** the Aspire topology starts,
 **Then** Keycloak runs on port 8180 with the `hexalith` realm loaded from `hexalith-realm.json` (D11)
-**And** CommandApi's `Authority` is configured to Keycloak's realm URL via environment variable overrides.
+**And** EventStore's `Authority` is configured to Keycloak's realm URL via environment variable overrides.
 
 **Given** 5 pre-configured test users (admin-user, tenant-a-user, tenant-b-user, readonly-user, no-tenant-user),
 **When** E2E tests acquire tokens via Resource Owner Password Grant,
@@ -1034,7 +1034,7 @@ So that load balancers and orchestrators can route traffic correctly.
 
 **Acceptance Criteria:**
 
-**Given** the CommandApi is running,
+**Given** the EventStore is running,
 **When** the health endpoint is called,
 **Then** it reports DAPR sidecar, state store, and pub/sub connectivity status (FR38).
 
@@ -1351,7 +1351,7 @@ So that connected clients receive real-time push notifications without polling.
 **And** the signal contains no projection data — clients re-query on receipt.
 
 **Given** the SignalR hub endpoint,
-**When** the CommandApi starts,
+**When** the EventStore starts,
 **Then** the hub is conditionally mapped at `/hubs/projection-changes` (FR56).
 
 ### Story 10.2: Redis Backplane for Multi-Instance SignalR
@@ -1407,7 +1407,7 @@ So that the projection builder can deliver events without coupling to DAPR inter
 
 **Given** the Contracts project,
 **When** `ProjectionResponse` is defined,
-**Then** it contains: ProjectionType (string), State (JsonElement) — State is opaque, CommandApi never interprets it.
+**Then** it contains: ProjectionType (string), State (JsonElement) — State is opaque, EventStore never interprets it.
 
 **Given** `IAggregateActor`,
 **When** `GetEventsAsync(long fromSequence)` is called,
@@ -1470,7 +1470,7 @@ So that no explicit projection registration is needed beyond existing domain ser
 
 **Acceptance Criteria:**
 
-**Given** a domain service registered in `EventStore:DomainServices` that also exposes a `/project` endpoint,
+**Given** a domain service reachable via convention (AppId = domain name) or explicit registration that also exposes a `/project` endpoint,
 **When** the system starts,
 **Then** it is automatically wired for projection building via convention-based discovery.
 
@@ -1507,7 +1507,7 @@ So that I have a working reference for how domain services build projection stat
 **Given** the Blazor UI increments the counter,
 **When** the full pipeline executes (command -> events -> /project -> ProjectionActor -> query),
 **Then** the counter value card displays the correct count
-**And** no `QueryNotFoundException` errors appear in commandapi logs.
+**And** no `QueryNotFoundException` errors appear in eventstore logs.
 
 ## Epic 12: Blazor Sample UI & Refresh Patterns
 

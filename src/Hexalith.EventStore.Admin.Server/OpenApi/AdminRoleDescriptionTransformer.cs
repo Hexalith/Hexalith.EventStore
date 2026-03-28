@@ -9,7 +9,7 @@ namespace Hexalith.EventStore.Admin.Server.OpenApi;
 /// <summary>
 /// Inspects endpoint authorization metadata and prepends role requirement text
 /// to operation descriptions in the OpenAPI document.
-/// Scoped to api/v1/admin/ prefix to avoid affecting CommandApi endpoints in co-hosted scenarios.
+/// Scoped to api/v1/admin/ prefix to avoid affecting EventStore endpoints in co-hosted scenarios.
 /// </summary>
 public sealed class AdminRoleDescriptionTransformer : IOpenApiOperationTransformer
 {

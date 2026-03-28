@@ -2,9 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Text.Json;
 
-using Hexalith.EventStore.CommandApi.Authentication;
-using Hexalith.EventStore.CommandApi.ErrorHandling;
-using Hexalith.EventStore.CommandApi.Middleware;
+using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

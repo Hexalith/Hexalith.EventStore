@@ -238,7 +238,7 @@ $ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/pro
 
 ### Add stock
 
-Open the Swagger UI (append `/swagger` to the `commandapi` URL in the Aspire dashboard), authorize with your token, and submit this request body to **POST /api/v1/commands**:
+Open the Swagger UI (append `/swagger` to the `eventstore` URL in the Aspire dashboard), authorize with your token, and submit this request body to **POST /api/v1/commands**:
 
 ```json
 {

@@ -12,21 +12,21 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// Shared fixture that starts the full Aspire topology with Keycloak ONCE
 /// for all E2E security tests. Implements <see cref="IAsyncLifetime"/> so xUnit
 /// creates/disposes it around the test collection lifetime.
-/// Tests access the running topology via <see cref="CommandApiClient"/>,
+/// Tests access the running topology via <see cref="EventStoreClient"/>,
 /// <see cref="App"/>, and <see cref="GetTokenAsync"/>.
 /// </summary>
 public class AspireTopologyFixture : IAsyncLifetime {
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private string? _previousEnableKeycloak;
-    private HttpClient? _commandApiClient;
+    private HttpClient? _eventStoreClient;
     private string? _keycloakBaseUrl;
 
     /// <summary>
-    /// Gets the HTTP client for the CommandApi service.
+    /// Gets the HTTP client for the EventStore service.
     /// Available after <see cref="InitializeAsync"/> completes.
     /// </summary>
-    public HttpClient CommandApiClient => _commandApiClient ?? throw new InvalidOperationException(
+    public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
     /// <summary>
@@ -61,9 +61,9 @@ public class AspireTopologyFixture : IAsyncLifetime {
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);
 
-        // Create HTTP client for CommandApi
-        _commandApiClient = _app.CreateHttpClient("commandapi");
-        _commandApiClient.Timeout = TimeSpan.FromSeconds(60);
+        // Create HTTP client for EventStore
+        _eventStoreClient = _app.CreateHttpClient("eventstore");
+        _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
         // Get the Keycloak base URL for token acquisition
         Uri keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
@@ -71,7 +71,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
 
         // Wait for infrastructure readiness to avoid startup race conditions in E2E tests.
         await WaitForEndpointAsync(
-            _commandApiClient,
+            _eventStoreClient,
             "/api/v1/commands",
             expectedStatusCodes: [HttpStatusCode.Unauthorized, HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound],
             timeout: TimeSpan.FromMinutes(5),
@@ -95,16 +95,16 @@ public class AspireTopologyFixture : IAsyncLifetime {
             timeout: TimeSpan.FromMinutes(2),
             pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
 
-        // Wait for CommandApi health endpoint (includes Dapr sidecar, state store, pub/sub checks).
+        // Wait for EventStore health endpoint (includes Dapr sidecar, state store, pub/sub checks).
         // Without this, actor invocations fail because the Dapr sidecar/placement service isn't ready.
         await WaitForEndpointAsync(
-            _commandApiClient,
+            _eventStoreClient,
             "/health",
             expectedStatusCodes: [HttpStatusCode.OK],
             timeout: TimeSpan.FromMinutes(3),
             pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
 
-        // Wait for the sample domain service to be ready. The CommandApi's actor pipeline
+        // Wait for the sample domain service to be ready. The EventStore's actor pipeline
         // invokes the sample service via Dapr service invocation. Without this check,
         // the first command submission hangs until the sample sidecar becomes available.
         using HttpClient sampleProbeClient = _app.CreateHttpClient("sample");
@@ -118,7 +118,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     }
 
     public async Task DisposeAsync() {
-        _commandApiClient?.Dispose();
+        _eventStoreClient?.Dispose();
         if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);
         }
@@ -268,8 +268,8 @@ public class AspireTopologyFixture : IAsyncLifetime {
 
         // Capture Dapr sidecar and Redis logs if we timed out waiting for health.
         // In Aspire Testing the sidecar runs as a process (not a container), so
-        // "commandapi-dapr" may not appear in docker ps; the message below reflects that.
-        string daprLogs = await CaptureContainerLogsAsync("commandapi-dapr").ConfigureAwait(false);
+        // "eventstore-dapr" may not appear in docker ps; the message below reflects that.
+        string daprLogs = await CaptureContainerLogsAsync("eventstore-dapr").ConfigureAwait(false);
         string redisLogs = await CaptureContainerLogsAsync("redis").ConfigureAwait(false);
 
         throw new TimeoutException(

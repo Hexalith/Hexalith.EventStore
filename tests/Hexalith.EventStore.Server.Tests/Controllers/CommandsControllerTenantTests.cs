@@ -4,14 +4,14 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-using Hexalith.EventStore.CommandApi.Authorization;
-using Hexalith.EventStore.CommandApi.Configuration;
-using Hexalith.EventStore.CommandApi.Controllers;
-using Hexalith.EventStore.CommandApi.ErrorHandling;
-using Hexalith.EventStore.CommandApi.Middleware;
-using Hexalith.EventStore.CommandApi.Models;
-using Hexalith.EventStore.CommandApi.Pipeline;
-using Hexalith.EventStore.CommandApi.Validation;
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Controllers;
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Models;
+using Hexalith.EventStore.Pipeline;
+using Hexalith.EventStore.Validation;
 using Hexalith.EventStore.Server.Actors.Authorization;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 

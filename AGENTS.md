@@ -90,6 +90,6 @@ With `EnableKeycloak=false`, JWT tokens are validated against the symmetric key 
 ### Known gotchas
 
 - DAPR slim mode does not start placement/scheduler automatically — you must start them before `aspire run` or actors will fail with "did not find address for actor".
-- DAPR access control policies (in `DaprComponents/accesscontrol.yaml`) enforce deny-by-default. In slim mode without mTLS, service-to-service invocations from commandapi to domain services (e.g. sample) may be rejected with 403. This does not affect unit tests or actor processing.
+- DAPR access control policies (in `DaprComponents/accesscontrol.yaml`) enforce deny-by-default. In slim mode without mTLS, service-to-service invocations from eventstore to domain services (e.g. sample) may be rejected with 403. This does not affect unit tests or actor processing.
 - The HTTPS dev certificate cannot be fully trusted in the cloud VM — `aspire run` will warn but continues to work. Use `http://localhost:8080` for API calls.
 - Run test projects individually (not via a solution-level `dotnet test`) or use the `.slnx` solution file.

@@ -6,7 +6,7 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 using Dapr.Client;
 
-using Hexalith.EventStore.CommandApi.Telemetry;
+using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
@@ -311,7 +311,7 @@ public class DeadLetterTraceChainTests {
         using var listener = new ActivityListener {
             ShouldListenTo = source =>
                 source.Name is EventStoreActivitySource.SourceName
-                or "Hexalith.EventStore.CommandApi",
+                or "Hexalith.EventStore",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => {
                 if (Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), correlationId)) {
@@ -327,7 +327,7 @@ public class DeadLetterTraceChainTests {
             .ThrowsAsync(new InvalidOperationException("Simulated domain service failure"));
 
         // Act: create API submit span, then run actor processing
-        using (Activity? apiActivity = EventStoreActivitySources.CommandApi.StartActivity(EventStoreActivitySources.Submit, ActivityKind.Server)) {
+        using (Activity? apiActivity = EventStoreActivitySources.EventStore.StartActivity(EventStoreActivitySources.Submit, ActivityKind.Server)) {
             _ = apiActivity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId);
             _ = apiActivity?.SetTag(EventStoreActivitySource.TagTenantId, envelope.TenantId);
             _ = apiActivity?.SetTag(EventStoreActivitySource.TagDomain, envelope.Domain);

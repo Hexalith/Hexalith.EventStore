@@ -17,7 +17,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprStreamQueryServiceSandboxTests
 {
     private const string StateStoreName = "statestore";
-    private const string CommandApiAppId = "command-api";
+    private const string EventStoreAppId = "command-api";
 
     private static DaprStreamQueryService CreateService(
         DaprClient? daprClient = null,
@@ -29,7 +29,7 @@ public class DaprStreamQueryServiceSandboxTests
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
         {
             StateStoreName = StateStoreName,
-            CommandApiAppId = CommandApiAppId,
+            EventStoreAppId = EventStoreAppId,
             ServiceInvocationTimeoutSeconds = 30,
         });
 

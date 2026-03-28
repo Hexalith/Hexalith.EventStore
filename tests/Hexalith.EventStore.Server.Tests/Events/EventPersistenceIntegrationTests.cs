@@ -213,7 +213,7 @@ public class EventPersistenceIntegrationTests {
     private static async Task<string> GetStateJsonAsync(string key) {
         string[] segments = key.Split(':');
         string actorId = $"{segments[0]}:{segments[1]}:{segments[2]}";
-        string redisKey = $"commandapi||AggregateActor||{actorId}||{key}";
+        string redisKey = $"eventstore||AggregateActor||{actorId}||{key}";
 
         IConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(true);
         IDatabase database = multiplexer.GetDatabase();

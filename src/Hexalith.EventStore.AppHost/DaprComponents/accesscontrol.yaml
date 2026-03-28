@@ -1,11 +1,11 @@
-# DAPR Access Control Configuration for the CommandApi sidecar (D4, FR34, NFR15)
+# DAPR Access Control Configuration for the EventStore sidecar (D4, FR34, NFR15)
 # ===============================================================================
-# This Configuration CRD is loaded ONLY by the commandapi sidecar and therefore
-# governs which CALLERS may invoke CommandApi endpoints through Dapr service invocation.
+# This Configuration CRD is loaded ONLY by the eventstore sidecar and therefore
+# governs which CALLERS may invoke EventStore endpoints through Dapr service invocation.
 #
 # Allowed callers in the local topology:
-#   - admin-server (port 8090): Admin REST API host. Needs GET/POST/PUT to delegate
-#     admin reads and writes to CommandApi (ADR-P4).
+#   - eventstore-admin (port 8090): Admin REST API host. Needs GET/POST/PUT to delegate
+#     admin reads and writes to EventStore (ADR-P4).
 #
 # Security Posture (D4, FR34, NFR15):
 #   defaultAction: allow (self-hosted mode without mTLS).
@@ -15,7 +15,7 @@
 #   ALL service invocations regardless of policy rules.
 #
 #   For PRODUCTION (Kubernetes with mTLS + Sentry), use deny-by-default and bind
-#   this config only to the CommandApi workload:
+#   this config only to the EventStore workload:
 #     1. Change defaultAction to "deny"
 #     2. Set trustDomain to your SPIFFE domain (e.g. "hexalith.io")
 #     3. Update each policy trustDomain + namespace to match the caller's K8s identity
@@ -29,9 +29,9 @@ spec:
     defaultAction: allow  # Allow-by-default in self-hosted mode; change to deny with mTLS
     trustDomain: "public"
     policies:
-      # admin-server: Admin API host -- invokes commandapi for write delegation (ADR-P4)
-      # Admin reads go to DAPR state store directly; writes delegate to commandapi.
-      - appId: admin-server
+      # eventstore-admin: Admin API host -- invokes eventstore for write delegation (ADR-P4)
+      # Admin reads go to DAPR state store directly; writes delegate to eventstore.
+      - appId: eventstore-admin
         defaultAction: deny
         trustDomain: "public"
         namespace: "default"

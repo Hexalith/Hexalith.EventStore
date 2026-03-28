@@ -15,7 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IStorageCommandService"/>.
-/// All write methods delegate to CommandApi via DAPR service invocation — never writes directly.
+/// All write methods delegate to EventStore via DAPR service invocation — never writes directly.
 /// </summary>
 public sealed class DaprStorageCommandService : IStorageCommandService
 {
@@ -54,7 +54,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService
         string tenantId,
         string? domain,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             "api/v1/admin/storage/compact",
             new { tenantId, domain },
             ct).ConfigureAwait(false);
@@ -65,7 +65,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService
         string domain,
         string aggregateId,
         CancellationToken ct = default)
-        => await InvokeCommandApiPostAsync(
+        => await InvokeEventStorePostAsync(
             "api/v1/admin/storage/snapshot",
             new { tenantId, domain, aggregateId },
             ct).ConfigureAwait(false);
@@ -77,7 +77,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService
         string aggregateType,
         int intervalEvents,
         CancellationToken ct = default)
-        => await InvokeCommandApiAsync(
+        => await InvokeEventStoreAsync(
             HttpMethod.Put,
             "api/v1/admin/storage/snapshot-policy",
             new { tenantId, domain, aggregateType, intervalEvents },
@@ -89,19 +89,19 @@ public sealed class DaprStorageCommandService : IStorageCommandService
         string domain,
         string aggregateType,
         CancellationToken ct = default)
-        => await InvokeCommandApiAsync(
+        => await InvokeEventStoreAsync(
             HttpMethod.Delete,
             "api/v1/admin/storage/snapshot-policy",
             new { tenantId, domain, aggregateType },
             ct).ConfigureAwait(false);
 
-    private async Task<AdminOperationResult> InvokeCommandApiPostAsync<TRequest>(
+    private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
         string endpoint,
         TRequest request,
         CancellationToken ct)
-        => await InvokeCommandApiAsync(HttpMethod.Post, endpoint, request, ct).ConfigureAwait(false);
+        => await InvokeEventStoreAsync(HttpMethod.Post, endpoint, request, ct).ConfigureAwait(false);
 
-    private async Task<AdminOperationResult> InvokeCommandApiAsync<TRequest>(
+    private async Task<AdminOperationResult> InvokeEventStoreAsync<TRequest>(
         HttpMethod method,
         string endpoint,
         TRequest request,
@@ -113,7 +113,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
-                _options.CommandApiAppId,
+                _options.EventStoreAppId,
                 endpoint,
                 request)
                 ?? CreateFallbackRequest(method, endpoint, request);
@@ -129,11 +129,11 @@ public sealed class DaprStorageCommandService : IStorageCommandService
                 .InvokeMethodAsync<AdminOperationResult>(httpRequest, cts.Token)
                 .ConfigureAwait(false);
 
-            return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from CommandApi", "NULL_RESPONSE");
+            return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("CommandApi endpoint '{Endpoint}' timed out.", endpoint);
+            _logger.LogWarning("EventStore endpoint '{Endpoint}' timed out.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, "Service invocation timed out", "TIMEOUT");
         }
         catch (OperationCanceledException)
@@ -142,7 +142,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to invoke CommandApi endpoint '{Endpoint}'.", endpoint);
+            _logger.LogWarning(ex, "Failed to invoke EventStore endpoint '{Endpoint}'.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
         }
     }

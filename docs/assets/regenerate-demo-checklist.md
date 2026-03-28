@@ -24,7 +24,7 @@ Before recording, ensure you have:
    ```
 
 3. Wait for the Aspire dashboard to open automatically (typically `https://localhost:15888` or as displayed in the terminal output).
-4. Verify all services are healthy in the Aspire dashboard: commandapi, sample, redis, and keycloak (if enabled).
+4. Verify all services are healthy in the Aspire dashboard: eventstore, sample, redis, and keycloak (if enabled).
 5. Open Swagger UI at the CommandAPI port (typically `https://localhost:8080/swagger` — check `launchSettings.json` for the exact port).
 
 ## Capture the Recording
@@ -34,7 +34,7 @@ Set your capture area to approximately 960px wide. Record the following sequence
 1. **Aspire dashboard overview (2-3 seconds)** — show all services with green/healthy indicators.
 2. **Switch to Swagger UI (3-4 seconds)** — navigate to a command endpoint (e.g., POST IncrementCounter), fill in a sample payload, and execute the command.
 3. **API response (1-2 seconds)** — show the 200/202 success response with the correlation ID.
-4. **Aspire traces/logs (3-4 seconds)** — switch back to the Aspire dashboard and show the trace spanning commandapi, actor, sample, state store, and pub/sub.
+4. **Aspire traces/logs (3-4 seconds)** — switch back to the Aspire dashboard and show the trace spanning eventstore, actor, sample, state store, and pub/sub.
 
 Target total duration: 10-15 seconds.
 

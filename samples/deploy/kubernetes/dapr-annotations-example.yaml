@@ -8,13 +8,13 @@
 # Supplementary to the Aspire publisher output.
 # See docs/guides/deployment-kubernetes.md for the full deployment guide.
 
-# --- commandapi Deployment annotations and probes ---
-# Add these to templates/commandapi.yaml at the indicated locations.
+# --- eventstore Deployment annotations and probes ---
+# Add these to templates/eventstore.yaml at the indicated locations.
 #
 # Location: spec.template.metadata.annotations
-commandapi_annotations:
+eventstore_annotations:
   dapr.io/enabled: "true"
-  dapr.io/app-id: "commandapi"
+  dapr.io/app-id: "eventstore"
   dapr.io/app-port: "8080"
   dapr.io/config: "accesscontrol"
   dapr.io/sidecar-cpu-request: "100m"
@@ -23,7 +23,7 @@ commandapi_annotations:
   dapr.io/sidecar-memory-limit: "256Mi"
 
 # Location: spec.template.spec.containers[0].resources
-commandapi_resources:
+eventstore_resources:
   requests:
     cpu: "250m"
     memory: "256Mi"
@@ -32,7 +32,7 @@ commandapi_resources:
     memory: "512Mi"
 
 # Location: spec.template.spec.containers[0] (add these probe blocks)
-commandapi_probes:
+eventstore_probes:
   startupProbe:
     httpGet:
       path: /alive

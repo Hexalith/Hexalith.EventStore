@@ -1,6 +1,6 @@
 using System.Reflection;
 
-using Hexalith.EventStore.CommandApi.Telemetry;
+using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Shouldly;
@@ -23,7 +23,7 @@ public class OpenTelemetryRegistrationTests {
         File.Exists(extensionsPath).ShouldBeTrue($"Expected ServiceDefaults file at '{extensionsPath}'");
 
         string source = File.ReadAllText(extensionsPath);
-        source.ShouldContain(".AddSource(\"Hexalith.EventStore.CommandApi\")");
+        source.ShouldContain(".AddSource(\"Hexalith.EventStore\")");
         source.ShouldContain(".AddSource(\"Hexalith.EventStore\")");
     }
 
@@ -67,16 +67,16 @@ public class OpenTelemetryRegistrationTests {
     }
 
     [Fact]
-    public void EventStoreActivitySources_CommandApiSourceNameIsCorrect() => EventStoreActivitySources.CommandApi.Name.ShouldBe("Hexalith.EventStore.CommandApi");
+    public void EventStoreActivitySources_EventStoreSourceNameIsCorrect() => EventStoreActivitySources.EventStore.Name.ShouldBe("Hexalith.EventStore");
 
     [Fact]
-    public void EventStoreActivitySources_SubmitConstantMatchesArchitecture() => EventStoreActivitySources.Submit.ShouldBe("EventStore.CommandApi.Submit");
+    public void EventStoreActivitySources_SubmitConstantMatchesArchitecture() => EventStoreActivitySources.Submit.ShouldBe("EventStore.Submit");
 
     [Fact]
-    public void EventStoreActivitySources_QueryStatusConstantMatchesArchitecture() => EventStoreActivitySources.QueryStatus.ShouldBe("EventStore.CommandApi.QueryStatus");
+    public void EventStoreActivitySources_QueryStatusConstantMatchesArchitecture() => EventStoreActivitySources.QueryStatus.ShouldBe("EventStore.QueryStatus");
 
     [Fact]
-    public void EventStoreActivitySources_ReplayConstantMatchesArchitecture() => EventStoreActivitySources.Replay.ShouldBe("EventStore.CommandApi.Replay");
+    public void EventStoreActivitySources_ReplayConstantMatchesArchitecture() => EventStoreActivitySources.Replay.ShouldBe("EventStore.Replay");
 
     private static string FindRepositoryRoot() {
         DirectoryInfo? current = new(AppContext.BaseDirectory);

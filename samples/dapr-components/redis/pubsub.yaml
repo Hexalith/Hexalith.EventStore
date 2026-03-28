@@ -34,6 +34,6 @@ spec:
     # (deadletter.{tenant}.{domain}.events) is configured separately.
     - name: deadLetterTopic
       value: "deadletter"
-# Scope to commandapi only. Domain services have zero pub/sub access.
+# Scope to eventstore only. Domain services have zero pub/sub access.
 scopes:
-  - commandapi
+  - eventstore

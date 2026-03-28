@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.IntegrationTests.Helpers;
 
 /// <summary>
 /// Shared helpers for Tier 3 contract tests that submit commands and poll status
-/// against the CommandApi via the Aspire topology. Centralizes patterns that would
+/// against the EventStore via the Aspire topology. Centralizes patterns that would
 /// otherwise be duplicated across test classes in the AspireContractTests collection.
 /// </summary>
 internal static class ContractTestHelpers {
@@ -20,11 +20,11 @@ internal static class ContractTestHelpers {
     public static readonly TimeSpan DefaultRetryTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>
-    /// Probes the CommandApi with a status query to verify it is reachable.
+    /// Probes the EventStore with a status query to verify it is reachable.
     /// Retries until a 200 OK or 404 NotFound is received, which proves the
     /// application layer is processing requests.
     /// </summary>
-    public static async Task AssertCommandApiResponsiveAsync(
+    public static async Task AssertEventStoreResponsiveAsync(
         HttpClient client,
         TimeSpan? timeout = null) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout ?? DefaultRetryTimeout);
@@ -62,7 +62,7 @@ internal static class ContractTestHelpers {
         }
 
         throw new ShouldAssertException(
-            "CommandApi control-plane endpoint did not remain responsive during domain service restart cycle.",
+            "EventStore control-plane endpoint did not remain responsive during domain service restart cycle.",
             lastError);
     }
 

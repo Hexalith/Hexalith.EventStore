@@ -3,7 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <summary>
 /// Flattened target-to-policy assignment for grid display.
 /// </summary>
-/// <param name="TargetName">The target name (e.g., "commandapi", "pubsub", "statestore").</param>
+/// <param name="TargetName">The target name (e.g., "eventstore", "pubsub", "statestore").</param>
 /// <param name="TargetType">The target type: "App" or "Component".</param>
 /// <param name="Direction">The direction: "Inbound", "Outbound", or null for apps and non-directional components.</param>
 /// <param name="RetryPolicy">The name of the assigned retry policy, or null.</param>

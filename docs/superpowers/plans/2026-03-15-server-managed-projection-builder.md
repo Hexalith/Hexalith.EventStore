@@ -4,7 +4,7 @@
 
 **Goal:** Enable queries to return real projection state by building a server-managed projection pipeline that delivers events to domain services and caches the returned state.
 
-**Architecture:** CommandApi reads new events from AggregateActor, sends them to the domain service's `/project` endpoint via DAPR service invocation, and stores the returned projection state in a generic ProjectionActor. Immediate (fire-and-forget) or polled delivery modes are supported. The domain microservice owns the Apply logic and projection state.
+**Architecture:** EventStore reads new events from AggregateActor, sends them to the domain service's `/project` endpoint via DAPR service invocation, and stores the returned projection state in a generic ProjectionActor. Immediate (fire-and-forget) or polled delivery modes are supported. The domain microservice owns the Apply logic and projection state.
 
 **Tech Stack:** .NET 10, DAPR Actors, DAPR Service Invocation, MediatR, xUnit + Shouldly + NSubstitute
 
@@ -159,7 +159,7 @@ namespace Hexalith.EventStore.Contracts.Projections;
 
 /// <summary>
 /// Response DTO from the domain service /project endpoint.
-/// State is opaque JSON — CommandApi stores and serves it without understanding the schema.
+/// State is opaque JSON — EventStore stores and serves it without understanding the schema.
 /// </summary>
 public record ProjectionResponse(
     string ProjectionType,
@@ -1124,7 +1124,7 @@ Run: `dotnet run --project src/Hexalith.EventStore.AppHost/`
 1. Open Blazor UI at the sample-blazor-ui endpoint
 2. Click Increment on the counter
 3. Verify the counter value updates from 0 to 1
-4. Check commandapi logs for projection update activity (no more `QueryNotFoundException` errors)
+4. Check eventstore logs for projection update activity (no more `QueryNotFoundException` errors)
 
 - [ ] **Step 5: Commit all remaining changes**
 

@@ -10,12 +10,12 @@ namespace Hexalith.EventStore.Aspire;
 /// </summary>
 /// <param name="StateStore">The DAPR state store component resource builder.</param>
 /// <param name="PubSub">The DAPR pub/sub component resource builder.</param>
-/// <param name="CommandApi">The CommandApi project resource builder.</param>
+/// <param name="EventStore">The EventStore project resource builder.</param>
 /// <param name="AdminServer">The Admin.Server.Host project resource builder.</param>
 /// <param name="AdminUI">The optional Admin.UI Blazor Server project resource builder.</param>
 public record HexalithEventStoreResources(
     IResourceBuilder<IDaprComponentResource> StateStore,
     IResourceBuilder<IDaprComponentResource> PubSub,
-    IResourceBuilder<ProjectResource> CommandApi,
+    IResourceBuilder<ProjectResource> EventStore,
     IResourceBuilder<ProjectResource> AdminServer,
     IResourceBuilder<ProjectResource>? AdminUI = null);

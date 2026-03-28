@@ -40,7 +40,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
             commandType: "IncrementCounter");
 
         // Act
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(request);
 
         // Assert
@@ -67,7 +67,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
             domain: "orders",
             commandType: "IncrementCounter");
 
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(request);
 
         if (response.StatusCode != HttpStatusCode.Accepted) {
@@ -96,7 +96,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
             domain: "orders",
             commandType: "IncrementCounter");
 
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -116,7 +116,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
             domain: "inventory",
             commandType: "IncrementCounter");
 
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -141,7 +141,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
             domain: "orders",
             commandType: "IncrementCounter");
 
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -161,7 +161,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
             domain: "orders",
             commandType: "IncrementCounter");
 
-        using HttpResponseMessage response = await CommandApiClient
+        using HttpResponseMessage response = await EventStoreClient
             .SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);

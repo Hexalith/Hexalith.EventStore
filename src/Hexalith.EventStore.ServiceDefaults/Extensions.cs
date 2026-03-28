@@ -59,7 +59,7 @@ public static class Extensions {
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation())
             .WithTracing(tracing => tracing.AddSource(builder.Environment.ApplicationName)
-                    .AddSource("Hexalith.EventStore.CommandApi")
+                    .AddSource("Hexalith.EventStore")
                     .AddSource("Hexalith.EventStore")
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing

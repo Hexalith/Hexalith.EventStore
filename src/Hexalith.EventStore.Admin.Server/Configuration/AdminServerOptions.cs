@@ -17,9 +17,9 @@ public sealed class AdminServerOptions
     public string StateStoreName { get; set; } = "statestore";
 
     /// <summary>
-    /// Gets or sets the CommandApi DAPR app ID for service invocation.
+    /// Gets or sets the EventStore DAPR app ID for service invocation.
     /// </summary>
-    public string CommandApiAppId { get; set; } = "commandapi";
+    public string EventStoreAppId { get; set; } = "eventstore";
 
     /// <summary>
     /// Gets or sets the Tenants service DAPR app ID for service invocation.

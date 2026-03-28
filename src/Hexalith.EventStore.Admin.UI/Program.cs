@@ -58,7 +58,7 @@ builder.Services.AddScoped<TopologyCacheService>();
 
 // SignalR client for real-time projection change signals
 string signalRHubUrl = builder.Configuration["EventStore:SignalR:HubUrl"]
-    ?? "https+http://commandapi/hubs/projection-changes";
+    ?? "https+http://eventstore/hubs/projection-changes";
 builder.Services.AddSingleton(new EventStoreSignalRClientOptions { HubUrl = signalRHubUrl });
 builder.Services.AddSingleton<EventStoreSignalRClient>();
 
@@ -66,7 +66,7 @@ builder.Services.AddSingleton<EventStoreSignalRClient>();
 builder.Services.AddHttpClient("AdminApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["EventStore:AdminServer:BaseUrl"]
-        ?? "https://admin-server");
+        ?? "https://eventstore-admin");
     client.Timeout = TimeSpan.FromSeconds(5);
 })
     .AddHttpMessageHandler<AdminApiAuthorizationHandler>();

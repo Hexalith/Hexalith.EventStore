@@ -17,9 +17,9 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
     private string? _previousProjectionFaultFlag;
-    private HttpClient? _commandApiClient;
+    private HttpClient? _eventStoreClient;
 
-    public HttpClient CommandApiClient => _commandApiClient ?? throw new InvalidOperationException(
+    public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
@@ -55,12 +55,12 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
         await _app.StartAsync(cts.Token).ConfigureAwait(false);
 
         _ = await _app.ResourceNotifications
-            .WaitForResourceHealthyAsync("commandapi", cts.Token)
+            .WaitForResourceHealthyAsync("eventstore", cts.Token)
             .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
             .ConfigureAwait(false);
 
-        _commandApiClient = _app.CreateHttpClient("commandapi");
-        _commandApiClient.Timeout = TimeSpan.FromSeconds(60);
+        _eventStoreClient = _app.CreateHttpClient("eventstore");
+        _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
         _ = await _app.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", cts.Token)
@@ -69,7 +69,7 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     }
 
     public async Task DisposeAsync() {
-        _commandApiClient?.Dispose();
+        _eventStoreClient?.Dispose();
 
         if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);

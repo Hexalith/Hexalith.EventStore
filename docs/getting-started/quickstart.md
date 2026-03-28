@@ -63,7 +63,7 @@ $ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/pro
 
 ### Submit the command via Swagger UI
 
-Find the `commandapi` service in the Aspire dashboard and open its URL. Append `/swagger` to the URL to open the Swagger UI.
+Find the `eventstore` service in the Aspire dashboard and open its URL. Append `/swagger` to the URL to open the Swagger UI.
 
 1. Click the **Authorize** button at the top of the page
 2. In the **Value** field, paste the `access_token` you copied earlier — do not include the `Bearer` prefix, Swagger adds it automatically
@@ -92,7 +92,7 @@ Click **Execute**. The API returns `202 Accepted` with a response containing the
 }
 ```
 
-The response also includes a `Location` header containing the full URL to the status endpoint. To check whether the command has been processed, open that URL from the Aspire dashboard's `commandapi` service — it follows the pattern `/api/v1/commands/status/{correlationId}` — or query it directly with curl using the same Bearer token.
+The response also includes a `Location` header containing the full URL to the status endpoint. To check whether the command has been processed, open that URL from the Aspire dashboard's `eventstore` service — it follows the pattern `/api/v1/commands/status/{correlationId}` — or query it directly with curl using the same Bearer token.
 
 ## See the Event
 

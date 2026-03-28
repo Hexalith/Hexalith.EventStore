@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.Server.Tests.Fixtures;
 /// Implements <see cref="IAsyncLifetime"/> for xUnit lifecycle management.
 /// </summary>
 public sealed class DaprTestContainerFixture : IAsyncLifetime {
-    private const string AppId = "commandapi";
+    private const string AppId = "eventstore";
     private static readonly int PlacementPort = OperatingSystem.IsWindows() ? 6050 : 50005;
     private static readonly int SchedulerPort = OperatingSystem.IsWindows() ? 6060 : 50006;
     private const int RedisPort = 6379;
@@ -400,7 +400,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                 - name: actorStateStore
                   value: "true"
             scopes:
-              - commandapi
+              - eventstore
             """;
 
         string pubSubYaml = $$"""
@@ -419,7 +419,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                 - name: enableDeadLetter
                   value: "true"
             scopes:
-              - commandapi
+              - eventstore
             """;
 
         File.WriteAllText(Path.Combine(tempDir, "statestore.yaml"), stateStoreYaml);

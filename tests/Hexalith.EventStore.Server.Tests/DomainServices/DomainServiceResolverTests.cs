@@ -17,10 +17,13 @@ namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
 public class DomainServiceResolverTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
-    private readonly IOptions<DomainServiceOptions> _options = Options.Create(new DomainServiceOptions());
     private readonly ILogger<DomainServiceResolver> _logger = NullLogger<DomainServiceResolver>.Instance;
 
-    private DomainServiceResolver CreateResolver() => new(_daprClient, _options, _logger);
+    private DomainServiceResolver CreateResolver(DomainServiceOptions? opts = null) =>
+        new(_daprClient, Options.Create(opts ?? new DomainServiceOptions()), _logger);
+
+    private DomainServiceResolver CreateResolverWithConfigStore(string configStoreName = "configstore") =>
+        CreateResolver(new DomainServiceOptions { ConfigStoreName = configStoreName });
 
     private void ConfigureConfigStore(string key, string? value) {
         var items = new Dictionary<string, ConfigurationItem>();
@@ -37,28 +40,83 @@ public class DomainServiceResolverTests {
             .Returns(response);
     }
 
-    private void ConfigureConfigStoreMultiple(Dictionary<string, string> registrations) {
-        var items = new Dictionary<string, ConfigurationItem>();
-        foreach (KeyValuePair<string, string> kvp in registrations) {
-            items[kvp.Key] = new ConfigurationItem(kvp.Value, "1", new Dictionary<string, string>());
-        }
+    // --- Convention-based routing (default behavior, zero config) ---
 
-        var response = new GetConfigurationResponse(items);
-        _ = _daprClient.GetConfiguration(
-            Arg.Any<string>(),
-            Arg.Is<IReadOnlyList<string>>(keys => keys.Any(k => items.ContainsKey(k))),
-            Arg.Any<IReadOnlyDictionary<string, string>>(),
-            Arg.Any<CancellationToken>())
-            .Returns(response);
+    [Fact]
+    public async Task ResolveAsync_NoConfigStore_ReturnsConventionRouting() {
+        // Arrange — default options (ConfigStoreName = null)
+        DomainServiceResolver resolver = CreateResolver();
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
+
+        // Assert — convention: AppId = domain, MethodName = "process"
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
+        result.TenantId.ShouldBe("tenant-a");
+        result.Domain.ShouldBe("orders");
     }
 
     [Fact]
-    public async Task ResolveAsync_RegisteredService_ReturnsRegistration() {
+    public async Task ResolveAsync_NoConfigStore_NeverCallsDaprConfigStore() {
+        // Arrange — default options (ConfigStoreName = null)
+        DomainServiceResolver resolver = CreateResolver();
+
+        // Act
+        _ = await resolver.ResolveAsync("tenant-a", "orders");
+
+        // Assert — DaprClient.GetConfiguration should never be called
+        _ = await _daprClient.DidNotReceive().GetConfiguration(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ConventionRouting_UsesVersionFromParameter() {
+        // Arrange
+        DomainServiceResolver resolver = CreateResolver();
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "payments", "v3");
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("payments");
+        result.MethodName.ShouldBe("process");
+        result.Version.ShouldBe("v3");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_StaticRegistration_OverridesConvention() {
+        // Arrange — static registration maps "orders" to a different AppId
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["tenant-a:orders:v1"] = new("custom-orders-svc", "custom-process", "tenant-a", "orders", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
+
+        // Assert — static registration wins over convention
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("custom-orders-svc");
+        result.MethodName.ShouldBe("custom-process");
+    }
+
+    // --- Config store routing (opt-in via ConfigStoreName) ---
+
+    [Fact]
+    public async Task ResolveAsync_ConfigStoreConfigured_RegisteredService_ReturnsRegistration() {
         // Arrange
         var registration = new DomainServiceRegistration("orders-svc", "process-command", "tenant-a", "orders", "v1");
         string json = JsonSerializer.Serialize(registration);
         ConfigureConfigStore("tenant-a:orders:v1", json);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
@@ -70,23 +128,25 @@ public class DomainServiceResolverTests {
     }
 
     [Fact]
-    public async Task ResolveAsync_UnregisteredService_ReturnsNull() {
-        // Arrange
+    public async Task ResolveAsync_ConfigStoreConfigured_UnregisteredService_ReturnsConventionRouting() {
+        // Arrange — config store returns no match
         ConfigureConfigStore("tenant-a:orders:v1", null);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
 
-        // Assert
-        result.ShouldBeNull();
+        // Assert — falls through to convention
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
     }
 
     [Fact]
-    public async Task ResolveAsync_UsesCorrectConfigKeyWithVersion() {
+    public async Task ResolveAsync_ConfigStoreConfigured_UsesCorrectConfigKeyWithVersion() {
         // Arrange
         ConfigureConfigStore("my-tenant:my-domain:v1", null);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         _ = await resolver.ResolveAsync("my-tenant", "my-domain");
@@ -100,12 +160,12 @@ public class DomainServiceResolverTests {
     }
 
     [Fact]
-    public async Task ResolveAsync_ExplicitVersion_UsesVersionInKey() {
+    public async Task ResolveAsync_ConfigStoreConfigured_ExplicitVersion_UsesVersionInKey() {
         // Arrange
         var registration = new DomainServiceRegistration("orders-svc-v2", "process-command", "tenant-a", "orders", "v2");
         string json = JsonSerializer.Serialize(registration);
         ConfigureConfigStore("tenant-a:orders:v2", json);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders", "v2");
@@ -119,6 +179,8 @@ public class DomainServiceResolverTests {
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>());
     }
+
+    // --- Input validation ---
 
     [Fact]
     public async Task ResolveAsync_NullTenantId_ThrowsArgumentException() {
@@ -147,8 +209,10 @@ public class DomainServiceResolverTests {
         _ = await Should.ThrowAsync<ArgumentException>(() => resolver.ResolveAsync("tenant", "domain", null!));
     }
 
+    // --- Config store error handling (only when config store is enabled) ---
+
     [Fact]
-    public async Task ResolveAsync_EmptyConfigValue_ReturnsNull() {
+    public async Task ResolveAsync_ConfigStoreConfigured_EmptyConfigValue_ReturnsConventionRouting() {
         // Arrange
         var items = new Dictionary<string, ConfigurationItem> {
             ["tenant-a:orders:v1"] = new ConfigurationItem("  ", "1", new Dictionary<string, string>()),
@@ -160,20 +224,22 @@ public class DomainServiceResolverTests {
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>())
             .Returns(response);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
 
-        // Assert
-        result.ShouldBeNull();
+        // Assert — falls through to convention
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
     }
 
     [Fact]
-    public async Task ResolveAsync_MalformedJson_ThrowsDomainServiceException() {
+    public async Task ResolveAsync_ConfigStoreConfigured_MalformedJson_ThrowsDomainServiceException() {
         // Arrange - corrupted config store entry should throw, not silently return null
         ConfigureConfigStore("tenant-a:orders:v1", "NOT-VALID-JSON{{{");
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act & Assert
         DomainServiceException ex = await Should.ThrowAsync<DomainServiceException>(() => resolver.ResolveAsync("tenant-a", "orders"));
@@ -183,27 +249,28 @@ public class DomainServiceResolverTests {
     }
 
     [Fact]
-    public async Task ResolveAsync_JsonNull_ReturnsNull() {
+    public async Task ResolveAsync_ConfigStoreConfigured_JsonNull_ReturnsConventionRouting() {
         // Arrange
         ConfigureConfigStore("tenant-a:orders:v1", "null");
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
 
-        // Assert
-        result.ShouldBeNull();
+        // Assert — falls through to convention
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
     }
 
-    // --- Task 1.1: Multi-tenant multi-domain routing ---
+    // --- Multi-tenant multi-domain routing (with config store) ---
 
     [Fact]
-    public async Task ResolveAsync_MultipleTenantsSameDomain_RoutesToCorrectService() {
+    public async Task ResolveAsync_ConfigStoreConfigured_MultipleTenantsSameDomain_RoutesToCorrectService() {
         // Arrange - two tenants, same domain, different service endpoints
         var regTenantA = new DomainServiceRegistration("orders-tenant-a", "process-command", "tenant-a", "orders", "v1");
         var regTenantB = new DomainServiceRegistration("orders-tenant-b", "process-command", "tenant-b", "orders", "v1");
 
-        // Configure separate responses per key
         _ = _daprClient.GetConfiguration(
             Arg.Any<string>(),
             Arg.Is<IReadOnlyList<string>>(keys => keys.Contains("tenant-a:orders:v1")),
@@ -222,7 +289,7 @@ public class DomainServiceResolverTests {
                 ["tenant-b:orders:v1"] = new(JsonSerializer.Serialize(regTenantB), "1", new Dictionary<string, string>()),
             }));
 
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? resultA = await resolver.ResolveAsync("tenant-a", "orders");
@@ -236,7 +303,7 @@ public class DomainServiceResolverTests {
     }
 
     [Fact]
-    public async Task ResolveAsync_SameTenantMultipleDomains_RoutesToCorrectService() {
+    public async Task ResolveAsync_ConfigStoreConfigured_SameTenantMultipleDomains_RoutesToCorrectService() {
         // Arrange - same tenant, two domains, different service endpoints
         var regOrders = new DomainServiceRegistration("orders-svc", "process-command", "tenant-a", "orders", "v1");
         var regInventory = new DomainServiceRegistration("inventory-svc", "process-command", "tenant-a", "inventory", "v1");
@@ -259,7 +326,7 @@ public class DomainServiceResolverTests {
                 ["tenant-a:inventory:v1"] = new(JsonSerializer.Serialize(regInventory), "1", new Dictionary<string, string>()),
             }));
 
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? resultOrders = await resolver.ResolveAsync("tenant-a", "orders");
@@ -272,15 +339,15 @@ public class DomainServiceResolverTests {
         resultInventory.AppId.ShouldBe("inventory-svc");
     }
 
-    // --- Task 1.2 / Task 6: No caching verification (ADR-1) ---
+    // --- No-caching verification (with config store) ---
 
     [Fact]
-    public async Task ResolveAsync_NoCaching_GetConfigurationCalledEveryInvocation() {
-        // Arrange - Task 6.1: verify GetConfiguration called TWICE (not cached)
+    public async Task ResolveAsync_ConfigStoreConfigured_NoCaching_GetConfigurationCalledEveryInvocation() {
+        // Arrange
         var registration = new DomainServiceRegistration("orders-svc", "process-command", "tenant-a", "orders", "v1");
         string json = JsonSerializer.Serialize(registration);
         ConfigureConfigStore("tenant-a:orders:v1", json);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act - invoke twice with same tenant+domain
         _ = await resolver.ResolveAsync("tenant-a", "orders");
@@ -294,7 +361,7 @@ public class DomainServiceResolverTests {
             Arg.Any<CancellationToken>());
     }
 
-    // --- Task 8: Version format validation and normalization at resolver level ---
+    // --- Version format validation ---
 
     [Theory]
     [InlineData("version1")]
@@ -303,7 +370,7 @@ public class DomainServiceResolverTests {
     [InlineData("v")]
     [InlineData("1")]
     public async Task ResolveAsync_InvalidVersionFormat_ThrowsArgumentException(string invalidVersion) {
-        // Arrange - Task 8.6: invalid version formats rejected at resolver
+        // Arrange
         DomainServiceResolver resolver = CreateResolver();
 
         // Act & Assert
@@ -312,11 +379,11 @@ public class DomainServiceResolverTests {
 
     [Fact]
     public async Task ResolveAsync_UppercaseVersion_NormalizesToLowercase() {
-        // Arrange - Task 8.7: "V2" normalized to "v2" at resolver level
+        // Arrange
         var registration = new DomainServiceRegistration("svc-v2", "process-command", "tenant-a", "orders", "v2");
         string json = JsonSerializer.Serialize(registration);
         ConfigureConfigStore("tenant-a:orders:v2", json);
-        DomainServiceResolver resolver = CreateResolver();
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         // Act
         DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders", "V2");
@@ -324,7 +391,6 @@ public class DomainServiceResolverTests {
         // Assert
         _ = result.ShouldNotBeNull();
         result.AppId.ShouldBe("svc-v2");
-        // Verify the config store was queried with lowercase key
         _ = await _daprClient.Received(1).GetConfiguration(
             "configstore",
             Arg.Is<IReadOnlyList<string>>(keys => keys.Contains("tenant-a:orders:v2")),
@@ -333,9 +399,9 @@ public class DomainServiceResolverTests {
     }
 
     [Fact]
-    public async Task ResolveAsync_NoCache_EachCallQueriesConfigStore() {
-        // Arrange - first call returns null, second returns registration (simulating dynamic addition)
-        DomainServiceResolver resolver = CreateResolver();
+    public async Task ResolveAsync_ConfigStoreConfigured_NoCache_EachCallQueriesConfigStore() {
+        // Arrange - first call returns no match (convention), second returns registration
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
 
         _ = _daprClient.GetConfiguration(
             Arg.Any<string>(),
@@ -355,9 +421,10 @@ public class DomainServiceResolverTests {
         DomainServiceRegistration? result1 = await resolver.ResolveAsync("new-tenant", "orders");
         DomainServiceRegistration? result2 = await resolver.ResolveAsync("new-tenant", "orders");
 
-        // Assert
-        result1.ShouldBeNull();
+        // Assert — first call falls through to convention, second finds config store entry
+        _ = result1.ShouldNotBeNull();
+        result1.AppId.ShouldBe("orders"); // convention
         _ = result2.ShouldNotBeNull();
-        result2.AppId.ShouldBe("new-svc");
+        result2.AppId.ShouldBe("new-svc"); // config store
     }
 }

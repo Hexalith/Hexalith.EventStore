@@ -107,7 +107,7 @@ public class DaprDomainServiceInvokerTests {
         var options = new DomainServiceOptions();
 
         // Assert
-        options.ConfigStoreName.ShouldBe("configstore");
+        options.ConfigStoreName.ShouldBeNull();
         options.InvocationTimeoutSeconds.ShouldBe(5);
         options.MaxEventsPerResult.ShouldBe(1000);
         options.MaxEventSizeBytes.ShouldBe(1_048_576);

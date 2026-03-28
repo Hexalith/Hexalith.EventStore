@@ -144,7 +144,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
             [new DaprRetryPolicy("defaultRetry", "constant", 3, "1s", null)],
             [new DaprTimeoutPolicy("defaultTimeout", "5s")],
             [new DaprCircuitBreakerPolicy("defaultBreaker", 1, "60s", "30s", "consecutiveFailures > 3")],
-            [new DaprResiliencyTargetBinding("commandapi", "App", null, "defaultRetry", "defaultTimeout", "defaultBreaker")],
+            [new DaprResiliencyTargetBinding("eventstore", "App", null, "defaultRetry", "defaultTimeout", "defaultBreaker")],
             IsConfigurationAvailable: true,
             RawYamlContent: rawYaml,
             ErrorMessage: null);
@@ -168,7 +168,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
             [new DaprRetryPolicy("defaultRetry", "exponential", 5, null, "15s")],
             [new DaprTimeoutPolicy("daprSidecar", "10s")],
             [new DaprCircuitBreakerPolicy("defaultBreaker", 1, "60s", "60s", "consecutiveFailures > 5")],
-            [new DaprResiliencyTargetBinding("commandapi", "App", null, "defaultRetry", "daprSidecar", "defaultBreaker")],
+            [new DaprResiliencyTargetBinding("eventstore", "App", null, "defaultRetry", "daprSidecar", "defaultBreaker")],
             IsConfigurationAvailable: true,
             RawYamlContent: null,
             ErrorMessage: null);
