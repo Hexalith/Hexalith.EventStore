@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
@@ -51,6 +52,40 @@ public class AdminStreamsController(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return UnexpectedError(nameof(GetRecentlyActiveStreams), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type.
+    /// </summary>
+    [HttpGet("commands")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(PagedResult<CommandSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetRecentCommands(
+        [FromQuery] string? tenantId,
+        [FromQuery] string? status,
+        [FromQuery] string? commandType,
+        [FromQuery] int count = 1000,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            PagedResult<CommandSummary> result = await streamQueryService
+                .GetRecentCommandsAsync(effectiveTenantId, status, commandType, count, ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex))
+        {
+            return ServiceUnavailable(nameof(GetRecentCommands), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return UnexpectedError(nameof(GetRecentCommands), ex);
         }
     }
 

@@ -490,6 +490,42 @@ Blazor Fluent UI shell with activity feed, stream browser, aggregate state inspe
 **Also:** UX-DR34-DR49
 **Dependencies:** Epic 14
 
+### Story 15.9: Commands Page — Cross-Stream Command List with Filters
+
+As a developer investigating command behavior,
+I want to see a filterable list of recent commands across all streams,
+So that I can quickly find and investigate commands without knowing the specific stream.
+
+**Acceptance Criteria:**
+
+**Given** the Commands page,
+**When** loaded,
+**Then** a FluentDataGrid displays recent commands with columns: Status, Command Type, Tenant, Domain, Aggregate ID, Correlation ID, Timestamp.
+
+**Given** the Commands page,
+**When** filter chips are used,
+**Then** commands can be filtered by status (All/Completed/Processing/Rejected/Failed), tenant, and command type.
+
+**Given** the Commands page header,
+**When** rendered,
+**Then** summary stat cards show: Total Commands, Success Rate, Failed Count, Average Latency.
+
+**Given** a command row,
+**When** clicked,
+**Then** navigation proceeds to the stream detail page filtered to that command's correlation ID.
+
+**Given** the Commands page,
+**When** the dashboard auto-refresh fires,
+**Then** the command list updates without losing filter/pagination state (same pattern as Streams page).
+
+**Technical Notes:**
+
+- Reference implementation: Streams.razor page pattern (API client, filter bar, pagination, refresh subscription)
+- Backend: Add GetRecentCommandsAsync() to IStreamQueryService + DaprStreamQueryService
+- API: Add GET /api/v1/admin/commands endpoint to AdminStreamsController (or new AdminCommandsController)
+- UI: Replace Commands.razor stub with full FluentDataGrid implementation
+- UX spec reference: D1 (Command-Centric), Journey 2 (Jerome's Command Investigation)
+
 ### Epic 16: Admin Web UI — DBA Operations
 Storage management, snapshot controls, backup/restore, tenant management, dead-letter queue, consistency checker. Enables Journey 8 (Maria).
 **FRs covered:** FR76, FR77, FR78

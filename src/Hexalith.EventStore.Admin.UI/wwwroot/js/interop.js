@@ -57,6 +57,14 @@ window.hexalithAdmin = {
         return window.innerWidth;
     },
 
+    getScrollTop: function () {
+        return window.scrollY || document.documentElement.scrollTop || 0;
+    },
+
+    setScrollTop: function (top) {
+        window.scrollTo(0, typeof top === "number" ? top : 0);
+    },
+
     _viewportListeners: new Map(),
     _viewportMediaQueries: new Map(),
     _viewportChangeHandlers: new Map(),
@@ -107,4 +115,3 @@ window.hexalithAdmin = {
         }
     },
 };
-

@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
@@ -8,6 +9,17 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// </summary>
 public interface IStreamQueryService
 {
+    /// <summary>
+    /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type (FR69).
+    /// </summary>
+    /// <param name="tenantId">Optional tenant filter.</param>
+    /// <param name="status">Optional status filter (string mapped to CommandStatus).</param>
+    /// <param name="commandType">Optional command type filter (case-insensitive contains).</param>
+    /// <param name="count">Maximum number of commands to return.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A paginated list of command summaries.</returns>
+    Task<PagedResult<CommandSummary>> GetRecentCommandsAsync(string? tenantId, string? status, string? commandType, int count = 1000, CancellationToken ct = default);
+
     /// <summary>
     /// Gets recently active streams, optionally filtered by tenant and domain (FR68).
     /// </summary>

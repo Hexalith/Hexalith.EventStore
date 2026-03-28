@@ -3,8 +3,10 @@ using System.Net.Http.Json;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 
@@ -18,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// Event data reads delegate to EventStore via InvokeMethodAsync because
 /// actor state uses a different key namespace not accessible via plain GetStateAsync.
 /// </summary>
-public sealed class DaprStreamQueryService : IStreamQueryService
-{
+public sealed class DaprStreamQueryService : IStreamQueryService {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
     private readonly ILogger<DaprStreamQueryService> _logger;
@@ -36,8 +37,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         DaprClient daprClient,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
-        ILogger<DaprStreamQueryService> logger)
-    {
+        ILogger<DaprStreamQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
@@ -49,21 +49,60 @@ public sealed class DaprStreamQueryService : IStreamQueryService
     }
 
     /// <inheritdoc/>
+    public async Task<PagedResult<CommandSummary>> GetRecentCommandsAsync(
+        string? tenantId,
+        string? status,
+        string? commandType,
+        int count = 1000,
+        CancellationToken ct = default) {
+        string indexKey = $"admin:command-activity:{tenantId ?? "all"}";
+        try {
+            List<CommandSummary>? result = await _daprClient
+                .GetStateAsync<List<CommandSummary>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+                .ConfigureAwait(false);
+
+            if (result is null) {
+                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
+                return new PagedResult<CommandSummary>([], 0, null);
+            }
+
+            IEnumerable<CommandSummary> filtered = result;
+
+            filtered = ApplyCommandStatusFilter(filtered, status);
+
+            if (!string.IsNullOrWhiteSpace(commandType)) {
+                filtered = filtered.Where(c => c.CommandType.Contains(commandType, StringComparison.OrdinalIgnoreCase));
+            }
+
+            List<CommandSummary> filteredList = filtered.ToList();
+            IReadOnlyList<CommandSummary> page = filteredList
+                .OrderByDescending(c => c.Timestamp)
+                .Take(count)
+                .ToList();
+            return new PagedResult<CommandSummary>(page, filteredList.Count, null);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to read command activity index '{IndexKey}'.", indexKey);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<PagedResult<StreamSummary>> GetRecentlyActiveStreamsAsync(
         string? tenantId,
         string? domain,
         int count = 1000,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:stream-activity:{tenantId ?? "all"}";
-        try
-        {
+        try {
             List<StreamSummary>? result = await _daprClient
                 .GetStateAsync<List<StreamSummary>>(_options.StateStoreName, indexKey, cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            if (result is null)
-            {
+            if (result is null) {
                 _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
                 return new PagedResult<StreamSummary>([], 0, null);
             }
@@ -78,12 +117,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService
                 .ToList();
             return new PagedResult<StreamSummary>(page, filtered.Count, null);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to read stream activity index '{IndexKey}'.", indexKey);
             return new PagedResult<StreamSummary>([], 0, null);
         }
@@ -97,35 +134,29 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         long? fromSequence,
         long? toSequence,
         int count = 100,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         int maxEvents = _options.MaxTimelineEvents;
         count = Math.Clamp(count, 1, maxEvents);
         if (fromSequence.HasValue && toSequence.HasValue
-            && toSequence.Value > fromSequence.Value + maxEvents)
-        {
+            && toSequence.Value > fromSequence.Value + maxEvents) {
             toSequence = fromSequence.Value + maxEvents;
         }
 
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/timeline";
         string query = BuildQueryString(fromSequence, toSequence, count);
-        if (query.Length > 0)
-        {
+        if (query.Length > 0) {
             endpoint += "?" + query;
         }
 
-        try
-        {
+        try {
             PagedResult<TimelineEntry>? result = await InvokeEventStoreAsync<PagedResult<TimelineEntry>>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? new PagedResult<TimelineEntry>([], 0, null);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to get stream timeline for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
             return new PagedResult<TimelineEntry>([], 0, null);
         }
@@ -137,21 +168,17 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/state?at={sequenceNumber}";
-        try
-        {
+        try {
             AggregateStateSnapshot? result = await InvokeEventStoreAsync<AggregateStateSnapshot>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "not-found");
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to get aggregate state at position {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
             return CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "unavailable");
         }
@@ -164,21 +191,17 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string aggregateId,
         long fromSequence,
         long toSequence,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/diff?from={fromSequence}&to={toSequence}";
-        try
-        {
+        try {
             AggregateStateDiff? result = await InvokeEventStoreAsync<AggregateStateDiff>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? new AggregateStateDiff(fromSequence, toSequence, []);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
             return new AggregateStateDiff(fromSequence, toSequence, []);
         }
@@ -190,12 +213,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string domain,
         string aggregateId,
         long? atSequence,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/blame";
         var queryParams = new List<string>();
-        if (atSequence.HasValue)
-        {
+        if (atSequence.HasValue) {
             queryParams.Add($"at={atSequence.Value}");
         }
 
@@ -203,8 +224,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         queryParams.Add($"maxFields={_options.MaxBlameFields}");
         endpoint += "?" + string.Join("&", queryParams);
 
-        try
-        {
+        try {
             // Use 30-second timeout for blame (longer than default because blame replays the entire event stream)
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
@@ -213,12 +233,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
             return result ?? new AggregateBlameView(tenantId, domain, aggregateId, atSequence ?? 0, DateTimeOffset.MinValue, [], false, false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to compute blame for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
             throw;
         }
@@ -230,17 +248,14 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken ct = default)
-    {
-        if (sequenceNumber < 1)
-        {
+        CancellationToken ct = default) {
+        if (sequenceNumber < 1) {
             throw new ArgumentException("sequenceNumber must be >= 1.");
         }
 
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/step?at={sequenceNumber}";
 
-        try
-        {
+        try {
             // Use 30-second timeout (same as blame — single state reconstruction + diff is comparable workload)
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
@@ -249,12 +264,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
             return result ?? new EventStepFrame(tenantId, domain, aggregateId, sequenceNumber, string.Empty, DateTimeOffset.MinValue, string.Empty, string.Empty, string.Empty, "{}", "{}", [], 0);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to get event step frame for {TenantId}/{Domain}/{AggregateId} at {SequenceNumber}.", tenantId, domain, aggregateId, sequenceNumber);
             throw;
         }
@@ -268,20 +281,16 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         long goodSequence,
         long badSequence,
         IReadOnlyList<string>? fieldPaths,
-        CancellationToken ct = default)
-    {
-        if (goodSequence < 0)
-        {
+        CancellationToken ct = default) {
+        if (goodSequence < 0) {
             throw new ArgumentException("goodSequence must be >= 0.");
         }
 
-        if (badSequence < 0)
-        {
+        if (badSequence < 0) {
             throw new ArgumentException("badSequence must be >= 0.");
         }
 
-        if (goodSequence >= badSequence)
-        {
+        if (goodSequence >= badSequence) {
             throw new ArgumentException("goodSequence must be less than badSequence.");
         }
 
@@ -294,26 +303,22 @@ public sealed class DaprStreamQueryService : IStreamQueryService
             $"maxFields={_options.MaxBisectFields}",
         };
 
-        if (fieldPaths is { Count: > 0 })
-        {
+        if (fieldPaths is { Count: > 0 }) {
             queryParams.Add($"fields={Uri.EscapeDataString(string.Join(",", fieldPaths))}");
         }
 
         endpoint += "?" + string.Join("&", queryParams);
 
-        try
-        {
+        try {
             // Use 60-second timeout for bisect (longer than blame's 30s because bisect performs O(log N) state reconstructions)
             BisectResult? result = await InvokeEventStoreAsync<BisectResult>(
                 HttpMethod.Get, endpoint, ct, timeoutSeconds: 60).ConfigureAwait(false);
             return result ?? new BisectResult(tenantId, domain, aggregateId, goodSequence, badSequence, DateTimeOffset.MinValue, string.Empty, string.Empty, string.Empty, [], [], [], 0, false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to bisect aggregate state for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
             throw;
         }
@@ -325,21 +330,17 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/events/{sequenceNumber}";
-        try
-        {
+        try {
             EventDetail? result = await InvokeEventStoreAsync<EventDetail>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "not-found");
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to get event detail at {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
             return CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "unavailable");
         }
@@ -351,34 +352,28 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string domain,
         string aggregateId,
         SandboxCommandRequest request,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (string.IsNullOrWhiteSpace(request.CommandType))
-        {
+        if (string.IsNullOrWhiteSpace(request.CommandType)) {
             throw new ArgumentException("CommandType is required.");
         }
 
-        if (request.AtSequence.HasValue && request.AtSequence.Value < 0)
-        {
+        if (request.AtSequence.HasValue && request.AtSequence.Value < 0) {
             throw new ArgumentException("AtSequence must be >= 0 when provided.");
         }
 
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/sandbox";
 
-        try
-        {
+        try {
             SandboxResult? result = await InvokeEventStoreAsync<SandboxCommandRequest, SandboxResult>(
                 endpoint, request, ct).ConfigureAwait(false);
             return result;
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to execute sandbox command for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
             throw;
         }
@@ -390,21 +385,17 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string endpoint = $"api/v1/admin/streams/{E(tenantId)}/{E(domain)}/{E(aggregateId)}/causation?at={sequenceNumber}";
-        try
-        {
+        try {
             CausationChain? result = await InvokeEventStoreAsync<CausationChain>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
             return result ?? CreateEmptyCausationChain("not-found");
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to trace causation chain at {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
             return CreateEmptyCausationChain("unavailable");
         }
@@ -416,29 +407,24 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string correlationId,
         string? domain,
         string? aggregateId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
         string endpoint = $"api/v1/admin/traces/{E(tenantId)}/{E(correlationId)}";
         var queryParams = new List<string>();
-        if (!string.IsNullOrEmpty(domain))
-        {
+        if (!string.IsNullOrEmpty(domain)) {
             queryParams.Add($"domain={E(domain)}");
         }
 
-        if (!string.IsNullOrEmpty(aggregateId))
-        {
+        if (!string.IsNullOrEmpty(aggregateId)) {
             queryParams.Add($"aggregateId={E(aggregateId)}");
         }
 
-        if (queryParams.Count > 0)
-        {
+        if (queryParams.Count > 0) {
             endpoint += "?" + string.Join("&", queryParams);
         }
 
-        try
-        {
+        try {
             // Use 30-second timeout (trace map scans potentially large event streams)
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
@@ -447,18 +433,39 @@ public sealed class DaprStreamQueryService : IStreamQueryService
                 HttpMethod.Get, endpoint, cts.Token).ConfigureAwait(false);
             return result ?? new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, "Unable to retrieve trace map from EventStore.", null, 0, false, null);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to get correlation trace map for {TenantId}/{CorrelationId}.", tenantId, correlationId);
             return new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, $"Failed to retrieve trace map: {ex.Message}", null, 0, false, null);
         }
     }
 
     private static string E(string value) => Uri.EscapeDataString(value);
+
+    private static IEnumerable<CommandSummary> ApplyCommandStatusFilter(
+        IEnumerable<CommandSummary> commands,
+        string? status) {
+        if (string.IsNullOrWhiteSpace(status)) {
+            return commands;
+        }
+
+        string normalizedStatus = status.Trim().ToLowerInvariant();
+        return normalizedStatus switch {
+            "completed" => commands.Where(c => c.Status == CommandStatus.Completed),
+            "processing" => commands.Where(c => c.Status is CommandStatus.Received
+                or CommandStatus.Processing
+                or CommandStatus.EventsStored
+                or CommandStatus.EventsPublished),
+            "rejected" => commands.Where(c => c.Status == CommandStatus.Rejected),
+            "failed" => commands.Where(c => c.Status is CommandStatus.PublishFailed
+                or CommandStatus.TimedOut),
+            _ when Enum.TryParse(status.Trim(), ignoreCase: true, out CommandStatus parsedStatus)
+                => commands.Where(c => c.Status == parsedStatus),
+            _ => commands,
+        };
+    }
 
     private static AggregateStateSnapshot CreateEmptyAggregateStateSnapshot(
         string tenantId,
@@ -483,8 +490,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         HttpMethod method,
         string endpoint,
         CancellationToken ct,
-        int? timeoutSeconds = null)
-    {
+        int? timeoutSeconds = null) {
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
@@ -493,8 +499,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
             ?? new HttpRequestMessage(method, endpoint);
 
         string? token = _authContext.GetToken();
-        if (token is not null)
-        {
+        if (token is not null) {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
@@ -505,8 +510,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         string endpoint,
         TRequest body,
         CancellationToken ct,
-        int? timeoutSeconds = null)
-    {
+        int? timeoutSeconds = null) {
         using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
@@ -515,8 +519,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService
             ?? new HttpRequestMessage(HttpMethod.Post, endpoint);
 
         string? token = _authContext.GetToken();
-        if (token is not null)
-        {
+        if (token is not null) {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
@@ -525,16 +528,13 @@ public sealed class DaprStreamQueryService : IStreamQueryService
         return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
     }
 
-    private static string BuildQueryString(long? from, long? to, int count)
-    {
+    private static string BuildQueryString(long? from, long? to, int count) {
         var parts = new List<string>();
-        if (from.HasValue)
-        {
+        if (from.HasValue) {
             parts.Add($"from={from.Value}");
         }
 
-        if (to.HasValue)
-        {
+        if (to.HasValue) {
             parts.Add($"to={to.Value}");
         }
 

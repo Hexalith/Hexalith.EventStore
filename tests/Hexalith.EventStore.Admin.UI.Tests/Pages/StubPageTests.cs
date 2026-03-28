@@ -17,10 +17,18 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 public class StubPageTests : AdminUITestContext {
     [Fact]
     public void CommandsPage_RendersCorrectContent() {
+        AdminStreamApiClient mockStreamApi = Substitute.For<AdminStreamApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminStreamApiClient>.Instance);
+        _ = mockStreamApi.GetRecentCommandsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<Hexalith.EventStore.Admin.Abstractions.Models.Commands.CommandSummary>([], 0, null)));
+        _ = mockStreamApi.GetTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
+        Services.AddScoped(_ => mockStreamApi);
+
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Commands> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Commands>();
-        cut.Markup.ShouldContain("No commands processed yet.");
-        cut.Markup.ShouldContain("Open Admin API Swagger");
-        cut.Markup.ShouldNotContain("href=\"/swagger\"");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No commands processed yet"), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
