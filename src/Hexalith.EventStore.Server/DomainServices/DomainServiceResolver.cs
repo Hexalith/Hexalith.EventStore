@@ -56,63 +56,74 @@ public class DomainServiceResolver(
             return staticRegistration;
         }
 
-        logger.LogDebug(
-            "Resolving domain service: ConfigKey={ConfigKey}, ConfigStore={ConfigStore}, Version={Version}",
-            configKey,
-            options.Value.ConfigStoreName,
-            version);
-
-        GetConfigurationResponse configResponse = await daprClient
-            .GetConfiguration(
-                options.Value.ConfigStoreName,
-                [configKey],
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-        if (!configResponse.Items.TryGetValue(configKey, out ConfigurationItem? configItem) ||
-            string.IsNullOrWhiteSpace(configItem.Value)) {
-            logger.LogWarning(
-                "No domain service registered: Tenant={TenantId}, Domain={Domain}, Version={Version}, ConfigKey={ConfigKey}",
-                tenantId,
-                domain,
-                version,
-                configKey);
-            return null;
-        }
-
-        DomainServiceRegistration? registration;
+        // Try DAPR config store lookup if available.
         try {
-            registration = JsonSerializer.Deserialize<DomainServiceRegistration>(configItem.Value);
-        }
-        catch (JsonException ex) {
-            logger.LogError(
-                ex,
-                "Failed to deserialize domain service registration: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}, RawValue={RawValue}",
-                tenantId,
-                domain,
+            logger.LogDebug(
+                "Resolving domain service: ConfigKey={ConfigKey}, ConfigStore={ConfigStore}, Version={Version}",
                 configKey,
-                configItem.Value);
-            throw new DomainServiceException(
-                $"Domain service registration for tenant '{tenantId}', domain '{domain}' has corrupted configuration (key: '{configKey}'). Verify config store contents.",
-                ex);
-        }
+                options.Value.ConfigStoreName,
+                version);
 
-        if (registration is null) {
-            logger.LogWarning(
-                "Domain service registration deserialized to null: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}",
+            GetConfigurationResponse configResponse = await daprClient
+                .GetConfiguration(
+                    options.Value.ConfigStoreName,
+                    [configKey],
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (configResponse.Items.TryGetValue(configKey, out ConfigurationItem? configItem) &&
+                !string.IsNullOrWhiteSpace(configItem.Value)) {
+                DomainServiceRegistration? registration;
+                try {
+                    registration = JsonSerializer.Deserialize<DomainServiceRegistration>(configItem.Value);
+                }
+                catch (JsonException ex) {
+                    logger.LogError(
+                        ex,
+                        "Failed to deserialize domain service registration: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}, RawValue={RawValue}",
+                        tenantId,
+                        domain,
+                        configKey,
+                        configItem.Value);
+                    throw new DomainServiceException(
+                        $"Domain service registration for tenant '{tenantId}', domain '{domain}' has corrupted configuration (key: '{configKey}'). Verify config store contents.",
+                        ex);
+                }
+
+                if (registration is not null) {
+                    logger.LogDebug(
+                        "Resolved domain service: AppId={AppId}, Method={MethodName}, Tenant={TenantId}, Domain={Domain}",
+                        registration.AppId,
+                        registration.MethodName,
+                        tenantId,
+                        domain);
+                    return registration;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not DomainServiceException) {
+            // Config store unavailable — fall through to convention-based resolution.
+            logger.LogDebug(
+                ex,
+                "Config store lookup failed, falling back to convention: Tenant={TenantId}, Domain={Domain}, ConfigKey={ConfigKey}",
                 tenantId,
                 domain,
                 configKey);
-            return null;
         }
 
+        // Convention-based fallback: route to DAPR app whose ID matches the domain name,
+        // using the standard "process" method. This allows domain services to be discovered
+        // transparently by naming convention without explicit registration.
         logger.LogDebug(
-            "Resolved domain service: AppId={AppId}, Method={MethodName}, Tenant={TenantId}, Domain={Domain}",
-            registration.AppId,
-            registration.MethodName,
+            "Resolved domain service by convention: AppId={AppId}, Method=process, Tenant={TenantId}, Domain={Domain}",
+            domain,
             tenantId,
             domain);
-
-        return registration;
+        return new DomainServiceRegistration(
+            AppId: domain,
+            MethodName: "process",
+            TenantId: tenantId,
+            Domain: domain,
+            Version: version);
     }
 }
