@@ -1,26 +1,25 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-03-15'
+lastSaved: '2026-03-29'
 status: 'complete'
 workflowType: 'testarch-test-review'
 inputDocuments:
-  - _bmad/tea/testarch/knowledge/test-quality.md
-  - _bmad/tea/testarch/knowledge/test-levels-framework.md
-  - _bmad/tea/testarch/knowledge/data-factories.md
-  - _bmad/tea/testarch/knowledge/test-healing-patterns.md
-  - _bmad/tea/testarch/knowledge/test-priorities-matrix.md
-  - _bmad/tea/testarch/knowledge/risk-governance.md
-  - _bmad/tea/testarch/knowledge/error-handling.md
-  - _bmad-output/planning-artifacts/architecture.md
+  - '_bmad/tea/testarch/knowledge/test-quality.md'
+  - '_bmad/tea/testarch/knowledge/data-factories.md'
+  - '_bmad/tea/testarch/knowledge/test-levels-framework.md'
+  - '_bmad/tea/testarch/knowledge/test-healing-patterns.md'
+  - '_bmad/tea/testarch/knowledge/fixture-architecture.md'
+  - '_bmad/tea/testarch/knowledge/selective-testing.md'
 ---
 
 # Test Quality Review: Hexalith.EventStore (Full Suite)
 
-**Quality Score**: 95/100 (A - Excellent)
-**Review Date**: 2026-03-15
-**Review Scope**: suite (all 8 test projects, 3 tiers)
+**Quality Score**: 90/100 (A - Excellent)
+**Review Date**: 2026-03-29
+**Review Scope**: suite (14 test projects, 500 files, ~40,568 LOC)
 **Reviewer**: Murat (TEA Agent)
+**Previous Review**: 2026-03-15 (95/100, 8 projects, ~95 files)
 
 ---
 
@@ -31,84 +30,87 @@ Coverage mapping and coverage gates are out of scope here. Use `trace` for cover
 
 **Overall Assessment**: Excellent
 
-**Recommendation**: Approve
+**Recommendation**: Approve with Comments
 
 ### Key Strengths
 
-- Perfect test isolation across all 8 projects — no shared mutable state, proper IDisposable/IAsyncLifetime lifecycle
-- Excellent factory/builder pattern usage for test data — zero hardcoded data fragility
-- Outstanding concurrency and stress testing (Parallel.For with 64+ iterations in multiple files)
-- Comprehensive 3-tier test pyramid with clear separation (Unit / DAPR Integration / Aspire E2E)
-- Exemplary Aspire test infrastructure with diagnostic container logging on failure
+- Consistent naming convention (`Method_Scenario_Expected`) across all 500 test files
+- Zero async anti-patterns (no `.Result`, no `.Wait()`, proper `async/await` throughout)
+- Excellent test isolation via xUnit collection fixtures, `IAsyncLifetime`, and per-test mock creation
+- Shouldly fluent assertions used consistently across ~95% of test projects
+- Comprehensive error path coverage (401, 403, 404, validation failures, exception handling)
+- Strong security-focused testing (tenant isolation, RBAC, injection prevention, payload protection)
+- Well-factored test helpers (`ContractTestHelpers`, `AdminUITestContext`, `MockHttpMessageHandler`)
+- Proper test tiering (Tier 1/2/3) with clear dependency boundaries
+- 225+ parametrized `[Theory]`/`[InlineData]` tests for edge case coverage
 
 ### Key Weaknesses
 
-- Thread.Sleep(2) timing dependency in UniqueIdHelperIntegrationTests.cs
-- 5 test files exceed 300 lines (though all are well-structured internally)
-- Performance assertion (ShouldBeLessThan(100ms)) may be flaky on slow CI environments
+- Hard-coded magic strings repeated across test methods ("tenant-a", "counter", "acme", "agg-001")
+- `MockHttpMessageHandler` duplicated between `Admin.Cli.Tests` and `Admin.Mcp.Tests`
+- Inconsistent assertion library: `Contracts.Tests` uses xUnit `Assert`, rest uses Shouldly
+- Some large test files exceed 300 lines (AggregateActorTests: 1,068 lines)
 
 ### Summary
 
-The Hexalith.EventStore test suite is production-grade with enterprise-quality testing practices. Across 95+ test files and 500+ test methods, only 7 minor violations were found — none critical. The suite demonstrates mature patterns: fluent Shouldly assertions visible in test bodies, factory methods for all test data, strict Arrange-Act-Assert structure, and proper async/await handling throughout. The 3-tier architecture (xUnit unit tests / DAPR-mocked integration tests / Aspire E2E contract tests) is well-designed and each tier is properly isolated. This is a reference-quality .NET test suite.
+The suite has nearly tripled since the last review (8 projects / ~95 files -> 14 projects / 500 files / ~40K LOC). Despite this rapid growth, quality remains high. The new Admin.* projects (UI, Server, CLI, MCP, Abstractions) maintain the same excellent patterns established in the core projects: consistent naming, proper isolation, fluent assertions, and focused test methods.
+
+The score decreased from 95 to 90 primarily due to maintainability concerns introduced by the scale increase: duplicated test infrastructure across new projects and inconsistent assertion styles. These are incremental improvements that don't affect test reliability — no critical or high-severity violations found.
 
 ---
 
 ## Quality Criteria Assessment
 
-| Criterion                          | Status  | Violations | Notes                                                  |
-| ---------------------------------- | ------- | ---------- | ------------------------------------------------------ |
-| Naming Convention (Method_Condition_Result) | PASS | 0 | Consistent across all 8 projects                      |
-| Test IDs / Traceability            | WARN | — | Task comments present but no formal test IDs           |
-| Priority Markers (P0/P1/P2/P3)    | WARN | — | Tier traits present, no P0-P3 tags                     |
-| Hard Waits (Thread.Sleep)          | WARN | 1 | UniqueIdHelperIntegrationTests.cs:39                   |
-| Determinism (no conditionals)      | PASS | 0 | No conditional flow control in tests                   |
-| Isolation (cleanup, no shared state) | PASS | 0 | Perfect — factories, IDisposable, IAsyncLifetime       |
-| Fixture Patterns                   | PASS | 0 | Excellent: xUnit collections, WebApplicationFactory    |
-| Data Factories / Builders          | PASS | 0 | Builder pattern in Testing project, factory helpers     |
-| Explicit Assertions                | PASS | 0 | Shouldly fluent assertions visible in all test bodies  |
-| Test Length (<=300 lines)           | WARN | 5 | 5 files exceed 300 lines (max 632)                     |
-| Test Duration (<=1.5 min)          | PASS | 0 | Unit tests fast; Aspire timeout is infrastructure cost |
-| Flakiness Patterns                 | WARN | 2 | Thread.Sleep + perf assertion on timing                |
+| Criterion | Status | Violations | Notes |
+|---|---|---|---|
+| Naming Convention (Method_Scenario_Expected) | PASS | 0 | Excellent consistency across all 14 projects |
+| Test IDs | WARN | N/A | No formal test ID system; story references in comments |
+| Priority Markers (P0/P1/P2/P3) | WARN | N/A | Tier markers via `[Trait]` on integration tests; no P0-P3 on unit tests |
+| Hard Waits (Task.Delay) | WARN | ~28 | Only in Tier 2/3 integration/chaos tests; justified for infrastructure waits |
+| Determinism (no conditionals/try-catch) | PASS | 0 | Zero try-catch flow control; minimal justified conditionals |
+| Isolation (cleanup, no shared state) | PASS | 0 | Excellent: xUnit collections, IAsyncLifetime, Guid.NewGuid() per test |
+| Fixture Patterns | PASS | 0 | xUnit collection fixtures, AdminUITestContext, DaprTestContainerFixture |
+| Data Factories | WARN | 3 | Private factory methods used; no centralized builders in new Admin projects |
+| Network-First Pattern | PASS | 0 | N/A for backend; integration tests use proper HTTP client patterns |
+| Explicit Assertions | PASS | 0 | All assertions in test bodies; Shouldly fluent style |
+| Test Length (<=300 lines per method) | PASS | 0 | Individual methods 5-60 LOC; some *files* large but methods focused |
+| Test Duration (<=1.5 min) | PASS | 0 | Unit tests instant; integration tests use polling with timeouts |
+| Flakiness Patterns | PASS | 0 | bUnit uses `WaitForAssertion` (intelligent retry); no race conditions |
 
-**Total Violations**: 0 Critical, 0 High, 1 Medium, 6 Low
+**Total Violations**: 0 Critical, 0 High, 7 Medium, 6 Low
 
 ---
 
-## Quality Score Breakdown
+## Dimension Scores (Weighted)
+
+| Dimension | Score | Grade | Weight | Weighted |
+|---|---|---|---|---|
+| Determinism | 93/100 | A | 30% | 27.9 |
+| Isolation | 96/100 | A | 30% | 28.8 |
+| Maintainability | 79/100 | C | 25% | 19.75 |
+| Performance | 88/100 | B | 15% | 13.2 |
+| **Overall** | **90/100** | **A** | **100%** | **89.65 -> 90** |
+
+### Score Breakdown
 
 ```
 Starting Score:          100
 Critical Violations:     -0 x 10 = -0
 High Violations:         -0 x 5  = -0
-Medium Violations:       -1 x 5  = -5
+Medium Violations:       -7 x 2  = -14
 Low Violations:          -6 x 1  = -6
                          --------
-Subtotal:                89
+Subtotal:                80
 
 Bonus Points:
-  Excellent Naming:       +5 (consistent Method_Condition_Result)
-  Comprehensive Fixtures: +5 (WebApplicationFactory, Aspire, xUnit collections)
-  Data Factories:         +5 (Builder pattern, factory helpers)
-  Perfect Isolation:      +5 (IDisposable, IAsyncLifetime, no shared state)
-  Concurrency Testing:    +5 (Parallel.For stress tests in multiple files)
+  Comprehensive Fixtures: +5  (xUnit collections, IAsyncLifetime, AdminUITestContext)
+  Perfect Isolation:      +5  (zero shared mutable state, per-test data)
                          --------
-Total Bonus:             +25 (capped at +11 to reach max 100)
+Total Bonus:             +10
 
-Final Score:             95/100
-Grade:                   A
+Final Score:             90/100
+Grade:                   A (Excellent)
 ```
-
----
-
-## Dimension Scores
-
-| Dimension       | Score | Grade | Weight | Contribution |
-| --------------- | ----- | ----- | ------ | ------------ |
-| Determinism     | 93    | A     | 30%    | 27.9         |
-| Isolation       | 100   | A+    | 30%    | 30.0         |
-| Maintainability | 90    | A     | 25%    | 22.5         |
-| Performance     | 96    | A     | 15%    | 14.4         |
-| **Overall**     | **95**| **A** | 100%   | **94.8**     |
 
 ---
 
@@ -120,144 +122,146 @@ No critical issues detected.
 
 ## Recommendations (Should Fix)
 
-### 1. Thread.Sleep Timing Dependency
+### 1. Consolidate Duplicated MockHttpMessageHandler
 
 **Severity**: P2 (Medium)
-**Location**: `tests/Hexalith.EventStore.Contracts.Tests/UniqueIdHelperIntegrationTests.cs:39`
-**Criterion**: Determinism
-**Knowledge Base**: test-quality.md
+**Location**: `tests/Hexalith.EventStore.Admin.Cli.Tests/Client/` and `tests/Hexalith.EventStore.Admin.Mcp.Tests/TestHelpers/`
+**Criterion**: Maintainability (DRY)
+**Knowledge Base**: fixture-architecture.md
 
 **Issue Description**:
-Uses `Thread.Sleep(2)` to ensure distinct ULID timestamps for ordering tests. This creates a timing dependency that may fail sporadically under CPU contention or on slow CI runners.
+`MockHttpMessageHandler` and `QueuedMockHttpMessageHandler` are implemented independently in both the CLI and MCP test projects. Both provide identical factory methods (`CreateJsonClient`, `CreateCapturingClient`, `CreateThrowingClient`). Bug fixes or enhancements must be applied twice.
+
+**Recommended Fix**:
+Move shared HTTP mocking infrastructure to the existing `Hexalith.EventStore.Testing` project. Both test projects reference it via project dependency.
+
+**Priority**: P2 — no immediate reliability risk, but reduces maintenance burden.
+
+---
+
+### 2. Standardize on Shouldly Across All Test Projects
+
+**Severity**: P2 (Medium)
+**Location**: `tests/Hexalith.EventStore.Contracts.Tests/` (uses xUnit `Assert.*`)
+**Criterion**: Maintainability (Consistency)
+
+**Issue Description**:
+Contracts.Tests uses raw xUnit `Assert.*` (~1,134 occurrences) while the remaining 13 projects use Shouldly (~8,260 occurrences). This creates cognitive switching costs.
 
 **Current Code**:
-
 ```csharp
-// Line 37-45
-string first = UniqueIdHelper.GenerateSortableUniqueStringId();
-Thread.Sleep(2);  // TIMING DEPENDENCY
-string second = UniqueIdHelper.GenerateSortableUniqueStringId();
-int comparison = string.Compare(first, second, StringComparison.Ordinal);
-Assert.True(comparison < 0);
+Assert.Equal("expected", result.TenantId);
+Assert.NotNull(result.MessageId);
 ```
 
 **Recommended Fix**:
-
 ```csharp
-// Option A: Use a fake time provider (deterministic)
-var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
-string first = UniqueIdHelper.GenerateSortableUniqueStringId(timeProvider);
-timeProvider.Advance(TimeSpan.FromMilliseconds(1));
-string second = UniqueIdHelper.GenerateSortableUniqueStringId(timeProvider);
-
-// Option B: Test monotonicity without relying on time gap
-// ULID spec guarantees monotonic increment within same millisecond
-string first = UniqueIdHelper.GenerateSortableUniqueStringId();
-string second = UniqueIdHelper.GenerateSortableUniqueStringId();
-string.Compare(first, second, StringComparison.Ordinal).ShouldBeLessThan(0);
+result.TenantId.ShouldBe("expected");
+result.MessageId.ShouldNotBeNull();
 ```
 
-**Why This Matters**:
-Thread.Sleep in tests is the #1 cause of flaky tests. Under CPU contention, 2ms sleep may not produce a distinct millisecond boundary, causing sporadic failures.
+**Priority**: P2 — do incrementally when touching Contracts.Tests files.
 
 ---
 
-### 2. Performance Assertion Fragility
+### 3. Extract Repeated Magic Strings to Shared Constants
 
-**Severity**: P3 (Low)
-**Location**: `tests/Hexalith.EventStore.Server.Tests/Events/EventStreamReaderTests.cs:148`
-**Criterion**: Determinism / Performance
+**Severity**: P2 (Medium)
+**Location**: Across all test projects
+**Criterion**: Maintainability (Magic Strings)
+**Knowledge Base**: data-factories.md
 
 **Issue Description**:
-Asserts that rehydration completes in under 100ms. This may fail on slow CI environments or under memory pressure.
+Domain test data strings like `"tenant-a"`, `"counter"`, `"acme"`, `"agg-001"`, `"IncrementCounter"` are hard-coded inline across hundreds of test methods.
 
-**Current Code**:
-
+**Recommended Fix**:
 ```csharp
-var sw = System.Diagnostics.Stopwatch.StartNew();
-RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
-sw.Stop();
-sw.ElapsedMilliseconds.ShouldBeLessThan(100);
+// In Hexalith.EventStore.Testing
+public static class TestData
+{
+    public const string TenantId = "test-tenant";
+    public const string Domain = "counter";
+    public const string AggregateId = "agg-001";
+    public const string IncrementCommand = "IncrementCounter";
+}
 ```
 
-**Recommended Improvement**:
-
-```csharp
-// Use a generous threshold for CI environments
-const long maxMs = 500; // 100ms local, 500ms CI headroom
-sw.ElapsedMilliseconds.ShouldBeLessThan(maxMs);
-```
+**Priority**: P2 — do when refactoring test data setup.
 
 ---
 
-### 3. Long Test Files (5 files > 300 lines)
+### 4. Replace Task.Delay with Retry/Poll in Chaos Tests
 
 **Severity**: P3 (Low)
-**Criterion**: Maintainability
+**Location**: `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs`
+**Criterion**: Determinism (Hard Waits)
 
-**Files affected:**
+**Issue Description**:
+Chaos resilience tests use `await Task.Delay(TimeSpan.FromSeconds(3-5))` for infrastructure state changes. While justified, these could use the existing `PollUntilTerminalStatusAsync` pattern for more deterministic behavior.
 
-| File | Lines | Tests | Assessment |
-|------|-------|-------|------------|
-| AssemblyScannerTests.cs | 632 | 50+ | Well-organized, could split by concern |
-| NamingConventionEngineTests.cs | 597 | 60+ | Thorough, could split by method |
-| EventStoreAggregateTests.cs | 565 | 35 | Comprehensive, includes stress tests |
-| ConcurrencyConflictExceptionHandlerTests.cs | 429 | 15+ | Nested depth testing, acceptable |
-| CascadeConfigurationTests.cs | 420 | 30+ | 5-layer cascade, acceptable |
+**Priority**: P3 — justified delays in optional Tier 3 tests.
 
-**Note**: All files are internally well-structured with focused test methods (15-30 lines each). The length is due to comprehensive coverage, not poor structure. Splitting is optional and low priority.
+---
+
+### 5. Split Large Test Files
+
+**Severity**: P3 (Low)
+**Location**: `Server.Tests/Actors/AggregateActorTests.cs` (1,068 lines), `QueriesControllerTests.cs` (771 lines)
+**Criterion**: Maintainability (Test Length)
+
+**Recommended Split** for AggregateActorTests.cs:
+- `AggregateActorIdempotencyTests.cs`
+- `AggregateActorStateMachineTests.cs`
+- `AggregateActorTenantIsolationTests.cs`
+
+**Priority**: P3 — individual methods are well-structured; file-level organization improvement.
 
 ---
 
 ## Best Practices Found
 
-### 1. Cache Cleanup via IDisposable
+### 1. Aspire Collection Fixture (Gold Standard)
 
-**Location**: `tests/Hexalith.EventStore.Client.Tests/EventStoreAggregateTests.cs:13-23`
-**Pattern**: Test lifecycle cleanup
+**Location**: `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs`
+**Pattern**: Shared infrastructure via IAsyncLifetime + xUnit Collection
 
-**Why This Is Good**:
-Implements `IDisposable` to clear static caches between test classes, preventing cache pollution. This is the correct pattern for testing code that uses `ConcurrentDictionary` caches.
+One Aspire topology started per collection, shared across all contract test classes. Validates resource health before execution. Captures container logs on failure for actionable diagnostics.
 
----
+### 2. AdminUITestContext for bUnit
 
-### 2. Concurrency Stress Testing
+**Location**: `tests/Hexalith.EventStore.Admin.UI.Tests/TestHelpers/AdminUITestContext.cs`
+**Pattern**: Pre-configured DI container for Blazor component testing
 
-**Location**: Multiple files (EventStoreAggregateTests.cs:440, NamingConventionEngineTests.cs:387)
-**Pattern**: Thread-safety verification
+Provides JS interop mocks (FluentUI, LocalStorage, viewport), auth state, theme services, and HTTP client factory. Every UI test inherits clean environment. Uses `WaitForAssertion` for async rendering.
 
-**Why This Is Good**:
-Uses `Parallel.For` with 64+ iterations to validate thread-safety of caching and initialization code. This catches race conditions that sequential tests miss. Exemplary pattern for testing `ConcurrentDictionary` and `Lazy<T>` usage.
+### 3. Security-Focused Testing (45+ Tests)
 
----
+**Location**: `tests/Hexalith.EventStore.Server.Tests/Security/`
+**Pattern**: Defense-in-depth for multi-tenancy
 
-### 3. Aspire Test Infrastructure with Diagnostics
+Covers tenant isolation, RBAC validation, payload protection, PubSub topic isolation, and script injection prevention. Cross-tenant operations explicitly tested and blocked.
 
-**Location**: `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs`
-**Pattern**: E2E test fixture with container log capture
+### 4. Factory Methods with Default Parameters
 
-**Why This Is Good**:
-On timeout, captures Docker container logs (last 200 lines) and includes them in the exception message. This turns opaque "test timed out" failures into actionable diagnostics with Keycloak/DAPR sidecar logs.
+**Location**: Throughout Server.Tests — `CreateTestEnvelope()`, `CreateTestCommand()`, `CreatePrincipal()`
+**Pattern**: Private factory methods with optional parameters
 
----
+```csharp
+private static CommandEnvelope CreateTestEnvelope(
+    string tenantId = "test-tenant",
+    string? correlationId = null) => new(
+    MessageId: Guid.NewGuid().ToString(),
+    TenantId: tenantId, ...);
+```
 
-### 4. Multi-Tenant Isolation Testing
+Overrides show test intent; defaults minimize boilerplate.
 
-**Location**: `tests/Hexalith.EventStore.Contracts.Tests/Identity/AggregateIdentityTests.cs:209-350`
-**Pattern**: Tenant boundary verification
+### 5. Concurrency Stress Testing
 
-**Why This Is Good**:
-Dedicated tests verify that composite state store keys include tenant ID, and that different tenants produce disjoint key spaces. This prevents tenant data leakage — a P0 security concern for multi-tenant event sourcing.
+**Location**: Multiple files (EventStoreAggregateTests, NamingConventionEngineTests)
+**Pattern**: `Parallel.For` with 64+ iterations
 
----
-
-### 5. Comprehensive Builder Pattern in Testing Library
-
-**Location**: `src/Hexalith.EventStore.Testing/` + `tests/Hexalith.EventStore.Testing.Tests/Builders/`
-**Pattern**: Fluent test data builders
-
-**Why This Is Good**:
-The project publishes a dedicated `Hexalith.EventStore.Testing` NuGet package with builders (AggregateIdentityBuilder, CommandEnvelopeBuilder, EventEnvelopeBuilder) and fluent assertions (DomainResultAssertions). This enables consumers to write high-quality tests with minimal boilerplate.
+Validates thread-safety of `ConcurrentDictionary` caches and `Lazy<T>` initialization. Catches race conditions that sequential tests miss.
 
 ---
 
@@ -265,119 +269,126 @@ The project publishes a dedicated `Hexalith.EventStore.Testing` NuGet package wi
 
 ### Suite Metadata
 
-- **Total Test Projects**: 8
-- **Total Test Files**: ~95+ (excluding helpers, fixtures, generated)
-- **Total Test Methods**: ~500+
-- **Test Framework**: xUnit 2.9.3
-- **Assertion Library**: Shouldly 4.3.0
-- **Mocking Framework**: NSubstitute 5.3.0
-- **Coverage Tool**: coverlet.collector 6.0.4
+| Project | Files | Tier | Primary Focus |
+|---|---|---|---|
+| Server.Tests | 164 | 2 | Actors, pipeline, commands, security, DAPR |
+| Admin.UI.Tests | 86 | 1 | bUnit component tests (Blazor) |
+| Admin.Server.Tests | 63 | 1 | Controllers, authorization, services |
+| IntegrationTests | 60 | 3 | Aspire E2E contract tests |
+| Admin.Abstractions.Tests | 60 | 1 | Data models, serialization |
+| Admin.Cli.Tests | 55 | 1 | CLI commands, HTTP client |
+| Admin.Mcp.Tests | 38 | 1 | MCP protocol handlers |
+| Contracts.Tests | 29 | 1 | Domain contracts |
+| Client.Tests | 18 | 1 | Client abstractions |
+| Testing.Tests | 16 | 1 | Testing utilities |
+| Sample.Tests | 14 | 1 | Sample domain (Counter) |
+| Admin.UI.E2E | 11 | 3 | Aspire smoke tests |
+| Admin.Server.Host.Tests | 8 | 1 | Host bootstrap, middleware |
+| SignalR.Tests | 7 | 1 | SignalR notifications |
+| **Total** | **500** | | **~40,568 LOC** |
 
 ### Test Pyramid
 
 ```
-     /\
-    /  \     Tier 3: Aspire E2E (IntegrationTests)
-   / E2E\     - Full topology: CommandApi + Sample + DAPR + Redis + Keycloak
-  /------\    - ~30 tests, 3-5 min startup
- /  Integ \   Tier 2: DAPR Integration (Server.Tests)
-/----------\    - Mocked DAPR, NSubstitute, InMemory stores
-/ Unit Tests \   - ~90+ tests, fast execution
-/--------------\  Tier 1: Unit (Contracts, Client, Sample, Testing, SignalR)
-                   - Pure logic, zero dependencies
-                   - ~95+ files, ~400+ tests, sub-second execution
+       /\         Tier 3: Aspire E2E (~71 files)
+      /  \          Full topology: EventStore + DAPR + Redis + Keycloak
+     / E2E\
+    /------\      Tier 2: DAPR Integration (~164 files)
+   / Integr \       Mocked DAPR, NSubstitute, InMemory stores
+  /----------\
+ / Unit Tests \   Tier 1: Unit (~265 files)
+/--------------\    Pure logic, zero dependencies, sub-second execution
 ```
 
-### Per-Project Summary
+### Per-Project Scores
 
-| Project | Tier | Files | Tests | Score | Notes |
-|---------|------|-------|-------|-------|-------|
-| Contracts.Tests | 1 | 22 | 250+ | A | Perfect isolation, comprehensive edge cases |
-| Client.Tests | 1 | 15 | 200+ | A | Outstanding concurrency & cache tests |
-| Sample.Tests | 1 | 3 | 20+ | A | Good domain processor pattern coverage |
-| Testing.Tests | 1 | 7 | 100+ | A | Tests the testing library itself |
-| SignalR.Tests | 1 | 1 | 17 | A | Fluent Shouldly, subscription mechanics |
-| Server.Tests | 2 | 40+ | 150+ | A | Comprehensive mocking, all domain areas |
-| IntegrationTests | 3 | 20+ | 50+ | A | Excellent Aspire infrastructure |
+| Project | Determinism | Isolation | Maintainability | Performance | Overall |
+|---|---|---|---|---|---|
+| Server.Tests | A | A | B | A | A |
+| Admin.UI.Tests | A | A | A | A | A |
+| Admin.Server.Tests | A | A | A | A | A |
+| IntegrationTests | B | A | B | B | B+ |
+| Admin.Abstractions.Tests | A | A | A | A | A |
+| Admin.Cli.Tests | A | A | B | A | A- |
+| Admin.Mcp.Tests | A | A | B | A | A- |
+| Contracts.Tests | A | A | C | A | B+ |
+| Client.Tests | A | A | A | A | A |
+| Testing.Tests | A | A | A | A | A |
+| Sample.Tests | A | A | A | A | A |
+| Admin.UI.E2E | A | A | A | A | A |
+| Admin.Server.Host.Tests | A | A | A | A | A |
+| SignalR.Tests | A | A | A | A | A |
 
-**Suite Average**: 95/100 (A)
+---
+
+## Quality Trends
+
+| Review Date | Scope | Score | Grade | Critical | Trend |
+|---|---|---|---|---|---|
+| 2026-03-15 | 8 projects / ~95 files | 95/100 | A | 0 | Baseline |
+| 2026-03-29 | 14 projects / 500 files | 90/100 | A | 0 | Slight decline (scale) |
+
+**Trend Analysis**: Score decreased 5 points despite zero critical issues. The decline is entirely due to maintainability concerns from rapid suite growth (5x file count increase). New Admin.* projects introduced duplicated infrastructure and inconsistent assertion styles. Core quality dimensions (determinism, isolation) remain excellent.
 
 ---
 
 ## Knowledge Base References
 
-This review consulted the following knowledge base fragments:
-
-- **test-quality.md** - Definition of Done (no hard waits, <300 lines, <1.5 min, self-cleaning)
-- **test-levels-framework.md** - Unit vs Integration vs E2E selection criteria
+- **test-quality.md** - Definition of Done (no hard waits, <300 lines, self-cleaning, explicit assertions)
+- **fixture-architecture.md** - Pure function -> Fixture composition patterns
 - **data-factories.md** - Factory functions with overrides, API-first setup
-- **test-healing-patterns.md** - Common failure patterns and fixes
-- **test-priorities-matrix.md** - P0-P3 classification framework
-- **risk-governance.md** - Risk scoring and gate decisions
-- **error-handling.md** - Scoped exception handling, retry validation
+- **test-levels-framework.md** - Unit vs Integration vs E2E selection
+- **test-healing-patterns.md** - Common failure patterns and healing strategies
+- **selective-testing.md** - Tag-based execution, diff-based selection
 
-For coverage mapping, consult `trace` workflow outputs.
+See [tea-index.csv](../../_bmad/tea/testarch/tea-index.csv) for complete knowledge base.
 
 ---
 
 ## Next Steps
 
-### Immediate Actions (Optional)
+### Immediate Actions (Before Merge)
 
-1. **Fix Thread.Sleep in UniqueIdHelperIntegrationTests** - Replace with deterministic approach
+None required. Suite quality is excellent.
+
+### Follow-up Actions (Future PRs)
+
+1. **Consolidate MockHttpMessageHandler** - Move to shared Testing project
    - Priority: P2
-   - Estimated Effort: 15 minutes
+   - Target: Next sprint
 
-2. **Relax performance assertion threshold** - EventStreamReaderTests.cs:148
-   - Priority: P3
-   - Estimated Effort: 5 minutes
+2. **Standardize Contracts.Tests on Shouldly** - Migrate xUnit Assert calls
+   - Priority: P2
+   - Target: Incremental
 
-### Follow-up Actions (Future)
+3. **Extract shared test constants** - Create TestData class
+   - Priority: P2
+   - Target: Next sprint
 
-1. **Add formal test IDs** - Map tests to acceptance criteria for traceability
-   - Priority: P3
-   - Target: Backlog
-
-2. **Consider splitting 5 large test files** - Optional, internal structure is good
+4. **Split large test files** - AggregateActorTests, QueriesControllerTests
    - Priority: P3
    - Target: Backlog
 
 ### Re-Review Needed?
 
-No re-review needed - approve as-is.
+No re-review needed. Approve as-is.
 
 ---
 
 ## Decision
 
-**Recommendation**: Approve
+**Recommendation**: Approve with Comments
 
 **Rationale**:
 
-Test quality is excellent with 95/100 score. The 7 minor violations identified (1 medium, 6 low) pose minimal risk and can be addressed in follow-up PRs at the team's discretion. The test suite demonstrates production-grade practices: perfect isolation, fluent assertions, comprehensive edge case coverage, concurrency stress testing, and a well-architected 3-tier test pyramid. The dedicated Testing NuGet package with builders and assertions shows investment in test infrastructure that benefits downstream consumers. This is a reference-quality .NET event sourcing test suite.
-
----
-
-## Appendix
-
-### Violation Summary by Location
-
-| File | Severity | Criterion | Issue | Fix |
-| ---- | -------- | --------- | ----- | --- |
-| UniqueIdHelperIntegrationTests.cs:39 | P2 (Medium) | Determinism | Thread.Sleep(2) timing dependency | Use fake time provider or ULID monotonic guarantee |
-| EventStreamReaderTests.cs:148 | P3 (Low) | Performance | 100ms assertion fragile on CI | Increase threshold to 500ms |
-| AssemblyScannerTests.cs | P3 (Low) | Maintainability | 632 lines | Consider splitting by concern |
-| NamingConventionEngineTests.cs | P3 (Low) | Maintainability | 597 lines | Consider splitting by method |
-| EventStoreAggregateTests.cs | P3 (Low) | Maintainability | 565 lines | Consider splitting (stress tests separate) |
-| ConcurrencyConflictExceptionHandlerTests.cs | P3 (Low) | Maintainability | 429 lines | Acceptable (nested depth testing) |
-| CascadeConfigurationTests.cs | P3 (Low) | Maintainability | 420 lines | Acceptable (5-layer cascade) |
+Test quality is excellent with 90/100 score. The suite has grown 5x since the last review while maintaining zero critical violations and zero async anti-patterns. All 7 medium-severity findings are maintainability improvements (code duplication, assertion consistency, magic strings) that don't affect test reliability. The three-tier architecture with proper fixture sharing is well-designed for this DAPR-native event sourcing system. Security testing with 45+ tenant isolation tests is exemplary. The suite is production-ready.
 
 ---
 
 ## Review Metadata
 
 **Generated By**: Murat (BMad TEA Agent - Master Test Architect)
-**Workflow**: testarch-test-review v5.0
-**Review ID**: test-review-suite-20260315
-**Timestamp**: 2026-03-15
-**Version**: 1.0
+**Workflow**: testarch-test-review v5.0 (sequential mode)
+**Review ID**: test-review-suite-20260329
+**Timestamp**: 2026-03-29
+**Version**: 2.0

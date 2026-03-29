@@ -26,34 +26,34 @@ public class EventMetadataTests {
             MetadataVersion: 1,
             SerializationFormat: "json");
 
-        Assert.Equal("msg-001", metadata.MessageId);
-        Assert.Equal("order-123", metadata.AggregateId);
-        Assert.Equal("order", metadata.AggregateType);
-        Assert.Equal("acme", metadata.TenantId);
-        Assert.Equal("payments", metadata.Domain);
-        Assert.Equal(1, metadata.SequenceNumber);
-        Assert.Equal(0, metadata.GlobalPosition);
-        Assert.Equal(timestamp, metadata.Timestamp);
-        Assert.Equal("corr-1", metadata.CorrelationId);
-        Assert.Equal("cause-1", metadata.CausationId);
-        Assert.Equal("user-1", metadata.UserId);
-        Assert.Equal("1.0.0", metadata.DomainServiceVersion);
-        Assert.Equal("OrderCreated", metadata.EventTypeName);
-        Assert.Equal(1, metadata.MetadataVersion);
-        Assert.Equal("json", metadata.SerializationFormat);
+        metadata.MessageId.ShouldBe("msg-001");
+        metadata.AggregateId.ShouldBe("order-123");
+        metadata.AggregateType.ShouldBe("order");
+        metadata.TenantId.ShouldBe("acme");
+        metadata.Domain.ShouldBe("payments");
+        metadata.SequenceNumber.ShouldBe(1);
+        metadata.GlobalPosition.ShouldBe(0);
+        metadata.Timestamp.ShouldBe(timestamp);
+        metadata.CorrelationId.ShouldBe("corr-1");
+        metadata.CausationId.ShouldBe("cause-1");
+        metadata.UserId.ShouldBe("user-1");
+        metadata.DomainServiceVersion.ShouldBe("1.0.0");
+        metadata.EventTypeName.ShouldBe("OrderCreated");
+        metadata.MetadataVersion.ShouldBe(1);
+        metadata.SerializationFormat.ShouldBe("json");
     }
 
     [Fact]
     public void EventMetadata_HasExactly15Fields() {
         PropertyInfo[] properties = typeof(EventMetadata).GetProperties();
-        Assert.Equal(15, properties.Length);
+        properties.Length.ShouldBe(15);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(long.MinValue)]
-    public void Constructor_WithSequenceNumberLessThan1_ThrowsArgumentOutOfRangeException(long sequenceNumber) => Assert.Throws<ArgumentOutOfRangeException>(() =>
+    public void Constructor_WithSequenceNumberLessThan1_ThrowsArgumentOutOfRangeException(long sequenceNumber) => Should.Throw<ArgumentOutOfRangeException>(() =>
             new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", sequenceNumber, 0, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", 1, "json"));
 
     [Theory]
@@ -62,14 +62,14 @@ public class EventMetadataTests {
     public void Constructor_WithValidSequenceNumber_Succeeds(long sequenceNumber) {
         var metadata = new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", sequenceNumber, 0, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", 1, "json");
 
-        Assert.Equal(sequenceNumber, metadata.SequenceNumber);
+        metadata.SequenceNumber.ShouldBe(sequenceNumber);
     }
 
     [Theory]
     [InlineData(-1)]
     [InlineData(-100)]
     [InlineData(long.MinValue)]
-    public void Constructor_WithGlobalPositionLessThan0_ThrowsArgumentOutOfRangeException(long globalPosition) => Assert.Throws<ArgumentOutOfRangeException>(() =>
+    public void Constructor_WithGlobalPositionLessThan0_ThrowsArgumentOutOfRangeException(long globalPosition) => Should.Throw<ArgumentOutOfRangeException>(() =>
             new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", 1, globalPosition, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", 1, "json"));
 
     [Theory]
@@ -79,14 +79,14 @@ public class EventMetadataTests {
     public void Constructor_WithValidGlobalPosition_Succeeds(long globalPosition) {
         var metadata = new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", 1, globalPosition, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", 1, "json");
 
-        Assert.Equal(globalPosition, metadata.GlobalPosition);
+        metadata.GlobalPosition.ShouldBe(globalPosition);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(int.MinValue)]
-    public void Constructor_WithMetadataVersionLessThan1_ThrowsArgumentOutOfRangeException(int metadataVersion) => Assert.Throws<ArgumentOutOfRangeException>(() =>
+    public void Constructor_WithMetadataVersionLessThan1_ThrowsArgumentOutOfRangeException(int metadataVersion) => Should.Throw<ArgumentOutOfRangeException>(() =>
             new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", 1, 0, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", metadataVersion, "json"));
 
     [Theory]
@@ -95,7 +95,7 @@ public class EventMetadataTests {
     public void Constructor_WithValidMetadataVersion_Succeeds(int metadataVersion) {
         var metadata = new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", 1, 0, DateTimeOffset.UtcNow, "c1", "ca1", "u1", "v1", "e1", metadataVersion, "json");
 
-        Assert.Equal(metadataVersion, metadata.MetadataVersion);
+        metadata.MetadataVersion.ShouldBe(metadataVersion);
     }
 
     [Fact]
@@ -104,6 +104,6 @@ public class EventMetadataTests {
         var m1 = new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", 1, 0, timestamp, "c1", "ca1", "u1", "v1", "e1", 1, "json");
         var m2 = new EventMetadata("msg1", "agg1", "agg-type", "t1", "d1", 1, 0, timestamp, "c1", "ca1", "u1", "v1", "e1", 1, "json");
 
-        Assert.Equal(m1, m2);
+        m2.ShouldBe(m1);
     }
 }

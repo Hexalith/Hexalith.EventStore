@@ -20,17 +20,17 @@ internal class GetOrderSummaryQuery : IQueryContract {
 public class IQueryContractTests {
     [Fact]
     public void IQueryContract_StaticMembers_AreAccessible() {
-        Assert.Equal("get-counter-status", GetCounterStatusQuery.QueryType);
-        Assert.Equal("counter", GetCounterStatusQuery.Domain);
-        Assert.Equal("counter", GetCounterStatusQuery.ProjectionType);
+        GetCounterStatusQuery.QueryType.ShouldBe("get-counter-status");
+        GetCounterStatusQuery.Domain.ShouldBe("counter");
+        GetCounterStatusQuery.ProjectionType.ShouldBe("counter");
     }
 
     [Fact]
     public void IQueryContract_CrossDomainQuery_DomainDiffersFromProjectionType() {
-        Assert.Equal("get-order-summary", GetOrderSummaryQuery.QueryType);
-        Assert.Equal("reporting", GetOrderSummaryQuery.Domain);
-        Assert.Equal("order-summary", GetOrderSummaryQuery.ProjectionType);
-        Assert.NotEqual(GetOrderSummaryQuery.Domain, GetOrderSummaryQuery.ProjectionType);
+        GetOrderSummaryQuery.QueryType.ShouldBe("get-order-summary");
+        GetOrderSummaryQuery.Domain.ShouldBe("reporting");
+        GetOrderSummaryQuery.ProjectionType.ShouldBe("order-summary");
+        GetOrderSummaryQuery.ProjectionType.ShouldNotBe(GetOrderSummaryQuery.Domain);
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class IQueryContractTests {
         var meta1 = new QueryContractMetadata("get-counter-status", "counter", "counter");
         var meta2 = new QueryContractMetadata("get-counter-status", "counter", "counter");
 
-        Assert.Equal(meta1, meta2);
+        meta2.ShouldBe(meta1);
     }
 
     [Fact]
@@ -46,15 +46,15 @@ public class IQueryContractTests {
         var meta1 = new QueryContractMetadata("get-counter-status", "counter", "counter");
         var meta2 = new QueryContractMetadata("get-order-summary", "reporting", "order-summary");
 
-        Assert.NotEqual(meta1, meta2);
+        meta2.ShouldNotBe(meta1);
     }
 
     [Fact]
     public void QueryContractMetadata_IsImmutable() {
         var meta = new QueryContractMetadata("get-counter-status", "counter", "counter");
 
-        Assert.Equal("get-counter-status", meta.QueryType);
-        Assert.Equal("counter", meta.Domain);
-        Assert.Equal("counter", meta.ProjectionType);
+        meta.QueryType.ShouldBe("get-counter-status");
+        meta.Domain.ShouldBe("counter");
+        meta.ProjectionType.ShouldBe("counter");
     }
 }

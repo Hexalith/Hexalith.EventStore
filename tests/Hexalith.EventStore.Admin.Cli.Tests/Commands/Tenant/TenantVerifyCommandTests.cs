@@ -6,7 +6,7 @@ using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 using Hexalith.EventStore.Admin.Cli.Formatting;
-using Hexalith.EventStore.Admin.Cli.Tests.Client;
+using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Tenant;
 
@@ -51,9 +51,9 @@ public class TenantVerifyCommandTests
         // Arrange — 5% usage
         TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -70,9 +70,9 @@ public class TenantVerifyCommandTests
         // Arrange — 95% usage
         TenantQuotas quotas = CreateTestQuotas(10200547328L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -89,9 +89,9 @@ public class TenantVerifyCommandTests
         // Arrange
         TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Suspended, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -108,9 +108,9 @@ public class TenantVerifyCommandTests
         // Arrange — 100% usage
         TenantQuotas quotas = CreateTestQuotas(10737418240L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -125,8 +125,8 @@ public class TenantVerifyCommandTests
     public async Task TenantVerifyCommand_NotFound_ReturnsError()
     {
         // Arrange
-        QueuedMockHttpMessageHandler handler = new(
-            new HttpResponseMessage(HttpStatusCode.NotFound)
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(new HttpResponseMessage(HttpStatusCode.NotFound)
             {
                 Content = new StringContent("Not found", System.Text.Encoding.UTF8, "text/plain"),
             });
@@ -145,9 +145,9 @@ public class TenantVerifyCommandTests
     {
         // Arrange — tenant exists but quotas endpoint returns 404
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, null);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            new HttpResponseMessage(HttpStatusCode.NotFound)
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(new HttpResponseMessage(HttpStatusCode.NotFound)
             {
                 Content = new StringContent("Not found", System.Text.Encoding.UTF8, "text/plain"),
             });
@@ -167,9 +167,9 @@ public class TenantVerifyCommandTests
         // Arrange
         TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -186,9 +186,9 @@ public class TenantVerifyCommandTests
         // Arrange
         TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         string tempFile = Path.GetTempFileName();
         try
         {
@@ -216,9 +216,9 @@ public class TenantVerifyCommandTests
         // Arrange
         TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
         TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new(
-            CreateJsonResponse(detail),
-            CreateJsonResponse(quotas));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(CreateJsonResponse(detail))
+            .EnqueueResponse(CreateJsonResponse(quotas));
         GlobalOptions options = CreateOptions("json");
         using AdminApiClient client = new(options, handler);
 

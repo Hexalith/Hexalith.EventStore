@@ -7,19 +7,19 @@ public class AggregateTerminatedTests {
     public void AggregateTerminated_ImplementsIRejectionEvent() {
         var terminated = new AggregateTerminated("CounterAggregate", "counter-1");
 
-        _ = Assert.IsAssignableFrom<IRejectionEvent>(terminated);
-        _ = Assert.IsAssignableFrom<IEventPayload>(terminated);
+        _ = terminated.ShouldBeAssignableTo<IRejectionEvent>();
+        _ = terminated.ShouldBeAssignableTo<IEventPayload>();
     }
 
     [Fact]
     public void AggregateTerminated_FollowsPastTenseNaming() =>
-        Assert.EndsWith("Terminated", nameof(AggregateTerminated));
+        nameof(AggregateTerminated).ShouldEndWith("Terminated");
 
     [Fact]
     public void AggregateTerminated_StoresProperties() {
         var terminated = new AggregateTerminated("CounterAggregate", "counter-1");
 
-        Assert.Equal("CounterAggregate", terminated.AggregateType);
-        Assert.Equal("counter-1", terminated.AggregateId);
+        terminated.AggregateType.ShouldBe("CounterAggregate");
+        terminated.AggregateId.ShouldBe("counter-1");
     }
 }

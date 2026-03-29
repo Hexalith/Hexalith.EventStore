@@ -17,13 +17,13 @@ public class SubmitQueryRequestTests {
             Payload: payload,
             EntityId: "entity-1");
 
-        Assert.Equal("acme", request.Tenant);
-        Assert.Equal("orders", request.Domain);
-        Assert.Equal("order-123", request.AggregateId);
-        Assert.Equal("GetCurrentState", request.QueryType);
-        _ = Assert.NotNull(request.Payload);
-        Assert.Equal(JsonValueKind.Object, request.Payload.Value.ValueKind);
-        Assert.Equal("entity-1", request.EntityId);
+        request.Tenant.ShouldBe("acme");
+        request.Domain.ShouldBe("orders");
+        request.AggregateId.ShouldBe("order-123");
+        request.QueryType.ShouldBe("GetCurrentState");
+        _ = request.Payload.ShouldNotBeNull();
+        request.Payload.Value.ValueKind.ShouldBe(JsonValueKind.Object);
+        request.EntityId.ShouldBe("entity-1");
     }
 
     [Fact]
@@ -34,8 +34,8 @@ public class SubmitQueryRequestTests {
             AggregateId: "order-123",
             QueryType: "GetCurrentState");
 
-        Assert.Null(request.Payload);
-        Assert.Null(request.EntityId);
+        request.Payload.ShouldBeNull();
+        request.EntityId.ShouldBeNull();
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class SubmitQueryRequestTests {
         var request1 = new SubmitQueryRequest("acme", "orders", "order-123", "GetCurrentState");
         var request2 = new SubmitQueryRequest("acme", "orders", "order-123", "GetCurrentState");
 
-        Assert.Equal(request1, request2);
+        request2.ShouldBe(request1);
     }
 
     [Fact]
@@ -51,6 +51,6 @@ public class SubmitQueryRequestTests {
         var request1 = new SubmitQueryRequest("acme", "orders", "order-123", "GetCurrentState");
         var request2 = new SubmitQueryRequest("acme", "orders", "order-456", "GetCurrentState");
 
-        Assert.NotEqual(request1, request2);
+        request2.ShouldNotBe(request1);
     }
 }

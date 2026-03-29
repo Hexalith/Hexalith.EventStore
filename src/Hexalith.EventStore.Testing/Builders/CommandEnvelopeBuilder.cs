@@ -10,9 +10,9 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// </summary>
 public sealed class CommandEnvelopeBuilder {
     private string _messageId = UniqueIdHelper.GenerateSortableUniqueStringId();
-    private string _tenantId = "test-tenant";
-    private string _domain = "test-domain";
-    private string _aggregateId = "test-agg-001";
+    private string _tenantId = TestDataConstants.TenantId;
+    private string _domain = TestDataConstants.Domain;
+    private string _aggregateId = TestDataConstants.AggregateId;
     private string _commandType = "TestCommand";
     private byte[] _payload = Encoding.UTF8.GetBytes("{}");
     private string? _correlationId;

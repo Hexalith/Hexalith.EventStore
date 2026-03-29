@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Admin.Cli\Hexalith.EventStore.Admin.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

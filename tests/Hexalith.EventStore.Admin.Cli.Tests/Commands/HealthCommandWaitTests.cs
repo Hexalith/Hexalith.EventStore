@@ -5,7 +5,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands;
 using Hexalith.EventStore.Admin.Cli.Formatting;
-using Hexalith.EventStore.Admin.Cli.Tests.Client;
+using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands;
 
@@ -78,7 +78,10 @@ public class HealthCommandWaitTests
         HttpResponseMessage unhealthyResponse2 = CreateMockResponse(HealthStatus.Unhealthy);
         HttpResponseMessage healthyResponse = CreateMockResponse(HealthStatus.Healthy);
 
-        QueuedMockHttpMessageHandler handler = new(unhealthyResponse1, unhealthyResponse2, healthyResponse);
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(unhealthyResponse1)
+            .EnqueueResponse(unhealthyResponse2)
+            .EnqueueResponse(healthyResponse);
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
         GlobalOptions options = CreateOptions("json");
@@ -110,8 +113,8 @@ public class HealthCommandWaitTests
     {
         // Arrange — always unhealthy (repeat-last replays indefinitely), short timeout
         // Use factory to create fresh responses since GetAsync disposes each response
-        QueuedMockHttpMessageHandler handler = new(
-            new Func<HttpResponseMessage>(() => CreateMockResponse(HealthStatus.Unhealthy)));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueFactory(() => CreateMockResponse(HealthStatus.Unhealthy));
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
         GlobalOptions options = CreateOptions("json");
@@ -144,9 +147,9 @@ public class HealthCommandWaitTests
         // Arrange — connection error then healthy
         HttpResponseMessage healthyResponse = CreateMockResponse(HealthStatus.Healthy);
 
-        QueuedMockHttpMessageHandler handler = new(
-            new Func<HttpResponseMessage>(() => throw new HttpRequestException("Connection refused")),
-            () => healthyResponse);
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueException(new HttpRequestException("Connection refused"))
+            .EnqueueResponse(healthyResponse);
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
         GlobalOptions options = CreateOptions("json");
@@ -180,7 +183,10 @@ public class HealthCommandWaitTests
         HttpResponseMessage degradedResponse2 = CreateMockResponse(HealthStatus.Degraded);
         HttpResponseMessage healthyResponse = CreateMockResponse(HealthStatus.Healthy);
 
-        QueuedMockHttpMessageHandler handler = new(degradedResponse1, degradedResponse2, healthyResponse);
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(degradedResponse1)
+            .EnqueueResponse(degradedResponse2)
+            .EnqueueResponse(healthyResponse);
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
         GlobalOptions options = CreateOptions("json");
@@ -201,7 +207,8 @@ public class HealthCommandWaitTests
         // Arrange — Degraded response should be accepted without --strict
         HttpResponseMessage degradedResponse = CreateMockResponse(HealthStatus.Degraded);
 
-        QueuedMockHttpMessageHandler handler = new(degradedResponse);
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueResponse(degradedResponse);
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
         GlobalOptions options = CreateOptions("json");
@@ -233,8 +240,8 @@ public class HealthCommandWaitTests
     {
         // Arrange — always unhealthy (repeat-last replays indefinitely), cancel soon
         // Use factory to create fresh responses since GetAsync disposes each response
-        QueuedMockHttpMessageHandler handler = new(
-            new Func<HttpResponseMessage>(() => CreateMockResponse(HealthStatus.Unhealthy)));
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
+            .EnqueueFactory(() => CreateMockResponse(HealthStatus.Unhealthy));
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
         GlobalOptions options = CreateOptions("json");

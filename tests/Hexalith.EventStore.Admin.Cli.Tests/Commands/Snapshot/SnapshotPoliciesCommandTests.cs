@@ -7,7 +7,7 @@ using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
 using Hexalith.EventStore.Admin.Cli.Formatting;
-using Hexalith.EventStore.Admin.Cli.Tests.Client;
+using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Snapshot;
 

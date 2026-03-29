@@ -3,7 +3,7 @@ namespace Hexalith.EventStore.Admin.Mcp.Tests;
 using System.Net;
 using System.Text.Json;
 
-using Hexalith.EventStore.Admin.Mcp.Tests.TestHelpers;
+using Hexalith.EventStore.Testing.Http;
 using Hexalith.EventStore.Admin.Mcp.Tools;
 
 public class TenantToolsTests

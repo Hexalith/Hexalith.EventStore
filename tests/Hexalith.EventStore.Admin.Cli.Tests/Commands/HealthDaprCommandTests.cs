@@ -5,7 +5,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands;
 using Hexalith.EventStore.Admin.Cli.Formatting;
-using Hexalith.EventStore.Admin.Cli.Tests.Client;
+using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands;
 

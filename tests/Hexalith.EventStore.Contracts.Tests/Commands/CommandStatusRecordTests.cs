@@ -16,13 +16,13 @@ public class CommandStatusRecordTests {
             FailureReason: null,
             TimeoutDuration: null);
 
-        Assert.Equal(CommandStatus.Completed, record.Status);
-        Assert.Equal(timestamp, record.Timestamp);
-        Assert.Equal("order-123", record.AggregateId);
-        Assert.Equal(3, record.EventCount);
-        Assert.Null(record.RejectionEventType);
-        Assert.Null(record.FailureReason);
-        Assert.Null(record.TimeoutDuration);
+        record.Status.ShouldBe(CommandStatus.Completed);
+        record.Timestamp.ShouldBe(timestamp);
+        record.AggregateId.ShouldBe("order-123");
+        record.EventCount.ShouldBe(3);
+        record.RejectionEventType.ShouldBeNull();
+        record.FailureReason.ShouldBeNull();
+        record.TimeoutDuration.ShouldBeNull();
     }
 
     [Fact]
@@ -36,8 +36,8 @@ public class CommandStatusRecordTests {
             FailureReason: null,
             TimeoutDuration: null);
 
-        Assert.Equal(CommandStatus.Rejected, record.Status);
-        Assert.Equal("OrderRejected", record.RejectionEventType);
+        record.Status.ShouldBe(CommandStatus.Rejected);
+        record.RejectionEventType.ShouldBe("OrderRejected");
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public class CommandStatusRecordTests {
             FailureReason: "Pub/sub broker unavailable",
             TimeoutDuration: null);
 
-        Assert.Equal(CommandStatus.PublishFailed, record.Status);
-        Assert.Equal("Pub/sub broker unavailable", record.FailureReason);
+        record.Status.ShouldBe(CommandStatus.PublishFailed);
+        record.FailureReason.ShouldBe("Pub/sub broker unavailable");
     }
 
     [Fact]
@@ -67,8 +67,8 @@ public class CommandStatusRecordTests {
             FailureReason: null,
             TimeoutDuration: timeout);
 
-        Assert.Equal(CommandStatus.TimedOut, record.Status);
-        Assert.Equal(timeout, record.TimeoutDuration);
+        record.Status.ShouldBe(CommandStatus.TimedOut);
+        record.TimeoutDuration.ShouldBe(timeout);
     }
 
     [Fact]
@@ -82,11 +82,11 @@ public class CommandStatusRecordTests {
             FailureReason: null,
             TimeoutDuration: null);
 
-        Assert.Equal(CommandStatus.Processing, record.Status);
-        Assert.Null(record.AggregateId);
-        Assert.Null(record.EventCount);
-        Assert.Null(record.RejectionEventType);
-        Assert.Null(record.FailureReason);
-        Assert.Null(record.TimeoutDuration);
+        record.Status.ShouldBe(CommandStatus.Processing);
+        record.AggregateId.ShouldBeNull();
+        record.EventCount.ShouldBeNull();
+        record.RejectionEventType.ShouldBeNull();
+        record.FailureReason.ShouldBeNull();
+        record.TimeoutDuration.ShouldBeNull();
     }
 }

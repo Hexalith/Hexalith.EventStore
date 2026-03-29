@@ -7,11 +7,11 @@ public class ITerminatableTests {
     public void ITerminatable_HasIsTerminatedProperty() {
         System.Reflection.PropertyInfo? property = typeof(ITerminatable).GetProperty(nameof(ITerminatable.IsTerminated));
 
-        Assert.NotNull(property);
-        Assert.Equal(typeof(bool), property.PropertyType);
-        Assert.True(property.CanRead);
+        property.ShouldNotBeNull();
+        property.PropertyType.ShouldBe(typeof(bool));
+        property.CanRead.ShouldBeTrue();
     }
 
     [Fact]
-    public void ITerminatable_IsInterface() => Assert.True(typeof(ITerminatable).IsInterface);
+    public void ITerminatable_IsInterface() => typeof(ITerminatable).IsInterface.ShouldBeTrue();
 }

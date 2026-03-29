@@ -12,10 +12,10 @@ public class EventEnvelopeBuilderTests {
         Assert.NotNull(envelope.Metadata);
         Assert.NotNull(envelope.Payload);
         Assert.NotEmpty(envelope.Metadata.MessageId);
-        Assert.Equal("test-agg-001", envelope.Metadata.AggregateId);
+        Assert.Equal(TestDataConstants.AggregateId, envelope.Metadata.AggregateId);
         Assert.Equal("test-aggregate", envelope.Metadata.AggregateType);
-        Assert.Equal("test-tenant", envelope.Metadata.TenantId);
-        Assert.Equal("test-domain", envelope.Metadata.Domain);
+        Assert.Equal(TestDataConstants.TenantId, envelope.Metadata.TenantId);
+        Assert.Equal(TestDataConstants.Domain, envelope.Metadata.Domain);
         Assert.Equal(1, envelope.Metadata.SequenceNumber);
         Assert.Equal(0, envelope.Metadata.GlobalPosition);
         Assert.NotEqual(default, envelope.Metadata.Timestamp);
@@ -58,7 +58,7 @@ public class EventEnvelopeBuilderTests {
     public void Build_aggregate_id_is_bare_id_not_composite() {
         EventEnvelope envelope = new EventEnvelopeBuilder().Build();
 
-        Assert.Equal("test-agg-001", envelope.Metadata.AggregateId);
+        Assert.Equal(TestDataConstants.AggregateId, envelope.Metadata.AggregateId);
         Assert.DoesNotContain(":", envelope.Metadata.AggregateId);
     }
 }

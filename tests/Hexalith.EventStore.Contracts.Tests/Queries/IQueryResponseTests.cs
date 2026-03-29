@@ -28,17 +28,17 @@ public class IQueryResponseTests {
     public void IQueryResponse_ConcreteImplementation_HasMandatoryProjectionType() {
         var response = new CounterQueryResponse { Data = new CounterDto(42) };
 
-        Assert.Equal(42, response.Data.Count);
-        Assert.Equal("counter", response.ProjectionType);
+        response.Data.Count.ShouldBe(42);
+        response.ProjectionType.ShouldBe("counter");
     }
 
     [Fact]
     public void IQueryResponse_DifferentProjectionType_ReturnsCorrectValue() {
         var response = new OrderQueryResponse { Data = new OrderDto("ord-1", "shipped") };
 
-        Assert.Equal("order-list", response.ProjectionType);
-        Assert.Equal("ord-1", response.Data.OrderId);
-        Assert.Equal("shipped", response.Data.Status);
+        response.ProjectionType.ShouldBe("order-list");
+        response.Data.OrderId.ShouldBe("ord-1");
+        response.Data.Status.ShouldBe("shipped");
     }
 
     [Fact]
@@ -47,9 +47,9 @@ public class IQueryResponseTests {
         IQueryResponse<DerivedCounterDto> derived = new DerivedCounterQueryResponse();
         IQueryResponse<CounterDto> baseRef = derived; // covariance
 
-        _ = Assert.IsAssignableFrom<IQueryResponse<CounterDto>>(derived);
-        Assert.Equal("counter", baseRef.ProjectionType);
-        Assert.Equal(99, baseRef.Data.Count);
+        _ = derived.ShouldBeAssignableTo<IQueryResponse<CounterDto>>();
+        baseRef.ProjectionType.ShouldBe("counter");
+        baseRef.Data.Count.ShouldBe(99);
     }
 
     private sealed class DerivedCounterQueryResponse : IQueryResponse<DerivedCounterDto> {

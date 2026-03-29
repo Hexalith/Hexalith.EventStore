@@ -8,8 +8,8 @@ public class PreflightValidationResultTests {
     public void Constructor_Authorized_CreatesInstance() {
         var result = new PreflightValidationResult(IsAuthorized: true);
 
-        Assert.True(result.IsAuthorized);
-        Assert.Null(result.Reason);
+        result.IsAuthorized.ShouldBeTrue();
+        result.Reason.ShouldBeNull();
     }
 
     [Fact]
@@ -18,15 +18,15 @@ public class PreflightValidationResultTests {
             IsAuthorized: false,
             Reason: "Not authorized for tenant 'acme'.");
 
-        Assert.False(result.IsAuthorized);
-        Assert.Equal("Not authorized for tenant 'acme'.", result.Reason);
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for tenant 'acme'.");
     }
 
     [Fact]
     public void Constructor_WithoutReason_DefaultsToNull() {
         var result = new PreflightValidationResult(IsAuthorized: false);
 
-        Assert.Null(result.Reason);
+        result.Reason.ShouldBeNull();
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class PreflightValidationResultTests {
         var result1 = new PreflightValidationResult(true);
         var result2 = new PreflightValidationResult(true);
 
-        Assert.Equal(result1, result2);
+        result2.ShouldBe(result1);
     }
 
     [Fact]
@@ -42,6 +42,6 @@ public class PreflightValidationResultTests {
         var result1 = new PreflightValidationResult(true);
         var result2 = new PreflightValidationResult(false, "Denied");
 
-        Assert.NotEqual(result1, result2);
+        result2.ShouldNotBe(result1);
     }
 }

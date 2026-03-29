@@ -9,9 +9,9 @@ public class AggregateIdentityBuilderTests {
     public void Build_produces_valid_aggregate_identity_with_defaults() {
         AggregateIdentity identity = new AggregateIdentityBuilder().Build();
 
-        Assert.Equal("test-tenant", identity.TenantId);
-        Assert.Equal("test-domain", identity.Domain);
-        Assert.Equal("test-agg-001", identity.AggregateId);
+        Assert.Equal(TestDataConstants.TenantId, identity.TenantId);
+        Assert.Equal(TestDataConstants.Domain, identity.Domain);
+        Assert.Equal(TestDataConstants.AggregateId, identity.AggregateId);
     }
 
     [Fact]

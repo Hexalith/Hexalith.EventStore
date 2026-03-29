@@ -10,10 +10,10 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// </summary>
 public sealed class EventEnvelopeBuilder {
     private string _messageId = UniqueIdHelper.GenerateSortableUniqueStringId();
-    private string _aggregateIdPart = "test-agg-001";
+    private string _aggregateIdPart = TestDataConstants.AggregateId;
     private string _aggregateType = "test-aggregate";
-    private string _tenantId = "test-tenant";
-    private string _domain = "test-domain";
+    private string _tenantId = TestDataConstants.TenantId;
+    private string _domain = TestDataConstants.Domain;
     private long _sequenceNumber = 1;
     private long _globalPosition = 0;
     private DateTimeOffset _timestamp = DateTimeOffset.UtcNow;
