@@ -19,16 +19,16 @@ public class CommandEnvelopeTests {
             UserId: "user-1",
             Extensions: null);
 
-        Assert.Equal("msg-1", envelope.MessageId);
-        Assert.Equal("acme", envelope.TenantId);
-        Assert.Equal("payments", envelope.Domain);
-        Assert.Equal("order-123", envelope.AggregateId);
-        Assert.Equal("CreateOrder", envelope.CommandType);
-        Assert.Same(payload, envelope.Payload);
-        Assert.Equal("corr-1", envelope.CorrelationId);
-        Assert.Null(envelope.CausationId);
-        Assert.Equal("user-1", envelope.UserId);
-        Assert.Null(envelope.Extensions);
+        envelope.MessageId.ShouldBe("msg-1");
+        envelope.TenantId.ShouldBe("acme");
+        envelope.Domain.ShouldBe("payments");
+        envelope.AggregateId.ShouldBe("order-123");
+        envelope.CommandType.ShouldBe("CreateOrder");
+        envelope.Payload.ShouldBeSameAs(payload);
+        envelope.CorrelationId.ShouldBe("corr-1");
+        envelope.CausationId.ShouldBeNull();
+        envelope.UserId.ShouldBe("user-1");
+        envelope.Extensions.ShouldBeNull();
     }
 
     [Fact]
@@ -47,9 +47,9 @@ public class CommandEnvelopeTests {
 
         AggregateIdentity identity = envelope.AggregateIdentity;
 
-        Assert.Equal("acme", identity.TenantId);
-        Assert.Equal("payments", identity.Domain);
-        Assert.Equal("order-123", identity.AggregateId);
+        identity.TenantId.ShouldBe("acme");
+        identity.Domain.ShouldBe("payments");
+        identity.AggregateId.ShouldBe("order-123");
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class CommandEnvelopeTests {
             UserId: "u1",
             Extensions: null);
 
-        Assert.Null(envelope.Extensions);
+        envelope.Extensions.ShouldBeNull();
     }
 
     [Fact]
@@ -84,8 +84,8 @@ public class CommandEnvelopeTests {
             UserId: "u1",
             Extensions: extensions);
 
-        Assert.NotNull(envelope.Extensions);
-        Assert.Equal("value", envelope.Extensions["key"]);
+        envelope.Extensions.ShouldNotBeNull();
+        envelope.Extensions["key"].ShouldBe("value");
     }
 
     [Fact]
@@ -102,11 +102,11 @@ public class CommandEnvelopeTests {
             UserId: "u1",
             Extensions: null);
 
-        Assert.Equal("cause-1", envelope.CausationId);
+        envelope.CausationId.ShouldBe("cause-1");
     }
 
     [Fact]
-    public void Constructor_WithNullPayload_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() =>
+    public void Constructor_WithNullPayload_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
             new CommandEnvelope(
                 MessageId: "msg-6",
                 TenantId: "acme",
@@ -122,7 +122,7 @@ public class CommandEnvelopeTests {
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidCommandType_ThrowsArgumentException(string commandType) => Assert.Throws<ArgumentException>(() =>
+    public void Constructor_WithInvalidCommandType_ThrowsArgumentException(string commandType) => Should.Throw<ArgumentException>(() =>
             new CommandEnvelope(
                 MessageId: "msg-7",
                 TenantId: "acme",
@@ -138,7 +138,7 @@ public class CommandEnvelopeTests {
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidCorrelationId_ThrowsArgumentException(string correlationId) => Assert.Throws<ArgumentException>(() =>
+    public void Constructor_WithInvalidCorrelationId_ThrowsArgumentException(string correlationId) => Should.Throw<ArgumentException>(() =>
             new CommandEnvelope(
                 MessageId: "msg-8",
                 TenantId: "acme",
@@ -154,7 +154,7 @@ public class CommandEnvelopeTests {
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidUserId_ThrowsArgumentException(string userId) => Assert.Throws<ArgumentException>(() =>
+    public void Constructor_WithInvalidUserId_ThrowsArgumentException(string userId) => Should.Throw<ArgumentException>(() =>
             new CommandEnvelope(
                 MessageId: "msg-9",
                 TenantId: "acme",
@@ -168,7 +168,7 @@ public class CommandEnvelopeTests {
                 Extensions: null));
 
     [Fact]
-    public void Constructor_WithInvalidTenantId_ThrowsArgumentException() => Assert.Throws<ArgumentException>(() =>
+    public void Constructor_WithInvalidTenantId_ThrowsArgumentException() => Should.Throw<ArgumentException>(() =>
             new CommandEnvelope(
                 MessageId: "msg-10",
                 TenantId: "INVALID TENANT!",
@@ -184,7 +184,7 @@ public class CommandEnvelopeTests {
     [Fact]
     public void AggregateIdentity_IsEagerlyValidated() =>
         // AggregateIdentity is computed eagerly at construction, not lazily on access
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             new CommandEnvelope(
                 MessageId: "msg-11",
                 TenantId: "",
@@ -214,13 +214,13 @@ public class CommandEnvelopeTests {
 
         dict["key"] = "mutated";
 
-        Assert.Equal("original", envelope.Extensions!["key"]);
+        envelope.Extensions!["key"].ShouldBe("original");
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_WithInvalidMessageId_ThrowsArgumentException(string messageId) => Assert.Throws<ArgumentException>(() =>
+    public void Constructor_WithInvalidMessageId_ThrowsArgumentException(string messageId) => Should.Throw<ArgumentException>(() =>
             new CommandEnvelope(
                 MessageId: messageId,
                 TenantId: "acme",
@@ -249,8 +249,8 @@ public class CommandEnvelopeTests {
 
         string result = envelope.ToString();
 
-        Assert.Contains("MessageId = msg-tostring", result);
-        Assert.Contains("[REDACTED]", result);
+        result.ShouldContain("MessageId = msg-tostring");
+        result.ShouldContain("[REDACTED]");
     }
 
     [Fact]
@@ -273,13 +273,13 @@ public class CommandEnvelopeTests {
         ms.Position = 0;
         var deserialized = (CommandEnvelope)serializer.ReadObject(ms)!;
 
-        Assert.Equal(original.MessageId, deserialized.MessageId);
-        Assert.Equal(original.TenantId, deserialized.TenantId);
-        Assert.Equal(original.Domain, deserialized.Domain);
-        Assert.Equal(original.AggregateId, deserialized.AggregateId);
-        Assert.Equal(original.CommandType, deserialized.CommandType);
-        Assert.Equal(original.CorrelationId, deserialized.CorrelationId);
-        Assert.Equal(original.CausationId, deserialized.CausationId);
-        Assert.Equal(original.UserId, deserialized.UserId);
+        deserialized.MessageId.ShouldBe(original.MessageId);
+        deserialized.TenantId.ShouldBe(original.TenantId);
+        deserialized.Domain.ShouldBe(original.Domain);
+        deserialized.AggregateId.ShouldBe(original.AggregateId);
+        deserialized.CommandType.ShouldBe(original.CommandType);
+        deserialized.CorrelationId.ShouldBe(original.CorrelationId);
+        deserialized.CausationId.ShouldBe(original.CausationId);
+        deserialized.UserId.ShouldBe(original.UserId);
     }
 }

@@ -2,7 +2,7 @@ namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Text.Json;
 
-using Hexalith.EventStore.Admin.Mcp.Tests.TestHelpers;
+using Hexalith.EventStore.Testing.Http;
 using Hexalith.EventStore.Admin.Mcp.Tools;
 
 using Microsoft.Extensions.DependencyInjection;

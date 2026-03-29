@@ -11,9 +11,9 @@ public class ProjectionChangedNotificationTests {
             TenantId: "acme",
             EntityId: "order-123");
 
-        Assert.Equal("order-list", notification.ProjectionType);
-        Assert.Equal("acme", notification.TenantId);
-        Assert.Equal("order-123", notification.EntityId);
+        notification.ProjectionType.ShouldBe("order-list");
+        notification.TenantId.ShouldBe("acme");
+        notification.EntityId.ShouldBe("order-123");
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public class ProjectionChangedNotificationTests {
             ProjectionType: "order-list",
             TenantId: "acme");
 
-        Assert.Null(notification.EntityId);
+        notification.EntityId.ShouldBeNull();
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class ProjectionChangedNotificationTests {
         var n1 = new ProjectionChangedNotification("order-list", "acme", "order-123");
         var n2 = new ProjectionChangedNotification("order-list", "acme", "order-123");
 
-        Assert.Equal(n1, n2);
+        n2.ShouldBe(n1);
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class ProjectionChangedNotificationTests {
         var n1 = new ProjectionChangedNotification("order-list", "acme");
         var n2 = new ProjectionChangedNotification("order-list", "other-tenant");
 
-        Assert.NotEqual(n1, n2);
+        n2.ShouldNotBe(n1);
     }
 
     [Fact]
@@ -46,6 +46,6 @@ public class ProjectionChangedNotificationTests {
         var n1 = new ProjectionChangedNotification("order-list", "acme", "order-123");
         var n2 = new ProjectionChangedNotification("order-list", "acme");
 
-        Assert.NotEqual(n1, n2);
+        n2.ShouldNotBe(n1);
     }
 }

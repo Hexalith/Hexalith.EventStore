@@ -12,10 +12,10 @@ public class ValidateCommandRequestTests {
             CommandType: "CreateOrder",
             AggregateId: "order-123");
 
-        Assert.Equal("acme", request.Tenant);
-        Assert.Equal("orders", request.Domain);
-        Assert.Equal("CreateOrder", request.CommandType);
-        Assert.Equal("order-123", request.AggregateId);
+        request.Tenant.ShouldBe("acme");
+        request.Domain.ShouldBe("orders");
+        request.CommandType.ShouldBe("CreateOrder");
+        request.AggregateId.ShouldBe("order-123");
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public class ValidateCommandRequestTests {
             Domain: "orders",
             CommandType: "CreateOrder");
 
-        Assert.Null(request.AggregateId);
+        request.AggregateId.ShouldBeNull();
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class ValidateCommandRequestTests {
         var request1 = new ValidateCommandRequest("acme", "orders", "CreateOrder");
         var request2 = new ValidateCommandRequest("acme", "orders", "CreateOrder");
 
-        Assert.Equal(request1, request2);
+        request2.ShouldBe(request1);
     }
 
     [Fact]
@@ -41,6 +41,6 @@ public class ValidateCommandRequestTests {
         var request1 = new ValidateCommandRequest("acme", "orders", "CreateOrder", "order-1");
         var request2 = new ValidateCommandRequest("acme", "orders", "CreateOrder", "order-2");
 
-        Assert.NotEqual(request1, request2);
+        request2.ShouldNotBe(request1);
     }
 }

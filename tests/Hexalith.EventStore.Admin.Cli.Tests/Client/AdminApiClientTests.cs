@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Formatting;
+using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Client;
 

@@ -2,7 +2,7 @@ namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Net;
 
-using Hexalith.EventStore.Admin.Mcp.Tests.TestHelpers;
+using Hexalith.EventStore.Testing.Http;
 
 public class AdminApiClientBackupCommandTests
 {

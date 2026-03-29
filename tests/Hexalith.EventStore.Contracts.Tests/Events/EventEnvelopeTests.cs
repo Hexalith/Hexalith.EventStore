@@ -32,10 +32,10 @@ public class EventEnvelopeTests {
 
         var envelope = new EventEnvelope(metadata, payload, extensions);
 
-        Assert.Equal(metadata, envelope.Metadata);
-        Assert.Same(payload, envelope.Payload);
-        Assert.Equal(extensions, envelope.Extensions);
-        Assert.NotSame(extensions, envelope.Extensions); // Defensive copy
+        envelope.Metadata.ShouldBe(metadata);
+        envelope.Payload.ShouldBeSameAs(payload);
+        envelope.Extensions.ShouldBe(extensions);
+        envelope.Extensions.ShouldNotBeSameAs(extensions); // Defensive copy
     }
 
     [Fact]
@@ -45,8 +45,8 @@ public class EventEnvelopeTests {
 
         var envelope = new EventEnvelope(metadata, payload, null);
 
-        Assert.NotNull(envelope.Extensions);
-        Assert.Empty(envelope.Extensions);
+        envelope.Extensions.ShouldNotBeNull();
+        envelope.Extensions.ShouldBeEmpty();
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class EventEnvelopeTests {
 
         var envelope = new EventEnvelope(metadata, payload, dict);
 
-        _ = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(envelope.Extensions);
+        _ = envelope.Extensions.ShouldBeAssignableTo<IReadOnlyDictionary<string, string>>();
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class EventEnvelopeTests {
         var envelope2 = new EventEnvelope(metadata, payload2, null);
 
         // Record equality uses reference equality for byte[] — documented limitation
-        Assert.NotEqual(envelope1, envelope2);
+        envelope2.ShouldNotBe(envelope1);
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class EventEnvelopeTests {
         var envelope1 = new EventEnvelope(metadata, payload, null);
         var envelope2 = new EventEnvelope(metadata, payload, null);
 
-        Assert.Equal(envelope1, envelope2);
+        envelope2.ShouldBe(envelope1);
     }
 
     [Fact]
@@ -93,16 +93,16 @@ public class EventEnvelopeTests {
         var envelope1 = new EventEnvelope(metadata, payload1, null);
         var envelope2 = new EventEnvelope(metadata, payload2, null);
 
-        Assert.True(envelope1.Payload.SequenceEqual(envelope2.Payload));
+        envelope1.Payload.SequenceEqual(envelope2.Payload).ShouldBeTrue();
     }
 
     [Fact]
-    public void Constructor_WithNullMetadata_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() => new EventEnvelope(null!, [1, 2, 3], null));
+    public void Constructor_WithNullMetadata_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() => new EventEnvelope(null!, [1, 2, 3], null));
 
     [Fact]
     public void Constructor_WithNullPayload_ThrowsArgumentNullException() {
         EventMetadata metadata = CreateMetadata();
-        _ = Assert.Throws<ArgumentNullException>(() => new EventEnvelope(metadata, null!, null));
+        _ = Should.Throw<ArgumentNullException>(() => new EventEnvelope(metadata, null!, null));
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class EventEnvelopeTests {
 
         dict["key"] = "mutated";
 
-        Assert.Equal("original", envelope.Extensions["key"]);
+        envelope.Extensions["key"].ShouldBe("original");
     }
 
     [Fact]
@@ -121,20 +121,20 @@ public class EventEnvelopeTests {
         byte[] payload = [1, 2, 3];
         var envelope = new EventEnvelope(metadata, payload, null);
 
-        Assert.Equal("msg-001", envelope.Metadata.MessageId);
-        Assert.Equal("order-123", envelope.Metadata.AggregateId);
-        Assert.Equal("order", envelope.Metadata.AggregateType);
-        Assert.Equal("acme", envelope.Metadata.TenantId);
-        Assert.Equal("payments", envelope.Metadata.Domain);
-        Assert.Equal(1, envelope.Metadata.SequenceNumber);
-        Assert.Equal(0, envelope.Metadata.GlobalPosition);
-        Assert.NotEqual(default, envelope.Metadata.Timestamp);
-        Assert.Equal("corr-1", envelope.Metadata.CorrelationId);
-        Assert.Equal("cause-1", envelope.Metadata.CausationId);
-        Assert.Equal("user-1", envelope.Metadata.UserId);
-        Assert.Equal("1.0.0", envelope.Metadata.DomainServiceVersion);
-        Assert.Equal("OrderCreated", envelope.Metadata.EventTypeName);
-        Assert.Equal(1, envelope.Metadata.MetadataVersion);
-        Assert.Equal("json", envelope.Metadata.SerializationFormat);
+        envelope.Metadata.MessageId.ShouldBe("msg-001");
+        envelope.Metadata.AggregateId.ShouldBe("order-123");
+        envelope.Metadata.AggregateType.ShouldBe("order");
+        envelope.Metadata.TenantId.ShouldBe("acme");
+        envelope.Metadata.Domain.ShouldBe("payments");
+        envelope.Metadata.SequenceNumber.ShouldBe(1);
+        envelope.Metadata.GlobalPosition.ShouldBe(0);
+        envelope.Metadata.Timestamp.ShouldNotBe(default);
+        envelope.Metadata.CorrelationId.ShouldBe("corr-1");
+        envelope.Metadata.CausationId.ShouldBe("cause-1");
+        envelope.Metadata.UserId.ShouldBe("user-1");
+        envelope.Metadata.DomainServiceVersion.ShouldBe("1.0.0");
+        envelope.Metadata.EventTypeName.ShouldBe("OrderCreated");
+        envelope.Metadata.MetadataVersion.ShouldBe(1);
+        envelope.Metadata.SerializationFormat.ShouldBe("json");
     }
 }

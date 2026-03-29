@@ -6,7 +6,7 @@ using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 using Hexalith.EventStore.Admin.Cli.Formatting;
-using Hexalith.EventStore.Admin.Cli.Tests.Client;
+using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Tenant;
 
@@ -72,7 +72,7 @@ public class TenantCompareCommandTests
         TenantComparison comparison = CreateTestComparison();
         string responseJson = JsonSerializer.Serialize(comparison, JsonDefaults.Options);
         string? capturedBody = null;
-        MockHttpMessageHandler handler = new(async request =>
+        MockHttpMessageHandler handler = new(async (request, _) =>
         {
             capturedBody = await request.Content!.ReadAsStringAsync().ConfigureAwait(false);
             return new HttpResponseMessage(HttpStatusCode.OK)

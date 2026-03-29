@@ -8,9 +8,9 @@ public class IdentityParserTests {
     public void Parse_ValidCanonicalString_ReturnsIdentity() {
         AggregateIdentity identity = IdentityParser.Parse("acme:payments:order-123");
 
-        Assert.Equal("acme", identity.TenantId);
-        Assert.Equal("payments", identity.Domain);
-        Assert.Equal("order-123", identity.AggregateId);
+        identity.TenantId.ShouldBe("acme");
+        identity.Domain.ShouldBe("payments");
+        identity.AggregateId.ShouldBe("order-123");
     }
 
     [Theory]
@@ -21,7 +21,7 @@ public class IdentityParserTests {
         AggregateIdentity identity = IdentityParser.Parse(canonical);
         AggregateIdentity roundTripped = IdentityParser.Parse(identity.ToString());
 
-        Assert.Equal(identity, roundTripped);
+        roundTripped.ShouldBe(identity);
     }
 
     [Theory]
@@ -31,17 +31,17 @@ public class IdentityParserTests {
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order:extra")]
-    public void Parse_InvalidInput_ThrowsFormatException(string? input) => Assert.Throws<FormatException>(() => IdentityParser.Parse(input!));
+    public void Parse_InvalidInput_ThrowsFormatException(string? input) => Should.Throw<FormatException>(() => IdentityParser.Parse(input!));
 
     [Fact]
     public void TryParse_ValidCanonicalString_ReturnsTrueAndIdentity() {
         bool result = IdentityParser.TryParse("acme:payments:order-123", out AggregateIdentity? identity);
 
-        Assert.True(result);
-        Assert.NotNull(identity);
-        Assert.Equal("acme", identity.TenantId);
-        Assert.Equal("payments", identity.Domain);
-        Assert.Equal("order-123", identity.AggregateId);
+        result.ShouldBeTrue();
+        identity.ShouldNotBeNull();
+        identity.TenantId.ShouldBe("acme");
+        identity.Domain.ShouldBe("payments");
+        identity.AggregateId.ShouldBe("order-123");
     }
 
     [Theory]
@@ -54,38 +54,38 @@ public class IdentityParserTests {
     public void TryParse_InvalidInput_ReturnsFalseAndNull(string? input) {
         bool result = IdentityParser.TryParse(input!, out AggregateIdentity? identity);
 
-        Assert.False(result);
-        Assert.Null(identity);
+        result.ShouldBeFalse();
+        identity.ShouldBeNull();
     }
 
     [Fact]
     public void ParseStateStoreKey_ValidKey_ReturnsIdentityAndSuffix() {
         (AggregateIdentity identity, string suffix) = IdentityParser.ParseStateStoreKey("acme:payments:order-123:events:5");
 
-        Assert.Equal("acme", identity.TenantId);
-        Assert.Equal("payments", identity.Domain);
-        Assert.Equal("order-123", identity.AggregateId);
-        Assert.Equal("events:5", suffix);
+        identity.TenantId.ShouldBe("acme");
+        identity.Domain.ShouldBe("payments");
+        identity.AggregateId.ShouldBe("order-123");
+        suffix.ShouldBe("events:5");
     }
 
     [Fact]
     public void ParseStateStoreKey_MetadataKey_ReturnsIdentityAndSuffix() {
         (AggregateIdentity identity, string suffix) = IdentityParser.ParseStateStoreKey("acme:payments:order-123:metadata");
 
-        Assert.Equal("acme", identity.TenantId);
-        Assert.Equal("payments", identity.Domain);
-        Assert.Equal("order-123", identity.AggregateId);
-        Assert.Equal("metadata", suffix);
+        identity.TenantId.ShouldBe("acme");
+        identity.Domain.ShouldBe("payments");
+        identity.AggregateId.ShouldBe("order-123");
+        suffix.ShouldBe("metadata");
     }
 
     [Fact]
     public void ParseStateStoreKey_SnapshotKey_ReturnsIdentityAndSuffix() {
         (AggregateIdentity identity, string suffix) = IdentityParser.ParseStateStoreKey("acme:payments:order-123:snapshot");
 
-        Assert.Equal("acme", identity.TenantId);
-        Assert.Equal("payments", identity.Domain);
-        Assert.Equal("order-123", identity.AggregateId);
-        Assert.Equal("snapshot", suffix);
+        identity.TenantId.ShouldBe("acme");
+        identity.Domain.ShouldBe("payments");
+        identity.AggregateId.ShouldBe("order-123");
+        suffix.ShouldBe("snapshot");
     }
 
     [Theory]
@@ -94,5 +94,5 @@ public class IdentityParserTests {
     [InlineData("acme")]
     [InlineData("acme:payments")]
     [InlineData("acme:payments:order-123")]
-    public void ParseStateStoreKey_InvalidKey_ThrowsFormatException(string? input) => Assert.Throws<FormatException>(() => IdentityParser.ParseStateStoreKey(input!));
+    public void ParseStateStoreKey_InvalidKey_ThrowsFormatException(string? input) => Should.Throw<FormatException>(() => IdentityParser.ParseStateStoreKey(input!));
 }

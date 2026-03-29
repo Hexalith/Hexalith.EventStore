@@ -14,10 +14,10 @@ public class DomainResultTests {
         var events = new IEventPayload[] { new TestEvent(), new TestEvent() };
         var result = DomainResult.Success(events);
 
-        Assert.True(result.IsSuccess);
-        Assert.False(result.IsRejection);
-        Assert.False(result.IsNoOp);
-        Assert.Equal(2, result.Events.Count);
+        result.IsSuccess.ShouldBeTrue();
+        result.IsRejection.ShouldBeFalse();
+        result.IsNoOp.ShouldBeFalse();
+        result.Events.Count.ShouldBe(2);
     }
 
     [Fact]
@@ -25,27 +25,27 @@ public class DomainResultTests {
         var events = new IRejectionEvent[] { new TestRejection() };
         var result = DomainResult.Rejection(events);
 
-        Assert.False(result.IsSuccess);
-        Assert.True(result.IsRejection);
-        Assert.False(result.IsNoOp);
-        _ = Assert.Single(result.Events);
+        result.IsSuccess.ShouldBeFalse();
+        result.IsRejection.ShouldBeTrue();
+        result.IsNoOp.ShouldBeFalse();
+        result.Events.ShouldHaveSingleItem();
     }
 
     [Fact]
     public void NoOp_ReturnsEmptyResult() {
         var result = DomainResult.NoOp();
 
-        Assert.False(result.IsSuccess);
-        Assert.False(result.IsRejection);
-        Assert.True(result.IsNoOp);
-        Assert.Empty(result.Events);
+        result.IsSuccess.ShouldBeFalse();
+        result.IsRejection.ShouldBeFalse();
+        result.IsNoOp.ShouldBeTrue();
+        result.Events.ShouldBeEmpty();
     }
 
     [Fact]
     public void Constructor_WithMixedEvents_ThrowsArgumentException() {
         var events = new IEventPayload[] { new TestEvent(), new TestRejection() };
 
-        _ = Assert.Throws<ArgumentException>(() => new DomainResult(events));
+        _ = Should.Throw<ArgumentException>(() => new DomainResult(events));
     }
 
     [Fact]
@@ -53,17 +53,17 @@ public class DomainResultTests {
         var events = new IEventPayload[] { new TestEvent() };
         var result = DomainResult.Success(events);
 
-        _ = Assert.IsAssignableFrom<IReadOnlyList<IEventPayload>>(result.Events);
+        _ = result.Events.ShouldBeAssignableTo<IReadOnlyList<IEventPayload>>();
     }
 
     [Fact]
-    public void Success_WithEmptyList_ThrowsArgumentException() => Assert.Throws<ArgumentException>(() => DomainResult.Success(Array.Empty<IEventPayload>()));
+    public void Success_WithEmptyList_ThrowsArgumentException() => Should.Throw<ArgumentException>(() => DomainResult.Success(Array.Empty<IEventPayload>()));
 
     [Fact]
-    public void Rejection_WithEmptyList_ThrowsArgumentException() => Assert.Throws<ArgumentException>(() => DomainResult.Rejection(Array.Empty<IRejectionEvent>()));
+    public void Rejection_WithEmptyList_ThrowsArgumentException() => Should.Throw<ArgumentException>(() => DomainResult.Rejection(Array.Empty<IRejectionEvent>()));
 
     [Fact]
-    public void Constructor_WithNullEvents_ThrowsArgumentNullException() => Assert.Throws<ArgumentNullException>(() => new DomainResult(null!));
+    public void Constructor_WithNullEvents_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() => new DomainResult(null!));
 
     [Fact]
     public void Success_WithMultipleRegularEvents_AllAccessible() {
@@ -71,8 +71,8 @@ public class DomainResultTests {
         var event2 = new TestEvent();
         var result = DomainResult.Success(new IEventPayload[] { event1, event2 });
 
-        Assert.Same(event1, result.Events[0]);
-        Assert.Same(event2, result.Events[1]);
+        result.Events[0].ShouldBeSameAs(event1);
+        result.Events[1].ShouldBeSameAs(event2);
     }
 
     [Fact]
@@ -81,9 +81,9 @@ public class DomainResultTests {
         var rej2 = new TestRejection();
         var result = DomainResult.Rejection(new IRejectionEvent[] { rej1, rej2 });
 
-        Assert.Equal(2, result.Events.Count);
-        Assert.Same(rej1, result.Events[0]);
-        Assert.Same(rej2, result.Events[1]);
+        result.Events.Count.ShouldBe(2);
+        result.Events[0].ShouldBeSameAs(rej1);
+        result.Events[1].ShouldBeSameAs(rej2);
     }
 
     [Fact]
@@ -91,8 +91,8 @@ public class DomainResultTests {
         var events = new IEventPayload[] { new TestRejection(), new TestRejection() };
         var result = new DomainResult(events);
 
-        Assert.True(result.IsRejection);
-        Assert.False(result.IsSuccess);
+        result.IsRejection.ShouldBeTrue();
+        result.IsSuccess.ShouldBeFalse();
     }
 
     [Fact]
@@ -100,14 +100,14 @@ public class DomainResultTests {
         var events = new IEventPayload[] { new TestEvent() };
         var result = new DomainResult(events);
 
-        Assert.True(result.IsSuccess);
-        Assert.False(result.IsRejection);
+        result.IsSuccess.ShouldBeTrue();
+        result.IsRejection.ShouldBeFalse();
     }
 
     [Fact]
     public void Constructor_WithEmptyEvents_IsNoOpTrue() {
         var result = new DomainResult(Array.Empty<IEventPayload>());
 
-        Assert.True(result.IsNoOp);
+        result.IsNoOp.ShouldBeTrue();
     }
 }

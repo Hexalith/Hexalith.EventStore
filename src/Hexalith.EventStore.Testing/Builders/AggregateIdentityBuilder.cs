@@ -6,9 +6,9 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// Fluent builder for creating <see cref="AggregateIdentity"/> instances with sensible defaults for testing.
 /// </summary>
 public sealed class AggregateIdentityBuilder {
-    private string _tenantId = "test-tenant";
-    private string _domain = "test-domain";
-    private string _aggregateId = "test-agg-001";
+    private string _tenantId = TestDataConstants.TenantId;
+    private string _domain = TestDataConstants.Domain;
+    private string _aggregateId = TestDataConstants.AggregateId;
 
     /// <summary>Sets the tenant identifier.</summary>
     /// <param name="tenantId">The tenant identifier.</param>

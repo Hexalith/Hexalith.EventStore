@@ -10,9 +10,9 @@ public class CommandEnvelopeBuilderTests {
         CommandEnvelope envelope = new CommandEnvelopeBuilder().Build();
 
         Assert.NotEmpty(envelope.MessageId);
-        Assert.Equal("test-tenant", envelope.AggregateIdentity.TenantId);
-        Assert.Equal("test-domain", envelope.AggregateIdentity.Domain);
-        Assert.Equal("test-agg-001", envelope.AggregateIdentity.AggregateId);
+        Assert.Equal(TestDataConstants.TenantId, envelope.AggregateIdentity.TenantId);
+        Assert.Equal(TestDataConstants.Domain, envelope.AggregateIdentity.Domain);
+        Assert.Equal(TestDataConstants.AggregateId, envelope.AggregateIdentity.AggregateId);
         Assert.Equal("TestCommand", envelope.CommandType);
         Assert.NotNull(envelope.Payload);
         Assert.NotEmpty(envelope.CorrelationId);

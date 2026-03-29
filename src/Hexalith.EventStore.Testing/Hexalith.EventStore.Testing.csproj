@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.EventStore.Admin.Mcp.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
   </ItemGroup>

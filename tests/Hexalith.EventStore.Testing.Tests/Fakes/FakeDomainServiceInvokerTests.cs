@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Testing;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -24,7 +25,7 @@ public class FakeDomainServiceInvokerTests {
     public async Task InvokeAsync_returns_tenant_domain_response() {
         var sut = new FakeDomainServiceInvoker();
         var expected = DomainResult.NoOp();
-        sut.SetupResponse("test-tenant", "test-domain", expected);
+        sut.SetupResponse(TestDataConstants.TenantId, TestDataConstants.Domain, expected);
 
         CommandEnvelope command = new CommandEnvelopeBuilder().Build();
         DomainResult result = await sut.InvokeAsync(command, null);

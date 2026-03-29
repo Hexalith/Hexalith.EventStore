@@ -13,8 +13,8 @@ public class SubmitQueryResponseTests {
             CorrelationId: "corr-123",
             Payload: payload);
 
-        Assert.Equal("corr-123", response.CorrelationId);
-        Assert.Equal(JsonValueKind.Object, response.Payload.ValueKind);
+        response.CorrelationId.ShouldBe("corr-123");
+        response.Payload.ValueKind.ShouldBe(JsonValueKind.Object);
     }
 
     [Fact]
@@ -23,6 +23,6 @@ public class SubmitQueryResponseTests {
         var response1 = new SubmitQueryResponse("corr-1", payload);
         var response2 = new SubmitQueryResponse("corr-1", payload);
 
-        Assert.Equal(response1, response2);
+        response2.ShouldBe(response1);
     }
 }

@@ -13,30 +13,30 @@ public class EventPayloadTests {
     [Fact]
     public void IEventPayload_IsMarkerInterface_WithNoMembers() {
         MemberInfo[] members = typeof(IEventPayload).GetMembers();
-        Assert.Empty(members);
+        members.ShouldBeEmpty();
     }
 
     [Fact]
-    public void IRejectionEvent_ExtendsIEventPayload() => Assert.True(typeof(IEventPayload).IsAssignableFrom(typeof(IRejectionEvent)));
+    public void IRejectionEvent_ExtendsIEventPayload() => typeof(IEventPayload).IsAssignableFrom(typeof(IRejectionEvent)).ShouldBeTrue();
 
     [Fact]
     public void IRejectionEvent_HasNoAdditionalMembers() {
         MemberInfo[] members = typeof(IRejectionEvent).GetMembers();
-        Assert.Empty(members);
+        members.ShouldBeEmpty();
     }
 
     [Fact]
     public void RejectionEvent_ImplementsBothInterfaces() {
         var rejection = new TestRejectionEvent();
 
-        _ = Assert.IsAssignableFrom<IRejectionEvent>(rejection);
-        _ = Assert.IsAssignableFrom<IEventPayload>(rejection);
+        _ = rejection.ShouldBeAssignableTo<IRejectionEvent>();
+        _ = rejection.ShouldBeAssignableTo<IEventPayload>();
     }
 
     [Fact]
     public void EventPayload_ImplementsInterface() {
         var payload = new TestEventPayload();
 
-        _ = Assert.IsAssignableFrom<IEventPayload>(payload);
+        _ = payload.ShouldBeAssignableTo<IEventPayload>();
     }
 }

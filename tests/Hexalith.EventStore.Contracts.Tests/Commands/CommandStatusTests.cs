@@ -7,7 +7,7 @@ public class CommandStatusTests {
     [Fact]
     public void CommandStatus_HasExactly8Values() {
         CommandStatus[] values = Enum.GetValues<CommandStatus>();
-        Assert.Equal(8, values.Length);
+        values.Length.ShouldBe(8);
     }
 
     [Theory]
@@ -19,20 +19,20 @@ public class CommandStatusTests {
     [InlineData(CommandStatus.Rejected, 5)]
     [InlineData(CommandStatus.PublishFailed, 6)]
     [InlineData(CommandStatus.TimedOut, 7)]
-    public void CommandStatus_HasCorrectExplicitIntegerValues(CommandStatus status, int expectedValue) => Assert.Equal(expectedValue, (int)status);
+    public void CommandStatus_HasCorrectExplicitIntegerValues(CommandStatus status, int expectedValue) => ((int)status).ShouldBe(expectedValue);
 
     [Fact]
     public void CommandStatus_ValuesAreInLifecycleOrder() {
         CommandStatus[] values = Enum.GetValues<CommandStatus>();
 
-        Assert.Equal(CommandStatus.Received, values[0]);
-        Assert.Equal(CommandStatus.Processing, values[1]);
-        Assert.Equal(CommandStatus.EventsStored, values[2]);
-        Assert.Equal(CommandStatus.EventsPublished, values[3]);
-        Assert.Equal(CommandStatus.Completed, values[4]);
-        Assert.Equal(CommandStatus.Rejected, values[5]);
-        Assert.Equal(CommandStatus.PublishFailed, values[6]);
-        Assert.Equal(CommandStatus.TimedOut, values[7]);
+        values[0].ShouldBe(CommandStatus.Received);
+        values[1].ShouldBe(CommandStatus.Processing);
+        values[2].ShouldBe(CommandStatus.EventsStored);
+        values[3].ShouldBe(CommandStatus.EventsPublished);
+        values[4].ShouldBe(CommandStatus.Completed);
+        values[5].ShouldBe(CommandStatus.Rejected);
+        values[6].ShouldBe(CommandStatus.PublishFailed);
+        values[7].ShouldBe(CommandStatus.TimedOut);
     }
 
     [Fact]
@@ -44,13 +44,12 @@ public class CommandStatusTests {
             CommandStatus.TimedOut,
         };
 
-        Assert.Equal(4, terminalStatuses.Length);
-        Assert.DoesNotContain(CommandStatus.Received, terminalStatuses);
-        Assert.DoesNotContain(CommandStatus.Processing, terminalStatuses);
-        Assert.DoesNotContain(CommandStatus.EventsStored, terminalStatuses);
-        Assert.DoesNotContain(CommandStatus.EventsPublished, terminalStatuses);
-        Assert.Equal(
-            Enum.GetValues<CommandStatus>().Where(status => (int)status >= (int)CommandStatus.Completed),
-            terminalStatuses);
+        terminalStatuses.Length.ShouldBe(4);
+        terminalStatuses.ShouldNotContain(CommandStatus.Received);
+        terminalStatuses.ShouldNotContain(CommandStatus.Processing);
+        terminalStatuses.ShouldNotContain(CommandStatus.EventsStored);
+        terminalStatuses.ShouldNotContain(CommandStatus.EventsPublished);
+        terminalStatuses.ShouldBe(
+            Enum.GetValues<CommandStatus>().Where(status => (int)status >= (int)CommandStatus.Completed));
     }
 }
