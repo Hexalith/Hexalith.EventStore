@@ -1,6 +1,6 @@
 # Story 13.4: Repository Documentation Refresh
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -279,18 +279,28 @@ Claude Opus 4.6 (1M context)
 - **Task 5 — PRD corrections:** (1) development strategy and query experience wording updated to reflect that query/projection caching and SignalR ship in the current release, not a future v2-only phase; (2) package distribution table corrected from 5 shipped packages to 6 by adding `Hexalith.EventStore.SignalR`; (3) command routes corrected to `/api/v1/commands/status/{correlationId}` and `/api/v1/commands/replay/{correlationId}`; (4) query routes corrected from `/api/v2/queries` variants to the shipped `POST /api/v1/queries` and `POST /api/v1/queries/validate` endpoints; (5) health endpoints corrected to `/health` and `/ready`; (6) DAPR runtime references updated from `1.14+` to `1.16.1`; (7) implemented query caching and SignalR rows rewritten so their descriptions no longer contradict the `IMPLEMENTED` verdict; (8) phase roadmap rows for already-shipped query/SignalR capabilities removed.
 - **Task 5 — Architecture corrections:** (1) "5 packages" → "6 packages" in 3 locations, SignalR row added to package table; (2) Dapr.Client version 1.16.0 → 1.16.1; (3) Aspire version 13.1.0 → 13.1.2; (4) CommunityToolkit.Aspire.Hosting.Dapr 9.7.0 → 13.0.0.
 - **Task 6:** Final build: 0 errors, 0 warnings. Tier 1 tests: 724 passed, 0 failed. All relative links in modified docs verified.
+- **Review remediation (2026-03-29):** Fixed the stale `POST /api/commands` sequence-diagram example in `docs/concepts/architecture-overview.md`, relabeled the remaining query-pipeline sections in `prd.md` from `(v2)` to `(current release)`, updated Journey 7 to reference the current release, and restored the `Post-MVP Features` heading hierarchy by nesting the phase headings under that parent section.
 
 ### Change Log
 
 - 2026-03-21: Story 13.4 implemented — README refresh, nuget-packages.md version fix, roadmap.md misclassification corrections, planning artifact surgical corrections (PRD + architecture)
+- 2026-03-29: Review remediation completed — architecture overview route example corrected and remaining PRD label/hierarchy cleanup applied
 
 ### File List
 
 - `README.md` — line 71 rewritten (product-level language for query/projection/SignalR)
+- `docs/concepts/architecture-overview.md` — stale sequence-diagram command route corrected to `/api/v1/commands`
 - `docs/reference/nuget-packages.md` — SignalR client version corrected, dependency graph aligned with `.csproj` references, Contracts external dependency documented
 - `docs/community/roadmap.md` — Current Focus updated, Planned items moved to Completed
-- `_bmad-output/planning-artifacts/prd.md` — surgical corrections for shipped package count, command/query routes, DAPR version, query/SignalR implementation status, and stale future-phase references
+- `_bmad-output/planning-artifacts/prd.md` — surgical corrections for shipped package count, command/query routes, DAPR version, query/SignalR implementation status, remaining current-release labeling, and heading hierarchy under Post-MVP Features
 - `_bmad-output/planning-artifacts/architecture.md` — 7 surgical corrections (package count, version numbers)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — story status updated
 - `_bmad-output/implementation-artifacts/13-4-repository-documentation-refresh.md` — task checkboxes, dev agent record
+
+### Review Findings
+
+- [x] `[Review][Patch]` Fix the stale command route/example that was missed in `architecture-overview.md` verification [docs/concepts/architecture-overview.md:246]
+- [x] `[Review][Patch]` Finish the PRD relabeling from query features as “v2” to query features in the current release [_bmad-output/planning-artifacts/prd.md:327]
+- [x] `[Review][Patch]` Revert non-surgical PRD structure churn and restore a valid heading hierarchy [_bmad-output/planning-artifacts/prd.md:192]
+<!-- End of story file -->
 

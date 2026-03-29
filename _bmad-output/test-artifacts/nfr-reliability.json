@@ -1,0 +1,95 @@
+{
+  "domain": "reliability",
+  "risk_level": "LOW",
+  "findings": [
+    {
+      "category": "Error Handling",
+      "status": "PASS",
+      "description": "10 registered exception handlers covering all error categories: validation (400), authorization (403), not-found (404), concurrency conflict (409), rate limiting (429), backpressure (429), DAPR unavailable (503), and global fallback (500). All return ProblemDetails with Retry-After headers where appropriate. Advisory status writes (non-blocking) prevent cascade failures.",
+      "evidence": [
+        "src/Hexalith.EventStore/ErrorHandling/ (10 exception handler files)",
+        "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:35-45 (handler registration)",
+        "src/Hexalith.EventStore/ErrorHandling/DaprSidecarUnavailableHandler.cs (165 lines, SocketException detection)",
+        "src/Hexalith.EventStore/ErrorHandling/ConcurrencyConflictExceptionHandler.cs (409 + Retry-After:1s)",
+        "src/Hexalith.EventStore/ErrorHandling/BackpressureExceptionHandler.cs (429 + configurable Retry-After)"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "Monitoring & Observability",
+      "status": "PASS",
+      "description": "OpenTelemetry SDK fully integrated: 3 custom ActivitySources, 11 span names, OTLP exporter, JSON structured logging with LoggerMessage attributes (10+ EventIds), correlation ID middleware, CloudEvents trace propagation. Health checks: 3 endpoints (/health, /alive, /ready) with 4 DAPR component probes.",
+      "evidence": [
+        "src/Hexalith.EventStore.ServiceDefaults/Extensions.cs (OTel setup + health checks)",
+        "src/Hexalith.EventStore.Server/Telemetry/EventStoreActivitySource.cs (11 span names)",
+        "src/Hexalith.EventStore/Telemetry/EventStoreActivitySources.cs (3 activity sources)",
+        "src/Hexalith.EventStore/Pipeline/LoggingBehavior.cs (structured logging)",
+        "src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs",
+        "src/Hexalith.EventStore/HealthChecks/ (4 DAPR component health checks)"
+      ],
+      "recommendations": [
+        "MINOR: Add dynamic log level toggle (currently requires restart for log level changes)",
+        "OPTIONAL: Add custom metrics endpoint (/metrics) for Prometheus scraping"
+      ]
+    },
+    {
+      "category": "Fault Tolerance",
+      "status": "PASS",
+      "description": "Persist-then-publish state machine (ActorStateMachine.cs) with checkpoint stages ensures crash recovery. DAPR resiliency policies: 3 retry policies (constant/exponential), 2 circuit breakers, 3 timeout policies. Dead-letter routing for infrastructure failures. Event drain recovery via IRemindable for unpublished events after pub/sub outage.",
+      "evidence": [
+        "src/Hexalith.EventStore.Server/Actors/ActorStateMachine.cs (checkpoint/resume/cleanup)",
+        "src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:112-143 (resume detection)",
+        "src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml (retry, circuit breaker, timeout)",
+        "src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs (per-tenant dead-letter topics)",
+        "src/Hexalith.EventStore.Server/Events/EventPublisher.cs (pub/sub failure handling)"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "Disaster Recovery",
+      "status": "CONCERN",
+      "description": "Zero data loss architecture (persist-then-publish, deterministic replay, checkpointed recovery) but RTO/RPO targets are UNDEFINED. No backup/restore procedures tested. No failover drills documented. Admin tooling provides backup/restore UI but no automated DR tested.",
+      "evidence": [
+        "PRD NFR22: Zero data loss (architecture supports this via persist-then-publish)",
+        "PRD NFR23: Deterministic replay from checkpoint (implemented in ActorStateMachine)",
+        "PRD NFR24: Pub/sub recovery via DAPR retry policies (configured in resiliency.yaml)",
+        "GAP: No RTO/RPO targets defined in PRD or architecture doc",
+        "GAP: No backup restore test evidence",
+        "GAP: No failover drill documentation"
+      ],
+      "recommendations": [
+        "HIGH: Define RTO and RPO targets (e.g., RTO <4h, RPO <1h)",
+        "HIGH: Test backup/restore procedure end-to-end",
+        "MEDIUM: Document and practice failover drills quarterly",
+        "MEDIUM: Add chaos engineering tests (state store crash, pub/sub outage) to Tier 3"
+      ]
+    },
+    {
+      "category": "Uptime & Availability",
+      "status": "CONCERN",
+      "description": "99.9% availability target (NFR21) defined but unvalidated. Architecture supports HA via DAPR multi-replica + actor placement. Health probes configured for Kubernetes (startup, readiness, liveness). No historical uptime data or incident response procedures documented.",
+      "evidence": [
+        "PRD NFR21: 99.9%+ availability target",
+        "Kubernetes health probes defined (startup 60s, readiness /ready, liveness /alive)",
+        "DAPR placement service for actor distribution",
+        "NO uptime monitoring or SLA tracking in production"
+      ],
+      "recommendations": [
+        "MEDIUM: Set up uptime monitoring (e.g., Grafana SLO dashboards)",
+        "MEDIUM: Document incident response procedures"
+      ]
+    }
+  ],
+  "compliance": {
+    "SLA_99.9": "CONCERN",
+    "Zero_data_loss": "PASS",
+    "DR_plan": "CONCERN"
+  },
+  "priority_actions": [
+    "HIGH: Define RTO/RPO targets and test backup/restore procedure",
+    "HIGH: Validate 99.9% availability architecture under failure scenarios",
+    "MEDIUM: Add chaos engineering tests to Tier 3 suite",
+    "MINOR: Add dynamic log level toggle and /metrics endpoint"
+  ],
+  "summary": "Reliability posture is LOW risk for core operations — excellent error handling (10 handlers), full observability (OTel + structured logs + health checks), robust fault tolerance (persist-then-publish + DAPR resiliency). CONCERNS around disaster recovery (undefined RTO/RPO, untested backup/restore) and availability validation (99.9% target untested)."
+}

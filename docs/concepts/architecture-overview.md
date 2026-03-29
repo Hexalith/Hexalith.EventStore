@@ -213,7 +213,7 @@ sequenceDiagram
     participant Sidecar as DAPR Sidecar
     participant Domain as Domain Service (Counter)
 
-    Client->>API: POST /api/commands (IncrementCounter)
+    Client->>API: POST /api/v1/commands (IncrementCounter)
     API->>MediatR: Dispatch command
     MediatR->>MediatR: Validate (FluentValidation)
     MediatR->>Router: Route to actor

@@ -1,0 +1,105 @@
+{
+  "domain": "scalability",
+  "risk_level": "MEDIUM",
+  "findings": [
+    {
+      "category": "Horizontal Scaling",
+      "status": "PASS",
+      "description": "Stateless EventStore architecture with DAPR actor placement for automatic distribution. Kubernetes Deployment with configurable replicas, HPA-ready resource limits, health probes for traffic management. Each replica can serve any tenant without session affinity.",
+      "evidence": [
+        "src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:66-75 (actor registration)",
+        "samples/deploy/kubernetes/dapr-annotations-example.yaml (resource limits, probes)",
+        "docs/guides/deployment-kubernetes.md (HPA configuration guidance)",
+        "Stateless design: no in-process session data, all state in DAPR state store"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "Data Scaling",
+      "status": "PASS",
+      "description": "Backend portability via DAPR abstraction: Redis (dev), PostgreSQL (prod), Cosmos DB (scale). Composite key pattern ({tenant}||{domain}||{aggregateId}) enables natural data partitioning. Snapshot strategy bounds replay time regardless of event count (NFR19). No direct DB calls — all access through DaprClient.",
+      "evidence": [
+        "deploy/dapr/statestore-postgresql.yaml (PostgreSQL backend)",
+        "deploy/dapr/statestore-cosmosdb.yaml (Cosmos DB backend with partition keys)",
+        "deploy/dapr/pubsub-rabbitmq.yaml, pubsub-kafka.yaml, pubsub-servicebus.yaml (3 pub/sub backends)",
+        "deploy/README.md (backend compatibility matrix)",
+        "PRD NFR29: Zero code changes for backend swap (validated architecture)"
+      ],
+      "recommendations": [
+        "MEDIUM: Test Cosmos DB partition key strategy under multi-tenant load",
+        "OPTIONAL: Document event archival strategy for long-lived aggregates"
+      ]
+    },
+    {
+      "category": "Traffic Handling",
+      "status": "PASS",
+      "description": "Dual-layer rate limiting (per-tenant + per-consumer), DAPR pub/sub for async event distribution, per-aggregate backpressure with HTTP 429 (FR67), SignalR for real-time notifications. Dynamic topic provisioning for new tenants without restart.",
+      "evidence": [
+        "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:135-250 (rate limiting)",
+        "src/Hexalith.EventStore/ErrorHandling/BackpressureExceptionHandler.cs (429 + Retry-After)",
+        "src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml (dynamic topic provisioning)",
+        "src/Hexalith.EventStore.Server/DomainServices/DomainServiceResolver.cs (dynamic config store)"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "Multi-Tenant Scaling",
+      "status": "CONCERN",
+      "description": "Target: 10+ tenants per instance (NFR18) with full isolation and no cross-tenant performance interference. Architecture supports this via per-tenant rate limits, actor-level isolation, and DAPR policy scoping. However, cross-tenant performance isolation is UNTESTED — no evidence of concurrent multi-tenant load testing.",
+      "evidence": [
+        "PRD NFR18: 10+ tenants per instance target",
+        "Per-tenant rate limiting with configurable overrides (TenantPermitLimits)",
+        "Actor identity scoped by tenant:domain:aggregateId",
+        "NO multi-tenant load test results"
+      ],
+      "recommendations": [
+        "HIGH: Run multi-tenant load test validating NFR18 (10+ tenants, no cross-tenant interference)",
+        "MEDIUM: Test per-tenant rate limit fairness under contention"
+      ]
+    },
+    {
+      "category": "Active Aggregate Scaling",
+      "status": "CONCERN",
+      "description": "Target: 10K+ active aggregates per instance (NFR17) without degradation. Architecture supports this via DAPR actor placement and snapshot strategy. However, actor memory footprint at 10K+ scale is UNTESTED. Snapshot effectiveness for state rehydration is theoretically sound but unvalidated.",
+      "evidence": [
+        "PRD NFR17: 10K+ active aggregates target",
+        "DAPR actor placement distributes across replicas",
+        "Snapshot strategy (NFR19) bounds rehydration time",
+        "NO memory profiling at 10K+ actor scale"
+      ],
+      "recommendations": [
+        "HIGH: Profile memory and GC at 10K active actors",
+        "MEDIUM: Validate snapshot strategy prevents memory growth"
+      ]
+    },
+    {
+      "category": "Deployability",
+      "status": "PASS",
+      "description": "Aspire publishers for 3 targets (Docker Compose, Kubernetes Helm, Azure Container Apps). Semantic-release with NuGet autopublish. CI/CD with 5 GitHub Actions workflows. Dockerfiles with Alpine base, non-root user. Rolling update strategy with health probes.",
+      "evidence": [
+        "src/Hexalith.EventStore.AppHost/Program.cs:125-134 (3 publisher targets)",
+        ".github/workflows/ci.yml, release.yml, deploy-staging.yml",
+        "src/Hexalith.EventStore/Dockerfile (multi-stage, Alpine, non-root)",
+        ".releaserc.json (semantic-release + NuGet publish)"
+      ],
+      "recommendations": [
+        "OPTIONAL: Implement blue-green or canary deployment strategy",
+        "OPTIONAL: Add GitOps (ArgoCD/Flux) for declarative deployment"
+      ]
+    }
+  ],
+  "compliance": {
+    "10K_aggregates": "UNTESTED",
+    "10_tenants": "UNTESTED",
+    "100_cmd_sec": "UNTESTED",
+    "horizontal_scaling": "PASS",
+    "backend_portability": "PASS"
+  },
+  "priority_actions": [
+    "HIGH: Run multi-tenant load test (10+ tenants, NFR18)",
+    "HIGH: Profile 10K+ active actor memory footprint (NFR17)",
+    "MEDIUM: Validate Cosmos DB partition strategy under load",
+    "OPTIONAL: Implement blue-green/canary deployment"
+  ],
+  "summary": "Scalability posture is MEDIUM risk. Architecture is well-designed for scale (stateless, DAPR actor placement, backend portability, rate limiting) but quantitative scaling targets (10K aggregates, 10 tenants, 100 cmd/sec) are UNTESTED. Horizontal scaling and deployability are PASS. Key risk: no load test evidence for scaling limits."
+}

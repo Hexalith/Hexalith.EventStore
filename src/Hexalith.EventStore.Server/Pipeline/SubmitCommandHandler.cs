@@ -19,14 +19,31 @@ public partial class SubmitCommandHandler(
     ICommandStatusStore statusStore,
     ICommandArchiveStore archiveStore,
     ICommandRouter commandRouter,
+    ICommandActivityTracker? activityTracker,
     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    public SubmitCommandHandler(
+        ICommandStatusStore statusStore,
+        ICommandArchiveStore archiveStore,
+        ICommandRouter commandRouter,
+        ILogger<SubmitCommandHandler> logger)
+        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, logger) { }
+
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         IBackpressureTracker backpressureTracker,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
+        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
+
+    public SubmitCommandHandler(
+        ICommandStatusStore statusStore,
+        ICommandArchiveStore archiveStore,
+        ICommandRouter commandRouter,
+        ICommandActivityTracker? activityTracker,
+        IBackpressureTracker backpressureTracker,
+        ILogger<SubmitCommandHandler> logger)
+        : this(statusStore, archiveStore, commandRouter, activityTracker, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
 
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
@@ -74,6 +91,33 @@ public partial class SubmitCommandHandler(
 
         CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);
+
+        // Track command in admin activity index (advisory, rule #12)
+        if (activityTracker is not null) {
+            try {
+                CommandStatusRecord? finalStatus = await statusStore
+                    .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await activityTracker.TrackAsync(
+                    request.Tenant,
+                    request.Domain,
+                    request.AggregateId,
+                    request.CorrelationId,
+                    request.CommandType,
+                    finalStatus?.Status ?? (processingResult.Accepted ? CommandStatus.Completed : CommandStatus.Rejected),
+                    finalStatus?.Timestamp ?? DateTimeOffset.UtcNow,
+                    finalStatus?.EventCount,
+                    finalStatus?.FailureReason,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                Log.ActivityTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+        }
 
         if (!processingResult.Accepted) {
             if (processingResult.BackpressureExceeded) {
@@ -148,5 +192,15 @@ public partial class SubmitCommandHandler(
         public static partial void CommandRouted(
             ILogger logger,
             string correlationId);
+
+        [LoggerMessage(
+            EventId = 1104,
+            Level = LogLevel.Warning,
+            Message = "Failed to track command activity: CorrelationId={CorrelationId}, TenantId={TenantId}. Admin command list may be stale. Stage=ActivityTrackingFailed")]
+        public static partial void ActivityTrackingFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId);
     }
 }

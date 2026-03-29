@@ -1,0 +1,95 @@
+{
+  "domain": "security",
+  "risk_level": "LOW",
+  "findings": [
+    {
+      "category": "Authentication & Authorization",
+      "status": "PASS",
+      "description": "Complete JWT/OIDC implementation with 6-layer defense-in-depth: JWT validation (ConfigureJwtBearerOptions 238 lines), claims-based tenant validation, RBAC with wildcard support, actor-based authorization, MediatR pipeline behaviors, DAPR ACL. Token validation enforces signature, expiry, issuer, audience with 1-min clock skew.",
+      "evidence": [
+        "src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs (238 lines)",
+        "src/Hexalith.EventStore/Authorization/ClaimsTenantValidator.cs",
+        "src/Hexalith.EventStore/Authorization/ClaimsRbacValidator.cs (76 lines)",
+        "src/Hexalith.EventStore/Authorization/ActorTenantValidator.cs",
+        "src/Hexalith.EventStore/Authorization/ActorRbacValidator.cs",
+        "src/Hexalith.EventStore/Pipeline/AuthorizationBehavior.cs",
+        "src/Hexalith.EventStore/Controllers/CommandsController.cs:18 ([Authorize])"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "Data Protection",
+      "status": "PASS",
+      "description": "TLS via DAPR mTLS (SPIFFE certificates), HTTPS enforced in Admin.UI (HSTS + redirect), JWT RequireHttpsMetadata=true in production. Log sanitization prevents token/payload leakage. Terminology sanitization removes internal details from client responses.",
+      "evidence": [
+        "src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:99,102 (HSTS + HTTPS redirect)",
+        "src/Hexalith.EventStore/Authentication/EventStoreAuthenticationOptions.cs:36 (RequireHttpsMetadata)",
+        "src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs:81 (never log JWT)",
+        "src/Hexalith.EventStore/Pipeline/ValidationBehavior.cs:54 (SEC-5 payload protection)",
+        "src/Hexalith.EventStore/ErrorHandling/AuthorizationExceptionHandler.cs:105 (SanitizeForbiddenTerms)",
+        "deploy/dapr/accesscontrol.yaml (mTLS trust domain enforcement)"
+      ],
+      "recommendations": [
+        "MINOR: Add HTTPS redirect middleware to EventStore Program.cs for defense-in-depth (currently relies on DAPR mTLS)"
+      ]
+    },
+    {
+      "category": "Input Validation",
+      "status": "PASS",
+      "description": "Comprehensive input sanitization: ExtensionMetadataSanitizer detects XSS, SQLi, LDAP injection, path traversal, control characters. FluentValidation SubmitCommandRequestValidator (110 lines) enforces field-level constraints with regex patterns. MediatR-level SubmitCommandValidator provides second validation layer.",
+      "evidence": [
+        "src/Hexalith.EventStore/Validation/ExtensionMetadataSanitizer.cs (XSS, SQLi, LDAP, path traversal)",
+        "src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs (110 lines, field-level validation)",
+        "src/Hexalith.EventStore/Validation/SubmitCommandValidator.cs (MediatR-level validation)"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "API Security",
+      "status": "PASS",
+      "description": "Dual-layer rate limiting: per-tenant (1000/min, sliding window) and per-consumer (100/sec, fixed window). 429 responses with Retry-After header and ProblemDetails. Health endpoints exempt. Per-tenant overrides via DAPR config store. Dynamic configuration sync.",
+      "evidence": [
+        "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:135-250 (rate limiting)",
+        "src/Hexalith.EventStore/Configuration/RateLimitingOptions.cs (validated options)",
+        "src/Hexalith.EventStore/Configuration/DaprRateLimitConfigSync.cs (dynamic config)"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "Secrets Management",
+      "status": "PASS",
+      "description": "User secrets for local dev (hexalith-eventstore), empty production defaults (overridden by env vars), development-only signing key clearly labeled 'DevOnly', minimum 32-char key validation, Keycloak OIDC for production (no symmetric keys needed).",
+      "evidence": [
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj:7 (UserSecretsId)",
+        "src/Hexalith.EventStore/appsettings.json:42-49 (empty production defaults)",
+        "src/Hexalith.EventStore/appsettings.Development.json:35-39 (DevOnly key)",
+        "src/Hexalith.EventStore/Authentication/EventStoreAuthenticationOptions.cs:63-65 (min 32 chars)"
+      ],
+      "recommendations": []
+    },
+    {
+      "category": "DAPR Access Control",
+      "status": "PASS",
+      "description": "Deny-by-default access control on all 3 sidecars. Per-app-id caller restrictions. Trust domain enforcement via SPIFFE certificates. Sample domain service has zero state store access (D4 principle).",
+      "evidence": [
+        "deploy/dapr/accesscontrol.yaml (eventstore: deny-by-default, admin allowed)",
+        "deploy/dapr/accesscontrol.eventstore-admin.yaml (admin: deny-by-default)",
+        "deploy/dapr/accesscontrol.sample.yaml (sample: deny-by-default, eventstore POST only)"
+      ],
+      "recommendations": []
+    }
+  ],
+  "compliance": {
+    "SOC2": "PARTIAL",
+    "GDPR": "PASS",
+    "HIPAA": "N/A",
+    "PCI-DSS": "N/A",
+    "ISO27001": "PARTIAL"
+  },
+  "priority_actions": [
+    "MINOR: Add explicit HTTPS redirect middleware to EventStore service for defense-in-depth",
+    "OPTIONAL: Add security scanning (OWASP ZAP or Snyk) to CI pipeline",
+    "OPTIONAL: Implement secret rotation policies documentation"
+  ],
+  "summary": "Security posture is LOW risk. 6-layer defense-in-depth fully implemented: JWT auth, claims-based RBAC, multi-tenant isolation, dual-layer rate limiting, comprehensive input sanitization, DAPR ACL. No critical vulnerabilities found. Minor improvement: explicit HTTPS in EventStore (currently DAPR mTLS)."
+}

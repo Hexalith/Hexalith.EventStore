@@ -28,7 +28,7 @@
     }
     else if (_error is not null)
     {
-        <IssueBanner Message="@_error" />
+        <IssueBanner Visible="true" Description="@_error" />
     }
     else if (_blame is not null && _blame.Fields.Count == 0 && _blame.AtSequence == 0)
     {
@@ -51,11 +51,11 @@
         @* Truncation warnings *@
         @if (_blame.IsTruncated)
         {
-            <IssueBanner Message="Blame computed from a partial event window — fields showing sequence '-1' were last changed before this window." />
+            <IssueBanner Visible="true" Description="Blame computed from a partial event window — fields showing sequence '-1' were last changed before this window." />
         }
         @if (_blame.IsFieldsTruncated)
         {
-            <IssueBanner Message="State has more fields than the maximum — showing the most recently changed fields only." />
+            <IssueBanner Visible="true" Description="State has more fields than the maximum — showing the most recently changed fields only." />
         }
 
         @* Search *@
