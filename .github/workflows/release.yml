@@ -51,6 +51,11 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Sample.Tests/ --configuration Release --logger "trx;LogFileName=sample-results.trx"
           dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --configuration Release --logger "trx;LogFileName=signalr-results.trx"
           dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/ --configuration Release --logger "trx;LogFileName=admin-cli-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/ --configuration Release --logger "trx;LogFileName=admin-mcp-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.Abstractions.Tests/ --configuration Release --logger "trx;LogFileName=admin-abstractions-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/ --configuration Release --logger "trx;LogFileName=admin-server-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/ --configuration Release --logger "trx;LogFileName=admin-server-host-results.trx"
+          dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/ --configuration Release --logger "trx;LogFileName=admin-ui-results.trx"
           dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --logger "trx;LogFileName=server-results.trx"
 
       - name: Install semantic-release

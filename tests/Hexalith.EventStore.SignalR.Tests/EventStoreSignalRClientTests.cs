@@ -22,7 +22,8 @@ public class EventStoreSignalRClientTests {
 
     [Fact]
     public void Constructor_RelativeHubUrl_ThrowsArgumentException() {
-        var options = new EventStoreSignalRClientOptions { HubUrl = "/hubs/projection-changes" };
+        // Use a non-slash relative URL; "/hubs/..." is an absolute file URI on Linux
+        var options = new EventStoreSignalRClientOptions { HubUrl = "hubs/projection-changes" };
 
         _ = Should.Throw<ArgumentException>(() =>
             new EventStoreSignalRClient(options));
@@ -428,6 +429,73 @@ public class EventStoreSignalRClientTests {
         finally {
             await sut.DisposeAsync();
         }
+    }
+
+    // === P0 Gap Coverage: IsConnected, UnsubscribeAsync no-op, Closed disposal-aware ===
+
+    [Fact]
+    public async Task IsConnected_ReturnsFalse_WhenNotStarted() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            sut.IsConnected.ShouldBeFalse();
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UnsubscribeAsync_CallbackOverload_NoOpWhenGroupNotRegistered() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            // Unsubscribe a callback for a group that was never subscribed — should not throw
+            await sut.UnsubscribeAsync("nonexistent", "tenant", () => { });
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task UnsubscribeAsync_GroupOverload_NoOpWhenGroupNotRegistered() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            // Unsubscribe an entire group that was never subscribed — should not throw
+            await sut.UnsubscribeAsync("nonexistent", "tenant");
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnProjectionChanged_NoOpWhenGroupNotSubscribed() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            // Fire a signal for a group with no subscribers — should not throw
+            InvokeProjectionChanged(sut, "nonexistent", "tenant");
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnClosedAsync_AfterDisposal_DoesNotLogWarning() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+
+        await sut.DisposeAsync();
+
+        // After disposal, closed events with exceptions should be silenced
+        await InvokeOnClosedAsync(sut, new InvalidOperationException("Post-dispose close")).ConfigureAwait(true);
+
+        logEntries.ShouldBeEmpty();
     }
 
     [Fact]

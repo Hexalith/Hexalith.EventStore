@@ -26,11 +26,11 @@ jobs:
       - name: Validate Conventional Commits
         uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
         with:
-          configFile: commitlint.config.js
+          configFile: commitlint.config.mjs
 
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -93,17 +93,21 @@ jobs:
 
       - name: Unit Tests (Tier 1)
         run: |
-          dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
-          dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
-          dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
-          dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
-          dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
-          dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
-          dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+          dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Sample.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.SignalR.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Admin.Abstractions.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: Tool Install Smoke Test
         run: |
-          dotnet pack src/Hexalith.EventStore.Admin.Cli/ --no-build --configuration Release --output ./smoke-test-nupkgs
+          dotnet pack src/Hexalith.EventStore.Admin.Cli/ --configuration Release --output ./smoke-test-nupkgs
           dotnet tool install --global Hexalith.EventStore.Admin.Cli --add-source ./smoke-test-nupkgs --version "1.0.0"
           eventstore-admin --version
           eventstore-admin --help | grep -q "health"
@@ -119,7 +123,7 @@ jobs:
       - name: Install DAPR CLI
         run: |
           wget -q https://raw.githubusercontent.com/dapr/cli/v1.16.0/install/install.sh -O - | /bin/bash
-          dapr init
+          dapr init --slim
 
       - name: Integration Tests (Tier 2)
         run: >
@@ -127,6 +131,7 @@ jobs:
           tests/Hexalith.EventStore.Server.Tests/
           --no-build --configuration Release
           --logger "trx;LogFileName=integration-results.trx"
+          --collect:"XPlat Code Coverage"
 
       - name: Test Summary
         if: always()
@@ -146,6 +151,10 @@ jobs:
             'SignalR.Tests': 'tests/Hexalith.EventStore.SignalR.Tests/TestResults/**/test-results.trx',
             'Admin.Cli.Tests': 'tests/Hexalith.EventStore.Admin.Cli.Tests/TestResults/**/test-results.trx',
             'Admin.Mcp.Tests': 'tests/Hexalith.EventStore.Admin.Mcp.Tests/TestResults/**/test-results.trx',
+            'Admin.Abstractions.Tests': 'tests/Hexalith.EventStore.Admin.Abstractions.Tests/TestResults/**/test-results.trx',
+            'Admin.Server.Tests': 'tests/Hexalith.EventStore.Admin.Server.Tests/TestResults/**/test-results.trx',
+            'Admin.Server.Host.Tests': 'tests/Hexalith.EventStore.Admin.Server.Host.Tests/TestResults/**/test-results.trx',
+            'Admin.UI.Tests': 'tests/Hexalith.EventStore.Admin.UI.Tests/TestResults/**/test-results.trx',
           }
           tier2_suites = {
             'Server.Tests': 'tests/Hexalith.EventStore.Server.Tests/TestResults/**/integration-results.trx',
@@ -216,6 +225,71 @@ jobs:
           path: |
             **/test-results.trx
             **/integration-results.trx
+
+      - name: Coverage Summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          summary_path = os.environ['GITHUB_STEP_SUMMARY']
+          coverage_files = glob.glob('**/coverage.cobertura.xml', recursive=True)
+
+          if not coverage_files:
+            with open(summary_path, 'a', encoding='utf-8') as f:
+              f.write('\n### Code Coverage\nNo coverage files found.\n')
+            exit(0)
+
+          total_lines = 0
+          covered_lines = 0
+          total_branches = 0
+          covered_branches = 0
+          per_project = []
+
+          for cov_file in coverage_files:
+            try:
+              tree = ET.parse(cov_file)
+              root = tree.getroot()
+              # Cobertura XML: root has line-rate and branch-rate attributes
+              line_rate = float(root.attrib.get('line-rate', '0'))
+              branch_rate = float(root.attrib.get('branch-rate', '0'))
+              lines_valid = int(root.attrib.get('lines-valid', '0'))
+              lines_covered = int(root.attrib.get('lines-covered', '0'))
+              branches_valid = int(root.attrib.get('branches-valid', '0'))
+              branches_covered = int(root.attrib.get('branches-covered', '0'))
+
+              total_lines += lines_valid
+              covered_lines += lines_covered
+              total_branches += branches_valid
+              covered_branches += branches_covered
+
+              # Extract project name from path
+              parts = cov_file.replace('\\', '/').split('/')
+              project_name = next((p for p in parts if p.endswith('.Tests')), os.path.basename(os.path.dirname(cov_file)))
+              per_project.append((project_name, line_rate * 100, branch_rate * 100, lines_valid))
+            except Exception as e:
+              print(f'Warning: could not parse {cov_file}: {e}')
+
+          overall_line = (covered_lines / total_lines * 100) if total_lines > 0 else 0
+          overall_branch = (covered_branches / total_branches * 100) if total_branches > 0 else 0
+
+          with open(summary_path, 'a', encoding='utf-8') as f:
+            f.write(f'\n### Code Coverage\n')
+            f.write(f'**Overall:** {overall_line:.1f}% line · {overall_branch:.1f}% branch ({covered_lines}/{total_lines} lines)\n\n')
+            f.write('| Project | Line % | Branch % | Lines |\n')
+            f.write('|---------|--------|----------|-------|\n')
+            for name, line_pct, branch_pct, lines in sorted(per_project):
+              f.write(f'| {name} | {line_pct:.1f}% | {branch_pct:.1f}% | {lines} |\n')
+          PY
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-reports
+          path: '**/coverage.cobertura.xml'
 
   aspire-tests:
     runs-on: ubuntu-latest
