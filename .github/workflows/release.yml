@@ -41,7 +41,7 @@ jobs:
       - name: Install DAPR CLI
         run: |
           wget -q https://raw.githubusercontent.com/dapr/cli/v1.16.0/install/install.sh -O - | /bin/bash
-          dapr init --slim
+          dapr init
 
       - name: Run All Tests (Tier 1 + 2)
         run: |

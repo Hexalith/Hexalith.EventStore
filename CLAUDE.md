@@ -26,8 +26,8 @@ dotnet test tests/Hexalith.EventStore.Sample.Tests/
 dotnet test tests/Hexalith.EventStore.Testing.Tests/
 dotnet test tests/Hexalith.EventStore.SignalR.Tests/
 
-# Tier 2 — Integration tests (requires DAPR slim init)
-dapr init --slim
+# Tier 2 — Integration tests (requires full DAPR init + Docker)
+dapr init
 dotnet test tests/Hexalith.EventStore.Server.Tests/
 
 # Tier 3 — Aspire end-to-end contract tests (requires full DAPR init + Docker)
