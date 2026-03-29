@@ -107,7 +107,7 @@ jobs:
 
       - name: Tool Install Smoke Test
         run: |
-          dotnet pack src/Hexalith.EventStore.Admin.Cli/ --no-build --configuration Release --output ./smoke-test-nupkgs
+          dotnet pack src/Hexalith.EventStore.Admin.Cli/ --configuration Release --output ./smoke-test-nupkgs
           dotnet tool install --global Hexalith.EventStore.Admin.Cli --add-source ./smoke-test-nupkgs --version "1.0.0"
           eventstore-admin --version
           eventstore-admin --help | grep -q "health"
