@@ -120,69 +120,43 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetRecentCommandsAsync_FiltersCompositeProcessingStatus() {
+    public async Task GetRecentCommandsAsync_ReturnsResults_WhenEventStoreReturnsData() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var commands = new List<CommandSummary>
-        {
-            new("tenant1", "orders", "order-1", "corr-1", "CreateOrder", CommandStatus.Received, DateTimeOffset.UtcNow, null, null),
-            new("tenant1", "orders", "order-2", "corr-2", "CreateOrder", CommandStatus.EventsPublished, DateTimeOffset.UtcNow.AddMinutes(-1), 2, null),
-            new("tenant1", "orders", "order-3", "corr-3", "CreateOrder", CommandStatus.Completed, DateTimeOffset.UtcNow.AddMinutes(-2), 3, null),
-        };
+        var expectedResult = new PagedResult<CommandSummary>(
+            [
+                new("tenant1", "orders", "order-1", "corr-1", "CreateOrder", CommandStatus.Received, DateTimeOffset.UtcNow, null, null),
+                new("tenant1", "orders", "order-2", "corr-2", "CreateOrder", CommandStatus.Completed, DateTimeOffset.UtcNow.AddMinutes(-1), 2, null),
+            ],
+            2,
+            null);
 
-        daprClient.GetStateAsync<List<CommandSummary>>(
-            StateStoreName,
-            "admin:command-activity:tenant1",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => commands);
+        daprClient.InvokeMethodAsync<PagedResult<CommandSummary>>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns(_ => expectedResult);
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        PagedResult<CommandSummary> result = await service.GetRecentCommandsAsync("tenant1", "Processing", null);
+        PagedResult<CommandSummary> result = await service.GetRecentCommandsAsync("tenant1", null, null);
 
         result.Items.Count.ShouldBe(2);
-        result.Items.All(c => c.Status is CommandStatus.Received
-            or CommandStatus.Processing
-            or CommandStatus.EventsStored
-            or CommandStatus.EventsPublished).ShouldBeTrue();
+        result.TotalCount.ShouldBe(2);
     }
 
     [Fact]
-    public async Task GetRecentCommandsAsync_FiltersCompositeFailedStatus() {
+    public async Task GetRecentCommandsAsync_ReturnsEmpty_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var commands = new List<CommandSummary>
-        {
-            new("tenant1", "orders", "order-1", "corr-1", "CreateOrder", CommandStatus.PublishFailed, DateTimeOffset.UtcNow, null, "publish"),
-            new("tenant1", "orders", "order-2", "corr-2", "CreateOrder", CommandStatus.TimedOut, DateTimeOffset.UtcNow.AddMinutes(-1), null, "timeout"),
-            new("tenant1", "orders", "order-3", "corr-3", "CreateOrder", CommandStatus.Rejected, DateTimeOffset.UtcNow.AddMinutes(-2), null, "rejected"),
-        };
-
-        daprClient.GetStateAsync<List<CommandSummary>>(
-            StateStoreName,
-            "admin:command-activity:tenant1",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => commands);
-
-        DaprStreamQueryService service = CreateService(daprClient);
-
-        PagedResult<CommandSummary> result = await service.GetRecentCommandsAsync("tenant1", "Failed", null);
-
-        result.Items.Count.ShouldBe(2);
-        result.Items.All(c => c.Status is CommandStatus.PublishFailed or CommandStatus.TimedOut).ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task GetRecentCommandsAsync_ThrowsWhenDaprThrows() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<CommandSummary>>(
-            StateStoreName,
-            Arg.Any<string>(),
-            cancellationToken: Arg.Any<CancellationToken>())
+        daprClient.InvokeMethodAsync<PagedResult<CommandSummary>>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection failed"));
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<HttpRequestException>(
-            () => service.GetRecentCommandsAsync("tenant1", null, null));
+        PagedResult<CommandSummary> result = await service.GetRecentCommandsAsync("tenant1", null, null);
+
+        result.Items.ShouldBeEmpty();
+        result.TotalCount.ShouldBe(0);
     }
 
     [Fact]

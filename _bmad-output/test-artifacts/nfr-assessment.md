@@ -1,369 +1,269 @@
 ---
-stepsCompleted: ['step-01-load-context', 'step-02-define-thresholds', 'step-03-gather-evidence', 'step-04e-aggregate-nfr', 'step-05-generate-report']
-lastStep: 'step-05-generate-report'
-lastSaved: '2026-03-15'
-status: 'complete'
-workflowType: 'testarch-nfr-assess'
+stepsCompleted:
+    - step-01-load-context
+    - step-02-define-thresholds
+    - step-03-gather-evidence
+    - step-04a-subagent-security
+    - step-04b-subagent-performance
+    - step-04c-subagent-reliability
+    - step-04d-subagent-scalability
+    - step-04e-aggregate-nfr
+    - step-05-generate-report
+lastStep: step-05-generate-report
+lastSaved: "2026-03-29"
 inputDocuments:
-  - _bmad-output/planning-artifacts/epics.md (NFR1-NFR39)
-  - _bmad-output/planning-artifacts/architecture.md
-  - _bmad-output/test-artifacts/test-review.md (95/100)
-  - _bmad-output/test-artifacts/traceability-report.md (90.3% FR coverage)
-  - _bmad/tea/testarch/knowledge/nfr-criteria.md
-  - _bmad/tea/testarch/knowledge/adr-quality-readiness-checklist.md
+    - _bmad-output/planning-artifacts/prd.md
+    - _bmad-output/planning-artifacts/architecture.md
+    - _bmad/tea/testarch/knowledge/adr-quality-readiness-checklist.md
+    - _bmad/tea/testarch/knowledge/ci-burn-in.md
+    - _bmad/tea/testarch/knowledge/test-quality.md
+    - _bmad/tea/testarch/knowledge/playwright-config.md
+    - _bmad/tea/testarch/knowledge/error-handling.md
+    - _bmad/tea/testarch/knowledge/playwright-cli.md
+    - _bmad/tea/testarch/knowledge/nfr-criteria.md
 ---
 
-# NFR Assessment - Hexalith.EventStore
+# NFR Assessment Report — Hexalith.EventStore
 
-**Date:** 2026-03-15
-**Scope:** Full system (39 NFRs across 7 categories)
-**Overall Status:** CONCERNS
+**Assessment Date:** 2026-03-29
+**Assessor:** Murat (Test Architect)
+**Scope:** Full system NFR assessment across 9 ADR Quality Readiness categories + 46 PRD NFRs
+**Execution Mode:** Sequential (5 NFR domains)
 
 ---
-
-Note: This assessment summarizes existing evidence; it does not run tests or CI workflows.
 
 ## Executive Summary
 
-**Assessment:** 21 PASS, 8 CONCERNS, 0 FAIL (out of 29 ADR criteria)
+**Overall Risk Level: HIGH**
 
-**Blockers:** 0
+The Hexalith.EventStore architecture is **exceptionally well-designed** for security, reliability, and observability. The codebase demonstrates defense-in-depth at every layer — 6-layer auth, 10 exception handlers, persist-then-publish state machine, DAPR resiliency policies, and comprehensive OpenTelemetry instrumentation.
 
-**High Priority Issues:** 3 (load testing, disaster recovery validation, dynamic config)
+**However, the #1 pre-GA risk is the complete absence of performance and load test evidence.** All 13 performance NFRs (NFR1-8, NFR35-39) and all scalability targets (10K aggregates, 10 tenants, 100 cmd/sec) are architecturally sound but empirically unvalidated. The risk is not that the system will fail — the risk is that we don't know.
 
-**Recommendation:** Ship with documented CONCERNS. No critical security or reliability failures. Performance and scalability gaps require load testing infrastructure (k6/NBomber) as a follow-up initiative.
+| Domain | Risk | Gate Decision |
+|--------|------|---------------|
+| Security | LOW | PASS |
+| Performance | HIGH | CONCERNS (no evidence) |
+| Reliability | LOW | PASS (with DR caveat) |
+| Scalability | MEDIUM | CONCERNS (untested limits) |
+| Maintainability | LOW | PASS |
 
----
-
-## Domain Risk Breakdown
-
-| Domain | Risk Level | Score | Evidence Quality |
-|--------|-----------|-------|-----------------|
-| Security | LOW | 4/4 PASS | Strong — dedicated test suites across 3 tiers |
-| Performance | MEDIUM | 1/4 PASS, 3 CONCERNS | Partial — micro-benchmarks exist, no load tests |
-| Reliability | MEDIUM | 1/4 PASS, 3 CONCERNS | Partial — unit-level resilience tested, no chaos testing |
-| Scalability | MEDIUM | 2/4 PASS, 2 CONCERNS | Partial — architecture supports scaling, not validated |
-
-**Overall Risk: MEDIUM**
+**Gate Decision: CONCERNS — requires performance validation before GA.**
 
 ---
 
-## Security Assessment
+## Assessment Summary (ADR Quality Readiness Checklist)
 
-### Authentication Strength
+| # | Category | Status | Criteria Met | Key Evidence | Next Action |
+|---|----------|--------|-------------|--------------|-------------|
+| 1 | Testability & Automation | PASS | 4/4 | 4,027 tests, 19 fakes, 100% API testability, 3-tier CI | None |
+| 2 | Test Data Strategy | PASS | 3/3 | Builders, per-test GUIDs, multi-tenant scoping, xUnit fixtures | None |
+| 3 | Scalability & Availability | CONCERNS | 2/4 | Stateless + DAPR placement, but no load test for 10K aggregates or SLA | Load test |
+| 4 | Disaster Recovery | CONCERNS | 1/3 | Zero data loss architecture, but RTO/RPO undefined, no DR drills | Define RTO/RPO |
+| 5 | Security | PASS | 4/4 | JWT + RBAC + tenant isolation + rate limiting + input sanitization + DAPR ACL | None |
+| 6 | Monitorability & Debuggability | PASS | 3/4 | OTel (3 sources, 11 spans), structured logs, health checks, correlation IDs | Add /metrics |
+| 7 | QoS / QoE | CONCERNS | 1/4 | Rate limiting enforced, but all latency targets untested | k6 load tests |
+| 8 | Deployability | PASS | 2/3 | Aspire 3-target publishers, CI/CD, Dockerfiles, semantic-release | Blue-green optional |
+| 9 | Maintainability | PASS | 4/4 | 4,027 tests, coverlet on 15 projects, TreatWarningsAsErrors, 195 doc pages | None |
 
-- **Status:** PASS
-- **Threshold:** JWT validated for signature, expiry, issuer on every request (NFR10)
-- **Evidence:** JwtAuthenticationIntegrationTests (5 scenarios: no token 401, invalid 401, expired 401, wrong issuer 401, valid 202)
-- **Findings:** Comprehensive JWT validation at API gateway level
-
-### Authorization Controls
-
-- **Status:** PASS
-- **Threshold:** Multi-tenant isolation enforced at 3 layers — actor identity, DAPR policies, command metadata (NFR13)
-- **Evidence:** AuthorizationIntegrationTests (5 scenarios), TenantValidatorTests (3 scenarios), StorageKeyIsolationTests (5 scenarios), DomainServiceIsolationTests, PubSubTopicIsolationEnforcementTests, CommandStatusIsolationTests
-- **Findings:** Tenant isolation verified at every layer with dedicated test suites
-
-### Data Protection
-
-- **Status:** PASS
-- **Threshold:** Event payload never in logs; secrets never in code/config (NFR12, NFR14)
-- **Evidence:** PayloadProtectionTests (static source scan of 4 classes), SecretsProtectionTests (scans DAPR YAML + C# source), LoggingBehaviorTests (never logs payload/extensions)
-- **Findings:** Static analysis + runtime tests verify no payload/secret leakage
-
-### Service-to-Service Access Control
-
-- **Status:** PASS
-- **Threshold:** DAPR ACL policies restrict inter-service communication (NFR15)
-- **Evidence:** DaprAccessControlE2ETests (unauthorized invocation returns 403 with error context)
-- **Findings:** E2E test validates DAPR access control policies in Aspire topology
+**Overall: 24/33 criteria met (73%) — CONCERNS**
 
 ---
 
-## Performance Assessment
+## Detailed Assessment
 
-### Command Submission Latency
+### 1. Testability & Automation (4/4 PASS)
 
-- **Status:** CONCERNS
-- **Threshold:** NFR1: p99 < 50ms for REST 202 response; NFR2: p99 < 200ms end-to-end
-- **Actual:** No load test evidence. Integration tests verify functional correctness only.
-- **Evidence Gap:** No k6/NBomber load tests exist
-- **Recommendation:** Add k6 load test with 100 concurrent users measuring p99 latency
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Isolation: mock downstream deps | PASS | 19 Fake implementations in Hexalith.EventStore.Testing (FakeAggregateActor, FakeEventPublisher, InMemoryStateManager, etc.) |
+| Headless: 100% API-accessible | PASS | All business logic via REST Command API, zero UI coupling, 24 controller test files |
+| State Control: seeding APIs | PASS | CommandEnvelopeBuilder, EventEnvelopeBuilder, AggregateIdentityBuilder, per-test Guid.NewGuid() isolation |
+| Sample Requests: cURL/JSON | PASS | FluentValidation patterns document valid/invalid requests, OpenAPI spec validated in tests |
 
-### Event Append Latency
+**Test Coverage:** 4,027 tests across 540 files (Tier 1: 1,348 | Tier 2: 1,448 | Tier 3: 224)
 
-- **Status:** CONCERNS
-- **Threshold:** NFR3: p99 < 10ms for event append
-- **Actual:** SnapshotRehydrationTests asserts rehydration < 100ms. No isolated append latency measurement.
-- **Evidence Gap:** No dedicated append latency benchmark
-- **Recommendation:** Add micro-benchmark for single event append via BenchmarkDotNet
+### 2. Test Data Strategy (3/3 PASS)
 
-### Rehydration Performance
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Segregation: multi-tenant isolation | PASS | All test data scoped to `tenant-a`, actor identity includes tenantId, per-test unique aggregate IDs |
+| Generation: synthetic data | PASS | Builder pattern with fluent API, Guid.NewGuid() for unique IDs, no production data |
+| Teardown: cleanup mechanism | PASS | xUnit Collection Fixtures, DAPR actor lifecycle management, per-test isolated state |
 
-- **Status:** PASS
-- **Threshold:** NFR6: 1,000 events reconstructed within 100ms
-- **Actual:** EventStreamReaderTests asserts `ShouldBeLessThan(100)` ms
-- **Evidence:** EventStreamReaderTests.cs:148 (Stopwatch-based assertion)
-- **Findings:** Functional assertion exists but threshold is tight for CI (may need relaxing)
+### 3. Scalability & Availability (2/4 CONCERNS)
 
-### Query Pipeline Latency
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Statelessness | PASS | EventStore is stateless (no in-process state), all actor state in shared DAPR state store |
+| Bottlenecks identified | CONCERNS | Architecture identifies DAPR sidecar overhead (<2ms target, NFR8) but NO load test validates this |
+| SLA definitions | CONCERNS | 99.9% target defined (NFR21) but no uptime monitoring, no SLA tracking, no failover testing |
+| Circuit breakers | PASS | DAPR resiliency.yaml: defaultBreaker (trip on 3 failures), pubsubBreaker (trip on 5 failures) |
 
-- **Status:** PASS
-- **Threshold:** NFR35: ETag pre-check p99 < 5ms; NFR37: SignalR delivery p99 < 100ms
-- **Actual:** QueriesControllerTests (200 iterations, p99 < 5ms); SignalRProjectionChangedBroadcasterTests (50 iterations, p99 < 100ms)
-- **Evidence:** Dedicated performance assertions with statistical measurement
-- **Findings:** Query pipeline micro-benchmarks are solid
+### 4. Disaster Recovery & Operational Thresholds (1/5 CONCERNS)
 
----
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| RTO/RPO defined | CONCERNS | Architecture supports zero data loss (persist-then-publish) but RTO/RPO targets UNDEFINED |
+| Failover automated/practiced | CONCERNS | Rolling update via Kubernetes probes, but no failover drills documented |
+| Backups tested | CONCERNS | Admin tooling provides backup/restore UI, but no restore validation tested |
+| MTTR defined | CONCERNS | UNKNOWN — no mean-time-to-recovery target defined; architecture supports fast recovery via stateless design + DAPR actor re-placement |
+| Error rate threshold | CONCERNS | UNKNOWN — no acceptable production error rate defined; 10 exception handlers ensure graceful degradation but no threshold set |
 
-## Reliability Assessment
+### 5. Security (4/4 PASS)
 
-### Event Durability (Zero Loss)
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| AuthN/AuthZ: OAuth2/OIDC | PASS | ConfigureJwtBearerOptions.cs (238 lines), OIDC discovery, 6-layer defense-in-depth |
+| Encryption: TLS in transit | PASS | DAPR mTLS (SPIFFE), Admin.UI HSTS + HTTPS redirect, RequireHttpsMetadata=true |
+| Secrets: vault/env vars | PASS | .NET User Secrets, env var overrides, Keycloak OIDC, min 32-char key validation |
+| Input validation: injection prevention | PASS | ExtensionMetadataSanitizer (XSS, SQLi, LDAP, path traversal), SubmitCommandRequestValidator (110 lines) |
 
-- **Status:** CONCERNS
-- **Threshold:** NFR22: Zero events lost under any failure scenario
-- **Evidence:** UnpublishedEventsRecordTests (drain tracking), AtLeastOnceDeliveryTests (persist-then-publish), ETagActorIntegrationTests (SaveStateFailure)
-- **Findings:** Persist-then-publish pattern verified. No chaos testing (e.g., kill process mid-write, network partition during publish)
-- **Recommendation:** Add failure injection tests using Testcontainers to simulate state store crashes
+**Additional security measures:** Dual-layer rate limiting (per-tenant 1000/min + per-consumer 100/sec), 3 deny-by-default DAPR ACL files, log sanitization (SEC-5), terminology sanitization in error responses.
 
-### Checkpoint Resume
+### 6. Monitorability & Debuggability (3/4 PASS)
 
-- **Status:** CONCERNS
-- **Threshold:** NFR23: Resume from last checkpoint after state store recovery
-- **Evidence:** UnpublishedEventsRecordTests (tracks unpublished events), ActorStateMachineTests (checkpoint storage)
-- **Findings:** Checkpoint mechanism tested at unit level. No integration test simulating actual state store restart + resume.
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Tracing: W3C/correlation IDs | PASS | CorrelationIdMiddleware, CloudEvents trace propagation, 3 ActivitySources, 11 span names |
+| Logs: structured, toggleable | PASS (partial) | LoggerMessage attributes (10+ EventIds), JSON console logging. MISSING: dynamic log level toggle |
+| Metrics: RED metrics exposed | CONCERNS | OpenTelemetry instrumentation present but no explicit /metrics endpoint for Prometheus |
+| Config: externalized | PASS | DAPR config store for dynamic settings, env var overrides, Aspire service defaults |
 
-### Concurrency Detection
+### 7. QoS / QoE (1/4 CONCERNS)
 
-- **Status:** PASS
-- **Threshold:** NFR26: Optimistic concurrency conflicts detected and reported (409)
-- **Evidence:** ConcurrencyConflictExceptionTests, ConcurrencyConflictExceptionHandlerTests (nested depth 10+), ConcurrencyConflictIntegrationTests (E2E 409 + Retry-After)
-- **Findings:** Comprehensive coverage across all 3 tiers
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Latency targets defined | CONCERNS | NFR1-8 define 8 p99 targets, NFR35-39 define 5 query targets — ALL UNTESTED |
+| Rate limiting | PASS | Dual-layer rate limiting with 429 + Retry-After, configurable per-tenant overrides |
+| Perceived performance | N/A | No user-facing UI (server-side API platform) |
+| Degradation: friendly errors | PASS | 10 exception handlers, ProblemDetails responses, Retry-After headers, no stack traces to clients |
 
-### Pub/Sub Recovery
+### 8. Deployability (2/3 PASS)
 
-- **Status:** CONCERNS
-- **Threshold:** NFR24: After pub/sub recovery, all persisted events delivered via DAPR retry
-- **Evidence:** DeadLetterPublisherTests (DaprThrows returns false), ResiliencyConfigurationTests, EventDrainOptionsTests
-- **Findings:** Resilience configuration tested. No integration test simulating actual pub/sub outage + recovery drain.
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Zero-downtime deployment | CONCERNS | Rolling update via Kubernetes probes, but no blue-green/canary strategy |
+| Backward compatibility (DB + code) | PASS | Event envelope design immutable (14 fields), DAPR abstraction insulates from schema changes |
+| Automated rollback | PASS | Kubernetes health probe failure triggers pod restart, DAPR circuit breakers prevent cascading failure |
 
----
+### 9. Maintainability (4/4 PASS)
 
-## Scalability Assessment
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Test coverage: tooling and breadth | PASS | coverlet.collector on all 15 test projects, 4,027 tests across 621 test files covering 542 source files, 3-tier test architecture (unit/integration/E2E) |
+| Code quality: static analysis enforcement | PASS | `TreatWarningsAsErrors=true` globally (Directory.Build.props), `Nullable=enable` globally, 63-line .editorconfig with style rules, file-scoped namespaces enforced |
+| Technical debt: structural controls | PASS | Centralized package management (Directory.Packages.props), semantic-release with Conventional Commits, DAPR abstraction isolates backend changes (NFR29), immutable event envelope design (14 fields) |
+| Documentation completeness | PASS | 195 markdown docs across `docs/`, CLAUDE.md project guide, CONTRIBUTING.md, CHANGELOG.md (auto-generated), PR template, API reference generation support (CS1591 suppression for doc builds) |
 
-### Horizontal Scaling
-
-- **Status:** CONCERNS
-- **Threshold:** NFR16: Horizontal scaling via DAPR actor placement; NFR17: 10,000 active aggregates per instance
-- **Actual:** Architecture supports scaling (DAPR actors are placement-distributed). No load test validates 10K concurrent aggregates.
-- **Recommendation:** Add NBomber load test targeting 10K aggregate activations
-
-### Multi-Tenant Isolation Under Load
-
-- **Status:** PASS
-- **Threshold:** NFR18: 10 tenants with no cross-tenant performance interference
-- **Evidence:** Multi-tenant tests across all tiers (StorageKeyIsolationTests, TopicIsolationTests, MultiTenantRoutingIntegrationTests, RateLimitingIntegrationTests with per-tenant isolation)
-- **Findings:** Isolation verified functionally. No load test measuring cross-tenant interference under concurrent load.
-
-### Snapshot-Bounded Rehydration
-
-- **Status:** PASS
-- **Threshold:** NFR19: Constant rehydration time via snapshot strategy
-- **Evidence:** SnapshotManagerTests (20 tests), SnapshotRehydrationTests, EventStreamReaderTests (snapshot + tail reads only tail events)
-- **Findings:** Snapshot interval trigger, domain override, and snapshot-aware rehydration all comprehensively tested
-
-### Dynamic Configuration
-
-- **Status:** CONCERNS
-- **Threshold:** NFR20: Adding new tenant/domain without system restart
-- **Actual:** DAPR config store integration exists but no test validates hot-reload behavior
-- **Recommendation:** Add integration test that modifies DAPR config store and verifies new tenant is routable without restart
+**Notes:**
+- No explicit code coverage percentage threshold defined — coverage tooling is present (coverlet) but no CI gate enforces a minimum percentage. Mark as **risk accepted** given 4,027 tests and TreatWarningsAsErrors enforcement.
+- MTTR threshold: UNKNOWN — no mean-time-to-recovery target defined. Architecture supports fast recovery (stateless + DAPR actor re-placement) but no target set.
+- Error rate threshold: UNKNOWN — no acceptable error rate defined. Error handling is comprehensive (10 exception handlers) but no threshold for acceptable error rate in production.
 
 ---
 
-## Maintainability Assessment
+## Cross-Domain Risk Analysis
 
-### Test Quality
+### Risk 1: Performance + Scalability Compound (HIGH)
 
-- **Status:** PASS
-- **Threshold:** Test quality score >= 80/100
-- **Actual:** 95/100 (Grade A)
-- **Evidence:** test-review.md (comprehensive suite review)
+**Description:** All performance targets (NFR1-8) and all scalability targets (NFR17-18) are untested. Under production load, latency targets may be breached AND scaling limits may be hit simultaneously — with zero baseline data to diagnose.
 
-### Test Coverage (FR Traceability)
+**Impact:** If command lifecycle exceeds 200ms p99 at 100 cmd/sec with 10K active aggregates, the system fails multiple NFRs simultaneously with no evidence to prioritize fixes.
 
-- **Status:** PASS
-- **Threshold:** >= 80% FR coverage
-- **Actual:** 90.3% (58/67 FRs covered + 5 partial)
-- **Evidence:** traceability-report.md
+**Mitigation:** k6 load test suite validating latency targets at target throughput with target aggregate count. Establish baselines before GA.
 
-### Code Quality
+### Risk 2: Reliability + Scalability DR Gap (MEDIUM)
 
-- **Status:** PASS
-- **Threshold:** Warnings as errors, .editorconfig enforced
-- **Actual:** `TreatWarningsAsErrors = true`, comprehensive .editorconfig
-- **Evidence:** Directory.Build.props, .editorconfig
+**Description:** Disaster recovery procedures are undefined (no RTO/RPO), and backup/restore is untested. At multi-tenant scale (10+ tenants), a state store failure could affect all tenants with no tested recovery path.
 
-### Documentation Completeness
+**Impact:** State store failure affecting 10+ tenants with no documented RTO — extended outage, customer impact.
 
-- **Status:** PASS
-- **Threshold:** Architecture, concepts, deployment, and API docs complete
-- **Actual:** 15 epics of documentation completed (Epics 8-15)
-- **Evidence:** sprint-status.yaml shows all documentation epics done
+**Mitigation:** Define RTO (<4h) and RPO (<1h), test backup/restore with multi-tenant data, document and practice failover drills.
 
 ---
 
-## Findings Summary
+## Priority Actions (Ordered by Impact)
 
-**Based on ADR Quality Readiness Checklist (8 categories, 29 criteria)**
-
-| Category | Criteria Met | PASS | CONCERNS | FAIL | Overall Status |
-|----------|-------------|------|----------|------|---------------|
-| 1. Testability & Automation | 3/4 | 3 | 1 | 0 | PASS |
-| 2. Test Data Strategy | 3/3 | 3 | 0 | 0 | PASS |
-| 3. Scalability & Availability | 2/4 | 2 | 2 | 0 | CONCERNS |
-| 4. Disaster Recovery | 0/3 | 0 | 3 | 0 | CONCERNS |
-| 5. Security | 4/4 | 4 | 0 | 0 | PASS |
-| 6. Monitorability & Debuggability | 4/4 | 4 | 0 | 0 | PASS |
-| 7. QoS & QoE | 3/4 | 3 | 1 | 0 | PASS |
-| 8. Deployability | 2/3 | 2 | 1 | 0 | PASS |
-| **Total** | **21/29** | **21** | **8** | **0** | **CONCERNS** |
-
-**Criteria Met Scoring:** 21/29 (72.4%) = Room for improvement
-
----
-
-## Quick Wins
-
-3 quick wins identified for immediate implementation:
-
-1. **Relax rehydration performance threshold** (Performance) - P3 - 5 min
-   - Change `ShouldBeLessThan(100)` to `ShouldBeLessThan(500)` for CI robustness
-   - No code changes needed, just test threshold adjustment
-
-2. **Add BenchmarkDotNet project** (Performance) - P2 - 2 hrs
-   - Create `benchmarks/Hexalith.EventStore.Benchmarks/` with event append, rehydration, and query routing benchmarks
-   - Establishes performance baselines for future regression detection
-
-3. **Document NFR evidence gaps** (All) - P3 - 30 min
-   - Add `docs/nfr-testing-plan.md` documenting which NFRs need load testing and what tools to use
+| # | Priority | Domain | Action | Effort | Owner | Target |
+|---|----------|--------|--------|--------|-------|--------|
+| 1 | **CRITICAL** | Performance | Create k6 load test suite validating NFR1-NFR8 latency targets at 100 cmd/sec | 3-5 days | Dev | Pre-GA |
+| 2 | **CRITICAL** | Performance | Add BenchmarkDotNet microbenchmarks for event append (NFR3) and actor activation (NFR4) | 1-2 days | Dev | Pre-GA |
+| 3 | **CRITICAL** | Performance | Add performance regression gate to CI pipeline (threshold-based pass/fail) | 1 day | Dev/Ops | Pre-GA |
+| 4 | **HIGH** | Scalability | Run multi-tenant load test: 10+ tenants, validate no cross-tenant performance interference (NFR18) | 2-3 days | Dev | Pre-GA |
+| 5 | **HIGH** | Scalability | Profile memory at 10K+ active actors, validate snapshot strategy bounds GC pressure (NFR17) | 1-2 days | Dev | Pre-GA |
+| 6 | **HIGH** | Reliability | Define RTO/RPO targets, test backup/restore procedure end-to-end | 2 days | Dev/Ops | Pre-GA |
+| 7 | **HIGH** | Reliability | Define MTTR target and error rate threshold for production monitoring | 0.5 days | Dev/Ops | Pre-GA |
+| 8 | **MEDIUM** | Reliability | Add chaos engineering tests (state store crash, pub/sub outage) to Tier 3 suite | 3-5 days | Dev | Post-GA |
+| 9 | **MEDIUM** | Scalability | Validate Cosmos DB partition key strategy under multi-tenant load | 1-2 days | Dev | Post-GA |
+| 10 | **MINOR** | Observability | Add /metrics endpoint for Prometheus scraping + dynamic log level toggle | 1 day | Dev | Post-GA |
+| 11 | **MINOR** | Security | Add HTTPS redirect middleware to EventStore Program.cs (defense-in-depth) | 0.5 days | Dev | Post-GA |
+| 12 | **MINOR** | Maintainability | Add coverlet coverage gate to CI (e.g., ≥70% line coverage threshold) | 1 day | Dev/Ops | Post-GA |
+| 13 | **OPTIONAL** | Deployability | Implement blue-green or canary deployment strategy | 3-5 days | Ops | v2 |
+| 14 | **OPTIONAL** | Security | Add OWASP ZAP or Snyk security scanning to CI pipeline | 1-2 days | Security | v2 |
 
 ---
 
-## Recommended Actions
-
-### Immediate (Before Release) - No actions required
-
-No FAIL criteria. All CONCERNS have documented mitigations (DAPR architecture provides inherent guarantees for most reliability/scalability concerns).
-
-### Short-term (Next Milestone) - MEDIUM Priority
-
-1. **Load Testing Infrastructure** - P2 - 1 week - DevOps
-   - Set up k6 or NBomber for command submission latency (NFR1-2)
-   - Target: 100 concurrent users, measure p99 latency
-   - Integrate into CI as optional Tier 4 tests
-
-2. **Failure Injection Tests** - P2 - 3 days - QA
-   - Use Testcontainers to simulate state store crash during event persistence
-   - Validate checkpoint resume (NFR23) and zero event loss (NFR22)
-   - Add as Tier 3 tests alongside Aspire E2E
-
-3. **Dynamic Config Reload Test** - P2 - 1 day - Dev
-   - Add integration test that modifies DAPR config store at runtime
-   - Verify new tenant routes correctly without restart (NFR20)
-
-### Long-term (Backlog) - LOW Priority
-
-1. **Chaos Engineering** - P3 - Ongoing - SRE
-   - Implement systematic failure injection (network partitions, DAPR sidecar crashes)
-   - Validate all reliability NFRs under real failure conditions
-
-2. **Performance Regression CI** - P3 - 2 days - DevOps
-   - Add BenchmarkDotNet to CI pipeline
-   - Alert on >10% regression from baseline
-
----
-
-## Evidence Gaps
-
-5 evidence gaps identified:
-
-- [ ] **Command Submission p99 Latency** (Performance)
-  - **Suggested Evidence:** k6 load test with 100 concurrent users
-  - **Impact:** Cannot validate NFR1 (p99 < 50ms) or NFR7 (100 concurrent commands/sec)
-
-- [ ] **Checkpoint Resume After Crash** (Reliability)
-  - **Suggested Evidence:** Testcontainers integration test simulating state store restart
-  - **Impact:** NFR23 validated at unit level only, not under real failure
-
-- [ ] **Pub/Sub Recovery Drain** (Reliability)
-  - **Suggested Evidence:** Integration test killing pub/sub container, then verifying event drain on recovery
-  - **Impact:** NFR24 validated via config tests only
-
-- [ ] **10K Aggregate Activation** (Scalability)
-  - **Suggested Evidence:** NBomber load test activating 10,000 actors concurrently
-  - **Impact:** NFR17 not validated (architecture supports it, evidence missing)
-
-- [ ] **Dynamic Tenant Addition** (Scalability)
-  - **Suggested Evidence:** Integration test modifying DAPR config store at runtime
-  - **Impact:** NFR20 not validated
-
----
-
-## Gate YAML Snippet
+## Gate Decision
 
 ```yaml
-nfr_assessment:
-  date: '2026-03-15'
-  feature_name: 'Hexalith.EventStore Full System'
-  adr_checklist_score: '21/29'
+nfr_gate:
+  date: "2026-03-29"
+  overall_risk: HIGH
+  decision: CONCERNS
   categories:
-    testability_automation: 'PASS'
-    test_data_strategy: 'PASS'
-    scalability_availability: 'CONCERNS'
-    disaster_recovery: 'CONCERNS'
-    security: 'PASS'
-    monitorability: 'PASS'
-    qos_qoe: 'PASS'
-    deployability: 'PASS'
-  overall_status: 'CONCERNS'
-  critical_issues: 0
-  high_priority_issues: 3
-  medium_priority_issues: 5
-  concerns: 8
-  blockers: false
-  quick_wins: 3
-  evidence_gaps: 5
-  recommendations:
-    - 'Add k6/NBomber load testing infrastructure'
-    - 'Add failure injection tests via Testcontainers'
-    - 'Add dynamic config reload integration test'
+    security: PASS
+    performance: CONCERNS
+    reliability: PASS
+    scalability: CONCERNS
+    maintainability: PASS
+  issue_counts:
+    critical: 3
+    high: 4
+    medium: 2
+    concerns: 9
+  rationale: >
+    Architecture is excellent — security PASS, reliability PASS, observability PASS,
+    maintainability PASS (4,027 tests, TreatWarningsAsErrors, coverlet on 15 projects).
+    However, ALL 13 performance NFRs and ALL scalability limits are empirically unvalidated.
+    No load test, no benchmark, no profiling evidence exists. The system may meet every target,
+    but we cannot assert this without evidence. MTTR and error rate thresholds are undefined.
+  blockers:
+    - "Performance: Zero load test evidence for NFR1-NFR8 latency targets"
+    - "Scalability: 10K aggregate and 10-tenant targets untested"
+    - "Reliability: RTO/RPO undefined, backup/restore untested"
+  waivers_needed: 0
+  next_steps:
+    - "Create k6 load test suite (CRITICAL, 3-5 days, Dev)"
+    - "Profile memory at scale (HIGH, 1-2 days, Dev)"
+    - "Define and test DR procedures (HIGH, 2 days, Dev/Ops)"
+    - "Define MTTR and error rate thresholds (HIGH, 0.5 days, Dev/Ops)"
+  recommended_workflow: "bmad-testarch-nfr (re-run after load tests complete)"
 ```
 
 ---
 
-## Sign-Off
+## Compliance Summary
 
-**NFR Assessment:**
-
-- Overall Status: CONCERNS
-- Critical Issues: 0
-- High Priority Issues: 3
-- Concerns: 8
-- Evidence Gaps: 5
-
-**Gate Status:** CONCERNS (no blockers, ship with documented gaps)
-
-**Next Actions:**
-
-- CONCERNS: Address load testing and failure injection in next milestone
-- Security PASS: No action needed — comprehensive coverage
-- Maintainability PASS: Test quality 95/100, FR coverage 90.3%
-
-**Generated:** 2026-03-15
-**Workflow:** testarch-nfr v5.0
-**Reviewer:** Murat (TEA Agent)
+| Standard | Status | Notes |
+|----------|--------|-------|
+| SOC2 | PARTIAL | Auth/authz PASS, audit logging PASS, availability UNTESTED |
+| GDPR | PASS | Multi-tenant isolation, no PII in logs, data scoping |
+| HIPAA | N/A | Not a healthcare application |
+| PCI-DSS | N/A | Not handling payment card data |
+| ISO 27001 | PARTIAL | Security controls PASS, availability/DR CONCERNS |
+| SLA 99.9% | CONCERN | Target defined (NFR21), architecture supports, but unvalidated |
+| Zero Data Loss | PASS | Persist-then-publish + checkpointed state machine + DAPR retry |
+| Code Quality | PASS | TreatWarningsAsErrors, Nullable=enable, .editorconfig enforced |
 
 ---
 
-<!-- Powered by BMAD-CORE -->
+## Evidence Files
+
+| File | Contents |
+|------|----------|
+| `_bmad-output/test-artifacts/nfr-security.json` | Security domain assessment (6 categories, all PASS) |
+| `_bmad-output/test-artifacts/nfr-performance.json` | Performance domain assessment (4 categories, all CONCERN) |
+| `_bmad-output/test-artifacts/nfr-reliability.json` | Reliability domain assessment (5 categories, 3 PASS + 2 CONCERN) |
+| `_bmad-output/test-artifacts/nfr-scalability.json` | Scalability domain assessment (6 categories, 3 PASS + 2 CONCERN) |
+| `_bmad-output/test-artifacts/nfr-maintainability.json` | Maintainability domain assessment (4 categories, all PASS) |

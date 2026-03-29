@@ -1,0 +1,88 @@
+---
+# TEA Academy Progress Tracking
+user: Jerome
+role: Lead
+experience_level: Intermediate
+learning_goals: Understand TEA methodology and workflows
+pain_points: Don't know where to start
+
+started_date: 2026-03-29
+last_session_date: 2026-03-29
+
+sessions:
+  - id: session-01-quickstart
+    name: 'Quick Start'
+    duration: '30 min'
+    status: completed
+    started_date: 2026-03-29
+    completed_date: 2026-03-29
+    score: 100
+    notes_artifact: '_bmad-output/test-artifacts/tea-academy/Jerome/session-01-notes.md'
+
+  - id: session-02-concepts
+    name: 'Core Concepts'
+    duration: '45 min'
+    status: completed
+    started_date: 2026-03-29
+    completed_date: 2026-03-29
+    score: 67
+    notes_artifact: '_bmad-output/test-artifacts/tea-academy/Jerome/session-02-notes.md'
+
+  - id: session-03-architecture
+    name: 'Architecture & Patterns'
+    duration: '60 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-04-test-design
+    name: 'Test Design'
+    duration: '60 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-05-atdd-automate
+    name: 'ATDD & Automate'
+    duration: '60 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-06-quality-trace
+    name: 'Quality & Trace'
+    duration: '45 min'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+  - id: session-07-advanced
+    name: 'Advanced Patterns'
+    duration: 'ongoing'
+    status: not-started
+    started_date: null
+    completed_date: null
+    score: null
+    notes_artifact: null
+
+sessions_completed: 2
+total_sessions: 7
+completion_percentage: 28
+next_recommended: session-03-architecture
+
+stepsCompleted: ['step-01-init', 'step-02-assess', 'step-04-session-01', 'step-04-session-02']
+lastStep: 'step-04-session-02'
+lastContinued: 2026-03-29
+
+certificate_generated: false
+certificate_path: null
+completion_date: null
+---

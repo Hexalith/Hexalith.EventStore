@@ -339,7 +339,7 @@ The phased development roadmap (v2 Operational Control Plane, v3 Enterprise Read
 
 ### Journey 7: Marco Builds a Read Model (Query / Projection Caching -- current release)
 
-**Persona:** Same Marco, six months in. His payment processing service is running on EventStore v2. His team needs a paginated order history UI with 1M+ orders across multiple tenants. The Blazor Server frontend needs real-time updates when new orders are processed.
+**Persona:** Same Marco, six months in. His payment processing service is running on the current EventStore release. His team needs a paginated order history UI with 1M+ orders across multiple tenants. The Blazor Server frontend needs real-time updates when new orders are processed.
 
 **Opening Scene:** Marco's current implementation queries the SQL projection directly on every page request. Under load, the database is hammered by redundant queries for data that hasn't changed. His team lead asks: "Can EventStore cache this?"
 
@@ -732,7 +732,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 
 ### Post-MVP Features
 
-### Phase 2: Operational Control Plane (v2)
+#### Phase 2: Operational Control Plane (v2)
 
 | Feature                           | Dependency                     | Value                                                             |
 | --------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
@@ -747,7 +747,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | External Authorization Engine     | v1 JWT model stable            | OpenFGA/OPA extending claims-based model                          |
 | Max Causation Depth Guardrail     | Saga/Process Manager           | Saga loop prevention via configurable causation chain depth limit |
 
-### Phase 3: Enterprise Readiness (v3)
+#### Phase 3: Enterprise Readiness (v3)
 
 | Feature                    | Dependency                           | Value                                           |
 | -------------------------- | ------------------------------------ | ----------------------------------------------- |
@@ -757,7 +757,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | Hot/Cold Storage Tiering   | Snapshot-based archival              | Cost optimization for high-volume event streams |
 | Advanced Authorization     | External auth engine (v2)            | Per-command ACLs, state-dependent rules         |
 
-### Phase 4: Ecosystem & Community (v4)
+#### Phase 4: Ecosystem & Community (v4)
 
 | Feature                         | Dependency                     | Value                                  |
 | ------------------------------- | ------------------------------ | -------------------------------------- |
@@ -872,7 +872,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - FR47: A developer can run end-to-end contract tests validating the full command lifecycle across the complete Aspire topology
 - FR48: A domain service developer can implement a domain aggregate by inheriting from EventStoreAggregate with typed Apply methods, as a higher-level alternative to implementing IDomainProcessor directly, with convention-based DAPR resource naming derived from the aggregate type name
 
-### Query Pipeline & Projection Caching (v2)
+### Query Pipeline & Projection Caching (current release)
 
 - FR50: The system can route incoming query messages to query actors using a 3-tier routing model: (1) queries with EntityId route to `{QueryType}-{TenantId}-{EntityId}`, (2) queries without EntityId but with non-empty payload route to `{QueryType}-{TenantId}-{Checksum}` where Checksum is a truncated SHA256 base64url hash (11 characters) of the serialized payload, (3) queries without EntityId and with empty payload route to `{QueryType}-{TenantId}`. Note: serialization non-determinism (e.g., JSON key ordering differences) produces different checksums for semantically identical queries, resulting in separate cache actors -- this is an accepted trade-off; callers are responsible for consistent serialization
 - FR51: The system can maintain one ETag actor per `{ProjectionType}-{TenantId}` that stores a self-routing ETag (format defined in FR61) representing the current projection version, regenerated on every projection change notification
@@ -962,7 +962,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 - NFR33: The Command API must enforce per-tenant rate limiting with a configurable threshold (default: 1,000 commands per minute per tenant), returning 429 Too Many Requests with Retry-After header when exceeded
 - NFR34: The Command API must enforce per-consumer rate limiting with a configurable threshold (default: 100 commands per second per authenticated consumer), returning 429 Too Many Requests with Retry-After header when exceeded
 
-### Query Pipeline Performance (v2)
+### Query Pipeline Performance (current release)
 
 - NFR35: ETag pre-check at the query endpoint (ETag actor call + comparison) must complete within 5ms at p99 for warm ETag actors, enabling HTTP 304 responses without activating the query actor. Cold ETag actor activation (first call after idle timeout) may exceed this target due to DAPR actor placement
 - NFR36: Query actor cache hit (ETag match, return cached data) must complete within 10ms at p99

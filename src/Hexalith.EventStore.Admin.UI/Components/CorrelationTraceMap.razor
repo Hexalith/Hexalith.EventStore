@@ -35,20 +35,20 @@
     }
     else if (_error is not null)
     {
-        <IssueBanner Message="@_error" />
+        <IssueBanner Visible="true" Description="@_error" />
     }
     else if (_traceMap is not null)
     {
         @* Scan capped warning *@
         @if (_traceMap.ScanCapped && _traceMap.ScanCapMessage is not null)
         {
-            <IssueBanner Message="@_traceMap.ScanCapMessage" />
+            <IssueBanner Visible="true" Description="@_traceMap.ScanCapMessage" />
         }
 
         @* Command status unknown warning *@
         @if (_traceMap.CommandStatus == "Unknown" && _traceMap.ProducedEvents.Count == 0)
         {
-            <IssueBanner Message="No trace data found for this correlation ID. The command status may have expired (24-hour default TTL). Alternative investigation paths: (1) Filter the stream timeline by this correlation ID using the correlation filter. (2) Check the external observability tool (Zipkin/Jaeger/Aspire) for distributed trace details. (3) Search structured logs by correlation ID." />
+            <IssueBanner Visible="true" Description="No trace data found for this correlation ID. The command status may have expired (24-hour default TTL). Alternative investigation paths: (1) Filter the stream timeline by this correlation ID using the correlation filter. (2) Check the external observability tool (Zipkin/Jaeger/Aspire) for distributed trace details. (3) Search structured logs by correlation ID." />
         }
         else if (_traceMap.CommandStatus == "Unknown")
         {

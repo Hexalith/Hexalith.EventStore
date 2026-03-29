@@ -13,6 +13,7 @@ using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Validation;
+using Hexalith.EventStore.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
 
@@ -105,6 +106,12 @@ public static class EventStoreServiceCollectionExtensions {
 
         // Command archive for replay (Story 2.7)
         _ = services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();
+
+        // Command activity tracking for admin UI Commands page.
+        // Registered as the concrete type so the controller can inject InMemoryCommandActivityTracker directly,
+        // and as the interface so SubmitCommandHandler receives it via ICommandActivityTracker.
+        _ = services.AddSingleton<InMemoryCommandActivityTracker>();
+        _ = services.AddSingleton<ICommandActivityTracker>(sp => sp.GetRequiredService<InMemoryCommandActivityTracker>());
 
         // Extension metadata sanitization (Story 5.4, SEC-4)
         _ = services.AddOptions<ExtensionMetadataOptions>()

@@ -55,38 +55,33 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         string? commandType,
         int count = 1000,
         CancellationToken ct = default) {
-        string indexKey = $"admin:command-activity:{tenantId ?? "all"}";
+        string endpoint = "api/v1/admin/streams/commands";
+        var queryParams = new List<string> { $"count={count}" };
+        if (!string.IsNullOrWhiteSpace(tenantId)) {
+            queryParams.Add($"tenantId={Uri.EscapeDataString(tenantId)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(status)) {
+            queryParams.Add($"status={Uri.EscapeDataString(status)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(commandType)) {
+            queryParams.Add($"commandType={Uri.EscapeDataString(commandType)}");
+        }
+
+        endpoint += "?" + string.Join("&", queryParams);
+
         try {
-            List<CommandSummary>? result = await _daprClient
-                .GetStateAsync<List<CommandSummary>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
-
-            if (result is null) {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return new PagedResult<CommandSummary>([], 0, null);
-            }
-
-            IEnumerable<CommandSummary> filtered = result;
-
-            filtered = ApplyCommandStatusFilter(filtered, status);
-
-            if (!string.IsNullOrWhiteSpace(commandType)) {
-                filtered = filtered.Where(c => c.CommandType.Contains(commandType, StringComparison.OrdinalIgnoreCase));
-            }
-
-            List<CommandSummary> filteredList = filtered.ToList();
-            IReadOnlyList<CommandSummary> page = filteredList
-                .OrderByDescending(c => c.Timestamp)
-                .Take(count)
-                .ToList();
-            return new PagedResult<CommandSummary>(page, filteredList.Count, null);
+            PagedResult<CommandSummary>? result = await InvokeEventStoreAsync<PagedResult<CommandSummary>>(
+                HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
+            return result ?? new PagedResult<CommandSummary>([], 0, null);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to read command activity index '{IndexKey}'.", indexKey);
-            throw;
+            _logger.LogWarning(ex, "Failed to get recent commands from EventStore.");
+            return new PagedResult<CommandSummary>([], 0, null);
         }
     }
 
