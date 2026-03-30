@@ -9,5 +9,5 @@ public static class AdminClaimTypes
     /// <summary>
     /// The claim type for the admin role (ReadOnly, Operator, Admin).
     /// </summary>
-    public const string Role = "eventstore:admin:role";
+    public const string Role = "eventstore:admin-role";
 }

@@ -104,7 +104,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetRecentlyActiveStreamsAsync_ReturnsEmpty_WhenDaprThrows() {
+    public async Task GetRecentlyActiveStreamsAsync_ThrowsException_WhenDaprThrows() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
@@ -114,9 +114,8 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        PagedResult<StreamSummary> result = await service.GetRecentlyActiveStreamsAsync("tenant1", null);
-
-        result.Items.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetRecentlyActiveStreamsAsync("tenant1", null));
     }
 
     [Fact]
@@ -144,7 +143,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetRecentCommandsAsync_ReturnsEmpty_WhenEventStoreUnavailable() {
+    public async Task GetRecentCommandsAsync_ThrowsException_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<PagedResult<CommandSummary>>(
             Arg.Any<HttpRequestMessage>(),
@@ -153,14 +152,12 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        PagedResult<CommandSummary> result = await service.GetRecentCommandsAsync("tenant1", null, null);
-
-        result.Items.ShouldBeEmpty();
-        result.TotalCount.ShouldBe(0);
+        await Should.ThrowAsync<HttpRequestException>(
+            () => service.GetRecentCommandsAsync("tenant1", null, null));
     }
 
     [Fact]
-    public async Task GetStreamTimelineAsync_ReturnsEmpty_WhenEventStoreUnavailable() {
+    public async Task GetStreamTimelineAsync_ThrowsException_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<PagedResult<TimelineEntry>>(
             Arg.Any<HttpRequestMessage>(),
@@ -169,11 +166,8 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        PagedResult<TimelineEntry> result = await service.GetStreamTimelineAsync(
-            "tenant1", "orders", "order-1", null, null);
-
-        result.Items.ShouldBeEmpty();
-        result.TotalCount.ShouldBe(0);
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetStreamTimelineAsync("tenant1", "orders", "order-1", null, null));
     }
 
     [Fact]
@@ -210,7 +204,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetAggregateStateAtPositionAsync_ReturnsFallback_WhenEventStoreUnavailable() {
+    public async Task GetAggregateStateAtPositionAsync_ThrowsException_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<AggregateStateSnapshot>(
             Arg.Any<HttpRequestMessage>(),
@@ -219,18 +213,12 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        AggregateStateSnapshot result = await service.GetAggregateStateAtPositionAsync(
-            "tenant1", "orders", "order-1", 5);
-
-        result.ShouldNotBeNull();
-        result.TenantId.ShouldBe("tenant1");
-        result.Domain.ShouldBe("orders");
-        result.AggregateId.ShouldBe("order-1");
-        result.SequenceNumber.ShouldBe(5);
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetAggregateStateAtPositionAsync("tenant1", "orders", "order-1", 5));
     }
 
     [Fact]
-    public async Task DiffAggregateStateAsync_ReturnsFallback_WhenEventStoreUnavailable() {
+    public async Task DiffAggregateStateAsync_ThrowsException_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<AggregateStateDiff>(
             Arg.Any<HttpRequestMessage>(),
@@ -239,17 +227,12 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        AggregateStateDiff result = await service.DiffAggregateStateAsync(
-            "tenant1", "orders", "order-1", 1, 5);
-
-        result.ShouldNotBeNull();
-        result.FromSequence.ShouldBe(1);
-        result.ToSequence.ShouldBe(5);
-        result.ChangedFields.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.DiffAggregateStateAsync("tenant1", "orders", "order-1", 1, 5));
     }
 
     [Fact]
-    public async Task TraceCausationChainAsync_ReturnsFallback_WhenEventStoreUnavailable() {
+    public async Task TraceCausationChainAsync_ThrowsException_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<CausationChain>(
             Arg.Any<HttpRequestMessage>(),
@@ -258,11 +241,8 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        CausationChain result = await service.TraceCausationChainAsync(
-            "tenant1", "orders", "order-1", 5);
-
-        result.ShouldNotBeNull();
-        result.Events.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.TraceCausationChainAsync("tenant1", "orders", "order-1", 5));
     }
 
     [Fact]
@@ -298,7 +278,7 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetEventDetailAsync_ReturnsFallback_WhenEventStoreUnavailable() {
+    public async Task GetEventDetailAsync_ThrowsException_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<EventDetail>(
             Arg.Any<HttpRequestMessage>(),
@@ -307,11 +287,8 @@ public class DaprStreamQueryServiceTests {
 
         DaprStreamQueryService service = CreateService(daprClient);
 
-        EventDetail result = await service.GetEventDetailAsync(
-            "tenant1", "orders", "order-1", 5);
-
-        result.ShouldNotBeNull();
-        result.TenantId.ShouldBe("tenant1");
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
     }
 
     [Fact]
@@ -320,6 +297,20 @@ public class DaprStreamQueryServiceTests {
 
         await Should.ThrowAsync<ArgumentException>(
             () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 0));
+    }
+
+    [Fact]
+    public async Task GetCorrelationTraceMapAsync_ThrowsException_WhenEventStoreUnavailable() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.InvokeMethodAsync<CorrelationTraceMap>(
+            Arg.Any<HttpRequestMessage>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Service unavailable"));
+
+        DaprStreamQueryService service = CreateService(daprClient);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetCorrelationTraceMapAsync("tenant1", "corr-1", null, null));
     }
 
     [Fact]

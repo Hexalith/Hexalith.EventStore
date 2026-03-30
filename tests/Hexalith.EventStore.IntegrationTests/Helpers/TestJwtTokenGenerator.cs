@@ -26,7 +26,8 @@ public static class TestJwtTokenGenerator {
         string[]? permissions = null,
         DateTime? expires = null,
         string? issuer = null,
-        string? audience = null) {
+        string? audience = null,
+        string? role = null) {
         var claims = new List<Claim>
         {
             new("sub", subject),
@@ -46,6 +47,10 @@ public static class TestJwtTokenGenerator {
 
         if (permissions is not null) {
             claims.Add(new Claim("permissions", JsonSerializer.Serialize(permissions)));
+        }
+
+        if (role is not null) {
+            claims.Add(new Claim("role", role));
         }
 
         DateTime expiresAt = expires ?? DateTime.UtcNow.AddHours(1);
