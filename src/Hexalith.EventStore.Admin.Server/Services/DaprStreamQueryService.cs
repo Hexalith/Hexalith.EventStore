@@ -80,8 +80,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to get recent commands from EventStore.");
-            return new PagedResult<CommandSummary>([], 0, null);
+            _logger.LogError(ex, "Failed to get recent commands via DAPR service invocation to '{AppId}'.", _options.EventStoreAppId);
+            throw;
         }
     }
 
@@ -116,8 +116,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to read stream activity index '{IndexKey}'.", indexKey);
-            return new PagedResult<StreamSummary>([], 0, null);
+            _logger.LogError(ex, "Failed to read stream activity index '{IndexKey}' from state store '{StateStore}'.", indexKey, _options.StateStoreName);
+            throw;
         }
     }
 
@@ -152,8 +152,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to get stream timeline for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
-            return new PagedResult<TimelineEntry>([], 0, null);
+            _logger.LogError(ex, "Failed to get stream timeline for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", tenantId, domain, aggregateId, _options.EventStoreAppId);
+            throw;
         }
     }
 
@@ -174,8 +174,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to get aggregate state at position {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
-            return CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "unavailable");
+            _logger.LogError(ex, "Failed to get aggregate state at position {Sequence} for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", sequenceNumber, tenantId, domain, aggregateId, _options.EventStoreAppId);
+            throw;
         }
     }
 
@@ -197,8 +197,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId}.", tenantId, domain, aggregateId);
-            return new AggregateStateDiff(fromSequence, toSequence, []);
+            _logger.LogError(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", tenantId, domain, aggregateId, _options.EventStoreAppId);
+            throw;
         }
     }
 
@@ -336,8 +336,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to get event detail at {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
-            return CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "unavailable");
+            _logger.LogError(ex, "Failed to get event detail at {Sequence} for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", sequenceNumber, tenantId, domain, aggregateId, _options.EventStoreAppId);
+            throw;
         }
     }
 
@@ -391,8 +391,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to trace causation chain at {Sequence} for {TenantId}/{Domain}/{AggregateId}.", sequenceNumber, tenantId, domain, aggregateId);
-            return CreateEmptyCausationChain("unavailable");
+            _logger.LogError(ex, "Failed to trace causation chain at {Sequence} for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", sequenceNumber, tenantId, domain, aggregateId, _options.EventStoreAppId);
+            throw;
         }
     }
 
@@ -432,8 +432,8 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to get correlation trace map for {TenantId}/{CorrelationId}.", tenantId, correlationId);
-            return new CorrelationTraceMap(correlationId, tenantId, string.Empty, string.Empty, string.Empty, "Unknown", null, null, null, null, [], [], null, $"Failed to retrieve trace map: {ex.Message}", null, 0, false, null);
+            _logger.LogError(ex, "Failed to get correlation trace map for {TenantId}/{CorrelationId} via DAPR service invocation to '{AppId}'.", tenantId, correlationId, _options.EventStoreAppId);
+            throw;
         }
     }
 

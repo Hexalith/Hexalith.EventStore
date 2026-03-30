@@ -38,3 +38,10 @@
 
 - **IssueBanner lacks severity parameter** — Info/success/warning banners all render as warning style. Sandbox (and all Epic 20 components) cannot distinguish severity visually. Pre-existing component limitation — all IssueBanner usages across the project have the same constraint.
 - **IStreamQueryService.SandboxCommandAsync returns nullable vs spec non-nullable** — The nullable return (`SandboxResult?`) is a pragmatic choice allowing the Admin.Server facade to return 404 on null. Changing the interface contract requires broader refactoring of the delegation pattern across all IStreamQueryService implementations.
+
+## Deferred from: code review of 15-10-admin-ui-data-pipeline-fixes (2026-03-30)
+
+- **4 already-correct methods use LogWarning instead of LogError** — `GetAggregateBlameAsync`, `GetEventStepFrameAsync`, `BisectAsync`, `SandboxCommandAsync` all log at Warning then rethrow. The 8 fixed methods now log at Error then rethrow. Spec-sanctioned inconsistency for v1.
+- **Duplicate AdminClaimTypes classes across UI and Server** — `Admin.UI/Services/AdminClaimTypes.cs` (property `Role`) and `Admin.Server/Authorization/AdminClaimTypes.cs` (property `AdminRole`) both hold `"eventstore:admin-role"`. Creates drift risk if either is changed independently.
+- **OperationCanceledException from linked CancellationTokenSource leaks as 500** — Methods with 30/60s hard timeouts (`GetAggregateBlameAsync`, `GetEventStepFrameAsync`, `BisectAsync`, `GetCorrelationTraceMapAsync`) throw `OperationCanceledException` that the controller explicitly does not catch, resulting in 500 instead of 504/408.
+- **No test verifying controller returns HTTP 503 on service failure** — `AdminStreamsController.IsServiceUnavailable` maps exceptions to 503 but no test exercises this path end-to-end.

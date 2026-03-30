@@ -19,12 +19,20 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
     private HttpClient? _eventStoreClient;
+    private HttpClient? _adminServerClient;
 
     /// <summary>
     /// Gets the HTTP client for the EventStore service.
     /// Available after <see cref="InitializeAsync"/> completes.
     /// </summary>
     public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
+        "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
+
+    /// <summary>
+    /// Gets the HTTP client for the Admin Server service.
+    /// Available after <see cref="InitializeAsync"/> completes.
+    /// </summary>
+    public HttpClient AdminServerClient => _adminServerClient ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
     /// <summary>
@@ -75,6 +83,15 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _eventStoreClient = _app.CreateHttpClient("eventstore");
         _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
+        // Wait for admin server to be healthy and create HTTP client.
+        _ = await _app.ResourceNotifications
+            .WaitForResourceHealthyAsync("eventstore-admin", cts.Token)
+            .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+            .ConfigureAwait(false);
+
+        _adminServerClient = _app.CreateHttpClient("eventstore-admin");
+        _adminServerClient.Timeout = TimeSpan.FromSeconds(60);
+
         // Also wait for the sample domain service to be healthy.
         _ = await _app.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", cts.Token)
@@ -84,6 +101,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
 
     public async Task DisposeAsync() {
         _eventStoreClient?.Dispose();
+        _adminServerClient?.Dispose();
         if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);
         }
