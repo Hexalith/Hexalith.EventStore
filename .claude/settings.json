@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh run view 22438820195 --log-failed)"
+      "Bash(gh run view 22438820195 --log-failed)",
+      "Bash(xargs cat:*)",
+      "Bash(curl -s http://localhost:3501/v1.0/metadata)",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s -X PUT \"http://localhost:3501/v1.0/actors/ProjectionActor/test:tenant-a:counter-1/method/QueryAsync\" -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -v -X PUT \"http://localhost:3501/v1.0/actors/ProjectionActor/test:tenant-a:counter-1/method/QueryAsync\" -H \"Content-Type: application/json\" -d '{}')"
     ]
   }
 }

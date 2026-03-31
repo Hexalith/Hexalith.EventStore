@@ -5,7 +5,22 @@ using System.Reflection;
 
 public class ConfigurationValidationTests
 {
-    private static readonly string _mcpDll = typeof(AdminApiClient).Assembly.Location;
+    // Use the MCP project's own output directory (not the test bin) so that
+    // the .deps.json resolves transitive dependencies like Microsoft.Extensions.Hosting.
+    private static readonly string _mcpDll = ResolveMcpDll();
+
+    private static string ResolveMcpDll()
+    {
+        // Navigate from test assembly to repo root, then to the MCP project's output.
+        // Test bin: tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/<config>/<tfm>/
+        // MCP bin:  src/Hexalith.EventStore.Admin.Mcp/bin/<config>/<tfm>/
+        string testDir = Path.GetDirectoryName(typeof(ConfigurationValidationTests).Assembly.Location)!;
+        string config = new DirectoryInfo(testDir).Parent!.Name;  // Debug or Release
+        string tfm = new DirectoryInfo(testDir).Name;             // net10.0
+        string repoRoot = Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", "..", ".."));
+        string mcpDll = Path.Combine(repoRoot, "src", "Hexalith.EventStore.Admin.Mcp", "bin", config, tfm, "Hexalith.EventStore.Admin.Mcp.dll");
+        return File.Exists(mcpDll) ? mcpDll : typeof(AdminApiClient).Assembly.Location;
+    }
 
     [Fact]
     public void BothEnvVarsMissing_ErrorMentionsBothVariableNames()

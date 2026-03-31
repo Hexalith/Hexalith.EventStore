@@ -12,9 +12,9 @@ namespace Hexalith.EventStore.Aspire;
 public static class HexalithEventStoreExtensions {
     /// <summary>
     /// Adds the Hexalith EventStore topology to the distributed application builder.
-    /// This provisions a persistent Redis container, DAPR state store (Redis-backed with
-    /// actor support), DAPR pub/sub, and wires the EventStore and Admin.Server services
-    /// with DAPR sidecars.
+    /// This configures DAPR state store (Redis-backed with actor support), DAPR pub/sub,
+    /// and wires the EventStore and Admin.Server services with DAPR sidecars.
+    /// Redis is provided externally by <c>dapr init</c> at localhost:6379.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="eventStore">The EventStore project resource builder.</param>
@@ -40,12 +40,10 @@ public static class HexalithEventStoreExtensions {
         ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentNullException.ThrowIfNull(adminServer);
 
-        // Provision a Redis container with a persistent Docker volume so that state
-        // survives AppHost restarts (AC #1, #2, #3). Without WithDataVolume() Aspire
-        // destroys the container on stop and all data is lost.
-        IResourceBuilder<RedisResource> redis = builder
-            .AddRedis("redis")
-            .WithDataVolume();
+        // Redis is provided by `dapr init` at localhost:6379, not managed by Aspire.
+        // The dapr init container runs independently of the Aspire lifecycle, so state
+        // survives AppHost restarts naturally. DAPR component YAMLs default to
+        // localhost:6379 via {env:REDIS_HOST|localhost:6379}.
 
         // Use AddDaprComponent instead of AddDaprStateStore so that WithMetadata
         // actually propagates into the generated YAML. AddDaprStateStore spawns a
@@ -54,7 +52,7 @@ public static class HexalithEventStoreExtensions {
         IResourceBuilder<IDaprComponentResource> stateStore = builder
             .AddDaprComponent("statestore", "state.redis")
             .WithMetadata("actorStateStore", "true")
-            .WithMetadata("redisHost", "{env:REDIS_HOST|localhost}:{env:REDIS_PORT|6379}");
+            .WithMetadata("redisHost", "localhost:6379");
         IResourceBuilder<IDaprComponentResource> pubSub = builder.AddDaprPubSub("pubsub");
 
         // Wire up EventStore with DAPR sidecar and component references.
@@ -67,12 +65,6 @@ public static class HexalithEventStoreExtensions {
         // CommunityToolkit 13.0.0, so a dynamic endpoint reference is not possible.
         const int EventStoreDaprHttpPort = 3501;
         _ = eventStore
-            .WithReference(redis)
-            .WaitFor(redis)
-            .WithEnvironment(context => {
-                context.EnvironmentVariables["REDIS_HOST"] = redis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host);
-                context.EnvironmentVariables["REDIS_PORT"] = redis.Resource.PrimaryEndpoint.Property(EndpointProperty.Port);
-            })
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "eventstore",
@@ -88,13 +80,7 @@ public static class HexalithEventStoreExtensions {
         // It does not publish or subscribe directly, so it intentionally does not
         // reference the pub/sub component.
         _ = adminServer
-            .WithReference(redis)
-            .WaitFor(redis)
             .WithReference(eventStore)
-            .WithEnvironment(context => {
-                context.EnvironmentVariables["REDIS_HOST"] = redis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host);
-                context.EnvironmentVariables["REDIS_PORT"] = redis.Resource.PrimaryEndpoint.Property(EndpointProperty.Port);
-            })
             .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", "http://localhost:" + EventStoreDaprHttpPort)
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
