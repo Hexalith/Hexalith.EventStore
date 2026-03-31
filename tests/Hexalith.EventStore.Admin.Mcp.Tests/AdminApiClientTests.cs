@@ -3,6 +3,8 @@ namespace Hexalith.EventStore.Admin.Mcp.Tests;
 using System.Net;
 using System.Net.Http.Headers;
 
+using Hexalith.EventStore.Testing.Http;
+
 public class AdminApiClientTests
 {
     [Fact]
@@ -113,11 +115,4 @@ public class AdminApiClientTests
             "observabilityLinks": { "traceUrl": null, "metricsUrl": null, "logsUrl": null }
         }
         """;
-
-    private sealed class MockHttpMessageHandler(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => _handler(request, cancellationToken);
-    }
 }
