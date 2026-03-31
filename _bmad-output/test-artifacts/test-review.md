@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-03-29'
+lastSaved: '2026-03-31'
 status: 'complete'
 workflowType: 'testarch-test-review'
 inputDocuments:
@@ -15,11 +15,11 @@ inputDocuments:
 
 # Test Quality Review: Hexalith.EventStore (Full Suite)
 
-**Quality Score**: 90/100 (A - Excellent)
-**Review Date**: 2026-03-29
-**Review Scope**: suite (14 test projects, 500 files, ~40,568 LOC)
+**Quality Score**: 89/100 (B - Good)
+**Review Date**: 2026-03-31
+**Review Scope**: suite (14 test projects, 541 files)
 **Reviewer**: Murat (TEA Agent)
-**Previous Review**: 2026-03-15 (95/100, 8 projects, ~95 files)
+**Previous Review**: 2026-03-29 (90/100, 14 projects, 500 files)
 
 ---
 
@@ -34,7 +34,7 @@ Coverage mapping and coverage gates are out of scope here. Use `trace` for cover
 
 ### Key Strengths
 
-- Consistent naming convention (`Method_Scenario_Expected`) across all 500 test files
+- Consistent naming convention (`Method_Scenario_Expected`) across all 541 test files
 - Zero async anti-patterns (no `.Result`, no `.Wait()`, proper `async/await` throughout)
 - Excellent test isolation via xUnit collection fixtures, `IAsyncLifetime`, and per-test mock creation
 - Shouldly fluent assertions used consistently across ~95% of test projects
@@ -42,20 +42,21 @@ Coverage mapping and coverage gates are out of scope here. Use `trace` for cover
 - Strong security-focused testing (tenant isolation, RBAC, injection prevention, payload protection)
 - Well-factored test helpers (`ContractTestHelpers`, `AdminUITestContext`, `MockHttpMessageHandler`)
 - Proper test tiering (Tier 1/2/3) with clear dependency boundaries
-- 225+ parametrized `[Theory]`/`[InlineData]` tests for edge case coverage
+- New `DaprCommandActivityTrackerTests.cs` is exemplary — model for future tests
 
 ### Key Weaknesses
 
+- `Thread.Sleep(2)` in UniqueIdHelperIntegrationTests — timing-dependent determinism violation
+- AggregateActorTests.cs: 1,068 lines with 45+ methods — needs decomposition
+- Reflection-based StateManager injection in actor tests — DAPR SDK testability limitation
 - Hard-coded magic strings repeated across test methods ("tenant-a", "counter", "acme", "agg-001")
 - `MockHttpMessageHandler` duplicated between `Admin.Cli.Tests` and `Admin.Mcp.Tests`
-- Inconsistent assertion library: `Contracts.Tests` uses xUnit `Assert`, rest uses Shouldly
-- Some large test files exceed 300 lines (AggregateActorTests: 1,068 lines)
 
 ### Summary
 
-The suite has nearly tripled since the last review (8 projects / ~95 files -> 14 projects / 500 files / ~40K LOC). Despite this rapid growth, quality remains high. The new Admin.* projects (UI, Server, CLI, MCP, Abstractions) maintain the same excellent patterns established in the core projects: consistent naming, proper isolation, fluent assertions, and focused test methods.
+The suite has grown from 500 to 541 files since the last review (2 days ago). New additions include `DaprCommandActivityTrackerTests.cs` and `CommandStatusFilterHelper.cs`. Quality remains strong, but this review identified a P1 determinism issue (`Thread.Sleep`) that wasn't caught previously, plus structural concerns around the largest test class.
 
-The score decreased from 95 to 90 primarily due to maintainability concerns introduced by the scale increase: duplicated test infrastructure across new projects and inconsistent assertion styles. These are incremental improvements that don't affect test reliability — no critical or high-severity violations found.
+Score decreased 1 point (90 -> 89) due to the newly identified Thread.Sleep determinism violation (HIGH severity) and reflection-based testability smell. Core quality dimensions (isolation, performance) remain excellent.
 
 ---
 
@@ -77,7 +78,7 @@ The score decreased from 95 to 90 primarily due to maintainability concerns intr
 | Test Duration (<=1.5 min) | PASS | 0 | Unit tests instant; integration tests use polling with timeouts |
 | Flakiness Patterns | PASS | 0 | bUnit uses `WaitForAssertion` (intelligent retry); no race conditions |
 
-**Total Violations**: 0 Critical, 0 High, 7 Medium, 6 Low
+**Total Violations**: 0 Critical, 1 High, 4 Medium, 5 Low
 
 ---
 
@@ -85,38 +86,89 @@ The score decreased from 95 to 90 primarily due to maintainability concerns intr
 
 | Dimension | Score | Grade | Weight | Weighted |
 |---|---|---|---|---|
-| Determinism | 93/100 | A | 30% | 27.9 |
-| Isolation | 96/100 | A | 30% | 28.8 |
-| Maintainability | 79/100 | C | 25% | 19.75 |
-| Performance | 88/100 | B | 15% | 13.2 |
-| **Overall** | **90/100** | **A** | **100%** | **89.65 -> 90** |
+| Determinism | 85/100 | B | 30% | 25.5 |
+| Isolation | 93/100 | A | 30% | 27.9 |
+| Maintainability | 86/100 | B | 25% | 21.5 |
+| Performance | 96/100 | A | 15% | 14.4 |
+| **Overall** | **89/100** | **B** | **100%** | **89.3** |
 
 ### Score Breakdown
 
 ```
 Starting Score:          100
-Critical Violations:     -0 x 10 = -0
-High Violations:         -0 x 5  = -0
-Medium Violations:       -7 x 2  = -14
-Low Violations:          -6 x 1  = -6
-                         --------
-Subtotal:                80
+
+Determinism:
+  Thread.Sleep(2) [HIGH]:              -10
+  bUnit 5s hardcoded timeout [MEDIUM]:  -5
+
+Isolation:
+  Shared Aspire fixture [MEDIUM]:       -5
+  Shared Playwright browser [LOW]:      -2
+
+Maintainability:
+  AggregateActorTests 1068 lines [MEDIUM]: -5
+  Reflection-based injection [MEDIUM]:     -5
+  Arg.Is<> over-specification [LOW]:       -2
+  Repetitive OpenAPI patterns [LOW]:       -2
+
+Performance:
+  Thread.Sleep delay [LOW]:             -2
+  E2E timeout config [LOW]:             -2
+                                       --------
+Gross Penalty:                          -40
 
 Bonus Points:
-  Comprehensive Fixtures: +5  (xUnit collections, IAsyncLifetime, AdminUITestContext)
-  Perfect Isolation:      +5  (zero shared mutable state, per-test data)
-                         --------
-Total Bonus:             +10
+  Excellent Naming:          +5
+  Comprehensive Fixtures:    +5
+  Explicit Assertions:       +5
+  Strong Isolation:          +5
+  Tier Classification:       +5
+  Shouldly Consistency:      +5
+                            --------
+Total Bonus:                +30
 
-Final Score:             90/100
-Grade:                   A (Excellent)
+Final Score:                89/100
+Grade:                      B (Good)
 ```
 
 ---
 
 ## Critical Issues (Must Fix)
 
-No critical issues detected.
+### 1. Thread.Sleep(2) — Non-Deterministic Timing Dependency
+
+**Severity**: P1 (High)
+**Location**: `tests/Hexalith.EventStore.Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs:39`
+**Criterion**: Determinism
+**Knowledge Base**: test-quality.md
+
+**Issue Description**:
+Test relies on `Thread.Sleep(2)` to ensure time-based ordering of generated IDs. On fast machines or under CI load, 2ms may not guarantee distinct timestamps, making the test non-deterministic. Windows OS scheduling granularity is typically 15.6ms.
+
+**Current Code**:
+```csharp
+// Non-deterministic
+var id1 = UniqueIdHelper.Generate();
+Thread.Sleep(2); // hope 2ms is enough for ordering
+var id2 = UniqueIdHelper.Generate();
+id2.ShouldBeGreaterThan(id1);
+```
+
+**Recommended Fix**:
+```csharp
+// Option A: Use TimeProvider (.NET 8+)
+var fakeTime = new FakeTimeProvider();
+var id1 = UniqueIdHelper.Generate(fakeTime);
+fakeTime.Advance(TimeSpan.FromMilliseconds(10));
+var id2 = UniqueIdHelper.Generate(fakeTime);
+id2.ShouldBeGreaterThan(id1);
+
+// Option B: Deterministic timestamp injection
+var id1 = UniqueIdHelper.Generate(timestamp: DateTimeOffset.UtcNow);
+var id2 = UniqueIdHelper.Generate(timestamp: DateTimeOffset.UtcNow.AddMilliseconds(10));
+```
+
+**Why This Matters**: Thread.Sleep-based ordering is the #1 source of intermittent CI failures in time-sensitive tests.
 
 ---
 
@@ -323,12 +375,13 @@ Validates thread-safety of `ConcurrentDictionary` caches and `Lazy<T>` initializ
 
 ## Quality Trends
 
-| Review Date | Scope | Score | Grade | Critical | Trend |
+| Review Date | Scope | Score | Grade | High+ Issues | Trend |
 |---|---|---|---|---|---|
 | 2026-03-15 | 8 projects / ~95 files | 95/100 | A | 0 | Baseline |
 | 2026-03-29 | 14 projects / 500 files | 90/100 | A | 0 | Slight decline (scale) |
+| 2026-03-31 | 14 projects / 541 files | 89/100 | B | 1 | Stable (new P1 found) |
 
-**Trend Analysis**: Score decreased 5 points despite zero critical issues. The decline is entirely due to maintainability concerns from rapid suite growth (5x file count increase). New Admin.* projects introduced duplicated infrastructure and inconsistent assertion styles. Core quality dimensions (determinism, isolation) remain excellent.
+**Trend Analysis**: Score stable at ~90 across reviews. The 1-point decrease is due to a newly identified Thread.Sleep determinism violation (P1) and a reflection-based testability smell. The new `DaprCommandActivityTrackerTests.cs` is exemplary quality. Core isolation and performance remain excellent.
 
 ---
 
@@ -347,31 +400,42 @@ See [tea-index.csv](../../_bmad/tea/testarch/tea-index.csv) for complete knowled
 
 ## Next Steps
 
-### Immediate Actions (Before Merge)
+### Immediate Actions (P1)
 
-None required. Suite quality is excellent.
+1. **Remove Thread.Sleep(2)** - Replace with deterministic sequencing
+   - Priority: P1
+   - File: `Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs:39`
+   - Effort: Small (< 30 min)
 
 ### Follow-up Actions (Future PRs)
 
-1. **Consolidate MockHttpMessageHandler** - Move to shared Testing project
+1. **Split AggregateActorTests** - Decompose into 3-4 focused classes
+   - Priority: P2
+   - Target: Next refactoring sprint
+
+2. **Centralize reflection-based Actor injection** - Single helper method
+   - Priority: P2
+   - Target: Next refactoring sprint
+
+3. **Consolidate MockHttpMessageHandler** - Move to shared Testing project
    - Priority: P2
    - Target: Next sprint
 
-2. **Standardize Contracts.Tests on Shouldly** - Migrate xUnit Assert calls
+4. **Standardize Contracts.Tests on Shouldly** - Migrate xUnit Assert calls
    - Priority: P2
    - Target: Incremental
 
-3. **Extract shared test constants** - Create TestData class
+5. **Extract shared test constants** - Create TestData class
    - Priority: P2
    - Target: Next sprint
 
-4. **Split large test files** - AggregateActorTests, QueriesControllerTests
+6. **Parameterize OpenAPI tests** - Reduce duplication in AdminOpenApiDocumentTests
    - Priority: P3
    - Target: Backlog
 
 ### Re-Review Needed?
 
-No re-review needed. Approve as-is.
+No re-review needed after P1 fix. Approve as-is.
 
 ---
 
@@ -381,14 +445,14 @@ No re-review needed. Approve as-is.
 
 **Rationale**:
 
-Test quality is excellent with 90/100 score. The suite has grown 5x since the last review while maintaining zero critical violations and zero async anti-patterns. All 7 medium-severity findings are maintainability improvements (code duplication, assertion consistency, magic strings) that don't affect test reliability. The three-tier architecture with proper fixture sharing is well-designed for this DAPR-native event sourcing system. Security testing with 45+ tenant isolation tests is exemplary. The suite is production-ready.
+Test quality is strong at 89/100. One P1 issue identified: `Thread.Sleep(2)` in UniqueIdHelperIntegrationTests creates a timing-dependent determinism violation — easy fix. Structural improvements (AggregateActorTests decomposition, reflection centralization) are maintainability investments, not correctness risks. The new `DaprCommandActivityTrackerTests.cs` is exemplary. The three-tier architecture with proper fixture sharing is well-designed for this DAPR-native event sourcing system. Security testing with 45+ tenant isolation tests is exemplary. Suite is production-ready after the P1 fix.
 
 ---
 
 ## Review Metadata
 
 **Generated By**: Murat (BMad TEA Agent - Master Test Architect)
-**Workflow**: testarch-test-review v5.0 (sequential mode)
-**Review ID**: test-review-suite-20260329
-**Timestamp**: 2026-03-29
-**Version**: 2.0
+**Workflow**: testarch-test-review v5.0 (3 parallel exploration agents + sequential aggregation)
+**Review ID**: test-review-suite-20260331
+**Timestamp**: 2026-03-31
+**Version**: 3.0

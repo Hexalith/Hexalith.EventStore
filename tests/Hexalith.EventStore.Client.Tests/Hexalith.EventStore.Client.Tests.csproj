@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj" />
+    <ProjectReference
+      Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -10,6 +12,8 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Shouldly" />
   </ItemGroup>
 
   <ItemGroup>

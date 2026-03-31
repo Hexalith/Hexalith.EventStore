@@ -194,6 +194,14 @@ body {
     animation: row-fade-in 150ms ease-out;
 }
 
+/* Grid cell text truncation */
+.grid-cell-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Streams grid responsive column visibility */
 .streams-col-domain,
 .streams-col-snapshot {

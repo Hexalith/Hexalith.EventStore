@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Server.Commands;
 /// Tracks command activity for admin index population.
 /// Implementations should be advisory — failures are logged but do not block command processing.
 /// </summary>
-public interface ICommandActivityTracker
-{
+public interface ICommandActivityTracker {
     /// <summary>
     /// Records a command in the admin activity index so it appears in the admin UI Commands page.
     /// </summary>

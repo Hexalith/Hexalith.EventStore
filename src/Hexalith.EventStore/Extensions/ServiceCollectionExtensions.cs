@@ -107,11 +107,10 @@ public static class EventStoreServiceCollectionExtensions {
         // Command archive for replay (Story 2.7)
         _ = services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();
 
-        // Command activity tracking for admin UI Commands page.
-        // Registered as the concrete type so the controller can inject InMemoryCommandActivityTracker directly,
-        // and as the interface so SubmitCommandHandler receives it via ICommandActivityTracker.
-        _ = services.AddSingleton<InMemoryCommandActivityTracker>();
-        _ = services.AddSingleton<ICommandActivityTracker>(sp => sp.GetRequiredService<InMemoryCommandActivityTracker>());
+        // Command activity tracking for admin UI Commands page (DAPR state store backed).
+        _ = services.AddSingleton<DaprCommandActivityTracker>();
+        _ = services.AddSingleton<ICommandActivityTracker>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
+        _ = services.AddSingleton<ICommandActivityReader>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
 
         // Extension metadata sanitization (Story 5.4, SEC-4)
         _ = services.AddOptions<ExtensionMetadataOptions>()

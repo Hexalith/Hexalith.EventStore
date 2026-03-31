@@ -1,24 +1,34 @@
-using System.Collections.Concurrent;
+using System.Text.Json;
+
+using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
 namespace Hexalith.EventStore.Commands;
 
 /// <summary>
-/// In-memory implementation of <see cref="ICommandActivityTracker"/>.
-/// Maintains a bounded list of recent commands that is exposed via
-/// <see cref="GetRecentCommands"/> for the admin UI Commands page.
+/// DAPR state store implementation of command activity tracking and querying.
+/// Persists a single global admin command index so activity survives restarts while
+/// preserving the original in-memory filtering semantics.
 /// </summary>
-public sealed class InMemoryCommandActivityTracker : ICommandActivityTracker
-{
+public sealed class DaprCommandActivityTracker(
+    DaprClient daprClient,
+    IOptions<CommandStatusOptions> options,
+    ILogger<DaprCommandActivityTracker> logger) : ICommandActivityTracker
+    , ICommandActivityReader {
     private const int MaxEntries = 1000;
-    private readonly ConcurrentDictionary<string, CommandSummary> _commands = new();
+    private const int MaxEtagRetries = 3;
+    private const string ActivityIndexKey = "admin:command-activity:all";
+    private readonly string _stateStoreName = options.Value.StateStoreName;
 
     /// <inheritdoc/>
-    public Task TrackAsync(
+    public async Task TrackAsync(
         string tenantId,
         string domain,
         string aggregateId,
@@ -28,85 +38,158 @@ public sealed class InMemoryCommandActivityTracker : ICommandActivityTracker
         DateTimeOffset timestamp,
         int? eventCount,
         string? failureReason,
-        CancellationToken ct = default)
-    {
-        var summary = new CommandSummary(
-            tenantId, domain, aggregateId, correlationId,
-            commandType, status, timestamp, eventCount, failureReason);
+        CancellationToken ct = default) {
+        try {
+            ArgumentNullException.ThrowIfNull(tenantId);
+            string normalizedTenantId = NormalizeStoredTenantId(tenantId);
+            var summary = new CommandSummary(
+                normalizedTenantId, domain, aggregateId, correlationId,
+                commandType, status, timestamp, eventCount, failureReason);
 
-        _ = _commands.AddOrUpdate(correlationId, summary, (_, _) => summary);
-
-        // Evict oldest entries when over capacity
-        if (_commands.Count > MaxEntries)
-        {
-            IEnumerable<string> keysToRemove = _commands
-                .OrderBy(kvp => kvp.Value.Timestamp)
-                .Take(_commands.Count - MaxEntries)
-                .Select(kvp => kvp.Key);
-
-            foreach (string key in keysToRemove)
-            {
-                _ = _commands.TryRemove(key, out _);
+            bool saved = await TryUpsertActivityIndexAsync(summary, ct).ConfigureAwait(false);
+            if (!saved) {
+                logger.LogWarning(
+                    "Failed to track command activity after {MaxRetries} optimistic-concurrency attempts: CorrelationId={CorrelationId}",
+                    MaxEtagRetries,
+                    correlationId);
             }
         }
-
-        return Task.CompletedTask;
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(
+                ex,
+                "Failed to track command activity: CorrelationId={CorrelationId}, ExceptionType={ExceptionType}",
+                correlationId,
+                ex.GetType().Name);
+        }
     }
 
-    /// <summary>
-    /// Returns recent commands, optionally filtered by tenant, status, and command type.
-    /// Called by the admin commands endpoint.
-    /// </summary>
-    public PagedResult<CommandSummary> GetRecentCommands(
+    /// <inheritdoc/>
+    public async Task<PagedResult<CommandSummary>> GetRecentCommandsAsync(
         string? tenantId,
         string? status,
         string? commandType,
-        int count = 1000)
-    {
-        IEnumerable<CommandSummary> filtered = _commands.Values;
+        int count = 1000,
+        CancellationToken ct = default) {
+        try {
+            string? normalizedTenantId = NormalizeOptionalFilter(tenantId);
+            string? normalizedStatus = NormalizeOptionalFilter(status);
+            string? normalizedCommandType = NormalizeOptionalFilter(commandType);
+            count = Math.Clamp(count, 1, MaxEntries);
 
-        if (!string.IsNullOrWhiteSpace(tenantId))
-        {
-            filtered = filtered.Where(c => c.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase));
+            List<CommandSummary>? commands = await daprClient
+                .GetStateAsync<List<CommandSummary>>(_stateStoreName, ActivityIndexKey, cancellationToken: ct)
+                .ConfigureAwait(false);
+
+            if (commands is null || commands.Count == 0) {
+                return new PagedResult<CommandSummary>([], 0, null);
+            }
+
+            IEnumerable<CommandSummary> filtered = commands;
+
+            if (normalizedTenantId is not null) {
+                filtered = filtered.Where(c => c.TenantId.Equals(normalizedTenantId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (normalizedStatus is not null) {
+                filtered = CommandStatusFilterHelper.ApplyStatusFilter(filtered, normalizedStatus);
+            }
+
+            if (normalizedCommandType is not null) {
+                filtered = filtered.Where(c => c.CommandType.Contains(normalizedCommandType, StringComparison.OrdinalIgnoreCase));
+            }
+
+            List<CommandSummary> filteredList = filtered.ToList();
+            IReadOnlyList<CommandSummary> page = filteredList
+                .OrderByDescending(c => c.Timestamp)
+                .Take(count)
+                .ToList();
+
+            return new PagedResult<CommandSummary>(page, filteredList.Count, null);
         }
-
-        if (!string.IsNullOrWhiteSpace(status))
-        {
-            filtered = ApplyStatusFilter(filtered, status);
+        catch (OperationCanceledException) {
+            throw;
         }
-
-        if (!string.IsNullOrWhiteSpace(commandType))
-        {
-            filtered = filtered.Where(c => c.CommandType.Contains(commandType, StringComparison.OrdinalIgnoreCase));
+        catch (JsonException ex) {
+            logger.LogError(
+                ex,
+                "Failed to deserialize command activity from state store: Key={Key}, ExceptionType={ExceptionType}",
+                ActivityIndexKey,
+                ex.GetType().Name);
+            return new PagedResult<CommandSummary>([], 0, null);
         }
-
-        List<CommandSummary> filteredList = filtered.ToList();
-        IReadOnlyList<CommandSummary> page = filteredList
-            .OrderByDescending(c => c.Timestamp)
-            .Take(count)
-            .ToList();
-
-        return new PagedResult<CommandSummary>(page, filteredList.Count, null);
+        catch (Exception ex) {
+            logger.LogError(
+                ex,
+                "Failed to read command activity from state store: Key={Key}, ExceptionType={ExceptionType}",
+                ActivityIndexKey,
+                ex.GetType().Name);
+            return new PagedResult<CommandSummary>([], 0, null);
+        }
     }
 
-    private static IEnumerable<CommandSummary> ApplyStatusFilter(
-        IEnumerable<CommandSummary> commands,
-        string status)
-    {
-        string normalized = status.Trim().ToLowerInvariant();
-        return normalized switch
-        {
-            "completed" => commands.Where(c => c.Status == CommandStatus.Completed),
-            "processing" => commands.Where(c => c.Status is CommandStatus.Received
-                or CommandStatus.Processing
-                or CommandStatus.EventsStored
-                or CommandStatus.EventsPublished),
-            "rejected" => commands.Where(c => c.Status == CommandStatus.Rejected),
-            "failed" => commands.Where(c => c.Status is CommandStatus.PublishFailed
-                or CommandStatus.TimedOut),
-            _ when Enum.TryParse(status.Trim(), ignoreCase: true, out CommandStatus parsedStatus)
-                => commands.Where(c => c.Status == parsedStatus),
-            _ => commands,
-        };
+    private static string? NormalizeOptionalFilter(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizeStoredTenantId(string tenantId)
+        => tenantId.Trim();
+
+    private static bool MatchesIdentity(CommandSummary existing, CommandSummary summary)
+        => existing.CorrelationId.Equals(summary.CorrelationId, StringComparison.Ordinal)
+            && existing.AggregateId.Equals(summary.AggregateId, StringComparison.Ordinal)
+            && existing.Domain.Equals(summary.Domain, StringComparison.OrdinalIgnoreCase)
+            && existing.TenantId.Equals(summary.TenantId, StringComparison.OrdinalIgnoreCase);
+
+    private static List<CommandSummary> UpsertAndTrim(List<CommandSummary> commands, CommandSummary summary) {
+        int index = commands.FindIndex(c => MatchesIdentity(c, summary));
+        if (index >= 0) {
+            commands[index] = summary;
+        }
+        else {
+            commands.Add(summary);
+        }
+
+        return commands
+            .OrderByDescending(c => c.Timestamp)
+            .Take(MaxEntries)
+            .ToList();
+    }
+
+    private async Task<bool> TryUpsertActivityIndexAsync(CommandSummary summary, CancellationToken ct) {
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                (List<CommandSummary>? existing, string etag) = await daprClient
+                    .GetStateAndETagAsync<List<CommandSummary>>(_stateStoreName, ActivityIndexKey, cancellationToken: ct)
+                    .ConfigureAwait(false);
+
+                List<CommandSummary> updated = UpsertAndTrim(existing ?? [], summary);
+                bool saved = await daprClient
+                    .TrySaveStateAsync(_stateStoreName, ActivityIndexKey, updated, etag, cancellationToken: ct)
+                    .ConfigureAwait(false);
+
+                if (saved) {
+                    return true;
+                }
+
+                logger.LogDebug(
+                    "ETag mismatch while updating command activity index '{IndexKey}', retry {Attempt}.",
+                    ActivityIndexKey,
+                    attempt + 1);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) when (attempt < MaxEtagRetries - 1) {
+                logger.LogDebug(
+                    ex,
+                    "Retry {Attempt} while updating command activity index '{IndexKey}'.",
+                    attempt + 1,
+                    ActivityIndexKey);
+            }
+        }
+
+        return false;
     }
 }

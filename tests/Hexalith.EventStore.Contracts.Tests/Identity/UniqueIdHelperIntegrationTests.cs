@@ -34,14 +34,18 @@ public class UniqueIdHelperIntegrationTests {
 
     [Fact]
     public void LexicographicOrdering_SequentialUlids_MaintainSortOrder() {
-        string first = UniqueIdHelper.GenerateSortableUniqueStringId();
-        // Small delay to ensure distinct timestamps
-        Thread.Sleep(2);
-        string second = UniqueIdHelper.GenerateSortableUniqueStringId();
+        // Generate multiple IDs in rapid succession — ULID monotonic ordering
+        // guarantees each is greater than the previous, even within the same ms.
+        string[] ids = Enumerable.Range(0, 10)
+            .Select(_ => UniqueIdHelper.GenerateSortableUniqueStringId())
+            .ToArray();
 
-        int comparison = string.Compare(first, second, StringComparison.Ordinal);
-
-        (comparison < 0).ShouldBeTrue($"Expected '{first}' < '{second}' lexicographically, but comparison was {comparison}");
+        for (int i = 1; i < ids.Length; i++)
+        {
+            int comparison = string.Compare(ids[i - 1], ids[i], StringComparison.Ordinal);
+            (comparison < 0).ShouldBeTrue(
+                $"Expected ids[{i - 1}] '{ids[i - 1]}' < ids[{i}] '{ids[i]}' lexicographically, but comparison was {comparison}");
+        }
     }
 
     [Fact]

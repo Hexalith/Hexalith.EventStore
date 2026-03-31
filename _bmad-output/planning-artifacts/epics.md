@@ -526,6 +526,39 @@ So that I can quickly find and investigate commands without knowing the specific
 - UI: Replace Commands.razor stub with full FluentDataGrid implementation
 - UX spec reference: D1 (Command-Centric), Journey 2 (Jerome's Command Investigation)
 
+### Story 15.11: Persistent State Store and Command Activity Tracking
+
+As a developer using the local Aspire environment,
+I want data to persist across application restarts,
+So that counter values, event streams, and the admin Commands page retain their state.
+
+**Acceptance Criteria:**
+
+**Given** the Aspire AppHost starts,
+**When** the DAPR topology initializes,
+**Then** a Redis container is provisioned and the DAPR state store uses `state.redis` (not `state.in-memory`).
+
+**Given** the counter has been incremented,
+**When** the application is restarted,
+**Then** the counter retains its last known value.
+
+**Given** commands have been submitted,
+**When** the application is restarted,
+**Then** the admin Commands page shows the previously submitted commands.
+
+**Given** the `ICommandActivityTracker.TrackAsync` method is called,
+**When** DAPR state store write fails,
+**Then** the failure is logged but does not block command processing (Rule 12).
+
+**Technical Notes:**
+
+- Fix A: Replace `state.in-memory` with `state.redis` in `HexalithEventStoreExtensions.cs`, provision Redis via Aspire `AddRedis()`
+- Fix B: Replace `InMemoryCommandActivityTracker` (ConcurrentDictionary) with `DaprCommandActivityTracker` (DAPR state store, key `admin:command-activity:{tenantId}`)
+- Add `GetRecentCommandsAsync` to `ICommandActivityTracker` interface
+- Update `AdminCommandsQueryController` to inject `ICommandActivityTracker` (interface, not concrete)
+- Follows same pattern as `admin:stream-activity:{tenantId}` in `DaprStreamQueryService`
+- Sprint change proposal: `sprint-change-proposal-2026-03-30.md`
+
 ### Epic 16: Admin Web UI — DBA Operations
 Storage management, snapshot controls, backup/restore, tenant management, dead-letter queue, consistency checker. Enables Journey 8 (Maria).
 **FRs covered:** FR76, FR77, FR78

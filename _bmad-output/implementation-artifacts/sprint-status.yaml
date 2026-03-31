@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-03-30 (story 15-10 done after review)
+# last_updated: 2026-03-31 (story 15-11 done after review fixes)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-03-30
+last_updated: 2026-03-31
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -179,6 +179,7 @@ development_status:
   15-8-deep-linking-and-breadcrumbs: done
   15-9-commands-page-cross-stream-command-list: done
   15-10-admin-ui-data-pipeline-fixes: done
+  15-11-persistent-state-store-and-command-activity: done
   epic-15-retrospective: optional
 
   # Epic 16: Admin Web UI — DBA Operations

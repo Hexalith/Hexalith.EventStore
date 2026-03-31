@@ -76,26 +76,28 @@ else
             <FluentDataGrid Items="@GetCurrentPage()" TGridItem="CommandSummary"
                             Style="width: 100%;"
                             OnRowClick="@(row => OnRowClick(row.Item))"
-                            GridTemplateColumns="120px 1fr 100px 100px 120px 120px 80px">
+                            GridTemplateColumns="1fr 1fr 1fr 1fr 1fr 1fr 1fr">
                 <TemplateColumn Title="Status" Class="streams-col-status">
                     <StatusBadge DisplayConfig="@(StatusBadge.StatusDisplayConfig.FromCommandStatus(context.Status))"
                                  AriaLabelPrefix="Command status" />
                 </TemplateColumn>
-                <PropertyColumn Property="@(c => c.CommandType)" Title="Command Type" Class="monospace" />
+                <TemplateColumn Title="Command Type">
+                    <span class="monospace grid-cell-truncate" title="@context.CommandType">@context.CommandType</span>
+                </TemplateColumn>
                 <PropertyColumn Property="@(c => c.TenantId)" Title="Tenant" Class="monospace" />
                 <PropertyColumn Property="@(c => c.Domain)" Title="Domain" Class="monospace" />
                 <TemplateColumn Title="Aggregate ID" Class="streams-col-aggid">
-                    <span class="monospace" title="@context.AggregateId"
-                          style="cursor: pointer;">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
+                    <span class="monospace grid-cell-truncate" title="@context.AggregateId"
+                          style="cursor: pointer;">@context.AggregateId</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Correlation ID">
-                    <span class="monospace" title="@context.CorrelationId"
-                          style="cursor: pointer;">@(context.CorrelationId.Length > 8 ? context.CorrelationId[..8] + "\u2026" : context.CorrelationId)</span>
+                    <span class="monospace grid-cell-truncate" title="@context.CorrelationId"
+                          style="cursor: pointer;">@context.CorrelationId</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Timestamp" Class="monospace"
                                 SortBy="@(GridSort<CommandSummary>.ByDescending(c => c.Timestamp))"
                                 IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
-                    <span class="monospace" style="font-size: 12px;">@context.Timestamp.ToString("HH:mm:ss")</span>
+                    <span class="monospace grid-cell-truncate" style="font-size: 12px;" title="@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")">@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</span>
                 </TemplateColumn>
             </FluentDataGrid>
 
@@ -136,6 +138,8 @@ else
     private IReadOnlyList<CommandSummary> _filteredItems = [];
     private List<string> _tenantOptions = [];
     private double? _pendingScrollTop;
+    private bool _hasRendered;
+    private bool _disposed;
 
     private int _totalPages => _filteredItems.Count == 0
         ? 1
@@ -150,48 +154,58 @@ else
         ReadUrlParameters();
         await LoadTenantsAsync();
         await LoadCommandsAsync();
+    }
 
-        RefreshService.OnDataChanged += OnRefreshSignal;
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _hasRendered = true;
+            RefreshService.OnDataChanged += OnRefreshSignal;
+        }
+
+        return Task.CompletedTask;
     }
 
     private void OnRefreshSignal(DashboardData data)
     {
+        if (_disposed || !_hasRendered)
+        {
+            return;
+        }
+
         _ = InvokeAsync(async () =>
         {
+            if (_disposed || !_hasRendered)
+            {
+                return;
+            }
+
             try
             {
-                double scrollTop = await CaptureScrollTopAsync().ConfigureAwait(false);
+                double scrollTop = await CaptureScrollTopAsync();
                 await LoadCommandsAsync();
+
+                if (_disposed)
+                {
+                    return;
+                }
+
                 _pendingScrollTop = scrollTop;
                 StateHasChanged();
             }
-            catch (ObjectDisposedException)
-            {
-            }
+            catch (ObjectDisposedException) { }
+            catch (TaskCanceledException) { }
+            catch (InvalidOperationException) { }
+            catch (JSDisconnectedException) { }
         });
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_pendingScrollTop.HasValue)
-        {
-            double scrollTop = _pendingScrollTop.Value;
-            _pendingScrollTop = null;
-
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("hexalithAdmin.setScrollTop", scrollTop).ConfigureAwait(false);
-            }
-            catch (JSException)
-            {
-            }
-        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         RefreshService.OnDataChanged -= OnRefreshSignal;
-        await Task.CompletedTask.ConfigureAwait(false);
+        await Task.CompletedTask;
     }
 
     private void ReadUrlParameters()
@@ -330,21 +344,21 @@ else
     private async Task OnStatusFilterChanged()
     {
         _currentPage = 1;
-        await LoadCommandsAsync().ConfigureAwait(false);
+        await LoadCommandsAsync();
         UpdateUrl();
     }
 
     private async Task OnTenantFilterChanged()
     {
         _currentPage = 1;
-        await LoadCommandsAsync().ConfigureAwait(false);
+        await LoadCommandsAsync();
         UpdateUrl();
     }
 
     private async Task OnCommandTypeFilterChanged()
     {
         _currentPage = 1;
-        await LoadCommandsAsync().ConfigureAwait(false);
+        await LoadCommandsAsync();
         UpdateUrl();
     }
 
@@ -416,11 +430,28 @@ else
 
     private async Task<double> CaptureScrollTopAsync()
     {
+        if (_disposed || !_hasRendered)
+        {
+            return 0;
+        }
+
         try
         {
-            return await JSRuntime.InvokeAsync<double>("hexalithAdmin.getScrollTop").ConfigureAwait(false);
+            return await JSRuntime.InvokeAsync<double>("hexalithAdmin.getScrollTop");
         }
         catch (JSException)
+        {
+            return 0;
+        }
+        catch (TaskCanceledException)
+        {
+            return 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
         {
             return 0;
         }

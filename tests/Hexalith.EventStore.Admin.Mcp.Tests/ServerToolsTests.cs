@@ -5,6 +5,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Mcp.Tools;
+using Hexalith.EventStore.Testing.Http;
 
 public class ServerToolsTests
 {
@@ -125,21 +126,10 @@ public class ServerToolsTests
     }
 
     private static HttpClient CreateMockHttpClient(HttpStatusCode statusCode, string content)
-    {
-        var handler = new MockHttpMessageHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(statusCode)
-            {
-                Content = new StringContent(content, System.Text.Encoding.UTF8, "application/json"),
-            }));
-        return new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
-    }
+        => MockHttpMessageHandler.CreateJsonClient(statusCode, content);
 
     private static HttpClient CreateThrowingHttpClient(Exception exception)
-    {
-        var handler = new MockHttpMessageHandler((_, _) =>
-            throw exception);
-        return new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
-    }
+        => MockHttpMessageHandler.CreateThrowingClient(exception);
 
     private static string GetHealthJson()
         => """
@@ -152,11 +142,4 @@ public class ServerToolsTests
             "observabilityLinks": { "traceUrl": null, "metricsUrl": null, "logsUrl": null }
         }
         """;
-
-    private sealed class MockHttpMessageHandler(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => _handler(request, cancellationToken);
-    }
 }
