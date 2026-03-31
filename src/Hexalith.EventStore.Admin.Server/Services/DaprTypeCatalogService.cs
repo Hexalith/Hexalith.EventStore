@@ -67,28 +67,16 @@ public sealed class DaprTypeCatalogService : ITypeCatalogService
 
     private async Task<IReadOnlyList<T>> ReadCatalogIndexAsync<T>(string indexKey, CancellationToken ct)
     {
-        try
-        {
-            List<T>? result = await _daprClient
-                .GetStateAsync<List<T>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        List<T>? result = await _daprClient
+            .GetStateAsync<List<T>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return [];
-            }
-
-            return result;
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read type catalog index '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
+
+        return result;
     }
 }

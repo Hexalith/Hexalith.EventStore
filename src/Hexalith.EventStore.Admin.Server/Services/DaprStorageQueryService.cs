@@ -50,38 +50,26 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     {
         string scope = tenantId ?? "all";
         string indexKey = $"{StorageOverviewIndexPrefix}{scope}";
-        try
-        {
-            StorageOverview? result = await _daprClient
-                .GetStateAsync<StorageOverview>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        StorageOverview? result = await _daprClient
+            .GetStateAsync<StorageOverview>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return new StorageOverview(0, null, [], 0);
-            }
-
-            if (result.TotalStreamCount is null)
-            {
-                long? streamCount = await TryGetStorageStreamCountAsync(scope, ct).ConfigureAwait(false);
-                if (streamCount is not null)
-                {
-                    return new StorageOverview(result.TotalEventCount, result.TotalSizeBytes, result.TenantBreakdown, streamCount.Value);
-                }
-            }
-
-            return result;
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read storage overview '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return new StorageOverview(0, null, [], 0);
         }
+
+        if (result.TotalStreamCount is null)
+        {
+            long? streamCount = await TryGetStorageStreamCountAsync(scope, ct).ConfigureAwait(false);
+            if (streamCount is not null)
+            {
+                return new StorageOverview(result.TotalEventCount, result.TotalSizeBytes, result.TenantBreakdown, streamCount.Value);
+            }
+        }
+
+        return result;
     }
 
     private async Task<long?> TryGetStorageStreamCountAsync(string scope, CancellationToken ct)
@@ -113,29 +101,17 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         string indexKey = $"admin:storage-hot-streams:{tenantId ?? "all"}";
-        try
-        {
-            List<StreamStorageInfo>? result = await _daprClient
-                .GetStateAsync<List<StreamStorageInfo>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        List<StreamStorageInfo>? result = await _daprClient
+            .GetStateAsync<List<StreamStorageInfo>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return [];
-            }
-
-            return result.OrderByDescending(s => s.EventCount).Take(count).ToList();
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read hot streams index '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
+
+        return result.OrderByDescending(s => s.EventCount).Take(count).ToList();
     }
 
     /// <inheritdoc/>
@@ -144,29 +120,17 @@ public sealed class DaprStorageQueryService : IStorageQueryService
         CancellationToken ct = default)
     {
         string indexKey = $"admin:storage-compaction-jobs:{tenantId ?? "all"}";
-        try
-        {
-            List<CompactionJob>? result = await _daprClient
-                .GetStateAsync<List<CompactionJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        List<CompactionJob>? result = await _daprClient
+            .GetStateAsync<List<CompactionJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return [];
-            }
-
-            return result;
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read compaction jobs index '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
+
+        return result;
     }
 
     /// <inheritdoc/>
@@ -175,28 +139,16 @@ public sealed class DaprStorageQueryService : IStorageQueryService
         CancellationToken ct = default)
     {
         string indexKey = $"admin:storage-snapshot-policies:{tenantId ?? "all"}";
-        try
-        {
-            List<SnapshotPolicy>? result = await _daprClient
-                .GetStateAsync<List<SnapshotPolicy>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        List<SnapshotPolicy>? result = await _daprClient
+            .GetStateAsync<List<SnapshotPolicy>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return [];
-            }
-
-            return result;
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read snapshot policies index '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
+
+        return result;
     }
 }

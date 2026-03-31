@@ -150,31 +150,19 @@ public sealed class DaprHealthQueryService : IHealthQueryService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<DaprComponentHealth>> GetDaprComponentStatusAsync(CancellationToken ct = default)
     {
-        try
+        DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+        if (metadata?.Components is null)
         {
-            DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata?.Components is null)
-            {
-                return [];
-            }
-
-            return metadata.Components
-                .Select(c => new DaprComponentHealth(
-                    c.Name,
-                    c.Type,
-                    HealthStatus.Healthy,
-                    DateTimeOffset.UtcNow))
-                .ToList();
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to get DAPR component status.");
             return [];
         }
+
+        return metadata.Components
+            .Select(c => new DaprComponentHealth(
+                c.Name,
+                c.Type,
+                HealthStatus.Healthy,
+                DateTimeOffset.UtcNow))
+            .ToList();
     }
 
     /// <inheritdoc/>
@@ -227,11 +215,6 @@ public sealed class DaprHealthQueryService : IHealthQueryService
         catch (OperationCanceledException)
         {
             throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to get DAPR component health history.");
-            return DaprComponentHealthTimeline.Empty;
         }
     }
 }

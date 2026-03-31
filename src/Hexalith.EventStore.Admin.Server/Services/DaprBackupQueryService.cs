@@ -47,28 +47,16 @@ public sealed class DaprBackupQueryService : IBackupQueryService
     {
         string scope = tenantId ?? "all";
         string indexKey = $"{BackupJobsIndexPrefix}{scope}";
-        try
-        {
-            IReadOnlyList<BackupJob>? result = await _daprClient
-                .GetStateAsync<IReadOnlyList<BackupJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        IReadOnlyList<BackupJob>? result = await _daprClient
+            .GetStateAsync<IReadOnlyList<BackupJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. No backup jobs exist yet.", indexKey);
-                return [];
-            }
-
-            return result;
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read backup jobs '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. No backup jobs exist yet.", indexKey);
             return [];
         }
+
+        return result;
     }
 }

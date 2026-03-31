@@ -53,46 +53,24 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     /// <inheritdoc/>
     public async Task<IReadOnlyList<DaprComponentDetail>> GetComponentsAsync(CancellationToken ct = default)
     {
-        DaprMetadata metadata;
-        try
-        {
-            metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "DAPR sidecar metadata unavailable — cannot list components.");
-            return [];
-        }
+        DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
 
         if (metadata?.Components is null || metadata.Components.Count == 0)
         {
             return [];
         }
 
-        DaprComponentDetail[] components;
-        try
-        {
-            components = metadata.Components
-                .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.Type))
-                .Select(c => new DaprComponentDetail(
-                    c.Name,
-                    c.Type,
-                    DaprComponentCategoryHelper.FromComponentType(c.Type),
-                    c.Version ?? string.Empty,
-                    HealthStatus.Healthy,
-                    DateTimeOffset.UtcNow,
-                    c.Capabilities ?? []))
-                .ToArray();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Failed to map DAPR component metadata.");
-            return [];
-        }
+        DaprComponentDetail[] components = metadata.Components
+            .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.Type))
+            .Select(c => new DaprComponentDetail(
+                c.Name,
+                c.Type,
+                DaprComponentCategoryHelper.FromComponentType(c.Type),
+                c.Version ?? string.Empty,
+                HealthStatus.Healthy,
+                DateTimeOffset.UtcNow,
+                c.Capabilities ?? []))
+            .ToArray();
 
         // Run health probes for state store components in parallel
         using CancellationTokenSource probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);

@@ -57,37 +57,25 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         string indexKey = $"admin:dead-letters:{tenantId ?? "all"}";
-        try
+        List<DeadLetterEntry>? result = await _daprClient
+            .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
+
+        if (result is null)
         {
-            List<DeadLetterEntry>? result = await _daprClient
-                .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
-
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return new PagedResult<DeadLetterEntry>([], 0, null);
-            }
-
-            int skip = 0;
-            if (continuationToken is not null && int.TryParse(continuationToken, out int offset) && offset >= 0)
-            {
-                skip = offset;
-            }
-
-            List<DeadLetterEntry> page = result.Skip(skip).Take(count).ToList();
-            string? nextToken = skip + count < result.Count ? (skip + count).ToString() : null;
-
-            return new PagedResult<DeadLetterEntry>(page, result.Count, nextToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read dead letter index '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return new PagedResult<DeadLetterEntry>([], 0, null);
         }
+
+        int skip = 0;
+        if (continuationToken is not null && int.TryParse(continuationToken, out int offset) && offset >= 0)
+        {
+            skip = offset;
+        }
+
+        List<DeadLetterEntry> page = result.Skip(skip).Take(count).ToList();
+        string? nextToken = skip + count < result.Count ? (skip + count).ToString() : null;
+
+        return new PagedResult<DeadLetterEntry>(page, result.Count, nextToken);
     }
 }

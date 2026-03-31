@@ -6,7 +6,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -26,8 +25,7 @@ public class DaprTenantQueryServiceTests {
         return new DaprTenantQueryService(
             daprClient,
             options,
-            new NullAdminAuthContext(),
-            NullLogger<DaprTenantQueryService>.Instance);
+            new NullAdminAuthContext());
     }
 
     [Fact]
@@ -53,7 +51,7 @@ public class DaprTenantQueryServiceTests {
     }
 
     [Fact]
-    public async Task ListTenantsAsync_ReturnsEmpty_WhenServiceUnavailable() {
+    public async Task ListTenantsAsync_Throws_WhenServiceUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<IReadOnlyList<TenantSummary>>(
             Arg.Any<HttpRequestMessage>(),
@@ -62,9 +60,8 @@ public class DaprTenantQueryServiceTests {
 
         DaprTenantQueryService service = CreateService(daprClient);
 
-        IReadOnlyList<TenantSummary> result = await service.ListTenantsAsync();
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.ListTenantsAsync());
     }
 
     [Fact]
@@ -86,7 +83,7 @@ public class DaprTenantQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetTenantQuotasAsync_ReturnsFallback_WhenServiceUnavailable() {
+    public async Task GetTenantQuotasAsync_Throws_WhenServiceUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<TenantQuotas>(
             Arg.Any<HttpRequestMessage>(),
@@ -95,14 +92,12 @@ public class DaprTenantQueryServiceTests {
 
         DaprTenantQueryService service = CreateService(daprClient);
 
-        TenantQuotas result = await service.GetTenantQuotasAsync("tenant1");
-
-        result.TenantId.ShouldBe("tenant1");
-        result.MaxEventsPerDay.ShouldBe(0);
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetTenantQuotasAsync("tenant1"));
     }
 
     [Fact]
-    public async Task CompareTenantUsageAsync_ReturnsFallback_WhenServiceUnavailable() {
+    public async Task CompareTenantUsageAsync_Throws_WhenServiceUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.InvokeMethodAsync<TenantComparison>(
             Arg.Any<HttpRequestMessage>(),
@@ -111,9 +106,8 @@ public class DaprTenantQueryServiceTests {
 
         DaprTenantQueryService service = CreateService(daprClient);
 
-        TenantComparison result = await service.CompareTenantUsageAsync(["tenant1", "tenant2"]);
-
-        result.Tenants.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.CompareTenantUsageAsync(["tenant1", "tenant2"]));
     }
 
     [Fact]
@@ -164,8 +158,7 @@ public class DaprTenantQueryServiceTests {
             Options.Create(new AdminServerOptions {
                 TenantServiceAppId = TenantServiceAppId,
             }),
-            authContext,
-            NullLogger<DaprTenantQueryService>.Instance);
+            authContext);
 
         TenantComparison result = await service.CompareTenantUsageAsync(["tenant1", "tenant2"]);
 

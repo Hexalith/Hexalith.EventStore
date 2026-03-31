@@ -4,7 +4,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Admin.Server.Services;
@@ -19,7 +18,6 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
     private const string IndexKey = "admin:consistency:index";
 
     private readonly DaprClient _daprClient;
-    private readonly ILogger<DaprConsistencyQueryService> _logger;
     private readonly AdminServerOptions _options;
 
     /// <summary>
@@ -27,18 +25,14 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
     /// <param name="options">The admin server options.</param>
-    /// <param name="logger">The logger.</param>
     public DaprConsistencyQueryService(
         DaprClient daprClient,
-        IOptions<AdminServerOptions> options,
-        ILogger<DaprConsistencyQueryService> logger)
+        IOptions<AdminServerOptions> options)
     {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
         _options = options.Value;
-        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -48,23 +42,11 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(checkId);
         string key = $"{CheckKeyPrefix}{checkId}";
-        try
-        {
-            ConsistencyCheckResult? result = await _daprClient
-                .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
-                .ConfigureAwait(false);
+        ConsistencyCheckResult? result = await _daprClient
+            .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            return result is null ? null : ProjectTimeoutStatus(result);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read consistency check result '{Key}'.", key);
-            return null;
-        }
+        return result is null ? null : ProjectTimeoutStatus(result);
     }
 
     /// <inheritdoc/>
@@ -72,63 +54,51 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
         string? tenantId,
         CancellationToken ct = default)
     {
-        try
+        List<string>? index = await _daprClient
+            .GetStateAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
+
+        if (index is null or { Count: 0 })
         {
-            List<string>? index = await _daprClient
-                .GetStateAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
-
-            if (index is null or { Count: 0 })
-            {
-                return [];
-            }
-
-            List<ConsistencyCheckSummary> summaries = [];
-            foreach (string checkId in index)
-            {
-                string key = $"{CheckKeyPrefix}{checkId}";
-                ConsistencyCheckResult? result = await _daprClient
-                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
-                    .ConfigureAwait(false);
-
-                if (result is null)
-                {
-                    continue;
-                }
-
-                result = ProjectTimeoutStatus(result);
-
-                if (tenantId is not null && result.TenantId != tenantId)
-                {
-                    continue;
-                }
-
-                summaries.Add(new ConsistencyCheckSummary(
-                    result.CheckId,
-                    result.Status,
-                    result.TenantId,
-                    result.Domain,
-                    result.CheckTypes,
-                    result.StartedAtUtc,
-                    result.CompletedAtUtc,
-                    result.TimeoutUtc,
-                    result.StreamsChecked,
-                    result.AnomaliesFound));
-            }
-
-            return summaries
-                .OrderByDescending(s => s.StartedAtUtc)
-                .ToList();
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read consistency check index.");
             return [];
         }
+
+        List<ConsistencyCheckSummary> summaries = [];
+        foreach (string checkId in index)
+        {
+            string key = $"{CheckKeyPrefix}{checkId}";
+            ConsistencyCheckResult? result = await _daprClient
+                .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
+                .ConfigureAwait(false);
+
+            if (result is null)
+            {
+                continue;
+            }
+
+            result = ProjectTimeoutStatus(result);
+
+            if (tenantId is not null && result.TenantId != tenantId)
+            {
+                continue;
+            }
+
+            summaries.Add(new ConsistencyCheckSummary(
+                result.CheckId,
+                result.Status,
+                result.TenantId,
+                result.Domain,
+                result.CheckTypes,
+                result.StartedAtUtc,
+                result.CompletedAtUtc,
+                result.TimeoutUtc,
+                result.StreamsChecked,
+                result.AnomaliesFound));
+        }
+
+        return summaries
+            .OrderByDescending(s => s.StartedAtUtc)
+            .ToList();
     }
 
     private static ConsistencyCheckResult ProjectTimeoutStatus(ConsistencyCheckResult result)

@@ -51,29 +51,17 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
         CancellationToken ct = default)
     {
         string indexKey = $"admin:projections:{tenantId ?? "all"}";
-        try
-        {
-            List<ProjectionStatus>? result = await _daprClient
-                .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-                .ConfigureAwait(false);
+        List<ProjectionStatus>? result = await _daprClient
+            .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, indexKey, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-            if (result is null)
-            {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-                return [];
-            }
-
-            return result;
-        }
-        catch (OperationCanceledException)
+        if (result is null)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read projection index '{IndexKey}'.", indexKey);
+            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
+
+        return result;
     }
 
     /// <inheritdoc/>
@@ -83,36 +71,24 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
         CancellationToken ct = default)
     {
         string endpoint = $"api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}";
-        try
+        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+
+        using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
+            HttpMethod.Get, _options.EventStoreAppId, endpoint)
+            ?? new HttpRequestMessage(HttpMethod.Get, endpoint);
+
+        string? token = _authContext.GetToken();
+        if (token is not null)
         {
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
-
-            using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
-                HttpMethod.Get, _options.EventStoreAppId, endpoint)
-                ?? new HttpRequestMessage(HttpMethod.Get, endpoint);
-
-            string? token = _authContext.GetToken();
-            if (token is not null)
-            {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            }
-
-            ProjectionDetail? result = await _daprClient
-                .InvokeMethodAsync<ProjectionDetail>(request, cts.Token)
-                .ConfigureAwait(false);
-
-            return result ?? CreateEmptyProjectionDetail(tenantId, projectionName, "not-found");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to get projection detail for {TenantId}/{ProjectionName}.", tenantId, projectionName);
-            return CreateEmptyProjectionDetail(tenantId, projectionName, "unavailable");
-        }
+
+        ProjectionDetail? result = await _daprClient
+            .InvokeMethodAsync<ProjectionDetail>(request, cts.Token)
+            .ConfigureAwait(false);
+
+        return result ?? CreateEmptyProjectionDetail(tenantId, projectionName, "not-found");
     }
 
     private static ProjectionDetail CreateEmptyProjectionDetail(string tenantId, string projectionName, string status)
