@@ -1,15 +1,525 @@
 @page "/events"
 
-<PageTitle>Events - Hexalith EventStore</PageTitle>
+@using System.Collections.Concurrent
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.Abstractions.Models.Tenants
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@using Microsoft.Extensions.Logging
 
-<h1 style="font-size: 24px; margin: 0 0 16px;">Events</h1>
+@implements IAsyncDisposable
 
-<EmptyState Title="No events stored yet."
-            Description="Events will appear here once commands are processed and events are persisted."
-            Icon="@EventsIcon"
-            ActionLabel="Read the getting started guide"
-            ActionHref="https://github.com/Hexalith/Hexalith.EventStore/blob/main/docs/getting-started/quickstart.md" />
+@inject AdminStreamApiClient ApiClient
+@inject NavigationManager NavigationManager
+@inject DashboardRefreshService RefreshService
+@inject IJSRuntime JSRuntime
+@inject ILogger<Events> Logger
+
+<PageTitle>Events - Hexalith EventStore Admin</PageTitle>
+
+<h1>Events</h1>
+
+@if (_isLoading)
+{
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px;">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+    </div>
+}
+else if (_isForbidden)
+{
+    <EmptyState Title="Access Denied"
+                Description="You do not have permission to view events." />
+}
+else if (_errorMessage is not null)
+{
+    <EmptyState Title="Unable to load events"
+                Description="@_errorMessage" />
+}
+else
+{
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+        <StatCard Label="Recent Events" Value="@_allItems.Count.ToString()" Subtitle="From up to 50 active streams" />
+        <StatCard Label="Unique Event Types" Value="@ComputeUniqueEventTypes().ToString()" />
+        <StatCard Label="Active Streams" Value="@ComputeActiveStreams().ToString()" />
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+        <FluentSelect TOption="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
+                      Label="Tenant" Style="min-width: 140px;">
+            <FluentOption Value="@string.Empty">All Tenants</FluentOption>
+            @foreach (string tenant in _tenantOptions)
+            {
+                <FluentOption Value="@tenant">@tenant</FluentOption>
+            }
+        </FluentSelect>
+
+        <FluentTextField @bind-Value="_eventTypeFilter" @bind-Value:after="OnEventTypeFilterChanged"
+                         Label="Event Type" Placeholder="Filter by type..."
+                         Style="min-width: 180px;" />
+    </div>
+
+    @if (_filteredItems.Count > 0)
+    {
+        <div class="streams-grid-container">
+            <FluentDataGrid Items="@GetCurrentPage()" TGridItem="EventRow"
+                            Style="width: 100%;"
+                            OnRowClick="@(row => OnRowClick(row.Item))"
+                            GridTemplateColumns="1fr 1fr 1fr 1fr 1fr 1fr">
+                <TemplateColumn Title="Event Type">
+                    <span class="monospace grid-cell-truncate" title="@context.TypeName">@context.TypeName</span>
+                </TemplateColumn>
+                <PropertyColumn Property="@(e => e.TenantId)" Title="Tenant" Class="monospace" />
+                <PropertyColumn Property="@(e => e.Domain)" Title="Domain" Class="monospace" />
+                <TemplateColumn Title="Aggregate ID">
+                    <span class="monospace grid-cell-truncate" title="@context.AggregateId"
+                          style="cursor: pointer;">@context.AggregateId</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Correlation ID">
+                    <span class="monospace grid-cell-truncate" title="@context.CorrelationId"
+                          style="cursor: pointer;">@context.CorrelationId</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Timestamp" Class="monospace"
+                                SortBy="@(GridSort<EventRow>.ByDescending(e => e.Timestamp))"
+                                IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
+                    <span class="monospace grid-cell-truncate" style="font-size: 12px;"
+                          title="@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")">
+                        @context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                    </span>
+                </TemplateColumn>
+            </FluentDataGrid>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;"
+                 aria-live="polite">
+                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    Page @_currentPage of @_totalPages (@_filteredItems.Count total)
+                </span>
+                <div style="display: flex; gap: 8px;">
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  Disabled="@(_currentPage <= 1)"
+                                  OnClick="PreviousPage">Previous</FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                  Disabled="@(_currentPage >= _totalPages)"
+                                  OnClick="NextPage">Next</FluentButton>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <EmptyState Title="@(HasActiveFilters ? "No events found" : "No events recorded yet")"
+                    Description="@(HasActiveFilters ? "No events match the current filters." : "Events will appear here as commands are processed and produce state changes.")" />
+    }
+}
 
 @code {
-    private static RenderFragment EventsIcon => builder => builder.AddMarkupContent(0, "&#128340;");
+    private const int PageSize = 25;
+
+    private bool _isLoading = true;
+    private bool _isForbidden;
+    private string? _errorMessage;
+    private int _currentPage = 1;
+    private string _tenantFilter = string.Empty;
+    private string _eventTypeFilter = string.Empty;
+    private List<EventRow> _allItems = [];
+    private List<EventRow> _filteredItems = [];
+    private List<string> _tenantOptions = [];
+    private double? _pendingScrollTop;
+    private bool _hasRendered;
+    private bool _disposed;
+    private CancellationTokenSource? _cts;
+
+    private int _totalPages => _filteredItems.Count == 0
+        ? 1
+        : (int)Math.Ceiling((double)_filteredItems.Count / PageSize);
+
+    private bool HasActiveFilters => !string.IsNullOrEmpty(_tenantFilter)
+        || !string.IsNullOrWhiteSpace(_eventTypeFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new CancellationTokenSource();
+        ReadUrlParameters();
+        await LoadTenantsAsync();
+        await LoadEventsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _hasRendered = true;
+            RefreshService.OnDataChanged += OnRefreshSignal;
+        }
+
+        if (_pendingScrollTop is double scrollTop)
+        {
+            _pendingScrollTop = null;
+            await RestoreScrollTopAsync(scrollTop);
+        }
+    }
+
+    private void OnRefreshSignal(DashboardData data)
+    {
+        if (_disposed || !_hasRendered)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed || !_hasRendered)
+            {
+                return;
+            }
+
+            try
+            {
+                double scrollTop = await CaptureScrollTopAsync();
+                await LoadTenantsAsync();
+                await LoadEventsAsync();
+
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _pendingScrollTop = scrollTop;
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException) { }
+            catch (TaskCanceledException) { }
+            catch (InvalidOperationException) { }
+            catch (JSDisconnectedException) { }
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        RefreshService.OnDataChanged -= OnRefreshSignal;
+        if (_cts is not null)
+        {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query =
+            System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        string? page = query["page"];
+        if (int.TryParse(page, out int p) && p > 0)
+        {
+            _currentPage = p;
+        }
+
+        _tenantFilter = query["tenant"] ?? string.Empty;
+        _eventTypeFilter = query["eventType"] ?? string.Empty;
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        try
+        {
+            CancellationToken ct = _cts?.Token ?? CancellationToken.None;
+            IReadOnlyList<TenantSummary> tenants = await ApiClient.GetTenantsAsync(ct).ConfigureAwait(false);
+            _tenantOptions = tenants.Select(t => t.TenantId).Distinct().OrderBy(t => t).ToList();
+        }
+        catch
+        {
+            _tenantOptions = [];
+        }
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        _isLoading = true;
+        _isForbidden = false;
+        _errorMessage = null;
+
+        try
+        {
+            CancellationToken ct = _cts?.Token ?? CancellationToken.None;
+            string? tenantId = string.IsNullOrEmpty(_tenantFilter) ? null : _tenantFilter;
+            PagedResult<StreamSummary> streamsResult = await ApiClient
+                .GetRecentlyActiveStreamsAsync(tenantId, null, 50, ct);
+
+            IReadOnlyList<StreamSummary> streams = streamsResult.Items;
+            var perStreamResults = new ConcurrentBag<List<EventRow>>();
+
+            await Parallel.ForEachAsync(
+                streams,
+                new ParallelOptions { MaxDegreeOfParallelism = 10, CancellationToken = ct },
+                async (stream, token) =>
+                {
+                    try
+                    {
+                        PagedResult<TimelineEntry> timeline = await ApiClient
+                            .GetStreamTimelineAsync(
+                                stream.TenantId,
+                                stream.Domain,
+                                stream.AggregateId,
+                                null,
+                                null,
+                                100,
+                                token);
+
+                        List<EventRow> events = timeline.Items
+                            .Where(e => e.EntryType == TimelineEntryType.Event)
+                            .Select(e => new EventRow(
+                                stream.TenantId,
+                                stream.Domain,
+                                stream.AggregateId,
+                                e.SequenceNumber,
+                                e.Timestamp,
+                                e.TypeName,
+                                e.CorrelationId,
+                                e.UserId))
+                            .ToList();
+
+                        perStreamResults.Add(events);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(
+                            ex,
+                            "Failed to fetch timeline for stream {TenantId}/{Domain}/{AggregateId}, skipping",
+                            stream.TenantId,
+                            stream.Domain,
+                            stream.AggregateId);
+                    }
+                });
+
+            _allItems = perStreamResults
+                .SelectMany(x => x)
+                .OrderByDescending(e => e.Timestamp)
+                .ToList();
+
+            ApplyClientFilters();
+        }
+        catch (ForbiddenAccessException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _isForbidden = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Unable to load events. The admin backend may be unavailable.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = $"Unable to load events ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (OperationCanceledException)
+        {
+            // Navigation away or dispose — don't set error
+        }
+        catch (Exception)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Unable to load events.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyClientFilters()
+    {
+        if (_allItems.Count == 0)
+        {
+            _filteredItems = [];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_eventTypeFilter))
+        {
+            _filteredItems = _allItems.ToList();
+        }
+        else
+        {
+            _filteredItems = _allItems
+                .Where(e => e.TypeName.Contains(_eventTypeFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        if (_currentPage > _totalPages)
+        {
+            _currentPage = _totalPages;
+        }
+    }
+
+    private IQueryable<EventRow> GetCurrentPage()
+    {
+        if (_filteredItems.Count == 0)
+        {
+            return Array.Empty<EventRow>().AsQueryable();
+        }
+
+        return _filteredItems
+            .OrderByDescending(e => e.Timestamp)
+            .Skip((_currentPage - 1) * PageSize)
+            .Take(PageSize)
+            .AsQueryable();
+    }
+
+    private void OnRowClick(EventRow? row)
+    {
+        if (row is not null)
+        {
+            NavigationManager.NavigateTo(
+                $"/streams/{Uri.EscapeDataString(row.TenantId)}/{Uri.EscapeDataString(row.Domain)}/{Uri.EscapeDataString(row.AggregateId)}?detail={row.SequenceNumber}");
+        }
+    }
+
+    private async Task OnTenantFilterChanged()
+    {
+        _currentPage = 1;
+        await LoadEventsAsync();
+        UpdateUrl();
+    }
+
+    private void OnEventTypeFilterChanged()
+    {
+        _currentPage = 1;
+        ApplyClientFilters();
+        UpdateUrl();
+    }
+
+    private void PreviousPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            UpdateUrl();
+        }
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages)
+        {
+            _currentPage++;
+            UpdateUrl();
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParts = [];
+        if (_currentPage > 1)
+        {
+            queryParts.Add($"page={_currentPage}");
+        }
+
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParts.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_eventTypeFilter))
+        {
+            queryParts.Add($"eventType={Uri.EscapeDataString(_eventTypeFilter)}");
+        }
+
+        string url = queryParts.Count > 0
+            ? $"/events?{string.Join('&', queryParts)}"
+            : "/events";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private int ComputeUniqueEventTypes()
+        => _allItems.Select(e => e.TypeName).Distinct().Count();
+
+    private int ComputeActiveStreams()
+        => _allItems.Select(e => $"{e.TenantId}/{e.Domain}/{e.AggregateId}").Distinct().Count();
+
+    private async Task<double> CaptureScrollTopAsync()
+    {
+        if (_disposed || !_hasRendered)
+        {
+            return 0;
+        }
+
+        try
+        {
+            return await JSRuntime.InvokeAsync<double>("hexalithAdmin.getScrollTop");
+        }
+        catch (JSException)
+        {
+            return 0;
+        }
+        catch (TaskCanceledException)
+        {
+            return 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            return 0;
+        }
+    }
+
+    private async Task RestoreScrollTopAsync(double scrollTop)
+    {
+        if (_disposed || !_hasRendered)
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("hexalithAdmin.setScrollTop", scrollTop);
+        }
+        catch (JSException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+        }
+    }
+
+    private record EventRow(
+        string TenantId,
+        string Domain,
+        string AggregateId,
+        long SequenceNumber,
+        DateTimeOffset Timestamp,
+        string TypeName,
+        string CorrelationId,
+        string? UserId);
 }

@@ -81,7 +81,7 @@ public class TopologyCacheServiceTests
 
         apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(
-                tenants,
+                _ => Task.FromResult<IReadOnlyList<TenantSummary>>(tenants),
                 _ => throw new OperationCanceledException());
         apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(types);
@@ -103,7 +103,7 @@ public class TopologyCacheServiceTests
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
 
         apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => throw new OperationCanceledException());
+            .Returns<Task<IReadOnlyList<TenantSummary>>>(_ => throw new OperationCanceledException());
         apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(types);
 
