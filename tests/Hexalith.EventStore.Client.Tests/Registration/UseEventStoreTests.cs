@@ -171,6 +171,7 @@ public class UseEventStoreTests : IDisposable {
                 _ = lb.ClearProviders();
                 _ = lb.AddProvider(new CapturingLoggerProvider(logMessages));
                 _ = lb.SetMinimumLevel(LogLevel.Debug);
+                _ = lb.AddFilter(null, LogLevel.Debug);
             })
             .ConfigureServices(s => s.AddEventStore(
                 o => o.EnableRegistrationDiagnostics = true,
