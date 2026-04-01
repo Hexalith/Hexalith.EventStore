@@ -33,9 +33,18 @@ public class StubPageTests : AdminUITestContext {
 
     [Fact]
     public void EventsPage_RendersCorrectContent() {
+        AdminStreamApiClient mockStreamApi = Substitute.For<AdminStreamApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminStreamApiClient>.Instance);
+        _ = mockStreamApi.GetRecentlyActiveStreamsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<Hexalith.EventStore.Admin.Abstractions.Models.Streams.StreamSummary>([], 0, null)));
+        _ = mockStreamApi.GetTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
+        Services.AddScoped(_ => mockStreamApi);
+
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Events> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Events>();
-        cut.Markup.ShouldContain("No events stored yet.");
-        cut.Markup.ShouldContain("Read the getting started guide");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No events recorded yet"), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
