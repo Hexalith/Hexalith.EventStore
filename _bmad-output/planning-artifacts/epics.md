@@ -559,6 +559,47 @@ So that counter values, event streams, and the admin Commands page retain their 
 - Follows same pattern as `admin:stream-activity:{tenantId}` in `DaprStreamQueryService`
 - Sprint change proposal: `sprint-change-proposal-2026-03-30.md`
 
+### Story 15.12: Events Page — Cross-Stream Event Browser
+
+As a developer investigating event activity across streams,
+I want the Events page (`/events`) to show a filterable, paginated list of recent events from all active streams,
+So that I can browse event activity across the system without navigating to individual streams.
+
+**Acceptance Criteria:**
+
+**Given** the Events page loads,
+**When** streams have produced events,
+**Then** the page fetches recently active streams and their timelines, filters to Event entries, and displays them in a FluentDataGrid sorted by timestamp descending.
+
+**Given** the Events page is loaded,
+**When** I select a tenant from the filter dropdown,
+**Then** only events from that tenant are displayed.
+
+**Given** the Events page is loaded,
+**When** I type an event type name in the filter field,
+**Then** only events matching that type name (case-insensitive contains) are displayed.
+
+**Given** the Events page shows events,
+**When** I click an event row,
+**Then** I navigate to `/streams/{tenant}/{domain}/{aggregateId}?detail={sequenceNumber}`.
+
+**Given** the Events page is loaded,
+**When** new events are produced,
+**Then** the page refreshes automatically via `DashboardRefreshService.OnDataChanged`.
+
+**Given** the Admin API is unavailable,
+**When** the Events page loads,
+**Then** an error message is displayed (not a silent empty state).
+
+**Technical Notes:**
+
+- Approach A (UI-only): No backend changes. Aggregate events client-side from existing APIs
+- Fetch `GetRecentlyActiveStreamsAsync()` then `GetStreamTimelineAsync(count: 100)` per stream (capped at 50 streams)
+- Filter to `TimelineEntryType.Event`, merge and sort by timestamp descending
+- Follow Commands.razor pattern: StatCards, filters, FluentDataGrid, pagination, loading/error states
+- StatCards: Total Events, Unique Streams, Unique Event Types
+- Sprint change proposal: `sprint-change-proposal-2026-04-01-events-page.md`
+
 ### Epic 16: Admin Web UI — DBA Operations
 Storage management, snapshot controls, backup/restore, tenant management, dead-letter queue, consistency checker. Enables Journey 8 (Maria).
 **FRs covered:** FR76, FR77, FR78
