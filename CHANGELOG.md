@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.0.0...v1.1.0) (2026-04-01)
+
+
+### Features
+
+* **config:** update settings and add coderabbit configuration for review automation ([b072c08](https://github.com/Hexalith/Hexalith.EventStore/commit/b072c082579d6527293161fa644b1403faa8fee7))
+
 # 1.0.0 (2026-04-01)
 
 
