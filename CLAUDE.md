@@ -101,6 +101,31 @@ Defined in `.editorconfig`:
 - All existing and new tests must pass before a story is complete
 - Tier 1 tests run in CI on every PR; Tier 2 after DAPR slim init; Tier 3 optional
 
+## Commit Messages
+
+All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This is required for semantic-release to determine version bumps and generate changelogs.
+
+Format: `<type>(<optional scope>): <description>`
+
+- `feat:` — New feature (triggers **minor** version bump)
+- `fix:` — Bug fix (triggers **patch** version bump)
+- `docs:` — Documentation only
+- `refactor:` — Code change that neither fixes a bug nor adds a feature
+- `test:` — Adding or updating tests
+- `chore:` — Build process, CI, or tooling changes
+- `perf:` — Performance improvement
+
+For breaking changes, add `BREAKING CHANGE:` in the commit body or append `!` after the type (e.g., `feat!:`). This triggers a **major** version bump.
+
+Examples:
+```
+feat(contracts): add SnapshotInterval to EventStoreOptions
+fix(server): prevent duplicate event sequence numbers on concurrent writes
+docs: update quickstart with DAPR init prerequisites
+refactor(client): extract retry policy into shared helper
+feat!: rename EventEnvelope.StreamId to AggregateId
+```
+
 ## Branch Naming
 
 - `feat/<description>` — Features and enhancements
