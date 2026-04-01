@@ -11,7 +11,14 @@
       "Bash(gh run:*)",
       "Bash(gh release:*)",
       "Bash(gh pr:*)",
-      "Bash(npx markdownlint-cli2:*)"
+      "Bash(npx markdownlint-cli2:*)",
+      "Bash(find /d/Hexalith.EventStore/.github -maxdepth 2 -type f \\\\\\(-name *.yaml -o -name *.yml -o -name *.json -o -name *.md \\\\\\))",
+      "Bash(grep -r \"coderabbit\\\\|rabbitai\" /d/Hexalith.EventStore/*.json /d/Hexalith.EventStore/*.yml /d/Hexalith.EventStore/*.yaml)",
+      "Bash(find /d/Hexalith.EventStore -maxdepth 2 -type f \\\\\\(-name README* -o -name CONTRIBUTING* -o -name *.md \\\\\\))",
+      "Bash(find /d/Hexalith.EventStore/.github -type f \\\\\\(-name *.yml -o -name *.yaml \\\\\\))",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Read(//d/Hexalith.EventStore/**)"
     ]
   }
 }

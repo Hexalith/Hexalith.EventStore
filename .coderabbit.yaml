@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+  path_instructions:
+    - path: src/Hexalith.EventStore.Contracts/**
+      instructions: >
+        This project contains domain types (commands, events, results, identities).
+        Types must be immutable records. Verify Conventional Commits scope matches
+        "contracts" when changes touch this project.
+    - path: src/Hexalith.EventStore.Server/**
+      instructions: >
+        Server-side domain processors with DAPR integration. Aggregates must be
+        pure functions: Handle(Command, State?) -> DomainResult with Apply(Event)
+        on state. No direct state mutations.
+    - path: src/Hexalith.EventStore.Client/**
+      instructions: >
+        Client abstractions and DI registration. Ensure interfaces follow the
+        I-prefix convention and async methods have the Async suffix.
+    - path: tests/**
+      instructions: >
+        Tests use xUnit + Shouldly + NSubstitute. Verify fluent assertions (Shouldly)
+        are used instead of Assert.*. Ensure test classes follow naming conventions.
+    - path: "**/*.cs"
+      instructions: >
+        C# code must use file-scoped namespaces, Allman brace style, _camelCase for
+        private fields, I-prefix for interfaces, Async suffix for async methods.
+        Nullable reference types are enabled globally. Warnings are treated as errors.
+chat:
+  auto_reply: true
