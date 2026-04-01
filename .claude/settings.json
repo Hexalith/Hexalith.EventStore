@@ -18,7 +18,13 @@
       "Bash(find /d/Hexalith.EventStore/.github -type f \\\\\\(-name *.yml -o -name *.yaml \\\\\\))",
       "Bash(while read:*)",
       "Bash(do echo:*)",
-      "Read(//d/Hexalith.EventStore/**)"
+      "Read(//d/Hexalith.EventStore/**)",
+      "Bash(git -C /d/Hexalith.EventStore status)",
+      "Bash(git -C /d/Hexalith.EventStore diff)",
+      "Bash(git -C /d/Hexalith.EventStore log --oneline -5)",
+      "Bash(git -C /d/Hexalith.EventStore checkout -b docs/exclude-changelog-from-markdownlint)",
+      "Bash(git -C /d/Hexalith.EventStore add .markdownlint-cli2.jsonc .markdownlintignore)",
+      "Bash(git -C:*)"
     ]
   }
 }
