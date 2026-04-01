@@ -55,12 +55,40 @@ public class TopologyCacheService(AdminStreamApiClient apiClient)
 
         try
         {
-            IReadOnlyList<TenantSummary> tenants = await apiClient.GetTenantsAsync(ct).ConfigureAwait(false);
-            IReadOnlyList<AggregateTypeInfo> types = await apiClient.GetAggregateTypesAsync(ct: ct).ConfigureAwait(false);
+            bool hadCachedTopology = _tenants is not null || _domains is not null;
+            bool loadedTenants = false;
+            bool loadedDomains = false;
 
-            _tenants = tenants;
-            _domains = types.Select(t => t.Domain).Distinct().OrderBy(d => d).ToList();
-            _loaded = true;
+            try
+            {
+                _tenants = await apiClient.GetTenantsAsync(ct).ConfigureAwait(false);
+                loadedTenants = true;
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Best-effort sidebar data: keep stale tenants on HTTP timeout.
+            }
+            catch
+            {
+                // Best-effort sidebar data: keep stale tenants on failure.
+            }
+
+            try
+            {
+                IReadOnlyList<AggregateTypeInfo> types = await apiClient.GetAggregateTypesAsync(ct: ct).ConfigureAwait(false);
+                _domains = types.Select(t => t.Domain).Distinct().OrderBy(d => d).ToList();
+                loadedDomains = true;
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Best-effort sidebar data: keep stale domains on HTTP timeout.
+            }
+            catch
+            {
+                // Best-effort sidebar data: keep stale domains on failure.
+            }
+
+            _loaded = loadedTenants || loadedDomains || hadCachedTopology;
         }
         catch (OperationCanceledException)
         {

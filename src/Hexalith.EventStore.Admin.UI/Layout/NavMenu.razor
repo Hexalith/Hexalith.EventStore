@@ -69,10 +69,33 @@
     private bool _expanded = true;
     private bool _disposed;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         RefreshService.OnDataChanged += OnDataChanged;
-        await TopologyCache.EnsureLoadedAsync().ConfigureAwait(false);
+        _ = LoadTopologyAsync();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadTopologyAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await TopologyCache.EnsureLoadedAsync().ConfigureAwait(false);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component disposed during async callback
+        }
+        catch (Exception)
+        {
+            // Topology load failed — keep loading/empty state, don't block page startup
+        }
     }
 
     private async void OnDataChanged(DashboardData data)
