@@ -5,7 +5,7 @@
 This page covers common errors you may encounter during quickstart setup, DAPR integration, and deployment of Hexalith.EventStore. Issues are organized by symptom so you can quickly find the problem you are experiencing and follow step-by-step resolution instructions.
 
 > **Prerequisites:** [Prerequisites and Local Dev Environment](../getting-started/prerequisites.md), [Quickstart Guide](../getting-started/quickstart.md)
-
+>
 > **See also:** [API Error Reference](../reference/problems/index.md) -- for HTTP error responses (400, 401, 403, 404, 409, 429, 500, 501, 503) returned by the Command and Query APIs.
 
 ## Quickstart Errors

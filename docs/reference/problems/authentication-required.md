@@ -63,7 +63,7 @@ WWW-Authenticate: Bearer realm="hexalith-eventstore"
 
 2. Add the token to your request:
 
-    ```
+    ```text
     Authorization: Bearer <access_token>
     ```
 

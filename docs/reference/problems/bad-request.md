@@ -44,7 +44,7 @@ Content-Type: application/problem+json
 
 1. Include the required `correlationId` in the request path:
 
-    ```
+    ```text
     GET /api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890
     ```
 

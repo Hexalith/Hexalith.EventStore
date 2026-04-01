@@ -17,7 +17,7 @@ The domain microservice owns both the Apply logic and the projection state. Even
 
 ### Projection Update Flow
 
-```
+```text
 Events persisted by AggregateActor
         |
         v
@@ -43,7 +43,7 @@ ETag regenerated -> SignalR broadcast -> UI refreshes
 
 ### Query Flow
 
-```
+```text
 Blazor UI queries /api/v1/queries
         |
         v
@@ -61,13 +61,14 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - Concrete implementation of `CachingProjectionActor`
 - Registered with DAPR actor type name `"ProjectionActor"` (matching `QueryRouter.ProjectionActorTypeName`) in `ServiceCollectionExtensions`
 - Implements two actor interfaces:
-  - `IProjectionActor` (existing, read-only): `QueryAsync(QueryEnvelope)` — serves queries
-  - `IProjectionWriteActor` (new): `UpdateProjectionAsync(ProjectionState)` — receives state from projection builder
+    - `IProjectionActor` (existing, read-only): `QueryAsync(QueryEnvelope)` — serves queries
+    - `IProjectionWriteActor` (new): `UpdateProjectionAsync(ProjectionState)` — receives state from projection builder
 - `ExecuteQueryAsync` reads the last persisted state from DAPR actor state (cache miss path)
 - `CachingProjectionActor` base provides in-memory ETag caching on top (no double-caching — base caches in memory, subclass persists to DAPR state)
 - Keyed by query routing identity (existing 3-tier model)
 
 **Caching interaction:**
+
 1. Projection builder calls `UpdateProjectionAsync` → writes state to DAPR actor state + regenerates ETag
 2. Query arrives → `CachingProjectionActor.QueryAsync` checks in-memory ETag cache
 3. Cache miss (ETag changed) → calls `ExecuteQueryAsync` → reads from DAPR actor state → populates in-memory cache
@@ -104,11 +105,11 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - Convention-based: any registered domain service exposing `/project` gets automatic projection wiring
 - **Per-aggregate granularity**: one call per aggregate, not batched across aggregates
 - Contract:
-  - **Request**: `ProjectionRequest { string TenantId, string Domain, string AggregateId, ProjectionEventDto[] Events }`
-  - **Response**: `ProjectionResponse { string ProjectionType, JsonElement State }`
+    - **Request**: `ProjectionRequest { string TenantId, string Domain, string AggregateId, ProjectionEventDto[] Events }`
+    - **Response**: `ProjectionResponse { string ProjectionType, JsonElement State }`
 - `ProjectionEventDto` is a new wire-format DTO in Contracts (not the Server-internal `EventEnvelope`)
-  - Fields: `string EventTypeName, byte[] Payload, string SerializationFormat, long SequenceNumber, DateTimeOffset Timestamp, string CorrelationId`
-  - Mapped from Server `EventEnvelope` by the projection builder before sending
+    - Fields: `string EventTypeName, byte[] Payload, string SerializationFormat, long SequenceNumber, DateTimeOffset Timestamp, string CorrelationId`
+    - Mapped from Server `EventEnvelope` by the projection builder before sending
 - Domain service applies events to its own stored projection state
 - Domain service owns the projection state persistence (e.g., in-memory, DAPR state, or any store)
 - Returns the current state after applying the new events
@@ -190,6 +191,7 @@ The Sample domain service needs:
 ### Files to Create/Modify
 
 **Server project (src/Hexalith.EventStore.Server/):**
+
 - `Actors/EventReplayProjectionActor.cs` — new, concrete projection actor (implements IProjectionActor + IProjectionWriteActor)
 - `Actors/IProjectionWriteActor.cs` — new, write interface for projection state updates
 - `Actors/IAggregateActor.cs` — modified, add `GetEventsAsync(long fromSequence)`
@@ -202,11 +204,13 @@ The Sample domain service needs:
 - `Configuration/ProjectionOptions.cs` — new, configuration model
 
 **Contracts project (src/Hexalith.EventStore.Contracts/):**
+
 - `Projections/ProjectionRequest.cs` — new, `/project` endpoint request DTO
 - `Projections/ProjectionResponse.cs` — new, `/project` endpoint response DTO
 - `Projections/ProjectionEventDto.cs` — new, wire-format event DTO (not Server-internal EventEnvelope)
 
 **Sample domain service (samples/Hexalith.EventStore.Sample/):**
+
 - `Program.cs` — modified, add `/project` endpoint
 - `Counter/CounterProjectionHandler.cs` — new, thin handler reusing existing Apply logic
 
