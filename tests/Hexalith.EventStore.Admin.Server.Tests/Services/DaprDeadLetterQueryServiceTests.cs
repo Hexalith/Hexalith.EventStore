@@ -156,7 +156,7 @@ public class DaprDeadLetterQueryServiceTests
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_ReturnsEmpty_WhenExceptionThrown()
+    public async Task ListDeadLettersAsync_Throws_WhenExceptionThrown()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<List<DeadLetterEntry>>(
@@ -167,9 +167,8 @@ public class DaprDeadLetterQueryServiceTests
 
         DaprDeadLetterQueryService service = CreateService(daprClient);
 
-        PagedResult<DeadLetterEntry> result = await service.ListDeadLettersAsync("tenant-a", 10, null);
-
-        result.Items.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.ListDeadLettersAsync("tenant-a", 10, null));
     }
 
     [Fact]

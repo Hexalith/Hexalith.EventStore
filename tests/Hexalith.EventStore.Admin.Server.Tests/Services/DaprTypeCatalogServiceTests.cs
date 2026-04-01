@@ -160,7 +160,7 @@ public class DaprTypeCatalogServiceTests
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_ReturnsEmpty_WhenDaprThrows()
+    public async Task ListEventTypesAsync_Throws_WhenDaprThrows()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<List<EventTypeInfo>>(
@@ -171,9 +171,8 @@ public class DaprTypeCatalogServiceTests
 
         DaprTypeCatalogService service = CreateService(daprClient);
 
-        IReadOnlyList<EventTypeInfo> result = await service.ListEventTypesAsync("orders");
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.ListEventTypesAsync("orders"));
     }
 
     [Fact]

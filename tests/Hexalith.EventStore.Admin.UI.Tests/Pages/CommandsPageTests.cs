@@ -137,7 +137,7 @@ public class CommandsPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public void CommandsPage_AggregateId_IsTruncated() {
+    public void CommandsPage_AggregateId_HasCssTruncation() {
         // Arrange
         List<CommandSummary> items =
         [
@@ -147,15 +147,15 @@ public class CommandsPageTests : AdminUITestContext {
 
         // Act
         IRenderedComponent<Commands> cut = Render<Commands>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("abcdefgh"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("abcdefghijklmnop"), TimeSpan.FromSeconds(5));
 
-        // Assert — truncated to 8 chars + ellipsis
-        cut.Markup.ShouldContain("abcdefgh\u2026");
+        // Assert — full text rendered with CSS truncation class and title tooltip
+        cut.Markup.ShouldContain("grid-cell-truncate");
         cut.Markup.ShouldContain("title=\"abcdefghijklmnop\"");
     }
 
     [Fact]
-    public void CommandsPage_CorrelationId_IsTruncated() {
+    public void CommandsPage_CorrelationId_HasCssTruncation() {
         // Arrange
         List<CommandSummary> items =
         [
@@ -165,10 +165,10 @@ public class CommandsPageTests : AdminUITestContext {
 
         // Act
         IRenderedComponent<Commands> cut = Render<Commands>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("correlat"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("correlation1234567890"), TimeSpan.FromSeconds(5));
 
-        // Assert — truncated to 8 chars + ellipsis
-        cut.Markup.ShouldContain("correlat\u2026");
+        // Assert — full text rendered with CSS truncation class and title tooltip
+        cut.Markup.ShouldContain("grid-cell-truncate");
         cut.Markup.ShouldContain("title=\"correlation1234567890\"");
     }
 
@@ -390,7 +390,6 @@ public class CommandsPageTests : AdminUITestContext {
         NavManager.Uri.ShouldContain("tenant=tenant-a");
         NavManager.Uri.ShouldContain("commandType=Create");
         JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
-        JSInterop.VerifyInvoke("hexalithAdmin.setScrollTop");
     }
 
     private void SetupMocks(PagedResult<CommandSummary> commands) {

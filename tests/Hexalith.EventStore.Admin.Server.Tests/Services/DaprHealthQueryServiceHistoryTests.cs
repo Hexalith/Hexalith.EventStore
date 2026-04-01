@@ -174,7 +174,7 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_ReturnsEmpty_WhenStateStoreUnavailable()
+    public async Task GetComponentHealthHistoryAsync_Throws_WhenStateStoreUnavailable()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -186,10 +186,9 @@ public class DaprHealthQueryServiceHistoryTests
 
         DaprHealthQueryService service = CreateService(daprClient);
 
-        DaprComponentHealthTimeline result = await service.GetComponentHealthHistoryAsync(
-            now.AddHours(-1), now, null, default);
-
-        result.ShouldBe(DaprComponentHealthTimeline.Empty);
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetComponentHealthHistoryAsync(
+                now.AddHours(-1), now, null, default));
     }
 
     [Fact]

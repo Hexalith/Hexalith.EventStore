@@ -119,16 +119,15 @@ public class DaprHealthQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetDaprComponentStatusAsync_ReturnsEmpty_WhenSidecarUnavailable() {
+    public async Task GetDaprComponentStatusAsync_Throws_WhenSidecarUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         DaprHealthQueryService service = CreateService(daprClient);
 
-        IReadOnlyList<DaprComponentHealth> result = await service.GetDaprComponentStatusAsync();
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetDaprComponentStatusAsync());
     }
 
     [Fact]

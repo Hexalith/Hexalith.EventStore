@@ -104,36 +104,24 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     /// <inheritdoc/>
     public async Task<DaprSidecarInfo?> GetSidecarInfoAsync(CancellationToken ct = default)
     {
-        try
+        DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+        if (metadata is null)
         {
-            DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata is null)
-            {
-                return null;
-            }
-
-            // DAPR SDK 1.16.1 exposes Id, Components, Actors, Extended.
-            // RuntimeVersion, Subscriptions, HttpEndpoints are not available in this SDK version.
-            string runtimeVersion = metadata.Extended?.TryGetValue("daprRuntimeVersion", out string? version) == true
-                ? version ?? "unknown"
-                : "unknown";
-
-            return new DaprSidecarInfo(
-                string.IsNullOrWhiteSpace(metadata.Id) ? "unknown" : metadata.Id,
-                runtimeVersion,
-                metadata.Components?.Count ?? 0,
-                0,  // Subscriptions not exposed in SDK 1.16.1
-                0); // HttpEndpoints not exposed in SDK 1.16.1
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "DAPR sidecar metadata unavailable — cannot get sidecar info.");
             return null;
         }
+
+        // DAPR SDK 1.16.1 exposes Id, Components, Actors, Extended.
+        // RuntimeVersion, Subscriptions, HttpEndpoints are not available in this SDK version.
+        string runtimeVersion = metadata.Extended?.TryGetValue("daprRuntimeVersion", out string? version) == true
+            ? version ?? "unknown"
+            : "unknown";
+
+        return new DaprSidecarInfo(
+            string.IsNullOrWhiteSpace(metadata.Id) ? "unknown" : metadata.Id,
+            runtimeVersion,
+            metadata.Components?.Count ?? 0,
+            0,  // Subscriptions not exposed in SDK 1.16.1
+            0); // HttpEndpoints not exposed in SDK 1.16.1
     }
 
     /// <inheritdoc/>

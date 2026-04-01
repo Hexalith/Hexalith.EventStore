@@ -121,7 +121,7 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_ReturnsEmpty_WhenExceptionThrown()
+    public async Task GetStorageOverviewAsync_Throws_WhenExceptionThrown()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<StorageOverview>(
@@ -132,9 +132,8 @@ public class DaprStorageQueryServiceTests
 
         DaprStorageQueryService service = CreateService(daprClient);
 
-        StorageOverview result = await service.GetStorageOverviewAsync("tenant-a");
-
-        result.TotalEventCount.ShouldBe(0);
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetStorageOverviewAsync("tenant-a"));
     }
 
     [Fact]
@@ -202,7 +201,7 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetHotStreamsAsync_ReturnsEmpty_WhenExceptionThrown()
+    public async Task GetHotStreamsAsync_Throws_WhenExceptionThrown()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<List<StreamStorageInfo>>(
@@ -213,9 +212,8 @@ public class DaprStorageQueryServiceTests
 
         DaprStorageQueryService service = CreateService(daprClient);
 
-        IReadOnlyList<StreamStorageInfo> result = await service.GetHotStreamsAsync("tenant-a", 10);
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetHotStreamsAsync("tenant-a", 10));
     }
 
     // === GetCompactionJobsAsync ===

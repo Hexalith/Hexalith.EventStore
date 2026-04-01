@@ -70,7 +70,7 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetComponentsAsync_ReturnsEmpty_WhenSidecarUnavailable()
+    public async Task GetComponentsAsync_Throws_WhenSidecarUnavailable()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
@@ -78,9 +78,8 @@ public class DaprInfrastructureQueryServiceTests
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        IReadOnlyList<DaprComponentDetail> result = await service.GetComponentsAsync();
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetComponentsAsync());
     }
 
     [Fact]
@@ -159,7 +158,7 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_ReturnsNull_WhenSidecarUnavailable()
+    public async Task GetSidecarInfoAsync_Throws_WhenSidecarUnavailable()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
@@ -167,9 +166,8 @@ public class DaprInfrastructureQueryServiceTests
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
-
-        result.ShouldBeNull();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetSidecarInfoAsync());
     }
 
     [Fact]

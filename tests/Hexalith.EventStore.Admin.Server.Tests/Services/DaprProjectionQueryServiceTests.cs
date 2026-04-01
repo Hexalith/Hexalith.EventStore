@@ -91,7 +91,7 @@ public class DaprProjectionQueryServiceTests {
     }
 
     [Fact]
-    public async Task ListProjectionsAsync_ReturnsEmpty_WhenDaprThrows()
+    public async Task ListProjectionsAsync_Throws_WhenDaprThrows()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<List<ProjectionStatus>>(
@@ -102,9 +102,8 @@ public class DaprProjectionQueryServiceTests {
 
         DaprProjectionQueryService service = CreateService(daprClient);
 
-        IReadOnlyList<ProjectionStatus> result = await service.ListProjectionsAsync("tenant1");
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.ListProjectionsAsync("tenant1"));
     }
 
     [Fact]

@@ -100,7 +100,7 @@ public class DaprBackupQueryServiceTests
     }
 
     [Fact]
-    public async Task GetBackupJobsAsync_ReturnsEmpty_WhenExceptionThrown()
+    public async Task GetBackupJobsAsync_Throws_WhenExceptionThrown()
     {
         DaprClient daprClient = Substitute.For<DaprClient>();
         daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
@@ -111,9 +111,8 @@ public class DaprBackupQueryServiceTests
 
         DaprBackupQueryService service = CreateService(daprClient);
 
-        IReadOnlyList<BackupJob> result = await service.GetBackupJobsAsync("tenant-a");
-
-        result.ShouldBeEmpty();
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => service.GetBackupJobsAsync("tenant-a"));
     }
 
     [Fact]

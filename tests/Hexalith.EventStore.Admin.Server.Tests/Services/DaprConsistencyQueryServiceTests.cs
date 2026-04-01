@@ -6,7 +6,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
-using Microsoft.Extensions.Logging.Abstractions;
+
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -27,8 +27,7 @@ public class DaprConsistencyQueryServiceTests
 
         return new DaprConsistencyQueryService(
             daprClient,
-            options,
-            NullLogger<DaprConsistencyQueryService>.Instance);
+            options);
     }
 
     [Fact]
