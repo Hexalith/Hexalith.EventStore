@@ -38,6 +38,7 @@
 ### Task 1: Projection Contract DTOs
 
 **Files:**
+
 - Create: `src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs`
 - Create: `src/Hexalith.EventStore.Contracts/Projections/ProjectionRequest.cs`
 - Create: `src/Hexalith.EventStore.Contracts/Projections/ProjectionResponse.cs`
@@ -186,6 +187,7 @@ git commit -m "feat: add projection contract DTOs (ProjectionEventDto, Projectio
 ### Task 2: AggregateActor.GetEventsAsync
 
 **Files:**
+
 - Modify: `src/Hexalith.EventStore.Server/Actors/IAggregateActor.cs`
 - Modify: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
 - Test: `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs`
@@ -273,6 +275,7 @@ Add `using Hexalith.EventStore.Server.Events;` to the file.
 - [ ] **Step 4: Implement GetEventsAsync in AggregateActor**
 
 In `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`, add the implementation. It should:
+
 1. Parse the actor ID to get `AggregateIdentity` (existing pattern — see `ParseActorId` or how the actor derives identity)
 2. Use `IActorStateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)` to get current sequence
 3. If no metadata, return empty array
@@ -311,6 +314,7 @@ git commit -m "feat: add GetEventsAsync to IAggregateActor for projection event 
 ### Task 3: IProjectionWriteActor Interface
 
 **Files:**
+
 - Create: `src/Hexalith.EventStore.Server/Actors/IProjectionWriteActor.cs`
 
 - [ ] **Step 1: Create the interface**
@@ -358,6 +362,7 @@ git commit -m "feat: add IProjectionWriteActor interface for projection state up
 ### Task 4: EventReplayProjectionActor
 
 **Files:**
+
 - Create: `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs`
 - Test: `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs`
 
@@ -631,6 +636,7 @@ git commit -m "feat: add EventReplayProjectionActor with DAPR state persistence 
 ### Task 5: ProjectionOptions Configuration
 
 **Files:**
+
 - Create: `src/Hexalith.EventStore.Server/Configuration/ProjectionOptions.cs`
 
 - [ ] **Step 1: Create the configuration model**
@@ -701,11 +707,13 @@ git commit -m "feat: add ProjectionOptions configuration model"
 ### Task 6: ProjectionUpdateOrchestrator
 
 **Files:**
+
 - Create: `src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs`
 - Create: `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
 - Test: `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
 
 **Context:** This is the core component. After events are persisted, it:
+
 1. Calls `AggregateActor.GetEventsAsync(fromSequence)` to get new events
 2. Maps `EventEnvelope[]` to `ProjectionEventDto[]`
 3. Calls domain service `/project` endpoint via DAPR service invocation
@@ -861,6 +869,7 @@ git commit -m "feat: add ProjectionUpdateOrchestrator for event delivery and sta
 ### Task 7: Counter Projection Handler + /project Endpoint
 
 **Files:**
+
 - Create: `samples/Hexalith.EventStore.Sample/Counter/CounterProjectionHandler.cs`
 - Modify: `samples/Hexalith.EventStore.Sample/Program.cs`
 - Test: `samples/Hexalith.EventStore.Sample.Tests/Counter/CounterProjectionHandlerTests.cs` (if exists) or `tests/Hexalith.EventStore.Sample.Tests/`
@@ -933,6 +942,7 @@ app.MapPost("/project", (ProjectionRequest request, CounterProjectionHandler han
 ```
 
 Add the required using:
+
 ```csharp
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Sample.Counter;
@@ -982,6 +992,7 @@ git commit -m "feat: add /project endpoint to counter sample domain service"
 ### Task 8: Wire Immediate Trigger into Event Publication Path
 
 **Files:**
+
 - Modify: `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`
 - Modify: `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
 
@@ -1033,11 +1044,13 @@ _ = services.AddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchest
 In `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`, add `IProjectionUpdateOrchestrator` as a required constructor parameter (it's always registered — NoOp or real):
 
 Add to constructor parameters:
+
 ```csharp
 IProjectionUpdateOrchestrator projectionOrchestrator
 ```
 
 Add using:
+
 ```csharp
 using Hexalith.EventStore.Server.Projections;
 ```
@@ -1059,6 +1072,7 @@ _ = Task.Run(async () => {
 **Note:** Uses `CancellationToken.None` for both `Task.Run` and `UpdateProjectionAsync` — the original request's token may already be cancelled by the time the background task runs.
 
 Add a new log message:
+
 ```csharp
 [LoggerMessage(
     EventId = 1310,
