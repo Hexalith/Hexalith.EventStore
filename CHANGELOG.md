@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.1.0...v1.1.1) (2026-04-02)
+
+
+### Bug Fixes
+
+* **DaprRateLimitConfigSync:** improve logging for DAPR config store unavailability ([64babc2](https://github.com/Hexalith/Hexalith.EventStore/commit/64babc2d6016695e43c2455ec4cbd5f0fd4c6379))
+
 # [1.1.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.0.0...v1.1.0) (2026-04-01)
 
 
