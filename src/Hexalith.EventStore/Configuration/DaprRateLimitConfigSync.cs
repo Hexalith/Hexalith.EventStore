@@ -24,6 +24,7 @@ public class DaprRateLimitConfigSync(
     private const string PermitLimitSuffix = ":permit-limit";
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(10);
     private readonly Dictionary<string, string> _appliedTenantLimits = new(StringComparer.Ordinal);
+    private bool _configStoreUnavailableLogged;
 
     /// <summary>
     /// Timeout for each DAPR config store call. Short to avoid blocking startup or refresh cycles
@@ -59,6 +60,8 @@ public class DaprRateLimitConfigSync(
             string[] tenantIds = await LoadTenantIdsAsync(daprClient, cancellationToken).ConfigureAwait(false);
             Dictionary<string, string> latestTenantLimits = await LoadTenantPermitLimitsAsync(daprClient, tenantIds, cancellationToken).ConfigureAwait(false);
 
+            _configStoreUnavailableLogged = false;
+
             if (ApplyTenantOverrides(latestTenantLimits) && configuration is IConfigurationRoot configRoot) {
                 configRoot.Reload();
             }
@@ -76,9 +79,18 @@ public class DaprRateLimitConfigSync(
 
             // DAPR sidecar unavailable — graceful fallback to appsettings.json values.
             // This is expected in WebApplicationFactory tests and local development without DAPR.
-            logger.LogWarning(
-                ex,
-                "DAPR config store unavailable for rate limit sync. Falling back to appsettings.json values.");
+            // Log the first occurrence at Warning, then Debug to avoid log noise.
+            if (!_configStoreUnavailableLogged) {
+                _configStoreUnavailableLogged = true;
+                logger.LogWarning(
+                    ex,
+                    "DAPR config store unavailable for rate limit sync. Falling back to appsettings.json values.");
+            }
+            else {
+                logger.LogDebug(
+                    ex,
+                    "DAPR config store still unavailable for rate limit sync.");
+            }
         }
     }
 
