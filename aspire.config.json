@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+  }
+}
