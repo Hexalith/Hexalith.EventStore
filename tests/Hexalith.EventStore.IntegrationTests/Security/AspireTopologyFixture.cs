@@ -43,7 +43,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
-    public async Task InitializeAsync() {
+    public async ValueTask InitializeAsync() {
         // Ensure E2E tests always start Keycloak regardless of developer-local settings.
         // Program.cs allows disabling Keycloak via EnableKeycloak=false for standalone runs,
         // but this test suite depends on Keycloak being available.
@@ -117,7 +117,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
             pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
     }
 
-    public async Task DisposeAsync() {
+    public async ValueTask DisposeAsync() {
         _eventStoreClient?.Dispose();
         if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);

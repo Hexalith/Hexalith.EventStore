@@ -38,7 +38,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     public string KeycloakTokenEndpoint => _keycloakTokenEndpoint ?? throw new InvalidOperationException(
         "Keycloak not initialized. Ensure InitializeAsync has completed.");
 
-    public async Task InitializeAsync() {
+    public async ValueTask InitializeAsync() {
         // Enable Keycloak for real OIDC auth testing.
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "true");
@@ -92,7 +92,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
         _keycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
     }
 
-    public async Task DisposeAsync() {
+    public async ValueTask DisposeAsync() {
         _eventStoreClient?.Dispose();
         if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);

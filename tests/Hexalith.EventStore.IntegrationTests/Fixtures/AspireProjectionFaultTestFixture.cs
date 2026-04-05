@@ -25,7 +25,7 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
-    public async Task InitializeAsync() {
+    public async ValueTask InitializeAsync() {
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
 
@@ -68,7 +68,7 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
             .ConfigureAwait(false);
     }
 
-    public async Task DisposeAsync() {
+    public async ValueTask DisposeAsync() {
         _eventStoreClient?.Dispose();
 
         if (_app is not null) {

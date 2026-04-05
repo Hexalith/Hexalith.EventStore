@@ -41,7 +41,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
-    public async Task InitializeAsync() {
+    public async ValueTask InitializeAsync() {
         // Disable Keycloak for fast contract tests -- use symmetric key JWT auth instead.
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
@@ -99,7 +99,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
             .ConfigureAwait(false);
     }
 
-    public async Task DisposeAsync() {
+    public async ValueTask DisposeAsync() {
         _eventStoreClient?.Dispose();
         _adminServerClient?.Dispose();
         if (_app is not null) {

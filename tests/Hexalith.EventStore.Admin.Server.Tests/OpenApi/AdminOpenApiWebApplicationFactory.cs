@@ -22,7 +22,7 @@ public sealed class AdminOpenApiWebApplicationFactory : IAsyncLifetime
     private WebApplication? _app;
 
     /// <inheritdoc/>
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
@@ -73,7 +73,7 @@ public sealed class AdminOpenApiWebApplicationFactory : IAsyncLifetime
     public HttpClient CreateClient() => _app!.GetTestClient();
 
     /// <inheritdoc/>
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_app is not null)
         {
