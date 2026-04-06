@@ -21,6 +21,13 @@
     <Project Path="src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj" />
     <Project Path="src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj" />
   </Folder>
+  <Folder Name="/tenants/">
+    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj" />
+    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Aspire/Hexalith.Tenants.Aspire.csproj" />
+    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
+    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" />
+    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.ServiceDefaults/Hexalith.Tenants.ServiceDefaults.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj" />
