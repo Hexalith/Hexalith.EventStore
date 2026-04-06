@@ -14,6 +14,8 @@
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample.BlazorUI\Hexalith.EventStore.Sample.BlazorUI.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\..\Hexalith.Tenants\src\Hexalith.Tenants\Hexalith.Tenants.csproj" />
+    <ProjectReference Include="..\..\Hexalith.Tenants\src\Hexalith.Tenants.Aspire\Hexalith.Tenants.Aspire.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 
   <ItemGroup>

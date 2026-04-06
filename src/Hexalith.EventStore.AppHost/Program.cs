@@ -13,6 +13,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 string eventStoreAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.yaml");
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.eventstore-admin.yaml");
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
+string tenantsAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.tenants.yaml");
 
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
@@ -56,6 +57,17 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringCompa
         .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
 }
 
+// Add Tenants domain service with DAPR sidecar.
+// Tenants shares the same state store and pub/sub as EventStore.
+IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith_Tenants>("tenants")
+    .WithDaprSidecar(sidecar => sidecar
+        .WithOptions(new DaprSidecarOptions {
+            AppId = "tenants",
+            Config = tenantsAccessControlConfigPath,
+        })
+        .WithReference(eventStoreResources.StateStore)
+        .WithReference(eventStoreResources.PubSub));
+
 // Add sample domain service with DAPR sidecar.
 // NOTE: sample does NOT reference StateStore or PubSub components.
 // Domain services have zero infrastructure access (D4, AC #13).
@@ -85,6 +97,15 @@ IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalit
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"));
 
 if (keycloak is not null && realmUrl is not null) {
+    _ = tenants
+        .WithReference(keycloak)
+        .WaitFor(keycloak)
+        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
+        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
+        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+
     _ = adminServer
         .WithReference(keycloak)
         .WaitFor(keycloak)
