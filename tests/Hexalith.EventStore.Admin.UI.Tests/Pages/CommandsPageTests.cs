@@ -328,7 +328,7 @@ public class CommandsPageTests : AdminUITestContext {
         _ = _mockApiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TenantSummary>>(
             [
-                new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active, 0, 1),
+                new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active),
             ]));
 
         // Act — navigate with pre-set filters before rendering
@@ -368,7 +368,7 @@ public class CommandsPageTests : AdminUITestContext {
         _ = _mockApiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TenantSummary>>(
             [
-                new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active, 0, 1),
+                new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active),
             ]));
 
         NavManager.NavigateTo("/commands?status=processing&page=2&tenant=tenant-a&commandType=Create");

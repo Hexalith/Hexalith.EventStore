@@ -13,9 +13,8 @@ public static class TenantUsersCommand
 {
     internal static readonly List<ColumnDefinition> Columns =
     [
-        new("Email", "Email"),
+        new("User ID", "UserId"),
         new("Role", "Role"),
-        new("Added", "AddedAtUtc"),
     ];
 
     /// <summary>

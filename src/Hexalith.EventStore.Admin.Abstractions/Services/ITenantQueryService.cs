@@ -3,7 +3,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 namespace Hexalith.EventStore.Admin.Abstractions.Services;
 
 /// <summary>
-/// Tenant queries delegated to Hexalith.Tenants Client SDK at implementation time (Admin.Server).
+/// Tenant queries routed through EventStore query pipeline.
 /// EventStore does NOT own tenant state (FR77).
 /// </summary>
 public interface ITenantQueryService
@@ -16,23 +16,7 @@ public interface ITenantQueryService
     Task<IReadOnlyList<TenantSummary>> ListTenantsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Gets the quota information for a specific tenant.
-    /// </summary>
-    /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The tenant quotas.</returns>
-    Task<TenantQuotas> GetTenantQuotasAsync(string tenantId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Compares usage across multiple tenants.
-    /// </summary>
-    /// <param name="tenantIds">The tenant identifiers to compare.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The tenant comparison.</returns>
-    Task<TenantComparison> CompareTenantUsageAsync(IReadOnlyList<string> tenantIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets detailed tenant information including quotas.
+    /// Gets detailed tenant information.
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>

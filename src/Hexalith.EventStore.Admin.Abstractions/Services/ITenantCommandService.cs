@@ -4,7 +4,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 namespace Hexalith.EventStore.Admin.Abstractions.Services;
 
 /// <summary>
-/// Tenant write operations delegated to Hexalith.Tenants peer service.
+/// Tenant write operations routed through EventStore command pipeline.
 /// EventStore does NOT own tenant state (FR77).
 /// </summary>
 public interface ITenantCommandService
@@ -15,13 +15,13 @@ public interface ITenantCommandService
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> CreateTenantAsync(CreateTenantRequest request, CancellationToken ct = default);
 
-    /// <summary>Disables (suspends) an active tenant.</summary>
+    /// <summary>Disables an active tenant.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> DisableTenantAsync(string tenantId, CancellationToken ct = default);
 
-    /// <summary>Enables a suspended tenant.</summary>
+    /// <summary>Enables a disabled tenant.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
@@ -29,24 +29,24 @@ public interface ITenantCommandService
 
     /// <summary>Adds a user to a tenant.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="email">The user's email address.</param>
+    /// <param name="userId">The user identifier.</param>
     /// <param name="role">The user's role.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    Task<AdminOperationResult> AddUserToTenantAsync(string tenantId, string email, string role, CancellationToken ct = default);
+    Task<AdminOperationResult> AddUserToTenantAsync(string tenantId, string userId, string role, CancellationToken ct = default);
 
     /// <summary>Removes a user from a tenant.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="email">The user's email address.</param>
+    /// <param name="userId">The user identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    Task<AdminOperationResult> RemoveUserFromTenantAsync(string tenantId, string email, CancellationToken ct = default);
+    Task<AdminOperationResult> RemoveUserFromTenantAsync(string tenantId, string userId, CancellationToken ct = default);
 
     /// <summary>Changes a user's role within a tenant.</summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="email">The user's email address.</param>
+    /// <param name="userId">The user identifier.</param>
     /// <param name="newRole">The new role to assign.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    Task<AdminOperationResult> ChangeUserRoleAsync(string tenantId, string email, string newRole, CancellationToken ct = default);
+    Task<AdminOperationResult> ChangeUserRoleAsync(string tenantId, string userId, string newRole, CancellationToken ct = default);
 }

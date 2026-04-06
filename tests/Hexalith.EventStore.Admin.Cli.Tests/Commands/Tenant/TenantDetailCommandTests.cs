@@ -12,18 +12,14 @@ namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Tenant;
 
 public class TenantDetailCommandTests
 {
-    private static TenantDetail CreateTestDetail(TenantQuotas? quotas = null)
+    private static TenantDetail CreateTestDetail()
     {
         return new TenantDetail(
             "acme-corp",
             "Acme Corporation",
+            "Enterprise tenant",
             TenantStatusType.Active,
-            5000L,
-            3,
-            1073741824L,
-            DateTimeOffset.Parse("2025-01-15T10:30:00Z"),
-            quotas ?? new TenantQuotas("acme-corp", 100000, 10737418240L, 536870912L),
-            "Enterprise");
+            DateTimeOffset.Parse("2025-01-15T10:30:00Z"));
     }
 
     private static GlobalOptions CreateOptions(string format = "table")

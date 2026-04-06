@@ -81,35 +81,6 @@ public class AdminTenantApiClient(
     }
 
     /// <summary>
-    /// Gets the quota information for a specific tenant.
-    /// </summary>
-    /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The tenant quotas.</returns>
-    public virtual async Task<TenantQuotas> GetTenantQuotasAsync(string tenantId, CancellationToken ct = default)
-    {
-        HttpClient client = httpClientFactory.CreateClient("AdminApi");
-        string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/quotas";
-        try
-        {
-            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
-            TenantQuotas? result = await response.Content
-                .ReadFromJsonAsync<TenantQuotas>(ct)
-                .ConfigureAwait(false);
-            return result ?? new TenantQuotas(tenantId, 0, 0, 0);
-        }
-        catch (Exception ex) when (ex is not UnauthorizedAccessException
-            and not ForbiddenAccessException
-            and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to fetch tenant quotas from {Url}", url);
-            throw new ServiceUnavailableException("Unable to load tenant quotas.");
-        }
-    }
-
-    /// <summary>
     /// Gets users assigned to a tenant.
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
@@ -135,35 +106,6 @@ public class AdminTenantApiClient(
         {
             logger.LogError(ex, "Failed to fetch tenant users from {Url}", url);
             throw new ServiceUnavailableException("Unable to load tenant users.");
-        }
-    }
-
-    /// <summary>
-    /// Compares usage across multiple tenants.
-    /// </summary>
-    /// <param name="tenantIds">The tenant identifiers to compare.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The tenant comparison.</returns>
-    public virtual async Task<TenantComparison> CompareTenantUsageAsync(IReadOnlyList<string> tenantIds, CancellationToken ct = default)
-    {
-        HttpClient client = httpClientFactory.CreateClient("AdminApi");
-        const string url = "api/v1/admin/tenants/compare";
-        try
-        {
-            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new { TenantIds = tenantIds }, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
-            TenantComparison? result = await response.Content
-                .ReadFromJsonAsync<TenantComparison>(ct)
-                .ConfigureAwait(false);
-            return result ?? new TenantComparison([], DateTimeOffset.UtcNow);
-        }
-        catch (Exception ex) when (ex is not UnauthorizedAccessException
-            and not ForbiddenAccessException
-            and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to compare tenant usage at {Url}", url);
-            throw new ServiceUnavailableException("Unable to compare tenant usage.");
         }
     }
 
@@ -257,17 +199,17 @@ public class AdminTenantApiClient(
     /// Adds a user to a tenant.
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="email">The user's email address.</param>
+    /// <param name="userId">The user identifier.</param>
     /// <param name="role">The user's role.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> AddUserToTenantAsync(string tenantId, string email, string role, CancellationToken ct = default)
+    public virtual async Task<AdminOperationResult?> AddUserToTenantAsync(string tenantId, string userId, string role, CancellationToken ct = default)
     {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/users";
         try
         {
-            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new AddTenantUserRequest(email, role), ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new AddTenantUserRequest(userId, role), ct).ConfigureAwait(false);
             HandleErrorStatus(response);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
@@ -287,16 +229,16 @@ public class AdminTenantApiClient(
     /// Removes a user from a tenant.
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="email">The user's email address.</param>
+    /// <param name="userId">The user identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> RemoveUserFromTenantAsync(string tenantId, string email, CancellationToken ct = default)
+    public virtual async Task<AdminOperationResult?> RemoveUserFromTenantAsync(string tenantId, string userId, CancellationToken ct = default)
     {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/remove-user";
         try
         {
-            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new RemoveTenantUserRequest(email), ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new RemoveTenantUserRequest(userId), ct).ConfigureAwait(false);
             HandleErrorStatus(response);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
@@ -316,17 +258,17 @@ public class AdminTenantApiClient(
     /// Changes a user's role within a tenant.
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="email">The user's email address.</param>
+    /// <param name="userId">The user identifier.</param>
     /// <param name="newRole">The new role to assign.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> ChangeUserRoleAsync(string tenantId, string email, string newRole, CancellationToken ct = default)
+    public virtual async Task<AdminOperationResult?> ChangeUserRoleAsync(string tenantId, string userId, string newRole, CancellationToken ct = default)
     {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/change-role";
         try
         {
-            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new ChangeTenantUserRoleRequest(email, newRole), ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.PostAsJsonAsync(url, new ChangeTenantUserRoleRequest(userId, newRole), ct).ConfigureAwait(false);
             HandleErrorStatus(response);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)

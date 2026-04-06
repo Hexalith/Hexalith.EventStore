@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="../Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
     <ProjectReference Include="../Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
+    <ProjectReference Include="../../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,13 +6,9 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 /// Request to create a new tenant.
 /// </summary>
 /// <param name="TenantId">The tenant identifier (URL-safe, lowercase).</param>
-/// <param name="DisplayName">The tenant display name.</param>
-/// <param name="SubscriptionTier">Subscription tier: Standard, Premium, Enterprise.</param>
-/// <param name="MaxEventsPerDay">Maximum events allowed per day.</param>
-/// <param name="MaxStorageBytes">Maximum storage in bytes.</param>
+/// <param name="Name">The tenant name.</param>
+/// <param name="Description">Optional tenant description.</param>
 public record CreateTenantRequest(
     [Required] [RegularExpression(@"^[a-z0-9]+(-[a-z0-9]+)*$")] string TenantId,
-    [Required] string DisplayName,
-    [Required] string SubscriptionTier,
-    [Range(1, long.MaxValue)] long MaxEventsPerDay,
-    [Range(1, long.MaxValue)] long MaxStorageBytes);
+    [Required] string Name,
+    string? Description);

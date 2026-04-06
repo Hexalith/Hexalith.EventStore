@@ -14,10 +14,8 @@ public static class TenantListCommand
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Tenant ID", "TenantId"),
-        new("Display Name", "DisplayName"),
+        new("Name", "Name"),
         new("Status", "Status"),
-        new("Events", "EventCount", Align: Alignment.Right),
-        new("Domains", "DomainCount", Align: Alignment.Right),
     ];
 
     /// <summary>

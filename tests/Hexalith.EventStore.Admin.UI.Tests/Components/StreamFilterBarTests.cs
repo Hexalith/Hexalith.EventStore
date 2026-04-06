@@ -42,8 +42,8 @@ public class StreamFilterBarTests : AdminUITestContext
     {
         IReadOnlyList<TenantSummary> tenants =
         [
-            new("tenant-a", "Acme Corp", TenantStatusType.Active, 1000, 5),
-            new("tenant-b", "Widget Co", TenantStatusType.Active, 500, 2),
+            new("tenant-a", "Acme Corp", TenantStatusType.Active),
+            new("tenant-b", "Widget Co", TenantStatusType.Active),
         ];
 
         IRenderedComponent<StreamFilterBar> cut = Render<StreamFilterBar>(p => p

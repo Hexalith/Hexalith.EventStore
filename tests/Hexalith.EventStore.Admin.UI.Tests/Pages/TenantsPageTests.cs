@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
@@ -16,12 +18,10 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Tenants page.
 /// </summary>
-public class TenantsPageTests : AdminUITestContext
-{
+public class TenantsPageTests : AdminUITestContext {
     private readonly AdminTenantApiClient _mockTenantApi;
 
-    public TenantsPageTests()
-    {
+    public TenantsPageTests() {
         _mockTenantApi = Substitute.For<AdminTenantApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminTenantApiClient>.Instance);
@@ -45,13 +45,11 @@ public class TenantsPageTests : AdminUITestContext
     // ===== Merge-blocking tests (5.1-5.16) =====
 
     [Fact]
-    public void TenantsPage_RendersStatCards_WithCorrectValues()
-    {
+    public void TenantsPage_RendersStatCards_WithCorrectValues() {
         // Arrange (AC: 2)
         SetupTenants([
             CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
-            CreateTenant("t-2", "Tenant Two", TenantStatusType.Suspended),
-            CreateTenant("t-3", "Tenant Three", TenantStatusType.Onboarding),
+            CreateTenant("t-2", "Tenant Two", TenantStatusType.Disabled),
         ]);
 
         // Act
@@ -61,13 +59,11 @@ public class TenantsPageTests : AdminUITestContext
         // Assert
         cut.Markup.ShouldContain("Total Tenants");
         cut.Markup.ShouldContain("Active");
-        cut.Markup.ShouldContain("Suspended");
-        cut.Markup.ShouldContain("Onboarding");
+        cut.Markup.ShouldContain("Disabled");
     }
 
     [Fact]
-    public void TenantsPage_ShowsSkeletonCards_DuringLoading()
-    {
+    public void TenantsPage_ShowsSkeletonCards_DuringLoading() {
         // Arrange (AC: 2)
         TaskCompletionSource<IReadOnlyList<TenantSummary>> tcs = new();
         _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
@@ -81,12 +77,11 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_Grid_RendersAllTenants()
-    {
+    public void TenantsPage_Grid_RendersAllTenants() {
         // Arrange (AC: 1)
         SetupTenants([
             CreateTenant("tenant-alpha", "Alpha Corp", TenantStatusType.Active),
-            CreateTenant("tenant-beta", "Beta Inc", TenantStatusType.Suspended),
+            CreateTenant("tenant-beta", "Beta Inc", TenantStatusType.Disabled),
         ]);
 
         // Act
@@ -101,8 +96,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_ShowsEmptyState_WhenNoTenants()
-    {
+    public void TenantsPage_ShowsEmptyState_WhenNoTenants() {
         // Arrange (AC: 1)
         SetupTenants([]);
 
@@ -115,8 +109,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_ShowsIssueBanner_OnApiError()
-    {
+    public void TenantsPage_ShowsIssueBanner_OnApiError() {
         // Arrange (AC: 13)
         _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("test"));
@@ -130,8 +123,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_HasH1Heading()
-    {
+    public void TenantsPage_HasH1Heading() {
         // Arrange (AC: 15)
         SetupTenants([]);
 
@@ -144,8 +136,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_CreateButton_HiddenForReadOnlyUser()
-    {
+    public void TenantsPage_CreateButton_HiddenForReadOnlyUser() {
         // Arrange (AC: 14)
         SetupReadOnlyUser();
         SetupTenants([
@@ -161,8 +152,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_CreateButton_VisibleForAdminUser()
-    {
+    public void TenantsPage_CreateButton_VisibleForAdminUser() {
         // Arrange (AC: 14)
         SetupTenants([
             CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
@@ -177,32 +167,46 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task TenantsPage_CreateWizard_CallsCreateTenantAsync()
-    {
+    public async Task TenantsPage_CreateDialog_SubmitsCreateTenantRequest() {
         // Arrange (AC: 5)
         SetupTenants([CreateTenant("t-1", "Existing", TenantStatusType.Active)]);
         _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "op-1", "Created", null));
-        _ = _mockTenantApi.AddUserToTenantAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new AdminOperationResult(true, "op-2", "User added", null));
 
         // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Tenant"), TimeSpan.FromSeconds(5));
 
-        // Click Create Tenant button to open wizard
+        // Click Create Tenant button to open dialog
         AngleSharp.Dom.IElement createBtn = cut.FindAll("fluent-button")
             .First(b => b.TextContent.Contains("Create Tenant"));
         await cut.InvokeAsync(() => createBtn.Click());
 
-        // Verify wizard opened (Step 1 visible)
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Step 1"), TimeSpan.FromSeconds(2));
-        cut.Markup.ShouldContain("Tenant ID");
+        // Verify dialog opened with single-step fields
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant ID"), TimeSpan.FromSeconds(2));
+        SetPrivateField(cut.Instance, "_createTenantId", "acme-corp");
+        SetPrivateField(cut.Instance, "_createName", "Acme Corp");
+        SetPrivateField(cut.Instance, "_createDescription", "Primary tenant");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateTenantConfirm"));
+
+        cut.WaitForAssertion(() => {
+            _ = _mockTenantApi.Received(1).CreateTenantAsync(
+                Arg.Is<CreateTenantRequest>(request => request.TenantId == "acme-corp"
+                    && request.Name == "Acme Corp"
+                    && request.Description == "Primary tenant"),
+                Arg.Any<CancellationToken>());
+        }, TimeSpan.FromSeconds(2));
+
+        _ = _mockTenantApi.DidNotReceive().AddUserToTenantAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void TenantsPage_CreateWizard_ShowsErrorOnFailure()
-    {
+    public async Task TenantsPage_CreateDialog_StaysOpenWhenCreateFails() {
         // Arrange (AC: 5)
         SetupTenants([]);
         _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
@@ -212,18 +216,33 @@ public class TenantsPageTests : AdminUITestContext
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants configured"), TimeSpan.FromSeconds(5));
 
-        // Assert — empty state renders with create action
-        cut.Markup.ShouldContain("Create your first tenant");
+        AngleSharp.Dom.IElement createBtn = cut.FindAll("fluent-button")
+            .First(b => b.TextContent.Contains("Create Tenant"));
+        await cut.InvokeAsync(() => createBtn.Click());
+
+        SetPrivateField(cut.Instance, "_createTenantId", "acme-corp");
+        SetPrivateField(cut.Instance, "_createName", "Acme Corp");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateTenantConfirm"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Tenant ID");
+            _ = _mockTenantApi.Received(1).CreateTenantAsync(
+                Arg.Is<CreateTenantRequest>(request => request.TenantId == "acme-corp"
+                    && request.Name == "Acme Corp"
+                    && request.Description == null),
+                Arg.Any<CancellationToken>());
+        }, TimeSpan.FromSeconds(2));
+
+        _ = _mockTenantApi.Received(1).ListTenantsAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void TenantsPage_StatusBadges_RenderCorrectly()
-    {
+    public void TenantsPage_StatusBadges_RenderCorrectly() {
         // Arrange (AC: 1)
         SetupTenants([
             CreateTenant("t-active", "Active Tenant", TenantStatusType.Active),
-            CreateTenant("t-suspended", "Suspended Tenant", TenantStatusType.Suspended),
-            CreateTenant("t-onboarding", "Onboarding Tenant", TenantStatusType.Onboarding),
+            CreateTenant("t-disabled", "Disabled Tenant", TenantStatusType.Disabled),
         ]);
 
         // Act
@@ -232,17 +251,15 @@ public class TenantsPageTests : AdminUITestContext
 
         // Assert
         cut.Markup.ShouldContain("Status: Active");
-        cut.Markup.ShouldContain("Status: Suspended");
-        cut.Markup.ShouldContain("Status: Onboarding");
+        cut.Markup.ShouldContain("Status: Disabled");
     }
 
     [Fact]
-    public void TenantsPage_DisableButton_OnlyOnActiveTenants()
-    {
+    public void TenantsPage_DisableButton_OnlyOnActiveTenants() {
         // Arrange (AC: 6)
         SetupTenants([
             CreateTenant("t-active", "Active Tenant", TenantStatusType.Active),
-            CreateTenant("t-suspended", "Suspended Tenant", TenantStatusType.Suspended),
+            CreateTenant("t-disabled", "Disabled Tenant", TenantStatusType.Disabled),
         ]);
 
         // Act
@@ -254,11 +271,10 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_EnableButton_OnlyOnSuspendedTenants()
-    {
+    public void TenantsPage_EnableButton_OnlyOnDisabledTenants() {
         // Arrange (AC: 6)
         SetupTenants([
-            CreateTenant("t-suspended", "Suspended Tenant", TenantStatusType.Suspended),
+            CreateTenant("t-disabled", "Disabled Tenant", TenantStatusType.Disabled),
         ]);
 
         // Act
@@ -270,86 +286,65 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_QuotaBar_RenderCorrectColors()
-    {
-        // Arrange (AC: 9) — quota at 50% usage (green)
-        SetupTenantsWithQuotas(
-            [CreateTenant("t-1", "Tenant One", TenantStatusType.Active)],
-            new Dictionary<string, TenantQuotas>
-            {
-                ["t-1"] = new TenantQuotas("t-1", 10000, 1_073_741_824, 536_870_912), // 50% usage
-            });
-
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Quota usage"), TimeSpan.FromSeconds(5));
-
-        // Assert — green color for < 75%
-        cut.Markup.ShouldContain("var(--hexalith-status-success)");
-    }
-
-    [Fact]
-    public void TenantsPage_CreateWizard_PartialFailure_ShowsWarning()
-    {
-        // Arrange (AC: 5) — create succeeds, add user fails = partial failure
-        SetupTenants([
-            CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
-        ]);
+    public async Task TenantsPage_CreateDialog_ReloadsAfterSuccessfulCreate() {
+        // Arrange (AC: 5) — successful create refreshes the tenant list only.
+        _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<IReadOnlyList<TenantSummary>>([CreateTenant("t-1", "Tenant One", TenantStatusType.Active)]),
+                Task.FromResult<IReadOnlyList<TenantSummary>>([CreateTenant("t-1", "Tenant One", TenantStatusType.Active), CreateTenant("acme-corp", "Acme Corp", TenantStatusType.Active)]));
         _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "op-1", "Created", null));
-        _ = _mockTenantApi.AddUserToTenantAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new AdminOperationResult(false, "err-2", "User service down", null));
 
-        // Act — verify page renders with Create Tenant button (admin user default)
+        // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Tenant"), TimeSpan.FromSeconds(5));
 
-        // Assert — page loaded with Create Tenant button for admin context
-        cut.Markup.ShouldContain("Create Tenant");
-        cut.Markup.ShouldContain("Compare Tenants");
-    }
+        AngleSharp.Dom.IElement createBtn = cut.FindAll("fluent-button")
+            .First(b => b.TextContent.Contains("Create Tenant"));
+        await cut.InvokeAsync(() => createBtn.Click());
 
-    [Fact]
-    public void TenantsPage_CompareButton_VisibleForReadOnlyUser()
-    {
-        // Arrange (AC: 14)
-        SetupReadOnlyUser();
-        SetupTenants([
-            CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
-            CreateTenant("t-2", "Tenant Two", TenantStatusType.Active),
-        ]);
+        SetPrivateField(cut.Instance, "_createTenantId", "acme-corp");
+        SetPrivateField(cut.Instance, "_createName", "Acme Corp");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateTenantConfirm"));
 
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Compare Tenants"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => {
+            _ = _mockTenantApi.Received(2).ListTenantsAsync(Arg.Any<CancellationToken>());
+            cut.Markup.ShouldContain("acme-corp");
+        }, TimeSpan.FromSeconds(2));
 
-        // Assert — Compare button visible for all users (read-only operation)
-        cut.Markup.ShouldContain("Compare Tenants");
+        _ = _mockTenantApi.DidNotReceive().AddUserToTenantAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     // ===== Recommended tests (5.17-5.31) =====
 
     [Fact]
-    public void TenantsPage_StatusFilter_ShowsCorrectSubset()
-    {
+    public async Task TenantsPage_StatusFilter_ShowsCorrectSubset() {
         // Arrange (AC: 3)
         SetupTenants([
             CreateTenant("t-1", "Active One", TenantStatusType.Active),
-            CreateTenant("t-2", "Suspended One", TenantStatusType.Suspended),
+            CreateTenant("t-2", "Disabled One", TenantStatusType.Disabled),
         ]);
 
         // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Active One"), TimeSpan.FromSeconds(5));
 
-        // Assert — both tenants visible with default "All" filter
-        cut.Markup.ShouldContain("Active One");
-        cut.Markup.ShouldContain("Suspended One");
+        SetPrivateField(cut.Instance, "_statusFilterInput", "Disabled");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnStatusFilterChanged"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Disabled One");
+            cut.Markup.ShouldNotContain("Active One");
+            NavManager.Uri.ShouldContain("status=Disabled");
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public void TenantsPage_SearchFilter_FiltersByTenantId()
-    {
+    public async Task TenantsPage_SearchFilter_FiltersByTenantId() {
         // Arrange (AC: 3)
         SetupTenants([
             CreateTenant("acme-corp", "ACME Corporation", TenantStatusType.Active),
@@ -360,16 +355,20 @@ public class TenantsPageTests : AdminUITestContext
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("acme-corp"), TimeSpan.FromSeconds(5));
 
-        // Assert — both visible initially
-        cut.Markup.ShouldContain("acme-corp");
-        cut.Markup.ShouldContain("beta-inc");
+        SetPrivateField(cut.Instance, "_searchFilterInput", "acme");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnDebounceElapsed", (object?)null));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("acme-corp");
+            cut.Markup.ShouldNotContain("beta-inc");
+            NavManager.Uri.ShouldContain("search=acme");
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public void TenantsPage_DetailPanel_LoadsOnRowClick()
-    {
+    public void TenantsPage_DetailPanel_LoadsOnRowClick() {
         // Arrange (AC: 4) — detail API returns data
-        TenantDetail detail = new("t-1", "Tenant One", TenantStatusType.Active, 1000, 2, 524288, DateTimeOffset.UtcNow.AddDays(-30), null, "Standard");
+        TenantDetail detail = new("t-1", "Tenant One", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-30));
         _ = _mockTenantApi.GetTenantDetailAsync("t-1", Arg.Any<CancellationToken>())
             .Returns(detail);
         _ = _mockTenantApi.GetTenantUsersAsync("t-1", Arg.Any<CancellationToken>())
@@ -385,8 +384,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_DetailPanel_ShowsFallback_WhenServiceUnavailable()
-    {
+    public void TenantsPage_DetailPanel_ShowsFallback_WhenServiceUnavailable() {
         // Arrange (AC: 16) — detail API fails
         _ = _mockTenantApi.GetTenantDetailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("test"));
@@ -403,59 +401,7 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_CompareButton_DisabledWithFewerThan2Tenants()
-    {
-        // Arrange (AC: 8)
-        SetupTenants([
-            CreateTenant("t-1", "Only Tenant", TenantStatusType.Active),
-        ]);
-
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Compare Tenants"), TimeSpan.FromSeconds(5));
-
-        // Assert — button is disabled
-        cut.Markup.ShouldContain("At least 2 tenants required");
-    }
-
-    [Fact]
-    public void TenantsPage_QuotaShows_Unlimited_WhenMaxStorageIsZero()
-    {
-        // Arrange (AC: 9)
-        SetupTenantsWithQuotas(
-            [CreateTenant("t-1", "Tenant One", TenantStatusType.Active)],
-            new Dictionary<string, TenantQuotas>
-            {
-                ["t-1"] = new TenantQuotas("t-1", 10000, 0, 0), // Unlimited
-            });
-
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Unlimited"), TimeSpan.FromSeconds(5));
-
-        // Assert
-        cut.Markup.ShouldContain("Unlimited");
-    }
-
-    [Fact]
-    public void TenantsPage_DisableEnable_DisabledForOnboardingTenants()
-    {
-        // Arrange (AC: 6)
-        SetupTenants([
-            CreateTenant("t-onboarding", "Onboarding Tenant", TenantStatusType.Onboarding),
-        ]);
-
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Provisioning"), TimeSpan.FromSeconds(5));
-
-        // Assert — provisioning button is disabled
-        cut.Markup.ShouldContain("Tenant is being provisioned");
-    }
-
-    [Fact]
-    public void TenantsPage_ServiceDown_ShowsIssueBannerForTenantsService()
-    {
+    public void TenantsPage_ServiceDown_ShowsIssueBannerForTenantsService() {
         // Arrange (AC: 16, 25) — Service unavailable on write
         _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("Tenants service is not responding"));
@@ -469,12 +415,11 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TenantsPage_UrlParameters_ReadOnInit()
-    {
+    public void TenantsPage_UrlParameters_ReadOnInit() {
         // Arrange (AC: 10) — verify URL parameters are parsed
         SetupTenants([
             CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
-            CreateTenant("t-2", "Tenant Two", TenantStatusType.Suspended),
+            CreateTenant("t-2", "Tenant Two", TenantStatusType.Disabled),
         ]);
 
         // Act — render the page (URL parsing happens in OnInitializedAsync)
@@ -487,114 +432,114 @@ public class TenantsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task TenantsPage_AddUser_CallsAddUserToTenantAsync()
-    {
+    public async Task TenantsPage_AddUser_CallsAddUserToTenantAsync() {
         // Arrange (AC: 7)
-        TenantDetail detail = new("t-1", "Tenant One", TenantStatusType.Active, 1000, 2, 524288, DateTimeOffset.UtcNow.AddDays(-30), null, "Standard");
+        TenantSummary tenant = CreateTenant("t-1", "Tenant One", TenantStatusType.Active);
+        TenantDetail detail = new("t-1", "Tenant One", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-30));
         _ = _mockTenantApi.GetTenantDetailAsync("t-1", Arg.Any<CancellationToken>())
             .Returns(detail);
         _ = _mockTenantApi.GetTenantUsersAsync("t-1", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([]));
+            .Returns(
+                Task.FromResult<IReadOnlyList<TenantUser>>([]),
+                Task.FromResult<IReadOnlyList<TenantUser>>([new TenantUser("user-001", "TenantContributor")]));
         _ = _mockTenantApi.AddUserToTenantAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "op-1", "Added", null));
-        SetupTenants([CreateTenant("t-1", "Tenant One", TenantStatusType.Active)]);
+        SetupTenants([tenant]);
 
         // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("t-1"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Add User"), TimeSpan.FromSeconds(2));
 
-        // Assert — page loaded with tenant data
-        await _mockTenantApi.Received(1).ListTenantsAsync(Arg.Any<CancellationToken>());
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OpenAddUserDialog"));
+        SetPrivateField(cut.Instance, "_addUserId", "user-001");
+        SetPrivateField(cut.Instance, "_addUserRole", "TenantContributor");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnAddUserConfirm"));
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            _ = _mockTenantApi.Received(1).AddUserToTenantAsync(
+                "t-1",
+                "user-001",
+                "TenantContributor",
+                Arg.Any<CancellationToken>());
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public async Task TenantsPage_RemoveUser_CallsRemoveUserFromTenantAsync()
-    {
+    public async Task TenantsPage_RemoveUser_CallsRemoveUserFromTenantAsync() {
         // Arrange (AC: 7)
-        TenantDetail detail = new("t-1", "Tenant One", TenantStatusType.Active, 1000, 2, 524288, DateTimeOffset.UtcNow.AddDays(-30), null, "Standard");
-        TenantUser user = new("user@test.com", "Admin", DateTimeOffset.UtcNow.AddDays(-10));
+        TenantSummary tenant = CreateTenant("t-1", "Tenant One", TenantStatusType.Active);
+        TenantDetail detail = new("t-1", "Tenant One", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-30));
+        TenantUser user = new("user-001", "TenantOwner");
         _ = _mockTenantApi.GetTenantDetailAsync("t-1", Arg.Any<CancellationToken>())
             .Returns(detail);
         _ = _mockTenantApi.GetTenantUsersAsync("t-1", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+            .Returns(
+                Task.FromResult<IReadOnlyList<TenantUser>>([user]),
+                Task.FromResult<IReadOnlyList<TenantUser>>([]));
         _ = _mockTenantApi.RemoveUserFromTenantAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "op-1", "Removed", null));
-        SetupTenants([CreateTenant("t-1", "Tenant One", TenantStatusType.Active)]);
+        SetupTenants([tenant]);
 
         // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("t-1"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Change Role"), TimeSpan.FromSeconds(2));
 
-        // Assert — page loaded with tenant
-        await _mockTenantApi.Received(1).ListTenantsAsync(Arg.Any<CancellationToken>());
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OpenRemoveUserDialog", user));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRemoveUserConfirm"));
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            _ = _mockTenantApi.Received(1).RemoveUserFromTenantAsync(
+                "t-1",
+                "user-001",
+                Arg.Any<CancellationToken>());
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public async Task TenantsPage_ChangeRole_CallsChangeUserRoleAsync()
-    {
+    public async Task TenantsPage_ChangeRole_CallsChangeUserRoleAsync() {
         // Arrange (AC: 7)
-        TenantDetail detail = new("t-1", "Tenant One", TenantStatusType.Active, 1000, 2, 524288, DateTimeOffset.UtcNow.AddDays(-30), null, "Standard");
-        TenantUser user = new("user@test.com", "ReadOnly", DateTimeOffset.UtcNow.AddDays(-10));
+        TenantSummary tenant = CreateTenant("t-1", "Tenant One", TenantStatusType.Active);
+        TenantDetail detail = new("t-1", "Tenant One", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-30));
+        TenantUser user = new("user-001", "TenantReader");
         _ = _mockTenantApi.GetTenantDetailAsync("t-1", Arg.Any<CancellationToken>())
             .Returns(detail);
         _ = _mockTenantApi.GetTenantUsersAsync("t-1", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+            .Returns(
+                Task.FromResult<IReadOnlyList<TenantUser>>([user]),
+                Task.FromResult<IReadOnlyList<TenantUser>>([new TenantUser("user-001", "TenantContributor")]));
         _ = _mockTenantApi.ChangeUserRoleAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "op-1", "Changed", null));
-        SetupTenants([CreateTenant("t-1", "Tenant One", TenantStatusType.Active)]);
+        SetupTenants([tenant]);
 
         // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("t-1"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Change Role"), TimeSpan.FromSeconds(2));
 
-        // Assert — page loaded and services configured for role change
-        await _mockTenantApi.Received(1).ListTenantsAsync(Arg.Any<CancellationToken>());
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OpenChangeRoleDialog", user));
+        SetPrivateField(cut.Instance, "_changeRoleNewRole", "TenantContributor");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnChangeRoleConfirm"));
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            _ = _mockTenantApi.Received(1).ChangeUserRoleAsync(
+                "t-1",
+                "user-001",
+                "TenantContributor",
+                Arg.Any<CancellationToken>());
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public void TenantsPage_ComparisonTable_RendersAllMetrics()
-    {
-        // Arrange (AC: 8) — verify comparison table has all 4 metric rows
-        SetupTenants([
-            CreateTenant("t-1", "Tenant One", TenantStatusType.Active, 500, 3),
-            CreateTenant("t-2", "Tenant Two", TenantStatusType.Active, 1000, 5),
-        ]);
-        _ = _mockTenantApi.CompareTenantUsageAsync(Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(new TenantComparison(
-            [
-                CreateTenant("t-1", "Tenant One", TenantStatusType.Active, 500, 3),
-                CreateTenant("t-2", "Tenant Two", TenantStatusType.Active, 1000, 5),
-            ], DateTimeOffset.UtcNow));
-
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Compare Tenants"), TimeSpan.FromSeconds(5));
-
-        // Assert — compare button enabled with 2+ tenants
-        cut.Markup.ShouldContain("Compare Tenants");
-    }
-
-    [Fact]
-    public void TenantsPage_CompareButton_HighlightsMaxValues()
-    {
-        // Arrange (AC: 8) — highest value per metric should be bold
-        SetupTenants([
-            CreateTenant("t-1", "Tenant One", TenantStatusType.Active, 500, 3),
-            CreateTenant("t-2", "Tenant Two", TenantStatusType.Active, 1000, 5),
-        ]);
-
-        // Act
-        IRenderedComponent<Tenants> cut = Render<Tenants>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Compare Tenants"), TimeSpan.FromSeconds(5));
-
-        // Assert — compare button present and enabled
-        cut.Markup.ShouldNotContain("At least 2 tenants required");
-    }
-
-    [Fact]
-    public void TenantsPage_WizardStep2_PrefillsFromTier()
-    {
-        // Arrange (AC: 5) — tier selection pre-fills quota defaults
+    public async Task TenantsPage_CreateDialog_RequiresTenantIdAndName() {
+        // Arrange (AC: 5)
         SetupTenants([
             CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
         ]);
@@ -602,35 +547,27 @@ public class TenantsPageTests : AdminUITestContext
         // Act
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Tenant"), TimeSpan.FromSeconds(5));
+        AngleSharp.Dom.IElement createBtn = cut.FindAll("fluent-button")
+            .First(b => b.TextContent.Contains("Create Tenant"));
+        await cut.InvokeAsync(() => createBtn.Click());
 
-        // Assert — Create Tenant button visible for admin
-        cut.Markup.ShouldContain("Create Tenant");
+        // Assert — submit remains disabled until required fields are present
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Description"), TimeSpan.FromSeconds(2));
+        SetPrivateField(cut.Instance, "_createTenantId", "acme-corp");
+        InvokePrivate<bool>(cut.Instance, "IsCreateFormValid").ShouldBeFalse();
+
+        SetPrivateField(cut.Instance, "_createName", "Acme Corp");
+        InvokePrivate<bool>(cut.Instance, "IsCreateFormValid").ShouldBeTrue();
     }
 
     // ===== Helper methods =====
 
-    private void SetupTenants(IReadOnlyList<TenantSummary> tenants)
-    {
+    private void SetupTenants(IReadOnlyList<TenantSummary> tenants) {
         _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(tenants);
-        // Default: quotas return N/A (throws to simulate unavailability)
-        _ = _mockTenantApi.GetTenantQuotasAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new ServiceUnavailableException("quotas unavailable"));
     }
 
-    private void SetupTenantsWithQuotas(IReadOnlyList<TenantSummary> tenants, Dictionary<string, TenantQuotas> quotas)
-    {
-        _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
-            .Returns(tenants);
-        foreach (KeyValuePair<string, TenantQuotas> kvp in quotas)
-        {
-            _ = _mockTenantApi.GetTenantQuotasAsync(kvp.Key, Arg.Any<CancellationToken>())
-                .Returns(kvp.Value);
-        }
-    }
-
-    private void SetupReadOnlyUser()
-    {
+    private void SetupReadOnlyUser() {
         // Replace auth with ReadOnly user
         Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
             NSubstitute.Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
@@ -645,11 +582,38 @@ public class TenantsPageTests : AdminUITestContext
         Services.AddScoped<AdminUserContext>();
     }
 
+    private Microsoft.AspNetCore.Components.NavigationManager NavManager =>
+        Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+    private static async Task InvokePrivateAsync(object instance, string methodName, params object?[]? args) {
+        MethodInfo method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method '{methodName}' not found.");
+
+        object? result = method.Invoke(instance, args ?? []);
+        if (result is Task task) {
+            await task.ConfigureAwait(false);
+        }
+    }
+
+    private static T InvokePrivate<T>(object instance, string methodName, params object?[]? args) {
+        MethodInfo method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method '{methodName}' not found.");
+
+        object? result = method.Invoke(instance, args ?? []);
+        return result is T typedResult
+            ? typedResult
+            : throw new InvalidOperationException($"Method '{methodName}' did not return {typeof(T).Name}.");
+    }
+
+    private static void SetPrivateField(object instance, string fieldName, object? value) {
+        FieldInfo field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field '{fieldName}' not found.");
+        field.SetValue(instance, value);
+    }
+
     private static TenantSummary CreateTenant(
         string tenantId,
-        string displayName,
-        TenantStatusType status,
-        long eventCount = 100,
-        int domainCount = 2)
-        => new(tenantId, displayName, status, eventCount, domainCount);
+        string name,
+        TenantStatusType status)
+        => new(tenantId, name, status);
 }

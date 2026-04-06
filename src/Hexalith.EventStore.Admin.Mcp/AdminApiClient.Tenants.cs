@@ -25,15 +25,6 @@ internal sealed partial class AdminApiClient
     }
 
     /// <summary>
-    /// Gets tenant quotas.
-    /// </summary>
-    public async Task<TenantQuotas?> GetTenantQuotasAsync(string tenantId, CancellationToken cancellationToken)
-    {
-        string path = $"/api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/quotas";
-        return await GetAsync<TenantQuotas>(path, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
     /// Gets users assigned to a tenant.
     /// </summary>
     public async Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken cancellationToken)

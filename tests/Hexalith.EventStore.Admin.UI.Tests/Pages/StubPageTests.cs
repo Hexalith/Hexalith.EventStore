@@ -77,8 +77,6 @@ public class StubPageTests : AdminUITestContext {
             NullLogger<AdminTenantApiClient>.Instance);
         _ = mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
-        _ = mockTenantApi.GetTenantQuotasAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Hexalith.EventStore.Admin.UI.Services.Exceptions.ServiceUnavailableException("test"));
         Services.AddScoped(_ => mockTenantApi);
 
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Tenants> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Tenants>();

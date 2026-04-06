@@ -189,12 +189,12 @@ public class EventsPageTests : AdminUITestContext {
             .Returns(
                 Task.FromResult<IReadOnlyList<TenantSummary>>(
                 [
-                    new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active, 0, 1),
+                    new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active),
                 ]),
                 Task.FromResult<IReadOnlyList<TenantSummary>>(
                 [
-                    new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active, 0, 1),
-                    new TenantSummary("tenant-b", "Tenant B", TenantStatusType.Active, 0, 1),
+                    new TenantSummary("tenant-a", "Tenant A", TenantStatusType.Active),
+                    new TenantSummary("tenant-b", "Tenant B", TenantStatusType.Active),
                 ]));
 
         NavManager.NavigateTo("/events?page=2&tenant=tenant-a&eventType=Create");

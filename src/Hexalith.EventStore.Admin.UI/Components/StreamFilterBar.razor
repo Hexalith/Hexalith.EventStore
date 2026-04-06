@@ -26,7 +26,7 @@
         {
             @foreach (TenantSummary tenant in Tenants)
             {
-                <FluentOption Value="@tenant.TenantId">@tenant.DisplayName</FluentOption>
+                <FluentOption Value="@tenant.TenantId">@tenant.Name</FluentOption>
             }
         }
     </FluentSelect>

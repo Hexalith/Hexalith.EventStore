@@ -1,26 +1,45 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
+using Hexalith.EventStore.Contracts.Queries;
 
+using Hexalith.Tenants.Contracts.Enums;
+
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
+using ContractsTenantSummary = Hexalith.Tenants.Contracts.Queries.TenantSummary;
+using ContractsTenantDetail = Hexalith.Tenants.Contracts.Queries.TenantDetail;
+using ContractsTenantMember = Hexalith.Tenants.Contracts.Queries.TenantMember;
+using ContractsTenantMemberPage = Hexalith.Tenants.Contracts.Queries.PaginatedResult<Hexalith.Tenants.Contracts.Queries.TenantMember>;
+using ContractsTenantSummaryPage = Hexalith.Tenants.Contracts.Queries.PaginatedResult<Hexalith.Tenants.Contracts.Queries.TenantSummary>;
+
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprTenantQueryServiceTests {
-    private const string TenantServiceAppId = "tenants";
+    private const string EventStoreAppId = "eventstore";
 
     private static (DaprTenantQueryService Service, TestHttpMessageHandler Handler) CreateService(
         DaprClient? daprClient = null,
         IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
+        daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                callInfo.ArgAt<string>(2)));
         authContext ??= new NullAdminAuthContext();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            TenantServiceAppId = TenantServiceAppId,
+            EventStoreAppId = EventStoreAppId,
+            ServiceInvocationTimeoutSeconds = 30,
         });
 
         var handler = new TestHttpMessageHandler();
@@ -32,26 +51,100 @@ public class DaprTenantQueryServiceTests {
             daprClient,
             httpClientFactory,
             options,
-            authContext);
+            authContext,
+            NullLogger<DaprTenantQueryService>.Instance);
 
         return (service, handler);
     }
 
-    [Fact]
-    public async Task ListTenantsAsync_ReturnsTenants_WhenServiceAvailable() {
-        var tenants = new List<TenantSummary>
-        {
-            new("tenant1", "Acme Corp", TenantStatusType.Active, 1000, 5),
-            new("tenant2", "Widget Co", TenantStatusType.Suspended, 500, 2),
+    private static SubmitQueryResponse CreateQueryResponse<T>(T payload)
+        => new("corr-1", JsonSerializer.SerializeToElement(payload));
+
+    private static HttpResponseMessage CreateJsonResponse<T>(T payload)
+        => new(HttpStatusCode.OK) {
+            Content = JsonContent.Create(payload),
         };
 
+    [Fact]
+    public async Task ListTenantsAsync_ReturnsTenants_WhenServiceAvailable() {
+        ContractsTenantSummaryPage tenants = new(
+            [
+                new ContractsTenantSummary("tenant1", "Acme Corp", TenantStatus.Active),
+                new ContractsTenantSummary("tenant2", "Widget Co", TenantStatus.Disabled),
+            ],
+            null,
+            false);
+
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse<IReadOnlyList<TenantSummary>>(tenants);
+        handler.SetupJsonResponse(CreateQueryResponse(tenants));
 
         IReadOnlyList<TenantSummary> result = await service.ListTenantsAsync();
 
         result.Count.ShouldBe(2);
         result[0].TenantId.ShouldBe("tenant1");
+        result[1].Status.ShouldBe(TenantStatusType.Disabled);
+    }
+
+    [Fact]
+    public async Task ListTenantsAsync_FollowsPaginationUntilAllPagesReturned() {
+        ContractsTenantSummaryPage firstPage = new(
+            [new ContractsTenantSummary("tenant1", "Acme Corp", TenantStatus.Active)],
+            "tenant1",
+            true);
+        ContractsTenantSummaryPage secondPage = new(
+            [new ContractsTenantSummary("tenant2", "Widget Co", TenantStatus.Disabled)],
+            null,
+            false);
+
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupResponseSequence(
+            CreateJsonResponse(CreateQueryResponse(firstPage)),
+            CreateJsonResponse(CreateQueryResponse(secondPage)));
+
+        IReadOnlyList<TenantSummary> result = await service.ListTenantsAsync();
+
+        result.Select(p => p.TenantId).ShouldBe(["tenant1", "tenant2"]);
+        handler.RequestCount.ShouldBe(2);
+
+        string requestBody = handler.LastRequestBody!;
+        requestBody.ShouldContain("\"cursor\":\"tenant1\"");
+        requestBody.ShouldContain("\"pageSize\":100");
+    }
+
+    [Fact]
+    public async Task GetTenantDetailAsync_ReturnsNull_WhenQueryReturnsNotFound() {
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(HttpStatusCode.NotFound);
+
+        TenantDetail? result = await service.GetTenantDetailAsync("missing-tenant");
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetTenantUsersAsync_FollowsPaginationUntilAllPagesReturned() {
+        ContractsTenantMemberPage firstPage = new(
+            [new ContractsTenantMember("user-001", TenantRole.TenantOwner)],
+            "user-001",
+            true);
+        ContractsTenantMemberPage secondPage = new(
+            [new ContractsTenantMember("user-002", TenantRole.TenantReader)],
+            null,
+            false);
+
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupResponseSequence(
+            CreateJsonResponse(CreateQueryResponse(firstPage)),
+            CreateJsonResponse(CreateQueryResponse(secondPage)));
+
+        IReadOnlyList<TenantUser> result = await service.GetTenantUsersAsync("tenant1");
+
+        result.Select(p => p.UserId).ShouldBe(["user-001", "user-002"]);
+        handler.RequestCount.ShouldBe(2);
+
+        string requestBody = handler.LastRequestBody!;
+        requestBody.ShouldContain("\"cursor\":\"user-001\"");
+        requestBody.ShouldContain("\"pageSize\":100");
     }
 
     [Fact]
@@ -64,39 +157,25 @@ public class DaprTenantQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetTenantQuotasAsync_ReturnsQuotas_WhenServiceAvailable() {
-        var quotas = new TenantQuotas("tenant1", 10000, 1000000, 500000);
-
+    public async Task ListTenantsAsync_ThrowsTimeoutException_WhenQueryTimesOut() {
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(quotas);
+        handler.SetupException(new OperationCanceledException());
 
-        TenantQuotas result = await service.GetTenantQuotasAsync("tenant1");
-
-        result.TenantId.ShouldBe("tenant1");
-        result.MaxEventsPerDay.ShouldBe(10000);
+        await Should.ThrowAsync<TimeoutException>(
+            () => service.ListTenantsAsync());
     }
 
     [Fact]
-    public async Task GetTenantQuotasAsync_Throws_WhenServiceUnavailable() {
+    public async Task ListTenantsAsync_Throws_WhenQueryResponseBodyIsNull() {
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("Tenants service down"));
+        handler.SetupNullJsonResponse();
 
         await Should.ThrowAsync<InvalidOperationException>(
-            () => service.GetTenantQuotasAsync("tenant1"));
+            () => service.ListTenantsAsync());
     }
 
     [Fact]
-    public async Task CompareTenantUsageAsync_Throws_WhenServiceUnavailable() {
-        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("Tenants service down"));
-
-        await Should.ThrowAsync<InvalidOperationException>(
-            () => service.CompareTenantUsageAsync(["tenant1", "tenant2"]));
-    }
-
-    [Fact]
-    public async Task ListTenantsAsync_PropagatesCancellation()
-    {
+    public async Task ListTenantsAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
@@ -105,36 +184,5 @@ public class DaprTenantQueryServiceTests {
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListTenantsAsync(cts.Token));
-    }
-
-    [Fact]
-    public async Task CompareTenantUsageAsync_ReturnsEmpty_WhenTenantIdsEmpty()
-    {
-        (DaprTenantQueryService service, _) = CreateService();
-
-        TenantComparison result = await service.CompareTenantUsageAsync([]);
-
-        result.Tenants.ShouldBeEmpty();
-    }
-
-    [Fact]
-    public async Task CompareTenantUsageAsync_DelegatesToTenantService_WithBearerToken() {
-        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        authContext.GetToken().Returns("tenant-token");
-        TenantComparison expected = new(
-            [new TenantSummary("tenant1", "Acme Corp", TenantStatusType.Active, 1000, 5)],
-            DateTimeOffset.UtcNow);
-
-        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
-        handler.SetupJsonResponse(expected);
-
-        TenantComparison result = await service.CompareTenantUsageAsync(["tenant1", "tenant2"]);
-
-        result.Tenants.Count.ShouldBe(1);
-        result.Tenants[0].TenantId.ShouldBe("tenant1");
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest!.Method.ShouldBe(HttpMethod.Post);
-        handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/tenants/compare");
-        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("tenant-token");
     }
 }

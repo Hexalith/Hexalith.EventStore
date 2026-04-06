@@ -8,9 +8,6 @@ public enum TenantStatusType
     /// <summary>The tenant is active and operational.</summary>
     Active,
 
-    /// <summary>The tenant has been suspended.</summary>
-    Suspended,
-
-    /// <summary>The tenant is being onboarded.</summary>
-    Onboarding,
+    /// <summary>The tenant has been disabled.</summary>
+    Disabled,
 }

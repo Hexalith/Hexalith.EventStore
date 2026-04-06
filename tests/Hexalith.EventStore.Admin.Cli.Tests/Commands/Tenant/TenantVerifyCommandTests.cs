@@ -13,24 +13,14 @@ namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Tenant;
 public class TenantVerifyCommandTests
 {
     private static TenantDetail CreateTestDetail(
-        TenantStatusType status = TenantStatusType.Active,
-        TenantQuotas? quotas = null)
+        TenantStatusType status = TenantStatusType.Active)
     {
         return new TenantDetail(
             "acme-corp",
             "Acme Corporation",
+            "Enterprise tenant",
             status,
-            5000L,
-            3,
-            1073741824L,
-            DateTimeOffset.Parse("2025-01-15T10:30:00Z"),
-            quotas,
-            "Enterprise");
-    }
-
-    private static TenantQuotas CreateTestQuotas(long currentUsage = 536870912L, long maxStorage = 10737418240L)
-    {
-        return new TenantQuotas("acme-corp", 100000, maxStorage, currentUsage);
+            DateTimeOffset.Parse("2025-01-15T10:30:00Z"));
     }
 
     private static GlobalOptions CreateOptions(string format = "table")
@@ -46,14 +36,12 @@ public class TenantVerifyCommandTests
     }
 
     [Fact]
-    public async Task TenantVerifyCommand_ActiveLowUsage_ReturnsPass()
+    public async Task TenantVerifyCommand_Active_ReturnsPass()
     {
-        // Arrange — 5% usage
-        TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
+        // Arrange
+        TenantDetail detail = CreateTestDetail(TenantStatusType.Active);
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
+            .EnqueueResponse(CreateJsonResponse(detail));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -65,52 +53,12 @@ public class TenantVerifyCommandTests
     }
 
     [Fact]
-    public async Task TenantVerifyCommand_ActiveHighUsage_ReturnsWarning()
-    {
-        // Arrange — 95% usage
-        TenantQuotas quotas = CreateTestQuotas(10200547328L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
-        GlobalOptions options = CreateOptions("table");
-        using AdminApiClient client = new(options, handler);
-
-        // Act
-        int exitCode = await TenantVerifyCommand.ExecuteAsync(client, options, "acme-corp", false, CancellationToken.None);
-
-        // Assert
-        exitCode.ShouldBe(ExitCodes.Degraded);
-    }
-
-    [Fact]
-    public async Task TenantVerifyCommand_Suspended_ReturnsFail()
+    public async Task TenantVerifyCommand_Disabled_ReturnsFail()
     {
         // Arrange
-        TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Suspended, quotas);
+        TenantDetail detail = CreateTestDetail(TenantStatusType.Disabled);
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
-        GlobalOptions options = CreateOptions("table");
-        using AdminApiClient client = new(options, handler);
-
-        // Act
-        int exitCode = await TenantVerifyCommand.ExecuteAsync(client, options, "acme-corp", false, CancellationToken.None);
-
-        // Assert
-        exitCode.ShouldBe(ExitCodes.Error);
-    }
-
-    [Fact]
-    public async Task TenantVerifyCommand_OverQuota_ReturnsFail()
-    {
-        // Arrange — 100% usage
-        TenantQuotas quotas = CreateTestQuotas(10737418240L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
-        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
+            .EnqueueResponse(CreateJsonResponse(detail));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -141,35 +89,12 @@ public class TenantVerifyCommandTests
     }
 
     [Fact]
-    public async Task TenantVerifyCommand_NullQuotas_DefaultsToPass()
-    {
-        // Arrange — tenant exists but quotas endpoint returns 404
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, null);
-        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(new HttpResponseMessage(HttpStatusCode.NotFound)
-            {
-                Content = new StringContent("Not found", System.Text.Encoding.UTF8, "text/plain"),
-            });
-        GlobalOptions options = CreateOptions("table");
-        using AdminApiClient client = new(options, handler);
-
-        // Act
-        int exitCode = await TenantVerifyCommand.ExecuteAsync(client, options, "acme-corp", false, CancellationToken.None);
-
-        // Assert
-        exitCode.ShouldBe(ExitCodes.Success);
-    }
-
-    [Fact]
     public async Task TenantVerifyCommand_Quiet_SuppressesStdout()
     {
         // Arrange
-        TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
+        TenantDetail detail = CreateTestDetail(TenantStatusType.Active);
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
+            .EnqueueResponse(CreateJsonResponse(detail));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
@@ -184,11 +109,9 @@ public class TenantVerifyCommandTests
     public async Task TenantVerifyCommand_QuietWithOutputFile_StillWritesFile()
     {
         // Arrange
-        TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
+        TenantDetail detail = CreateTestDetail(TenantStatusType.Active);
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
+            .EnqueueResponse(CreateJsonResponse(detail));
         string tempFile = Path.GetTempFileName();
         try
         {
@@ -214,11 +137,9 @@ public class TenantVerifyCommandTests
     public async Task TenantVerifyCommand_JsonFormat_ReturnsCompositeObject()
     {
         // Arrange
-        TenantQuotas quotas = CreateTestQuotas(536870912L, 10737418240L);
-        TenantDetail detail = CreateTestDetail(TenantStatusType.Active, quotas);
+        TenantDetail detail = CreateTestDetail(TenantStatusType.Active);
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
-            .EnqueueResponse(CreateJsonResponse(detail))
-            .EnqueueResponse(CreateJsonResponse(quotas));
+            .EnqueueResponse(CreateJsonResponse(detail));
         GlobalOptions options = CreateOptions("json");
         using AdminApiClient client = new(options, handler);
 

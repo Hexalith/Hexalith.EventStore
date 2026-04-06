@@ -14,20 +14,10 @@ public static class TenantDetailCommand
     internal static readonly List<ColumnDefinition> OverviewColumns =
     [
         new("Tenant ID", "TenantId"),
-        new("Display Name", "DisplayName"),
+        new("Name", "Name"),
+        new("Description", "Description"),
         new("Status", "Status"),
-        new("Events", "EventCount"),
-        new("Domains", "DomainCount"),
-        new("Storage", "StorageBytes"),
-        new("Created", "CreatedAtUtc"),
-        new("Subscription Tier", "SubscriptionTier"),
-    ];
-
-    internal static readonly List<ColumnDefinition> QuotaColumns =
-    [
-        new("Max Events/Day", "MaxEventsPerDay"),
-        new("Max Storage", "MaxStorageBytes"),
-        new("Current Usage", "CurrentUsage"),
+        new("Created", "CreatedAt"),
     ];
 
     /// <summary>
@@ -85,47 +75,11 @@ public static class TenantDetailCommand
             }
             else if (string.Equals(options.Format, "csv", StringComparison.OrdinalIgnoreCase))
             {
-                var overview = new
-                {
-                    detail.TenantId,
-                    detail.DisplayName,
-                    detail.Status,
-                    detail.EventCount,
-                    detail.DomainCount,
-                    detail.StorageBytes,
-                    detail.CreatedAtUtc,
-                    detail.SubscriptionTier,
-                };
-                output = formatter.FormatCollection(new[] { overview }, OverviewColumns);
+                output = formatter.FormatCollection(new[] { detail }, OverviewColumns);
             }
             else
             {
-                // Table format — dual-section (overview + quotas)
-                var overview = new
-                {
-                    detail.TenantId,
-                    detail.DisplayName,
-                    detail.Status,
-                    detail.EventCount,
-                    detail.DomainCount,
-                    detail.StorageBytes,
-                    detail.CreatedAtUtc,
-                    detail.SubscriptionTier,
-                };
-
-                output = formatter.Format(overview, OverviewColumns);
-
-                if (detail.Quotas is not null)
-                {
-                    var quotaData = new
-                    {
-                        detail.Quotas.MaxEventsPerDay,
-                        detail.Quotas.MaxStorageBytes,
-                        detail.Quotas.CurrentUsage,
-                    };
-                    output += Environment.NewLine + Environment.NewLine
-                        + formatter.Format(quotaData, QuotaColumns);
-                }
+                output = formatter.Format(detail, OverviewColumns);
             }
 
             int writeResult = writer.Write(output);

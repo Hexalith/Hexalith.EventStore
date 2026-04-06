@@ -20,7 +20,7 @@
 
 ## Deferred from: code review of 20-2-bisect-tool-binary-search-state-divergence (2026-03-27)
 
-- **D1: O(N*logN) state reconstruction performance** — ReconstructState replays from event 0 at each bisect midpoint. O(S*N) total work for S steps and N events. Pre-existing pattern shared by blame/diff endpoints. Requires actor API range query support to optimize.
+- **D1: O(N\*logN) state reconstruction performance** — ReconstructState replays from event 0 at each bisect midpoint. O(S\*N) total work for S steps and N events. Pre-existing pattern shared by blame/diff endpoints. Requires actor API range query support to optimize.
 - **D2: DeepMerge doesn't handle field deletion** — JSON merge can only add/update fields, not remove them. Bisect state reconstruction may include stale fields. Pre-existing limitation (D4 from 20-1).
 - **D3: JsonDiff uses string comparison (not DeepEquals)** — Final field-change extraction at the divergent event uses string-based diff, not semantic JSON comparison. The core bisect loop correctly uses JsonElement.DeepEquals. Pre-existing in blame/diff (D5 from 20-1).
 - **D4: ConfigureAwait(false) in Blazor component** — BisectTool.razor uses ConfigureAwait(false) in LoadFieldsAsync and StartBisectAsync then accesses component state. Project-wide pattern (D3 from 20-1).
@@ -45,3 +45,8 @@
 - **Duplicate AdminClaimTypes classes across UI and Server** — `Admin.UI/Services/AdminClaimTypes.cs` (property `Role`) and `Admin.Server/Authorization/AdminClaimTypes.cs` (property `AdminRole`) both hold `"eventstore:admin-role"`. Creates drift risk if either is changed independently.
 - **OperationCanceledException from linked CancellationTokenSource leaks as 500** — Methods with 30/60s hard timeouts (`GetAggregateBlameAsync`, `GetEventStepFrameAsync`, `BisectAsync`, `GetCorrelationTraceMapAsync`) throw `OperationCanceledException` that the controller explicitly does not catch, resulting in 500 instead of 504/408.
 - **No test verifying controller returns HTTP 503 on service failure** — `AdminStreamsController.IsServiceUnavailable` maps exceptions to 503 but no test exercises this path end-to-end.
+
+## Deferred from: code review of 16-5-tenant-management-quotas-onboarding-comparison.md (2026-04-06)
+
+- **Write endpoints still flatten command failures to HTTP 422** — `AdminTenantsController` now sits in front of a command service that preserves upstream failure codes, but the controller still converts all rejected writes into HTTP 422. Deferred because this behavior predates the rework and any broader status-handling cleanup should be coordinated with downstream clients.
+- **Detail panel refresh can race after tenant selection changes** — `ReloadDetailPanel()` reloads users for the current `_expandedTenantId` without cancellation or a post-await tenant guard. If the operator switches rows while a mutation-triggered refresh is in flight, the panel can briefly show the wrong tenant's users. Pre-existing in the page before this rework.

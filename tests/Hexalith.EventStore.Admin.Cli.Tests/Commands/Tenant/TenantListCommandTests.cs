@@ -20,9 +20,7 @@ public class TenantListCommandTests
             items.Add(new TenantSummary(
                 $"tenant-{i}",
                 $"Tenant {i}",
-                i % 2 == 0 ? TenantStatusType.Active : TenantStatusType.Suspended,
-                (i + 1) * 1000L,
-                (i + 1) * 3));
+                i % 2 == 0 ? TenantStatusType.Active : TenantStatusType.Disabled));
         }
 
         return items;
@@ -56,10 +54,8 @@ public class TenantListCommandTests
 
         // Assert
         output.ShouldContain("Tenant ID");
-        output.ShouldContain("Display Name");
+        output.ShouldContain("Name");
         output.ShouldContain("Status");
-        output.ShouldContain("Events");
-        output.ShouldContain("Domains");
         output.ShouldContain("tenant-0");
         output.ShouldContain("Tenant 1");
     }
@@ -112,7 +108,7 @@ public class TenantListCommandTests
         // Assert
         string[] lines = csv.Split(Environment.NewLine);
         lines[0].ShouldContain("Tenant ID");
-        lines[0].ShouldContain("Display Name");
+        lines[0].ShouldContain("Name");
         lines[0].ShouldContain("Status");
         lines.Length.ShouldBe(3); // header + 2 rows
         lines[1].ShouldContain("tenant-0");
@@ -122,7 +118,7 @@ public class TenantListCommandTests
     public void TenantListCommand_EnumsSerializeAsStrings()
     {
         // Arrange
-        TenantSummary active = new("t1", "Tenant 1", TenantStatusType.Active, 100, 5);
+        TenantSummary active = new("t1", "Tenant 1", TenantStatusType.Active);
 
         // Act
         string json = JsonSerializer.Serialize(active, JsonDefaults.Options);
@@ -131,10 +127,10 @@ public class TenantListCommandTests
         json.ShouldContain("\"active\"");
         json.ShouldNotContain("\"status\": 0");
 
-        // Also verify Suspended
-        TenantSummary suspended = new("t2", "Tenant 2", TenantStatusType.Suspended, 200, 3);
-        string json2 = JsonSerializer.Serialize(suspended, JsonDefaults.Options);
-        json2.ShouldContain("\"suspended\"");
+        // Also verify Disabled
+        TenantSummary disabled = new("t2", "Tenant 2", TenantStatusType.Disabled);
+        string json2 = JsonSerializer.Serialize(disabled, JsonDefaults.Options);
+        json2.ShouldContain("\"disabled\"");
     }
 
     [Fact]

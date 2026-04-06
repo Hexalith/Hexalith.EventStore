@@ -73,7 +73,7 @@ public class SerializationRoundTripTests
     [Fact]
     public void TenantSummary_RoundTrips()
     {
-        var original = new TenantSummary("acme", "Acme Corp", TenantStatusType.Active, 1000, 5);
+        var original = new TenantSummary("acme", "Acme Corp", TenantStatusType.Active);
         string json = JsonSerializer.Serialize(original, _options);
         var deserialized = JsonSerializer.Deserialize<TenantSummary>(json, _options);
 

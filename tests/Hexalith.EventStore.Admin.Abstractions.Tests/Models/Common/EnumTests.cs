@@ -35,7 +35,7 @@ public class EnumTests
     [Fact]
     public void TenantStatusType_HasExpectedMembers()
     {
-        Enum.GetNames<TenantStatusType>().ShouldBe(["Active", "Suspended", "Onboarding"]);
+        Enum.GetNames<TenantStatusType>().ShouldBe(["Active", "Disabled"]);
     }
 
     [Fact]

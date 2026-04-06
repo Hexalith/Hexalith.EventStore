@@ -20,7 +20,7 @@ public class TopologyCacheServiceTests
     public async Task EnsureLoadedAsync_LoadsTenants_OnFirstCall()
     {
         AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active, 100, 2)];
+        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
         apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants);
         apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
@@ -40,7 +40,7 @@ public class TopologyCacheServiceTests
     public async Task EnsureLoadedAsync_DoesNotReload_OnSecondCall()
     {
         AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active, 100, 2)];
+        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
         apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants);
         apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
@@ -57,8 +57,8 @@ public class TopologyCacheServiceTests
     public async Task RefreshAsync_ReloadsData()
     {
         AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants1 = [new("t1", "Tenant One", TenantStatusType.Active, 100, 2)];
-        List<TenantSummary> tenants2 = [new("t1", "Tenant One", TenantStatusType.Active, 100, 2), new("t2", "Tenant Two", TenantStatusType.Active, 50, 1)];
+        List<TenantSummary> tenants1 = [new("t1", "Tenant One", TenantStatusType.Active)];
+        List<TenantSummary> tenants2 = [new("t1", "Tenant One", TenantStatusType.Active), new("t2", "Tenant Two", TenantStatusType.Active)];
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
         apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants1, tenants2);
         apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
@@ -76,7 +76,7 @@ public class TopologyCacheServiceTests
     public async Task RefreshAsync_KeepsStaleTenants_WhenTenantLoadTimesOut()
     {
         AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active, 100, 2)];
+        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
 
         apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())

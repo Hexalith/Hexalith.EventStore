@@ -16,8 +16,8 @@ public class TenantUsersCommandTests
     {
         return
         [
-            new TenantUser("alice@example.com", "Admin", DateTimeOffset.Parse("2025-01-10T08:00:00Z")),
-            new TenantUser("bob@example.com", "Viewer", DateTimeOffset.Parse("2025-02-20T14:30:00Z")),
+            new TenantUser("alice-001", "Admin"),
+            new TenantUser("bob-002", "Viewer"),
         ];
     }
 
@@ -94,11 +94,10 @@ public class TenantUsersCommandTests
 
         // Assert
         string[] lines = csv.Split(Environment.NewLine);
-        lines[0].ShouldContain("Email");
+        lines[0].ShouldContain("User ID");
         lines[0].ShouldContain("Role");
-        lines[0].ShouldContain("Added");
         lines.Length.ShouldBe(3); // header + 2 rows
-        lines[1].ShouldContain("alice@example.com");
-        lines[2].ShouldContain("bob@example.com");
+        lines[1].ShouldContain("alice-001");
+        lines[2].ShouldContain("bob-002");
     }
 }

@@ -7,21 +7,16 @@ using Hexalith.EventStore.Admin.Cli.Formatting;
 namespace Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 
 /// <summary>
-/// The <c>eventstore-admin tenant verify</c> subcommand — validates tenant health and quota compliance.
+/// The <c>eventstore-admin tenant verify</c> subcommand — validates tenant health.
 /// </summary>
 public static class TenantVerifyCommand
 {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Tenant ID", "TenantId"),
+        new("Name", "Name"),
         new("Status", "Status"),
-        new("Subscription Tier", "SubscriptionTier"),
-        new("Events", "EventCount"),
-        new("Storage", "StorageBytes"),
-        new("Max Events/Day", "MaxEventsPerDay"),
-        new("Max Storage", "MaxStorageBytes"),
-        new("Current Usage", "CurrentUsage"),
-        new("Usage %", "UsagePercentage"),
+        new("Created", "CreatedAt"),
         new("Verdict", "Verdict"),
     ];
 
@@ -35,7 +30,7 @@ public static class TenantVerifyCommand
         Option<bool> quietOption = new("--quiet", "-q") { Description = "Suppress stdout output, only return exit code" };
         quietOption.DefaultValueFactory = _ => false;
 
-        Command command = new("verify", "Verify tenant health and quota compliance");
+        Command command = new("verify", "Verify tenant health");
         command.Arguments.Add(tenantIdArg);
         command.Options.Add(quietOption);
 
@@ -68,7 +63,6 @@ public static class TenantVerifyCommand
     {
         try
         {
-            // Step 1: Get tenant detail
             TenantDetail? detail = await client
                 .TryGetAsync<TenantDetail>($"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}", cancellationToken)
                 .ConfigureAwait(false);
@@ -79,32 +73,16 @@ public static class TenantVerifyCommand
                 return ExitCodes.Error;
             }
 
-            // Step 2: Get quotas
-            TenantQuotas? quotas = await client
-                .TryGetAsync<TenantQuotas>($"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/quotas", cancellationToken)
-                .ConfigureAwait(false);
-
-            // Step 3: Calculate verdict
-            int usagePct = quotas is not null
-                ? (int)(quotas.CurrentUsage * 100 / Math.Max(quotas.MaxStorageBytes, 1))
-                : 0;
-            string verdict = DeriveVerdict(detail.Status, usagePct);
+            string verdict = DeriveVerdict(detail.Status);
             int exitCode = MapExitCode(verdict);
 
-            // Step 4: Output
             if (!quiet || options.OutputFile is not null)
             {
                 TenantVerifyResult result = new(
                     detail.TenantId,
-                    detail.DisplayName,
+                    detail.Name,
                     detail.Status,
-                    detail.SubscriptionTier,
-                    detail.EventCount,
-                    detail.StorageBytes,
-                    quotas?.MaxEventsPerDay ?? 0,
-                    quotas?.MaxStorageBytes ?? 0,
-                    quotas?.CurrentUsage ?? 0,
-                    usagePct,
+                    detail.CreatedAt,
                     verdict);
 
                 IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
@@ -135,33 +113,23 @@ public static class TenantVerifyCommand
         }
     }
 
-    internal static string DeriveVerdict(TenantStatusType status, int usagePercentage) =>
+    internal static string DeriveVerdict(TenantStatusType status) =>
         status switch
         {
-            TenantStatusType.Suspended => "FAIL",
-            TenantStatusType.Onboarding => "FAIL",
-            _ when usagePercentage >= 100 => "FAIL",
-            _ when usagePercentage >= 90 => "WARNING",
+            TenantStatusType.Disabled => "FAIL",
             _ => "PASS",
         };
 
     internal static int MapExitCode(string verdict) => verdict switch
     {
         "PASS" => ExitCodes.Success,
-        "WARNING" => ExitCodes.Degraded,
         _ => ExitCodes.Error,
     };
 
     internal record TenantVerifyResult(
         string TenantId,
-        string DisplayName,
+        string Name,
         TenantStatusType Status,
-        string? SubscriptionTier,
-        long EventCount,
-        long StorageBytes,
-        long MaxEventsPerDay,
-        long MaxStorageBytes,
-        long CurrentUsage,
-        int UsagePercentage,
+        DateTimeOffset CreatedAt,
         string Verdict);
 }

@@ -8,10 +8,9 @@ using Hexalith.EventStore.Admin.Mcp.Tools;
 
 public class TenantToolsTests
 {
-    private static readonly string _tenantListJson = """[{"tenantId":"t1","displayName":"Acme Corp","status":0,"eventCount":500,"domainCount":3}]""";
-    private static readonly string _tenantDetailJson = """{"tenantId":"t1","displayName":"Acme Corp","status":0,"eventCount":500,"domainCount":3,"storageBytes":1048576,"createdAtUtc":"2026-01-01T00:00:00Z","quotas":null,"subscriptionTier":"Standard"}""";
-    private static readonly string _tenantQuotasJson = """{"tenantId":"t1","maxEventsPerDay":10000,"maxStorageBytes":10737418240,"currentUsage":1048576}""";
-    private static readonly string _tenantUsersJson = """[{"email":"admin@acme.com","role":"Admin","addedAtUtc":"2026-01-01T00:00:00Z"}]""";
+    private static readonly string _tenantListJson = """[{"tenantId":"t1","name":"Acme Corp","status":0}]""";
+    private static readonly string _tenantDetailJson = """{"tenantId":"t1","name":"Acme Corp","description":null,"status":0,"createdAt":"2026-01-01T00:00:00Z"}""";
+    private static readonly string _tenantUsersJson = """[{"userId":"admin-001","role":"Admin"}]""";
 
     [Fact]
     public async Task TenantList_ReturnsValidJson_OnSuccess()
@@ -96,33 +95,6 @@ public class TenantToolsTests
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
-    }
-
-    [Fact]
-    public async Task TenantQuotas_ReturnsValidJson_OnSuccess()
-    {
-        CancellationToken ct = TestContext.Current.CancellationToken;
-        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _tenantQuotasJson);
-        var client = new AdminApiClient(httpClient);
-
-        string result = await TenantTools.GetTenantQuotas(client, "t1", ct);
-
-        using JsonDocument doc = JsonDocument.Parse(result);
-        doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
-        doc.RootElement.GetProperty("tenantId").GetString().ShouldBe("t1");
-    }
-
-    [Fact]
-    public async Task TenantQuotas_ReturnsNotFoundError_On404()
-    {
-        CancellationToken ct = TestContext.Current.CancellationToken;
-        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
-        var client = new AdminApiClient(httpClient);
-
-        string result = await TenantTools.GetTenantQuotas(client, "nonexistent", ct);
-
-        using JsonDocument doc = JsonDocument.Parse(result);
-        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
     }
 
     [Fact]

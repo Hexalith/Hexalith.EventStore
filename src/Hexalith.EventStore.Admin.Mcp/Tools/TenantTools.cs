@@ -11,10 +11,10 @@ using ModelContextProtocol.Server;
 internal static class TenantTools
 {
     /// <summary>
-    /// List all tenants with status, event counts, and domain counts.
+    /// List all tenants with their status.
     /// </summary>
     [McpServerTool(Name = "tenant-list")]
-    [Description("List all tenants with status, event counts, and domain counts")]
+    [Description("List all tenants with their name and status (Active/Disabled)")]
     public static async Task<string> ListTenants(
         AdminApiClient adminApiClient,
         CancellationToken cancellationToken = default)
@@ -33,10 +33,10 @@ internal static class TenantTools
     }
 
     /// <summary>
-    /// Get detailed tenant information including quotas, storage, and subscription tier.
+    /// Get detailed tenant information including description, status, and creation date.
     /// </summary>
     [McpServerTool(Name = "tenant-detail")]
-    [Description("Get detailed tenant information including quotas, storage, and subscription tier")]
+    [Description("Get detailed tenant information including description, status, and creation date")]
     public static async Task<string> GetTenantDetail(
         AdminApiClient adminApiClient,
         [Description("Tenant ID")] string tenantId,
@@ -64,41 +64,10 @@ internal static class TenantTools
     }
 
     /// <summary>
-    /// Get tenant quota limits and current usage.
-    /// </summary>
-    [McpServerTool(Name = "tenant-quotas")]
-    [Description("Get tenant quota limits and current usage")]
-    public static async Task<string> GetTenantQuotas(
-        AdminApiClient adminApiClient,
-        [Description("Tenant ID")] string tenantId,
-        CancellationToken cancellationToken = default)
-    {
-        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"));
-        if (validation is not null)
-        {
-            return validation;
-        }
-
-        try
-        {
-            var result = await adminApiClient
-                .GetTenantQuotasAsync(tenantId, cancellationToken)
-                .ConfigureAwait(false);
-            return result is null
-                ? ToolHelper.SerializeError("not-found", $"Tenant '{tenantId}' not found")
-                : ToolHelper.SerializeResult(result);
-        }
-        catch (Exception ex)
-        {
-            return ToolHelper.HandleException(ex);
-        }
-    }
-
-    /// <summary>
     /// List users assigned to a tenant with their roles.
     /// </summary>
     [McpServerTool(Name = "tenant-users")]
-    [Description("List users assigned to a tenant with their roles")]
+    [Description("List users assigned to a tenant with their user IDs and roles")]
     public static async Task<string> GetTenantUsers(
         AdminApiClient adminApiClient,
         [Description("Tenant ID")] string tenantId,

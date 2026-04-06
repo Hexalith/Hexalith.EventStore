@@ -25,7 +25,7 @@ public class AdminTenantApiClientTests
     [Fact]
     public async Task ListTenantsAsync_ReturnsTenants_WhenApiResponds()
     {
-        string json = """[{"tenantId":"t1","displayName":"Tenant 1","status":0,"eventCount":100,"domainCount":3}]""";
+        string json = """[{"tenantId":"t1","name":"Tenant 1","status":0}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
         AdminTenantApiClient client = CreateClient(httpClient);
@@ -34,7 +34,7 @@ public class AdminTenantApiClientTests
 
         result.Count.ShouldBe(1);
         result[0].TenantId.ShouldBe("t1");
-        result[0].DisplayName.ShouldBe("Tenant 1");
+        result[0].Name.ShouldBe("Tenant 1");
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class AdminTenantApiClientTests
     [Fact]
     public async Task GetTenantDetailAsync_ReturnsDetail_WhenApiResponds()
     {
-        string json = """{"tenantId":"t1","displayName":"Tenant 1","status":0,"eventCount":100,"domainCount":5,"storageBytes":50000,"createdAtUtc":"2026-01-01T00:00:00Z","quotas":null,"subscriptionTier":null}""";
+        string json = """{"tenantId":"t1","name":"Tenant 1","description":null,"status":0,"createdAt":"2026-01-01T00:00:00Z"}""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
         AdminTenantApiClient client = CreateClient(httpClient);
@@ -73,9 +73,8 @@ public class AdminTenantApiClientTests
 
         result.ShouldNotBeNull();
         result.TenantId.ShouldBe("t1");
-        result.DisplayName.ShouldBe("Tenant 1");
-        result.EventCount.ShouldBe(100);
-        result.DomainCount.ShouldBe(5);
+        result.Name.ShouldBe("Tenant 1");
+        result.Status.ShouldBe(TenantStatusType.Active);
     }
 
     [Fact]
