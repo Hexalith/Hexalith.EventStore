@@ -112,7 +112,7 @@ public class DomainServiceIsolationTests {
             .Returns((DomainServiceRegistration?)null);
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var invoker = new DaprDomainServiceInvoker(daprClient, resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
         var command = new CommandEnvelope("msg-iso-1", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);
 
@@ -267,7 +267,7 @@ public class DomainServiceIsolationTests {
             .Returns((DomainServiceRegistration?)null);
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var invoker = new DaprDomainServiceInvoker(daprClient, resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), resolver, Options.Create(DefaultOptions), NullLogger<DaprDomainServiceInvoker>.Instance);
 
         var command = new CommandEnvelope("msg-iso-4", "tenant-a", "orders", "order-001", "CreateOrder", [1],
             Guid.NewGuid().ToString(), null, "system", null);

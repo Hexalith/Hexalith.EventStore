@@ -1,48 +1,52 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprTenantQueryServiceTests {
     private const string TenantServiceAppId = "tenants";
 
-    private static DaprTenantQueryService CreateService(DaprClient? daprClient = null) {
+    private static (DaprTenantQueryService Service, TestHttpMessageHandler Handler) CreateService(
+        DaprClient? daprClient = null,
+        IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
+        authContext ??= new NullAdminAuthContext();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             TenantServiceAppId = TenantServiceAppId,
         });
 
-        return new DaprTenantQueryService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprTenantQueryService(
             daprClient,
+            httpClientFactory,
             options,
-            new NullAdminAuthContext());
+            authContext);
+
+        return (service, handler);
     }
 
     [Fact]
     public async Task ListTenantsAsync_ReturnsTenants_WhenServiceAvailable() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var tenants = new List<TenantSummary>
         {
             new("tenant1", "Acme Corp", TenantStatusType.Active, 1000, 5),
             new("tenant2", "Widget Co", TenantStatusType.Suspended, 500, 2),
         };
 
-        daprClient.InvokeMethodAsync<IReadOnlyList<TenantSummary>>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyList<TenantSummary>?)tenants);
-
-        DaprTenantQueryService service = CreateService(daprClient);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse<IReadOnlyList<TenantSummary>>(tenants);
 
         IReadOnlyList<TenantSummary> result = await service.ListTenantsAsync();
 
@@ -52,13 +56,8 @@ public class DaprTenantQueryServiceTests {
 
     [Fact]
     public async Task ListTenantsAsync_Throws_WhenServiceUnavailable() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<IReadOnlyList<TenantSummary>>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Tenants service down"));
-
-        DaprTenantQueryService service = CreateService(daprClient);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("Tenants service down"));
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListTenantsAsync());
@@ -66,15 +65,10 @@ public class DaprTenantQueryServiceTests {
 
     [Fact]
     public async Task GetTenantQuotasAsync_ReturnsQuotas_WhenServiceAvailable() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var quotas = new TenantQuotas("tenant1", 10000, 1000000, 500000);
 
-        daprClient.InvokeMethodAsync<TenantQuotas>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => quotas);
-
-        DaprTenantQueryService service = CreateService(daprClient);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(quotas);
 
         TenantQuotas result = await service.GetTenantQuotasAsync("tenant1");
 
@@ -84,13 +78,8 @@ public class DaprTenantQueryServiceTests {
 
     [Fact]
     public async Task GetTenantQuotasAsync_Throws_WhenServiceUnavailable() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<TenantQuotas>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Tenants service down"));
-
-        DaprTenantQueryService service = CreateService(daprClient);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("Tenants service down"));
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetTenantQuotasAsync("tenant1"));
@@ -98,13 +87,8 @@ public class DaprTenantQueryServiceTests {
 
     [Fact]
     public async Task CompareTenantUsageAsync_Throws_WhenServiceUnavailable() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<TenantComparison>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Tenants service down"));
-
-        DaprTenantQueryService service = CreateService(daprClient);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("Tenants service down"));
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => service.CompareTenantUsageAsync(["tenant1", "tenant2"]));
@@ -116,13 +100,8 @@ public class DaprTenantQueryServiceTests {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<IReadOnlyList<TenantSummary>>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<TenantSummary>?>(_ => throw new OperationCanceledException());
-
-        DaprTenantQueryService service = CreateService(daprClient);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new OperationCanceledException());
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListTenantsAsync(cts.Token));
@@ -131,7 +110,7 @@ public class DaprTenantQueryServiceTests {
     [Fact]
     public async Task CompareTenantUsageAsync_ReturnsEmpty_WhenTenantIdsEmpty()
     {
-        DaprTenantQueryService service = CreateService();
+        (DaprTenantQueryService service, _) = CreateService();
 
         TenantComparison result = await service.CompareTenantUsageAsync([]);
 
@@ -140,32 +119,22 @@ public class DaprTenantQueryServiceTests {
 
     [Fact]
     public async Task CompareTenantUsageAsync_DelegatesToTenantService_WithBearerToken() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        HttpRequestMessage? capturedRequest = null;
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         authContext.GetToken().Returns("tenant-token");
         TenantComparison expected = new(
             [new TenantSummary("tenant1", "Acme Corp", TenantStatusType.Active, 1000, 5)],
             DateTimeOffset.UtcNow);
 
-        daprClient.InvokeMethodAsync<TenantComparison>(
-            Arg.Do<HttpRequestMessage>(request => capturedRequest = request),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantQueryService service = new(
-            daprClient,
-            Options.Create(new AdminServerOptions {
-                TenantServiceAppId = TenantServiceAppId,
-            }),
-            authContext);
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
+        handler.SetupJsonResponse(expected);
 
         TenantComparison result = await service.CompareTenantUsageAsync(["tenant1", "tenant2"]);
 
-        result.ShouldBe(expected);
-        capturedRequest.ShouldNotBeNull();
-        capturedRequest!.Method.ShouldBe(HttpMethod.Post);
-        capturedRequest.RequestUri!.ToString().ShouldContain("api/v1/tenants/compare");
-        capturedRequest.Headers.Authorization!.Parameter.ShouldBe("tenant-token");
+        result.Tenants.Count.ShouldBe(1);
+        result.Tenants[0].TenantId.ShouldBe("tenant1");
+        handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Post);
+        handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/tenants/compare");
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("tenant-token");
     }
 }

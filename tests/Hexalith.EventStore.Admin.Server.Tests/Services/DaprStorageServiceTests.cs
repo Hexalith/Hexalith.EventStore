@@ -8,6 +8,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -33,17 +34,28 @@ public class DaprStorageServiceTests {
             NullLogger<DaprStorageQueryService>.Instance);
     }
 
-    private static DaprStorageCommandService CreateCommandService(DaprClient? daprClient = null) {
+    private static (DaprStorageCommandService Service, TestHttpMessageHandler Handler) CreateCommandService(
+        DaprClient? daprClient = null,
+        IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
+        authContext ??= new NullAdminAuthContext();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             EventStoreAppId = EventStoreAppId,
         });
 
-        return new DaprStorageCommandService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprStorageCommandService(
             daprClient,
+            httpClientFactory,
             options,
-            new NullAdminAuthContext(),
+            authContext,
             NullLogger<DaprStorageCommandService>.Instance);
+
+        return (service, handler);
     }
 
     [Fact]
@@ -189,15 +201,9 @@ public class DaprStorageServiceTests {
 
     [Fact]
     public async Task TriggerCompactionAsync_DelegatesToEventStore() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateCommandService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant1", "orders");
 
@@ -206,15 +212,9 @@ public class DaprStorageServiceTests {
 
     [Fact]
     public async Task CreateSnapshotAsync_DelegatesToEventStore() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateCommandService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.CreateSnapshotAsync("tenant1", "orders", "order-1");
 
@@ -223,13 +223,8 @@ public class DaprStorageServiceTests {
 
     [Fact]
     public async Task TriggerCompactionAsync_ReturnsFailure_WhenExceptionThrown() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Timeout"));
-
-        DaprStorageCommandService service = CreateCommandService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupException(new InvalidOperationException("Timeout"));
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant1", null);
 
@@ -240,35 +235,23 @@ public class DaprStorageServiceTests {
     [Fact]
     public async Task SetSnapshotPolicyAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var expected = new AdminOperationResult(true, "op-1", null, null);
-        HttpRequestMessage? capturedRequest = null;
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         authContext.GetToken().Returns("storage-token");
 
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Do<HttpRequestMessage>(request => capturedRequest = request),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateCommandService(daprClient);
-        service = new DaprStorageCommandService(
-            daprClient,
-            Options.Create(new AdminServerOptions {
-                EventStoreAppId = EventStoreAppId,
-            }),
-            authContext,
-            NullLogger<DaprStorageCommandService>.Instance);
+        var expected = new AdminOperationResult(true, "op-1", null, null);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService(daprClient, authContext);
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 
         result.Success.ShouldBeTrue();
-        capturedRequest.ShouldNotBeNull();
-        capturedRequest!.Method.ShouldBe(HttpMethod.Put);
-        capturedRequest.RequestUri.ShouldNotBeNull();
-        capturedRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/storage/snapshot-policy");
-        capturedRequest.Headers.Authorization.ShouldNotBeNull();
-        capturedRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
-        capturedRequest.Headers.Authorization.Parameter.ShouldBe("storage-token");
+        handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Put);
+        handler.LastRequest.RequestUri.ShouldNotBeNull();
+        handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/storage/snapshot-policy");
+        handler.LastRequest.Headers.Authorization.ShouldNotBeNull();
+        handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
+        handler.LastRequest.Headers.Authorization.Parameter.ShouldBe("storage-token");
     }
 
     [Fact]
@@ -277,13 +260,8 @@ public class DaprStorageServiceTests {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns<AdminOperationResult?>(_ => throw new OperationCanceledException());
-
-        DaprStorageCommandService service = CreateCommandService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupException(new OperationCanceledException());
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.TriggerCompactionAsync("tenant1", null, cts.Token));
@@ -300,13 +278,8 @@ public class DaprStorageServiceTests {
 
     [Fact]
     public async Task SetSnapshotPolicyAsync_MapsHttpStatusCode_WhenRequestFails() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Forbidden", null, HttpStatusCode.Forbidden));
-
-        DaprStorageCommandService service = CreateCommandService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupErrorResponse(HttpStatusCode.Forbidden);
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 

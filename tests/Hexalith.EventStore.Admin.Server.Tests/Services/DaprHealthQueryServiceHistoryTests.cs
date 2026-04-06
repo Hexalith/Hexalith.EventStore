@@ -28,6 +28,7 @@ public class DaprHealthQueryServiceHistoryTests
 
         return new DaprHealthQueryService(
             daprClient,
+            Substitute.For<IHttpClientFactory>(),
             options,
             new NullAdminAuthContext(),
             NullLogger<DaprHealthQueryService>.Instance);

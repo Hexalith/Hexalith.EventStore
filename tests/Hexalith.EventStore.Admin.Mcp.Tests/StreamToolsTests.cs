@@ -16,10 +16,11 @@ public class StreamToolsTests
     [Fact]
     public async Task ListStreams_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _streamsJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client, new InvestigationSession());
+        string result = await StreamTools.ListStreams(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -28,10 +29,11 @@ public class StreamToolsTests
     [Fact]
     public async Task ListStreams_ReturnsUnreachableError_OnConnectionFailure()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client, new InvestigationSession());
+        string result = await StreamTools.ListStreams(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -40,11 +42,12 @@ public class StreamToolsTests
     [Fact]
     public async Task ListStreams_ReturnsUnauthorizedError_OnHttp401()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(
             new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client, new InvestigationSession());
+        string result = await StreamTools.ListStreams(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
@@ -53,10 +56,11 @@ public class StreamToolsTests
     [Fact]
     public async Task GetStreamEvents_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _timelineJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetStreamEvents(client, new InvestigationSession(), "t1", "Orders", "o1");
+        string result = await StreamTools.GetStreamEvents(client, new InvestigationSession(), "t1", "Orders", "o1", cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -65,10 +69,11 @@ public class StreamToolsTests
     [Fact]
     public async Task GetStreamState_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _stateJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetStreamState(client, new InvestigationSession(), "t1", "Orders", "o1", 3);
+        string result = await StreamTools.GetStreamState(client, new InvestigationSession(), "t1", "Orders", "o1", 3, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -77,11 +82,12 @@ public class StreamToolsTests
     [Fact]
     public async Task GetStreamState_ReturnsNotFound_WhenNull()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         // Return 200 with JSON null body — GetFromJsonAsync returns null
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetStreamState(client, new InvestigationSession(), "t1", "Orders", "o1", 999);
+        string result = await StreamTools.GetStreamState(client, new InvestigationSession(), "t1", "Orders", "o1", 999, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -90,10 +96,11 @@ public class StreamToolsTests
     [Fact]
     public async Task GetEventDetail_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _eventDetailJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 1);
+        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 1, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -102,10 +109,11 @@ public class StreamToolsTests
     [Fact]
     public async Task GetEventDetail_ReturnsNotFound_WhenNull()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 999);
+        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 999, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -114,10 +122,11 @@ public class StreamToolsTests
     [Fact]
     public async Task AllStreamTools_ReturnParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _streamsJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StreamTools.ListStreams(client, new InvestigationSession());
+        string result = await StreamTools.ListStreams(client, new InvestigationSession(), cancellationToken: ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }

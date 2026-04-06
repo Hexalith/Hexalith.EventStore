@@ -25,6 +25,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService
 
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprBackupCommandService> _logger;
     private readonly AdminServerOptions _options;
 
@@ -32,20 +33,24 @@ public sealed class DaprBackupCommandService : IBackupCommandService
     /// Initializes a new instance of the <see cref="DaprBackupCommandService"/> class.
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     /// <param name="logger">The logger.</param>
     public DaprBackupCommandService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
         ILogger<DaprBackupCommandService> logger)
     {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
         _logger = logger;
@@ -115,9 +120,10 @@ public sealed class DaprBackupCommandService : IBackupCommandService
                 httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            StreamExportResult? result = await _daprClient
-                .InvokeMethodAsync<StreamExportResult>(httpRequest, cts.Token)
-                .ConfigureAwait(false);
+            HttpClient httpClient = _httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
+            httpResponse.EnsureSuccessStatusCode();
+            StreamExportResult? result = await httpResponse.Content.ReadFromJsonAsync<StreamExportResult>(cts.Token).ConfigureAwait(false);
 
             return result ?? new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, "Null response from EventStore");
         }
@@ -170,9 +176,10 @@ public sealed class DaprBackupCommandService : IBackupCommandService
                 httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            AdminOperationResult? result = await _daprClient
-                .InvokeMethodAsync<AdminOperationResult>(httpRequest, cts.Token)
-                .ConfigureAwait(false);
+            HttpClient httpClient2 = _httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse2 = await httpClient2.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
+            httpResponse2.EnsureSuccessStatusCode();
+            AdminOperationResult? result = await httpResponse2.Content.ReadFromJsonAsync<AdminOperationResult>(cts.Token).ConfigureAwait(false);
 
             return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
         }

@@ -19,23 +19,28 @@ public sealed class DaprTenantQueryService : ITenantQueryService
 {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly AdminServerOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprTenantQueryService"/> class.
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     public DaprTenantQueryService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext)
     {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
     }
@@ -98,9 +103,10 @@ public sealed class DaprTenantQueryService : ITenantQueryService
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        TenantComparison? result = await _daprClient
-            .InvokeMethodAsync<TenantComparison>(request, cts.Token)
-            .ConfigureAwait(false);
+        HttpClient httpClient = _httpClientFactory.CreateClient();
+        using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+        httpResponse.EnsureSuccessStatusCode();
+        TenantComparison? result = await httpResponse.Content.ReadFromJsonAsync<TenantComparison>(cts.Token).ConfigureAwait(false);
 
         return result ?? new TenantComparison([], DateTimeOffset.UtcNow);
     }
@@ -123,6 +129,9 @@ public sealed class DaprTenantQueryService : ITenantQueryService
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
+        HttpClient httpClient2 = _httpClientFactory.CreateClient();
+        using HttpResponseMessage httpResponse2 = await httpClient2.SendAsync(request, cts.Token).ConfigureAwait(false);
+        httpResponse2.EnsureSuccessStatusCode();
+        return await httpResponse2.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
     }
 }

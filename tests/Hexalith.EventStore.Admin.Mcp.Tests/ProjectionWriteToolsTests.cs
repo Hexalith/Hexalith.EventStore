@@ -15,10 +15,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task PauseProjection_ReturnsPreview_WhenConfirmFalse()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary", confirm: false);
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary", confirm: false, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -32,10 +33,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task PauseProjection_ReturnsPreview_WhenConfirmOmitted()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary");
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary", cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -44,10 +46,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task PauseProjection_ExecutesAndReturnsResult_WhenConfirmTrue()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary", confirm: true);
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary", confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("preview", out _).ShouldBeFalse();
@@ -61,10 +64,11 @@ public class ProjectionWriteToolsTests
     [InlineData("   ", "OrderSummary")]
     public async Task PauseProjection_ReturnsValidationError_WhenRequiredParamsEmpty(string tenantId, string projectionName)
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, tenantId, projectionName, confirm: true);
+        string result = await ProjectionWriteTools.PauseProjection(client, tenantId, projectionName, confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -74,11 +78,12 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task PauseProjection_ReturnsErrorJson_OnHttpException()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(
             new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "p1", confirm: true);
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "p1", confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -88,11 +93,12 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task PauseProjection_ReturnsErrorJson_OnTimeout()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(
             new TaskCanceledException("Request timed out"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "p1", confirm: true);
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "p1", confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("timeout");
@@ -101,10 +107,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task PauseProjection_ReturnsParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "p1", confirm: true);
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "p1", confirm: true, cancellationToken: ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -114,10 +121,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResumeProjection_ReturnsPreview_WhenConfirmFalse()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResumeProjection(client, "t1", "OrderSummary");
+        string result = await ProjectionWriteTools.ResumeProjection(client, "t1", "OrderSummary", cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -128,10 +136,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResumeProjection_ExecutesAndReturnsResult_WhenConfirmTrue()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResumeProjection(client, "t1", "OrderSummary", confirm: true);
+        string result = await ProjectionWriteTools.ResumeProjection(client, "t1", "OrderSummary", confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("success").GetBoolean().ShouldBeTrue();
@@ -140,10 +149,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResumeProjection_ReturnsValidationError_WhenRequiredParamsEmpty()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResumeProjection(client, "", "OrderSummary", confirm: true);
+        string result = await ProjectionWriteTools.ResumeProjection(client, "", "OrderSummary", confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
@@ -154,10 +164,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResetProjection_ReturnsPreview_WhenConfirmFalse()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "OrderSummary", fromPosition: 100);
+        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "OrderSummary", fromPosition: 100, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -169,10 +180,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResetProjection_PreviewShowsBeginning_WhenFromPositionNull()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "OrderSummary");
+        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "OrderSummary", cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("description").GetString()!.ShouldContain("beginning");
@@ -181,10 +193,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResetProjection_ExecutesAndReturnsResult_WhenConfirmTrue()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "OrderSummary", confirm: true, fromPosition: 50);
+        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "OrderSummary", confirm: true, fromPosition: 50, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("success").GetBoolean().ShouldBeTrue();
@@ -193,11 +206,12 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ResetProjection_Returns422AsInvalidOperation()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(
             new HttpRequestException("Cannot reset running projection", null, HttpStatusCode.UnprocessableEntity));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "p1", confirm: true);
+        string result = await ProjectionWriteTools.ResetProjection(client, "t1", "p1", confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-operation");
@@ -208,10 +222,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_ReturnsPreview_WhenConfirmFalse()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 10, 50);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 10, 50, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -223,10 +238,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_ExecutesAndReturnsResult_WhenConfirmTrue()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 10, 50, confirm: true);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 10, 50, confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("success").GetBoolean().ShouldBeTrue();
@@ -235,10 +251,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_ReturnsValidationError_WhenRequiredParamsEmpty()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "", 10, 50, confirm: true);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "", 10, 50, confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
@@ -247,10 +264,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_ReturnsValidationError_WhenFromPositionGreaterThanToPosition()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 50, 10, confirm: true);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 50, 10, confirm: true, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -261,10 +279,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_ReturnsValidationError_WhenFromPositionGreaterThanToPosition_Preview()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 50, 10);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 50, 10, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -274,10 +293,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_AllowsEqualPositions()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 10, 10);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "OrderSummary", 10, 10, cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -286,10 +306,11 @@ public class ProjectionWriteToolsTests
     [Fact]
     public async Task ReplayProjection_ReturnsParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "p1", 10, 50, confirm: true);
+        string result = await ProjectionWriteTools.ReplayProjection(client, "t1", "p1", 10, 50, confirm: true, cancellationToken: ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }

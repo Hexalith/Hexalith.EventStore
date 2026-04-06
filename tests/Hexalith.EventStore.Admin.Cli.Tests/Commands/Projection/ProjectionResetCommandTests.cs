@@ -31,6 +31,8 @@ public class ProjectionResetCommandTests
     [Fact]
     public async Task ProjectionResetCommand_Success_PrintsConfirmation()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Arrange
         AdminOperationResult result = new(true, "op-reset-1", "Reset initiated", null);
         (AdminApiClient client, _) = CreateMockClientWithHandler(result, HttpStatusCode.Accepted);
@@ -40,7 +42,7 @@ public class ProjectionResetCommandTests
         int exitCode;
         using (client)
         {
-            exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, CancellationToken.None);
+            exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, ct);
         }
 
         // Assert
@@ -50,6 +52,8 @@ public class ProjectionResetCommandTests
     [Fact]
     public async Task ProjectionResetCommand_WithFromPosition_SendsRequestBody()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Arrange
         AdminOperationResult result = new(true, "op-reset-2", "Reset initiated", null);
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result, HttpStatusCode.Accepted);
@@ -58,13 +62,13 @@ public class ProjectionResetCommandTests
         // Act
         using (client)
         {
-            _ = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", 500L, CancellationToken.None);
+            _ = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", 500L, ct);
         }
 
         // Assert
         handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest.Content.ShouldNotBeNull();
-        string body = await handler.LastRequest.Content!.ReadAsStringAsync();
+        string body = await handler.LastRequest.Content!.ReadAsStringAsync(ct);
         body.ShouldContain("\"fromPosition\"");
         body.ShouldContain("500");
     }
@@ -72,6 +76,8 @@ public class ProjectionResetCommandTests
     [Fact]
     public async Task ProjectionResetCommand_WithoutFromPosition_SendsNullPosition()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Arrange
         AdminOperationResult result = new(true, "op-reset-3", "Reset initiated", null);
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result, HttpStatusCode.Accepted);
@@ -80,26 +86,28 @@ public class ProjectionResetCommandTests
         // Act
         using (client)
         {
-            _ = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, CancellationToken.None);
+            _ = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, ct);
         }
 
         // Assert
         handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest.Content.ShouldNotBeNull();
-        string body = await handler.LastRequest.Content!.ReadAsStringAsync();
+        string body = await handler.LastRequest.Content!.ReadAsStringAsync(ct);
         body.ShouldContain("\"fromPosition\": null");
     }
 
     [Fact]
     public async Task ProjectionResetCommand_Http403_PrintsPermissionError()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Forbidden));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
         // Act
-        int exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, CancellationToken.None);
+        int exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, ct);
 
         // Assert — exit code 2; message content ("Access denied. Operator role required to reset projections.")
         // verified by AdminApiException.HttpStatusCode=403 (tested in AdminApiClientPostTests) + switch in handler.
@@ -109,13 +117,15 @@ public class ProjectionResetCommandTests
     [Fact]
     public async Task ProjectionResetCommand_Http404_PrintsNotFound()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.NotFound));
         GlobalOptions options = CreateOptions("table");
         using AdminApiClient client = new(options, handler);
 
         // Act
-        int exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, CancellationToken.None);
+        int exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, ct);
 
         // Assert — exit code 2; message content ("Projection 'counter-view' not found in tenant 'acme'.")
         // verified by AdminApiException.HttpStatusCode=404 (tested in AdminApiClientPostTests) + switch in handler.

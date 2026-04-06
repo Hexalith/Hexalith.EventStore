@@ -11,6 +11,7 @@ public class TypeCatalogToolsTests
     [Fact]
     public async Task ListTypes_ReturnsCombinedJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         var handler = new QueuedMockHttpMessageHandler()
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"OrderPlaced","domain":"Orders","isRejection":false,"schemaVersion":1}]""")
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"PlaceOrder","domain":"Orders","targetAggregateType":"Order"}]""")
@@ -18,7 +19,7 @@ public class TypeCatalogToolsTests
         using HttpClient httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
-        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession());
+        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("eventTypes").GetArrayLength().ShouldBe(1);
@@ -29,6 +30,7 @@ public class TypeCatalogToolsTests
     [Fact]
     public async Task ListTypes_HandlesPartialFailure()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         var handler = new QueuedMockHttpMessageHandler()
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"OrderPlaced","domain":"Orders","isRejection":false,"schemaVersion":1}]""")
             .EnqueueException(new HttpRequestException("Connection refused"))
@@ -36,7 +38,7 @@ public class TypeCatalogToolsTests
         using HttpClient httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
-        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession());
+        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         // Successful categories still have their data
@@ -49,6 +51,7 @@ public class TypeCatalogToolsTests
     [Fact]
     public async Task ListTypes_ReturnsErrorJson_WhenAllCallsFail()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         var handler = new QueuedMockHttpMessageHandler()
             .EnqueueException(new HttpRequestException("Connection refused"))
             .EnqueueException(new HttpRequestException("Connection refused"))
@@ -56,7 +59,7 @@ public class TypeCatalogToolsTests
         using HttpClient httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
-        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession());
+        string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -65,6 +68,7 @@ public class TypeCatalogToolsTests
     [Fact]
     public async Task ListTypes_PassesDomainFilterParameter()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         List<Uri?> capturedUris = [];
         var handler = new MockHttpMessageHandler((request, _) =>
         {
@@ -77,7 +81,7 @@ public class TypeCatalogToolsTests
         using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
         var client = new AdminApiClient(httpClient);
 
-        _ = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), domain: "Orders");
+        _ = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), domain: "Orders", cancellationToken: ct);
 
         capturedUris.Count.ShouldBe(3);
         capturedUris.ShouldAllBe(u => u!.PathAndQuery.Contains("domain=Orders"));

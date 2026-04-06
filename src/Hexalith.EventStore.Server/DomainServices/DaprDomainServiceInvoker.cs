@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -19,6 +20,7 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// </summary>
 public partial class DaprDomainServiceInvoker(
     DaprClient daprClient,
+    IHttpClientFactory httpClientFactory,
     IDomainServiceResolver resolver,
     IOptions<DomainServiceOptions> options,
     ILogger<DaprDomainServiceInvoker> logger) : IDomainServiceInvoker {
@@ -51,13 +53,18 @@ public partial class DaprDomainServiceInvoker(
 
         DomainServiceWireResult wireResult;
         try {
-            wireResult = await daprClient
-                .InvokeMethodAsync<DomainServiceRequest, DomainServiceWireResult>(
-                    registration.AppId,
-                    registration.MethodName,
-                    request,
-                cancellationToken)
-                .ConfigureAwait(false);
+            using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
+                registration.AppId,
+                registration.MethodName,
+                request);
+            HttpClient httpClient = httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            httpResponse.EnsureSuccessStatusCode();
+            wireResult = await httpResponse.Content.ReadFromJsonAsync<DomainServiceWireResult>(cancellationToken).ConfigureAwait(false)
+                ?? throw new DomainServiceException(
+                    command.TenantId,
+                    command.Domain,
+                    $"Null response from domain service '{registration.AppId}/{registration.MethodName}'");
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             logger.LogError(

@@ -1,16 +1,16 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
+using System.Net;
 
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
@@ -18,7 +18,7 @@ public class DaprStorageCommandServiceTests
 {
     private const string EventStoreAppId = "eventstore";
 
-    private static DaprStorageCommandService CreateService(
+    private static (DaprStorageCommandService Service, TestHttpMessageHandler Handler) CreateService(
         DaprClient? daprClient = null,
         IAdminAuthContext? authContext = null)
     {
@@ -30,11 +30,19 @@ public class DaprStorageCommandServiceTests
             ServiceInvocationTimeoutSeconds = 30,
         });
 
-        return new DaprStorageCommandService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprStorageCommandService(
             daprClient,
+            httpClientFactory,
             options,
             authContext,
             NullLogger<DaprStorageCommandService>.Instance);
+
+        return (service, handler);
     }
 
     // === TriggerCompactionAsync ===
@@ -42,15 +50,9 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task TriggerCompactionAsync_ReturnsSuccess_WhenEventStoreResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", "Compaction started", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", "Counter");
 
@@ -61,34 +63,23 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task TriggerCompactionAsync_ForwardsJwtToken()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        HttpRequestMessage? capturedRequest = null;
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         authContext.GetToken().Returns("storage-token");
 
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Do<HttpRequestMessage>(r => capturedRequest = r),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => new AdminOperationResult(true, "op-1", null, null));
-
-        DaprStorageCommandService service = CreateService(daprClient, authContext);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
+        handler.SetupJsonResponse(new AdminOperationResult(true, "op-1", null, null));
 
         await service.TriggerCompactionAsync("tenant-a", null);
 
-        capturedRequest.ShouldNotBeNull();
-        capturedRequest!.Headers.Authorization!.Parameter.ShouldBe("storage-token");
+        handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Headers.Authorization!.Parameter.ShouldBe("storage-token");
     }
 
     [Fact]
     public async Task TriggerCompactionAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("EventStore down"));
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("EventStore down"));
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", null);
 
@@ -99,13 +90,8 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task TriggerCompactionAsync_ReturnsNullResponseError()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => (AdminOperationResult?)null);
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupNullJsonResponse();
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", null);
 
@@ -119,13 +105,8 @@ public class DaprStorageCommandServiceTests
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns<AdminOperationResult?>(_ => throw new OperationCanceledException());
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new OperationCanceledException());
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.TriggerCompactionAsync("tenant-a", null, cts.Token));
@@ -136,15 +117,9 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task CreateSnapshotAsync_ReturnsSuccess_WhenEventStoreResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-2", "Snapshot created", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.CreateSnapshotAsync("tenant-a", "Counter", "counter-1");
 
@@ -154,13 +129,8 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task CreateSnapshotAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Connection refused"));
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new HttpRequestException("Connection refused"));
 
         AdminOperationResult result = await service.CreateSnapshotAsync("tenant-a", "Counter", "counter-1");
 
@@ -172,15 +142,9 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task SetSnapshotPolicyAsync_ReturnsSuccess_WhenEventStoreResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-3", "Policy set", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
 
@@ -190,13 +154,8 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task SetSnapshotPolicyAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("EventStore down"));
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("EventStore down"));
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
 
@@ -208,15 +167,9 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task DeleteSnapshotPolicyAsync_ReturnsSuccess_WhenEventStoreResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-4", "Policy deleted", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.DeleteSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate");
 
@@ -226,13 +179,8 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task DeleteSnapshotPolicyAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("EventStore down"));
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("EventStore down"));
 
         AdminOperationResult result = await service.DeleteSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate");
 
@@ -244,13 +192,8 @@ public class DaprStorageCommandServiceTests
     [Fact]
     public async Task InvokePost_ExtractsHttpStatusCode_FromHttpRequestException()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
-
-        DaprStorageCommandService service = CreateService(daprClient);
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(HttpStatusCode.NotFound);
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", null);
 

@@ -14,6 +14,8 @@ public class StubCommandsTests
     [InlineData("backup", "Trigger and manage backups")]
     public async Task StubCommands_PrintNotImplemented_AndReturnZero(string name, string description)
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Arrange
         Command command = StubCommands.Create(name, description);
         RootCommand root = new("test");
@@ -26,7 +28,7 @@ public class StubCommandsTests
         try
         {
             // Act
-            int exitCode = await root.Parse([name]).InvokeAsync();
+            int exitCode = await root.Parse([name]).InvokeAsync(null, ct);
 
             // Assert
             exitCode.ShouldBe(ExitCodes.Success);

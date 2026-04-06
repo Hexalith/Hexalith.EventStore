@@ -14,10 +14,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task DiffAggregateState_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _diffJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5);
+        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -28,10 +29,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task DiffAggregateState_ReturnsNotFound_WhenNull()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5);
+        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -40,10 +42,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task DiffAggregateState_ReturnsUnreachableError_OnConnectionFailure()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5);
+        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -52,10 +55,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task TraceCausationChain_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _causationJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 1);
+        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 1, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -65,10 +69,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task TraceCausationChain_ReturnsNotFound_WhenNull()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 999);
+        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 999, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -77,10 +82,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task TraceCausationChain_ReturnsTimeoutError_OnTaskCanceled()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new TaskCanceledException("Request timed out"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 1);
+        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 1, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("timeout");
@@ -89,10 +95,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task DiffAggregateState_ReturnsParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _diffJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5);
+        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5, ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -100,10 +107,11 @@ public class DiagnosticToolsTests
     [Fact]
     public async Task TraceCausationChain_ReturnsParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _causationJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 1);
+        string result = await DiagnosticTools.TraceCausationChain(client, "t1", "Orders", "o1", 1, ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -115,10 +123,11 @@ public class DiagnosticToolsTests
     [InlineData("   ", "d1", "a1")]
     public async Task DiffAggregateState_ReturnsInvalidInputError_WhenRequiredParamEmpty(string tenantId, string domain, string aggregateId)
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _diffJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.DiffAggregateState(client, tenantId, domain, aggregateId, 1, 5);
+        string result = await DiagnosticTools.DiffAggregateState(client, tenantId, domain, aggregateId, 1, 5, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -132,10 +141,11 @@ public class DiagnosticToolsTests
     [InlineData("   ", "d1", "a1")]
     public async Task TraceCausationChain_ReturnsInvalidInputError_WhenRequiredParamEmpty(string tenantId, string domain, string aggregateId)
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _causationJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await DiagnosticTools.TraceCausationChain(client, tenantId, domain, aggregateId, 1);
+        string result = await DiagnosticTools.TraceCausationChain(client, tenantId, domain, aggregateId, 1, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();

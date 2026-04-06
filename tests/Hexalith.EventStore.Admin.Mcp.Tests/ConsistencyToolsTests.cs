@@ -16,10 +16,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task ListChecks_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checksJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.ValueKind.ShouldBe(JsonValueKind.Array);
@@ -29,10 +30,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task ListChecks_ReturnsEmptyArray_WhenNoChecksExist()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _emptyChecksJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.ValueKind.ShouldBe(JsonValueKind.Array);
@@ -42,6 +44,7 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task ListChecks_PassesTenantIdFilter()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -49,7 +52,7 @@ public class ConsistencyToolsTests
             _checksJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await ConsistencyTools.ListChecks(client, new InvestigationSession(), "tenant1");
+        _ = await ConsistencyTools.ListChecks(client, new InvestigationSession(), "tenant1", ct);
 
         capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=tenant1");
@@ -58,10 +61,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task ListChecks_ReturnsErrorJson_OnFailure()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -71,10 +75,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task GetCheckDetail_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checkResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1", ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -84,10 +89,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task GetCheckDetail_ReturnsNotFound_WhenNull()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, "null");
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "nonexistent");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "nonexistent", ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
@@ -96,11 +102,12 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task GetCheckDetail_ReturnsUnauthorizedError_OnHttp401()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(
             new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1", ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
@@ -109,10 +116,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task GetCheckDetail_SerializesTruncatedFlag_WhenAnomaliesCapped()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _truncatedCheckResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-2");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-2", ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("truncated").GetBoolean().ShouldBeTrue();
@@ -122,10 +130,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task ListChecks_ReturnsParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checksJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession());
+        string result = await ConsistencyTools.ListChecks(client, new InvestigationSession(), cancellationToken: ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -133,10 +142,11 @@ public class ConsistencyToolsTests
     [Fact]
     public async Task GetCheckDetail_ReturnsParseableJson()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checkResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1");
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), "chk-1", ct);
 
         Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -146,10 +156,11 @@ public class ConsistencyToolsTests
     [InlineData("   ")]
     public async Task GetCheckDetail_ReturnsInvalidInputError_WhenCheckIdEmpty(string checkId)
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _checkResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), checkId);
+        string result = await ConsistencyTools.GetCheckDetail(client, new InvestigationSession(), checkId, ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();

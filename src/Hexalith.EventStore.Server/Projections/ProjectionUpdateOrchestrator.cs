@@ -1,4 +1,4 @@
-
+using System.Net.Http.Json;
 using System.Text.Json;
 
 using Dapr.Actors;
@@ -30,6 +30,7 @@ namespace Hexalith.EventStore.Server.Projections;
 public partial class ProjectionUpdateOrchestrator(
     IActorProxyFactory actorProxyFactory,
     DaprClient daprClient,
+    IHttpClientFactory httpClientFactory,
     IDomainServiceResolver resolver,
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator {
@@ -86,15 +87,16 @@ public partial class ProjectionUpdateOrchestrator(
 
             // Step 4: Invoke domain service /project endpoint via DAPR
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionEvents);
-            ProjectionResponse response = await daprClient
-                .InvokeMethodAsync<ProjectionRequest, ProjectionResponse>(
-                    registration.AppId,
-                    "project",
-                    request,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
+                registration.AppId,
+                "project",
+                request);
+            HttpClient httpClient = httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            httpResponse.EnsureSuccessStatusCode();
+            ProjectionResponse? response = await httpResponse.Content.ReadFromJsonAsync<ProjectionResponse>(cancellationToken).ConfigureAwait(false);
 
-            if (string.IsNullOrWhiteSpace(response.ProjectionType)) {
+            if (response is null || string.IsNullOrWhiteSpace(response.ProjectionType)) {
                 Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, "ProjectionType is null or empty.");
                 return;
             }

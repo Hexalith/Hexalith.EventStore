@@ -20,6 +20,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService
 {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprHealthQueryService> _logger;
     private readonly AdminServerOptions _options;
 
@@ -27,20 +28,24 @@ public sealed class DaprHealthQueryService : IHealthQueryService
     /// Initializes a new instance of the <see cref="DaprHealthQueryService"/> class.
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     /// <param name="logger">The logger.</param>
     public DaprHealthQueryService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
         ILogger<DaprHealthQueryService> logger)
     {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
         _logger = logger;
@@ -110,7 +115,9 @@ public sealed class DaprHealthQueryService : IHealthQueryService
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            _ = await _daprClient.InvokeMethodAsync<string>(request, cts.Token).ConfigureAwait(false);
+            HttpClient httpClient = _httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+            httpResponse.EnsureSuccessStatusCode();
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {

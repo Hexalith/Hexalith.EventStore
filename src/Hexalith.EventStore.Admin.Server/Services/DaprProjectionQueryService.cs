@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 using Dapr.Client;
 
@@ -19,6 +20,7 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
 {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprProjectionQueryService> _logger;
     private readonly AdminServerOptions _options;
 
@@ -26,20 +28,24 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
     /// Initializes a new instance of the <see cref="DaprProjectionQueryService"/> class.
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     /// <param name="logger">The logger.</param>
     public DaprProjectionQueryService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
         ILogger<DaprProjectionQueryService> logger)
     {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
         _logger = logger;
@@ -84,9 +90,10 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        ProjectionDetail? result = await _daprClient
-            .InvokeMethodAsync<ProjectionDetail>(request, cts.Token)
-            .ConfigureAwait(false);
+        HttpClient httpClient = _httpClientFactory.CreateClient();
+        using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+        httpResponse.EnsureSuccessStatusCode();
+        ProjectionDetail? result = await httpResponse.Content.ReadFromJsonAsync<ProjectionDetail>(cts.Token).ConfigureAwait(false);
 
         return result ?? CreateEmptyProjectionDetail(tenantId, projectionName, "not-found");
     }

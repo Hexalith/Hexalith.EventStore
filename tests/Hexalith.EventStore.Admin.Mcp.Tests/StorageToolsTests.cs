@@ -13,10 +13,11 @@ public class StorageToolsTests
     [Fact]
     public async Task GetStorageOverview_ReturnsValidJson_OnSuccess()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _storageJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await StorageTools.GetStorageOverview(client, new InvestigationSession());
+        string result = await StorageTools.GetStorageOverview(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("error", out _).ShouldBeFalse();
@@ -26,10 +27,11 @@ public class StorageToolsTests
     [Fact]
     public async Task GetStorageOverview_ReturnsErrorJson_OnFailure()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient httpClient = MockHttpMessageHandler.CreateThrowingClient(new HttpRequestException("Connection refused"));
         var client = new AdminApiClient(httpClient);
 
-        string result = await StorageTools.GetStorageOverview(client, new InvestigationSession());
+        string result = await StorageTools.GetStorageOverview(client, new InvestigationSession(), cancellationToken: ct);
 
         using JsonDocument doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
@@ -38,6 +40,7 @@ public class StorageToolsTests
     [Fact]
     public async Task GetStorageOverview_PassesTenantIdFilter()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -45,7 +48,7 @@ public class StorageToolsTests
             _storageJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await StorageTools.GetStorageOverview(client, new InvestigationSession(), tenantId: "tenant1");
+        _ = await StorageTools.GetStorageOverview(client, new InvestigationSession(), tenantId: "tenant1", cancellationToken: ct);
 
         capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=tenant1");

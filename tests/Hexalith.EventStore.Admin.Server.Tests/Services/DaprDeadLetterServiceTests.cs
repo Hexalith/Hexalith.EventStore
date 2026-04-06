@@ -8,6 +8,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -33,17 +34,26 @@ public class DaprDeadLetterServiceTests {
             NullLogger<DaprDeadLetterQueryService>.Instance);
     }
 
-    private static DaprDeadLetterCommandService CreateCommandService(DaprClient? daprClient = null) {
+    private static (DaprDeadLetterCommandService Service, TestHttpMessageHandler Handler) CreateCommandService(
+        DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             EventStoreAppId = EventStoreAppId,
         });
 
-        return new DaprDeadLetterCommandService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprDeadLetterCommandService(
             daprClient,
+            httpClientFactory,
             options,
             new NullAdminAuthContext(),
             NullLogger<DaprDeadLetterCommandService>.Instance);
+
+        return (service, handler);
     }
 
     [Fact]
@@ -142,15 +152,9 @@ public class DaprDeadLetterServiceTests {
 
     [Fact]
     public async Task RetryDeadLettersAsync_DelegatesToEventStore() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprDeadLetterCommandService service = CreateCommandService(daprClient);
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.RetryDeadLettersAsync("tenant1", ["msg-1", "msg-2"]);
 
@@ -159,15 +163,9 @@ public class DaprDeadLetterServiceTests {
 
     [Fact]
     public async Task SkipDeadLettersAsync_DelegatesToEventStore() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprDeadLetterCommandService service = CreateCommandService(daprClient);
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.SkipDeadLettersAsync("tenant1", ["msg-1"]);
 
@@ -176,15 +174,9 @@ public class DaprDeadLetterServiceTests {
 
     [Fact]
     public async Task ArchiveDeadLettersAsync_DelegatesToEventStore() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", null, null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprDeadLetterCommandService service = CreateCommandService(daprClient);
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.ArchiveDeadLettersAsync("tenant1", ["msg-1"]);
 
@@ -193,13 +185,8 @@ public class DaprDeadLetterServiceTests {
 
     [Fact]
     public async Task RetryDeadLettersAsync_ReturnsFailure_WhenExceptionThrown() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Service down"));
-
-        DaprDeadLetterCommandService service = CreateCommandService(daprClient);
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupException(new InvalidOperationException("Service down"));
 
         AdminOperationResult result = await service.RetryDeadLettersAsync("tenant1", ["msg-1"]);
 
@@ -232,13 +219,8 @@ public class DaprDeadLetterServiceTests {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns<AdminOperationResult?>(_ => throw new OperationCanceledException());
-
-        DaprDeadLetterCommandService service = CreateCommandService(daprClient);
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupException(new OperationCanceledException());
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.RetryDeadLettersAsync("tenant1", ["msg-1"], cts.Token));
@@ -246,13 +228,8 @@ public class DaprDeadLetterServiceTests {
 
     [Fact]
     public async Task RetryDeadLettersAsync_MapsHttpStatusCode_WhenRequestFails() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
-
-        DaprDeadLetterCommandService service = CreateCommandService(daprClient);
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupErrorResponse(HttpStatusCode.Unauthorized);
 
         AdminOperationResult result = await service.RetryDeadLettersAsync("tenant1", ["msg-1"]);
 

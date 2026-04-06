@@ -7,6 +7,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -18,18 +19,29 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprProjectionQueryServiceTests {
     private const string StateStoreName = "statestore";
 
-    private static DaprProjectionQueryService CreateService(DaprClient? daprClient = null) {
+    private static (DaprProjectionQueryService Service, TestHttpMessageHandler Handler) CreateService(
+        DaprClient? daprClient = null,
+        IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
+        authContext ??= new NullAdminAuthContext();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
             EventStoreAppId = "eventstore",
         });
 
-        return new DaprProjectionQueryService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprProjectionQueryService(
             daprClient,
+            httpClientFactory,
             options,
-            new NullAdminAuthContext(),
+            authContext,
             NullLogger<DaprProjectionQueryService>.Instance);
+
+        return (service, handler);
     }
 
     [Fact]
@@ -47,7 +59,7 @@ public class DaprProjectionQueryServiceTests {
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => projections);
 
-        DaprProjectionQueryService service = CreateService(daprClient);
+        (DaprProjectionQueryService service, _) = CreateService(daprClient);
 
         IReadOnlyList<ProjectionStatus> result = await service.ListProjectionsAsync("tenant1");
 
@@ -64,7 +76,7 @@ public class DaprProjectionQueryServiceTests {
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (List<ProjectionStatus>?)null);
 
-        DaprProjectionQueryService service = CreateService(daprClient);
+        (DaprProjectionQueryService service, _) = CreateService(daprClient);
 
         IReadOnlyList<ProjectionStatus> result = await service.ListProjectionsAsync("tenant1");
 
@@ -74,12 +86,8 @@ public class DaprProjectionQueryServiceTests {
     [Fact]
     public async Task GetProjectionDetailAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<ProjectionDetail>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => (ProjectionDetail?)null);
-
-        DaprProjectionQueryService service = CreateService(daprClient);
+        (DaprProjectionQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
+        handler.SetupNullJsonResponse();
 
         ProjectionDetail result = await service.GetProjectionDetailAsync("tenant1", "OrderSummary");
 
@@ -100,7 +108,7 @@ public class DaprProjectionQueryServiceTests {
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns<List<ProjectionStatus>?>(_ => throw new InvalidOperationException("Connection failed"));
 
-        DaprProjectionQueryService service = CreateService(daprClient);
+        (DaprProjectionQueryService service, _) = CreateService(daprClient);
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListProjectionsAsync("tenant1"));
@@ -119,7 +127,7 @@ public class DaprProjectionQueryServiceTests {
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns<List<ProjectionStatus>?>(_ => throw new OperationCanceledException());
 
-        DaprProjectionQueryService service = CreateService(daprClient);
+        (DaprProjectionQueryService service, _) = CreateService(daprClient);
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListProjectionsAsync("tenant1", cts.Token));
@@ -128,7 +136,6 @@ public class DaprProjectionQueryServiceTests {
     [Fact]
     public async Task GetProjectionDetailAsync_ReturnsProjectionDetail_WhenEventStoreSucceeds() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        HttpRequestMessage? capturedRequest = null;
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         authContext.GetToken().Returns("projection-token");
         ProjectionDetail expected = new(
@@ -144,26 +151,21 @@ public class DaprProjectionQueryServiceTests {
             "{\"mode\":\"live\"}",
             ["OrderCreated"]);
 
-        daprClient.InvokeMethodAsync<ProjectionDetail>(
-            Arg.Do<HttpRequestMessage>(request => capturedRequest = request),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprProjectionQueryService service = new(
-            daprClient,
-            Options.Create(new AdminServerOptions {
-                StateStoreName = StateStoreName,
-                EventStoreAppId = "eventstore",
-            }),
-            authContext,
-            NullLogger<DaprProjectionQueryService>.Instance);
+        (DaprProjectionQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, authContext);
+        handler.SetupJsonResponse(expected);
 
         ProjectionDetail result = await service.GetProjectionDetailAsync("tenant1", "OrderSummary");
 
-        result.ShouldBe(expected);
-        capturedRequest.ShouldNotBeNull();
-        capturedRequest!.Method.ShouldBe(HttpMethod.Get);
-        capturedRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/projections/tenant1/OrderSummary");
-        capturedRequest.Headers.Authorization!.Parameter.ShouldBe("projection-token");
+        result.Name.ShouldBe(expected.Name);
+        result.TenantId.ShouldBe(expected.TenantId);
+        result.Status.ShouldBe(expected.Status);
+        result.Lag.ShouldBe(expected.Lag);
+        result.LastProcessedPosition.ShouldBe(expected.LastProcessedPosition);
+        result.SubscribedEventTypes.Count.ShouldBe(1);
+        result.SubscribedEventTypes[0].ShouldBe("OrderCreated");
+        handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Get);
+        handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/projections/tenant1/OrderSummary");
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("projection-token");
     }
 }

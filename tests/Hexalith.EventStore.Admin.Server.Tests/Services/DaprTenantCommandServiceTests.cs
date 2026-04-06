@@ -1,4 +1,4 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
+using System.Net;
 
 using Dapr.Client;
 
@@ -6,12 +6,12 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
@@ -19,7 +19,7 @@ public class DaprTenantCommandServiceTests
 {
     private const string TenantServiceAppId = "tenants";
 
-    private static DaprTenantCommandService CreateService(
+    private static (DaprTenantCommandService Service, TestHttpMessageHandler Handler) CreateService(
         DaprClient? daprClient = null,
         IAdminAuthContext? authContext = null)
     {
@@ -31,11 +31,19 @@ public class DaprTenantCommandServiceTests
             ServiceInvocationTimeoutSeconds = 30,
         });
 
-        return new DaprTenantCommandService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprTenantCommandService(
             daprClient,
+            httpClientFactory,
             options,
             authContext,
             NullLogger<DaprTenantCommandService>.Instance);
+
+        return (service, handler);
     }
 
     // === CreateTenantAsync ===
@@ -43,15 +51,9 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task CreateTenantAsync_ReturnsSuccess_WhenTenantServiceResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-1", "Tenant created", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.CreateTenantAsync(
             new CreateTenantRequest("acme-corp", "Acme Corp", "Standard", 10000, 1000000));
@@ -63,35 +65,24 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task CreateTenantAsync_ForwardsJwtToken()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        HttpRequestMessage? capturedRequest = null;
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         authContext.GetToken().Returns("tenant-admin-token");
 
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Do<HttpRequestMessage>(r => capturedRequest = r),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => new AdminOperationResult(true, "op-1", null, null));
-
-        DaprTenantCommandService service = CreateService(daprClient, authContext);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
+        handler.SetupJsonResponse(new AdminOperationResult(true, "op-1", null, null));
 
         await service.CreateTenantAsync(
             new CreateTenantRequest("acme-corp", "Acme Corp", "Standard", 10000, 1000000));
 
-        capturedRequest.ShouldNotBeNull();
-        capturedRequest!.Headers.Authorization!.Parameter.ShouldBe("tenant-admin-token");
+        handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Headers.Authorization!.Parameter.ShouldBe("tenant-admin-token");
     }
 
     [Fact]
     public async Task CreateTenantAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Tenants service down"));
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("Tenants service down"));
 
         AdminOperationResult result = await service.CreateTenantAsync(
             new CreateTenantRequest("acme-corp", "Acme Corp", "Standard", 10000, 1000000));
@@ -103,13 +94,8 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task CreateTenantAsync_ReturnsNullResponseError_WhenTenantServiceReturnsNull()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => (AdminOperationResult?)null);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupNullJsonResponse();
 
         AdminOperationResult result = await service.CreateTenantAsync(
             new CreateTenantRequest("acme-corp", "Acme Corp", "Standard", 10000, 1000000));
@@ -124,13 +110,8 @@ public class DaprTenantCommandServiceTests
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns<AdminOperationResult?>(_ => throw new OperationCanceledException());
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new OperationCanceledException());
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.CreateTenantAsync(
@@ -142,15 +123,9 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task DisableTenantAsync_ReturnsSuccess_WhenTenantServiceResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-2", "Tenant disabled", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.DisableTenantAsync("acme-corp");
 
@@ -160,13 +135,8 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task DisableTenantAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Tenants service down"));
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("Tenants service down"));
 
         AdminOperationResult result = await service.DisableTenantAsync("acme-corp");
 
@@ -178,15 +148,9 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task EnableTenantAsync_ReturnsSuccess_WhenTenantServiceResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-3", "Tenant enabled", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.EnableTenantAsync("acme-corp");
 
@@ -198,15 +162,9 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task AddUserToTenantAsync_ReturnsSuccess_WhenTenantServiceResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-4", "User added", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.AddUserToTenantAsync("acme-corp", "user@acme.com", "Operator");
 
@@ -216,13 +174,8 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task AddUserToTenantAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Connection refused"));
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new HttpRequestException("Connection refused"));
 
         AdminOperationResult result = await service.AddUserToTenantAsync("acme-corp", "user@acme.com", "Operator");
 
@@ -234,15 +187,9 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task RemoveUserFromTenantAsync_ReturnsSuccess_WhenTenantServiceResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-5", "User removed", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.RemoveUserFromTenantAsync("acme-corp", "user@acme.com");
 
@@ -254,15 +201,9 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task ChangeUserRoleAsync_ReturnsSuccess_WhenTenantServiceResponds()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new AdminOperationResult(true, "op-6", "Role changed", null);
-
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => expected);
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.ChangeUserRoleAsync("acme-corp", "user@acme.com", "Admin");
 
@@ -272,13 +213,8 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task ChangeUserRoleAsync_ReturnsError_WhenServiceUnavailable()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Tenants service down"));
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("Tenants service down"));
 
         AdminOperationResult result = await service.ChangeUserRoleAsync("acme-corp", "user@acme.com", "Admin");
 
@@ -290,13 +226,8 @@ public class DaprTenantCommandServiceTests
     [Fact]
     public async Task InvokePost_ExtractsHttpStatusCode_FromHttpRequestException()
     {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.InvokeMethodAsync<AdminOperationResult>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HttpRequestException("Conflict", null, System.Net.HttpStatusCode.Conflict));
-
-        DaprTenantCommandService service = CreateService(daprClient);
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(HttpStatusCode.Conflict);
 
         AdminOperationResult result = await service.CreateTenantAsync(
             new CreateTenantRequest("acme-corp", "Acme Corp", "Standard", 10000, 1000000));

@@ -58,7 +58,7 @@ public class ProjectionUpdateOrchestratorTests {
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
         ILogger<ProjectionUpdateOrchestrator> logger = NullLogger<ProjectionUpdateOrchestrator>.Instance;
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, resolver, projectionOptions, logger);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, Substitute.For<IHttpClientFactory>(), resolver, projectionOptions, logger);
         return (sut, actorProxyFactory, daprClient, resolver);
     }
 

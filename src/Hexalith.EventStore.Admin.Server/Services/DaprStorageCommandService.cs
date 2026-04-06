@@ -23,6 +23,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService
 
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprStorageCommandService> _logger;
     private readonly AdminServerOptions _options;
 
@@ -30,20 +31,24 @@ public sealed class DaprStorageCommandService : IStorageCommandService
     /// Initializes a new instance of the <see cref="DaprStorageCommandService"/> class.
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     /// <param name="logger">The logger.</param>
     public DaprStorageCommandService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
         ILogger<DaprStorageCommandService> logger)
     {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
         _logger = logger;
@@ -125,9 +130,10 @@ public sealed class DaprStorageCommandService : IStorageCommandService
                 httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            AdminOperationResult? result = await _daprClient
-                .InvokeMethodAsync<AdminOperationResult>(httpRequest, cts.Token)
-                .ConfigureAwait(false);
+            HttpClient httpClient = _httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
+            httpResponse.EnsureSuccessStatusCode();
+            AdminOperationResult? result = await httpResponse.Content.ReadFromJsonAsync<AdminOperationResult>(cts.Token).ConfigureAwait(false);
 
             return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
         }

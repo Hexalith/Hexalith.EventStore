@@ -23,6 +23,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 public sealed class DaprStreamQueryService : IStreamQueryService {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprStreamQueryService> _logger;
     private readonly AdminServerOptions _options;
 
@@ -30,19 +31,23 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
     /// Initializes a new instance of the <see cref="DaprStreamQueryService"/> class.
     /// </summary>
     /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     /// <param name="logger">The logger.</param>
     public DaprStreamQueryService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
         ILogger<DaprStreamQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
         _logger = logger;
@@ -498,7 +503,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
+        HttpClient httpClient = _httpClientFactory.CreateClient();
+        using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+        httpResponse.EnsureSuccessStatusCode();
+        return await httpResponse.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
     }
 
     private async Task<TResponse?> InvokeEventStoreAsync<TRequest, TResponse>(
@@ -520,7 +528,10 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         request.Content = JsonContent.Create(body);
 
-        return await _daprClient.InvokeMethodAsync<TResponse>(request, cts.Token).ConfigureAwait(false);
+        HttpClient httpClient2 = _httpClientFactory.CreateClient();
+        using HttpResponseMessage httpResponse2 = await httpClient2.SendAsync(request, cts.Token).ConfigureAwait(false);
+        httpResponse2.EnsureSuccessStatusCode();
+        return await httpResponse2.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
     }
 
     private static string BuildQueryString(long? from, long? to, int count) {

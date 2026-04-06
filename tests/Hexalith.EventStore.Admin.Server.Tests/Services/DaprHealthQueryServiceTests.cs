@@ -5,6 +5,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -15,7 +16,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprHealthQueryServiceTests {
-    private static DaprHealthQueryService CreateService(
+    private static (DaprHealthQueryService Service, TestHttpMessageHandler Handler) CreateService(
         DaprClient? daprClient = null,
         AdminServerOptions? serverOptions = null) {
         daprClient ??= Substitute.For<DaprClient>();
@@ -27,11 +28,19 @@ public class DaprHealthQueryServiceTests {
 
         IOptions<AdminServerOptions> options = Options.Create(serverOptions);
 
-        return new DaprHealthQueryService(
+        var handler = new TestHttpMessageHandler();
+        HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+
+        var service = new DaprHealthQueryService(
             daprClient,
+            httpClientFactory,
             options,
             new NullAdminAuthContext(),
             NullLogger<DaprHealthQueryService>.Instance);
+
+        return (service, handler);
     }
 
     private static DaprMetadata CreateMetadata(params DaprComponentsMetadata[] components) => new(
@@ -51,12 +60,17 @@ public class DaprHealthQueryServiceTests {
             "statestore", "admin:health-check",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (string?)null);
-        daprClient.InvokeMethodAsync<string>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(_ => (string?)"ok");
+        daprClient.CreateInvokeMethodRequest(
+            Arg.Any<HttpMethod>(),
+            Arg.Any<string>(),
+            Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
 
-        DaprHealthQueryService service = CreateService(daprClient);
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
+        // EventStore health endpoint returns OK
+        handler.SetupJsonResponse("ok");
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 
@@ -75,12 +89,9 @@ public class DaprHealthQueryServiceTests {
             "statestore", "admin:health-check",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (string?)null);
-        daprClient.InvokeMethodAsync<string>(
-            Arg.Any<HttpRequestMessage>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("EventStore down"));
 
-        DaprHealthQueryService service = CreateService(daprClient);
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
+        handler.SetupException(new InvalidOperationException("EventStore down"));
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 
@@ -93,7 +104,7 @@ public class DaprHealthQueryServiceTests {
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
-        DaprHealthQueryService service = CreateService(daprClient);
+        (DaprHealthQueryService service, _) = CreateService(daprClient);
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 
@@ -109,7 +120,7 @@ public class DaprHealthQueryServiceTests {
 
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
-        DaprHealthQueryService service = CreateService(daprClient);
+        (DaprHealthQueryService service, _) = CreateService(daprClient);
 
         IReadOnlyList<DaprComponentHealth> result = await service.GetDaprComponentStatusAsync();
 
@@ -124,7 +135,7 @@ public class DaprHealthQueryServiceTests {
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
-        DaprHealthQueryService service = CreateService(daprClient);
+        (DaprHealthQueryService service, _) = CreateService(daprClient);
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetDaprComponentStatusAsync());
@@ -140,7 +151,7 @@ public class DaprHealthQueryServiceTests {
         daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns<DaprMetadata>(_ => throw new OperationCanceledException());
 
-        DaprHealthQueryService service = CreateService(daprClient);
+        (DaprHealthQueryService service, _) = CreateService(daprClient);
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetSystemHealthAsync(cts.Token));
@@ -158,7 +169,7 @@ public class DaprHealthQueryServiceTests {
             LogsUrl = null,
         };
 
-        DaprHealthQueryService service = CreateService(daprClient, opts);
+        (DaprHealthQueryService service, _) = CreateService(daprClient, opts);
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 

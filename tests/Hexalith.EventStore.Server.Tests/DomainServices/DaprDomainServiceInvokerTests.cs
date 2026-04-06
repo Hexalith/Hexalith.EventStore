@@ -43,7 +43,7 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert
@@ -56,7 +56,7 @@ public class DaprDomainServiceInvokerTests {
     public async Task InvokeAsync_NullCommand_ThrowsArgumentNullException() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
 
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentNullException>(() => invoker.InvokeAsync(null!, null));
@@ -68,7 +68,7 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
         CommandEnvelope envelope = CreateTestEnvelope(tenantId: "my-tenant", domain: "my-domain");
 
         // Act & Assert -- expect exception since null registration, but verify resolver was called
@@ -396,7 +396,7 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
         var envelope = new CommandEnvelope(
             MessageId: "msg-version-resolver-1",
             TenantId: "test-tenant",
@@ -420,7 +420,7 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert
