@@ -9,6 +9,8 @@ using eventstore::Hexalith.EventStore.Configuration;
 
 using EventStoreProgram = eventstore::Program;
 
+using CommandApiProgram = commandapi::Program;
+
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Mvc.Testing;

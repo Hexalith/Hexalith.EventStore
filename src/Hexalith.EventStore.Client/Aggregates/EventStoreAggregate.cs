@@ -115,7 +115,11 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
         DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods);
 
     private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateMetadata metadata) {
-        if (!metadata.HandleMethods.TryGetValue(command.CommandType, out HandleMethodInfo? handleInfo)) {
+        // The HandleMethods dictionary is keyed by short type name (e.g., "IncrementCounter"),
+        // but command.CommandType may be assembly-qualified (e.g., "Namespace.IncrementCounter, Assembly").
+        // Extract the short name for lookup.
+        string lookupKey = ExtractShortTypeName(command.CommandType);
+        if (!metadata.HandleMethods.TryGetValue(lookupKey, out HandleMethodInfo? handleInfo)) {
             throw new InvalidOperationException(
                 $"No Handle method found for command type '{command.CommandType}' on aggregate '{GetType().Name}'.");
         }
@@ -137,6 +141,20 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
             _ => throw new InvalidOperationException(
                 $"Handle method for '{command.CommandType}' returned unexpected type '{result?.GetType().Name ?? "null"}'."),
         };
+    }
+
+    /// <summary>
+    /// Extracts the short type name from a potentially assembly-qualified type string.
+    /// "Namespace.TypeName, Assembly" → "TypeName", "Namespace.TypeName" → "TypeName", "TypeName" → "TypeName".
+    /// </summary>
+    private static string ExtractShortTypeName(string commandType) {
+        // Strip assembly qualification: "Namespace.Type, Assembly" → "Namespace.Type"
+        int commaIndex = commandType.IndexOf(',', StringComparison.Ordinal);
+        string fullName = commaIndex >= 0 ? commandType[..commaIndex] : commandType;
+
+        // Strip namespace: "Namespace.Type" → "Type"
+        int dotIndex = fullName.LastIndexOf('.');
+        return dotIndex >= 0 ? fullName[(dotIndex + 1)..] : fullName;
     }
 
     private sealed record AggregateMetadata(

@@ -9,7 +9,13 @@
 @inject AdminUserContext UserContext
 @inject EventStoreSignalRClient SignalRClient
 @inject DashboardRefreshService RefreshService
+@inject ThemeState ThemeState
 @implements IAsyncDisposable
+
+<FluentDesignTheme Mode="@ThemeState.Mode"
+                   ModeChanged="@OnThemeModeChanged"
+                   StorageName="hexalith-admin-theme"
+                   CustomColor="#0066CC">
 
 <a href="#main-content" class="skip-to-main">Skip to main content</a>
 
@@ -47,6 +53,7 @@
 </FluentLayout>
 
 <CommandPalette @ref="_commandPalette" />
+</FluentDesignTheme>
 
 @code {
     private bool _sidebarCollapsed;
@@ -57,6 +64,7 @@
     private HeaderStatusIndicator.ConnectionStatusType _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Unknown;
     private string _healthSummary = "\u2014";
     private bool _pollingFailed;
+    private bool _pollingSucceeded;
 
     private bool ShouldShowBreadcrumb => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).Length > 0;
 
@@ -64,9 +72,14 @@
     {
         if (firstRender)
         {
+            // Wire theme changes
+            ThemeState.Changed += OnThemeChanged;
+
             // Wire connection status from SignalR + polling
             RefreshService.OnDataChanged += OnPollingSuccess;
             RefreshService.OnError += OnPollingFailure;
+            RefreshService.Start();
+            _ = RefreshService.TriggerImmediateRefreshAsync();
             UpdateConnectionStatus();
 
             _userRole = await UserContext.GetRoleAsync();
@@ -129,6 +142,7 @@
     private void OnPollingSuccess(DashboardData data)
     {
         _pollingFailed = false;
+        _pollingSucceeded = true;
         if (data.Health is not null)
         {
             _healthSummary = data.Health.OverallStatus.ToString();
@@ -168,14 +182,13 @@
     private void UpdateConnectionStatus()
     {
         bool signalRConnected = SignalRClient?.IsConnected ?? false;
-        // SignalR connected → green; SignalR down + polling works → gray; both fail → red
-        if (_pollingFailed && !signalRConnected)
-        {
-            _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Disconnected;
-        }
-        else if (signalRConnected)
+        if (signalRConnected || _pollingSucceeded)
         {
             _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Connected;
+        }
+        else if (_pollingFailed)
+        {
+            _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Disconnected;
         }
         else
         {
@@ -183,8 +196,19 @@
         }
     }
 
+    private void OnThemeModeChanged(DesignThemeModes mode)
+    {
+        ThemeState.SetMode(mode);
+    }
+
+    private void OnThemeChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     public async ValueTask DisposeAsync()
     {
+        ThemeState.Changed -= OnThemeChanged;
         RefreshService.OnDataChanged -= OnPollingSuccess;
         RefreshService.OnError -= OnPollingFailure;
 
