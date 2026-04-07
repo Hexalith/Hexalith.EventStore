@@ -65,6 +65,8 @@
             // Wire connection status from SignalR + polling
             RefreshService.OnDataChanged += OnPollingSuccess;
             RefreshService.OnError += OnPollingFailure;
+            RefreshService.Start();
+            _ = RefreshService.TriggerImmediateRefreshAsync();
             UpdateConnectionStatus();
 
             _userRole = await UserContext.GetRoleAsync();
