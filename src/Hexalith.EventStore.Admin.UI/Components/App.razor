@@ -1,5 +1,3 @@
-@implements IDisposable
-@using Hexalith.EventStore.Admin.UI.Services
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.FluentUI.AspNetCore.Components
 
@@ -16,8 +14,6 @@
 </head>
 
 <body>
-    <FluentDesignTheme Mode="@ThemeState.Mode" ModeChanged="@OnThemeModeChanged" StorageName="hexalith-admin-theme"
-                       CustomColor="#0066CC" />
     <FluentToastProvider />
     <ErrorBoundary>
         <ChildContent>
@@ -45,14 +41,6 @@
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
-    [Inject]
-    private ThemeState ThemeState { get; set; } = default!;
-
-    protected override void OnInitialized()
-    {
-        ThemeState.Changed += OnThemeChanged;
-    }
-
     private void ReloadPage()
     {
         NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
@@ -76,21 +64,6 @@
     private static string GetErrorMessage(Exception exception) => GetErrorContent(exception).Message;
 
     private static string GetErrorActionLabel(Exception exception) => GetErrorContent(exception).ActionLabel;
-
-    private void OnThemeModeChanged(DesignThemeModes mode)
-    {
-        ThemeState.SetMode(mode);
-    }
-
-    private void OnThemeChanged()
-    {
-        _ = InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        ThemeState.Changed -= OnThemeChanged;
-    }
 
     private sealed record AppErrorContent(string Title, string Message, string ActionLabel);
 }
