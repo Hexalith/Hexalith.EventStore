@@ -7,6 +7,8 @@ using System.Text.Json;
 
 using commandapi::Hexalith.EventStore.CommandApi.Configuration;
 
+using CommandApiProgram = commandapi::Program;
+
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -260,7 +262,7 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
     /// </summary>
     [Fact]
     public async Task TenantLimiter_RejectsFirst_WhenTenantLimitIsExceeded() {
-        using WebApplicationFactory<Program> tenantFirstFactory = factory.WithWebHostBuilder(builder =>
+        using WebApplicationFactory<CommandApiProgram> tenantFirstFactory = factory.WithWebHostBuilder(builder =>
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:RateLimiting:PermitLimit"] = "1",
                 ["EventStore:RateLimiting:WindowSeconds"] = "60",

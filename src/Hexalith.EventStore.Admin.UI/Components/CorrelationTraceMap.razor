@@ -311,13 +311,11 @@
         }
         finally
         {
-            if (loadVersion != _loadVersion)
+            if (loadVersion == _loadVersion)
             {
-                return;
+                _loading = false;
+                StateHasChanged();
             }
-
-            _loading = false;
-            StateHasChanged();
         }
     }
 
