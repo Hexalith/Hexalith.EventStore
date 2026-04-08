@@ -31,8 +31,13 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             return await next().ConfigureAwait(false);
         }
 
-        HttpContext httpContext = httpContextAccessor.HttpContext
-            ?? throw new InvalidOperationException("HttpContext is not available in AuthorizationBehavior.");
+        // Internal service calls (e.g. TenantBootstrapHostedService) send commands via MediatR
+        // without an HTTP request context. Skip API-level authorization for these — domain-level
+        // RBAC in aggregate Handle methods still applies.
+        if (httpContextAccessor.HttpContext is not { } httpContext)
+        {
+            return await next().ConfigureAwait(false);
+        }
         System.Security.Claims.ClaimsPrincipal user = httpContext.User
             ?? throw new InvalidOperationException("HttpContext.User is not available in AuthorizationBehavior.");
 
