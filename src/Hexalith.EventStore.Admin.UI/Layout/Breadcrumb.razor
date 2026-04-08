@@ -107,13 +107,13 @@
         _segments = [];
 
         Uri uri = new(NavigationManager.Uri);
+        _segments.Add(new BreadcrumbSegment("Home", "/", false, false));
+
         string path = uri.AbsolutePath.Trim('/');
         if (string.IsNullOrEmpty(path))
         {
             return;
         }
-
-        _segments.Add(new BreadcrumbSegment("Home", "/", false, false));
 
         string[] parts = path.Split('/');
         string currentPath = string.Empty;

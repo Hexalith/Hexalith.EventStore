@@ -1458,7 +1458,7 @@ Two-section sidebar using FluentNavMenu:
 
 #### Breadcrumb Trail
 
-Displayed below the page header when navigating below top-level pages:
+Displayed below the page header on every page for consistent layout. On the Home page, shows "Home" as the sole segment:
 
 ```
 Home > Commands > c8f2a1b3-9d4e-4f5a

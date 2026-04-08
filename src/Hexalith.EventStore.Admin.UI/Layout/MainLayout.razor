@@ -36,10 +36,7 @@
         <div class="narrow-screen-warning" role="alert">
             Dashboard optimized for wider screens.
         </div>
-        @if (ShouldShowBreadcrumb)
-        {
-            <Breadcrumb />
-        }
+        <Breadcrumb />
         <FluentStack Orientation="Orientation.Horizontal" Style="height: 100%;">
             <div class="admin-sidebar @(_sidebarCollapsed ? "collapsed" : "")">
                 <NavMenu Width="@(_sidebarCollapsed ? 48 : 220)" UserRole="_userRole" />
@@ -65,8 +62,6 @@
     private string _healthSummary = "\u2014";
     private bool _pollingFailed;
     private bool _pollingSucceeded;
-
-    private bool ShouldShowBreadcrumb => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).Length > 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
