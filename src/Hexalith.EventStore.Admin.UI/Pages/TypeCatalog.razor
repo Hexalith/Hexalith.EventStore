@@ -74,8 +74,8 @@ else
 
     <!-- Grid + Detail Panel -->
     <div style="display: flex; gap: 16px; @(Viewport.IsWideViewport ? "flex-direction: row;" : "flex-direction: column;")">
-        <div style="@(Viewport.IsWideViewport && HasSelection ? "flex: 1; min-width: 0;" : "")">
-            <FluentTabs ActiveTabId="@_activeTab" ActiveTabIdChanged="@OnTabChanged">
+        <div style="flex: 1; min-width: 0;">
+            <FluentTabs ActiveTabId="@_activeTab" ActiveTabIdChanged="@OnTabChanged" Style="width: 100%;">
                 <FluentTab Label="@($"Events ({_filteredEvents.Count})")" Id="events" />
                 <FluentTab Label="@($"Commands ({_filteredCommands.Count})")" Id="commands" />
                 <FluentTab Label="@($"Aggregates ({_filteredAggregates.Count})")" Id="aggregates" />
