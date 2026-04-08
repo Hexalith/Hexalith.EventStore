@@ -122,23 +122,29 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         List<TenantSummary> tenants = [];
         string? cursor = null;
 
-        do {
-            SubmitQueryResponse response = await SubmitQueryAsync(
-                new SubmitQueryRequest(
-                    TenantIdentity.DefaultTenantId,
-                    ListTenantsQuery.Domain,
-                    "index",
-                    ListTenantsQuery.QueryType,
-                    ListTenantsQuery.ProjectionType,
-                    BuildPaginationPayload(cursor),
-                    userId),
-                ct).ConfigureAwait(false);
+        try {
+            do {
+                SubmitQueryResponse response = await SubmitQueryAsync(
+                    new SubmitQueryRequest(
+                        TenantIdentity.DefaultTenantId,
+                        ListTenantsQuery.Domain,
+                        "index",
+                        ListTenantsQuery.QueryType,
+                        ListTenantsQuery.ProjectionType,
+                        BuildPaginationPayload(cursor),
+                        userId),
+                    ct).ConfigureAwait(false);
 
-            ContractsSummaryPage paginated = DeserializePayload<ContractsSummaryPage>(response.Payload, ListTenantsQuery.QueryType);
-            tenants.AddRange(RequireItems(paginated, ListTenantsQuery.QueryType).Select(MapTenantSummary));
-            cursor = GetNextCursor(paginated, ListTenantsQuery.QueryType);
+                ContractsSummaryPage paginated = DeserializePayload<ContractsSummaryPage>(response.Payload, ListTenantsQuery.QueryType);
+                tenants.AddRange(RequireItems(paginated, ListTenantsQuery.QueryType).Select(MapTenantSummary));
+                cursor = GetNextCursor(paginated, ListTenantsQuery.QueryType);
+            }
+            while (cursor is not null);
         }
-        while (cursor is not null);
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) {
+            // No tenant projection data yet — return empty list
+            return tenants;
+        }
 
         return tenants;
     }

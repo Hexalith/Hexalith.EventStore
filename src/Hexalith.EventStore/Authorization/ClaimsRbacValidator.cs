@@ -31,6 +31,11 @@ public class ClaimsRbacValidator : IRbacValidator {
         string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
+        // Global administrators bypass domain and permission checks
+        if (IsGlobalAdministrator(user)) {
+            return Task.FromResult(RbacValidationResult.Allowed);
+        }
+
         // Domain authorization: only enforce if user has domain claims
         var domainClaims = user.FindAll("eventstore:domain")
             .Select(c => c.Value)
@@ -72,5 +77,10 @@ public class ClaimsRbacValidator : IRbacValidator {
         }
 
         return Task.FromResult(RbacValidationResult.Allowed);
+    }
+
+    private static bool IsGlobalAdministrator(ClaimsPrincipal user) {
+        Claim? claim = user.FindFirst("global_admin") ?? user.FindFirst("is_global_admin");
+        return claim is not null && bool.TryParse(claim.Value, out bool isAdmin) && isAdmin;
     }
 }

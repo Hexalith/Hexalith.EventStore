@@ -17,6 +17,11 @@ public class ClaimsTenantValidator : ITenantValidator {
         string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
+        // Global administrators may access any tenant (including "system")
+        if (IsGlobalAdministrator(user)) {
+            return Task.FromResult(TenantValidationResult.Allowed);
+        }
+
         var tenantClaims = user.FindAll("eventstore:tenant")
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
@@ -32,5 +37,10 @@ public class ClaimsTenantValidator : ITenantValidator {
         }
 
         return Task.FromResult(TenantValidationResult.Allowed);
+    }
+
+    private static bool IsGlobalAdministrator(ClaimsPrincipal user) {
+        Claim? claim = user.FindFirst("global_admin") ?? user.FindFirst("is_global_admin");
+        return claim is not null && bool.TryParse(claim.Value, out bool isAdmin) && isAdmin;
     }
 }

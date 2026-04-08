@@ -341,4 +341,57 @@ public class ClaimsRbacValidatorTests {
         result.IsAuthorized.ShouldBeFalse();
         result.Reason!.ShouldContain("command type");
     }
+
+    // --- Global admin bypass tests ---
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdmin_BypassesDomainCheck() {
+        // Arrange — global admin with wrong domain claims still allowed
+        var claims = new List<Claim> {
+            new("global_admin", "true"),
+            new("eventstore:domain", "other-domain"),
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdmin_BypassesPermissionCheck() {
+        // Arrange — global admin with no matching permissions still allowed
+        var claims = new List<Claim> {
+            new("global_admin", "true"),
+            new("eventstore:permission", "other-permission"),
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdminFalse_DoesNotBypass() {
+        // Arrange — global_admin: false should not bypass
+        var claims = new List<Claim> {
+            new("global_admin", "false"),
+            new("eventstore:domain", "other-domain"),
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+    }
 }

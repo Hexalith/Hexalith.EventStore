@@ -204,7 +204,7 @@
         }
       ],
       "attributes": {
-        "tenants": ["tenant-a", "tenant-b"],
+        "tenants": ["tenant-a", "tenant-b", "system"],
         "domains": ["orders", "inventory", "counter"],
         "permissions": ["command:submit", "command:replay", "command:query"],
         "global_admin": ["true"]

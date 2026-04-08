@@ -124,4 +124,58 @@ public class ClaimsTenantValidatorTests {
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentNullException>(
             () => _validator.ValidateAsync(null!, "test-tenant", CancellationToken.None));
+
+    // --- Global admin bypass tests ---
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdmin_AllowsAnyTenant() {
+        // Arrange — global admin with no tenant claims can access any tenant
+        var claims = new List<Claim> { new("global_admin", "true") };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        TenantValidationResult result = await _validator.ValidateAsync(principal, "system", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdminWithIsGlobalAdmin_AllowsAnyTenant() {
+        // Arrange — is_global_admin claim variant
+        var claims = new List<Claim> { new("is_global_admin", "true") };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        TenantValidationResult result = await _validator.ValidateAsync(principal, "any-tenant", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdminFalse_DoesNotBypass() {
+        // Arrange — global_admin claim set to false should not bypass
+        var claims = new List<Claim> { new("global_admin", "false") };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        TenantValidationResult result = await _validator.ValidateAsync(principal, "test-tenant", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_GlobalAdminNonBoolean_DoesNotBypass() {
+        // Arrange — non-boolean value should not bypass
+        var claims = new List<Claim> { new("global_admin", "yes") };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        TenantValidationResult result = await _validator.ValidateAsync(principal, "test-tenant", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+    }
 }
