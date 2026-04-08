@@ -19,14 +19,28 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
         AuthenticationState authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
         string? roleClaim = authState.User.FindFirst(AdminClaimTypes.Role)?.Value;
 
-        if (string.IsNullOrEmpty(roleClaim))
+        if (!string.IsNullOrEmpty(roleClaim)
+            && Enum.TryParse<AdminRole>(roleClaim, ignoreCase: true, out AdminRole role))
         {
-            return AdminRole.ReadOnly;
+            return role;
         }
 
-        return Enum.TryParse<AdminRole>(roleClaim, ignoreCase: true, out AdminRole role)
-            ? role
-            : AdminRole.ReadOnly;
+        // Fallback: Keycloak JWT has global_admin claim instead of
+        // eventstore:admin-role (AdminClaimsTransformation runs on
+        // Admin.Server only, not Admin.UI).
+        if (IsGlobalAdministrator(authState.User))
+        {
+            return AdminRole.Admin;
+        }
+
+        return AdminRole.ReadOnly;
+    }
+
+    private static bool IsGlobalAdministrator(System.Security.Claims.ClaimsPrincipal principal)
+    {
+        string? value = principal.FindFirst("global_admin")?.Value
+            ?? principal.FindFirst("is_global_admin")?.Value;
+        return bool.TryParse(value, out bool isAdmin) && isAdmin;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.SignalR;
 
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.EventStore.Admin.UI;
@@ -33,6 +34,7 @@ public static class AdminUIServiceExtensions
             .AddJwtBearer();
         builder.Services.AddAuthorization();
         builder.Services.AddCascadingAuthenticationState();
+        builder.Services.AddScoped<AuthenticationStateProvider, TokenAuthenticationStateProvider>();
 
         // Admin API authentication for protected Admin.Server endpoints
         builder.Services.AddSingleton<AdminApiAccessTokenProvider>();
