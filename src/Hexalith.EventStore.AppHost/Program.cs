@@ -66,7 +66,8 @@ IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith
             Config = tenantsAccessControlConfigPath,
         })
         .WithReference(eventStoreResources.StateStore)
-        .WithReference(eventStoreResources.PubSub));
+        .WithReference(eventStoreResources.PubSub))
+    .WithEnvironment("Tenants__BootstrapGlobalAdminUserId", "admin-user");
 
 // Add sample domain service with DAPR sidecar.
 // NOTE: sample does NOT reference StateStore or PubSub components.

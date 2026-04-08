@@ -189,6 +189,7 @@
   ],
   "users": [
     {
+      "id": "admin-user",
       "username": "admin-user",
       "firstName": "Admin",
       "lastName": "User",
@@ -211,6 +212,7 @@
       }
     },
     {
+      "id": "tenant-a-user",
       "username": "tenant-a-user",
       "firstName": "Tenant",
       "lastName": "A",
@@ -232,6 +234,7 @@
       }
     },
     {
+      "id": "tenant-b-user",
       "username": "tenant-b-user",
       "firstName": "Tenant",
       "lastName": "B",
@@ -253,6 +256,7 @@
       }
     },
     {
+      "id": "readonly-user",
       "username": "readonly-user",
       "firstName": "Read",
       "lastName": "Only",
@@ -274,6 +278,7 @@
       }
     },
     {
+      "id": "no-tenant-user",
       "username": "no-tenant-user",
       "firstName": "No",
       "lastName": "Tenant",

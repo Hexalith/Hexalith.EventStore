@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-08 (SCP-2026-04-08: global admin tenant/RBAC bypass fix for story 16-5)
+# last_updated: 2026-04-08 (SCP-2026-04-08: tenant bootstrap wiring — Keycloak fixed user IDs + AppHost bootstrap env var)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -189,7 +189,7 @@ development_status:
   16-2-snapshot-management-and-auto-snapshot-policies: done
   16-3-compaction-manager: done
   16-4-backup-and-restore-console: done
-  16-5-tenant-management-quotas-onboarding-comparison: in-progress  # 2026-04-08: global admin tenant/RBAC bypass fix (SCP-2026-04-08); auth pipeline unblocked
+  16-5-tenant-management-quotas-onboarding-comparison: in-progress  # 2026-04-08: bootstrap wiring (SCP-2026-04-08-tenant-bootstrap-wiring); fixed AuthorizationBehavior HttpContext crash + AdminUserContext global_admin fallback + Keycloak fixed user IDs + AppHost bootstrap env var
   16-6-dead-letter-queue-manager: done
   16-7-consistency-checker: done
   epic-16-retrospective: optional
