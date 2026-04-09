@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
@@ -28,13 +29,14 @@ public class AdminResiliencyApiClient(
             using HttpResponseMessage response = await client
                 .GetAsync("api/v1/admin/dapr/resiliency", ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<DaprResiliencySpec>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -43,7 +45,7 @@ public class AdminResiliencyApiClient(
         }
     }
 
-    private static void HandleErrorStatus(HttpResponseMessage response)
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
         {
@@ -52,6 +54,27 @@ public class AdminResiliencyApiClient(
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+
+        if (statusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            string? errorDetail = null;
+            try
+            {
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
+                {
+                    errorDetail = detail.GetString();
+                }
+            }
+            catch
+            {
+                // Ignore parse failures — fall through to default message
+            }
+
+            throw new InvalidOperationException(
+                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+        }
 
         throw statusCode switch
         {

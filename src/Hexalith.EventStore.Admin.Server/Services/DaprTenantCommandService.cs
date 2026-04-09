@@ -246,10 +246,36 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
                 aggregateId,
                 (int)httpResponse.StatusCode,
                 errorBody);
+
+            string? userMessage = null;
+            try {
+                using JsonDocument doc = JsonDocument.Parse(errorBody);
+                // Extract rejection type name and humanize it (e.g., "TenantAlreadyExistsRejection" → "Tenant already exists")
+                if (doc.RootElement.TryGetProperty("type", out JsonElement typeEl)) {
+                    string? typeName = typeEl.GetString();
+                    if (!string.IsNullOrEmpty(typeName)) {
+                        // Get class name after last '.'
+                        int lastDot = typeName.LastIndexOf('.');
+                        string className = lastDot >= 0 ? typeName[(lastDot + 1)..] : typeName;
+                        // Remove "Rejection" suffix and insert spaces before uppercase letters
+                        className = className.Replace("Rejection", string.Empty, StringComparison.Ordinal);
+                        userMessage = System.Text.RegularExpressions.Regex
+                            .Replace(className, "(?<=.)([A-Z])", " $1")
+                            .Trim();
+                        // Lowercase all except first letter
+                        if (userMessage.Length > 1) {
+                            userMessage = char.ToUpperInvariant(userMessage[0]) + userMessage[1..].ToLowerInvariant();
+                        }
+                    }
+                }
+            } catch (JsonException) {
+                // Fall through to default message
+            }
+
             return new AdminOperationResult(
                 false,
                 correlationId,
-                $"Command rejected ({(int)httpResponse.StatusCode}). See server logs with correlation ID {correlationId}.",
+                userMessage ?? $"Command rejected ({(int)httpResponse.StatusCode}). See server logs with correlation ID {correlationId}.",
                 ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {

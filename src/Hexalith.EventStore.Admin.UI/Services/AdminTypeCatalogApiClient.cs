@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
@@ -33,7 +34,7 @@ public class AdminTypeCatalogApiClient(
         try
         {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<EventTypeInfo>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<EventTypeInfo>>(ct)
                 .ConfigureAwait(false);
@@ -41,6 +42,7 @@ public class AdminTypeCatalogApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -66,7 +68,7 @@ public class AdminTypeCatalogApiClient(
         try
         {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<CommandTypeInfo>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<CommandTypeInfo>>(ct)
                 .ConfigureAwait(false);
@@ -74,6 +76,7 @@ public class AdminTypeCatalogApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -99,7 +102,7 @@ public class AdminTypeCatalogApiClient(
         try
         {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<AggregateTypeInfo>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<AggregateTypeInfo>>(ct)
                 .ConfigureAwait(false);
@@ -107,6 +110,7 @@ public class AdminTypeCatalogApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -115,7 +119,7 @@ public class AdminTypeCatalogApiClient(
         }
     }
 
-    private static void HandleErrorStatus(HttpResponseMessage response)
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
         {
@@ -124,6 +128,27 @@ public class AdminTypeCatalogApiClient(
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+
+        if (statusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            string? errorDetail = null;
+            try
+            {
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
+                {
+                    errorDetail = detail.GetString();
+                }
+            }
+            catch
+            {
+                // Ignore parse failures — fall through to default message
+            }
+
+            throw new InvalidOperationException(
+                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+        }
 
         throw statusCode switch
         {

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
@@ -31,7 +32,7 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<TenantSummary>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<TenantSummary>>(ct)
                 .ConfigureAwait(false);
@@ -39,6 +40,7 @@ public class AdminTenantApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -65,13 +67,14 @@ public class AdminTenantApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<TenantDetail>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -93,7 +96,7 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<TenantUser>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<TenantUser>>(ct)
                 .ConfigureAwait(false);
@@ -101,6 +104,7 @@ public class AdminTenantApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -124,13 +128,14 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, request, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -152,13 +157,14 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -180,13 +186,14 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -210,13 +217,14 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, new AddTenantUserRequest(userId, role), ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -239,13 +247,14 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, new RemoveTenantUserRequest(userId), ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -269,13 +278,14 @@ public class AdminTenantApiClient(
         try
         {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, new ChangeTenantUserRoleRequest(userId, newRole), ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -284,7 +294,7 @@ public class AdminTenantApiClient(
         }
     }
 
-    private static void HandleErrorStatus(HttpResponseMessage response)
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
         {
@@ -294,14 +304,33 @@ public class AdminTenantApiClient(
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
+        if (statusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            string? errorDetail = null;
+            try
+            {
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
+                {
+                    errorDetail = detail.GetString();
+                }
+            }
+            catch
+            {
+                // Ignore parse failures — fall through to default message
+            }
+
+            throw new InvalidOperationException(
+                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+        }
+
         throw statusCode switch
         {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(
                 "Access denied. Insufficient permissions to access this resource."),
-            HttpStatusCode.UnprocessableEntity => new InvalidOperationException(
-                reasonPhrase ?? "The operation was rejected by the server."),
             HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException(
                 "The admin backend service is temporarily unavailable."),
             _ => new HttpRequestException(

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
@@ -34,7 +35,7 @@ public class AdminProjectionApiClient(
         try
         {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<ProjectionStatus>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<ProjectionStatus>>(ct)
                 .ConfigureAwait(false);
@@ -42,6 +43,7 @@ public class AdminProjectionApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -72,13 +74,14 @@ public class AdminProjectionApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<ProjectionDetail>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -106,13 +109,14 @@ public class AdminProjectionApiClient(
             using HttpResponseMessage response = await client
                 .PostAsync(url, null, ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -140,13 +144,14 @@ public class AdminProjectionApiClient(
             using HttpResponseMessage response = await client
                 .PostAsync(url, null, ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -177,13 +182,14 @@ public class AdminProjectionApiClient(
             using HttpResponseMessage response = await client
                 .PostAsync(url, content, ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -216,13 +222,14 @@ public class AdminProjectionApiClient(
             using HttpResponseMessage response = await client
                 .PostAsync(url, content, ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException)
         {
@@ -231,7 +238,7 @@ public class AdminProjectionApiClient(
         }
     }
 
-    private static void HandleErrorStatus(HttpResponseMessage response)
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
         {
@@ -240,6 +247,27 @@ public class AdminProjectionApiClient(
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+
+        if (statusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            string? errorDetail = null;
+            try
+            {
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
+                {
+                    errorDetail = detail.GetString();
+                }
+            }
+            catch
+            {
+                // Ignore parse failures — fall through to default message
+            }
+
+            throw new InvalidOperationException(
+                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+        }
 
         throw statusCode switch
         {

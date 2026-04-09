@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -42,7 +43,7 @@ public class AdminStreamApiClient(
         string url = BuildCommandsUrl(tenantId, status, commandType, count);
         try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             PagedResult<CommandSummary>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<CommandSummary>>(ct)
                 .ConfigureAwait(false);
@@ -50,6 +51,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch commands from {Url}", url);
@@ -74,7 +76,7 @@ public class AdminStreamApiClient(
         string url = BuildStreamsUrl(tenantId, domain, count);
         try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             PagedResult<StreamSummary>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<StreamSummary>>(ct)
                 .ConfigureAwait(false);
@@ -82,6 +84,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch streams from {Url}", url);
@@ -100,13 +103,14 @@ public class AdminStreamApiClient(
             using HttpResponseMessage response = await client
                 .GetAsync("api/v1/admin/health", ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<SystemHealthReport>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch system health");
@@ -125,7 +129,7 @@ public class AdminStreamApiClient(
             using HttpResponseMessage response = await client
                 .GetAsync("api/v1/admin/tenants", ct)
                 .ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<TenantSummary>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<TenantSummary>>(ct)
                 .ConfigureAwait(false);
@@ -133,6 +137,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch tenants");
@@ -163,7 +168,7 @@ public class AdminStreamApiClient(
         string url = BuildTimelineUrl(tenantId, domain, aggregateId, fromSequence, toSequence, count);
         try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             PagedResult<TimelineEntry>? result = await response.Content
                 .ReadFromJsonAsync<PagedResult<TimelineEntry>>(ct)
                 .ConfigureAwait(false);
@@ -171,6 +176,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch timeline from {Url}", url);
@@ -201,13 +207,14 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<EventDetail>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch event detail from {Url}", url);
@@ -238,13 +245,14 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AggregateStateSnapshot>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate state from {Url}", url);
@@ -277,13 +285,14 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AggregateStateDiff>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate state diff from {Url}", url);
@@ -318,13 +327,14 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<AggregateBlameView>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate blame from {Url}", url);
@@ -363,7 +373,7 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<BisectResult>(ct)
                 .ConfigureAwait(false);
@@ -373,6 +383,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch bisect result from {Url}", url);
@@ -405,7 +416,7 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<EventStepFrame>(ct)
                 .ConfigureAwait(false);
@@ -415,6 +426,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch event step frame from {Url}", url);
@@ -447,7 +459,7 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<SandboxResult>(ct)
                 .ConfigureAwait(false);
@@ -457,6 +469,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to execute sandbox command from {Url}", url);
@@ -547,13 +560,14 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<CausationChain>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch causation chain from {Url}", url);
@@ -597,13 +611,14 @@ public class AdminStreamApiClient(
                 return null;
             }
 
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<CorrelationTraceMap>(ct)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch correlation trace map from {Url}", url);
@@ -626,7 +641,7 @@ public class AdminStreamApiClient(
             : $"api/v1/admin/types/aggregates?domain={Uri.EscapeDataString(domain)}";
         try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            HandleErrorStatus(response);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<AggregateTypeInfo>? result = await response.Content
                 .ReadFromJsonAsync<IReadOnlyList<AggregateTypeInfo>>(ct)
                 .ConfigureAwait(false);
@@ -634,6 +649,7 @@ public class AdminStreamApiClient(
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
+            and not InvalidOperationException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate types from {Url}", url);
@@ -690,7 +706,7 @@ public class AdminStreamApiClient(
         return $"api/v1/admin/streams?{string.Join('&', queryParams)}";
     }
 
-    private static void HandleErrorStatus(HttpResponseMessage response) {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
         if (response.IsSuccessStatusCode) {
             return;
         }
@@ -698,6 +714,22 @@ public class AdminStreamApiClient(
         // Extract details before throwing — using statement will dispose the response
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
+            string? errorDetail = null;
+            try {
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
+                    errorDetail = detail.GetString();
+                }
+            } catch {
+                // Ignore parse failures — fall through to default message
+            }
+
+            throw new InvalidOperationException(
+                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+        }
 
         throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
