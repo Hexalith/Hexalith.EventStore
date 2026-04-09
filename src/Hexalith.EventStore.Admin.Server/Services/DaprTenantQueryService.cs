@@ -95,7 +95,12 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
             List<TenantUser> users = [];
             foreach (JsonProperty prop in members.EnumerateObject()) {
-                users.Add(new TenantUser(prop.Name, prop.Value.GetString() ?? "Unknown"));
+                string role = prop.Value.ValueKind == JsonValueKind.String
+                    ? prop.Value.GetString() ?? "Unknown"
+                    : prop.Value.ValueKind == JsonValueKind.Number
+                        ? MapTenantRole(prop.Value.GetInt32())
+                        : "Unknown";
+                users.Add(new TenantUser(prop.Name, role));
             }
 
             return users;
@@ -167,6 +172,13 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
         return TenantStatusType.Active;
     }
+
+    private static string MapTenantRole(int roleValue) => roleValue switch {
+        0 => "TenantOwner",
+        1 => "TenantContributor",
+        2 => "TenantReader",
+        _ => "Unknown",
+    };
 
     private static TenantStatusType GetStatusFromEntry(JsonElement entry) => GetStatusProp(entry);
 }

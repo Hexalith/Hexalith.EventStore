@@ -205,13 +205,7 @@ internal static class DomainProcessorStateRehydrator {
                 continue;
             }
 
-            throw new InvalidOperationException(
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Unable to rehydrate aggregate '{0}' from event type '{1}'. No matching Apply method found on state '{2}'.",
-                    typeof(TState).DeclaringType?.Name ?? typeof(TState).Name,
-                    eventTypeName,
-                    typeof(TState).Name));
+            // Skip events without matching Apply methods (e.g., rejection events persisted in the stream).
         }
 
         return state;
@@ -232,7 +226,12 @@ internal static class DomainProcessorStateRehydrator {
         EventEnvelope envelope,
         Dictionary<string, MethodInfo> applyMethods)
         where TState : class, new() {
-        MethodInfo applyMethod = ResolveApplyMethod(envelope.Metadata.EventTypeName, applyMethods, typeof(TState));
+        MethodInfo? applyMethod = TryResolveApplyMethod(envelope.Metadata.EventTypeName, applyMethods);
+        if (applyMethod is null) {
+            // Skip events without matching Apply methods (e.g., rejection events persisted in the stream).
+            return;
+        }
+
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {
@@ -266,7 +265,11 @@ internal static class DomainProcessorStateRehydrator {
         JsonElement eventElement,
         Dictionary<string, MethodInfo> applyMethods)
         where TState : class, new() {
-        MethodInfo applyMethod = ResolveApplyMethod(eventTypeName, applyMethods, typeof(TState));
+        MethodInfo? applyMethod = TryResolveApplyMethod(eventTypeName, applyMethods);
+        if (applyMethod is null) {
+            // Skip events without matching Apply methods (e.g., rejection events persisted in the stream).
+            return;
+        }
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {
@@ -317,10 +320,9 @@ internal static class DomainProcessorStateRehydrator {
         }
     }
 
-    private static MethodInfo ResolveApplyMethod(
+    private static MethodInfo? TryResolveApplyMethod(
         string eventTypeName,
-        Dictionary<string, MethodInfo> applyMethods,
-        Type stateType) {
+        Dictionary<string, MethodInfo> applyMethods) {
         if (!applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
             foreach (KeyValuePair<string, MethodInfo> kvp in applyMethods) {
                 if (eventTypeName.EndsWith(kvp.Key, StringComparison.Ordinal)) {
@@ -330,11 +332,6 @@ internal static class DomainProcessorStateRehydrator {
             }
         }
 
-        return applyMethod ?? throw new InvalidOperationException(
-            string.Format(
-                CultureInfo.InvariantCulture,
-                "Unable to rehydrate aggregate state '{0}'. Event type '{1}' has no matching Apply method.",
-                stateType.Name,
-                eventTypeName));
+        return applyMethod;
     }
 }
