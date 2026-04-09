@@ -52,7 +52,8 @@ public static class HexalithEventStoreExtensions {
         IResourceBuilder<IDaprComponentResource> stateStore = builder
             .AddDaprComponent("statestore", "state.redis")
             .WithMetadata("actorStateStore", "true")
-            .WithMetadata("redisHost", "localhost:6379");
+            .WithMetadata("redisHost", "localhost:6379")
+            .WithMetadata("keyPrefix", "none");
         IResourceBuilder<IDaprComponentResource> pubSub = builder.AddDaprPubSub("pubsub");
 
         // Wire up EventStore with DAPR sidecar and component references.
@@ -75,8 +76,9 @@ public static class HexalithEventStoreExtensions {
                 .WithReference(pubSub));
 
         // Wire Admin.Server with DAPR sidecar.
-        // Admin.Server needs state store for direct reads (health, admin indexes)
-        // and service invocation to EventStore for write delegation (ADR-P4).
+        // Admin.Server needs state store for direct reads (health, admin indexes,
+        // tenant projections written by the tenants service).
+        // All services use keyPrefix:none so keys are shared across appIds.
         // It does not publish or subscribe directly, so it intentionally does not
         // reference the pub/sub component.
         _ = adminServer
