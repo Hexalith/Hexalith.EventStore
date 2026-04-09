@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 
+using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
@@ -138,61 +139,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         return trustedExtensions.Count > 0 ? trustedExtensions : null;
     }
 
-    private static bool IsGlobalAdministrator(ClaimsPrincipal principal) {
-        ArgumentNullException.ThrowIfNull(principal);
-
-        foreach (Claim claim in principal.Claims) {
-            if (IsGlobalAdministratorClaim(claim)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsGlobalAdministratorClaim(Claim claim) {
-        ArgumentNullException.ThrowIfNull(claim);
-
-        if (claim.Type is "global_admin" or "is_global_admin") {
-            return bool.TryParse(claim.Value, out bool isGlobalAdmin) && isGlobalAdmin;
-        }
-
-        if (claim.Type is ClaimTypes.Role or "role") {
-            return IsGlobalAdministratorValue(claim.Value);
-        }
-
-        if (claim.Type == "roles") {
-            return ClaimValueContainsGlobalAdministrator(claim.Value);
-        }
-
-        return false;
-    }
-
-    private static bool ClaimValueContainsGlobalAdministrator(string value) {
-        if (string.IsNullOrWhiteSpace(value)) {
-            return false;
-        }
-
-        if (value.StartsWith('[')) {
-            try {
-                string[]? roles = JsonSerializer.Deserialize<string[]>(value);
-                if (roles is not null) {
-                    return roles.Any(IsGlobalAdministratorValue);
-                }
-            }
-            catch (JsonException) {
-                // Fall through to delimiter-based parsing below.
-            }
-        }
-
-        return value.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
-            .Any(IsGlobalAdministratorValue);
-    }
-
-    private static bool IsGlobalAdministratorValue(string value)
-        => value is not null
-            && (string.Equals(value, "GlobalAdministrator", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "global-administrator", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "global-admin", StringComparison.OrdinalIgnoreCase));
+    private static bool IsGlobalAdministrator(ClaimsPrincipal principal)
+        => GlobalAdministratorHelper.IsGlobalAdministrator(principal);
 
 }

@@ -46,7 +46,8 @@
 - **OperationCanceledException from linked CancellationTokenSource leaks as 500** — Methods with 30/60s hard timeouts (`GetAggregateBlameAsync`, `GetEventStepFrameAsync`, `BisectAsync`, `GetCorrelationTraceMapAsync`) throw `OperationCanceledException` that the controller explicitly does not catch, resulting in 500 instead of 504/408.
 - **No test verifying controller returns HTTP 503 on service failure** — `AdminStreamsController.IsServiceUnavailable` maps exceptions to 503 but no test exercises this path end-to-end.
 
-## Deferred from: code review of 16-5-tenant-management-quotas-onboarding-comparison.md (2026-04-06)
+## Deferred from: code review of 16-5-tenant-management-quotas-onboarding-comparison.md (2026-04-06, round 2 — 2026-04-09)
 
+- **Open RBAC when users have no permission claims** — `ClaimsRbacValidator` skips permission checks when `permissionClaims.Count == 0`, treating absence of claims as unrestricted access. Pre-existing "open by default" design decision. A new user with only tenant claims but no permission claims gets full access within their tenants.
 - **Write endpoints still flatten command failures to HTTP 422** — `AdminTenantsController` now sits in front of a command service that preserves upstream failure codes, but the controller still converts all rejected writes into HTTP 422. Deferred because this behavior predates the rework and any broader status-handling cleanup should be coordinated with downstream clients.
 - **Detail panel refresh can race after tenant selection changes** — `ReloadDetailPanel()` reloads users for the current `_expandedTenantId` without cancellation or a post-await tenant guard. If the operator switches rows while a mutation-triggered refresh is in flight, the panel can briefly show the wrong tenant's users. Pre-existing in the page before this rework.

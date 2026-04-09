@@ -208,7 +208,8 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Post,
                 _options.EventStoreAppId,
-                CommandEndpoint);
+                CommandEndpoint)
+                ?? new HttpRequestMessage(HttpMethod.Post, CommandEndpoint);
             httpRequest.Content = JsonContent.Create(commandBody);
 
             string? token = _authContext.GetToken();

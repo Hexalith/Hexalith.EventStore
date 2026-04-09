@@ -477,20 +477,9 @@ body {
     color: white !important;
 }
 
-.tenant-status-suspended {
+.tenant-status-disabled {
     background-color: var(--hexalith-status-error) !important;
     color: white !important;
-}
-
-.tenant-status-onboarding {
-    animation: tenant-pulse 1.5s ease-in-out infinite;
-    background-color: var(--hexalith-status-warning) !important;
-    color: white !important;
-}
-
-@keyframes tenant-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
 }
 
 .tenant-quota-bar {

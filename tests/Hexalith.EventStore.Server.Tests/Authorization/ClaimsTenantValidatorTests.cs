@@ -178,4 +178,20 @@ public class ClaimsTenantValidatorTests {
         // Assert
         result.IsAuthorized.ShouldBeFalse();
     }
+
+    [Theory]
+    [InlineData("GlobalAdministrator")]
+    [InlineData("global-administrator")]
+    [InlineData("global-admin")]
+    public async Task ValidateAsync_GlobalAdminViaRoleClaim_AllowsAnyTenant(string roleValue) {
+        // Arrange — role-based global admin detection (via GlobalAdministratorHelper)
+        var claims = new List<Claim> { new(ClaimTypes.Role, roleValue) };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        TenantValidationResult result = await _validator.ValidateAsync(principal, "any-tenant", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
 }

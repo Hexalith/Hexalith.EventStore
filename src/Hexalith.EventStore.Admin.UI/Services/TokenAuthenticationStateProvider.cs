@@ -22,7 +22,7 @@ public sealed class TokenAuthenticationStateProvider(
         {
             string token = await tokenProvider.GetAccessTokenAsync().ConfigureAwait(false);
             ClaimsPrincipal principal = ParseJwtClaims(token);
-            logger.LogInformation(
+            logger.LogDebug(
                 "TokenAuthenticationStateProvider: authenticated={IsAuthenticated}, claims={ClaimCount}",
                 principal.Identity?.IsAuthenticated ?? false,
                 principal.Claims.Count());

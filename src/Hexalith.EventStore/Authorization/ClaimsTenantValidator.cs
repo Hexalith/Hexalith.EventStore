@@ -18,7 +18,7 @@ public class ClaimsTenantValidator : ITenantValidator {
         ArgumentNullException.ThrowIfNull(user);
 
         // Global administrators may access any tenant (including "system")
-        if (IsGlobalAdministrator(user)) {
+        if (GlobalAdministratorHelper.IsGlobalAdministrator(user)) {
             return Task.FromResult(TenantValidationResult.Allowed);
         }
 
@@ -39,8 +39,4 @@ public class ClaimsTenantValidator : ITenantValidator {
         return Task.FromResult(TenantValidationResult.Allowed);
     }
 
-    private static bool IsGlobalAdministrator(ClaimsPrincipal user) {
-        Claim? claim = user.FindFirst("global_admin") ?? user.FindFirst("is_global_admin");
-        return claim is not null && bool.TryParse(claim.Value, out bool isAdmin) && isAdmin;
-    }
 }

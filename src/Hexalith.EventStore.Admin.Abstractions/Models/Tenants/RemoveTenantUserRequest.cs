@@ -6,4 +6,4 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 /// Request to remove a user from a tenant.
 /// </summary>
 /// <param name="UserId">The user identifier.</param>
-public record RemoveTenantUserRequest([Required] string UserId);
+public record RemoveTenantUserRequest([Required] [MinLength(1)] string UserId);
