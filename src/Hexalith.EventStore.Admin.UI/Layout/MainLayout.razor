@@ -160,6 +160,7 @@
     private void OnPollingFailure(Exception ex)
     {
         _pollingFailed = true;
+        _pollingSucceeded = false;
         _ = InvokeAsync(() =>
         {
             try

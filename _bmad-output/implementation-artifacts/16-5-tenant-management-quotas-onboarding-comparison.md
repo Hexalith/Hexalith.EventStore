@@ -1,6 +1,6 @@
 # Story 16.5: Tenant Management — EventStore Pipeline Integration (Rework)
 
-Status: in-progress
+Status: done
 
 Size: Medium — ~15 files modified, 6 task groups, 9 ACs (~8-12 hours). Corrective rework per SCP-2026-04-06: rewire tenant admin services to use EventStore command/query pipelines instead of non-existent direct Hexalith.Tenants REST endpoints.
 
@@ -143,6 +143,32 @@ so that **I can perform self-service tenant administration through the admin UI,
 - [x] [Review][Patch] User-management tests don't exercise the `UserId`-based write actions [tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TenantsPageTests.cs:396]
 - [x] [Review][Patch] Filter tests don't verify the simplified status/search behavior [tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TenantsPageTests.cs:290]
 - [x] [Review][Defer] Detail panel refresh can race after tenant selection changes [src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor:944] — deferred, pre-existing
+
+### Review Findings — Round 2 (2026-04-09, Group A: Contracts & Models)
+
+- [x] [Review][Patch] UserId fields lack whitespace validation — added `[MinLength(1)]` to `AddTenantUserRequest`, `ChangeTenantUserRoleRequest`, `RemoveTenantUserRequest`
+- [x] [Review][Patch] `TenantSummary.Name` and `TenantDetail.Name` lack null/whitespace guards — added `!string.IsNullOrWhiteSpace` property overrides matching `TenantId` pattern
+
+### Review Findings — Round 2 (2026-04-09, Group B: Services)
+
+- [x] [Review][Patch] `GetTenantUsersAsync` missing 404 handling — added `catch (HttpRequestException) when (404)` returning empty list, consistent with `ListTenantsAsync` and `GetTenantDetailAsync` [src/Hexalith.EventStore.Admin.Server/Services/DaprTenantQueryService.cs:94]
+- [x] [Review][Patch] Missing null-coalescing fallback on `CreateInvokeMethodRequest` — added `?? new HttpRequestMessage(...)` fallback on both `DaprTenantCommandService` and `DaprTenantQueryService`, consistent with other DAPR services
+- [ ] [Review][Patch] K&R brace style violates `.editorconfig` Allman convention in `DaprTenantCommandService.cs` and `DaprTenantQueryService.cs` — requires IDE reformatting
+
+### Review Findings — Round 2 (2026-04-09, Group C: Controllers & Auth)
+
+- [x] [Review][Patch] `IsGlobalAdministrator` logic divergence — extracted shared `GlobalAdministratorHelper` in `Hexalith.EventStore/Authorization/`, updated `ClaimsRbacValidator`, `ClaimsTenantValidator`, `CommandsController` to use it, aligned `AdminUserContext` with broad check
+- [x] [Review][Patch] `TokenAuthenticationStateProvider` logs at `Information` level on every Blazor render — changed to `LogDebug`
+- [x] [Review][Defer] Open RBAC when users have no permission claims — pre-existing design decision, `ClaimsRbacValidator` treats absence of claims as unrestricted
+
+### Review Findings — Round 2 (2026-04-09, Group D: UI)
+
+- [x] [Review][Patch] `_pollingSucceeded` never reset in `OnPollingFailure` — connection indicator permanently shows green after first success. Added `_pollingSucceeded = false;` in failure handler [MainLayout.razor:162]
+- [x] [Review][Patch] CSS class `tenant-status-suspended` used for `Disabled` status + dead CSS rules — renamed to `tenant-status-disabled`, removed `.tenant-status-onboarding` and `@keyframes tenant-pulse` [Tenants.razor:666, app.css:480-494]
+
+### Review Findings — Round 2 (2026-04-09, Group F: Tests)
+
+- [x] [Review][Patch] Missing test for role-based global admin bypass — added `[Theory]` tests to `ClaimsRbacValidatorTests` and `ClaimsTenantValidatorTests` verifying `GlobalAdministrator`/`global-administrator`/`global-admin` role claims bypass validation
 
 ## Dev Notes
 

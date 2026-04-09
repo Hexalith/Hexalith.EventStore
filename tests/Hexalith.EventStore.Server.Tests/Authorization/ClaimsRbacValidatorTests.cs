@@ -394,4 +394,25 @@ public class ClaimsRbacValidatorTests {
         // Assert
         result.IsAuthorized.ShouldBeFalse();
     }
+
+    [Theory]
+    [InlineData("GlobalAdministrator")]
+    [InlineData("global-administrator")]
+    [InlineData("global-admin")]
+    public async Task ValidateAsync_GlobalAdminViaRoleClaim_BypassesDomainAndPermissionChecks(string roleValue) {
+        // Arrange — role-based global admin detection (via GlobalAdministratorHelper)
+        var claims = new List<Claim> {
+            new(ClaimTypes.Role, roleValue),
+            new("eventstore:domain", "other-domain"),
+            new("eventstore:permission", "other-permission"),
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        // Act
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal, "test-tenant", "test-domain", "CreateOrder", "command", CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
 }

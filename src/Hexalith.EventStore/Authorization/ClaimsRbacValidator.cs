@@ -32,7 +32,7 @@ public class ClaimsRbacValidator : IRbacValidator {
         ArgumentNullException.ThrowIfNull(user);
 
         // Global administrators bypass domain and permission checks
-        if (IsGlobalAdministrator(user)) {
+        if (GlobalAdministratorHelper.IsGlobalAdministrator(user)) {
             return Task.FromResult(RbacValidationResult.Allowed);
         }
 
@@ -79,8 +79,4 @@ public class ClaimsRbacValidator : IRbacValidator {
         return Task.FromResult(RbacValidationResult.Allowed);
     }
 
-    private static bool IsGlobalAdministrator(ClaimsPrincipal user) {
-        Claim? claim = user.FindFirst("global_admin") ?? user.FindFirst("is_global_admin");
-        return claim is not null && bool.TryParse(claim.Value, out bool isAdmin) && isAdmin;
-    }
 }

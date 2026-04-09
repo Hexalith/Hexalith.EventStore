@@ -36,11 +36,68 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
         return AdminRole.ReadOnly;
     }
 
+    /// <summary>
+    /// Checks whether the principal is a global administrator by examining boolean claims,
+    /// single-value role claims, and multi-value role claims. Mirrors the broad check in
+    /// <c>Hexalith.EventStore.Authorization.GlobalAdministratorHelper</c>.
+    /// </summary>
     private static bool IsGlobalAdministrator(System.Security.Claims.ClaimsPrincipal principal)
     {
-        string? value = principal.FindFirst("global_admin")?.Value
-            ?? principal.FindFirst("is_global_admin")?.Value;
-        return bool.TryParse(value, out bool isAdmin) && isAdmin;
+        foreach (System.Security.Claims.Claim claim in principal.Claims)
+        {
+            if (claim.Type is "global_admin" or "is_global_admin")
+            {
+                if (bool.TryParse(claim.Value, out bool isGlobalAdmin) && isGlobalAdmin)
+                {
+                    return true;
+                }
+            }
+            else if (claim.Type is System.Security.Claims.ClaimTypes.Role or "role")
+            {
+                if (IsGlobalAdministratorValue(claim.Value))
+                {
+                    return true;
+                }
+            }
+            else if (claim.Type == "roles" && ContainsGlobalAdministratorValue(claim.Value))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsGlobalAdministratorValue(string value)
+        => string.Equals(value, "GlobalAdministrator", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "global-administrator", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "global-admin", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsGlobalAdministratorValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (value.StartsWith('['))
+        {
+            try
+            {
+                string[]? roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(value);
+                if (roles is not null)
+                {
+                    return roles.Any(IsGlobalAdministratorValue);
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Fall through to delimiter-based parsing below.
+            }
+        }
+
+        return value.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
+            .Any(IsGlobalAdministratorValue);
     }
 
     /// <summary>

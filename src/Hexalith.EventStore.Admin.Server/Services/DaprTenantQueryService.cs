@@ -95,23 +95,29 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         List<TenantUser> users = [];
         string? cursor = null;
 
-        do {
-            SubmitQueryResponse response = await SubmitQueryAsync(
-                new SubmitQueryRequest(
-                    TenantIdentity.DefaultTenantId,
-                    GetTenantUsersQuery.Domain,
-                    tenantId,
-                    GetTenantUsersQuery.QueryType,
-                    GetTenantUsersQuery.ProjectionType,
-                    BuildPaginationPayload(cursor),
-                    tenantId),
-                ct).ConfigureAwait(false);
+        try {
+            do {
+                SubmitQueryResponse response = await SubmitQueryAsync(
+                    new SubmitQueryRequest(
+                        TenantIdentity.DefaultTenantId,
+                        GetTenantUsersQuery.Domain,
+                        tenantId,
+                        GetTenantUsersQuery.QueryType,
+                        GetTenantUsersQuery.ProjectionType,
+                        BuildPaginationPayload(cursor),
+                        tenantId),
+                    ct).ConfigureAwait(false);
 
-            ContractsMemberPage paginated = DeserializePayload<ContractsMemberPage>(response.Payload, GetTenantUsersQuery.QueryType);
-            users.AddRange(RequireItems(paginated, GetTenantUsersQuery.QueryType).Select(MapTenantUser));
-            cursor = GetNextCursor(paginated, GetTenantUsersQuery.QueryType);
+                ContractsMemberPage paginated = DeserializePayload<ContractsMemberPage>(response.Payload, GetTenantUsersQuery.QueryType);
+                users.AddRange(RequireItems(paginated, GetTenantUsersQuery.QueryType).Select(MapTenantUser));
+                cursor = GetNextCursor(paginated, GetTenantUsersQuery.QueryType);
+            }
+            while (cursor is not null);
         }
-        while (cursor is not null);
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) {
+            // No user projection data yet — return empty list
+            return users;
+        }
 
         return users;
     }
@@ -208,7 +214,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Post,
                 _options.EventStoreAppId,
-                QueryEndpoint);
+                QueryEndpoint)
+                ?? new HttpRequestMessage(HttpMethod.Post, QueryEndpoint);
             httpRequest.Content = JsonContent.Create(queryRequest);
 
             string? token = _authContext.GetToken();
