@@ -1,5 +1,8 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
+using System.Net;
+using System.Text;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
@@ -155,6 +158,114 @@ public class DaprInfrastructureQueryServiceTests
         result.AppId.ShouldBe("test-app");
         result.RuntimeVersion.ShouldBe("1.14.0");
         result.ComponentCount.ShouldBe(2);
+        result.SubscriptionCount.ShouldBe(0);
+        result.HttpEndpointCount.ShouldBe(0);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        result.RemoteEndpoint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetSidecarInfoAsync_PopulatesSubscriptionAndHttpEndpointCounts_FromRemoteSidecar()
+    {
+        // Arrange — local sidecar metadata + remote eventstore sidecar exposing 2 subs and 3 http endpoints
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "subscriptions": [
+                {"pubsubName": "pubsub", "topic": "events"},
+                {"pubsubName": "pubsub", "topic": "projection.changed"}
+            ],
+            "httpEndpoints": [
+                {"name": "ep1"},
+                {"name": "ep2"},
+                {"name": "ep3"}
+            ]
+        }
+        """));
+        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.SubscriptionCount.ShouldBe(2);
+        result.HttpEndpointCount.ShouldBe(3);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+    }
+
+    [Fact]
+    public async Task GetSidecarInfoAsync_ReturnsZeroCounts_WhenRemoteSidecarMissingArrays()
+    {
+        // Arrange — remote responds 200 with no subscriptions/httpEndpoints arrays
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """{"actors": []}"""));
+        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.SubscriptionCount.ShouldBe(0);
+        result.HttpEndpointCount.ShouldBe(0);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+    }
+
+    [Fact]
+    public async Task GetSidecarInfoAsync_ReturnsUnreachable_WhenRemoteSidecarFails()
+    {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
+        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
+
+        // Assert — local metadata still served, but remote unreachable so counts stay 0
+        result.ShouldNotBeNull();
+        result.AppId.ShouldBe("test-app");
+        result.SubscriptionCount.ShouldBe(0);
+        result.HttpEndpointCount.ShouldBe(0);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+    }
+
+    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(content, Encoding.UTF8, "application/json"),
+            });
+        }
     }
 
     [Fact]

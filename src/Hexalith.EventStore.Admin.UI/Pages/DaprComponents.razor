@@ -94,10 +94,10 @@
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Subscriptions"
-                      Value="@(_sidecar.SubscriptionCount > 0 ? _sidecar.SubscriptionCount.ToString() : "N/A")"
+                      Value="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _sidecar.SubscriptionCount.ToString() : "N/A")"
                       Severity="neutral"
-                      Subtitle="@(_sidecar.HttpEndpointCount > 0 ? $"{_sidecar.HttpEndpointCount} HTTP endpoints" : "HTTP endpoints: N/A")"
-                      Title="Number of active subscriptions" />
+                      Subtitle="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? $"{_sidecar.HttpEndpointCount} HTTP endpoints" : "HTTP endpoints: N/A")"
+                      Title="@GetRemoteMetadataTitle(_sidecar)" />
         </FluentGridItem>
     }
 </FluentGrid>
@@ -353,6 +353,14 @@
         HealthStatus.Degraded => "warning",
         HealthStatus.Unhealthy => "error",
         _ => "neutral",
+    };
+
+    private static string GetRemoteMetadataTitle(DaprSidecarInfo sidecar) => sidecar.RemoteMetadataStatus switch
+    {
+        RemoteMetadataStatus.Available => $"Remote eventstore sidecar reachable at {sidecar.RemoteEndpoint}",
+        RemoteMetadataStatus.Unreachable => $"Remote eventstore sidecar unreachable at {sidecar.RemoteEndpoint}",
+        RemoteMetadataStatus.NotConfigured => "Remote eventstore sidecar endpoint not configured (AdminServer:EventStoreDaprHttpEndpoint)",
+        _ => "Number of active subscriptions",
     };
 
     private static string FormatTimeAgo(DateTimeOffset timestamp)

@@ -15,6 +15,12 @@ string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
 string tenantsAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.tenants.yaml");
 
+// Resolve the DAPR resiliency YAML path so the Admin.Server can render /dapr/resiliency
+// without requiring an appsettings.json edit. The AppHost is the only component that knows
+// the absolute on-disk location of the DAPR resources directory, so it owns this path and
+// injects it as an env var on the Admin.Server resource.
+string resiliencyConfigPath = ResolveDaprConfigPath("resiliency.yaml");
+
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
 IResourceBuilder<ProjectResource> eventStore = builder.AddProject<Projects.Hexalith_EventStore>("eventstore");
@@ -25,7 +31,8 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     adminServer,
     adminUI,
     eventStoreAccessControlConfigPath,
-    adminServerAccessControlConfigPath);
+    adminServerAccessControlConfigPath,
+    resiliencyConfigPath);
 
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
 // Enabled by default for local development with real OIDC token testing.

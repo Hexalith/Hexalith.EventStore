@@ -52,7 +52,7 @@ public class AdminDaprControllerTests
     [Fact]
     public async Task GetSidecar_DelegatesToService()
     {
-        DaprSidecarInfo expected = new("test-app", "1.14.0", 3, 2, 1);
+        DaprSidecarInfo expected = new("test-app", "1.14.0", 3, 2, 1, RemoteMetadataStatus.Available, "http://localhost:3501");
         _service.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(expected);
 

@@ -80,9 +80,11 @@ public sealed class AdminServerOptions
     public string? EventStoreDaprHttpEndpoint { get; set; }
 
     /// <summary>
-    /// Gets or sets the file path to the DAPR resiliency YAML configuration.
-    /// In Aspire development: set via configuration injection (e.g., "DaprComponents/resiliency.yaml").
-    /// In production: set to the mounted resiliency YAML path (e.g., "/dapr/components/resiliency.yaml").
+    /// Gets or sets the absolute file path to the DAPR resiliency YAML configuration.
+    /// In Aspire development: auto-injected by <c>HexalithEventStoreExtensions</c> from the
+    /// AppHost's resolved <c>DaprComponents/resiliency.yaml</c> location — no manual setting required.
+    /// In production: set to the mounted resiliency YAML path (e.g., "/dapr/components/resiliency.yaml")
+    /// via environment variable or appsettings override.
     /// When null, the resiliency viewer shows "configuration not available" with setup guidance.
     /// </summary>
     public string? ResiliencyConfigPath { get; set; }

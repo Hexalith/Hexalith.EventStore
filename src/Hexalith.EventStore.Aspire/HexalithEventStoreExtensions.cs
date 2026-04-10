@@ -28,6 +28,15 @@ public static class HexalithEventStoreExtensions {
     /// Path to the Dapr access control configuration file loaded by the Admin.Server sidecar.
     /// This config governs incoming invocations to Admin.Server.
     /// </param>
+    /// <param name="resiliencyConfigPath">
+    /// Absolute path to the DAPR resiliency YAML file (typically <c>DaprComponents/resiliency.yaml</c>).
+    /// When provided, the path is injected into the Admin.Server as the
+    /// <c>AdminServer__ResiliencyConfigPath</c> environment variable so the resiliency viewer
+    /// page (<c>/dapr/resiliency</c>) can load and display the active policies without requiring
+    /// any manual <c>appsettings.json</c> entry. Should be an absolute path produced by the
+    /// AppHost's <c>ResolveDaprConfigPath</c> helper. <c>null</c> leaves the env var unset and
+    /// the resiliency page falls back to its "configuration not available" empty state.
+    /// </param>
     /// <param name="eventStoreDaprHttpPort">
     /// DAPR HTTP port for the EventStore sidecar. Defaults to 3501. This port MUST be free on the host at
     /// startup — DAPR does not error on port conflicts, it silently binds to a different port, which breaks
@@ -43,6 +52,7 @@ public static class HexalithEventStoreExtensions {
         IResourceBuilder<ProjectResource>? adminUI = null,
         string? eventStoreDaprConfigPath = null,
         string? adminServerDaprConfigPath = null,
+        string? resiliencyConfigPath = null,
         int eventStoreDaprHttpPort = 3501) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
@@ -113,6 +123,16 @@ public static class HexalithEventStoreExtensions {
                     Config = adminServerDaprConfigPath,
                 })
                 .WithReference(stateStore));
+
+        // Auto-inject the resiliency YAML path so /dapr/resiliency works out of the box under
+        // Aspire orchestration. The AppHost owns this path because it knows the absolute on-disk
+        // location of the DAPR resources directory; pushing it through an env var avoids
+        // forcing operators to maintain a duplicated entry in Admin.Server.Host/appsettings.json
+        // and avoids working-directory fragility (the resiliency.yaml lives in the AppHost
+        // project, not the Admin.Server.Host project).
+        if (!string.IsNullOrWhiteSpace(resiliencyConfigPath)) {
+            _ = adminServer.WithEnvironment("AdminServer__ResiliencyConfigPath", resiliencyConfigPath);
+        }
 
         // Wire Admin.UI with Admin.Server reference for HTTP API calls.
         // Admin.UI does not use DAPR directly — it communicates exclusively via

@@ -185,7 +185,9 @@ public class DaprComponentsPageTests : AdminUITestContext
         "1.14.0",
         3,
         2,
-        1);
+        1,
+        RemoteMetadataStatus.Available,
+        "http://localhost:3501");
 
     private static List<DaprComponentDetail> CreateComponents() =>
     [

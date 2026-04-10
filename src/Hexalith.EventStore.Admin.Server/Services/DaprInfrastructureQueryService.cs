@@ -115,18 +115,85 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             return null;
         }
 
-        // DAPR SDK 1.16.1 exposes Id, Components, Actors, Extended.
-        // RuntimeVersion, Subscriptions, HttpEndpoints are not available in this SDK version.
+        // The DAPR SDK metadata model exposes Id, Components, Actors, Extended for the local
+        // sidecar only. Subscriptions and HttpEndpoints live on the remote EventStore sidecar
+        // (the eventstore-admin sidecar references the state store only — it has no pub/sub
+        // subscriptions of its own), so we fetch them via HTTP from /v1.0/metadata, the same
+        // pattern used by GetPubSubOverviewAsync and GetActorRuntimeInfoAsync.
         string runtimeVersion = metadata.Extended?.TryGetValue("daprRuntimeVersion", out string? version) == true
             ? version ?? "unknown"
             : "unknown";
+
+        int subscriptionCount = 0;
+        int httpEndpointCount = 0;
+        bool remoteFetchSucceeded = false;
+
+        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
+        {
+            _logger.LogDebug("Skipping remote EventStore sidecar metadata query for sidecar info: endpoint not configured.");
+        }
+        else
+        {
+            try
+            {
+                HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
+
+                string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
+                using HttpResponseMessage response = await httpClient
+                    .GetAsync($"{baseUrl}/v1.0/metadata", ct)
+                    .ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                using JsonDocument doc = await JsonDocument.ParseAsync(
+                    await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
+                    cancellationToken: ct).ConfigureAwait(false);
+
+                if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
+                    && subscriptionsElement.ValueKind == JsonValueKind.Array)
+                {
+                    subscriptionCount = subscriptionsElement.GetArrayLength();
+                }
+
+                if (doc.RootElement.TryGetProperty("httpEndpoints", out JsonElement httpEndpointsElement)
+                    && httpEndpointsElement.ValueKind == JsonValueKind.Array)
+                {
+                    httpEndpointCount = httpEndpointsElement.GetArrayLength();
+                }
+
+                remoteFetchSucceeded = true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Remote DAPR sidecar metadata unavailable at {Endpoint} for sidecar info. ExceptionType={ExceptionType}.",
+                    _options.EventStoreDaprHttpEndpoint,
+                    ex.GetType().Name);
+            }
+        }
+
+        string? remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
+            ? null
+            : _options.EventStoreDaprHttpEndpoint;
+
+        RemoteMetadataStatus status = remoteEndpoint is null
+            ? RemoteMetadataStatus.NotConfigured
+            : remoteFetchSucceeded
+                ? RemoteMetadataStatus.Available
+                : RemoteMetadataStatus.Unreachable;
 
         return new DaprSidecarInfo(
             string.IsNullOrWhiteSpace(metadata.Id) ? "unknown" : metadata.Id,
             runtimeVersion,
             metadata.Components?.Count ?? 0,
-            0,  // Subscriptions not exposed in SDK 1.16.1
-            0); // HttpEndpoints not exposed in SDK 1.16.1
+            subscriptionCount,
+            httpEndpointCount,
+            status,
+            remoteEndpoint);
     }
 
     /// <inheritdoc/>
