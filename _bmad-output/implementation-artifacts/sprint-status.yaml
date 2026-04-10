@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-08 (SCP-2026-04-08: tenant bootstrap wiring — Keycloak fixed user IDs + AppHost bootstrap env var)
+# last_updated: 2026-04-10 (SCP-2026-04-10-events-page-empty: add Story 15.13 stream activity tracker writer — reopens epic-15)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -168,7 +168,7 @@ development_status:
   epic-14-retrospective: optional
 
   # Epic 15: Admin Web UI — Core Developer Experience
-  epic-15: done
+  epic-15: in-progress
   15-1-blazor-shell-fluentui-layout-command-palette-dark-mode: done
   15-2-activity-feed-recent-active-streams: done
   15-3-stream-browser-command-event-query-timeline: done
@@ -181,6 +181,7 @@ development_status:
   15-10-admin-ui-data-pipeline-fixes: done
   15-11-persistent-state-store-and-command-activity: done
   15-12-events-page-cross-stream-browser: done
+  15-13-stream-activity-tracker-writer: backlog
   epic-15-retrospective: optional
 
   # Epic 16: Admin Web UI — DBA Operations
