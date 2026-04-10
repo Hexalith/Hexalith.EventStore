@@ -56,6 +56,23 @@ public class DomainServiceResolver(
             return staticRegistration;
         }
 
+        // Wildcard tenant fallback: "*|domain|version" matches any tenant for the given domain.
+        // Allows a single registration to cover all current and future tenants — useful for
+        // dev/test sample apps that host multiple domains under one DAPR app-id (which would
+        // otherwise force one static registration per tenant). Exact registrations always win
+        // over wildcard. The returned record is rewritten with the actual tenantId so downstream
+        // invokers see the real tenant rather than the literal "*".
+        string wildcardKey = $"*|{domain}|{version}";
+        if (options.Value.Registrations.TryGetValue(wildcardKey, out DomainServiceRegistration? wildcardRegistration)) {
+            logger.LogDebug(
+                "Resolved domain service from wildcard tenant registration: AppId={AppId}, Method={MethodName}, WildcardKey={WildcardKey}, TenantId={TenantId}",
+                wildcardRegistration.AppId,
+                wildcardRegistration.MethodName,
+                wildcardKey,
+                tenantId);
+            return wildcardRegistration with { TenantId = tenantId };
+        }
+
         // Try DAPR config store lookup only if explicitly configured (opt-in override).
         // When ConfigStoreName is null/empty, convention-based routing is used directly.
         if (!string.IsNullOrWhiteSpace(options.Value.ConfigStoreName)) {

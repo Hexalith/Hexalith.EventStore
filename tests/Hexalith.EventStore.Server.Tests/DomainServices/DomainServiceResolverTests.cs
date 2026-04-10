@@ -108,6 +108,105 @@ public class DomainServiceResolverTests {
         result.MethodName.ShouldBe("custom-process");
     }
 
+    // --- Wildcard tenant static registrations ---
+
+    [Fact]
+    public async Task ResolveAsync_WildcardTenantRegistration_MatchesAnyTenant() {
+        // Arrange — single wildcard registration covers tenant-a, tenant-b, system, ...
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["*|counter|v1"] = new("sample", "process", "*", "counter", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? a = await resolver.ResolveAsync("tenant-a", "counter");
+        DomainServiceRegistration? b = await resolver.ResolveAsync("tenant-b", "counter");
+        DomainServiceRegistration? sys = await resolver.ResolveAsync("system", "counter");
+
+        // Assert — every tenant resolves to the same AppId, but TenantId is rewritten to the actual caller
+        _ = a.ShouldNotBeNull();
+        a.AppId.ShouldBe("sample");
+        a.MethodName.ShouldBe("process");
+        a.TenantId.ShouldBe("tenant-a");
+
+        _ = b.ShouldNotBeNull();
+        b.AppId.ShouldBe("sample");
+        b.TenantId.ShouldBe("tenant-b");
+
+        _ = sys.ShouldNotBeNull();
+        sys.AppId.ShouldBe("sample");
+        sys.TenantId.ShouldBe("system");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ExactRegistration_TakesPrecedenceOverWildcard() {
+        // Arrange — both an exact and a wildcard registration exist for the same domain
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["*|counter|v1"] = new("sample", "process", "*", "counter", "v1"),
+                ["tenant-a|counter|v1"] = new("special-tenant-a-svc", "custom-process", "tenant-a", "counter", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? a = await resolver.ResolveAsync("tenant-a", "counter");
+        DomainServiceRegistration? b = await resolver.ResolveAsync("tenant-b", "counter");
+
+        // Assert — tenant-a uses the exact override, tenant-b falls through to wildcard
+        _ = a.ShouldNotBeNull();
+        a.AppId.ShouldBe("special-tenant-a-svc");
+        a.MethodName.ShouldBe("custom-process");
+
+        _ = b.ShouldNotBeNull();
+        b.AppId.ShouldBe("sample");
+        b.MethodName.ShouldBe("process");
+        b.TenantId.ShouldBe("tenant-b");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_NoWildcardForDomain_FallsThroughToConvention() {
+        // Arrange — wildcard exists for "counter" but caller asks for "orders"
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["*|counter|v1"] = new("sample", "process", "*", "counter", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-b", "orders");
+
+        // Assert — convention fallback: AppId = domain
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
+        result.MethodName.ShouldBe("process");
+        result.TenantId.ShouldBe("tenant-b");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_WildcardRegistration_RespectsVersionInKey() {
+        // Arrange — wildcard registration only exists for v2, caller asks for v1
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["*|counter|v2"] = new("sample-v2", "process", "*", "counter", "v2"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? v1 = await resolver.ResolveAsync("tenant-a", "counter", "v1");
+        DomainServiceRegistration? v2 = await resolver.ResolveAsync("tenant-a", "counter", "v2");
+
+        // Assert — v1 falls through to convention, v2 hits the wildcard
+        _ = v1.ShouldNotBeNull();
+        v1.AppId.ShouldBe("counter"); // convention
+        _ = v2.ShouldNotBeNull();
+        v2.AppId.ShouldBe("sample-v2"); // wildcard
+    }
+
     // --- Config store routing (opt-in via ConfigStoreName) ---
 
     [Fact]
