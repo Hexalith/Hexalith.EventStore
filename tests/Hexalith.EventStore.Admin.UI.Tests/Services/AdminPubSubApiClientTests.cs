@@ -23,7 +23,7 @@ public class AdminPubSubApiClientTests
     [Fact]
     public async Task GetPubSubOverviewAsync_ReturnsOverview_WhenApiResponds()
     {
-        string json = """{"pubSubComponents":[],"subscriptions":[],"isRemoteMetadataAvailable":true}""";
+        string json = """{"pubSubComponents":[],"subscriptions":[],"remoteMetadataStatus":1,"remoteEndpoint":"http://localhost:3501"}""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
         AdminPubSubApiClient client = CreateClient(httpClient);
@@ -31,7 +31,7 @@ public class AdminPubSubApiClientTests
         DaprPubSubOverview? result = await client.GetPubSubOverviewAsync();
 
         result.ShouldNotBeNull();
-        result.IsRemoteMetadataAvailable.ShouldBeTrue();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
     }
 
     [Fact]

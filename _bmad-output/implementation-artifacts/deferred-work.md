@@ -51,3 +51,7 @@
 - **Open RBAC when users have no permission claims** — `ClaimsRbacValidator` skips permission checks when `permissionClaims.Count == 0`, treating absence of claims as unrestricted access. Pre-existing "open by default" design decision. A new user with only tenant claims but no permission claims gets full access within their tenants.
 - **Write endpoints still flatten command failures to HTTP 422** — `AdminTenantsController` now sits in front of a command service that preserves upstream failure codes, but the controller still converts all rejected writes into HTTP 422. Deferred because this behavior predates the rework and any broader status-handling cleanup should be coordinated with downstream clients.
 - **Detail panel refresh can race after tenant selection changes** — `ReloadDetailPanel()` reloads users for the current `_expandedTenantId` without cancellation or a post-await tenant guard. If the operator switches rows while a mutation-triggered refresh is in flight, the panel can briefly show the wrong tenant's users. Pre-existing in the page before this rework.
+
+## Deferred from: code review of 19-6-admin-dapr-metadata-diagnostics.md (2026-04-10)
+
+- **Pub/Sub rules parser schema mismatch with DAPR 1.17** — `DaprInfrastructureQueryService.GetPubSubOverviewAsync` still assumes nested `rules.rules[]` shape, while DAPR 1.17 metadata uses a direct `rules[]` array. This is a pre-existing issue from earlier story work and is tracked for follow-up via correct-course.

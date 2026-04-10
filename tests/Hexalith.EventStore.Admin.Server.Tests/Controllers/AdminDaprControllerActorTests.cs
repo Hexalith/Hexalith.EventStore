@@ -48,7 +48,8 @@ public class AdminDaprControllerActorTests
             [new DaprActorTypeInfo("AggregateActor", 10, "Desc", "format")],
             10,
             _defaultConfig,
-            true);
+            RemoteMetadataStatus.Available,
+            "http://localhost:3501");
         _service.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(expected);
 

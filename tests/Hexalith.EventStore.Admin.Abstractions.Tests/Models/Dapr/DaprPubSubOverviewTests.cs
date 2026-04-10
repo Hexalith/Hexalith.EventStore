@@ -17,34 +17,36 @@ public class DaprPubSubOverviewTests
             new DaprSubscriptionInfo("pubsub", "*.*.events", "/events/handle", "DECLARATIVE", null),
         ];
 
-        var overview = new DaprPubSubOverview(components, subscriptions, true);
+        var overview = new DaprPubSubOverview(components, subscriptions, RemoteMetadataStatus.Available, "http://localhost:3501");
 
         overview.PubSubComponents.Count.ShouldBe(1);
         overview.Subscriptions.Count.ShouldBe(1);
-        overview.IsRemoteMetadataAvailable.ShouldBeTrue();
+        overview.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        overview.RemoteEndpoint.ShouldBe("http://localhost:3501");
     }
 
     [Fact]
     public void Constructor_WithNullPubSubComponents_ThrowsArgumentNullException()
     {
         Should.Throw<ArgumentNullException>(() =>
-            new DaprPubSubOverview(null!, [], false));
+            new DaprPubSubOverview(null!, [], RemoteMetadataStatus.NotConfigured, null));
     }
 
     [Fact]
     public void Constructor_WithNullSubscriptions_ThrowsArgumentNullException()
     {
         Should.Throw<ArgumentNullException>(() =>
-            new DaprPubSubOverview([], null!, false));
+            new DaprPubSubOverview([], null!, RemoteMetadataStatus.NotConfigured, null));
     }
 
     [Fact]
     public void Constructor_WithEmptyCollections_CreatesInstance()
     {
-        var overview = new DaprPubSubOverview([], [], false);
+        var overview = new DaprPubSubOverview([], [], RemoteMetadataStatus.NotConfigured, null);
 
         overview.PubSubComponents.ShouldBeEmpty();
         overview.Subscriptions.ShouldBeEmpty();
-        overview.IsRemoteMetadataAvailable.ShouldBeFalse();
+        overview.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        overview.RemoteEndpoint.ShouldBeNull();
     }
 }

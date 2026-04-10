@@ -28,6 +28,13 @@ public static class HexalithEventStoreExtensions {
     /// Path to the Dapr access control configuration file loaded by the Admin.Server sidecar.
     /// This config governs incoming invocations to Admin.Server.
     /// </param>
+    /// <param name="eventStoreDaprHttpPort">
+    /// DAPR HTTP port for the EventStore sidecar. Defaults to 3501. This port MUST be free on the host at
+    /// startup — DAPR does not error on port conflicts, it silently binds to a different port, which breaks
+    /// cross-sidecar metadata queries from Admin.Server. Override this parameter if 3501 is occupied (e.g.,
+    /// by a prior daprd process or another DAPR app). Diagnostic: on Windows, run
+    /// <c>netstat -ano | findstr :3501</c> before <c>aspire run</c>.
+    /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
@@ -35,10 +42,13 @@ public static class HexalithEventStoreExtensions {
         IResourceBuilder<ProjectResource> adminServer,
         IResourceBuilder<ProjectResource>? adminUI = null,
         string? eventStoreDaprConfigPath = null,
-        string? adminServerDaprConfigPath = null) {
+        string? adminServerDaprConfigPath = null,
+        int eventStoreDaprHttpPort = 3501) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentNullException.ThrowIfNull(adminServer);
+        ArgumentOutOfRangeException.ThrowIfLessThan(eventStoreDaprHttpPort, 1024);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(eventStoreDaprHttpPort, 65535);
 
         // Redis is provided by `dapr init` at localhost:6379, not managed by Aspire.
         // The dapr init container runs independently of the Aspire lifecycle, so state
@@ -64,12 +74,11 @@ public static class HexalithEventStoreExtensions {
         // sidecar's metadata endpoint for actor type discovery (story 19-2).
         // IDaprSidecarResource does not implement IResourceWithEndpoints in
         // CommunityToolkit 13.0.0, so a dynamic endpoint reference is not possible.
-        const int EventStoreDaprHttpPort = 3501;
         _ = eventStore
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "eventstore",
-                    DaprHttpPort = EventStoreDaprHttpPort,
+                    DaprHttpPort = eventStoreDaprHttpPort,
                     Config = eventStoreDaprConfigPath,
                 })
                 .WithReference(stateStore)
@@ -81,9 +90,10 @@ public static class HexalithEventStoreExtensions {
         // All services use keyPrefix:none so keys are shared across appIds.
         // It does not publish or subscribe directly, so it intentionally does not
         // reference the pub/sub component.
+        string eventStoreEndpointUrl = "http://localhost:" + eventStoreDaprHttpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
         _ = adminServer
             .WithReference(eventStore)
-            .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", "http://localhost:" + EventStoreDaprHttpPort)
+            .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", eventStoreEndpointUrl)
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "eventstore-admin",

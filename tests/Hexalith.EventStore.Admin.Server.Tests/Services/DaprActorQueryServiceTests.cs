@@ -1,5 +1,8 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
+using System.Net;
+using System.Text;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
@@ -60,7 +63,7 @@ public class DaprActorQueryServiceTests
 
         result.ActorTypes.Count.ShouldBe(2);
         result.TotalActiveActors.ShouldBe(15);
-        result.IsRemoteMetadataAvailable.ShouldBeTrue();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
         result.ActorTypes[0].TypeName.ShouldBe("AggregateActor");
         result.ActorTypes[0].Description.ShouldContain("commands");
         result.ActorTypes[1].TypeName.ShouldBe("ETagActor");
@@ -103,7 +106,7 @@ public class DaprActorQueryServiceTests
 
         result.ActorTypes.ShouldBeEmpty();
         result.TotalActiveActors.ShouldBe(0);
-        result.IsRemoteMetadataAvailable.ShouldBeFalse();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
     }
 
     [Fact]
@@ -139,6 +142,97 @@ public class DaprActorQueryServiceTests
 
         await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetActorRuntimeInfoAsync(cts.Token));
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenEndpointNotConfigured_ReturnsNotConfiguredStatus()
+    {
+        // Arrange — endpoint is null (default options)
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "test-app",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        // Act
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        result.RemoteEndpoint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenRemoteCallThrows_ReturnsUnreachableStatus()
+    {
+        // Arrange — endpoint configured, but HTTP call throws
+        const string endpoint = "http://localhost:3501";
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "test-app",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "error"));
+        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        AdminServerOptions options = new()
+        {
+            StateStoreName = StateStoreName,
+            EventStoreAppId = EventStoreAppId,
+            EventStoreDaprHttpEndpoint = endpoint,
+        };
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenRemoteCallSucceeds_ReturnsAvailableStatus()
+    {
+        // Arrange — endpoint configured, HTTP call returns actor metadata
+        const string endpoint = "http://localhost:3501";
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "test-app",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        string remoteJson = """{"actors":[{"type":"AggregateActor","count":3}]}""";
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
+        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        AdminServerOptions options = new()
+        {
+            StateStoreName = StateStoreName,
+            EventStoreAppId = EventStoreAppId,
+            EventStoreDaprHttpEndpoint = endpoint,
+        };
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+        result.ActorTypes.Count.ShouldBe(1);
+        result.ActorTypes[0].TypeName.ShouldBe("AggregateActor");
     }
 
     [Fact]
@@ -309,5 +403,16 @@ public class DaprActorQueryServiceTests
             .FirstOrDefault(e => e.Key.Contains("{causationId}"));
         dynamicEntry.ShouldNotBeNull();
         dynamicEntry!.Found.ShouldBeFalse();
+    }
+
+    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(content, Encoding.UTF8, "application/json"),
+            });
+        }
     }
 }

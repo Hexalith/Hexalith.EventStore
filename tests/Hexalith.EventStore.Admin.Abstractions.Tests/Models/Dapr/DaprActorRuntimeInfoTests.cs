@@ -21,11 +21,12 @@ public class DaprActorRuntimeInfoTests
             new("ETagActor", 5, "Desc2", "format2"),
         ];
 
-        var info = new DaprActorRuntimeInfo(types, 15, DefaultConfig, true);
+        var info = new DaprActorRuntimeInfo(types, 15, DefaultConfig, RemoteMetadataStatus.Available, "http://localhost:3501");
 
         info.ActorTypes.Count.ShouldBe(2);
         info.TotalActiveActors.ShouldBe(15);
-        info.IsRemoteMetadataAvailable.ShouldBeTrue();
+        info.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        info.RemoteEndpoint.ShouldBe("http://localhost:3501");
         info.Configuration.ShouldNotBeNull();
     }
 
@@ -33,23 +34,24 @@ public class DaprActorRuntimeInfoTests
     public void Constructor_WithNullActorTypes_ThrowsArgumentNullException()
     {
         Should.Throw<ArgumentNullException>(() =>
-            new DaprActorRuntimeInfo(null!, 0, DefaultConfig, false));
+            new DaprActorRuntimeInfo(null!, 0, DefaultConfig, RemoteMetadataStatus.NotConfigured, null));
     }
 
     [Fact]
     public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
     {
         Should.Throw<ArgumentNullException>(() =>
-            new DaprActorRuntimeInfo([], 0, null!, false));
+            new DaprActorRuntimeInfo([], 0, null!, RemoteMetadataStatus.NotConfigured, null));
     }
 
     [Fact]
     public void Constructor_WithEmptyActorTypes_CreatesInstance()
     {
-        var info = new DaprActorRuntimeInfo([], 0, DefaultConfig, false);
+        var info = new DaprActorRuntimeInfo([], 0, DefaultConfig, RemoteMetadataStatus.NotConfigured, null);
 
         info.ActorTypes.ShouldBeEmpty();
         info.TotalActiveActors.ShouldBe(0);
-        info.IsRemoteMetadataAvailable.ShouldBeFalse();
+        info.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        info.RemoteEndpoint.ShouldBeNull();
     }
 }

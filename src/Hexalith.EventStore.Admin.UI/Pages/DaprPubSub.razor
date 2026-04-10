@@ -57,13 +57,13 @@
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Active Subscriptions"
-                      Value="@(_overview.IsRemoteMetadataAvailable ? _overview.Subscriptions.Count.ToString() : "N/A")"
-                      Severity="@(_overview.IsRemoteMetadataAvailable && _overview.Subscriptions.Count > 0 ? "success" : "neutral")"
+                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Count.ToString() : "N/A")"
+                      Severity="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available && _overview.Subscriptions.Count > 0 ? "success" : "neutral")"
                       Title="Number of active DAPR subscriptions" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Unique Topics"
-                      Value="@(_overview.IsRemoteMetadataAvailable ? _overview.Subscriptions.Select(s => s.Topic).Distinct().Count().ToString() : "N/A")"
+                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Select(s => s.Topic).Distinct().Count().ToString() : "N/A")"
                       Severity="neutral"
                       Title="Number of distinct subscription topics" />
         </FluentGridItem>
@@ -124,10 +124,22 @@
 {
     <h2 style="margin: 0 0 12px;">Subscriptions</h2>
 
-    @* Remote metadata unavailable banner (AC9) *@
-    <IssueBanner Visible="@(!_overview.IsRemoteMetadataAvailable)"
-                 Title="EventStore sidecar unreachable"
-                 Description="Subscription data unavailable. Configure 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings." />
+    @* Remote metadata status banner (AC8) *@
+    @switch (_overview.RemoteMetadataStatus)
+    {
+        case RemoteMetadataStatus.NotConfigured:
+            <IssueBanner Visible="true"
+                         Title="Remote metadata disabled"
+                         Description="Subscription data is only available when 'AdminServer:EventStoreDaprHttpEndpoint' is configured. Under Aspire this is wired automatically." />
+            break;
+        case RemoteMetadataStatus.Unreachable:
+            <IssueBanner Visible="true"
+                         Title="EventStore sidecar unreachable"
+                         Description="@($"Attempted to query {_overview.RemoteEndpoint}/v1.0/subscribe but the call failed. Verify the EventStore DAPR sidecar is running. Check Admin server logs for details.")" />
+            break;
+        case RemoteMetadataStatus.Available:
+            break;
+    }
 
     @if (_overview.Subscriptions.Count > 0)
     {
@@ -152,7 +164,7 @@
             </TemplateColumn>
         </FluentDataGrid>
     }
-    else if (_overview.IsRemoteMetadataAvailable)
+    else if (_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available)
     {
         <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
             No active subscriptions registered on the EventStore server sidecar.

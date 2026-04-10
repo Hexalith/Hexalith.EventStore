@@ -48,6 +48,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _logger = logger;
+        _logger.LogInformation(
+            "EventStoreDaprHttpEndpoint={Endpoint}",
+            string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
+                ? "<not configured — remote sidecar metadata disabled>"
+                : _options.EventStoreDaprHttpEndpoint);
     }
 
     /// <inheritdoc/>
@@ -138,7 +143,6 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         // Try local sidecar first
         List<DaprActorTypeInfo> actorTypes = [];
-        bool isRemoteMetadataAvailable = false;
 
         try
         {
@@ -154,8 +158,6 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                         descriptor.Description,
                         descriptor.ActorIdFormat));
                 }
-
-                isRemoteMetadataAvailable = true;
             }
         }
         catch (OperationCanceledException)
@@ -168,59 +170,81 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         }
 
         // If local sidecar has no actors, try remote EventStore server sidecar
-        if (actorTypes.Count == 0 && !string.IsNullOrEmpty(_options.EventStoreDaprHttpEndpoint))
+        bool remoteFetchSucceeded = false;
+        if (actorTypes.Count == 0)
         {
-            try
+            if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
             {
-                HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
-
-                string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
-                using HttpResponseMessage response = await httpClient
-                    .GetAsync($"{baseUrl}/v1.0/metadata", ct)
-                    .ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-
-                using JsonDocument doc = await JsonDocument.ParseAsync(
-                    await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
-                    cancellationToken: ct).ConfigureAwait(false);
-
-                if (doc.RootElement.TryGetProperty("actors", out JsonElement actorsElement))
+                _logger.LogDebug("Skipping remote EventStore sidecar metadata query: endpoint not configured.");
+            }
+            else
+            {
+                try
                 {
-                    foreach (JsonElement actorElement in actorsElement.EnumerateArray())
+                    HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
+
+                    string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
+                    using HttpResponseMessage response = await httpClient
+                        .GetAsync($"{baseUrl}/v1.0/metadata", ct)
+                        .ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+
+                    using JsonDocument doc = await JsonDocument.ParseAsync(
+                        await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
+                        cancellationToken: ct).ConfigureAwait(false);
+
+                    if (doc.RootElement.TryGetProperty("actors", out JsonElement actorsElement))
                     {
-                        string type = actorElement.GetProperty("type").GetString() ?? string.Empty;
-                        int count = actorElement.TryGetProperty("count", out JsonElement countEl)
-                            ? countEl.GetInt32()
-                            : -1;
-
-                        if (!string.IsNullOrEmpty(type))
+                        foreach (JsonElement actorElement in actorsElement.EnumerateArray())
                         {
-                            KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(type);
-                            actorTypes.Add(new DaprActorTypeInfo(
-                                type,
-                                count,
-                                descriptor.Description,
-                                descriptor.ActorIdFormat));
+                            string type = actorElement.GetProperty("type").GetString() ?? string.Empty;
+                            int count = actorElement.TryGetProperty("count", out JsonElement countEl)
+                                ? countEl.GetInt32()
+                                : -1;
 
-                            if (!KnownActorTypes.Types.ContainsKey(type))
+                            if (!string.IsNullOrEmpty(type))
                             {
-                                _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", type);
+                                KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(type);
+                                actorTypes.Add(new DaprActorTypeInfo(
+                                    type,
+                                    count,
+                                    descriptor.Description,
+                                    descriptor.ActorIdFormat));
+
+                                if (!KnownActorTypes.Types.ContainsKey(type))
+                                {
+                                    _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", type);
+                                }
                             }
                         }
-                    }
 
-                    isRemoteMetadataAvailable = true;
+                        remoteFetchSucceeded = true;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}. Check whether DAPR sidecar for 'eventstore' is running on that port (port conflicts on 3501 cause silent fallback).",
+                        _options.EventStoreDaprHttpEndpoint,
+                        ex.GetType().Name);
                 }
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Remote DAPR sidecar metadata unavailable at {Endpoint}.", _options.EventStoreDaprHttpEndpoint);
-            }
         }
+
+        string? remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
+            ? null
+            : _options.EventStoreDaprHttpEndpoint;
+
+        RemoteMetadataStatus status = remoteEndpoint is null
+            ? RemoteMetadataStatus.NotConfigured
+            : remoteFetchSucceeded
+                ? RemoteMetadataStatus.Available
+                : RemoteMetadataStatus.Unreachable;
 
         int totalActive = actorTypes
             .Where(a => a.ActiveCount >= 0)
@@ -230,7 +254,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             actorTypes,
             totalActive,
             config,
-            isRemoteMetadataAvailable);
+            status,
+            remoteEndpoint);
     }
 
     /// <inheritdoc/>
@@ -322,9 +347,13 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         // 2. Get subscriptions from remote EventStore server sidecar via HTTP
         List<DaprSubscriptionInfo> subscriptions = [];
-        bool isRemoteMetadataAvailable = false;
+        bool remoteFetchSucceeded = false;
 
-        if (!string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
+        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
+        {
+            _logger.LogDebug("Skipping remote EventStore sidecar metadata query: endpoint not configured.");
+        }
+        else
         {
             try
             {
@@ -381,7 +410,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     }
                 }
 
-                isRemoteMetadataAvailable = true;
+                remoteFetchSucceeded = true;
             }
             catch (OperationCanceledException)
             {
@@ -389,11 +418,25 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Remote DAPR sidecar metadata unavailable at {Endpoint} — subscription data will be empty.", _options.EventStoreDaprHttpEndpoint);
+                _logger.LogWarning(
+                    ex,
+                    "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}. Check whether DAPR sidecar for 'eventstore' is running on that port (port conflicts on 3501 cause silent fallback).",
+                    _options.EventStoreDaprHttpEndpoint,
+                    ex.GetType().Name);
             }
         }
 
-        return new DaprPubSubOverview(pubSubComponents, subscriptions, isRemoteMetadataAvailable);
+        string? remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
+            ? null
+            : _options.EventStoreDaprHttpEndpoint;
+
+        RemoteMetadataStatus status = remoteEndpoint is null
+            ? RemoteMetadataStatus.NotConfigured
+            : remoteFetchSucceeded
+                ? RemoteMetadataStatus.Available
+                : RemoteMetadataStatus.Unreachable;
+
+        return new DaprPubSubOverview(pubSubComponents, subscriptions, status, remoteEndpoint);
     }
 
     // DAPR internal actor state key convention — verify after SDK upgrades

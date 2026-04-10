@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-09
+last_updated: 2026-04-10
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -216,12 +216,13 @@ development_status:
   epic-18-retrospective: optional
 
   # Epic 19: Admin — DAPR Infrastructure Visibility
-  epic-19: done
+  epic-19: in-progress  # 2026-04-10: reopened — follow-up 19-6 added
   19-1-dapr-component-status-dashboard: done
   19-2-dapr-actor-inspector: done
   19-3-dapr-pubsub-delivery-metrics: done
   19-4-dapr-resiliency-policy-viewer: done
   19-5-dapr-component-health-history: done
+  19-6-admin-dapr-metadata-diagnostics: done  # 2026-04-10: code review complete — patched PubSub unreachable path text + normalized blank RemoteEndpoint to null; deferred pre-existing DAPR 1.17 rules parser schema issue tracked.
   epic-19-retrospective: optional
 
   # Epic 20: Admin — Advanced Debugging

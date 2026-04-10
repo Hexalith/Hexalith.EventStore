@@ -59,7 +59,7 @@ public class DaprPubSubQueryServiceTests
         result.Subscriptions[0].Topic.ShouldBe("*.*.events");
         result.Subscriptions[0].Route.ShouldBe("/events/handle");
         result.Subscriptions[0].DeadLetterTopic.ShouldBeNull(); // empty string → null
-        result.IsRemoteMetadataAvailable.ShouldBeTrue();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class DaprPubSubQueryServiceTests
         // Assert
         result.PubSubComponents.Count.ShouldBe(1);
         result.Subscriptions.ShouldBeEmpty();
-        result.IsRemoteMetadataAvailable.ShouldBeFalse();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class DaprPubSubQueryServiceTests
         // Assert
         result.PubSubComponents.Count.ShouldBe(1);
         result.Subscriptions.ShouldBeEmpty();
-        result.IsRemoteMetadataAvailable.ShouldBeFalse();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class DaprPubSubQueryServiceTests
         // Assert
         result.PubSubComponents.ShouldBeEmpty();
         result.Subscriptions.ShouldBeEmpty();
-        result.IsRemoteMetadataAvailable.ShouldBeFalse();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class DaprPubSubQueryServiceTests
 
         // Assert
         result.Subscriptions.ShouldBeEmpty();
-        result.IsRemoteMetadataAvailable.ShouldBeTrue();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
     }
 
     [Fact]
@@ -197,7 +197,77 @@ public class DaprPubSubQueryServiceTests
 
         // Assert — graceful degradation, not an exception
         result.Subscriptions.ShouldBeEmpty();
-        result.IsRemoteMetadataAvailable.ShouldBeFalse();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+    }
+
+    [Fact]
+    public async Task GetPubSubOverviewAsync_WhenEndpointNotConfigured_ReturnsNotConfiguredStatus()
+    {
+        // Arrange
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = null };
+        DaprInfrastructureQueryService sut = new(
+            _daprClient, _httpClientFactory, Options.Create(options),
+            NullLogger<DaprInfrastructureQueryService>.Instance);
+
+        DaprMetadata metadata = CreateMetadata([]);
+        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+
+        // Act
+        DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        result.RemoteEndpoint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetPubSubOverviewAsync_WhenRemoteCallThrows_ReturnsUnreachableStatus()
+    {
+        // Arrange — endpoint configured, HTTP call returns error
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        DaprInfrastructureQueryService sut = new(
+            _daprClient, _httpClientFactory, Options.Create(options),
+            NullLogger<DaprInfrastructureQueryService>.Instance);
+
+        DaprMetadata metadata = CreateMetadata([]);
+        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "error"));
+        _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        // Act
+        DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+    }
+
+    [Fact]
+    public async Task GetPubSubOverviewAsync_WhenRemoteCallSucceeds_ReturnsAvailableStatus()
+    {
+        // Arrange — endpoint configured, HTTP call returns subscription metadata
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        DaprInfrastructureQueryService sut = new(
+            _daprClient, _httpClientFactory, Options.Create(options),
+            NullLogger<DaprInfrastructureQueryService>.Instance);
+
+        DaprMetadata metadata = CreateMetadata([]);
+        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+
+        string remoteJson = """{"subscriptions":[{"pubsubName":"pubsub","topic":"*.*.events","type":"DECLARATIVE","deadLetterTopic":"","rules":{"rules":[{"path":"/events/handle"}]}}]}""";
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
+        _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        // Act
+        DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+        result.Subscriptions.Count.ShouldBe(1);
     }
 
     // ===== Helpers =====

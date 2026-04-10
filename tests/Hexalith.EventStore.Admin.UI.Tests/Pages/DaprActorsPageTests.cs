@@ -70,7 +70,7 @@ public class DaprActorsPageTests : AdminUITestContext
         string markup = cut.Markup;
         markup.ShouldContain("Registered Types");
         markup.ShouldContain("Total Active Actors");
-        markup.ShouldContain("Total State Size");
+        markup.ShouldContain("Inspected Actor State Size");
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class DaprActorsPageTests : AdminUITestContext
     [Fact]
     public void DaprActorsPage_RendersEmptyState_WhenNoActorTypes()
     {
-        DaprActorRuntimeInfo emptyInfo = new([], 0, _defaultConfig, false);
+        DaprActorRuntimeInfo emptyInfo = new([], 0, _defaultConfig, RemoteMetadataStatus.NotConfigured, null);
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(emptyInfo));
 
@@ -138,7 +138,7 @@ public class DaprActorsPageTests : AdminUITestContext
     [Fact]
     public void DaprActorsPage_RendersEmptyState_WhenNoActorsButMetadataAvailable()
     {
-        DaprActorRuntimeInfo emptyInfo = new([], 0, _defaultConfig, true);
+        DaprActorRuntimeInfo emptyInfo = new([], 0, _defaultConfig, RemoteMetadataStatus.Available, "http://localhost:3501");
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(emptyInfo));
 
@@ -181,5 +181,6 @@ public class DaprActorsPageTests : AdminUITestContext
         ],
         15,
         _defaultConfig,
-        true);
+        RemoteMetadataStatus.Available,
+        "http://localhost:3501");
 }

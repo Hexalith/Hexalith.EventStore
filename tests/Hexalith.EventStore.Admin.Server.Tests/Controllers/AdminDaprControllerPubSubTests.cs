@@ -39,7 +39,8 @@ public class AdminDaprControllerPubSubTests
         DaprPubSubOverview expected = new(
             [new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [])],
             [new DaprSubscriptionInfo("pubsub", "*.*.events", "/events/handle", "DECLARATIVE", null)],
-            true);
+            RemoteMetadataStatus.Available,
+            "http://localhost:3501");
         _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
         IActionResult result = await _sut.GetPubSubOverviewAsync();
@@ -54,14 +55,15 @@ public class AdminDaprControllerPubSubTests
         DaprPubSubOverview expected = new(
             [new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [])],
             [],
-            false);
+            RemoteMetadataStatus.NotConfigured,
+            null);
         _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
         IActionResult result = await _sut.GetPubSubOverviewAsync();
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         DaprPubSubOverview overview = okResult.Value.ShouldBeOfType<DaprPubSubOverview>();
-        overview.IsRemoteMetadataAvailable.ShouldBeFalse();
+        overview.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
     }
 
     [Fact]

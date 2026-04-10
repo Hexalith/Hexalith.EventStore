@@ -87,7 +87,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     public void PubSubPage_RendersEmptyState_WhenNoPubSubComponents()
     {
         // Arrange
-        DaprPubSubOverview overview = new([], [], true);
+        DaprPubSubOverview overview = new([], [], RemoteMetadataStatus.Available, "http://localhost:3501");
         _ = _mockPubSubClient.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprPubSubOverview?>(overview));
         _ = _mockDeadLetterClient.GetDeadLetterCountAsync(Arg.Any<CancellationToken>())
@@ -108,7 +108,8 @@ public class DaprPubSubPageTests : AdminUITestContext
         DaprPubSubOverview overview = new(
             [CreatePubSubComponent()],
             [],
-            false);
+            RemoteMetadataStatus.Unreachable,
+            "http://localhost:3501");
         _ = _mockPubSubClient.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprPubSubOverview?>(overview));
         _ = _mockDeadLetterClient.GetDeadLetterCountAsync(Arg.Any<CancellationToken>())
@@ -228,7 +229,8 @@ public class DaprPubSubPageTests : AdminUITestContext
         DaprPubSubOverview overview = new(
             [CreatePubSubComponent()],
             [new DaprSubscriptionInfo("pubsub-events", "*.*.events", "/events/handle", "DECLARATIVE", null)],
-            true);
+            RemoteMetadataStatus.Available,
+            "http://localhost:3501");
         _ = _mockPubSubClient.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprPubSubOverview?>(overview));
         _ = _mockDeadLetterClient.GetDeadLetterCountAsync(Arg.Any<CancellationToken>())

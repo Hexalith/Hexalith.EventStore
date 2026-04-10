@@ -55,24 +55,32 @@
                       Title="Total number of active actor instances" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="4">
-            <StatCard Label="Total State Size"
-                      Value="@(_inspectedState is not null ? TimeFormatHelper.FormatBytes(_inspectedState.TotalSizeBytes) : "N/A")"
+            <StatCard Label="Inspected Actor State Size"
+                      Value="@(_inspectedState is not null ? TimeFormatHelper.FormatBytes(_inspectedState.TotalSizeBytes) : "—")"
                       Severity="neutral"
-                      Title="Total state size of inspected actor" />
+                      Title="@(_inspectedState is not null ? "Total state size of the currently inspected actor" : "Select an actor instance below to inspect its state size")" />
         </FluentGridItem>
     }
 </FluentGrid>
 
-@* Empty states (AC8) *@
-@if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count == 0 && !_runtimeInfo.IsRemoteMetadataAvailable)
+@* Empty states (AC7) *@
+@if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count == 0)
 {
-    <EmptyState Title="No actor types found"
-                Description="Configure 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings to inspect actors from the EventStore server's DAPR sidecar." />
-}
-else if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count == 0 && _runtimeInfo.IsRemoteMetadataAvailable)
-{
-    <EmptyState Title="No actor types registered"
-                Description="The EventStore server may not be running." />
+    @switch (_runtimeInfo.RemoteMetadataStatus)
+    {
+        case RemoteMetadataStatus.NotConfigured:
+            <EmptyState Title="No actor types found"
+                        Description="Remote EventStore sidecar metadata is disabled. Set 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings (under Aspire, this is wired automatically)." />
+            break;
+        case RemoteMetadataStatus.Unreachable:
+            <EmptyState Title="EventStore sidecar unreachable"
+                        Description="@($"Attempted to query {_runtimeInfo.RemoteEndpoint}/v1.0/metadata but the call failed. Verify the EventStore DAPR sidecar is running on that port (port conflicts on 3501 cause silent fallback). Check Admin server logs for the exception details.")" />
+            break;
+        case RemoteMetadataStatus.Available:
+            <EmptyState Title="No actor types registered"
+                        Description="The EventStore sidecar is reachable but reports no actor types." />
+            break;
+    }
 }
 
 @* Actor type grid (AC1) *@

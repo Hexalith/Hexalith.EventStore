@@ -25,7 +25,8 @@ public class AdminActorApiClientTests
     [Fact]
     public async Task GetActorRuntimeInfoAsync_ReturnsInfo_WhenApiResponds()
     {
-        string json = """{"actorTypes":[],"totalActiveActors":0,"configuration":{"idleTimeout":"01:00:00","scanInterval":"00:00:30","drainOngoingCallTimeout":"00:01:00","drainRebalancedActors":true,"reentrancyEnabled":false,"reentrancyMaxStackDepth":32},"isRemoteMetadataAvailable":true}""";
+        // remoteMetadataStatus: 1 = Available (enum integer value)
+        string json = """{"actorTypes":[],"totalActiveActors":0,"configuration":{"idleTimeout":"01:00:00","scanInterval":"00:00:30","drainOngoingCallTimeout":"00:01:00","drainRebalancedActors":true,"reentrancyEnabled":false,"reentrancyMaxStackDepth":32},"remoteMetadataStatus":1,"remoteEndpoint":"http://localhost:3501"}""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
         AdminActorApiClient client = CreateClient(httpClient);
@@ -33,7 +34,7 @@ public class AdminActorApiClientTests
         DaprActorRuntimeInfo? result = await client.GetActorRuntimeInfoAsync();
 
         result.ShouldNotBeNull();
-        result.IsRemoteMetadataAvailable.ShouldBeTrue();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
         result.ActorTypes.ShouldBeEmpty();
     }
 
