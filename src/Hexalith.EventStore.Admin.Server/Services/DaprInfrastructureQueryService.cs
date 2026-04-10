@@ -312,40 +312,13 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     /// <inheritdoc/>
     public async Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default)
     {
-        // 1. Get pub/sub components from local sidecar metadata (no health probes — presence = healthy)
+        // Query the EventStore sidecar's metadata once to get BOTH pub/sub components AND
+        // subscriptions. We deliberately do NOT read the local Admin.Server sidecar's components
+        // here, because the 'eventstore-admin' sidecar (HexalithEventStoreExtensions.cs:97-102)
+        // is wired with state-store references only — it never sees the pub/sub component.
+        // The pub/sub component lives on the 'eventstore' sidecar, queryable via
+        // {EventStoreDaprHttpEndpoint}/v1.0/metadata.
         List<DaprComponentDetail> pubSubComponents = [];
-        try
-        {
-            DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata?.Components is not null)
-            {
-                foreach (DaprComponentsMetadata c in metadata.Components)
-                {
-                    if (!string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.Type)
-                        && DaprComponentCategoryHelper.FromComponentType(c.Type) == DaprComponentCategory.PubSub)
-                    {
-                        pubSubComponents.Add(new DaprComponentDetail(
-                            c.Name,
-                            c.Type,
-                            DaprComponentCategory.PubSub,
-                            c.Version ?? string.Empty,
-                            HealthStatus.Healthy,
-                            DateTimeOffset.UtcNow,
-                            c.Capabilities ?? []));
-                    }
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "DAPR sidecar metadata unavailable — cannot list pub/sub components.");
-        }
-
-        // 2. Get subscriptions from remote EventStore server sidecar via HTTP
         List<DaprSubscriptionInfo> subscriptions = [];
         bool remoteFetchSucceeded = false;
 
@@ -369,6 +342,48 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
                     cancellationToken: ct).ConfigureAwait(false);
 
+                // Extract pub/sub components from the remote sidecar's components array.
+                if (doc.RootElement.TryGetProperty("components", out JsonElement componentsElement)
+                    && componentsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement comp in componentsElement.EnumerateArray())
+                    {
+                        string? name = comp.TryGetProperty("name", out JsonElement n) ? n.GetString() : null;
+                        string? compType = comp.TryGetProperty("type", out JsonElement tp) ? tp.GetString() : null;
+                        string? version = comp.TryGetProperty("version", out JsonElement v) ? v.GetString() : null;
+
+                        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(compType)
+                            || DaprComponentCategoryHelper.FromComponentType(compType) != DaprComponentCategory.PubSub)
+                        {
+                            continue;
+                        }
+
+                        List<string> capabilities = [];
+                        if (comp.TryGetProperty("capabilities", out JsonElement capsEl)
+                            && capsEl.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (JsonElement cap in capsEl.EnumerateArray())
+                            {
+                                string? capValue = cap.GetString();
+                                if (!string.IsNullOrEmpty(capValue))
+                                {
+                                    capabilities.Add(capValue);
+                                }
+                            }
+                        }
+
+                        pubSubComponents.Add(new DaprComponentDetail(
+                            name,
+                            compType,
+                            DaprComponentCategory.PubSub,
+                            version ?? string.Empty,
+                            HealthStatus.Healthy,
+                            DateTimeOffset.UtcNow,
+                            capabilities));
+                    }
+                }
+
+                // Extract subscriptions from the same payload.
                 if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
                     && subscriptionsElement.ValueKind == JsonValueKind.Array)
                 {
@@ -379,20 +394,32 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                         string? type = sub.TryGetProperty("type", out JsonElement ty) ? ty.GetString() : null;
                         string? deadLetterTopic = sub.TryGetProperty("deadLetterTopic", out JsonElement dlt) ? dlt.GetString() : null;
 
-                        // Extract route from rules.rules[].path
+                        // Extract route from rules[].path. DAPR /v1.0/metadata returns
+                        // 'rules' as a direct array of {match, path} objects. We also tolerate
+                        // a legacy wrapped form '{"rules": {"rules": [...]}}' for backward
+                        // compatibility with prior test fixtures.
                         string route = "/";
-                        if (sub.TryGetProperty("rules", out JsonElement rulesElement)
-                            && rulesElement.TryGetProperty("rules", out JsonElement rulesArray))
+                        if (sub.TryGetProperty("rules", out JsonElement rulesElement))
                         {
-                            foreach (JsonElement rule in rulesArray.EnumerateArray())
+                            JsonElement rulesArray = rulesElement.ValueKind == JsonValueKind.Object
+                                && rulesElement.TryGetProperty("rules", out JsonElement nestedRules)
+                                && nestedRules.ValueKind == JsonValueKind.Array
+                                    ? nestedRules
+                                    : rulesElement;
+
+                            if (rulesArray.ValueKind == JsonValueKind.Array)
                             {
-                                if (rule.TryGetProperty("path", out JsonElement pathElement))
+                                foreach (JsonElement rule in rulesArray.EnumerateArray())
                                 {
-                                    string? path = pathElement.GetString();
-                                    if (!string.IsNullOrEmpty(path))
+                                    if (rule.ValueKind == JsonValueKind.Object
+                                        && rule.TryGetProperty("path", out JsonElement pathElement))
                                     {
-                                        route = path;
-                                        break;
+                                        string? path = pathElement.GetString();
+                                        if (!string.IsNullOrEmpty(path))
+                                        {
+                                            route = path;
+                                            break;
+                                        }
                                     }
                                 }
                             }

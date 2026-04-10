@@ -91,9 +91,22 @@ public static class HexalithEventStoreExtensions {
         // It does not publish or subscribe directly, so it intentionally does not
         // reference the pub/sub component.
         string eventStoreEndpointUrl = "http://localhost:" + eventStoreDaprHttpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // Pre-fill the Admin UI's observability deep-links with the Aspire dashboard URLs
+        // for a zero-config dev experience. These env vars are ONLY injected under Aspire
+        // orchestration (this extension never runs in production deployments). In prod the
+        // operator sets AdminServer:TraceUrl / MetricsUrl / LogsUrl in their own appsettings
+        // (or env vars / Helm values) pointing to their actual observability stack
+        // (Grafana, Datadog, Application Insights, etc.).
+        // The Aspire dashboard default port is 17017; override these env vars if you run
+        // the dashboard on a different port.
+        const string AspireDashboardBaseUrl = "https://localhost:17017";
         _ = adminServer
             .WithReference(eventStore)
             .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", eventStoreEndpointUrl)
+            .WithEnvironment("AdminServer__TraceUrl", AspireDashboardBaseUrl + "/traces")
+            .WithEnvironment("AdminServer__MetricsUrl", AspireDashboardBaseUrl + "/metrics")
+            .WithEnvironment("AdminServer__LogsUrl", AspireDashboardBaseUrl + "/structuredlogs")
             .WithDaprSidecar(sidecar => sidecar
                 .WithOptions(new DaprSidecarOptions {
                     AppId = "eventstore-admin",

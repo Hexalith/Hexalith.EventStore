@@ -39,16 +39,34 @@ public sealed class AdminServerOptions
     /// <summary>
     /// Gets or sets the observability trace dashboard URL. Null disables the link.
     /// </summary>
+    /// <remarks>
+    /// In Aspire dev orchestration, this is auto-wired to the Aspire dashboard's traces view
+    /// (https://localhost:17017/traces) by HexalithEventStoreExtensions.
+    /// In production, the operator must set this to their own observability stack URL
+    /// (e.g., Grafana, Datadog, Application Insights) via appsettings or environment variables.
+    /// </remarks>
     public string? TraceUrl { get; set; }
 
     /// <summary>
     /// Gets or sets the observability metrics dashboard URL. Null disables the link.
     /// </summary>
+    /// <remarks>
+    /// In Aspire dev orchestration, this is auto-wired to the Aspire dashboard's metrics view
+    /// (https://localhost:17017/metrics) by HexalithEventStoreExtensions.
+    /// In production, the operator must set this to their own observability stack URL
+    /// (e.g., Grafana, Datadog, Application Insights) via appsettings or environment variables.
+    /// </remarks>
     public string? MetricsUrl { get; set; }
 
     /// <summary>
     /// Gets or sets the observability logs dashboard URL. Null disables the link.
     /// </summary>
+    /// <remarks>
+    /// In Aspire dev orchestration, this is auto-wired to the Aspire dashboard's structured logs view
+    /// (https://localhost:17017/structuredlogs) by HexalithEventStoreExtensions.
+    /// In production, the operator must set this to their own observability stack URL
+    /// (e.g., Kibana, Datadog, Application Insights) via appsettings or environment variables.
+    /// </remarks>
     public string? LogsUrl { get; set; }
 
     /// <summary>

@@ -76,11 +76,24 @@
     }
 </FluentGrid>
 
-@* Empty state: No pub/sub components (AC9) *@
+@* Empty states: No pub/sub components — distinguishes the three remote-metadata states *@
 @if (!_isLoading && _overview is not null && _overview.PubSubComponents.Count == 0 && _error is null)
 {
-    <EmptyState Title="No pub/sub components found"
-                Description="Check DAPR component configuration. Ensure pub/sub components (e.g., pubsub.redis, pubsub.kafka) are registered in the DAPR component manifests." />
+    @switch (_overview.RemoteMetadataStatus)
+    {
+        case RemoteMetadataStatus.NotConfigured:
+            <EmptyState Title="Pub/sub components unavailable"
+                        Description="Remote EventStore sidecar metadata is disabled. Set 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings (under Aspire, this is wired automatically)." />
+            break;
+        case RemoteMetadataStatus.Unreachable:
+            <EmptyState Title="EventStore sidecar unreachable"
+                        Description="@($"Cannot list pub/sub components — the query to {_overview.RemoteEndpoint}/v1.0/metadata failed. Verify the EventStore DAPR sidecar is running on that port. Check Admin server logs for the exception details.")" />
+            break;
+        case RemoteMetadataStatus.Available:
+            <EmptyState Title="No pub/sub components found"
+                        Description="The EventStore sidecar is reachable but reports no pub/sub components. Check that 'pubsub' is registered as a DAPR component and referenced by the EventStore sidecar in HexalithEventStoreExtensions.cs." />
+            break;
+    }
 }
 
 @* Pub/sub component cards (AC1) *@
@@ -135,7 +148,7 @@
         case RemoteMetadataStatus.Unreachable:
             <IssueBanner Visible="true"
                          Title="EventStore sidecar unreachable"
-                         Description="@($"Attempted to query {_overview.RemoteEndpoint}/v1.0/subscribe but the call failed. Verify the EventStore DAPR sidecar is running. Check Admin server logs for details.")" />
+                         Description="@($"Attempted to query {_overview.RemoteEndpoint}/v1.0/metadata but the call failed. Verify the EventStore DAPR sidecar is running. Check Admin server logs for details.")" />
             break;
         case RemoteMetadataStatus.Available:
             break;
@@ -292,7 +305,7 @@
                 </div>
             </div>
             <FluentButton Appearance="Appearance.Accent"
-                          OnClick="@(() => NavigationManager.NavigateTo("/deadletters"))"
+                          OnClick="@(() => NavigationManager.NavigateTo("/health/dead-letters"))"
                           aria-label="Navigate to Dead Letter Manager">
                 Manage Dead Letters
             </FluentButton>

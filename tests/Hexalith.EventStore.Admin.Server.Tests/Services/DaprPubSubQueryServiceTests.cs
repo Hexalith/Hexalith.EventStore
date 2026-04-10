@@ -37,16 +37,18 @@ public class DaprPubSubQueryServiceTests
     [Fact]
     public async Task GetPubSubOverviewAsync_ReturnsOverview_WithPubSubComponents()
     {
-        // Arrange — local sidecar has a pubsub component
-        DaprMetadata metadata = CreateMetadata(
-        [
-            new DaprComponentsMetadata("pubsub-events", "pubsub.redis", "v1", []),
-            new DaprComponentsMetadata("statestore", "state.redis", "v1", ["ETAG"]),
-        ]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-
-        // Remote sidecar returns subscriptions
-        SetupRemoteSidecar("""{"subscriptions": [{"pubsubName": "pubsub-events", "topic": "*.*.events", "type": "DECLARATIVE", "deadLetterTopic": "", "rules": {"rules": [{"match": "", "path": "/events/handle"}]}}]}""");
+        // Arrange — remote sidecar returns components AND subscriptions in the same payload
+        SetupRemoteSidecar("""
+        {
+            "components": [
+                {"name": "pubsub-events", "type": "pubsub.redis", "version": "v1", "capabilities": []},
+                {"name": "statestore", "type": "state.redis", "version": "v1", "capabilities": ["ETAG"]}
+            ],
+            "subscriptions": [
+                {"pubsubName": "pubsub-events", "topic": "*.*.events", "type": "DECLARATIVE", "deadLetterTopic": "", "rules": {"rules": [{"match": "", "path": "/events/handle"}]}}
+            ]
+        }
+        """);
 
         // Act
         DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
@@ -63,52 +65,29 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_ReturnsEmptySubscriptions_WhenEndpointNotConfigured()
+    public async Task GetPubSubOverviewAsync_ReturnsEmptyComponents_WhenEndpointNotConfigured()
     {
-        // Arrange — no remote endpoint configured
+        // Arrange — no remote endpoint configured; components are sourced from remote only.
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = null };
         DaprInfrastructureQueryService sut = new(
             _daprClient, _httpClientFactory, Options.Create(options),
             NullLogger<DaprInfrastructureQueryService>.Instance);
 
-        DaprMetadata metadata = CreateMetadata([new DaprComponentsMetadata("pubsub", "pubsub.kafka", "v1", [])]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-
         // Act
         DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
 
         // Assert
-        result.PubSubComponents.Count.ShouldBe(1);
+        result.PubSubComponents.ShouldBeEmpty();
         result.Subscriptions.ShouldBeEmpty();
         result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_ReturnsEmptySubscriptions_WhenRemoteSidecarFails()
+    public async Task GetPubSubOverviewAsync_ReturnsEmptyEverything_WhenRemoteSidecarFails()
     {
-        // Arrange
-        DaprMetadata metadata = CreateMetadata([new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", [])]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-
-        // Remote sidecar throws
+        // Arrange — remote sidecar throws; both components and subscriptions are empty.
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, ""));
         _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
-
-        // Act
-        DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
-
-        // Assert
-        result.PubSubComponents.Count.ShouldBe(1);
-        result.Subscriptions.ShouldBeEmpty();
-        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
-    }
-
-    [Fact]
-    public async Task GetPubSubOverviewAsync_ReturnsEmptyComponents_WhenSidecarUnavailable()
-    {
-        // Arrange — local sidecar fails
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
-            .Returns<DaprMetadata>(_ => throw new HttpRequestException("Sidecar down"));
 
         // Act
         DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
@@ -122,22 +101,19 @@ public class DaprPubSubQueryServiceTests
     [Fact]
     public async Task GetPubSubOverviewAsync_FiltersOnlyPubSubComponents()
     {
-        // Arrange — metadata has state store + pubsub + binding
-        DaprMetadata metadata = CreateMetadata(
-        [
-            new DaprComponentsMetadata("statestore", "state.redis", "v1", []),
-            new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []),
-            new DaprComponentsMetadata("mybinding", "bindings.http", "v1", []),
-        ]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-
-        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = null };
-        DaprInfrastructureQueryService sut = new(
-            _daprClient, _httpClientFactory, Options.Create(options),
-            NullLogger<DaprInfrastructureQueryService>.Instance);
+        // Arrange — remote payload has state store + pubsub + binding components.
+        SetupRemoteSidecar("""
+        {
+            "components": [
+                {"name": "statestore", "type": "state.redis", "version": "v1", "capabilities": []},
+                {"name": "pubsub", "type": "pubsub.redis", "version": "v1", "capabilities": []},
+                {"name": "mybinding", "type": "bindings.http", "version": "v1", "capabilities": []}
+            ]
+        }
+        """);
 
         // Act
-        DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
+        DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
 
         // Assert — only pubsub.redis is included
         result.PubSubComponents.Count.ShouldBe(1);
