@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.1...v1.2.2) (2026-04-12)
+
+
+### Bug Fixes
+
+* **docs:** remove malformed closes reference in CHANGELOG.md ([f45239f](https://github.com/Hexalith/Hexalith.EventStore/commit/f45239fbafc64d0e0f2df17608eb7186ee64cf23))
+
 ## [1.2.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.0...v1.2.1) (2026-04-12)
 
 
