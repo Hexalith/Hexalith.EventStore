@@ -267,7 +267,7 @@ public class ValidationTests(JwtAuthenticatedWebApplicationFactory factory)
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(500);
         body.GetProperty("title").GetString().ShouldBe("Internal Server Error");
-        body.GetProperty("type").GetString()!.ShouldContain("rfc9457");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/internal-server-error");
         body.GetProperty("instance").GetString().ShouldBe("/api/v1/commands");
         body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
 

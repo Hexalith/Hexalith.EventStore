@@ -35,6 +35,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Arrange
         _factory.LogProvider.Clear();
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -69,6 +70,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Arrange - empty tenant triggers ValidateModelFilter BEFORE MediatR pipeline
         _factory.LogProvider.Clear();
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -96,6 +98,7 @@ public class LoggingBehaviorIntegrationTests : IClassFixture<LoggingBehaviorInte
         // Arrange - use valid request to verify LoggingBehavior executes before handler
         _factory.LogProvider.Clear();
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",

@@ -35,6 +35,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["tenant-a"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "tenant-b",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -64,6 +65,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken();
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -91,6 +93,7 @@ public class AuthorizationIntegrationTests
             domains: ["orders"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "inventory",
             aggregateId = "agg-001",
@@ -118,6 +121,7 @@ public class AuthorizationIntegrationTests
             permissions: ["PlaceOrder"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -143,6 +147,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "any-domain",
             aggregateId = "agg-001",
@@ -163,6 +168,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["test-tenant"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -185,6 +191,7 @@ public class AuthorizationIntegrationTests
             permissions: ["commands:*"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -208,6 +215,7 @@ public class AuthorizationIntegrationTests
             permissions: ["CreateOrder"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -229,6 +237,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -257,6 +266,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -290,6 +300,7 @@ public class AuthorizationIntegrationTests
         string token = TestJwtTokenGenerator.GenerateToken(tenants: ["other-tenant"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "",
             domain = "",
             aggregateId = "",
@@ -312,6 +323,7 @@ public class AuthorizationIntegrationTests
             domains: ["orders"]);
         HttpClient client = CreateClientWithToken(token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "inventory",
             aggregateId = "agg-001",
