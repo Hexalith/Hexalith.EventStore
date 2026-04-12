@@ -1,3 +1,42 @@
+# [1.2.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.1.1...v1.2.0) (2026-04-12)
+
+
+### Bug Fixes
+
+* **admin-ui:** bridge Keycloak JWT to Blazor authentication state ([abee3f3](https://github.com/Hexalith/Hexalith.EventStore/commit/abee3f3422ba98baed119d1bb6fd521fa448d00d))
+* **admin-ui:** prevent FluentTabs overflow hiding Aggregates tab on Type Catalog page ([fc3df8d](https://github.com/Hexalith/Hexalith.EventStore/commit/fc3df8db4ebe79f98a36ff9829c1def31f5b6da0))
+* **admin-ui:** show breadcrumb on Home page for consistent layout ([ec7bb67](https://github.com/Hexalith/Hexalith.EventStore/commit/ec7bb6796ad5f94be2b6e796eb6322ba54449d62))
+* **admin:** improve post-mutation refresh, error feedback, and user-friendly error messages ([bf5f5c7](https://github.com/Hexalith/Hexalith.EventStore/commit/bf5f5c72c51718362cf615d6304eea88ab382211))
+* **admin:** query pub/sub components from remote sidecar and fix dead-letter route ([a4bc7b5](https://github.com/Hexalith/Hexalith.EventStore/commit/a4bc7b56126212c02f760170de6216fb899e6c84))
+* **admin:** read tenant projections from DAPR state store directly ([830973f](https://github.com/Hexalith/Hexalith.EventStore/commit/830973fe6880e3c2c01ca1bcad907dc703547fed))
+* **admin:** replace binary remote-metadata flag with three-state diagnostic (story 19-6) ([e866755](https://github.com/Hexalith/Hexalith.EventStore/commit/e866755232534d699b6433510990c21e27ab9f15))
+* **admin:** wire subscriptions counts and auto-inject resiliency config ([9b31601](https://github.com/Hexalith/Hexalith.EventStore/commit/9b31601bfb1a03048aa200de51f1218c1151390f))
+* **auth:** apply code review round 2 patches for story 16-5 ([9c6a8ea](https://github.com/Hexalith/Hexalith.EventStore/commit/9c6a8ea9f9a1bf78ca1ac69dbb020cd5b030cc76))
+* **auth:** bypass tenant and RBAC validation for global administrators ([a889380](https://github.com/Hexalith/Hexalith.EventStore/commit/a889380b9cdd1bb269077df8633134e55b3cca81))
+* **auth:** skip API-level authorization for internal MediatR commands ([6a52678](https://github.com/Hexalith/Hexalith.EventStore/commit/6a52678b8de21329ac706008fe933a431880d4e6))
+* **auth:** wire tenant bootstrap with deterministic Keycloak user IDs ([1468db5](https://github.com/Hexalith/Hexalith.EventStore/commit/1468db58539180ad2e3ce8b6aa36f78ac4c702ae))
+* **build:** resolve Hexalith.Tenants paths dynamically for nested submodule support ([62f27e9](https://github.com/Hexalith/Hexalith.EventStore/commit/62f27e9bbe66f722910c950b6dc3092260682bd4))
+* **ci:** checkout Hexalith.Tenants submodule in all workflows ([35101ff](https://github.com/Hexalith/Hexalith.EventStore/commit/35101ffa1ff9d568316e0a3904ffab5e237f4311))
+* **docs:** repair broken links in docs-validation CI ([cbe9801](https://github.com/Hexalith/Hexalith.EventStore/commit/cbe98017d3c4189acba1501485a083374527ac43))
+* move FluentDesignTheme to interactive circuit and fix status logic ([06b6831](https://github.com/Hexalith/Hexalith.EventStore/commit/06b6831a1f1bd880b30680bb2095923725319e0e))
+* remove dead commandapi alias from PerConsumerRateLimitingTests ([11e62bd](https://github.com/Hexalith/Hexalith.EventStore/commit/11e62bd773485834a07364fb73f2c3decef818a6)), closes [#177](https://github.com/Hexalith/Hexalith.EventStore/issues/177)
+* resolve Admin UI status indicator and theme toggle bugs (story 15-1) ([a265b56](https://github.com/Hexalith/Hexalith.EventStore/commit/a265b5651e14bf694ef77469977d550c633e51e2))
+* resolve build errors and command dispatch bug in EventStoreAggregate ([35dcf22](https://github.com/Hexalith/Hexalith.EventStore/commit/35dcf22b232729f1ca125bf1888faf6931a88e29))
+* **server:** register IHttpClientFactory for DaprDomainServiceInvoker ([#191](https://github.com/Hexalith/Hexalith.EventStore/issues/191)) ([bffe75a](https://github.com/Hexalith/Hexalith.EventStore/commit/bffe75ac7f9b4b8b55ea951059dfb8f8432d8474))
+* **server:** rewrite DaprTenantQueryService to use query pipeline instead of direct state store ([6966c8c](https://github.com/Hexalith/Hexalith.EventStore/commit/6966c8c91089130df5872b1d29bd541df3bf79c4))
+* **server:** support wildcard tenant routing in DomainServiceResolver ([a585521](https://github.com/Hexalith/Hexalith.EventStore/commit/a585521802265f3d26137c405b147f06ce9db776)), closes [no-wildcard-falls-throu#to-convention](https://github.com/no-wildcard-falls-throu/issues/to-convention)
+* **tenants:** fix tenant admin UI bugs — index persistence, command processing, and user display ([a8b9579](https://github.com/Hexalith/Hexalith.EventStore/commit/a8b9579384b5a45e9f7a8d358eb6b57572ecf6b1))
+* **tenants:** update submodule and add sprint change proposal for tenant creation deadlock ([7013ea4](https://github.com/Hexalith/Hexalith.EventStore/commit/7013ea494b1826c116c691db099f89f36ed60a6d))
+* **test:** align unknown-event tests with skip-unknown-events behavior ([c0ec5f5](https://github.com/Hexalith/Hexalith.EventStore/commit/c0ec5f5a94e20e62bd99f3c02062b2f1a81e4701))
+* **ui:** fix breadcrumb rendering on home page and bUnit JS interop hangs ([769f6d3](https://github.com/Hexalith/Hexalith.EventStore/commit/769f6d32a395a5603498c06d01934654417b658f))
+* wrap FluentDesignTheme around layout for proper dark mode rendering ([0e1b413](https://github.com/Hexalith/Hexalith.EventStore/commit/0e1b4130b87695bd471672e124ae2b6567946068))
+
+
+### Features
+
+* add backup CLI sub-subcommands completing story 17-6 ([e1a42c2](https://github.com/Hexalith/Hexalith.EventStore/commit/e1a42c2ed92d00a688ff0a0f2f344533670fe468)), closes [#158](https://github.com/Hexalith/Hexalith.EventStore/issues/158)
+* **apphost:** add Hexalith.Tenants server to Aspire topology ([#188](https://github.com/Hexalith/Hexalith.EventStore/issues/188)) ([a97fe5b](https://github.com/Hexalith/Hexalith.EventStore/commit/a97fe5b154179b1dbc3e1517edb5971959e40966))
+
 ## [1.1.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.1.0...v1.1.1) (2026-04-02)
 
 
