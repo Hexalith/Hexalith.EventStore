@@ -1,3 +1,10 @@
+## [1.2.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.3...v1.2.4) (2026-04-12)
+
+
+### Bug Fixes
+
+* **ci:** use dapr/setup-dapr action in release workflow and fix flaky UI test ([dd6445a](https://github.com/Hexalith/Hexalith.EventStore/commit/dd6445a0bb62474abe1a5e41dfbfc9a68a0153d2))
+
 ## [1.2.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.2...v1.2.3) (2026-04-12)
 
 
