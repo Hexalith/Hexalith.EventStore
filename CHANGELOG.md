@@ -31,7 +31,7 @@
 * resolve build errors and command dispatch bug in EventStoreAggregate ([35dcf22](https://github.com/Hexalith/Hexalith.EventStore/commit/35dcf22b232729f1ca125bf1888faf6931a88e29))
 * **server:** register IHttpClientFactory for DaprDomainServiceInvoker ([#191](https://github.com/Hexalith/Hexalith.EventStore/issues/191)) ([bffe75a](https://github.com/Hexalith/Hexalith.EventStore/commit/bffe75ac7f9b4b8b55ea951059dfb8f8432d8474))
 * **server:** rewrite DaprTenantQueryService to use query pipeline instead of direct state store ([6966c8c](https://github.com/Hexalith/Hexalith.EventStore/commit/6966c8c91089130df5872b1d29bd541df3bf79c4))
-* **server:** support wildcard tenant routing in DomainServiceResolver ([a585521](https://github.com/Hexalith/Hexalith.EventStore/commit/a585521802265f3d26137c405b147f06ce9db776)), closes [no-wildcard-falls-throu#to-convention](https://github.com/no-wildcard-falls-throu/issues/to-convention)
+* **server:** support wildcard tenant routing in DomainServiceResolver ([a585521](https://github.com/Hexalith/Hexalith.EventStore/commit/a585521802265f3d26137c405b147f06ce9db776))
 * **tenants:** fix tenant admin UI bugs — index persistence, command processing, and user display ([a8b9579](https://github.com/Hexalith/Hexalith.EventStore/commit/a8b9579384b5a45e9f7a8d358eb6b57572ecf6b1))
 * **tenants:** update submodule and add sprint change proposal for tenant creation deadlock ([7013ea4](https://github.com/Hexalith/Hexalith.EventStore/commit/7013ea494b1826c116c691db099f89f36ed60a6d))
 * **test:** align unknown-event tests with skip-unknown-events behavior ([c0ec5f5](https://github.com/Hexalith/Hexalith.EventStore/commit/c0ec5f5a94e20e62bd99f3c02062b2f1a81e4701))
