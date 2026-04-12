@@ -33,6 +33,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddScoped<IETagService, DaprETagService>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
+        _ = services.AddHttpClient();
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
