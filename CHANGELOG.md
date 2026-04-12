@@ -1,3 +1,10 @@
+## [1.2.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.5...v1.2.6) (2026-04-12)
+
+
+### Bug Fixes
+
+* **ci:** add missing Admin.Abstractions csproj to Dockerfile restore layer ([f149fe8](https://github.com/Hexalith/Hexalith.EventStore/commit/f149fe89b55b55234894c01a8a798ab1fc20ef25))
+
 ## [1.2.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.4...v1.2.5) (2026-04-12)
 
 
