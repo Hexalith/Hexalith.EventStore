@@ -1,3 +1,14 @@
+## [1.2.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.2...v1.2.3) (2026-04-12)
+
+
+### Bug Fixes
+
+* **ci:** correct Dockerfile path in deploy-staging workflow ([1659566](https://github.com/Hexalith/Hexalith.EventStore/commit/1659566b2b376e59bb76ab88c107866d024766c0))
+* **ci:** start Dapr infrastructure services after slim init ([0198206](https://github.com/Hexalith/Hexalith.EventStore/commit/0198206911b515f6ea0732f663db3ade42726643))
+* **ci:** use dapr init --slim to avoid port conflicts on CI runners ([aba1f22](https://github.com/Hexalith/Hexalith.EventStore/commit/aba1f22af06b23d685ac44db49cbf5850f468d03))
+* **ci:** use dapr/setup-dapr action in release workflow ([e546ce6](https://github.com/Hexalith/Hexalith.EventStore/commit/e546ce6813cea02c7ad4774d42666d2a72acfb3f))
+* **ci:** use full dapr init to avoid scheduler port conflicts ([8c552f8](https://github.com/Hexalith/Hexalith.EventStore/commit/8c552f804dcb7f364d5486cc2773ba430649a525))
+
 ## [1.2.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.1...v1.2.2) (2026-04-12)
 
 
