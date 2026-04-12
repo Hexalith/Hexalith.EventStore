@@ -393,7 +393,7 @@ public class EventStoreAggregateTests : IDisposable {
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithUnknownEventType_ThrowsInvalidOperationException() {
+    public async Task ProcessAsync_JsonElementArray_WithUnknownEventType_SkipsUnknownEvent() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -403,8 +403,9 @@ public class EventStoreAggregateTests : IDisposable {
         JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
         CommandEnvelope command = CreateCommand(new ResetItems());
 
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => aggregate.ProcessAsync(command, jsonArray));
+        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+
+        Assert.True(result.IsNoOp); // Unknown event skipped, state has ItemCount 0 → NoOp
     }
 
     [Fact]
@@ -453,13 +454,14 @@ public class EventStoreAggregateTests : IDisposable {
     }
 
     [Fact]
-    public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_ThrowsInvalidOperationException() {
+    public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_SkipsUnknownEvent() {
         var aggregate = new TestAggregate();
         object[] events = new object[] { new UnknownCommand() };
         CommandEnvelope command = CreateCommand(new ResetItems());
 
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => aggregate.ProcessAsync(command, events));
+        DomainResult result = await aggregate.ProcessAsync(command, events);
+
+        Assert.True(result.IsNoOp); // Unknown event skipped, state has ItemCount 0 → NoOp
     }
 
     [Fact]
