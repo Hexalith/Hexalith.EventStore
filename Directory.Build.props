@@ -1,6 +1,13 @@
 <Project>
 
   <PropertyGroup>
+    <!-- Resolve Hexalith.Tenants source path: when nested inside the Hexalith.Tenants repo,
+         use the parent repo's src/; otherwise use the own Hexalith.Tenants submodule -->
+    <HexalithTenantsBasePath Condition="Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
+    <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == ''">$(MSBuildThisFileDirectory)Hexalith.Tenants/src</HexalithTenantsBasePath>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
