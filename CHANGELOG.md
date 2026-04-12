@@ -1,3 +1,10 @@
+## [1.2.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.4...v1.2.5) (2026-04-12)
+
+
+### Bug Fixes
+
+* **tests:** add missing messageId to integration test request payloads ([c465519](https://github.com/Hexalith/Hexalith.EventStore/commit/c465519020a215c3d5e1063c4a693563efb597de))
+
 ## [1.2.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.3...v1.2.4) (2026-04-12)
 
 
