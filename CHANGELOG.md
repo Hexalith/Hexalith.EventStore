@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.0...v1.2.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **release:** remove unsupported --verbosity flag from nuget push command ([9cf818c](https://github.com/Hexalith/Hexalith.EventStore/commit/9cf818c7b204af67e27cab08193f02c94e7e8177))
+
 # [1.2.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.1.1...v1.2.0) (2026-04-12)
 
 
