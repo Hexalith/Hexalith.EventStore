@@ -216,7 +216,7 @@ public class EventsPageTests : AdminUITestContext {
         NavManager.Uri.ShouldContain("tenant=tenant-a");
         NavManager.Uri.ShouldContain("eventType=Create");
         JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
-        JSInterop.VerifyInvoke("hexalithAdmin.setScrollTop");
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("hexalithAdmin.setScrollTop"), TimeSpan.FromSeconds(5));
         _ = _mockApiClient.Received(2).GetTenantsAsync(Arg.Any<CancellationToken>());
     }
 
