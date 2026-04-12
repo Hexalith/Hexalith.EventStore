@@ -29,7 +29,7 @@ jobs:
 
       - name: Build and push eventstore
         run: |
-          docker build -f src/Hexalith.EventStore.EventStore/Dockerfile \
+          docker build -f src/Hexalith.EventStore/Dockerfile \
             -t registry.hexalith.com/eventstore:staging-latest .
           docker push registry.hexalith.com/eventstore:staging-latest
 
