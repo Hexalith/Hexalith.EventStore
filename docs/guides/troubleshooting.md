@@ -734,7 +734,7 @@ System.InvalidOperationException: Configuration key 'Authentication:JwtBearer:Au
     $ dapr mtls -k disable
     ```
 
-4. Consult the [DAPR documentation on service mesh integration](https://docs.dapr.io/operations/hosting/kubernetes/kubernetes-service-mesh/) for your specific mesh.
+4. Consult the [DAPR documentation on service meshes](https://docs.dapr.io/concepts/faq/service-mesh/) for guidance on running Dapr alongside your specific mesh.
 
 ## Azure Container Apps Deployment Issues
 

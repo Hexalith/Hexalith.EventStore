@@ -60,6 +60,8 @@ exclude = [
     # Example/placeholder domains
     '^https?://example\.com',
     '^https?://example\.invalid',
+    # RFC 7807 problem-type URIs (application identifiers, not documentation links)
+    '^https?://hexalith\.io/problems/',
     # Known unauthenticated false-404 endpoints observed in local runs
     '^https?://github\.com/Hexalith/Hexalith\.EventStore/issues(?:\?.*)?$',
     '^https?://github\.com/Hexalith/Hexalith\.EventStore/discussions$',
