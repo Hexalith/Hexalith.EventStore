@@ -126,21 +126,8 @@ jobs:
         with:
           version: '1.16.0'
 
-      - name: Initialize Dapr infrastructure
-        run: |
-          dapr init --slim
-          # --slim installs binaries only; start the services that Tier 2 tests require.
-          docker run -d --name dapr-redis -p 6379:6379 redis:7-alpine
-          nohup ~/.dapr/bin/placement --port 50005 --log-level error &
-          nohup ~/.dapr/bin/scheduler --port 50006 --log-level error --etcd-data-dir /tmp/dapr-scheduler &
-          # Wait for all three services to accept connections
-          for i in $(seq 1 30); do
-            (echo > /dev/tcp/localhost/6379) 2>/dev/null &&
-            (echo > /dev/tcp/localhost/50005) 2>/dev/null &&
-            (echo > /dev/tcp/localhost/50006) 2>/dev/null &&
-            break
-            sleep 1
-          done
+      - name: Initialize Dapr
+        run: dapr init
 
       - name: Integration Tests (Tier 2)
         run: >
