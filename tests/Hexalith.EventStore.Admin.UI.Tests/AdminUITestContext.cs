@@ -24,14 +24,14 @@ public class AdminUITestContext : BunitContext {
 
         // Mock JSInterop for FluentUI and custom interop
         JSInterop.Setup<string>("hexalithAdmin.registerShortcuts", _ => true).SetResult("shortcut-test");
-        JSInterop.SetupVoid("hexalithAdmin.unregisterShortcuts", _ => true);
+        JSInterop.SetupVoid("hexalithAdmin.unregisterShortcuts", _ => true).SetVoidResult();
         JSInterop.Setup<string?>("hexalithAdmin.getLocalStorage", _ => true).SetResult(null);
-        JSInterop.SetupVoid("hexalithAdmin.setLocalStorage", _ => true);
+        JSInterop.SetupVoid("hexalithAdmin.setLocalStorage", _ => true).SetVoidResult();
         JSInterop.Setup<int>("hexalithAdmin.getViewportWidth", _ => true).SetResult(1920);
         JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(0d);
-        JSInterop.SetupVoid("hexalithAdmin.setScrollTop", _ => true);
+        JSInterop.SetupVoid("hexalithAdmin.setScrollTop", _ => true).SetVoidResult();
         JSInterop.Setup<string>("hexalithAdmin.registerViewportListener", _ => true).SetResult("vp-test-1");
-        JSInterop.SetupVoid("hexalithAdmin.unregisterViewportListener", _ => true);
+        JSInterop.SetupVoid("hexalithAdmin.unregisterViewportListener", _ => true).SetVoidResult();
         JSInterop.SetupVoid("hexalithAdmin.focusCommandPaletteSearch", _ => true).SetVoidResult();
         JSInterop.Mode = JSRuntimeMode.Loose;
 
