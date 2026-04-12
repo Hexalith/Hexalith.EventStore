@@ -121,10 +121,26 @@ jobs:
           ! eventstore-admin nonexistent-command 2>&1
           dotnet tool uninstall --global Hexalith.EventStore.Admin.Cli
 
-      - name: Install DAPR CLI
+      - name: Install Dapr CLI
+        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+        with:
+          version: '1.16.0'
+
+      - name: Initialize Dapr infrastructure
         run: |
-          wget -q https://raw.githubusercontent.com/dapr/cli/v1.16.0/install/install.sh -O - | /bin/bash
           dapr init --slim
+          # --slim installs binaries only; start the services that Tier 2 tests require.
+          docker run -d --name dapr-redis -p 6379:6379 redis:7-alpine
+          nohup ~/.dapr/bin/placement --port 50005 --log-level error &
+          nohup ~/.dapr/bin/scheduler --port 50006 --log-level error --etcd-data-dir /tmp/dapr-scheduler &
+          # Wait for all three services to accept connections
+          for i in $(seq 1 30); do
+            (echo > /dev/tcp/localhost/6379) 2>/dev/null &&
+            (echo > /dev/tcp/localhost/50005) 2>/dev/null &&
+            (echo > /dev/tcp/localhost/50006) 2>/dev/null &&
+            break
+            sleep 1
+          done
 
       - name: Integration Tests (Tier 2)
         run: >
@@ -312,10 +328,13 @@ jobs:
           key: nuget-${{ hashFiles('Directory.Packages.props') }}
           restore-keys: nuget-
 
-      - name: Install DAPR CLI
-        run: |
-          wget -q https://raw.githubusercontent.com/dapr/cli/v1.16.0/install/install.sh -O - | /bin/bash
-          dapr init # Full init (not --slim) for Aspire topology
+      - name: Install Dapr CLI
+        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+        with:
+          version: '1.16.0'
+
+      - name: Initialize Dapr
+        run: dapr init
 
       - name: Aspire Contract Tests (Tier 3)
         run: dotnet test tests/Hexalith.EventStore.IntegrationTests/ --configuration Release
