@@ -4,6 +4,8 @@
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
     <RootNamespace>Hexalith.EventStore.Admin.UI</RootNamespace>
+    <DisableScopedCssBundling>true</DisableScopedCssBundling>
+    <ScopedCssEnabled>false</ScopedCssEnabled>
   </PropertyGroup>
 
   <ItemGroup>
