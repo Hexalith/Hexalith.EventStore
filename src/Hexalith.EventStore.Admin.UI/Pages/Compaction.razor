@@ -18,13 +18,13 @@
     <h1 style="margin: 0;">Compaction</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
-            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                           OnClick="OpenTriggerDialog"
                           aria-label="Trigger compaction">
                 Trigger Compaction
             </FluentButton>
         </AuthorizedView>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh compaction jobs">
             Refresh
@@ -190,8 +190,8 @@
             </FluentCard>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnTriggerConfirm"
                           Disabled="@(!CanTrigger || _isOperating)">
                 @if (_isOperating)

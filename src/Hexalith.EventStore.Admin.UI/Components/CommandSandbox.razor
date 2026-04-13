@@ -11,7 +11,7 @@
         <div style="flex: 1;">
             <h3 style="margin: 0;">Command Sandbox</h3>
         </div>
-        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close sandbox">
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close sandbox">
             Close
         </FluentButton>
     </FluentStack>
@@ -53,7 +53,7 @@
             </span>
         </div>
 
-        <FluentButton Appearance="Appearance.Accent"
+        <FluentButton Appearance="ButtonAppearance.Primary"
                       OnClick="RunSandboxAsync"
                       Disabled="@(!CanRun)"
                       IconStart="@(new Icons.Regular.Size20.Play())"
@@ -127,7 +127,7 @@
                         }
                     </TemplateColumn>
                     <TemplateColumn Title="Payload">
-                        <FluentButton Appearance="Appearance.Lightweight"
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
                                       OnClick="@(() => ShowEventPayload(context))"
                                       aria-label="@($"View payload for event {context.Index}")">
                             View Payload
@@ -192,7 +192,7 @@
                 <JsonViewer Json="@_selectedEventPayload" AriaLabel="Event payload" MaxHeight="500" />
             </FluentDialogBody>
             <FluentDialogFooter>
-                <FluentButton Appearance="Appearance.Accent" OnClick="ClosePayloadDialog">Close</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadDialog">Close</FluentButton>
             </FluentDialogFooter>
         </FluentDialog>
     }

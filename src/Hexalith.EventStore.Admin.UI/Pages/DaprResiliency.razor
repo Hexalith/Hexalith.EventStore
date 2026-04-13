@@ -20,7 +20,7 @@
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
     <h1 style="margin: 0;">DAPR Resiliency Policies</h1>
-    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                   OnClick="ReloadAsync"
                   Disabled="@_isLoading"
                   aria-label="Reload resiliency configuration">
@@ -267,7 +267,7 @@
         <FluentAccordion style="margin-bottom: 24px;">
             <FluentAccordionItem Heading="Raw YAML Configuration">
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   OnClick="CopyYamlToClipboardAsync"
                                   aria-label="Copy YAML to clipboard">
                         Copy to Clipboard

@@ -153,7 +153,7 @@
                          Placeholder="@GetActorIdPlaceholder()"
                          style="min-width: 300px;"
                          aria-label="Enter actor instance ID" />
-        <FluentButton Appearance="Appearance.Accent"
+        <FluentButton Appearance="ButtonAppearance.Primary"
                       Disabled="@(string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))"
                       Loading="@_isInspecting"
                       OnClick="InspectActorAsync"
@@ -190,7 +190,7 @@
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="4">
             <div style="display: flex; align-items: center; height: 100%;">
-                <FluentButton Appearance="Appearance.Outline"
+                <FluentButton Appearance="ButtonAppearance.Outline"
                               Loading="@_isInspecting"
                               OnClick="InspectActorAsync"
                               aria-label="Refresh actor state">

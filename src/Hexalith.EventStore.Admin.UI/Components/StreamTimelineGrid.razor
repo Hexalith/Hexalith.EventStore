@@ -25,19 +25,19 @@
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
                  Style="margin-bottom: 8px;">
         <span>Showing @(Entries.Count > 0 ? "1" : "0")-@Entries.Count of @TotalCount entries</span>
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       Disabled="@(!CanNavigateNewer)"
                       OnClick="@HandleNavigateNewer">
             &#x2190; Newer
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       Disabled="@(!CanNavigateOlder)"
                       OnClick="@HandleNavigateOlder">
             Older &#x2192;
         </FluentButton>
         @if (CompareMode && _compareSequences.Count == 2)
         {
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="RequestCompare"
                           Style="margin-left: auto;"
                           aria-label="View diff between selected events">

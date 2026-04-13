@@ -3,22 +3,22 @@
 
 <div class="timeline-filter-bar" role="toolbar" aria-label="Timeline filters">
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
-        <FluentButton Appearance="@(SelectedEntryType is null ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(SelectedEntryType is null ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       @onclick="() => OnTypeChanged(null)"
                       aria-pressed="@(SelectedEntryType is null ? "true" : "false")">
             All
         </FluentButton>
-        <FluentButton Appearance="@(SelectedEntryType == TimelineEntryType.Command ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(SelectedEntryType == TimelineEntryType.Command ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       @onclick="() => OnTypeChanged(TimelineEntryType.Command)"
                       aria-pressed="@(SelectedEntryType == TimelineEntryType.Command ? "true" : "false")">
             Commands
         </FluentButton>
-        <FluentButton Appearance="@(SelectedEntryType == TimelineEntryType.Event ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(SelectedEntryType == TimelineEntryType.Event ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       @onclick="() => OnTypeChanged(TimelineEntryType.Event)"
                       aria-pressed="@(SelectedEntryType == TimelineEntryType.Event ? "true" : "false")">
             Events
         </FluentButton>
-        <FluentButton Appearance="@(SelectedEntryType == TimelineEntryType.Query ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(SelectedEntryType == TimelineEntryType.Query ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       @onclick="() => OnTypeChanged(TimelineEntryType.Query)"
                       aria-pressed="@(SelectedEntryType == TimelineEntryType.Query ? "true" : "false")">
             Queries
@@ -31,7 +31,7 @@
                       Style="min-width: 200px;" />
 
         <div style="margin-left: auto;">
-            <FluentButton Appearance="@(CompareMode ? Appearance.Accent : Appearance.Outline)"
+            <FluentButton Appearance="@(CompareMode ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                           OnClick="ToggleCompareMode"
                           aria-pressed="@(CompareMode ? "true" : "false")"
                           Title="Toggle compare mode to select two events for diff">

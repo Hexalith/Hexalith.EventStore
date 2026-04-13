@@ -18,13 +18,13 @@
     <h1 style="margin: 0;">Tenants</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Admin">
-            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                           OnClick="OpenCreateDialog"
                           aria-label="Create tenant">
                 Create Tenant
             </FluentButton>
         </AuthorizedView>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh tenant list">
             Refresh
@@ -122,7 +122,7 @@
                     <AuthorizedView MinimumRole="AdminRole.Admin">
                         @if (context.Status == TenantStatusType.Active)
                         {
-                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                           OnClick="@(() => OpenDisableDialog(context))"
                                           aria-label="Disable tenant">
                                 Disable
@@ -130,7 +130,7 @@
                         }
                         else if (context.Status == TenantStatusType.Disabled)
                         {
-                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                           OnClick="@(() => OpenEnableDialog(context))"
                                           aria-label="Enable tenant">
                                 Enable
@@ -184,12 +184,12 @@
                             <TemplateColumn Title="Actions">
                                 <div @onclick:stopPropagation>
                                     <AuthorizedView MinimumRole="AdminRole.Admin">
-                                        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                                       OnClick="@(() => OpenChangeRoleDialog(context))"
                                                       aria-label="Change role">
                                             Change Role
                                         </FluentButton>
-                                        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                                        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                                       OnClick="@(() => OpenRemoveUserDialog(context))"
                                                       aria-label="Remove user"
                                                       Style="margin-left: 4px;">
@@ -202,7 +202,7 @@
                     }
                     <div style="margin-top: 8px;">
                         <AuthorizedView MinimumRole="AdminRole.Admin">
-                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                           OnClick="OpenAddUserDialog"
                                           aria-label="Add user">
                                 Add User
@@ -250,8 +250,8 @@
                              aria-label="Description" />
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnCreateTenantConfirm"
                           Disabled="@(!IsCreateFormValid() || _isOperating)">
                 @if (_isOperating)
@@ -280,8 +280,8 @@
             <p>All command processing for this tenant will be suspended. Existing events are preserved.</p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnDisableConfirm"
                           Disabled="@_isOperating">
                 @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
@@ -304,8 +304,8 @@
             <p>Command processing will resume for this tenant.</p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnEnableConfirm"
                           Disabled="@_isOperating">
                 @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
@@ -339,8 +339,8 @@
             </FluentSelect>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseAddUserDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseAddUserDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnAddUserConfirm"
                           Disabled="@(string.IsNullOrWhiteSpace(_addUserId) || _isOperating)">
                 @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
@@ -363,8 +363,8 @@
             <p>This will remove <strong>@_removeUserTarget.UserId</strong> from tenant <strong class="monospace">@_expandedTenantId</strong>.</p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseRemoveUserDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRemoveUserDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnRemoveUserConfirm"
                           Disabled="@_isOperating">
                 @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
@@ -394,8 +394,8 @@
             </FluentSelect>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseChangeRoleDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseChangeRoleDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnChangeRoleConfirm"
                           Disabled="@(_isOperating || _changeRoleNewRole == _changeRoleTarget?.Role)">
                 @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }

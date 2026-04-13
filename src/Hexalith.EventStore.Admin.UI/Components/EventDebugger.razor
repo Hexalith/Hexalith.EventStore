@@ -14,7 +14,7 @@
         <div style="flex: 1;">
             <h3 style="margin: 0;">Event Debugger</h3>
         </div>
-        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close debugger">
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close debugger">
             Close
         </FluentButton>
     </FluentStack>
@@ -43,37 +43,37 @@
         @* Navigation controls *@
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" HorizontalAlignment="HorizontalAlignment.Center"
                      VerticalAlignment="VerticalAlignment.Center" Style="margin-bottom: 12px;">
-            <FluentButton Appearance="Appearance.Outline" OnClick="GoToFirst"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToFirst"
                           Disabled="@(!_frame.HasPrevious || _loading)"
                           Title="First event (Home)" aria-label="First event">
                 <FluentIcon Value="@(new Icons.Regular.Size20.Previous())" />
             </FluentButton>
-            <FluentButton Appearance="Appearance.Outline" OnClick="GoToPrevious"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToPrevious"
                           Disabled="@(!_frame.HasPrevious || _loading)"
                           Title="Previous event (←)" aria-label="Previous event">
                 <FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" />
             </FluentButton>
             @if (_autoPlaying)
             {
-                <FluentButton Appearance="Appearance.Accent" OnClick="PauseAutoPlay"
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="PauseAutoPlay"
                               Title="Pause (Space)" aria-label="Pause auto-play">
                     <FluentIcon Value="@(new Icons.Regular.Size20.Pause())" />
                 </FluentButton>
             }
             else
             {
-                <FluentButton Appearance="Appearance.Outline" OnClick="StartAutoPlay"
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="StartAutoPlay"
                               Disabled="@(!_frame.HasNext || _loading)"
                               Title="Play (Space)" aria-label="Start auto-play">
                     <FluentIcon Value="@(new Icons.Regular.Size20.Play())" />
                 </FluentButton>
             }
-            <FluentButton Appearance="Appearance.Outline" OnClick="GoToNext"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToNext"
                           Disabled="@(!_frame.HasNext || _loading)"
                           Title="Next event (→)" aria-label="Next event">
                 <FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" />
             </FluentButton>
-            <FluentButton Appearance="Appearance.Outline" OnClick="GoToLast"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToLast"
                           Disabled="@(!_frame.HasNext || _loading)"
                           Title="Last event (End)" aria-label="Last event">
                 <FluentIcon Value="@(new Icons.Regular.Size20.Next())" />
@@ -93,7 +93,7 @@
             <FluentNumberField @bind-Value="_jumpToSequence" Min="1"
                                Style="width: 100px; margin-left: 8px;"
                                aria-label="Jump to sequence number" />
-            <FluentButton Appearance="Appearance.Outline" OnClick="JumpToSequence"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="JumpToSequence"
                           Disabled="@(_loading)"
                           aria-label="Go to sequence">
                 Go
@@ -121,7 +121,7 @@
                 @_frame.CorrelationId
             </span>
             <span>@_frame.UserId</span>
-            <FluentButton Appearance="Appearance.Lightweight" OnClick="ShowEventPayload"
+            <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="ShowEventPayload"
                           aria-label="View full event payload">
                 View Full Event
             </FluentButton>
@@ -130,7 +130,7 @@
         @* Watch fields feature *@
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" VerticalAlignment="VerticalAlignment.Center"
                      Style="margin-bottom: 8px; flex-wrap: wrap;">
-            <FluentButton Appearance="Appearance.Lightweight" OnClick="ToggleWatchPanel"
+            <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="ToggleWatchPanel"
                           aria-label="Watch fields">
                 Watch Fields
             </FluentButton>
@@ -138,7 +138,7 @@
             {
                 <FluentBadge Appearance="Appearance.Accent">
                     @watchPath
-                    <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => RemoveWatchField(watchPath))"
+                    <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => RemoveWatchField(watchPath))"
                                   aria-label="@($"Remove watch: {watchPath}")"
                                   Style="padding: 0; min-width: auto; margin-left: 4px;">x</FluentButton>
                 </FluentBadge>
@@ -152,7 +152,7 @@
                               Placeholder="Enter field path to watch (semicolon-separated)..."
                               Style="max-width: 400px; margin-bottom: 4px;"
                               aria-label="Watch field path input" />
-                <FluentButton Appearance="Appearance.Outline" OnClick="AddWatchFields"
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="AddWatchFields"
                               aria-label="Add watch fields">
                     Add
                 </FluentButton>
@@ -214,14 +214,14 @@
 
         @* Navigation links *@
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 12px;">
-            <FluentButton Appearance="Appearance.Lightweight"
+            <FluentButton Appearance="ButtonAppearance.Transparent"
                           OnClick="@(() => OnNavigateToEvent.InvokeAsync(_frame.SequenceNumber))"
                           aria-label="View event detail">
                 View Event Detail
             </FluentButton>
             @if (OnNavigateToBlame.HasDelegate)
             {
-                <FluentButton Appearance="Appearance.Lightweight"
+                <FluentButton Appearance="ButtonAppearance.Transparent"
                               OnClick="@(() => OnNavigateToBlame.InvokeAsync(_frame.SequenceNumber))"
                               aria-label="Run blame at this sequence">
                     Blame at Seq @_frame.SequenceNumber
@@ -229,7 +229,7 @@
             }
             @if (OnNavigateToBisect.HasDelegate)
             {
-                <FluentButton Appearance="Appearance.Lightweight"
+                <FluentButton Appearance="ButtonAppearance.Transparent"
                               OnClick="@(() => OnNavigateToBisect.InvokeAsync((_frame.SequenceNumber > 1 ? 1 : 0, _frame.SequenceNumber)))"
                               aria-label="Bisect up to this sequence">
                     Bisect to Seq @_frame.SequenceNumber
@@ -247,7 +247,7 @@
             <JsonViewer Json="@_frame?.EventPayloadJson" AriaLabel="Event payload JSON" MaxHeight="500" />
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Accent" OnClick="@(() => _payloadDialogHidden = true)">
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => _payloadDialogHidden = true)">
                 Close
             </FluentButton>
         </FluentDialogFooter>

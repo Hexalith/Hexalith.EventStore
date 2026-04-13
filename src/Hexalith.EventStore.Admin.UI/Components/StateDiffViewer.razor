@@ -17,7 +17,7 @@
                 </span>
             }
         </div>
-        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Back to timeline">
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Back to timeline">
             &#x2190; Back to Timeline
         </FluentButton>
     </FluentStack>
@@ -69,7 +69,7 @@
 
         @if (_diff.ChangedFields.Count > MaxDisplayChanges && !_showAllChanges)
         {
-            <FluentButton Appearance="Appearance.Outline"
+            <FluentButton Appearance="ButtonAppearance.Outline"
                           OnClick="ShowAllChanges"
                           Style="margin-top: 8px;">
                 Show all @_diff.ChangedFields.Count changes

@@ -8,13 +8,13 @@
 <h2 style="font-size: 18px; margin: 0 0 12px;">Storage Distribution</h2>
 
 <div class="storage-filter-bar">
-    <FluentButton Appearance="@(_showBarChart ? Appearance.Outline : Appearance.Accent)"
+    <FluentButton Appearance="@(_showBarChart ? ButtonAppearance.Outline : ButtonAppearance.Primary)"
                   Size="ButtonSize.Small"
                   OnClick="@(() => SetViewMode(false))"
                   aria-label="Switch to treemap view">
         Treemap
     </FluentButton>
-    <FluentButton Appearance="@(_showBarChart ? Appearance.Accent : Appearance.Outline)"
+    <FluentButton Appearance="@(_showBarChart ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                   Size="ButtonSize.Small"
                   OnClick="@(() => SetViewMode(true))"
                   aria-label="Switch to bar chart view">

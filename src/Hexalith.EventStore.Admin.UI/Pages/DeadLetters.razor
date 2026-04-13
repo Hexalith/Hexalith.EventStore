@@ -17,7 +17,7 @@
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
     <h1 style="margin: 0;" tabindex="0">Dead Letters</h1>
     <div style="display: flex; gap: 8px;">
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       Disabled="@_isOperating"
                       aria-label="Refresh dead-letter entries">
@@ -126,17 +126,17 @@
                  aria-live="polite">
                 <strong>@_selectedIds.Count</strong> <span>selected</span>
                 <AuthorizedView MinimumRole="AdminRole.Operator">
-                    <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                                   OnClick="@(() => OpenBulkDialog("retry"))"
                                   aria-label="Retry selected entries">
                         Retry Selected
                     </FluentButton>
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   OnClick="@(() => OpenBulkDialog("skip"))"
                                   aria-label="Skip selected entries">
                         Skip Selected
                     </FluentButton>
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   OnClick="@(() => OpenBulkDialog("archive"))"
                                   aria-label="Archive selected entries">
                         Archive Selected
@@ -228,7 +228,7 @@
         @if (_continuationToken is not null)
         {
             <div style="text-align: center; margin-bottom: 24px;">
-                <FluentButton Appearance="Appearance.Outline" OnClick="LoadMoreAsync"
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="LoadMoreAsync"
                               aria-label="Load more dead-letter entries">
                     Load More
                 </FluentButton>
@@ -256,8 +256,8 @@
             }
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent" OnClick="OnRetryConfirm" Disabled="@_isOperating">
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnRetryConfirm" Disabled="@_isOperating">
                 @if (_isOperating)
                 {
                     <FluentProgressRing Style="width: 16px; height: 16px;" />
@@ -290,8 +290,8 @@
             }
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent" OnClick="OnSkipConfirm" Disabled="@_isOperating">
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnSkipConfirm" Disabled="@_isOperating">
                 @if (_isOperating)
                 {
                     <FluentProgressRing Style="width: 16px; height: 16px;" />
@@ -324,8 +324,8 @@
             }
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent" OnClick="OnArchiveConfirm" Disabled="@_isOperating">
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnArchiveConfirm" Disabled="@_isOperating">
                 @if (_isOperating)
                 {
                     <FluentProgressRing Style="width: 16px; height: 16px;" />

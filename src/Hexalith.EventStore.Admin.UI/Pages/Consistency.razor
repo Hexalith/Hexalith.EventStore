@@ -20,13 +20,13 @@
     <h1 style="margin: 0;">Consistency</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
-            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                           OnClick="OpenTriggerDialog"
                           aria-label="Run consistency check">
                 Run Check
             </FluentButton>
         </AuthorizedView>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh consistency checks">
             Refresh
@@ -170,7 +170,7 @@
                 @if (context.Status is ConsistencyCheckStatus.Pending or ConsistencyCheckStatus.Running)
                 {
                     <AuthorizedView MinimumRole="AdminRole.Operator">
-                        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                       OnClick="@(() => OpenCancelDialog(context.CheckId))"
                                       OnClick:stopPropagation="true"
                                       aria-label="Cancel check">
@@ -207,7 +207,7 @@
                         Results truncated — @_expandedCheckResult.AnomaliesFound anomalies found, showing first 500.
                     </p>
                 }
-                <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                               OnClick="@(() => ExportCheckResultAsync(_expandedCheckResult))"
                               aria-label="Export check results">
                     Export
@@ -303,7 +303,7 @@
             </div>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseAnomalyDetail">Close</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseAnomalyDetail">Close</FluentButton>
         </FluentDialogFooter>
     </FluentDialog>
 }
@@ -341,8 +341,8 @@
             }
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnTriggerConfirm"
                           Disabled="@(!HasAnyCheckType || _isTriggering)">
                 @if (_isTriggering)
@@ -371,8 +371,8 @@
             <p>Cancel this consistency check? Results collected so far will be preserved.</p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCancelDialog">Keep Running</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCancelDialog">Keep Running</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnCancelConfirm"
                           Disabled="@_isCancelling">
                 @if (_isCancelling)

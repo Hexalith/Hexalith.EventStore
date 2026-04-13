@@ -19,7 +19,7 @@
         {
             <h3 style="margin: 0; font-size: 16px;">Loading...</h3>
         }
-        <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
                       OnClick="OnClose"
                       aria-label="Back to List">
             Back to List
@@ -70,7 +70,7 @@
             <div style="display: flex; gap: 8px; margin-bottom: 16px;">
                 @if (_detail.Status == ProjectionStatusType.Running)
                 {
-                    <FluentButton Appearance="Appearance.Outline"
+                    <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="OnPauseClick"
                                   Disabled="@_isOperating"
                                   aria-label="@($"Pause projection {_detail.Name}")">
@@ -86,7 +86,7 @@
                 }
                 else if (_detail.Status == ProjectionStatusType.Paused)
                 {
-                    <FluentButton Appearance="Appearance.Accent"
+                    <FluentButton Appearance="ButtonAppearance.Primary"
                                   OnClick="OnResumeClick"
                                   Disabled="@_isOperating"
                                   aria-label="@($"Resume projection {_detail.Name}")">
@@ -101,14 +101,14 @@
                     </FluentButton>
                 }
 
-                <FluentButton Appearance="Appearance.Outline"
+                <FluentButton Appearance="ButtonAppearance.Outline"
                               OnClick="ShowResetDialog"
                               Disabled="@_isOperating"
                               aria-label="@($"Reset projection {_detail.Name}")">
                     &#x21BB; Reset
                 </FluentButton>
 
-                <FluentButton Appearance="Appearance.Outline"
+                <FluentButton Appearance="ButtonAppearance.Outline"
                               OnClick="ShowReplayDialog"
                               Disabled="@_isOperating"
                               aria-label="@($"Replay projection {_detail.Name}")">
@@ -170,7 +170,7 @@
 
                 @if (_detail.Errors.Count > 20 && !_showAllErrors)
                 {
-                    <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
                                   OnClick="() => _showAllErrors = true"
                                   Style="margin-top: 8px;">
                         Show all @_detail.Errors.Count errors
@@ -202,8 +202,8 @@
             </p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CancelResetDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CancelResetDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="ConfirmResetAsync"
                           Disabled="@_isOperating"
                           Style="background-color: var(--hexalith-status-error); color: white;">
@@ -247,8 +247,8 @@
             }
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CancelReplayDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CancelReplayDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="ConfirmReplayAsync"
                           Disabled="@_isOperating"
                           aria-label="Confirm replay">

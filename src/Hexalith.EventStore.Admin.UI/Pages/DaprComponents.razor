@@ -15,27 +15,27 @@
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
     <h1 style="margin: 0;">DAPR Infrastructure</h1>
     <div style="display: flex; gap: 8px;">
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="@(() => NavigationManager.NavigateTo("/dapr/actors"))"
                       aria-label="Open Actor Inspector">
             Actor Inspector
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="@(() => NavigationManager.NavigateTo("/dapr/pubsub"))"
                       aria-label="Open Pub/Sub Metrics">
             Pub/Sub Metrics
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="@(() => NavigationManager.NavigateTo("/dapr/resiliency"))"
                       aria-label="Open Resiliency Policies">
             Resiliency Policies
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="@(() => NavigationManager.NavigateTo("/dapr/health-history"))"
                       aria-label="Open Health History">
             Health History
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh DAPR dashboard">
             Refresh

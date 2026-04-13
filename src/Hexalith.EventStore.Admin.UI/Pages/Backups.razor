@@ -19,23 +19,23 @@
     <h1 style="margin: 0;">Backups</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Admin">
-            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                           OnClick="OpenCreateBackupDialog"
                           aria-label="Create backup">
                 Create Backup
             </FluentButton>
-            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                           OnClick="OpenExportDialog"
                           aria-label="Export stream">
                 Export Stream
             </FluentButton>
-            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                           OnClick="OpenImportDialog"
                           aria-label="Import stream">
                 Import Stream
             </FluentButton>
         </AuthorizedView>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh backup jobs">
             Refresh
@@ -172,7 +172,7 @@
                     <AuthorizedView MinimumRole="AdminRole.Admin">
                         @if (context.Status == BackupJobStatus.Completed && !context.IsValidated)
                         {
-                            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                           OnClick="@(() => OpenValidateDialog(context))"
                                           aria-label="Validate backup">
                                 Validate
@@ -180,7 +180,7 @@
                         }
                         @if (context.Status == BackupJobStatus.Completed && context.IsValidated)
                         {
-                            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                                           OnClick="@(() => OpenRestoreDialog(context))"
                                           aria-label="Restore from backup">
                                 Restore
@@ -248,8 +248,8 @@
             </FluentCard>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnCreateBackupConfirm"
                           Disabled="@(!CanCreateBackup || _isOperating)">
                 @if (_isOperating)
@@ -281,8 +281,8 @@
             </p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseValidateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseValidateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnValidateConfirm"
                           Disabled="@_isOperating">
                 @if (_isOperating)
@@ -368,10 +368,10 @@
             }
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseRestoreDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRestoreDialog">Cancel</FluentButton>
             @if (_restoreStep == 1)
             {
-                <FluentButton Appearance="Appearance.Accent"
+                <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="GoToRestoreStep2"
                               Disabled="@(!_restoreAcknowledged || HasActiveBackupForRestoreTenant || HasActiveRestoreForRestoreTenant)">
                     Next
@@ -379,8 +379,8 @@
             }
             else
             {
-                <FluentButton Appearance="Appearance.Outline" OnClick="GoToRestoreStep1">Back</FluentButton>
-                <FluentButton Appearance="Appearance.Accent"
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToRestoreStep1">Back</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnRestoreConfirm"
                               Disabled="@_isOperating">
                     @if (_isOperating)
@@ -434,8 +434,8 @@
             </FluentCard>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseExportDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseExportDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnExportConfirm"
                           Disabled="@(!CanExport || _isOperating)">
                 @if (_isOperating)
@@ -486,8 +486,8 @@
             </FluentCard>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseImportDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseImportDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnImportConfirm"
                           Disabled="@(!CanImport || _isOperating)">
                 @if (_isOperating)

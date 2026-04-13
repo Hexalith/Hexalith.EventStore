@@ -298,11 +298,11 @@ public class ConsistencyPageTests : AdminUITestContext
         IRenderedComponent<Consistency> cut = Render<Consistency>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
 
-        // Assert — the accent Run Check button should not be present for ReadOnly users
+        // Assert — the Primary Run Check button should not be present for ReadOnly users
         // The Refresh button should still be visible
         cut.Markup.ShouldContain("Refresh");
         IReadOnlyList<IRenderedComponent<FluentButton>> buttons = cut.FindComponents<FluentButton>();
-        buttons.ShouldNotContain(b => b.Instance.Appearance == Appearance.Accent
+        buttons.ShouldNotContain(b => b.Instance.Appearance == ButtonAppearance.Primary
             && b.Markup.Contains("Run Check"));
     }
 

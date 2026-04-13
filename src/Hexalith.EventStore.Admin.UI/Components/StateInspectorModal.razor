@@ -13,7 +13,7 @@
     <FluentDialogHeader>
         <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
             <h3 style="margin: 0; flex: 1;">State Inspector</h3>
-            <FluentButton Appearance="Appearance.Lightweight"
+            <FluentButton Appearance="ButtonAppearance.Transparent"
                           OnClick="HandleClose"
                           aria-label="Close inspector"
                           Title="Close">
@@ -33,7 +33,7 @@
             @if (!_useTimestampMode)
             {
                 <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-                    <FluentButton Appearance="Appearance.Outline"
+                    <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="DecrementSequence"
                                   Disabled="@(_sequenceInput <= 0 || _fetching)"
                                   aria-label="Previous sequence"
@@ -46,7 +46,7 @@
                                        aria-label="Sequence number to inspect"
                                        Style="flex: 1;"
                                        Autofocus="true" />
-                    <FluentButton Appearance="Appearance.Outline"
+                    <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="IncrementSequence"
                                   Disabled="@_fetching"
                                   aria-label="Next sequence"
@@ -71,7 +71,7 @@
                 }
             }
 
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="FetchState"
                           Disabled="@_fetching"
                           Style="align-self: flex-start;">

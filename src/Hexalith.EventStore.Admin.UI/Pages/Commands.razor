@@ -107,10 +107,10 @@ else
                     Page @_currentPage of @_totalPages (@_filteredItems.Count total)
                 </span>
                 <div style="display: flex; gap: 8px;">
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   Disabled="@(_currentPage <= 1)"
                                   OnClick="PreviousPage">Previous</FluentButton>
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   Disabled="@(_currentPage >= _totalPages)"
                                   OnClick="NextPage">Next</FluentButton>
                 </div>

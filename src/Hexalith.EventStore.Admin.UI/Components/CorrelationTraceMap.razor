@@ -16,7 +16,7 @@
             <h3 style="margin: 0;">Correlation Trace Map</h3>
             <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="4" VerticalAlignment="VerticalAlignment.Center">
                 <span class="monospace" style="font-size: 13px;">@CorrelationId</span>
-                <FluentButton Appearance="Appearance.Lightweight"
+                <FluentButton Appearance="ButtonAppearance.Transparent"
                               Title="Copy correlation ID"
                               OnClick="CopyCorrelationIdAsync"
                               aria-label="Copy correlation ID">
@@ -24,7 +24,7 @@
                 </FluentButton>
             </FluentStack>
         </div>
-        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close trace map">
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close trace map">
             Close
         </FluentButton>
     </FluentStack>
@@ -124,7 +124,7 @@
                                 aria-label="Produced events table">
                     <PropertyColumn Property="@(e => e.SequenceNumber)" Title="#" Class="monospace" />
                     <TemplateColumn Title="Event Type">
-                        <FluentButton Appearance="Appearance.Lightweight"
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
                                       OnClick="@(() => HandleNavigateToEvent(context.SequenceNumber))"
                                       title="Navigate to event at sequence"
                                       Style="font-family: var(--monospace-font); font-weight: bold;">
@@ -183,7 +183,7 @@
         @if (_traceMap.ExternalTraceUrl is not null)
         {
             <div style="margin-bottom: 16px;">
-                <FluentButton Appearance="Appearance.Outline"
+                <FluentButton Appearance="ButtonAppearance.Outline"
                               OnClick="@(() => OpenExternalTrace())"
                               aria-label="View in external tracer">
                     View in External Tracer
