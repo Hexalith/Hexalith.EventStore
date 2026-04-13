@@ -60,7 +60,7 @@ public class DaprStreamQueryServiceTests {
 
         daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
-            "admin:stream-activity:tenant1",
+            "admin:stream-activity:all",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => streams);
 
@@ -100,7 +100,7 @@ public class DaprStreamQueryServiceTests {
 
         daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
-            "admin:stream-activity:tenant1",
+            "admin:stream-activity:all",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => streams);
 
@@ -110,6 +110,37 @@ public class DaprStreamQueryServiceTests {
 
         result.Items.Count.ShouldBe(1);
         result.Items[0].Domain.ShouldBe("orders");
+    }
+
+    [Fact]
+    public async Task GetRecentlyActiveStreamsAsync_WithTenantFilter_FiltersFromGlobalKey() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var streams = new List<StreamSummary>
+        {
+            new("tenant-a", "orders", "order-1", 5, DateTimeOffset.UtcNow, 5, false, StreamStatus.Active),
+            new("tenant-b", "orders", "order-2", 3, DateTimeOffset.UtcNow, 3, false, StreamStatus.Active),
+            new("tenant-a", "shipping", "ship-1", 2, DateTimeOffset.UtcNow, 2, false, StreamStatus.Active),
+        };
+
+        daprClient.GetStateAsync<List<StreamSummary>>(
+            StateStoreName,
+            "admin:stream-activity:all",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => streams);
+
+        (DaprStreamQueryService service, _) = CreateService(daprClient);
+
+        PagedResult<StreamSummary> result = await service.GetRecentlyActiveStreamsAsync("tenant-a", null);
+
+        result.Items.Count.ShouldBe(2);
+        result.Items.ShouldAllBe(s => s.TenantId == "tenant-a");
+
+        await daprClient.Received(1).GetStateAsync<List<StreamSummary>>(
+            StateStoreName,
+            "admin:stream-activity:all",
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [Fact]
