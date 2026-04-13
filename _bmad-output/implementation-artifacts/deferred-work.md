@@ -55,3 +55,9 @@
 ## Deferred from: code review of 19-6-admin-dapr-metadata-diagnostics.md (2026-04-10)
 
 - **Pub/Sub rules parser schema mismatch with DAPR 1.17** — `DaprInfrastructureQueryService.GetPubSubOverviewAsync` still assumes nested `rules.rules[]` shape, while DAPR 1.17 metadata uses a direct `rules[]` array. This is a pre-existing issue from earlier story work and is tracked for follow-up via correct-course.
+
+## Deferred from: code review of 15-13-stream-activity-tracker-writer (2026-04-13)
+
+- **Single global key scalability bottleneck** — All tenants/aggregates share one DAPR state key (`admin:stream-activity:all`) with MaxEtagRetries=3. Under high write throughput, optimistic-concurrency failures will cause silent data loss. Pre-existing architecture decision for admin index pattern.
+- **Constructor overload proliferation in SubmitCommandHandler** — Each new optional tracker dependency requires updating N+1 constructor overloads. Pre-existing pattern across the handler.
+- **Writer/reader state store config mismatch** — Writer uses `CommandStatusOptions.StateStoreName`, reader uses `AdminServerOptions.StateStoreName`. Both default to `"statestore"` but are independently configurable. Only diverges if deployment explicitly sets different names.

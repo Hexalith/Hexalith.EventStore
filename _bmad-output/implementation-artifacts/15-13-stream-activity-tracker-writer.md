@@ -1,6 +1,6 @@
 # Story 15.13: Stream Activity Tracker Writer
 
-Status: ready-for-dev
+Status: done
 
 ## Definition of Done
 
@@ -34,69 +34,69 @@ so that **the Streams page, Events page, and Activity Feed show real data instea
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create `IStreamActivityTracker` interface** (AC: 1, 4)
-    - [ ] 1.1 Create `src/Hexalith.EventStore.Server/Commands/IStreamActivityTracker.cs`
-    - [ ] 1.2 Single method: `Task TrackAsync(string tenantId, string domain, string aggregateId, long newEventsAppended, DateTimeOffset timestamp, CancellationToken ct = default)`
-    - [ ] 1.3 XML doc: "Implementations are advisory -- failures must not block command processing (Rule 12)"
-    - [ ] 1.4 **Checkpoint**: Build compiles
+- [x] **Task 1: Create `IStreamActivityTracker` interface** (AC: 1, 4)
+    - [x] 1.1 Create `src/Hexalith.EventStore.Server/Commands/IStreamActivityTracker.cs`
+    - [x] 1.2 Single method: `Task TrackAsync(string tenantId, string domain, string aggregateId, long newEventsAppended, DateTimeOffset timestamp, CancellationToken ct = default)`
+    - [x] 1.3 XML doc: "Implementations are advisory -- failures must not block command processing (Rule 12)"
+    - [x] 1.4 **Checkpoint**: Build compiles
 
-- [ ] **Task 2: Create `DaprStreamActivityTracker` implementation** (AC: 1, 2, 3, 4)
-    - [ ] 2.1 Create `src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs`
-    - [ ] 2.2 Constructor: `DaprStreamActivityTracker(DaprClient daprClient, IOptions<CommandStatusOptions> options, ILogger<DaprStreamActivityTracker> logger)`
-    - [ ] 2.3 Constants: `MaxEntries = 1000`, `MaxEtagRetries = 3`, `ActivityIndexKey = "admin:stream-activity:all"`
-    - [ ] 2.4 `TrackAsync`: early return if `newEventsAppended <= 0` (AC 3). Build `StreamSummary`. Delegate to `TryUpsertActivityIndexAsync`
-    - [ ] 2.5 `TryUpsertActivityIndexAsync`: ETag retry loop (clone from `DaprCommandActivityTracker.TryUpsertActivityIndexAsync`). Identity match on `(TenantId, Domain, AggregateId)` case-insensitive. On match: accumulate `EventCount += newEventsAppended`, set `LastEventSequence`, update `LastActivityUtc`. On new: insert. Order by `LastActivityUtc` desc, take `MaxEntries`
-    - [ ] 2.6 `HasSnapshot: false` on new entries, preserve existing value on updates
-    - [ ] 2.7 `StreamStatus = StreamStatus.Active` on every write. Add code comment: `// TODO: Preserve non-Active StreamStatus when tombstoning is implemented`
-    - [ ] 2.8 All exceptions caught and logged (Rule 12) -- never propagate
-    - [ ] 2.9 Reuse `CommandStatusOptions.StateStoreName` for DAPR state store name
-    - [ ] 2.10 **Checkpoint**: Build compiles with zero warnings
+- [x] **Task 2: Create `DaprStreamActivityTracker` implementation** (AC: 1, 2, 3, 4)
+    - [x] 2.1 Create `src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs`
+    - [x] 2.2 Constructor: `DaprStreamActivityTracker(DaprClient daprClient, IOptions<CommandStatusOptions> options, ILogger<DaprStreamActivityTracker> logger)`
+    - [x] 2.3 Constants: `MaxEntries = 1000`, `MaxEtagRetries = 3`, `ActivityIndexKey = "admin:stream-activity:all"`
+    - [x] 2.4 `TrackAsync`: early return if `newEventsAppended <= 0` (AC 3). Build `StreamSummary`. Delegate to `TryUpsertActivityIndexAsync`
+    - [x] 2.5 `TryUpsertActivityIndexAsync`: ETag retry loop (clone from `DaprCommandActivityTracker.TryUpsertActivityIndexAsync`). Identity match on `(TenantId, Domain, AggregateId)` case-insensitive. On match: accumulate `EventCount += newEventsAppended`, set `LastEventSequence`, update `LastActivityUtc`. On new: insert. Order by `LastActivityUtc` desc, take `MaxEntries`
+    - [x] 2.6 `HasSnapshot: false` on new entries, preserve existing value on updates
+    - [x] 2.7 `StreamStatus = StreamStatus.Active` on every write. Add code comment: `// TODO: Preserve non-Active StreamStatus when tombstoning is implemented`
+    - [x] 2.8 All exceptions caught and logged (Rule 12) -- never propagate
+    - [x] 2.9 Reuse `CommandStatusOptions.StateStoreName` for DAPR state store name
+    - [x] 2.10 **Checkpoint**: Build compiles with zero warnings
 
-- [ ] **Task 3: Hook into `SubmitCommandHandler`** (AC: 1, 3, 4)
-    - [ ] 3.1 Add `IStreamActivityTracker? streamActivityTracker` as optional primary-constructor parameter in `SubmitCommandHandler`
-    - [ ] 3.2 Update existing backward-compatible overload constructors to also pass `null` for the new parameter. The handler already has 4 overloads for `ICommandActivityTracker?` and `IBackpressureTracker?` — extend each to forward `null` for `streamActivityTracker`. Do NOT add new overloads — update existing ones to include the new parameter in their delegation chain
-    - [ ] 3.3 After the existing command-tracker block (around line 120), add stream-tracker block:
+- [x] **Task 3: Hook into `SubmitCommandHandler`** (AC: 1, 3, 4)
+    - [x] 3.1 Add `IStreamActivityTracker? streamActivityTracker` as optional primary-constructor parameter in `SubmitCommandHandler`
+    - [x] 3.2 Update existing backward-compatible overload constructors to also pass `null` for the new parameter. The handler already has 4 overloads for `ICommandActivityTracker?` and `IBackpressureTracker?` — extend each to forward `null` for `streamActivityTracker`. Do NOT add new overloads — update existing ones to include the new parameter in their delegation chain
+    - [x] 3.3 After the existing command-tracker block (around line 120), add stream-tracker block:
         - Gate on `streamActivityTracker is not null`
         - Gate on `processingResult.Accepted && (finalStatus?.EventCount ?? 0) > 0`
         - Call `streamActivityTracker.TrackAsync(request.Tenant, request.Domain, request.AggregateId, finalStatus.EventCount.Value, finalStatus.Timestamp ?? DateTimeOffset.UtcNow, cancellationToken)`
         - Wrap in try/catch, log warning on failure (new event ID `1105 StreamActivityTrackingFailed`)
-    - [ ] 3.4 Share the existing `finalStatus` variable -- do NOT add a second `ReadStatusAsync` call
-    - [ ] 3.5 **Checkpoint**: Build compiles with zero warnings
+    - [x] 3.4 Share the existing `finalStatus` variable -- do NOT add a second `ReadStatusAsync` call
+    - [x] 3.5 **Checkpoint**: Build compiles with zero warnings
 
-- [ ] **Task 4: Register in DI** (AC: 1)
-    - [ ] 4.1 In `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`, after the command-tracker registration (~line 113), add:
+- [x] **Task 4: Register in DI** (AC: 1)
+    - [x] 4.1 In `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`, after the command-tracker registration (~line 113), add:
         ```csharp
         // Stream activity tracking for admin UI Streams/Events pages (DAPR state store backed).
         // Writer only — the reader lives in DaprStreamQueryService on the Admin.Server side.
         _ = services.AddSingleton<DaprStreamActivityTracker>();
         _ = services.AddSingleton<IStreamActivityTracker>(sp => sp.GetRequiredService<DaprStreamActivityTracker>());
         ```
-    - [ ] 4.2 **Checkpoint**: Build compiles
+    - [x] 4.2 **Checkpoint**: Build compiles
 
-- [ ] **Task 5: Adapt Admin.Server reader** (AC: 5, 6)
-    - [ ] 5.1 In `DaprStreamQueryService.GetRecentlyActiveStreamsAsync` (~line 99), change key from `$"admin:stream-activity:{tenantId ?? "all"}"` to constant `"admin:stream-activity:all"`
-    - [ ] 5.2 Apply tenant filter in memory: `Where(s => s.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase))` when tenantId is not null/whitespace
-    - [ ] 5.3 Apply domain filter in memory (already exists, keep it)
-    - [ ] 5.4 Downgrade "index not found" log from Warning to Debug, update message: `"Stream activity index '{IndexKey}' is empty. No commands have produced events yet, or the writer has not run."`
-    - [ ] 5.5 Update any existing tests in `DaprStreamQueryServiceTests.cs` that assert the old per-tenant key format (`admin:stream-activity:{tenantId}`) to use the new constant key `admin:stream-activity:all`
-    - [ ] 5.6 **Checkpoint**: Build compiles with zero warnings
+- [x] **Task 5: Adapt Admin.Server reader** (AC: 5, 6)
+    - [x] 5.1 In `DaprStreamQueryService.GetRecentlyActiveStreamsAsync` (~line 99), change key from `$"admin:stream-activity:{tenantId ?? "all"}"` to constant `"admin:stream-activity:all"`
+    - [x] 5.2 Apply tenant filter in memory: `Where(s => s.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase))` when tenantId is not null/whitespace
+    - [x] 5.3 Apply domain filter in memory (already exists, keep it)
+    - [x] 5.4 Downgrade "index not found" log from Warning to Debug, update message: `"Stream activity index '{IndexKey}' is empty. No commands have produced events yet, or the writer has not run."`
+    - [x] 5.5 Update any existing tests in `DaprStreamQueryServiceTests.cs` that assert the old per-tenant key format (`admin:stream-activity:{tenantId}`) to use the new constant key `admin:stream-activity:all`
+    - [x] 5.6 **Checkpoint**: Build compiles with zero warnings
 
-- [ ] **Task 6: Tier 1 unit tests** (AC: 1, 2, 3, 4)
-    - [ ] 6.1 Create `tests/Hexalith.EventStore.Client.Tests/Commands/DaprStreamActivityTrackerTests.cs`
-    - [ ] 6.2 Test: `TrackAsync_NewStream_InsertsNewSummary` -- empty index -> new entry with correct counters
-    - [ ] 6.3 Test: `TrackAsync_ExistingStream_AccumulatesEventCountAndSequence` -- existing entry -> cumulative update
-    - [ ] 6.4 Test: `TrackAsync_ZeroNewEvents_IsNoOp` -- no state store call when `newEventsAppended <= 0`
-    - [ ] 6.5 Test: `TrackAsync_DifferentAggregates_KeepsBothEntries` -- identity match on `(TenantId, Domain, AggregateId)`
-    - [ ] 6.6 Test: `TrackAsync_SameAggregateDifferentTenants_KeepsBothEntries` -- multi-tenant isolation
-    - [ ] 6.7 Test: `TrackAsync_EtagMismatch_RetriesUntilSaveSucceeds` -- ETag retry loop
-    - [ ] 6.8 Test: `TrackAsync_DaprThrows_SwallowsException` -- Rule 12 compliance
-    - [ ] 6.9 Test: `TrackAsync_ExceedsMaxEntries_TrimsOldestByLastActivityUtc` -- bounded FIFO cap at 1000 entries
-    - [ ] 6.10 Follow `DaprCommandActivityTrackerTests.cs` conventions: NSubstitute for `DaprClient`, Shouldly assertions, `SetupGetStateAndEtag`/`SetupTrySave` helper methods
-    - [ ] 6.11 **Checkpoint**: All 8 new tests pass, all existing Tier 1 tests pass
+- [x] **Task 6: Tier 1 unit tests** (AC: 1, 2, 3, 4)
+    - [x] 6.1 Create `tests/Hexalith.EventStore.Client.Tests/Commands/DaprStreamActivityTrackerTests.cs`
+    - [x] 6.2 Test: `TrackAsync_NewStream_InsertsNewSummary` -- empty index -> new entry with correct counters
+    - [x] 6.3 Test: `TrackAsync_ExistingStream_AccumulatesEventCountAndSequence` -- existing entry -> cumulative update
+    - [x] 6.4 Test: `TrackAsync_ZeroNewEvents_IsNoOp` -- no state store call when `newEventsAppended <= 0`
+    - [x] 6.5 Test: `TrackAsync_DifferentAggregates_KeepsBothEntries` -- identity match on `(TenantId, Domain, AggregateId)`
+    - [x] 6.6 Test: `TrackAsync_SameAggregateDifferentTenants_KeepsBothEntries` -- multi-tenant isolation
+    - [x] 6.7 Test: `TrackAsync_EtagMismatch_RetriesUntilSaveSucceeds` -- ETag retry loop
+    - [x] 6.8 Test: `TrackAsync_DaprThrows_SwallowsException` -- Rule 12 compliance
+    - [x] 6.9 Test: `TrackAsync_ExceedsMaxEntries_TrimsOldestByLastActivityUtc` -- bounded FIFO cap at 1000 entries
+    - [x] 6.10 Follow `DaprCommandActivityTrackerTests.cs` conventions: NSubstitute for `DaprClient`, Shouldly assertions, `SetupGetStateAndEtag`/`SetupTrySave` helper methods
+    - [x] 6.11 **Checkpoint**: All 8 new tests pass, all existing Tier 1 tests pass
 
-- [ ] **Task 6b: Reader regression test** (AC: 5)
-    - [ ] 6b.1 In existing `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceTests.cs`, add test: `GetRecentlyActiveStreamsAsync_WithTenantFilter_FiltersFromGlobalKey` -- verify key is always `admin:stream-activity:all` and tenant filtering happens in memory. This prevents accidental revert to per-tenant keys
-    - [ ] 6b.2 **Checkpoint**: All existing + new reader tests pass
+- [x] **Task 6b: Reader regression test** (AC: 5)
+    - [x] 6b.1 In existing `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceTests.cs`, add test: `GetRecentlyActiveStreamsAsync_WithTenantFilter_FiltersFromGlobalKey` -- verify key is always `admin:stream-activity:all` and tenant filtering happens in memory. This prevents accidental revert to per-tenant keys
+    - [x] 6b.2 **Checkpoint**: All existing + new reader tests pass
 
 - [ ] **Task 7: Manual smoke test** (AC: 1, 2, 5, 6)
     - [ ] 7.1 Run AppHost, confirm `admin:stream-activity:all` returns HTTP 204 (empty) before any commands
@@ -325,10 +325,46 @@ Solution: Use `Hexalith.EventStore.slnx` only, never `.sln`
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- Constructor overload ambiguity: resolved by casting `null` to `(IStreamActivityTracker?)null` in all backward-compatible constructor overloads
+- `CommandStatusRecord.Timestamp` is non-nullable `DateTimeOffset`: removed unnecessary `?? DateTimeOffset.UtcNow` fallback in stream tracker call
+- Hoisted `finalStatus` read before both tracker blocks to share the variable (Task 3.4) and added `StatusReadForTrackingFailed` log (EventId 1106) for the shared read
+
 ### Completion Notes List
 
+- Created `IStreamActivityTracker` interface with `TrackAsync` method and Rule 12 XML documentation
+- Created `DaprStreamActivityTracker` as structural clone of `DaprCommandActivityTracker` with cumulative counter semantics (`EventCount += newEventsAppended`, `LastEventSequence += newEventsAppended`)
+- Integrated stream tracker into `SubmitCommandHandler` with gates: `streamActivityTracker is not null`, `processingResult.Accepted`, `finalStatus?.EventCount > 0`
+- Refactored `SubmitCommandHandler` to read `finalStatus` once before both tracker blocks (shared read, no duplicate `ReadStatusAsync`)
+- Registered `DaprStreamActivityTracker` + `IStreamActivityTracker` as singletons in DI
+- Adapted `DaprStreamQueryService` reader: global key `admin:stream-activity:all`, in-memory tenant filter, log downgraded from Warning to Debug
+- Updated existing reader tests to use new global key constant
+- Added 8 new writer unit tests and 1 reader regression test
+- All Tier 1 tests pass: Contracts (271), Client (321), Sample (62), Testing (67), SignalR (32), Admin.Server (499)
+- Full solution build: zero warnings, zero errors
+- Task 7 (manual smoke test) left unchecked — requires running AppHost with DAPR
+
 ### File List
+
+- NEW: `src/Hexalith.EventStore.Server/Commands/IStreamActivityTracker.cs`
+- NEW: `src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs`
+- MODIFIED: `src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs`
+- MODIFIED: `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`
+- MODIFIED: `src/Hexalith.EventStore.Admin.Server/Services/DaprStreamQueryService.cs`
+- NEW: `tests/Hexalith.EventStore.Client.Tests/Commands/DaprStreamActivityTrackerTests.cs`
+- MODIFIED: `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceTests.cs`
+
+### Change Log
+
+- 2026-04-13: Story implemented — stream activity tracker writer, SubmitCommandHandler integration, reader adaptation, 9 new tests (Date: 2026-04-13)
+- 2026-04-13: Code review complete — 1 patch, 3 deferred, 9 dismissed (Date: 2026-04-13)
+
+### Review Findings
+
+- [x] [Review][Patch] Domain filter inconsistency: `domain is not null` should use `!string.IsNullOrWhiteSpace(domain)` to match tenant filter pattern [DaprStreamQueryService.cs:116] — fixed
+- [x] [Review][Defer] Single global key scalability bottleneck under high concurrency (MaxEtagRetries=3) — deferred, pre-existing architecture decision
+- [x] [Review][Defer] Constructor overload proliferation in SubmitCommandHandler — deferred, pre-existing pattern
+- [x] [Review][Defer] Writer/reader state store config mismatch (CommandStatusOptions vs AdminServerOptions) — deferred, only diverges if deployment configures different store names

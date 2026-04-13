@@ -96,26 +96,33 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         string? domain,
         int count = 1000,
         CancellationToken ct = default) {
-        string indexKey = $"admin:stream-activity:{tenantId ?? "all"}";
+        const string indexKey = "admin:stream-activity:all";
         try {
             List<StreamSummary>? result = await _daprClient
                 .GetStateAsync<List<StreamSummary>>(_options.StateStoreName, indexKey, cancellationToken: ct)
                 .ConfigureAwait(false);
 
             if (result is null) {
-                _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
+                _logger.LogDebug("Stream activity index '{IndexKey}' is empty. No commands have produced events yet, or the writer has not run.", indexKey);
                 return new PagedResult<StreamSummary>([], 0, null);
             }
 
-            IReadOnlyList<StreamSummary> filtered = domain is null
-                ? result
-                : result.Where(s => s.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase)).ToList();
+            IEnumerable<StreamSummary> filtered = result;
 
-            IReadOnlyList<StreamSummary> page = filtered
+            if (!string.IsNullOrWhiteSpace(tenantId)) {
+                filtered = filtered.Where(s => s.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(domain)) {
+                filtered = filtered.Where(s => s.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase));
+            }
+
+            List<StreamSummary> filteredList = filtered.ToList();
+            IReadOnlyList<StreamSummary> page = filteredList
                 .OrderByDescending(s => s.LastActivityUtc)
                 .Take(count)
                 .ToList();
-            return new PagedResult<StreamSummary>(page, filtered.Count, null);
+            return new PagedResult<StreamSummary>(page, filteredList.Count, null);
         }
         catch (OperationCanceledException) {
             throw;

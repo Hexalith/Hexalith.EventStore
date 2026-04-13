@@ -112,6 +112,11 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddSingleton<ICommandActivityTracker>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
         _ = services.AddSingleton<ICommandActivityReader>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
 
+        // Stream activity tracking for admin UI Streams/Events pages (DAPR state store backed).
+        // Writer only — the reader lives in DaprStreamQueryService on the Admin.Server side.
+        _ = services.AddSingleton<DaprStreamActivityTracker>();
+        _ = services.AddSingleton<IStreamActivityTracker>(sp => sp.GetRequiredService<DaprStreamActivityTracker>());
+
         // Extension metadata sanitization (Story 5.4, SEC-4)
         _ = services.AddOptions<ExtensionMetadataOptions>()
             .BindConfiguration("EventStore:ExtensionMetadata")

@@ -20,13 +20,14 @@ public partial class SubmitCommandHandler(
     ICommandArchiveStore archiveStore,
     ICommandRouter commandRouter,
     ICommandActivityTracker? activityTracker,
+    IStreamActivityTracker? streamActivityTracker,
     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, logger) { }
+        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, (IStreamActivityTracker?)null, logger) { }
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -34,7 +35,7 @@ public partial class SubmitCommandHandler(
         ICommandRouter commandRouter,
         IBackpressureTracker backpressureTracker,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
+        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, (IStreamActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -43,7 +44,7 @@ public partial class SubmitCommandHandler(
         ICommandActivityTracker? activityTracker,
         IBackpressureTracker backpressureTracker,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, activityTracker, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
+        : this(statusStore, archiveStore, commandRouter, activityTracker, (IStreamActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
 
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
@@ -92,13 +93,25 @@ public partial class SubmitCommandHandler(
         CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);
 
+        // Read final status once for both activity trackers (advisory, rule #12)
+        CommandStatusRecord? finalStatus = null;
+        if (activityTracker is not null || streamActivityTracker is not null) {
+            try {
+                finalStatus = await statusStore
+                    .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                Log.StatusReadForTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+        }
+
         // Track command in admin activity index (advisory, rule #12)
         if (activityTracker is not null) {
             try {
-                CommandStatusRecord? finalStatus = await statusStore
-                    .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
-                    .ConfigureAwait(false);
-
                 await activityTracker.TrackAsync(
                     request.Tenant,
                     request.Domain,
@@ -116,6 +129,27 @@ public partial class SubmitCommandHandler(
             }
             catch (Exception ex) {
                 Log.ActivityTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+        }
+
+        // Track stream activity in admin stream index (advisory, rule #12)
+        if (streamActivityTracker is not null
+            && processingResult.Accepted
+            && (finalStatus?.EventCount ?? 0) > 0) {
+            try {
+                await streamActivityTracker.TrackAsync(
+                    request.Tenant,
+                    request.Domain,
+                    request.AggregateId,
+                    finalStatus!.EventCount!.Value,
+                    finalStatus.Timestamp,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                Log.StreamActivityTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
             }
         }
 
@@ -198,6 +232,26 @@ public partial class SubmitCommandHandler(
             Level = LogLevel.Warning,
             Message = "Failed to track command activity: CorrelationId={CorrelationId}, TenantId={TenantId}. Admin command list may be stale. Stage=ActivityTrackingFailed")]
         public static partial void ActivityTrackingFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId);
+
+        [LoggerMessage(
+            EventId = 1105,
+            Level = LogLevel.Warning,
+            Message = "Failed to track stream activity: CorrelationId={CorrelationId}, TenantId={TenantId}. Admin stream index may be stale. Stage=StreamActivityTrackingFailed")]
+        public static partial void StreamActivityTrackingFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId);
+
+        [LoggerMessage(
+            EventId = 1106,
+            Level = LogLevel.Warning,
+            Message = "Failed to read final status for activity tracking: CorrelationId={CorrelationId}, TenantId={TenantId}. Activity tracking skipped. Stage=StatusReadForTrackingFailed")]
+        public static partial void StatusReadForTrackingFailed(
             ILogger logger,
             Exception ex,
             string correlationId,
