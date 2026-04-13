@@ -12,8 +12,9 @@
 </head>
 
 <body>
-    <FluentDesignTheme Mode="DesignThemeModes.System" />
-    <Routes @rendermode="RenderMode.InteractiveServer" />
+    <FluentProviders @rendermode="RenderMode.InteractiveServer">
+        <Routes @rendermode="RenderMode.InteractiveServer" />
+    </FluentProviders>
     <script src="_framework/blazor.web.js"></script>
 </body>
 

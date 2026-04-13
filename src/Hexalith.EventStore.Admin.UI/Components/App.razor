@@ -14,22 +14,24 @@
 </head>
 
 <body style="background-color: var(--neutral-layer-1, #1b1b1b); color: var(--neutral-foreground-rest, #e0e0e0);">
-    <FluentToastProvider @rendermode="RenderMode.InteractiveServer" />
-    <ErrorBoundary>
-        <ChildContent>
-            <Routes @rendermode="RenderMode.InteractiveServer" />
-        </ChildContent>
-        <ErrorContent Context="exception">
-            <div role="alert"
-                 style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 16px;">
-                <h2>@GetErrorTitle(exception)</h2>
-                <p>@GetErrorMessage(exception)</p>
-                <FluentButton Appearance="Appearance.Accent" OnClick="@ReloadPage">
-                    @GetErrorActionLabel(exception)
-                </FluentButton>
-            </div>
-        </ErrorContent>
-    </ErrorBoundary>
+    <FluentProviders @rendermode="RenderMode.InteractiveServer">
+        <FluentToastProvider />
+        <ErrorBoundary>
+            <ChildContent>
+                <Routes @rendermode="RenderMode.InteractiveServer" />
+            </ChildContent>
+            <ErrorContent Context="exception">
+                <div role="alert"
+                     style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 16px;">
+                    <h2>@GetErrorTitle(exception)</h2>
+                    <p>@GetErrorMessage(exception)</p>
+                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@ReloadPage">
+                        @GetErrorActionLabel(exception)
+                    </FluentButton>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
+    </FluentProviders>
     <script src="_framework/blazor.web.js"></script>
     <script src="js/interop.js"></script>
     <script src="js/download.js"></script>

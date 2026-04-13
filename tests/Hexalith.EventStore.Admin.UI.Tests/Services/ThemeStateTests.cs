@@ -9,7 +9,7 @@ public class ThemeStateTests
     {
         ThemeState sut = new();
 
-        sut.Mode.ShouldBe(DesignThemeModes.System);
+        sut.Mode.ShouldBe(ThemeMode.System);
     }
 
     [Fact]
@@ -17,9 +17,9 @@ public class ThemeStateTests
     {
         ThemeState sut = new();
 
-        sut.SetMode(DesignThemeModes.Dark);
+        sut.SetMode(ThemeMode.Dark);
 
-        sut.Mode.ShouldBe(DesignThemeModes.Dark);
+        sut.Mode.ShouldBe(ThemeMode.Dark);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class ThemeStateTests
         bool fired = false;
         sut.Changed += () => fired = true;
 
-        sut.SetMode(DesignThemeModes.Light);
+        sut.SetMode(ThemeMode.Light);
 
         fired.ShouldBeTrue();
     }
@@ -41,7 +41,7 @@ public class ThemeStateTests
         bool fired = false;
         sut.Changed += () => fired = true;
 
-        sut.SetMode(DesignThemeModes.System); // same as default
+        sut.SetMode(ThemeMode.System); // same as default
 
         fired.ShouldBeFalse();
     }

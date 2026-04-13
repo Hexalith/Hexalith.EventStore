@@ -8,6 +8,15 @@
     --hexalith-status-error: #CF222E;
     --hexalith-status-neutral: #656D76;
     --hexalith-brand: #0066CC;
+
+    /* Fluent UI v5 brand tokens — preserves v4 CustomColor="#0066CC" */
+    --colorBrandBackground: #0066CC;
+    --colorBrandBackgroundHover: #005AB5;
+    --colorBrandBackgroundPressed: #004E9E;
+    --colorBrandBackgroundSelected: #005AB5;
+    --colorBrandForegroundLink: #0066CC;
+    --colorBrandForegroundLinkHover: #005AB5;
+    --colorBrandForegroundLinkPressed: #004E9E;
 }
 
 html,
@@ -23,6 +32,15 @@ body {
         --hexalith-status-error: #F85149;
         --hexalith-status-neutral: #8B949E;
         --hexalith-brand: #4A9EFF;
+
+        /* Fluent UI v5 brand tokens — dark mode */
+        --colorBrandBackground: #4A9EFF;
+        --colorBrandBackgroundHover: #5EABFF;
+        --colorBrandBackgroundPressed: #3B8FEF;
+        --colorBrandBackgroundSelected: #5EABFF;
+        --colorBrandForegroundLink: #4A9EFF;
+        --colorBrandForegroundLinkHover: #5EABFF;
+        --colorBrandForegroundLinkPressed: #3B8FEF;
     }
 }
 
