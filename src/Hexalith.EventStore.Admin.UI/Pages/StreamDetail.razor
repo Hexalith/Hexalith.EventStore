@@ -46,7 +46,7 @@ else
                  Style="margin: 16px 0 8px 0;">
         <h1 style="margin: 0; font-size: 20px;">
             <span class="monospace">@TenantId / @Domain / @AggregateId</span>
-            <FluentButton Appearance="Appearance.Lightweight"
+            <FluentButton Appearance="ButtonAppearance.Transparent"
                           Title="Copy stream key"
                           OnClick="@CopyStreamKey"
                           aria-label="Copy stream key to clipboard"
@@ -71,35 +71,35 @@ else
     </div>
 
     <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-bottom: 8px;">
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       OnClick="@OpenBlameViewer"
                       Icon="@(new Icons.Regular.Size20.PersonSearch())"
                       aria-label="Open blame view"
                       Title="Show per-field provenance">
             Blame
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       OnClick="@OpenBisectTool"
                       Icon="@(new Icons.Regular.Size20.BranchCompare())"
                       aria-label="Open bisect tool"
                       Title="Binary search for state divergence">
             Bisect
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       OnClick="@OpenStepDebugger"
                       Icon="@(new Icons.Regular.Size20.PlayCircle())"
                       aria-label="Open step-through debugger"
                       Title="Step through events with state changes">
             Step Through
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       OnClick="@OpenSandbox"
                       Icon="@(new Icons.Regular.Size20.BeakerSettings())"
                       aria-label="Open command sandbox"
                       Title="Test a command as dry run">
             Sandbox
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline"
+        <FluentButton Appearance="ButtonAppearance.Outline"
                       OnClick="@OpenTraceMap"
                       Icon="@(new Icons.Regular.Size20.BranchFork())"
                       Disabled="@(!_selectedSequence.HasValue)"
@@ -185,7 +185,7 @@ else
     else if (_selectedSequence.HasValue && !Viewport.IsWideViewport)
     {
         <div style="margin-top: 16px;" @onkeydown="OnDetailKeyDown">
-            <FluentButton Appearance="Appearance.Outline"
+            <FluentButton Appearance="ButtonAppearance.Outline"
                           OnClick="@CloseDetailPanel"
                           aria-label="Close detail panel">
                 &#x2190; Back to timeline
@@ -202,7 +202,7 @@ else
                 @RenderTimelineGrid()
             </div>
             <div style="flex: 4; border-left: 1px solid var(--neutral-stroke-divider-rest); padding-left: 16px;">
-                <FluentButton Appearance="Appearance.Lightweight" OnClick="@CloseDetailPanel"
+                <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="@CloseDetailPanel"
                               aria-label="Close detail panel" Title="Close" Style="margin-bottom: 8px;">
                     &#x2716;
                 </FluentButton>

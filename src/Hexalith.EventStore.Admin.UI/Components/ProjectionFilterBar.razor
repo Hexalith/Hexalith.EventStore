@@ -5,7 +5,7 @@
     <div style="display: flex; gap: 4px;" role="radiogroup" aria-label="Filter by status">
         @foreach (string status in _statusOptions)
         {
-            <FluentButton Appearance="@(status == SelectedStatus ? Appearance.Accent : Appearance.Outline)"
+            <FluentButton Appearance="@(status == SelectedStatus ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                           Size="ButtonSize.Small"
                           OnClick="@(() => OnStatusClick(status))"
                           aria-pressed="@(status == SelectedStatus ? "true" : "false")">

@@ -21,7 +21,7 @@
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
     <h1 style="margin: 0;">DAPR Health History</h1>
-    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                   OnClick="RefreshAsync"
                   Disabled="@_isLoading"
                   aria-label="Refresh health history">
@@ -48,7 +48,7 @@
 <div style="display: flex; gap: 8px; margin-bottom: 16px;" role="group" aria-label="Time range selection">
     @foreach (var range in _timeRanges)
     {
-        <FluentButton Appearance="@(_selectedRange == range.Key ? Appearance.Accent : Appearance.Outline)"
+        <FluentButton Appearance="@(_selectedRange == range.Key ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                       Size="ButtonSize.Small"
                       OnClick="@(() => SelectRangeAsync(range.Key))"
                       aria-label="@($"Show {range.Value} of health history")">
@@ -157,12 +157,12 @@
                                  AriaLabelPrefix="Component status" />
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   OnClick="@(() => NavigationManager.NavigateTo($"/dapr?type={GetComponentCategory(_selectedComponent)}"))"
                                   aria-label="View component details">
                         View Component
                     </FluentButton>
-                    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                                   OnClick="ClearComponentSelection"
                                   aria-label="Close component detail">
                         Close
@@ -211,7 +211,7 @@
             <FluentBadge Appearance="Appearance.Accent">
                 Filtered: @_cellFilter.Value.Component @_cellFilter.Value.Slot.Label
             </FluentBadge>
-            <FluentButton Appearance="Appearance.Lightweight" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Transparent" Size="ButtonSize.Small"
                           OnClick="ClearCellFilter"
                           aria-label="Clear filter"
                           style="margin-left: 8px;">

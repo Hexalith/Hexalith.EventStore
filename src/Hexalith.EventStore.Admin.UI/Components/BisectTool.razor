@@ -10,7 +10,7 @@
         <div style="flex: 1;">
             <h3 style="margin: 0;">Bisect Tool</h3>
         </div>
-        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close bisect tool">
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close bisect tool">
             Close
         </FluentButton>
     </FluentStack>
@@ -78,7 +78,7 @@
                 }
                 else
                 {
-                    <FluentButton Appearance="Appearance.Outline"
+                    <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="LoadFieldsAsync"
                                   Disabled="@(!IsSetupValid)"
                                   aria-label="Select fields">
@@ -86,7 +86,7 @@
                     </FluentButton>
                 }
 
-                <FluentButton Appearance="Appearance.Accent"
+                <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="StartBisectAsync"
                               Disabled="@(!IsSetupValid)"
                               aria-label="Start bisect">
@@ -140,7 +140,7 @@
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
                     <span>
                         <strong>Event Type:</strong>
-                        <FluentButton Appearance="Appearance.Lightweight"
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
                                       OnClick="@(() => HandleNavigateToEvent(_result.DivergentSequence))"
                                       title="@($"Navigate to event at sequence {_result.DivergentSequence}")"
                                       Style="padding: 0; min-width: auto;">
@@ -215,7 +215,7 @@
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 12px;">
             @if (_result.DivergentFieldChanges.Count > 0)
             {
-                <FluentButton Appearance="Appearance.Accent"
+                <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="@(() => HandleNavigateToEvent(_result.DivergentSequence))"
                               aria-label="Navigate to divergent event">
                     Navigate to Event
@@ -224,7 +224,7 @@
                 @if (OnNavigateToBlame.HasDelegate)
 
                 {
-                    <FluentButton Appearance="Appearance.Outline"
+                    <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="@(() => HandleNavigateToBlame(_result.DivergentSequence))"
                                   aria-label="Run blame at divergent event">
                         Run Blame at This Event
@@ -232,7 +232,7 @@
                 }
             }
 
-            <FluentButton Appearance="Appearance.Outline"
+            <FluentButton Appearance="ButtonAppearance.Outline"
                           OnClick="HandleNewBisect"
                           aria-label="Start new bisect">
                 New Bisect

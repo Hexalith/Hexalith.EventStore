@@ -8,7 +8,7 @@
     <div style="display: flex; gap: 4px;">
         @foreach (string status in _statusOptions)
         {
-            <FluentButton Appearance="@(SelectedStatus == status ? Appearance.Accent : Appearance.Outline)"
+            <FluentButton Appearance="@(SelectedStatus == status ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
                           Size="ButtonSize.Small"
                           OnClick="@(() => OnStatusChanged(status))">
                 @status

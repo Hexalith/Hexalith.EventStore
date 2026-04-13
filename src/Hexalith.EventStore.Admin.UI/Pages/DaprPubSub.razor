@@ -24,7 +24,7 @@
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
     <h1 style="margin: 0;">DAPR Pub/Sub Delivery Metrics</h1>
-    <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                   OnClick="OnManualRefresh"
                   aria-label="Refresh pub/sub metrics">
         Refresh
@@ -304,7 +304,7 @@
                     </span>
                 </div>
             </div>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="@(() => NavigationManager.NavigateTo("/health/dead-letters"))"
                           aria-label="Navigate to Dead Letter Manager">
                 Manage Dead Letters

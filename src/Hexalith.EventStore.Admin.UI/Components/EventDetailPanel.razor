@@ -28,7 +28,7 @@
                     <div>
                         <strong>Correlation ID:</strong>
                         <span class="monospace" title="@_eventDetail.CorrelationId">@_eventDetail.CorrelationId</span>
-                        <FluentButton Appearance="Appearance.Lightweight"
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
                                       Title="Copy correlation ID"
                                       OnClick="() => OnCopyCorrelation.InvokeAsync(_eventDetail.CorrelationId)"
                                       aria-label="Copy correlation ID">
@@ -55,7 +55,7 @@
             <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
                          Style="margin: 8px 0 0 0;">
                 <h4 style="margin: 0;">State After This Event</h4>
-                <FluentButton Appearance="Appearance.Outline"
+                <FluentButton Appearance="ButtonAppearance.Outline"
                               OnClick="OpenInspector"
                               Title="Inspect state at any position"
                               aria-label="Inspect state">
@@ -80,14 +80,14 @@
 
             @if (SequenceNumber >= 1)
             {
-                <FluentButton Appearance="Appearance.Accent"
+                <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="DiffWithPrevious"
                               aria-label="Show what changed due to this event">
                     Diff with Previous
                 </FluentButton>
             }
 
-            <FluentButton Appearance="Appearance.Outline"
+            <FluentButton Appearance="ButtonAppearance.Outline"
                           OnClick="TraceCausation"
                           Disabled="@_causationLoading">
                 @(_causationLoading ? "Loading..." : "Trace Causation")
@@ -101,7 +101,7 @@
             {
                 <div class="causation-error" role="alert" style="color: var(--hexalith-status-error);">
                     @_causationError
-                    <FluentButton Appearance="Appearance.Lightweight" OnClick="TraceCausation">Retry</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="TraceCausation">Retry</FluentButton>
                 </div>
             }
         </FluentStack>

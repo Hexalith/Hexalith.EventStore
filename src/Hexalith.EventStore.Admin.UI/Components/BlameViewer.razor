@@ -17,7 +17,7 @@
                 </span>
             }
         </div>
-        <FluentButton Appearance="Appearance.Outline" OnClick="HandleClose" aria-label="Close blame view">
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close blame view">
             Close
         </FluentButton>
     </FluentStack>
@@ -95,7 +95,7 @@
                 }
                 else
                 {
-                    <FluentButton Appearance="Appearance.Lightweight"
+                    <FluentButton Appearance="ButtonAppearance.Transparent"
                                   OnClick="@(() => HandleNavigateToEvent(context.LastChangedAtSequence))"
                                   title="@($"Navigate to event at sequence {context.LastChangedAtSequence}")"
                                   Style="padding: 0; min-width: auto; text-align: left;">

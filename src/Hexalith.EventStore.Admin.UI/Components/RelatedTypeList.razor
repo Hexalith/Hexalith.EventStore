@@ -14,7 +14,7 @@
 </ul>
 @if (Items.Count > MaxVisible && !_showAll)
 {
-    <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+    <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
                   Style="margin-top: 8px;"
                   OnClick="@(() => _showAll = true)">
         Show all @Items.Count

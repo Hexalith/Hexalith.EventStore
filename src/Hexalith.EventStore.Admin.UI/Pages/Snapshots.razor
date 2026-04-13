@@ -18,18 +18,18 @@
     <h1 style="margin: 0;">Snapshots</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
-            <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
                           OnClick="OpenCreateDialog"
                           aria-label="Add snapshot policy">
                 Add Policy
             </FluentButton>
-            <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                           OnClick="OpenCreateSnapshotDialog"
                           aria-label="Create snapshot for aggregate">
                 Create Snapshot
             </FluentButton>
         </AuthorizedView>
-        <FluentButton Appearance="Appearance.Outline" Size="ButtonSize.Small"
+        <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
                       aria-label="Refresh snapshot policies">
             Refresh
@@ -117,7 +117,7 @@
             <TemplateColumn Title="Actions">
                 <div @onclick:stopPropagation="true">
                     <AuthorizedView MinimumRole="AdminRole.Operator">
-                        <FluentButton Appearance="Appearance.Stealth" Size="ButtonSize.Small"
+                        <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
                                       OnClick="@(() => OpenDeleteDialog(context))"
                                       aria-label="@($"Delete policy for {context.AggregateType}")">
                             Delete
@@ -158,8 +158,8 @@
                                aria-label="Interval events" />
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnCreatePolicyConfirm"
                           Disabled="@(!IsCreateFormValid || _isOperating)">
                 @if (_isOperating)
@@ -204,8 +204,8 @@
                                aria-label="Interval events" />
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnEditPolicyConfirm"
                           Disabled="@(_editIntervalEvents < 1 || _isOperating)">
                 @if (_isOperating)
@@ -238,8 +238,8 @@
             </p>
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseDeleteDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDeleteDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnDeletePolicyConfirm"
                           Disabled="@_isOperating"
                           Style="background-color: var(--hexalith-status-error); color: white;">
@@ -280,8 +280,8 @@
                              aria-label="Aggregate ID" />
         </FluentDialogBody>
         <FluentDialogFooter>
-            <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreateSnapshotDialog">Cancel</FluentButton>
-            <FluentButton Appearance="Appearance.Accent"
+            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateSnapshotDialog">Cancel</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnCreateSnapshotConfirm"
                           Disabled="@(!IsSnapshotFormValid || _isOperating)">
                 @if (_isOperating)
