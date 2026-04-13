@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-13 (Story 21-0 code review complete, status done)
+# last_updated: 2026-04-13 (Story 21-1 done — code review complete)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -239,14 +239,14 @@ development_status:
   # MIGRATION GATE: Complete Epic 21 before starting any new UI stories
   epic-21: in-progress
   21-0-bunit-smoke-tests-baseline: done
-  21-1-package-version-csproj-infrastructure: backlog
+  21-1-package-version-csproj-infrastructure: done
   21-2-layout-and-navigation-foundation: backlog  # merged: layout + nav are one deployable unit (Amelia/Bob)
   21-3-appearance-enum-button-appearance: backlog  # split from 21-4: ~215 occurrences on FluentButton (Amelia/Bob)
   21-4-appearance-enum-badge-link-appearance: backlog  # split from 21-4: ~60 occurrences badges + links (Amelia/Bob)
   21-5-component-renames: backlog
   21-6-dialog-restructure: backlog  # highest regression risk — allocate own session (Amelia)
   21-7-toast-api-update: backlog
-  21-8-css-token-migration: backlog
+  21-8-css-token-migration: backlog  # REVIEW NOTE: ScopedCssEnabled=false causes .razor.css files to vanish entirely (not "apply globally") — scope must include re-including 9 Admin.UI .razor.css files
   21-9-datagrid-remaining-enum-renames: backlog
   21-10-sample-blazorui-alignment: backlog
   epic-21-retrospective: optional

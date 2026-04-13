@@ -62,6 +62,11 @@
 - **Constructor overload proliferation in SubmitCommandHandler** — Each new optional tracker dependency requires updating N+1 constructor overloads. Pre-existing pattern across the handler.
 - **Writer/reader state store config mismatch** — Writer uses `CommandStatusOptions.StateStoreName`, reader uses `AdminServerOptions.StateStoreName`. Both default to `"statestore"` but are independently configurable. Only diverges if deployment explicitly sets different names.
 
+## Deferred from: code review of 21-1-package-version-csproj-infrastructure (2026-04-13)
+
+- **Icons package remains at v4.14.0** — No v5 `Microsoft.FluentUI.AspNetCore.Components.Icons` package exists on nuget.org. Kept at `4.14.0` per user approval. AC #1 partially unmet. Monitor for future v5 Icons release.
+- **Stale `.nuget.g.props` artifacts tracked in git reference v4.13.2** — Two auto-generated NuGet restore cache files under `.artifacts/ui-test-obj/` still reference `microsoft.fluentui.aspnetcore.components\4.13.2`. Pre-existing repo hygiene issue — these files should be gitignored. Running `dotnet restore` regenerates them.
+
 ## Deferred from: code review of 21-0-bunit-smoke-tests-baseline (2026-04-13)
 
 - **`">99<"` fragile assertion pattern in skeleton loading test** — `StatCardTests.StatCard_ShowsSkeletonWhenLoading` asserts `ShouldNotContain(">99<")` which is brittle against whitespace or attribute changes. Works for current implementation but fragile for future refactors.
