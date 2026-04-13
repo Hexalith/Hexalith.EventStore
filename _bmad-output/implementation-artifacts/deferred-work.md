@@ -61,3 +61,14 @@
 - **Single global key scalability bottleneck** — All tenants/aggregates share one DAPR state key (`admin:stream-activity:all`) with MaxEtagRetries=3. Under high write throughput, optimistic-concurrency failures will cause silent data loss. Pre-existing architecture decision for admin index pattern.
 - **Constructor overload proliferation in SubmitCommandHandler** — Each new optional tracker dependency requires updating N+1 constructor overloads. Pre-existing pattern across the handler.
 - **Writer/reader state store config mismatch** — Writer uses `CommandStatusOptions.StateStoreName`, reader uses `AdminServerOptions.StateStoreName`. Both default to `"statestore"` but are independently configurable. Only diverges if deployment explicitly sets different names.
+
+## Deferred from: code review of 21-0-bunit-smoke-tests-baseline (2026-04-13)
+
+- **`">99<"` fragile assertion pattern in skeleton loading test** — `StatCardTests.StatCard_ShowsSkeletonWhenLoading` asserts `ShouldNotContain(">99<")` which is brittle against whitespace or attribute changes. Works for current implementation but fragile for future refactors.
+- **Operator role not tested for Settings visibility** — `NavMenu_SettingsHiddenForNonAdminRole` only tests `AdminRole.ReadOnly`, not `AdminRole.Operator`. The `>=` comparison boundary at Operator is untested.
+- **No test for partial ActionLabel/ActionHref** — EmptyState tests cover both-provided and neither-provided, but not the partial case (only one of ActionLabel/ActionHref set).
+- **No test for Icon/ChildContent RenderFragment parameters** — EmptyState has conditional branches for Icon and ChildContent render fragments that are completely untested.
+- **No test for Subtitle/Title (tooltip) parameters on StatCard** — StatCard's optional Subtitle and Title parameters have no dedicated assertions.
+- **No test for unknown/default Severity fallback values** — StatCard's switch-expression default branch (unknown severity strings) is never exercised.
+- **No test for delayed aria-live announcement mechanism** — The 5-second debounced `QueueAnnouncement` logic is untested; only the `aria-live` attribute presence is verified.
+- **No Dispose/lifecycle tests for NavMenu or StatCard** — Both components implement `IDisposable` with event unsubscription and CancellationTokenSource cleanup, but no test verifies disposal behavior.
