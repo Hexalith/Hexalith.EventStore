@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.6...v1.3.0) (2026-04-13)
+
+
+### Features
+
+* **server:** add stream activity tracker writer (Story 15-13) ([#192](https://github.com/Hexalith/Hexalith.EventStore/issues/192)) ([bce2614](https://github.com/Hexalith/Hexalith.EventStore/commit/bce2614f95b1d12c49a718282a07fb10b0a098d4))
+* **server:** add stream activity tracker writer for admin UI data pipeline ([9b608db](https://github.com/Hexalith/Hexalith.EventStore/commit/9b608db8e7f9ced4dd113b63a4c4986c488b6f8c))
+
 ## [1.2.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.5...v1.2.6) (2026-04-12)
 
 
