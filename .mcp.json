@@ -6,6 +6,9 @@
         "mcp",
         "start"
       ]
+    },
+    "fluent-ui-blazor": {
+      "command": "fluentui-mcp"
     }
   }
 }

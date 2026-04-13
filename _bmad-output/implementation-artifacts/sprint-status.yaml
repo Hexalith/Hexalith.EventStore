@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-10 (SCP-2026-04-10-events-page-empty: add Story 15.13 stream activity tracker writer — reopens epic-15)
+# last_updated: 2026-04-13 (Story 15-13 created: stream-activity-tracker-writer)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-10
+last_updated: 2026-04-13
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -181,7 +181,7 @@ development_status:
   15-10-admin-ui-data-pipeline-fixes: done
   15-11-persistent-state-store-and-command-activity: done
   15-12-events-page-cross-stream-browser: done
-  15-13-stream-activity-tracker-writer: backlog
+  15-13-stream-activity-tracker-writer: ready-for-dev
   epic-15-retrospective: optional
 
   # Epic 16: Admin Web UI — DBA Operations
@@ -217,7 +217,7 @@ development_status:
   epic-18-retrospective: optional
 
   # Epic 19: Admin — DAPR Infrastructure Visibility
-  epic-19: in-progress  # 2026-04-10: reopened — follow-up 19-6 added
+  epic-19: done  # 2026-04-13: all 6 stories done — closed
   19-1-dapr-component-status-dashboard: done
   19-2-dapr-actor-inspector: done
   19-3-dapr-pubsub-delivery-metrics: done
@@ -234,3 +234,19 @@ development_status:
   20-4-command-sandbox-test-harness: done
   20-5-correlation-id-trace-map: done
   epic-20-retrospective: optional
+
+  # Epic 21: Fluent UI Blazor v4 → v5 Migration
+  # MIGRATION GATE: Complete Epic 21 before starting any new UI stories
+  epic-21: backlog
+  21-0-bunit-smoke-tests-baseline: backlog
+  21-1-package-version-csproj-infrastructure: backlog
+  21-2-layout-and-navigation-foundation: backlog  # merged: layout + nav are one deployable unit (Amelia/Bob)
+  21-3-appearance-enum-button-appearance: backlog  # split from 21-4: ~215 occurrences on FluentButton (Amelia/Bob)
+  21-4-appearance-enum-badge-link-appearance: backlog  # split from 21-4: ~60 occurrences badges + links (Amelia/Bob)
+  21-5-component-renames: backlog
+  21-6-dialog-restructure: backlog  # highest regression risk — allocate own session (Amelia)
+  21-7-toast-api-update: backlog
+  21-8-css-token-migration: backlog
+  21-9-datagrid-remaining-enum-renames: backlog
+  21-10-sample-blazorui-alignment: backlog
+  epic-21-retrospective: optional

@@ -262,7 +262,7 @@ Hexalith.Tenants is itself an event-sourced service built on Hexalith.EventStore
 | DAPR .NET SDK                        | Dapr.Client 1.16.1, Dapr.AspNetCore 1.16.1 | Requires .NET 8+                                                      |
 | Aspire                               | 13.1.2                                     | Polyglot platform, requires .NET 10 SDK                               |
 | CommunityToolkit.Aspire.Hosting.Dapr | 13.0.0                                     | Aspire + DAPR integration (replaces deprecated `Aspire.Hosting.Dapr`) |
-| Blazor Fluent UI                     | 4.13.2                                     | v5 in development; v4 supported until Nov 2026 (v2 reference)         |
+| Blazor Fluent UI                     | 5.0.0                                      | WC v3 foundation; Fluent 2 design system; FluentLayout, FluentProviders |
 
 ### Starter Options Considered
 
@@ -386,7 +386,7 @@ Hexalith.EventStore/
 | Testing           | xUnit, three-tier (unit/integration/contract)                        | PRD + Starter              |
 | Observability     | OpenTelemetry (traces, metrics, structured logs)                     | PRD                        |
 | Hosting           | Aspire publishers (Docker Compose, Kubernetes, Azure Container Apps) | PRD                        |
-| Frontend          | None in v1; Blazor Fluent UI 4.x in v2                               | PRD                        |
+| Frontend          | None in v1; Blazor Fluent UI 5.x in v2                               | PRD                        |
 
 **Decisions Deferred (Post-v1):**
 

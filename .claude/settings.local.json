@@ -118,7 +118,16 @@
       "mcp__MCP_DOCKER__microsoft_docs_search",
       "mcp__MCP_DOCKER__microsoft_docs_fetch",
       "Bash(head:*)",
-      "Bash(for proj:*)"
+      "Bash(for proj:*)",
+      "mcp__fluent-ui-blazor__get_version_info",
+      "mcp__fluent-ui-blazor__get_migration_overview",
+      "mcp__fluent-ui-blazor__list_component_migrations",
+      "mcp__fluent-ui-blazor__get_component_migration",
+      "mcp__fluent-ui-blazor__search_components",
+      "mcp__fluent-ui-blazor__get_component_details",
+      "Bash(grep -v '//')",
+      "mcp__fluent-ui-blazor__search_documentation",
+      "Bash(grep -n \"TrackAsync\" /d/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/*.cs)"
     ]
   }
 }
