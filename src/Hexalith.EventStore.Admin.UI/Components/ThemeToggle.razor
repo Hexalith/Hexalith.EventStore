@@ -3,7 +3,7 @@
 @inject IJSRuntime JSRuntime
 @inject ThemeState ThemeState
 
-<FluentButton Appearance="Appearance.Stealth"
+<FluentButton Appearance="ButtonAppearance.Subtle"
               Title="@_tooltip"
               aria-label="@_tooltip"
               OnClick="@CycleTheme">
@@ -13,19 +13,19 @@
 @code {
     private const string ThemeStorageKey = "hexalith-admin-theme";
 
-    private DesignThemeModes _currentMode => ThemeState.Mode;
+    private ThemeMode _currentMode => ThemeState.Mode;
 
     private string _tooltip => _currentMode switch
     {
-        DesignThemeModes.Light => "Switch to dark theme",
-        DesignThemeModes.Dark => "Switch to system theme",
+        ThemeMode.Light => "Switch to dark theme",
+        ThemeMode.Dark => "Switch to system theme",
         _ => "Switch to light theme",
     };
 
     private string _label => _currentMode switch
     {
-        DesignThemeModes.Light => "\u2600",
-        DesignThemeModes.Dark => "\u263D",
+        ThemeMode.Light => "\u2600",
+        ThemeMode.Dark => "\u263D",
         _ => "\u2699",
     };
 
@@ -39,9 +39,10 @@
         if (firstRender)
         {
             string? savedTheme = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", ThemeStorageKey).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(savedTheme) && Enum.TryParse<DesignThemeModes>(savedTheme, out DesignThemeModes mode))
+            if (!string.IsNullOrEmpty(savedTheme) && Enum.TryParse<ThemeMode>(savedTheme, out ThemeMode mode))
             {
                 ThemeState.SetMode(mode);
+                await ApplyColorSchemeAsync(mode).ConfigureAwait(false);
             }
         }
     }
@@ -53,16 +54,33 @@
 
     private async Task CycleTheme()
     {
-        DesignThemeModes nextMode = _currentMode switch
+        ThemeMode nextMode = _currentMode switch
         {
-            DesignThemeModes.System => DesignThemeModes.Light,
-            DesignThemeModes.Light => DesignThemeModes.Dark,
-            DesignThemeModes.Dark => DesignThemeModes.System,
-            _ => DesignThemeModes.System,
+            ThemeMode.System => ThemeMode.Light,
+            ThemeMode.Light => ThemeMode.Dark,
+            ThemeMode.Dark => ThemeMode.System,
+            _ => ThemeMode.System,
         };
 
         ThemeState.SetMode(nextMode);
+        await ApplyColorSchemeAsync(nextMode).ConfigureAwait(false);
         await JSRuntime.InvokeVoidAsync("hexalithAdmin.setLocalStorage", ThemeStorageKey, nextMode.ToString()).ConfigureAwait(false);
+    }
+
+    private async Task ApplyColorSchemeAsync(ThemeMode mode)
+    {
+        switch (mode)
+        {
+            case ThemeMode.Light:
+                await JSRuntime.InvokeVoidAsync("hexalithAdmin.setColorScheme", "light").ConfigureAwait(false);
+                break;
+            case ThemeMode.Dark:
+                await JSRuntime.InvokeVoidAsync("hexalithAdmin.setColorScheme", "dark").ConfigureAwait(false);
+                break;
+            default:
+                await JSRuntime.InvokeVoidAsync("hexalithAdmin.removeColorScheme").ConfigureAwait(false);
+                break;
+        }
     }
 
     public void Dispose()

@@ -12,17 +12,11 @@
 @inject ThemeState ThemeState
 @implements IAsyncDisposable
 
-<FluentDesignTheme Mode="@ThemeState.Mode"
-                   ModeChanged="@OnThemeModeChanged"
-                   StorageName="hexalith-admin-theme"
-                   CustomColor="#0066CC">
-
 <a href="#main-content" class="skip-to-main">Skip to main content</a>
 
-<FluentMenuProvider />
-
 <FluentLayout>
-    <FluentHeader>
+    <FluentLayoutItem Area="@LayoutArea.Header">
+        <FluentLayoutHamburger />
         <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
             <span style="font-weight: 600;">Hexalith EventStore Admin</span>
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -30,27 +24,24 @@
                 <ThemeToggle />
             </div>
         </div>
-    </FluentHeader>
+    </FluentLayoutItem>
 
-    <FluentBodyContent>
+    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@(_sidebarCollapsed ? "48px" : "220px")" Class="admin-sidebar @(_sidebarCollapsed ? "collapsed" : "")">
+        <NavMenu Width="@(_sidebarCollapsed ? "48px" : "220px")" UserRole="_userRole" />
+    </FluentLayoutItem>
+
+    <FluentLayoutItem Area="@LayoutArea.Content">
         <div class="narrow-screen-warning" role="alert">
             Dashboard optimized for wider screens.
         </div>
         <Breadcrumb />
-        <FluentStack Orientation="Orientation.Horizontal" Style="height: 100%;">
-            <div class="admin-sidebar @(_sidebarCollapsed ? "collapsed" : "")">
-                <NavMenu Width="@(_sidebarCollapsed ? 48 : 220)" UserRole="_userRole" />
-            </div>
-
-            <main id="main-content" class="admin-main" role="main">
-                @Body
-            </main>
-        </FluentStack>
-    </FluentBodyContent>
+        <main id="main-content" class="admin-main" role="main">
+            @Body
+        </main>
+    </FluentLayoutItem>
 </FluentLayout>
 
 <CommandPalette @ref="_commandPalette" />
-</FluentDesignTheme>
 
 @code {
     private bool _sidebarCollapsed;
@@ -190,11 +181,6 @@
         {
             _connectionStatus = HeaderStatusIndicator.ConnectionStatusType.Unknown;
         }
-    }
-
-    private void OnThemeModeChanged(DesignThemeModes mode)
-    {
-        ThemeState.SetMode(mode);
     }
 
     private void OnThemeChanged()

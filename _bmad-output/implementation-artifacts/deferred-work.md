@@ -77,3 +77,11 @@
 - **No test for unknown/default Severity fallback values** — StatCard's switch-expression default branch (unknown severity strings) is never exercised.
 - **No test for delayed aria-live announcement mechanism** — The 5-second debounced `QueueAnnouncement` logic is untested; only the `aria-live` attribute presence is verified.
 - **No Dispose/lifecycle tests for NavMenu or StatCard** — Both components implement `IDisposable` with event unsubscription and CancellationTokenSource cleanup, but no test verifies disposal behavior.
+
+## Deferred from: code review of 21-2-layout-and-navigation-foundation (2026-04-13)
+
+- **Brand token CSS `@media (prefers-color-scheme: dark)` doesn't respond to user-selected theme** — When user explicitly selects Dark on light-OS (or vice versa), brand tokens don't switch. `@media (prefers-color-scheme)` evaluates against OS, not JS-set `color-scheme`. Deferred to Story 21-8 — fix requires architectural decision (CSS class vs JS tokens) that should be made once for all tokens.
+- **ThemeToggle missing `JSDisconnectedException` handling** — `ThemeToggle.razor` calls `JSRuntime.InvokeAsync`/`InvokeVoidAsync` in `OnAfterRenderAsync`, `CycleTheme`, and `ApplyColorSchemeAsync` without try/catch for `JSDisconnectedException`. `MainLayout` already has proper handling. Pre-existing omission.
+- **ThemeState `Changed` event not thread-safe** — `ThemeState.SetMode()` reads and writes `_mode` with no synchronization. `Changed?.Invoke()` fires on the caller's thread. Low risk in single-circuit Blazor Server scoped DI. Pre-existing pattern.
+- **v4 FAST design tokens referenced in CSS not defined by v5** — `--neutral-layer-1`, `--neutral-foreground-rest`, and other FAST tokens used in `App.razor` body style and `app.css` are not defined by Fluent UI v5 (which removed FAST web components). Explicitly Story 21-8 scope.
+- **FluentTreeView nested inside FluentNavCategory — potential ARIA nesting issue** — `FluentTreeView`/`FluentTreeItem` inside `FluentNavCategory` may produce invalid ARIA semantics (nav role containing tree role). Pre-existing pattern (was `FluentNavGroup` + `FluentTreeView` in v4).

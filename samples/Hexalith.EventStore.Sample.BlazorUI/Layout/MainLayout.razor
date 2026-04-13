@@ -2,22 +2,22 @@
 @inherits LayoutComponentBase
 
 <FluentLayout>
-    <FluentHeader>
+    <FluentLayoutItem Area="@LayoutArea.Header">
         Hexalith EventStore — UI Refresh Patterns
-    </FluentHeader>
+    </FluentLayoutItem>
 
-    <FluentBodyContent>
-        <FluentStack Orientation="Orientation.Horizontal" Style="height: 100%;">
-            <FluentNavMenu Width="280" Title="Patterns">
-                <FluentNavLink Href="/">Overview</FluentNavLink>
-                <FluentNavLink Href="/pattern-notification">Pattern 1: Notification</FluentNavLink>
-                <FluentNavLink Href="/pattern-silent-reload">Pattern 2: Silent Reload</FluentNavLink>
-                <FluentNavLink Href="/pattern-selective-refresh">Pattern 3: Selective Refresh</FluentNavLink>
-            </FluentNavMenu>
+    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="280px">
+        <FluentNav Width="280px">
+            <FluentNavItem Href="/">Overview</FluentNavItem>
+            <FluentNavItem Href="/pattern-notification">Pattern 1: Notification</FluentNavItem>
+            <FluentNavItem Href="/pattern-silent-reload">Pattern 2: Silent Reload</FluentNavItem>
+            <FluentNavItem Href="/pattern-selective-refresh">Pattern 3: Selective Refresh</FluentNavItem>
+        </FluentNav>
+    </FluentLayoutItem>
 
-            <div style="flex: 1; padding: 24px; overflow-y: auto;">
-                @Body
-            </div>
-        </FluentStack>
-    </FluentBodyContent>
+    <FluentLayoutItem Area="@LayoutArea.Content">
+        <div style="flex: 1; padding: 24px; overflow-y: auto;">
+            @Body
+        </div>
+    </FluentLayoutItem>
 </FluentLayout>

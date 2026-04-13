@@ -114,4 +114,13 @@ window.hexalithAdmin = {
             searchElement.focus();
         }
     },
+
+    // Theme color-scheme helpers for v5 migration
+    setColorScheme: function (scheme) {
+        document.documentElement.style.setProperty('color-scheme', scheme);
+    },
+
+    removeColorScheme: function () {
+        document.documentElement.style.removeProperty('color-scheme');
+    },
 };

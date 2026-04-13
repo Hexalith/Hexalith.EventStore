@@ -5,68 +5,65 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<nav aria-label="Main navigation">
-    <FluentNavMenu Width="@Width" Title="Admin Navigation" @bind-Expanded="_expanded">
-        <FluentNavLink Href="/" Icon="@(new Icons.Regular.Size20.Home())" IconColor="Color.Accent">Home</FluentNavLink>
-        <FluentNavLink Href="/commands" Icon="@(new Icons.Regular.Size20.List())">Commands</FluentNavLink>
-        <FluentNavLink Href="/events" Icon="@(new Icons.Regular.Size20.Timeline())">Events</FluentNavLink>
-        <FluentNavLink Href="/streams" Icon="@(new Icons.Regular.Size20.DataLine())">Streams</FluentNavLink>
-        <FluentNavLink Href="/health" Icon="@(new Icons.Regular.Size20.HeartPulse())">Health</FluentNavLink>
-        <FluentNavLink Href="/dapr" Icon="@(new Icons.Regular.Size20.PlugDisconnected())">DAPR</FluentNavLink>
-        <FluentNavLink Href="/health/dead-letters" Icon="@(new Icons.Regular.Size20.DocumentDismiss())">Dead Letters</FluentNavLink>
-        <FluentNavLink Href="/projections" Icon="@(new Icons.Regular.Size20.LayerDiagonal())">Projections</FluentNavLink>
-        <FluentNavLink Href="/types" Icon="@(new Icons.Regular.Size20.Library())">Types</FluentNavLink>
-        <FluentNavLink Href="/services" Icon="@(new Icons.Regular.Size20.Server())">Services</FluentNavLink>
-        <FluentNavLink Href="/tenants" Icon="@(new Icons.Regular.Size20.People())">Tenants</FluentNavLink>
-        <FluentNavLink Href="/storage" Icon="@(new Icons.Regular.Size20.Database())">Storage</FluentNavLink>
-        <FluentNavLink Href="/snapshots" Icon="@(new Icons.Regular.Size20.Camera())">Snapshots</FluentNavLink>
-        <FluentNavLink Href="/compaction" Icon="@(new Icons.Regular.Size20.ArrowMinimize())">Compaction</FluentNavLink>
-        <FluentNavLink Href="/backups" Icon="@(new Icons.Regular.Size20.ArrowDownload())">Backups</FluentNavLink>
-        <FluentNavLink Href="/consistency" Icon="@(new Icons.Regular.Size20.Checkmark())">Consistency</FluentNavLink>
-        @if (UserRole >= AdminRole.Admin)
+<FluentNav Width="@Width">
+    <FluentNavItem Href="/" IconRest="@(new Icons.Regular.Size20.Home())">Home</FluentNavItem>
+    <FluentNavItem Href="/commands" IconRest="@(new Icons.Regular.Size20.List())">Commands</FluentNavItem>
+    <FluentNavItem Href="/events" IconRest="@(new Icons.Regular.Size20.Timeline())">Events</FluentNavItem>
+    <FluentNavItem Href="/streams" IconRest="@(new Icons.Regular.Size20.DataLine())">Streams</FluentNavItem>
+    <FluentNavItem Href="/health" IconRest="@(new Icons.Regular.Size20.HeartPulse())">Health</FluentNavItem>
+    <FluentNavItem Href="/dapr" IconRest="@(new Icons.Regular.Size20.PlugDisconnected())">DAPR</FluentNavItem>
+    <FluentNavItem Href="/health/dead-letters" IconRest="@(new Icons.Regular.Size20.DocumentDismiss())">Dead Letters</FluentNavItem>
+    <FluentNavItem Href="/projections" IconRest="@(new Icons.Regular.Size20.LayerDiagonal())">Projections</FluentNavItem>
+    <FluentNavItem Href="/types" IconRest="@(new Icons.Regular.Size20.Library())">Types</FluentNavItem>
+    <FluentNavItem Href="/services" IconRest="@(new Icons.Regular.Size20.Server())">Services</FluentNavItem>
+    <FluentNavItem Href="/tenants" IconRest="@(new Icons.Regular.Size20.People())">Tenants</FluentNavItem>
+    <FluentNavItem Href="/storage" IconRest="@(new Icons.Regular.Size20.Database())">Storage</FluentNavItem>
+    <FluentNavItem Href="/snapshots" IconRest="@(new Icons.Regular.Size20.Camera())">Snapshots</FluentNavItem>
+    <FluentNavItem Href="/compaction" IconRest="@(new Icons.Regular.Size20.ArrowMinimize())">Compaction</FluentNavItem>
+    <FluentNavItem Href="/backups" IconRest="@(new Icons.Regular.Size20.ArrowDownload())">Backups</FluentNavItem>
+    <FluentNavItem Href="/consistency" IconRest="@(new Icons.Regular.Size20.Checkmark())">Consistency</FluentNavItem>
+    @if (UserRole >= AdminRole.Admin)
+    {
+        <FluentNavItem Href="/settings" IconRest="@(new Icons.Regular.Size20.Settings())">Settings</FluentNavItem>
+    }
+    <FluentNavCategory Title="Topology" IconRest="@(new Icons.Regular.Size20.BranchFork())" Expanded="false">
+        @if (!TopologyCache.IsLoaded)
         {
-            <FluentNavLink Href="/settings" Icon="@(new Icons.Regular.Size20.Settings())">Settings</FluentNavLink>
+            <FluentTreeView>
+                <FluentTreeItem Text="Loading..." Disabled="true" />
+            </FluentTreeView>
         }
-        <FluentNavGroup Title="Topology" Icon="@(new Icons.Regular.Size20.BranchFork())" Expanded="false">
-            @if (!TopologyCache.IsLoaded)
-            {
-                <FluentTreeView>
-                    <FluentTreeItem Text="Loading..." Disabled="true" />
-                </FluentTreeView>
-            }
-            else if (TopologyCache.Tenants.Count == 0)
-            {
-                <FluentTreeView>
-                    <FluentTreeItem Text="No tenants" Disabled="true" />
-                </FluentTreeView>
-            }
-            else
-            {
-                <FluentTreeView>
-                    @foreach (var tenant in TopologyCache.Tenants)
-                    {
-                        <FluentTreeItem Text="@tenant.TenantId" Expanded="false">
-                            @foreach (string domain in TopologyCache.Domains)
-                            {
-                                <FluentTreeItem Text="@domain"
-                                                @onclick="@(() => NavigateToStreams(tenant.TenantId, domain))" />
-                            }
-                        </FluentTreeItem>
-                    }
-                </FluentTreeView>
-            }
-        </FluentNavGroup>
-    </FluentNavMenu>
-</nav>
+        else if (TopologyCache.Tenants.Count == 0)
+        {
+            <FluentTreeView>
+                <FluentTreeItem Text="No tenants" Disabled="true" />
+            </FluentTreeView>
+        }
+        else
+        {
+            <FluentTreeView>
+                @foreach (var tenant in TopologyCache.Tenants)
+                {
+                    <FluentTreeItem Text="@tenant.TenantId" Expanded="false">
+                        @foreach (string domain in TopologyCache.Domains)
+                        {
+                            <FluentTreeItem Text="@domain"
+                                            @onclick="@(() => NavigateToStreams(tenant.TenantId, domain))" />
+                        }
+                    </FluentTreeItem>
+                }
+            </FluentTreeView>
+        }
+    </FluentNavCategory>
+</FluentNav>
 
 @code {
     [Parameter]
-    public int Width { get; set; } = 220;
+    public string Width { get; set; } = "220px";
 
     [Parameter]
     public AdminRole UserRole { get; set; } = AdminRole.ReadOnly;
 
-    private bool _expanded = true;
     private bool _disposed;
 
     protected override Task OnInitializedAsync()
