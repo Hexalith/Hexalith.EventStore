@@ -261,129 +261,135 @@
 @* Anomaly detail modal *@
 @if (_selectedAnomaly is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Anomaly Detail" @ondialogdismiss="CloseAnomalyDetail"
+    <FluentDialog @ref="_anomalyDialog" Modal="true"
+                  aria-label="Anomaly Detail"
                   Style="min-width: 500px; max-width: 700px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Anomaly Detail</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
-                <div><strong>Anomaly ID:</strong> <span class="monospace">@_selectedAnomaly.AnomalyId</span></div>
-                <div><strong>Check Type:</strong> @_selectedAnomaly.CheckType</div>
-                <div><strong>Severity:</strong> @_selectedAnomaly.Severity</div>
-                <div><strong>Tenant:</strong> <span class="monospace">@_selectedAnomaly.TenantId</span></div>
-                <div><strong>Domain:</strong> @_selectedAnomaly.Domain</div>
-                <div><strong>Aggregate ID:</strong> <span class="monospace">@_selectedAnomaly.AggregateId</span></div>
-                @if (_selectedAnomaly.ExpectedSequence is not null)
+            <TitleTemplate>
+                <h3 style="margin: 0;">Anomaly Detail</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                    <div><strong>Anomaly ID:</strong> <span class="monospace">@_selectedAnomaly.AnomalyId</span></div>
+                    <div><strong>Check Type:</strong> @_selectedAnomaly.CheckType</div>
+                    <div><strong>Severity:</strong> @_selectedAnomaly.Severity</div>
+                    <div><strong>Tenant:</strong> <span class="monospace">@_selectedAnomaly.TenantId</span></div>
+                    <div><strong>Domain:</strong> @_selectedAnomaly.Domain</div>
+                    <div><strong>Aggregate ID:</strong> <span class="monospace">@_selectedAnomaly.AggregateId</span></div>
+                    @if (_selectedAnomaly.ExpectedSequence is not null)
+                    {
+                        <div><strong>Expected Sequence:</strong> @_selectedAnomaly.ExpectedSequence</div>
+                    }
+                    @if (_selectedAnomaly.ActualSequence is not null)
+                    {
+                        <div><strong>Actual Sequence:</strong> @_selectedAnomaly.ActualSequence</div>
+                    }
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <strong>Description:</strong>
+                    <p>@_selectedAnomaly.Description</p>
+                </div>
+                @if (_selectedAnomaly.Details is not null)
                 {
-                    <div><strong>Expected Sequence:</strong> @_selectedAnomaly.ExpectedSequence</div>
+                    <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px;">
+                        <pre style="margin: 0; white-space: pre-wrap; font-family: var(--font-monospace);">@_selectedAnomaly.Details</pre>
+                    </FluentCard>
                 }
-                @if (_selectedAnomaly.ActualSequence is not null)
-                {
-                    <div><strong>Actual Sequence:</strong> @_selectedAnomaly.ActualSequence</div>
-                }
-            </div>
-            <div style="margin-bottom: 12px;">
-                <strong>Description:</strong>
-                <p>@_selectedAnomaly.Description</p>
-            </div>
-            @if (_selectedAnomaly.Details is not null)
-            {
-                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px;">
-                    <pre style="margin: 0; white-space: pre-wrap; font-family: var(--font-monospace);">@_selectedAnomaly.Details</pre>
-                </FluentCard>
-            }
-            <div style="margin-top: 12px;">
-                <FluentLink Href="@($"/streams?tenant={Uri.EscapeDataString(_selectedAnomaly.TenantId)}&domain={Uri.EscapeDataString(_selectedAnomaly.Domain)}&aggregate={Uri.EscapeDataString(_selectedAnomaly.AggregateId)}")"
-                            Appearance="LinkAppearance.Default">
-                    Go to Stream
-                </FluentLink>
-            </div>
+                <div style="margin-top: 12px;">
+                    <FluentLink Href="@($"/streams?tenant={Uri.EscapeDataString(_selectedAnomaly.TenantId)}&domain={Uri.EscapeDataString(_selectedAnomaly.Domain)}&aggregate={Uri.EscapeDataString(_selectedAnomaly.AggregateId)}")"
+                                Appearance="LinkAppearance.Default">
+                        Go to Stream
+                    </FluentLink>
+                </div>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseAnomalyDetailAsync">Close</FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseAnomalyDetail">Close</FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Trigger Check Dialog *@
 @if (_showTriggerDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Run Consistency Check" @ondialogdismiss="CloseTriggerDialog"
+    <FluentDialog @ref="_triggerDialog" Modal="true"
+                  aria-label="Run Consistency Check"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Run Consistency Check</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_triggerTenantId"
-                             Label="Tenant ID (optional)"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            <FluentTextInput @bind-Value="_triggerDomain"
-                             Label="Domain (optional)"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Domain" />
-            <div style="margin-bottom: 12px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block;">Check Types</label>
-                <FluentCheckbox @bind-Value="_checkSequenceContinuity" Label="Sequence Continuity" />
-                <FluentCheckbox @bind-Value="_checkSnapshotIntegrity" Label="Snapshot Integrity" />
-                <FluentCheckbox @bind-Value="_checkProjectionPositions" Label="Projection Positions" />
-                <FluentCheckbox @bind-Value="_checkMetadataConsistency" Label="Metadata Consistency" />
-            </div>
-            @if (!HasAnyCheckType)
-            {
-                <p style="color: var(--error); font-size: 13px; margin: 0 0 12px;">
-                    At least one check type must be selected.
-                </p>
-            }
+            <TitleTemplate>
+                <h3 style="margin: 0;">Run Consistency Check</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_triggerTenantId"
+                                 Label="Tenant ID (optional)"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                <FluentTextInput @bind-Value="_triggerDomain"
+                                 Label="Domain (optional)"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Domain" />
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">Check Types</label>
+                    <FluentCheckbox @bind-Value="_checkSequenceContinuity" Label="Sequence Continuity" />
+                    <FluentCheckbox @bind-Value="_checkSnapshotIntegrity" Label="Snapshot Integrity" />
+                    <FluentCheckbox @bind-Value="_checkProjectionPositions" Label="Projection Positions" />
+                    <FluentCheckbox @bind-Value="_checkMetadataConsistency" Label="Metadata Consistency" />
+                </div>
+                @if (!HasAnyCheckType)
+                {
+                    <p style="color: var(--error); font-size: 13px; margin: 0 0 12px;">
+                        At least one check type must be selected.
+                    </p>
+                }
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnTriggerConfirm"
+                              Disabled="@(!HasAnyCheckType || _isTriggering)">
+                    @if (_isTriggering)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Start Check</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnTriggerConfirm"
-                          Disabled="@(!HasAnyCheckType || _isTriggering)">
-                @if (_isTriggering)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Start Check</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Cancel Check Dialog *@
 @if (_showCancelDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Cancel Consistency Check" @ondialogdismiss="CloseCancelDialog"
+    <FluentDialog @ref="_cancelDialog" Modal="true"
+                  aria-label="Cancel Consistency Check"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Cancel Consistency Check</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>Cancel this consistency check? Results collected so far will be preserved.</p>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Cancel Consistency Check</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>Cancel this consistency check? Results collected so far will be preserved.</p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCancelDialogAsync">Keep Running</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnCancelConfirm"
+                              Disabled="@_isCancelling">
+                    @if (_isCancelling)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Cancel Check</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCancelDialog">Keep Running</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnCancelConfirm"
-                          Disabled="@_isCancelling">
-                @if (_isCancelling)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Cancel Check</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
@@ -404,9 +410,13 @@
     private ConsistencyCheckSummary? _expandedCheck;
     private ConsistencyCheckResult? _expandedCheckResult;
     private ConsistencyAnomaly? _selectedAnomaly;
+    private FluentDialog? _anomalyDialog;
+    private bool _pendingShowAnomaly;
 
     // Trigger dialog state
     private bool _showTriggerDialog;
+    private FluentDialog? _triggerDialog;
+    private bool _pendingShowTrigger;
     private string? _triggerTenantId;
     private string? _triggerDomain;
     private bool _checkSequenceContinuity = true;
@@ -417,8 +427,12 @@
 
     // Cancel dialog state
     private bool _showCancelDialog;
+    private FluentDialog? _cancelDialog;
+    private bool _pendingShowCancel;
     private string? _cancelCheckId;
     private bool _isCancelling;
+
+    private bool _isAnyDialogOpen => _selectedAnomaly is not null || _showTriggerDialog || _showCancelDialog;
 
     // Computed properties
     private int TotalChecks => _allChecks.Count;
@@ -453,6 +467,27 @@
         _tenantFilterInput = _tenantFilter;
         _domainFilterInput = _domainFilter;
         await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowAnomaly && _anomalyDialog is not null)
+        {
+            await _anomalyDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowAnomaly = false;
+        }
+
+        if (_pendingShowTrigger && _triggerDialog is not null)
+        {
+            await _triggerDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowTrigger = false;
+        }
+
+        if (_pendingShowCancel && _cancelDialog is not null)
+        {
+            await _cancelDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowCancel = false;
+        }
     }
 
     private async Task LoadDataAsync()
@@ -658,17 +693,22 @@
     // Anomaly detail
     private void OpenAnomalyDetail(ConsistencyAnomaly? anomaly)
     {
+        if (anomaly is null) { return; }
+        if (_isAnyDialogOpen) { return; }
         _selectedAnomaly = anomaly;
+        _pendingShowAnomaly = true;
     }
 
-    private void CloseAnomalyDetail()
+    private async Task CloseAnomalyDetailAsync()
     {
+        if (_anomalyDialog is not null) { await _anomalyDialog.HideAsync().ConfigureAwait(false); }
         _selectedAnomaly = null;
     }
 
     // Trigger dialog
     private void OpenTriggerDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _triggerTenantId = string.Empty;
         _triggerDomain = string.Empty;
         _checkSequenceContinuity = true;
@@ -676,10 +716,12 @@
         _checkProjectionPositions = true;
         _checkMetadataConsistency = true;
         _showTriggerDialog = true;
+        _pendingShowTrigger = true;
     }
 
-    private void CloseTriggerDialog()
+    private async Task CloseTriggerDialogAsync()
     {
+        if (_triggerDialog is not null) { await _triggerDialog.HideAsync().ConfigureAwait(false); }
         _showTriggerDialog = false;
     }
 
@@ -703,6 +745,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess("Consistency check started.");
+                if (_triggerDialog is not null) { await _triggerDialog.HideAsync().ConfigureAwait(false); }
                 _showTriggerDialog = false;
                 await LoadDataAsync();
             }
@@ -745,12 +788,15 @@
     // Cancel dialog
     private void OpenCancelDialog(string checkId)
     {
+        if (_isAnyDialogOpen) { return; }
         _cancelCheckId = checkId;
         _showCancelDialog = true;
+        _pendingShowCancel = true;
     }
 
-    private void CloseCancelDialog()
+    private async Task CloseCancelDialogAsync()
     {
+        if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
         _showCancelDialog = false;
         _cancelCheckId = null;
     }
@@ -771,6 +817,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess("Consistency check cancelled.");
+                if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
                 _showCancelDialog = false;
                 _cancelCheckId = null;
                 await LoadDataAsync();

@@ -407,6 +407,35 @@ public class CompactionPageTests : AdminUITestContext
         cut.Markup.ShouldContain("All");
     }
 
+    // ===== Story 21-6: v5 dialog structure contract =====
+
+    [Fact]
+    public async Task CompactionPage_TriggerDialog_RendersV5DialogStructure()
+    {
+        // AC 32a: Locks in the v5 DOM structure contract for FluentDialogBody / TitleTemplate / ActionTemplate.
+        // Arrange
+        SetupJobs([]);
+
+        IRenderedComponent<Compaction> cut = Render<Compaction>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Trigger Compaction"), TimeSpan.FromSeconds(5));
+
+        // Act — open dialog
+        IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Trigger Compaction"));
+        await triggerBtn.InvokeAsync(() => triggerBtn.Instance.OnClick.InvokeAsync());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
+
+        // Assert — v5 dialog body element is present, no v4 header/footer elements
+        cut.Markup.ShouldContain("fluent-dialog-body");
+        cut.Markup.ShouldNotContain("fluent-dialog-header");
+        cut.Markup.ShouldNotContain("fluent-dialog-footer");
+
+        // Assert — TitleTemplate-rendered title is present
+        cut.Markup.ShouldContain("Trigger Compaction");
+        // Assert — ActionTemplate-rendered footer button is present
+        cut.Markup.ShouldContain("Start Compaction");
+    }
+
     // ===== Helpers =====
 
     private void SetupJobs(IReadOnlyList<CompactionJob> jobs)

@@ -121,7 +121,7 @@
                 @_frame.CorrelationId
             </span>
             <span>@_frame.UserId</span>
-            <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="ShowEventPayload"
+            <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="ShowEventPayloadAsync"
                           aria-label="View full event payload">
                 View Full Event
             </FluentButton>
@@ -258,18 +258,20 @@
     }
 
     @* Event payload dialog *@
-    <FluentDialog @bind-Hidden="_payloadDialogHidden" Modal="true" aria-label="Event payload">
-        <FluentDialogHeader>
-            Event Payload — Sequence @(_frame?.SequenceNumber)
-        </FluentDialogHeader>
+    <FluentDialog @ref="_payloadDialog" Modal="true" aria-label="Event payload">
         <FluentDialogBody>
-            <JsonViewer Json="@_frame?.EventPayloadJson" AriaLabel="Event payload JSON" MaxHeight="500" />
+            <TitleTemplate>
+                Event Payload — Sequence @(_frame?.SequenceNumber)
+            </TitleTemplate>
+            <ChildContent>
+                <JsonViewer Json="@_frame?.EventPayloadJson" AriaLabel="Event payload JSON" MaxHeight="500" />
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadAsync">
+                    Close
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => _payloadDialogHidden = true)">
-                Close
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 </div>
 
@@ -284,7 +286,7 @@
     private int AutoPlaySpeed => int.TryParse(_autoPlaySpeedStr, out int speed) ? speed : 1000;
     private long? _jumpToSequence = 1;
     private string _fieldSearchTerm = string.Empty;
-    private bool _payloadDialogHidden = true;
+    private FluentDialog? _payloadDialog;
 
     // Watch fields
     private List<string> _watchedFields = [];
@@ -770,9 +772,20 @@
         StateHasChanged();
     }
 
-    private void ShowEventPayload()
+    private async Task ShowEventPayloadAsync()
     {
-        _payloadDialogHidden = false;
+        if (_payloadDialog is not null)
+        {
+            await _payloadDialog.ShowAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task ClosePayloadAsync()
+    {
+        if (_payloadDialog is not null)
+        {
+            await _payloadDialog.HideAsync().ConfigureAwait(false);
+        }
     }
 
     public async ValueTask DisposeAsync()

@@ -221,186 +221,198 @@
 @* Create Tenant Dialog (single-step) *@
 @if (_showCreateDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Create Tenant" @ondialogdismiss="CloseCreateDialog"
+    <FluentDialog @ref="_createDialog" Modal="true"
+                  aria-label="Create Tenant"
                   Style="min-width: 450px; max-width: 550px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Create Tenant</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_createTenantId"
-                             Label="Tenant ID" Required="true"
-                             Placeholder="e.g. acme-corp"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            @if (!string.IsNullOrEmpty(_createTenantId) && !IsValidTenantId(_createTenantId))
-            {
-                <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 8px;">
-                    Tenant ID must be lowercase alphanumeric with hyphens only.
-                </p>
-            }
-            <FluentTextInput @bind-Value="_createName"
-                             Label="Name" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Name" />
-            <FluentTextInput @bind-Value="_createDescription"
-                             Label="Description"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Description" />
+            <TitleTemplate>
+                <h3 style="margin: 0;">Create Tenant</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_createTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Placeholder="e.g. acme-corp"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                @if (!string.IsNullOrEmpty(_createTenantId) && !IsValidTenantId(_createTenantId))
+                {
+                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 8px;">
+                        Tenant ID must be lowercase alphanumeric with hyphens only.
+                    </p>
+                }
+                <FluentTextInput @bind-Value="_createName"
+                                 Label="Name" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Name" />
+                <FluentTextInput @bind-Value="_createDescription"
+                                 Label="Description"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Description" />
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnCreateTenantConfirm"
+                              Disabled="@(!IsCreateFormValid() || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Create Tenant</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnCreateTenantConfirm"
-                          Disabled="@(!IsCreateFormValid() || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Create Tenant</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Disable Tenant Confirmation Dialog *@
 @if (_showDisableDialog && _lifecycleTarget is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Disable Tenant" @ondialogdismiss="CloseLifecycleDialog"
+    <FluentDialog @ref="_disableDialog" Modal="true"
+                  aria-label="Disable Tenant"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Disable Tenant @_lifecycleTarget.TenantId?</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>All command processing for this tenant will be suspended. Existing events are preserved.</p>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Disable Tenant @_lifecycleTarget.TenantId?</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>All command processing for this tenant will be suspended. Existing events are preserved.</p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseLifecycleDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnDisableConfirm"
+                              Disabled="@_isOperating">
+                    @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
+                    else { <span>Disable</span> }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnDisableConfirm"
-                          Disabled="@_isOperating">
-                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
-                else { <span>Disable</span> }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Enable Tenant Confirmation Dialog *@
 @if (_showEnableDialog && _lifecycleTarget is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Enable Tenant" @ondialogdismiss="CloseLifecycleDialog"
+    <FluentDialog @ref="_enableDialog" Modal="true"
+                  aria-label="Enable Tenant"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Enable Tenant @_lifecycleTarget.TenantId?</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>Command processing will resume for this tenant.</p>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Enable Tenant @_lifecycleTarget.TenantId?</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>Command processing will resume for this tenant.</p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseLifecycleDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnEnableConfirm"
+                              Disabled="@_isOperating">
+                    @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
+                    else { <span>Enable</span> }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseLifecycleDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnEnableConfirm"
-                          Disabled="@_isOperating">
-                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
-                else { <span>Enable</span> }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Add User Dialog *@
 @if (_showAddUserDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Add User" @ondialogdismiss="CloseAddUserDialog"
+    <FluentDialog @ref="_addUserDialog" Modal="true"
+                  aria-label="Add User"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Add User to @_expandedTenantId</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_addUserId"
-                             Label="User ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="User ID" />
-            <FluentSelect TOption="string" TValue="string" @bind-Value="_addUserRole"
-                          Label="Role"
-                          Style="width: 100%; margin-bottom: 12px;"
-                          aria-label="User role">
-                <FluentOption TOption="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
-                <FluentOption TOption="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
-                <FluentOption TOption="string" Value="@("TenantReader")">TenantReader</FluentOption>
-            </FluentSelect>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Add User to @_expandedTenantId</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_addUserId"
+                                 Label="User ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="User ID" />
+                <FluentSelect TOption="string" TValue="string" @bind-Value="_addUserRole"
+                              Label="Role"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="User role">
+                    <FluentOption TOption="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
+                    <FluentOption TOption="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
+                    <FluentOption TOption="string" Value="@("TenantReader")">TenantReader</FluentOption>
+                </FluentSelect>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseAddUserDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnAddUserConfirm"
+                              Disabled="@(string.IsNullOrWhiteSpace(_addUserId) || _isOperating)">
+                    @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
+                    else { <span>Add User</span> }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseAddUserDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnAddUserConfirm"
-                          Disabled="@(string.IsNullOrWhiteSpace(_addUserId) || _isOperating)">
-                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
-                else { <span>Add User</span> }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Remove User Confirmation Dialog *@
 @if (_showRemoveUserDialog && _removeUserTarget is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Remove User" @ondialogdismiss="CloseRemoveUserDialog"
+    <FluentDialog @ref="_removeUserDialog" Modal="true"
+                  aria-label="Remove User"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Remove @_removeUserTarget.UserId?</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>This will remove <strong>@_removeUserTarget.UserId</strong> from tenant <strong class="monospace">@_expandedTenantId</strong>.</p>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Remove @_removeUserTarget.UserId?</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>This will remove <strong>@_removeUserTarget.UserId</strong> from tenant <strong class="monospace">@_expandedTenantId</strong>.</p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRemoveUserDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnRemoveUserConfirm"
+                              Disabled="@_isOperating">
+                    @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
+                    else { <span>Remove</span> }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRemoveUserDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnRemoveUserConfirm"
-                          Disabled="@_isOperating">
-                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
-                else { <span>Remove</span> }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Change Role Dialog *@
 @if (_showChangeRoleDialog && _changeRoleTarget is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Change Role" @ondialogdismiss="CloseChangeRoleDialog"
+    <FluentDialog @ref="_changeRoleDialog" Modal="true"
+                  aria-label="Change Role"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Change Role for @_changeRoleTarget.UserId</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentSelect TOption="string" TValue="string" @bind-Value="_changeRoleNewRole"
-                          Label="New Role"
-                          Style="width: 100%; margin-bottom: 12px;"
-                          aria-label="New role">
-                <FluentOption TOption="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
-                <FluentOption TOption="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
-                <FluentOption TOption="string" Value="@("TenantReader")">TenantReader</FluentOption>
-            </FluentSelect>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Change Role for @_changeRoleTarget.UserId</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentSelect TOption="string" TValue="string" @bind-Value="_changeRoleNewRole"
+                              Label="New Role"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="New role">
+                    <FluentOption TOption="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
+                    <FluentOption TOption="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
+                    <FluentOption TOption="string" Value="@("TenantReader")">TenantReader</FluentOption>
+                </FluentSelect>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseChangeRoleDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnChangeRoleConfirm"
+                              Disabled="@(_isOperating || _changeRoleNewRole == _changeRoleTarget?.Role)">
+                    @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
+                    else { <span>Change Role</span> }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseChangeRoleDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnChangeRoleConfirm"
-                          Disabled="@(_isOperating || _changeRoleNewRole == _changeRoleTarget?.Role)">
-                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
-                else { <span>Change Role</span> }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
@@ -435,6 +447,8 @@
 
     // ---- Create tenant state ----
     private bool _showCreateDialog;
+    private bool _pendingShowCreate;
+    private FluentDialog? _createDialog;
     private string? _createTenantId;
     private string? _createName;
     private string? _createDescription;
@@ -442,17 +456,31 @@
     // ---- Lifecycle dialog state ----
     private bool _showDisableDialog;
     private bool _showEnableDialog;
+    private bool _pendingShowDisable;
+    private bool _pendingShowEnable;
+    private FluentDialog? _disableDialog;
+    private FluentDialog? _enableDialog;
     private TenantSummary? _lifecycleTarget;
 
     // ---- User management dialog state ----
     private bool _showAddUserDialog;
+    private bool _pendingShowAddUser;
+    private FluentDialog? _addUserDialog;
     private string? _addUserId;
     private string _addUserRole = "TenantReader";
     private bool _showRemoveUserDialog;
+    private bool _pendingShowRemoveUser;
+    private FluentDialog? _removeUserDialog;
     private TenantUser? _removeUserTarget;
     private bool _showChangeRoleDialog;
+    private bool _pendingShowChangeRole;
+    private FluentDialog? _changeRoleDialog;
     private TenantUser? _changeRoleTarget;
     private string _changeRoleNewRole = "TenantReader";
+
+    private bool _isAnyDialogOpen =>
+        _showCreateDialog || _showDisableDialog || _showEnableDialog
+        || _showAddUserDialog || _showRemoveUserDialog || _showChangeRoleDialog;
 
     // ---- Computed properties ----
     private int TotalCount => (_tenants ?? []).Count;
@@ -464,6 +492,45 @@
         ReadUrlParameters();
         _searchFilterInput = _searchFilter;
         await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowCreate && _createDialog is not null)
+        {
+            await _createDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowCreate = false;
+        }
+
+        if (_pendingShowDisable && _disableDialog is not null)
+        {
+            await _disableDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowDisable = false;
+        }
+
+        if (_pendingShowEnable && _enableDialog is not null)
+        {
+            await _enableDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowEnable = false;
+        }
+
+        if (_pendingShowAddUser && _addUserDialog is not null)
+        {
+            await _addUserDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowAddUser = false;
+        }
+
+        if (_pendingShowRemoveUser && _removeUserDialog is not null)
+        {
+            await _removeUserDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowRemoveUser = false;
+        }
+
+        if (_pendingShowChangeRole && _changeRoleDialog is not null)
+        {
+            await _changeRoleDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowChangeRole = false;
+        }
     }
 
     private async Task LoadDataAsync()
@@ -669,13 +736,23 @@
     // ---- Create Tenant ----
     private void OpenCreateDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _createTenantId = string.Empty;
         _createName = string.Empty;
         _createDescription = string.Empty;
         _showCreateDialog = true;
+        _pendingShowCreate = true;
     }
 
-    private void CloseCreateDialog() => _showCreateDialog = false;
+    private async Task CloseCreateDialogAsync()
+    {
+        if (_createDialog is not null)
+        {
+            await _createDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showCreateDialog = false;
+    }
 
     private bool IsCreateFormValid()
         => !string.IsNullOrWhiteSpace(_createTenantId) && IsValidTenantId(_createTenantId) && !string.IsNullOrWhiteSpace(_createName);
@@ -705,6 +782,11 @@
             }
 
             ToastService.ShowSuccess($"Tenant {_createTenantId} created successfully.");
+            if (_createDialog is not null)
+            {
+                await _createDialog.HideAsync().ConfigureAwait(false);
+            }
+
             _showCreateDialog = false;
             await LoadDataAsync();
         }
@@ -734,18 +816,32 @@
     // ---- Disable/Enable lifecycle ----
     private void OpenDisableDialog(TenantSummary tenant)
     {
+        if (_isAnyDialogOpen) { return; }
         _lifecycleTarget = tenant;
         _showDisableDialog = true;
+        _pendingShowDisable = true;
     }
 
     private void OpenEnableDialog(TenantSummary tenant)
     {
+        if (_isAnyDialogOpen) { return; }
         _lifecycleTarget = tenant;
         _showEnableDialog = true;
+        _pendingShowEnable = true;
     }
 
-    private void CloseLifecycleDialog()
+    private async Task CloseLifecycleDialogAsync()
     {
+        // Only hide the dialog that is actually open — avoids calling HideAsync on a null/unrendered ref.
+        if (_showDisableDialog && _disableDialog is not null)
+        {
+            await _disableDialog.HideAsync().ConfigureAwait(false);
+        }
+        else if (_showEnableDialog && _enableDialog is not null)
+        {
+            await _enableDialog.HideAsync().ConfigureAwait(false);
+        }
+
         _showDisableDialog = false;
         _showEnableDialog = false;
         _lifecycleTarget = null;
@@ -783,7 +879,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess(successMsg);
-                CloseLifecycleDialog();
+                await CloseLifecycleDialogAsync().ConfigureAwait(false);
                 await LoadDataAsync();
             }
             else
@@ -809,12 +905,22 @@
     // ---- User management ----
     private void OpenAddUserDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _addUserId = string.Empty;
         _addUserRole = "TenantReader";
         _showAddUserDialog = true;
+        _pendingShowAddUser = true;
     }
 
-    private void CloseAddUserDialog() => _showAddUserDialog = false;
+    private async Task CloseAddUserDialogAsync()
+    {
+        if (_addUserDialog is not null)
+        {
+            await _addUserDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showAddUserDialog = false;
+    }
 
     private async Task OnAddUserConfirm()
     {
@@ -832,6 +938,11 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"User {_addUserId} added.");
+                if (_addUserDialog is not null)
+                {
+                    await _addUserDialog.HideAsync().ConfigureAwait(false);
+                }
+
                 _showAddUserDialog = false;
                 await ReloadDetailPanel();
             }
@@ -853,11 +964,21 @@
 
     private void OpenRemoveUserDialog(TenantUser user)
     {
+        if (_isAnyDialogOpen) { return; }
         _removeUserTarget = user;
         _showRemoveUserDialog = true;
+        _pendingShowRemoveUser = true;
     }
 
-    private void CloseRemoveUserDialog() => _showRemoveUserDialog = false;
+    private async Task CloseRemoveUserDialogAsync()
+    {
+        if (_removeUserDialog is not null)
+        {
+            await _removeUserDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showRemoveUserDialog = false;
+    }
 
     private async Task OnRemoveUserConfirm()
     {
@@ -875,6 +996,11 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"User {_removeUserTarget.UserId} removed.");
+                if (_removeUserDialog is not null)
+                {
+                    await _removeUserDialog.HideAsync().ConfigureAwait(false);
+                }
+
                 _showRemoveUserDialog = false;
                 _removeUserTarget = null;
                 await ReloadDetailPanel();
@@ -897,12 +1023,22 @@
 
     private void OpenChangeRoleDialog(TenantUser user)
     {
+        if (_isAnyDialogOpen) { return; }
         _changeRoleTarget = user;
         _changeRoleNewRole = user.Role;
         _showChangeRoleDialog = true;
+        _pendingShowChangeRole = true;
     }
 
-    private void CloseChangeRoleDialog() => _showChangeRoleDialog = false;
+    private async Task CloseChangeRoleDialogAsync()
+    {
+        if (_changeRoleDialog is not null)
+        {
+            await _changeRoleDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showChangeRoleDialog = false;
+    }
 
     private async Task OnChangeRoleConfirm()
     {
@@ -920,6 +1056,11 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"Role changed for {_changeRoleTarget.UserId}.");
+                if (_changeRoleDialog is not null)
+                {
+                    await _changeRoleDialog.HideAsync().ConfigureAwait(false);
+                }
+
                 _showChangeRoleDialog = false;
                 _changeRoleTarget = null;
                 await ReloadDetailPanel();

@@ -5,23 +5,22 @@
 
 <FluentDialog @ref="_dialog"
               Modal="true"
-              TrapFocus="true"
-              aria-modal="true"
               aria-label="Aggregate state inspector"
-              @ondialogdismiss="HandleDismiss"
+              OnStateChange="OnDialogStateChangeAsync"
               Style="min-width: 500px; max-width: 800px; max-height: 80vh;">
-    <FluentDialogHeader>
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
-            <h3 style="margin: 0; flex: 1;">State Inspector</h3>
-            <FluentButton Appearance="ButtonAppearance.Transparent"
-                          OnClick="HandleClose"
-                          aria-label="Close inspector"
-                          Title="Close">
-                &#x2716;
-            </FluentButton>
-        </FluentStack>
-    </FluentDialogHeader>
     <FluentDialogBody Style="overflow-y: auto;">
+        <TitleTemplate>
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+                <h3 style="margin: 0; flex: 1;">State Inspector</h3>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              OnClick="HandleCloseAsync"
+                              aria-label="Close inspector"
+                              Title="Close">
+                    &#x2716;
+                </FluentButton>
+            </FluentStack>
+        </TitleTemplate>
+        <ChildContent>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
             <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
                 <span style="font-weight: 600;">Mode:</span>
@@ -99,6 +98,7 @@
                             Description="@(_capExceeded ? "Timestamp too far in history \u2014 use sequence number instead." : "The aggregate has no state at the requested position.")" />
             }
         </FluentStack>
+        </ChildContent>
     </FluentDialogBody>
 </FluentDialog>
 
@@ -203,14 +203,25 @@
         }
     }
 
-    private async Task HandleClose()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await OnClose.InvokeAsync().ConfigureAwait(false);
+        if (firstRender && _dialog is not null)
+        {
+            await _dialog.ShowAsync().ConfigureAwait(false);
+        }
     }
 
-    private async Task HandleDismiss(DialogEventArgs args)
+    private async Task HandleCloseAsync()
     {
-        if (args is not null)
+        if (_dialog is not null)
+        {
+            await _dialog.HideAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task OnDialogStateChangeAsync(DialogEventArgs args)
+    {
+        if (args.State == DialogState.Closed)
         {
             await OnClose.InvokeAsync().ConfigureAwait(false);
         }

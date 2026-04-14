@@ -153,56 +153,58 @@
 @* Trigger Compaction Dialog *@
 @if (_showTriggerDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Trigger Compaction" @ondialogdismiss="CloseTriggerDialog"
+    <FluentDialog @ref="_triggerDialog" Modal="true"
+                  aria-label="Trigger Compaction"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Trigger Compaction</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_triggerTenantId"
-                             Label="Tenant ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            @if (HasActiveJobForTenant)
-            {
-                <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
-                    Compaction already in progress for this tenant.
-                </p>
-            }
-            <FluentTextInput @bind-Value="_triggerDomain"
-                             Label="Domain (optional)"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Domain" />
-            @if (!string.IsNullOrWhiteSpace(_triggerTenantId))
-            {
-                <p style="margin: 0 0 12px; font-size: 14px;">
-                    This will compact event streams for tenant <strong>@_triggerTenantId</strong>@if (!string.IsNullOrWhiteSpace(_triggerDomain))
-                    {<text>, domain <strong>@_triggerDomain</strong></text>}.
-                </p>
-            }
-            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Compaction is a resource-intensive operation that runs asynchronously.
-                    It may temporarily increase CPU and I/O usage. Consider running during low-traffic periods.
-                </p>
-            </FluentCard>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Trigger Compaction</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_triggerTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                @if (HasActiveJobForTenant)
+                {
+                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                        Compaction already in progress for this tenant.
+                    </p>
+                }
+                <FluentTextInput @bind-Value="_triggerDomain"
+                                 Label="Domain (optional)"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Domain" />
+                @if (!string.IsNullOrWhiteSpace(_triggerTenantId))
+                {
+                    <p style="margin: 0 0 12px; font-size: 14px;">
+                        This will compact event streams for tenant <strong>@_triggerTenantId</strong>@if (!string.IsNullOrWhiteSpace(_triggerDomain))
+                        {<text>, domain <strong>@_triggerDomain</strong></text>}.
+                    </p>
+                }
+                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Compaction is a resource-intensive operation that runs asynchronously.
+                        It may temporarily increase CPU and I/O usage. Consider running during low-traffic periods.
+                    </p>
+                </FluentCard>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnTriggerConfirm"
+                              Disabled="@(!CanTrigger || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Start Compaction</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnTriggerConfirm"
-                          Disabled="@(!CanTrigger || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Start Compaction</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
@@ -223,6 +225,8 @@
 
     // Trigger dialog state
     private bool _showTriggerDialog;
+    private bool _pendingShowTrigger;
+    private FluentDialog? _triggerDialog;
     private string? _triggerTenantId;
     private string? _triggerDomain;
 
@@ -431,11 +435,26 @@
         _triggerTenantId = string.Empty;
         _triggerDomain = string.Empty;
         _showTriggerDialog = true;
+        _pendingShowTrigger = true;
     }
 
-    private void CloseTriggerDialog()
+    private async Task CloseTriggerDialogAsync()
     {
+        if (_triggerDialog is not null)
+        {
+            await _triggerDialog.HideAsync().ConfigureAwait(false);
+        }
+
         _showTriggerDialog = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowTrigger && _triggerDialog is not null)
+        {
+            await _triggerDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowTrigger = false;
+        }
     }
 
     private async Task OnTriggerConfirm()
@@ -454,6 +473,11 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"Compaction started for {_triggerTenantId}. Refresh to check status.");
+                if (_triggerDialog is not null)
+                {
+                    await _triggerDialog.HideAsync().ConfigureAwait(false);
+                }
+
                 _showTriggerDialog = false;
                 await LoadDataAsync();
             }

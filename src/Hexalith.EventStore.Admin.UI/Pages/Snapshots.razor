@@ -132,168 +132,176 @@
 @* Create Policy Dialog *@
 @if (_showCreateDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Create snapshot policy" @ondialogdismiss="CloseCreateDialog"
+    <FluentDialog @ref="_createDialog" Modal="true"
+                  aria-label="Create snapshot policy"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Create Snapshot Policy</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_createTenantId"
-                             Label="Tenant ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            <FluentTextInput @bind-Value="_createDomain"
-                             Label="Domain" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Domain" />
-            <FluentTextInput @bind-Value="_createAggregateType"
-                             Label="Aggregate Type" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Aggregate Type" />
-            <NumericInput TValue="int" @bind-Value="_createIntervalEvents"
-                          Label="Interval Events" Required="true"
-                          Min="1"
-                          Style="width: 100%; margin-bottom: 12px;"
-                          aria-label="Interval events" />
+            <TitleTemplate>
+                <h3 style="margin: 0;">Create Snapshot Policy</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_createTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                <FluentTextInput @bind-Value="_createDomain"
+                                 Label="Domain" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Domain" />
+                <FluentTextInput @bind-Value="_createAggregateType"
+                                 Label="Aggregate Type" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Aggregate Type" />
+                <NumericInput TValue="int" @bind-Value="_createIntervalEvents"
+                              Label="Interval Events" Required="true"
+                              Min="1"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="Interval events" />
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnCreatePolicyConfirm"
+                              Disabled="@(!IsCreateFormValid || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Create Policy</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnCreatePolicyConfirm"
-                          Disabled="@(!IsCreateFormValid || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Create Policy</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Edit Policy Dialog *@
 @if (_showEditDialog && _editPolicy is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Edit snapshot policy" @ondialogdismiss="CloseEditDialog"
+    <FluentDialog @ref="_editDialog" Modal="true"
+                  aria-label="Edit snapshot policy"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Edit Snapshot Policy</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <div style="margin-bottom: 12px;">
-                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Tenant ID</span>
-                <div class="monospace snapshot-readonly-field">@_editPolicy.TenantId</div>
-            </div>
-            <div style="margin-bottom: 12px;">
-                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Domain</span>
-                <div class="snapshot-readonly-field">@_editPolicy.Domain</div>
-            </div>
-            <div style="margin-bottom: 12px;">
-                <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Aggregate Type</span>
-                <div class="snapshot-readonly-field">@_editPolicy.AggregateType</div>
-            </div>
-            <NumericInput TValue="int" @bind-Value="_editIntervalEvents"
-                          Label="Interval Events" Required="true"
-                          Min="1"
-                          Style="width: 100%; margin-bottom: 12px;"
-                          aria-label="Interval events" />
+            <TitleTemplate>
+                <h3 style="margin: 0;">Edit Snapshot Policy</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Tenant ID</span>
+                    <div class="monospace snapshot-readonly-field">@_editPolicy.TenantId</div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Domain</span>
+                    <div class="snapshot-readonly-field">@_editPolicy.Domain</div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Aggregate Type</span>
+                    <div class="snapshot-readonly-field">@_editPolicy.AggregateType</div>
+                </div>
+                <NumericInput TValue="int" @bind-Value="_editIntervalEvents"
+                              Label="Interval Events" Required="true"
+                              Min="1"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="Interval events" />
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseEditDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnEditPolicyConfirm"
+                              Disabled="@(_editIntervalEvents is null or < 1 || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Update Policy</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnEditPolicyConfirm"
-                          Disabled="@(_editIntervalEvents is null or < 1 || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Update Policy</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Delete Confirmation Dialog *@
 @if (_showDeleteDialog && _deletePolicy is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Delete snapshot policy" @ondialogdismiss="CloseDeleteDialog"
+    <FluentDialog @ref="_deleteDialog" Modal="true"
+                  aria-label="Delete snapshot policy"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Delete Snapshot Policy</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p style="margin: 0;">
-                This will remove the auto-snapshot policy for <strong>@_deletePolicy.AggregateType</strong>
-                in <strong>@_deletePolicy.Domain</strong> (<span class="monospace">@_deletePolicy.TenantId</span>).
-                Existing snapshots will not be deleted.
-            </p>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Delete Snapshot Policy</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p style="margin: 0;">
+                    This will remove the auto-snapshot policy for <strong>@_deletePolicy.AggregateType</strong>
+                    in <strong>@_deletePolicy.Domain</strong> (<span class="monospace">@_deletePolicy.TenantId</span>).
+                    Existing snapshots will not be deleted.
+                </p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDeleteDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnDeletePolicyConfirm"
+                              Disabled="@_isOperating"
+                              Style="background-color: var(--hexalith-status-error); color: white;">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Delete Policy</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDeleteDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnDeletePolicyConfirm"
-                          Disabled="@_isOperating"
-                          Style="background-color: var(--hexalith-status-error); color: white;">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Delete Policy</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Create Snapshot Dialog *@
 @if (_showCreateSnapshotDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Create snapshot" @ondialogdismiss="CloseCreateSnapshotDialog"
+    <FluentDialog @ref="_createSnapshotDialog" Modal="true"
+                  aria-label="Create snapshot"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Create Snapshot</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_snapshotTenantId"
-                             Label="Tenant ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            <FluentTextInput @bind-Value="_snapshotDomain"
-                             Label="Domain" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Domain" />
-            <FluentTextInput @bind-Value="_snapshotAggregateId"
-                             Label="Aggregate ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Aggregate ID" />
+            <TitleTemplate>
+                <h3 style="margin: 0;">Create Snapshot</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_snapshotTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                <FluentTextInput @bind-Value="_snapshotDomain"
+                                 Label="Domain" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Domain" />
+                <FluentTextInput @bind-Value="_snapshotAggregateId"
+                                 Label="Aggregate ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Aggregate ID" />
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateSnapshotDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnCreateSnapshotConfirm"
+                              Disabled="@(!IsSnapshotFormValid || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Create Snapshot</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateSnapshotDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnCreateSnapshotConfirm"
-                          Disabled="@(!IsSnapshotFormValid || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Create Snapshot</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
@@ -310,6 +318,8 @@
 
     // Create dialog state
     private bool _showCreateDialog;
+    private FluentDialog? _createDialog;
+    private bool _pendingShowCreate;
     private string? _createTenantId;
     private string? _createDomain;
     private string? _createAggregateType;
@@ -317,18 +327,26 @@
 
     // Edit dialog state
     private bool _showEditDialog;
+    private FluentDialog? _editDialog;
+    private bool _pendingShowEdit;
     private SnapshotPolicy? _editPolicy;
     private int? _editIntervalEvents;
 
     // Delete dialog state
     private bool _showDeleteDialog;
+    private FluentDialog? _deleteDialog;
+    private bool _pendingShowDelete;
     private SnapshotPolicy? _deletePolicy;
 
     // Create snapshot dialog state
     private bool _showCreateSnapshotDialog;
+    private FluentDialog? _createSnapshotDialog;
+    private bool _pendingShowCreateSnapshot;
     private string? _snapshotTenantId;
     private string? _snapshotDomain;
     private string? _snapshotAggregateId;
+
+    private bool _isAnyDialogOpen => _showCreateDialog || _showEditDialog || _showDeleteDialog || _showCreateSnapshotDialog;
 
     private IReadOnlyList<SnapshotPolicy> FilteredPolicies =>
         _policies?
@@ -357,6 +375,33 @@
         ReadUrlParameters();
         _tenantFilterInput = _tenantFilter;
         await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowCreate && _createDialog is not null)
+        {
+            await _createDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowCreate = false;
+        }
+
+        if (_pendingShowEdit && _editDialog is not null)
+        {
+            await _editDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowEdit = false;
+        }
+
+        if (_pendingShowDelete && _deleteDialog is not null)
+        {
+            await _deleteDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowDelete = false;
+        }
+
+        if (_pendingShowCreateSnapshot && _createSnapshotDialog is not null)
+        {
+            await _createSnapshotDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowCreateSnapshot = false;
+        }
     }
 
     private async Task LoadDataAsync()
@@ -439,6 +484,7 @@
         if (string.Equals(query["create"], "true", StringComparison.OrdinalIgnoreCase))
         {
             _showCreateDialog = true;
+            _pendingShowCreate = true;
             _createTenantId = query["tenant"] ?? string.Empty;
             _createDomain = query["domain"] ?? string.Empty;
             _createAggregateType = query["aggregateType"] ?? string.Empty;
@@ -472,15 +518,18 @@
     // Create policy dialog
     private void OpenCreateDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _createTenantId = string.Empty;
         _createDomain = string.Empty;
         _createAggregateType = string.Empty;
         _createIntervalEvents = 100;
         _showCreateDialog = true;
+        _pendingShowCreate = true;
     }
 
-    private void CloseCreateDialog()
+    private async Task CloseCreateDialogAsync()
     {
+        if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
         _showCreateDialog = false;
     }
 
@@ -497,6 +546,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess("Snapshot policy created.");
+                if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
                 _showCreateDialog = false;
                 await LoadDataAsync();
             }
@@ -536,13 +586,16 @@
             return;
         }
 
+        if (_isAnyDialogOpen) { return; }
         _editPolicy = policy;
         _editIntervalEvents = policy.IntervalEvents;
         _showEditDialog = true;
+        _pendingShowEdit = true;
     }
 
-    private void CloseEditDialog()
+    private async Task CloseEditDialogAsync()
     {
+        if (_editDialog is not null) { await _editDialog.HideAsync().ConfigureAwait(false); }
         _showEditDialog = false;
         _editPolicy = null;
     }
@@ -565,6 +618,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess("Snapshot policy updated.");
+                if (_editDialog is not null) { await _editDialog.HideAsync().ConfigureAwait(false); }
                 _showEditDialog = false;
                 _editPolicy = null;
                 await LoadDataAsync();
@@ -600,12 +654,15 @@
     // Delete policy dialog
     private void OpenDeleteDialog(SnapshotPolicy policy)
     {
+        if (_isAnyDialogOpen) { return; }
         _deletePolicy = policy;
         _showDeleteDialog = true;
+        _pendingShowDelete = true;
     }
 
-    private void CloseDeleteDialog()
+    private async Task CloseDeleteDialogAsync()
     {
+        if (_deleteDialog is not null) { await _deleteDialog.HideAsync().ConfigureAwait(false); }
         _showDeleteDialog = false;
         _deletePolicy = null;
     }
@@ -628,6 +685,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess("Policy deleted.");
+                if (_deleteDialog is not null) { await _deleteDialog.HideAsync().ConfigureAwait(false); }
                 _showDeleteDialog = false;
                 _deletePolicy = null;
                 await LoadDataAsync();
@@ -663,14 +721,17 @@
     // Create snapshot dialog
     private void OpenCreateSnapshotDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _snapshotTenantId = string.Empty;
         _snapshotDomain = string.Empty;
         _snapshotAggregateId = string.Empty;
         _showCreateSnapshotDialog = true;
+        _pendingShowCreateSnapshot = true;
     }
 
-    private void CloseCreateSnapshotDialog()
+    private async Task CloseCreateSnapshotDialogAsync()
     {
+        if (_createSnapshotDialog is not null) { await _createSnapshotDialog.HideAsync().ConfigureAwait(false); }
         _showCreateSnapshotDialog = false;
     }
 
@@ -687,6 +748,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"Snapshot created for {_snapshotAggregateId}.");
+                if (_createSnapshotDialog is not null) { await _createSnapshotDialog.HideAsync().ConfigureAwait(false); }
                 _showCreateSnapshotDialog = false;
             }
             else

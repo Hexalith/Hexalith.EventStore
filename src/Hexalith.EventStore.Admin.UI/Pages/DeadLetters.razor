@@ -240,102 +240,108 @@
 @* Retry Dialog *@
 @if (_showRetryDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Retry dead-letter entries" @ondialogdismiss="CloseDialogs"
+    <FluentDialog @ref="_retryDialog" Modal="true"
+                  aria-label="Retry dead-letter entries"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Retry Dead Letters</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>Retry @_selectedIds.Count dead-letter command(s)? These commands will be resubmitted for processing.</p>
-            @if (_isOperating)
-            {
-                <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
-                </p>
-            }
-        </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnRetryConfirm" Disabled="@_isOperating">
+            <TitleTemplate>
+                <h3 style="margin: 0;">Retry Dead Letters</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>Retry @_selectedIds.Count dead-letter command(s)? These commands will be resubmitted for processing.</p>
                 @if (_isOperating)
                 {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
+                    </p>
                 }
-                else
-                {
-                    <span>Retry</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRetryDialogAsync" Disabled="@_isOperating">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnRetryConfirm" Disabled="@_isOperating">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Retry</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
+        </FluentDialogBody>
     </FluentDialog>
 }
 
 @* Skip Dialog *@
 @if (_showSkipDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Skip dead-letter entries" @ondialogdismiss="CloseDialogs"
+    <FluentDialog @ref="_skipDialog" Modal="true"
+                  aria-label="Skip dead-letter entries"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Skip Dead Letters</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>Skip @_selectedIds.Count dead-letter command(s)? These commands will be <strong>permanently</strong> removed from the dead-letter queue and will NOT be retried.</p>
-            @if (_isOperating)
-            {
-                <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
-                </p>
-            }
-        </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnSkipConfirm" Disabled="@_isOperating">
+            <TitleTemplate>
+                <h3 style="margin: 0;">Skip Dead Letters</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>Skip @_selectedIds.Count dead-letter command(s)? These commands will be <strong>permanently</strong> removed from the dead-letter queue and will NOT be retried.</p>
                 @if (_isOperating)
                 {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
+                    </p>
                 }
-                else
-                {
-                    <span>Skip</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseSkipDialogAsync" Disabled="@_isOperating">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnSkipConfirm" Disabled="@_isOperating">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Skip</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
+        </FluentDialogBody>
     </FluentDialog>
 }
 
 @* Archive Dialog *@
 @if (_showArchiveDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Archive dead-letter entries" @ondialogdismiss="CloseDialogs"
+    <FluentDialog @ref="_archiveDialog" Modal="true"
+                  aria-label="Archive dead-letter entries"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Archive Dead Letters</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>Archive @_selectedIds.Count dead-letter command(s)? These commands will be moved to the archive. They can be reviewed later but will no longer appear in the active queue.</p>
-            @if (_isOperating)
-            {
-                <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
-                </p>
-            }
-        </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseDialogs" Disabled="@_isOperating">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnArchiveConfirm" Disabled="@_isOperating">
+            <TitleTemplate>
+                <h3 style="margin: 0;">Archive Dead Letters</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>Archive @_selectedIds.Count dead-letter command(s)? These commands will be moved to the archive. They can be reviewed later but will no longer appear in the active queue.</p>
                 @if (_isOperating)
                 {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
+                    </p>
                 }
-                else
-                {
-                    <span>Archive</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseArchiveDialogAsync" Disabled="@_isOperating">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnArchiveConfirm" Disabled="@_isOperating">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Archive</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
+        </FluentDialogBody>
     </FluentDialog>
 }
 
@@ -365,10 +371,18 @@
 
     // Dialog state
     private bool _showRetryDialog;
+    private FluentDialog? _retryDialog;
+    private bool _pendingShowRetry;
     private bool _showSkipDialog;
+    private FluentDialog? _skipDialog;
+    private bool _pendingShowSkip;
     private bool _showArchiveDialog;
+    private FluentDialog? _archiveDialog;
+    private bool _pendingShowArchive;
     private int _bulkProgressCurrent;
     private int _bulkProgressTotal;
+
+    private bool _isAnyDialogOpen => _showRetryDialog || _showSkipDialog || _showArchiveDialog;
 
     // Computed properties
     private int TenantsAffected => _allEntries.Select(e => e.TenantId).Distinct().Count();
@@ -410,6 +424,27 @@
         _tenantFilterInput = _tenantFilter;
         _searchFilterInput = _searchFilter;
         await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowRetry && _retryDialog is not null)
+        {
+            await _retryDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowRetry = false;
+        }
+
+        if (_pendingShowSkip && _skipDialog is not null)
+        {
+            await _skipDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowSkip = false;
+        }
+
+        if (_pendingShowArchive && _archiveDialog is not null)
+        {
+            await _archiveDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowArchive = false;
+        }
     }
 
     private async Task LoadDataAsync()
@@ -730,20 +765,42 @@
     // Bulk action dialogs
     private void OpenBulkDialog(string action)
     {
-        _showRetryDialog = string.Equals(action, "retry", StringComparison.OrdinalIgnoreCase);
-        _showSkipDialog = string.Equals(action, "skip", StringComparison.OrdinalIgnoreCase);
-        _showArchiveDialog = string.Equals(action, "archive", StringComparison.OrdinalIgnoreCase);
+        if (_isAnyDialogOpen) { return; }
+        if (string.Equals(action, "retry", StringComparison.OrdinalIgnoreCase))
+        {
+            _showRetryDialog = true;
+            _pendingShowRetry = true;
+        }
+        else if (string.Equals(action, "skip", StringComparison.OrdinalIgnoreCase))
+        {
+            _showSkipDialog = true;
+            _pendingShowSkip = true;
+        }
+        else if (string.Equals(action, "archive", StringComparison.OrdinalIgnoreCase))
+        {
+            _showArchiveDialog = true;
+            _pendingShowArchive = true;
+        }
     }
 
-    private void CloseDialogs()
+    private async Task CloseRetryDialogAsync()
     {
-        if (_isOperating)
-        {
-            return;
-        }
-
+        if (_isOperating) { return; }
+        if (_retryDialog is not null) { await _retryDialog.HideAsync().ConfigureAwait(false); }
         _showRetryDialog = false;
+    }
+
+    private async Task CloseSkipDialogAsync()
+    {
+        if (_isOperating) { return; }
+        if (_skipDialog is not null) { await _skipDialog.HideAsync().ConfigureAwait(false); }
         _showSkipDialog = false;
+    }
+
+    private async Task CloseArchiveDialogAsync()
+    {
+        if (_isOperating) { return; }
+        if (_archiveDialog is not null) { await _archiveDialog.HideAsync().ConfigureAwait(false); }
         _showArchiveDialog = false;
     }
 
@@ -822,7 +879,7 @@
                 // Full success
                 ToastService.ShowSuccess($"{pastTense} {totalCount} dead-letter command(s).");
                 _selectedIds = [];
-                CloseAllDialogs();
+                await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
             }
             else if (successCount > 0)
@@ -830,7 +887,7 @@
                 // Partial failure
                 ToastService.ShowWarning($"{pastTense} {successCount} commands. {failCount} failed: {lastError}");
                 _selectedIds = [];
-                CloseAllDialogs();
+                await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
             }
             else
@@ -846,8 +903,11 @@
         }
     }
 
-    private void CloseAllDialogs()
+    private async Task CloseAllDialogsAsync()
     {
+        if (_retryDialog is not null && _showRetryDialog) { await _retryDialog.HideAsync().ConfigureAwait(false); }
+        if (_skipDialog is not null && _showSkipDialog) { await _skipDialog.HideAsync().ConfigureAwait(false); }
+        if (_archiveDialog is not null && _showArchiveDialog) { await _archiveDialog.HideAsync().ConfigureAwait(false); }
         _showRetryDialog = false;
         _showSkipDialog = false;
         _showArchiveDialog = false;

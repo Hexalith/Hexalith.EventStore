@@ -203,182 +203,89 @@
 @* Create Backup Dialog *@
 @if (_showCreateDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Create Backup" @ondialogdismiss="CloseCreateDialog"
+    <FluentDialog @ref="_createDialog" Modal="true"
+                  aria-label="Create Backup"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Create Backup</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_createTenantId"
-                             Label="Tenant ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            <FluentTextInput @bind-Value="_createDescription"
-                             Label="Description (optional)"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Description" />
-            <FluentCheckbox @bind-Value="_createIncludeSnapshots"
-                            Label="Include Snapshots"
-                            Style="margin-bottom: 12px;" />
-            @if (HasActiveBackupForTenant)
-            {
-                <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
-                    Backup already in progress for this tenant.
-                </p>
-            }
-            @if (HasActiveRestoreForTenant)
-            {
-                <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
-                    Restore in progress for this tenant. Wait for completion before creating a new backup.
-                </p>
-            }
-            @if (!string.IsNullOrWhiteSpace(_createTenantId))
-            {
-                <p style="margin: 0 0 12px; font-size: 14px;">
-                    This will back up all event streams for tenant <strong>@_createTenantId</strong>.
-                </p>
-            }
-            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Backup is a resource-intensive operation that runs asynchronously.
-                    It may temporarily increase I/O usage and state store read load.
-                </p>
-            </FluentCard>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Create Backup</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_createTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                <FluentTextInput @bind-Value="_createDescription"
+                                 Label="Description (optional)"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Description" />
+                <FluentCheckbox @bind-Value="_createIncludeSnapshots"
+                                Label="Include Snapshots"
+                                Style="margin-bottom: 12px;" />
+                @if (HasActiveBackupForTenant)
+                {
+                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                        Backup already in progress for this tenant.
+                    </p>
+                }
+                @if (HasActiveRestoreForTenant)
+                {
+                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                        Restore in progress for this tenant. Wait for completion before creating a new backup.
+                    </p>
+                }
+                @if (!string.IsNullOrWhiteSpace(_createTenantId))
+                {
+                    <p style="margin: 0 0 12px; font-size: 14px;">
+                        This will back up all event streams for tenant <strong>@_createTenantId</strong>.
+                    </p>
+                }
+                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Backup is a resource-intensive operation that runs asynchronously.
+                        It may temporarily increase I/O usage and state store read load.
+                    </p>
+                </FluentCard>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnCreateBackupConfirm"
+                              Disabled="@(!CanCreateBackup || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Start Backup</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnCreateBackupConfirm"
-                          Disabled="@(!CanCreateBackup || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Start Backup</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Validate Backup Confirmation Dialog *@
 @if (_showValidateDialog && _validateTarget is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Validate Backup" @ondialogdismiss="CloseValidateDialog"
+    <FluentDialog @ref="_validateDialog" Modal="true"
+                  aria-label="Validate Backup"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Validate Backup @TruncateId(_validateTarget.BackupId)?</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p>
-                This will verify event sequence integrity, snapshot consistency, and metadata completeness.
-                Validation runs asynchronously.
-            </p>
-        </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseValidateDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnValidateConfirm"
-                          Disabled="@_isOperating">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Validate</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
-    </FluentDialog>
-}
-
-@* Restore Dialog (Multi-Step) *@
-@if (_showRestoreDialog && _restoreTarget is not null)
-{
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Restore from Backup" @ondialogdismiss="CloseRestoreDialog"
-                  Style="min-width: 450px; max-width: 550px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Restore from Backup @TruncateId(_restoreTarget.BackupId)</h3>
-        </FluentDialogHeader>
-        <FluentDialogBody>
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;" role="group" aria-label="Restore steps">
-                <FluentBadge Appearance="@(_restoreStep == 1 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
-                             aria-current="@(_restoreStep == 1 ? "step" : null)"
-                             Content="Step 1: Confirm" />
-                <FluentBadge Appearance="@(_restoreStep == 2 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
-                             aria-current="@(_restoreStep == 2 ? "step" : null)"
-                             Content="Step 2: Options" />
-            </div>
-            @if (_restoreStep == 1)
-            {
-                <p><strong>Backup Details:</strong></p>
-                <ul style="font-size: 14px; margin: 0 0 12px;">
-                    <li>Tenant: <span class="monospace">@_restoreTarget.TenantId</span></li>
-                    <li>Created: @_restoreTarget.CreatedAtUtc.ToString("u")</li>
-                    <li>Events: @(_restoreTarget.EventCount?.ToString("N0") ?? "N/A")</li>
-                    <li>Size: @TimeFormatHelper.FormatBytes(_restoreTarget.SizeBytes)</li>
-                </ul>
-                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 12px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
-                        Restoring will re-inject events from this backup into a parallel restore stream.
-                        Original event streams are never overwritten.
-                    </p>
-                </FluentCard>
-                @if (HasActiveBackupForRestoreTenant)
-                {
-                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
-                        Backup in progress for this tenant. Wait for completion before restoring.
-                    </p>
-                }
-                @if (HasActiveRestoreForRestoreTenant)
-                {
-                    <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
-                        Restore already in progress for this tenant. Wait for completion before starting another restore.
-                    </p>
-                }
-                <FluentCheckbox @bind-Value="_restoreAcknowledged"
-                                Label="I understand this will create restored state in the event store"
-                                Style="margin-bottom: 8px;" />
-            }
-            else if (_restoreStep == 2)
-            {
-                <FluentTextInput @bind-Value="_restorePointInTime"
-                                 Label="Point-in-time (UTC, optional)"
-                                 Placeholder="e.g. 2026-03-20T14:30:00Z"
-                                 Style="width: 100%; margin-bottom: 4px;"
-                                 aria-label="Point-in-time restore timestamp" />
-                @if (_restorePointInTimeError is not null)
-                {
-                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">
-                        @_restorePointInTimeError
-                    </p>
-                }
-                <FluentCheckbox @bind-Value="_restoreDryRun"
-                                Label="Dry Run (validate without applying)"
-                                Style="margin-bottom: 12px;" />
-            }
-        </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRestoreDialog">Cancel</FluentButton>
-            @if (_restoreStep == 1)
-            {
+            <TitleTemplate>
+                <h3 style="margin: 0;">Validate Backup @TruncateId(_validateTarget.BackupId)?</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p>
+                    This will verify event sequence integrity, snapshot consistency, and metadata completeness.
+                    Validation runs asynchronously.
+                </p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseValidateDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
-                              OnClick="GoToRestoreStep2"
-                              Disabled="@(!_restoreAcknowledged || HasActiveBackupForRestoreTenant || HasActiveRestoreForRestoreTenant)">
-                    Next
-                </FluentButton>
-            }
-            else
-            {
-                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToRestoreStep1">Back</FluentButton>
-                <FluentButton Appearance="ButtonAppearance.Primary"
-                              OnClick="OnRestoreConfirm"
+                              OnClick="OnValidateConfirm"
                               Disabled="@_isOperating">
                     @if (_isOperating)
                     {
@@ -386,117 +293,220 @@
                     }
                     else
                     {
-                        <span>Start Restore</span>
+                        <span>Validate</span>
                     }
                 </FluentButton>
-            }
-        </FluentDialogFooter>
+            </ActionTemplate>
+        </FluentDialogBody>
+    </FluentDialog>
+}
+
+@* Restore Dialog (Multi-Step) *@
+@if (_showRestoreDialog && _restoreTarget is not null)
+{
+    <FluentDialog @ref="_restoreDialog" Modal="true"
+                  aria-label="Restore from Backup"
+                  Style="min-width: 450px; max-width: 550px;">
+        <FluentDialogBody>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Restore from Backup @TruncateId(_restoreTarget.BackupId)</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;" role="group" aria-label="Restore steps">
+                    <FluentBadge Appearance="@(_restoreStep == 1 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
+                                 aria-current="@(_restoreStep == 1 ? "step" : null)"
+                                 Content="Step 1: Confirm" />
+                    <FluentBadge Appearance="@(_restoreStep == 2 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
+                                 aria-current="@(_restoreStep == 2 ? "step" : null)"
+                                 Content="Step 2: Options" />
+                </div>
+                @if (_restoreStep == 1)
+                {
+                    <p><strong>Backup Details:</strong></p>
+                    <ul style="font-size: 14px; margin: 0 0 12px;">
+                        <li>Tenant: <span class="monospace">@_restoreTarget.TenantId</span></li>
+                        <li>Created: @_restoreTarget.CreatedAtUtc.ToString("u")</li>
+                        <li>Events: @(_restoreTarget.EventCount?.ToString("N0") ?? "N/A")</li>
+                        <li>Size: @TimeFormatHelper.FormatBytes(_restoreTarget.SizeBytes)</li>
+                    </ul>
+                    <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                            Restoring will re-inject events from this backup into a parallel restore stream.
+                            Original event streams are never overwritten.
+                        </p>
+                    </FluentCard>
+                    @if (HasActiveBackupForRestoreTenant)
+                    {
+                        <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                            Backup in progress for this tenant. Wait for completion before restoring.
+                        </p>
+                    }
+                    @if (HasActiveRestoreForRestoreTenant)
+                    {
+                        <p style="color: var(--hexalith-status-warning); font-size: 13px; margin: 0 0 12px;">
+                            Restore already in progress for this tenant. Wait for completion before starting another restore.
+                        </p>
+                    }
+                    <FluentCheckbox @bind-Value="_restoreAcknowledged"
+                                    Label="I understand this will create restored state in the event store"
+                                    Style="margin-bottom: 8px;" />
+                }
+                else if (_restoreStep == 2)
+                {
+                    <FluentTextInput @bind-Value="_restorePointInTime"
+                                     Label="Point-in-time (UTC, optional)"
+                                     Placeholder="e.g. 2026-03-20T14:30:00Z"
+                                     Style="width: 100%; margin-bottom: 4px;"
+                                     aria-label="Point-in-time restore timestamp" />
+                    @if (_restorePointInTimeError is not null)
+                    {
+                        <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">
+                            @_restorePointInTimeError
+                        </p>
+                    }
+                    <FluentCheckbox @bind-Value="_restoreDryRun"
+                                    Label="Dry Run (validate without applying)"
+                                    Style="margin-bottom: 12px;" />
+                }
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRestoreDialogAsync">Cancel</FluentButton>
+                @if (_restoreStep == 1)
+                {
+                    <FluentButton Appearance="ButtonAppearance.Primary"
+                                  OnClick="GoToRestoreStep2"
+                                  Disabled="@(!_restoreAcknowledged || HasActiveBackupForRestoreTenant || HasActiveRestoreForRestoreTenant)">
+                        Next
+                    </FluentButton>
+                }
+                else
+                {
+                    <FluentButton Appearance="ButtonAppearance.Outline" OnClick="GoToRestoreStep1">Back</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Primary"
+                                  OnClick="OnRestoreConfirm"
+                                  Disabled="@_isOperating">
+                        @if (_isOperating)
+                        {
+                            <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                        }
+                        else
+                        {
+                            <span>Start Restore</span>
+                        }
+                    </FluentButton>
+                }
+            </ActionTemplate>
+        </FluentDialogBody>
     </FluentDialog>
 }
 
 @* Export Stream Dialog *@
 @if (_showExportDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Export Stream" @ondialogdismiss="CloseExportDialog"
+    <FluentDialog @ref="_exportDialog" Modal="true"
+                  aria-label="Export Stream"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Export Stream</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextInput @bind-Value="_exportTenantId"
-                             Label="Tenant ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Tenant ID" />
-            <FluentTextInput @bind-Value="_exportDomain"
-                             Label="Domain" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Domain" />
-            <FluentTextInput @bind-Value="_exportAggregateId"
-                             Label="Aggregate ID" Required="true"
-                             Style="width: 100%; margin-bottom: 12px;"
-                             aria-label="Aggregate ID" />
-            <FluentSelect TOption="string" TValue="string" @bind-Value="_exportFormat"
-                          Label="Format"
-                          Style="width: 100%; margin-bottom: 12px;"
-                          aria-label="Export format">
-                <FluentOption TOption="string" Value="@("JSON")">JSON</FluentOption>
-                <FluentOption TOption="string" Value="@("CloudEvents")">CloudEvents</FluentOption>
-            </FluentSelect>
-            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Export is limited to the most recent 50,000 events per stream.
-                    If the stream exceeds this limit, older events will be truncated.
-                </p>
-            </FluentCard>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Export Stream</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentTextInput @bind-Value="_exportTenantId"
+                                 Label="Tenant ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Tenant ID" />
+                <FluentTextInput @bind-Value="_exportDomain"
+                                 Label="Domain" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Domain" />
+                <FluentTextInput @bind-Value="_exportAggregateId"
+                                 Label="Aggregate ID" Required="true"
+                                 Style="width: 100%; margin-bottom: 12px;"
+                                 aria-label="Aggregate ID" />
+                <FluentSelect TOption="string" TValue="string" @bind-Value="_exportFormat"
+                              Label="Format"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="Export format">
+                    <FluentOption TOption="string" Value="@("JSON")">JSON</FluentOption>
+                    <FluentOption TOption="string" Value="@("CloudEvents")">CloudEvents</FluentOption>
+                </FluentSelect>
+                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Export is limited to the most recent 50,000 events per stream.
+                        If the stream exceeds this limit, older events will be truncated.
+                    </p>
+                </FluentCard>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseExportDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnExportConfirm"
+                              Disabled="@(!CanExport || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Export</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseExportDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnExportConfirm"
-                          Disabled="@(!CanExport || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Export</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Import Stream Dialog *@
 @if (_showImportDialog)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Import Stream" @ondialogdismiss="CloseImportDialog"
+    <FluentDialog @ref="_importDialog" Modal="true"
+                  aria-label="Import Stream"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Import Stream</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
-                <InputFile OnChange="OnImportFileSelected"
-                           accept=".json"
-                           style="display: block; width: 100%;" />
-                <p style="font-size: 13px; color: var(--neutral-foreground-hint); margin: 8px 0 0;">
-                    Select a previously exported JSON file (max 10 MB).
-                </p>
-            </FluentCard>
-            @if (_importPreview is not null)
-            {
-                <p style="font-size: 14px; margin: 0 0 8px;"><strong>Preview:</strong></p>
-                <pre style="font-size: 13px; margin: 0 0 12px; background: var(--neutral-layer-card-container); padding: 8px; border-radius: 4px;">@_importPreview</pre>
-            }
-            @if (_importError is not null)
-            {
-                <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">@_importError</p>
-            }
-            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
-                    Importing will append events to the target stream using new sequence numbers.
-                    Existing events are never overwritten. Duplicate events (matching EventId) are automatically skipped.
-                </p>
-            </FluentCard>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Import Stream</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
+                    <InputFile OnChange="OnImportFileSelected"
+                               accept=".json"
+                               style="display: block; width: 100%;" />
+                    <p style="font-size: 13px; color: var(--neutral-foreground-hint); margin: 8px 0 0;">
+                        Select a previously exported JSON file (max 10 MB).
+                    </p>
+                </FluentCard>
+                @if (_importPreview is not null)
+                {
+                    <p style="font-size: 14px; margin: 0 0 8px;"><strong>Preview:</strong></p>
+                    <pre style="font-size: 13px; margin: 0 0 12px; background: var(--neutral-layer-card-container); padding: 8px; border-radius: 4px;">@_importPreview</pre>
+                }
+                @if (_importError is not null)
+                {
+                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">@_importError</p>
+                }
+                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                        Importing will append events to the target stream using new sequence numbers.
+                        Existing events are never overwritten. Duplicate events (matching EventId) are automatically skipped.
+                    </p>
+                </FluentCard>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseImportDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="OnImportConfirm"
+                              Disabled="@(!CanImport || _isOperating)">
+                    @if (_isOperating)
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Import</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseImportDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="OnImportConfirm"
-                          Disabled="@(!CanImport || _isOperating)">
-                @if (_isOperating)
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Import</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
@@ -517,16 +527,22 @@
 
     // Create backup dialog state
     private bool _showCreateDialog;
+    private FluentDialog? _createDialog;
+    private bool _pendingShowCreate;
     private string? _createTenantId;
     private string? _createDescription;
     private bool _createIncludeSnapshots = true;
 
     // Validate dialog state
     private bool _showValidateDialog;
+    private FluentDialog? _validateDialog;
+    private bool _pendingShowValidate;
     private BackupJob? _validateTarget;
 
     // Restore dialog state
     private bool _showRestoreDialog;
+    private FluentDialog? _restoreDialog;
+    private bool _pendingShowRestore;
     private BackupJob? _restoreTarget;
     private int _restoreStep = 1;
     private bool _restoreAcknowledged;
@@ -536,6 +552,8 @@
 
     // Export dialog state
     private bool _showExportDialog;
+    private FluentDialog? _exportDialog;
+    private bool _pendingShowExport;
     private string? _exportTenantId;
     private string? _exportDomain;
     private string? _exportAggregateId;
@@ -543,10 +561,14 @@
 
     // Import dialog state
     private bool _showImportDialog;
+    private FluentDialog? _importDialog;
+    private bool _pendingShowImport;
     private string? _importContent;
     private string? _importTenantId;
     private string? _importPreview;
     private string? _importError;
+
+    private bool _isAnyDialogOpen => _showCreateDialog || _showValidateDialog || _showRestoreDialog || _showExportDialog || _showImportDialog;
 
     private void UpdateFilteredJobs()
     {
@@ -614,6 +636,39 @@
         ReadUrlParameters();
         _tenantFilterInput = _tenantFilter;
         await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowCreate && _createDialog is not null)
+        {
+            await _createDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowCreate = false;
+        }
+
+        if (_pendingShowValidate && _validateDialog is not null)
+        {
+            await _validateDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowValidate = false;
+        }
+
+        if (_pendingShowRestore && _restoreDialog is not null)
+        {
+            await _restoreDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowRestore = false;
+        }
+
+        if (_pendingShowExport && _exportDialog is not null)
+        {
+            await _exportDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowExport = false;
+        }
+
+        if (_pendingShowImport && _importDialog is not null)
+        {
+            await _importDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowImport = false;
+        }
     }
 
     private async Task LoadDataAsync()
@@ -803,13 +858,19 @@
     // ---- Create Backup Dialog ----
     private void OpenCreateBackupDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _createTenantId = string.Empty;
         _createDescription = string.Empty;
         _createIncludeSnapshots = true;
         _showCreateDialog = true;
+        _pendingShowCreate = true;
     }
 
-    private void CloseCreateDialog() => _showCreateDialog = false;
+    private async Task CloseCreateDialogAsync()
+    {
+        if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
+        _showCreateDialog = false;
+    }
 
     private async Task OnCreateBackupConfirm()
     {
@@ -829,6 +890,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"Backup started for {_createTenantId}. Refresh to check status.");
+                if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
                 _showCreateDialog = false;
                 await LoadDataAsync();
             }
@@ -867,11 +929,17 @@
     // ---- Validate Dialog ----
     private void OpenValidateDialog(BackupJob job)
     {
+        if (_isAnyDialogOpen) { return; }
         _validateTarget = job;
         _showValidateDialog = true;
+        _pendingShowValidate = true;
     }
 
-    private void CloseValidateDialog() => _showValidateDialog = false;
+    private async Task CloseValidateDialogAsync()
+    {
+        if (_validateDialog is not null) { await _validateDialog.HideAsync().ConfigureAwait(false); }
+        _showValidateDialog = false;
+    }
 
     private async Task OnValidateConfirm()
     {
@@ -891,6 +959,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"Validation started for backup {TruncateId(_validateTarget.BackupId)}.");
+                if (_validateDialog is not null) { await _validateDialog.HideAsync().ConfigureAwait(false); }
                 _showValidateDialog = false;
                 await LoadDataAsync();
             }
@@ -917,6 +986,7 @@
     // ---- Restore Dialog ----
     private void OpenRestoreDialog(BackupJob job)
     {
+        if (_isAnyDialogOpen) { return; }
         _restoreTarget = job;
         _restoreStep = 1;
         _restoreAcknowledged = false;
@@ -924,9 +994,14 @@
         _restorePointInTimeError = null;
         _restoreDryRun = false;
         _showRestoreDialog = true;
+        _pendingShowRestore = true;
     }
 
-    private void CloseRestoreDialog() => _showRestoreDialog = false;
+    private async Task CloseRestoreDialogAsync()
+    {
+        if (_restoreDialog is not null) { await _restoreDialog.HideAsync().ConfigureAwait(false); }
+        _showRestoreDialog = false;
+    }
     private void GoToRestoreStep2() => _restoreStep = 2;
     private void GoToRestoreStep1() => _restoreStep = 1;
 
@@ -977,6 +1052,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess($"Restore initiated from backup {TruncateId(_restoreTarget.BackupId)}.");
+                if (_restoreDialog is not null) { await _restoreDialog.HideAsync().ConfigureAwait(false); }
                 _showRestoreDialog = false;
                 await LoadDataAsync();
             }
@@ -1003,14 +1079,20 @@
     // ---- Export Dialog ----
     private void OpenExportDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _exportTenantId = string.Empty;
         _exportDomain = string.Empty;
         _exportAggregateId = string.Empty;
         _exportFormat = "JSON";
         _showExportDialog = true;
+        _pendingShowExport = true;
     }
 
-    private void CloseExportDialog() => _showExportDialog = false;
+    private async Task CloseExportDialogAsync()
+    {
+        if (_exportDialog is not null) { await _exportDialog.HideAsync().ConfigureAwait(false); }
+        _showExportDialog = false;
+    }
 
     private async Task OnExportConfirm()
     {
@@ -1033,6 +1115,7 @@
             {
                 await JSRuntime.InvokeVoidAsync("blazorDownloadFile", result.FileName, result.Content);
                 ToastService.ShowSuccess($"Exported {result.EventCount} events.");
+                if (_exportDialog is not null) { await _exportDialog.HideAsync().ConfigureAwait(false); }
                 _showExportDialog = false;
             }
             else
@@ -1058,14 +1141,20 @@
     // ---- Import Dialog ----
     private void OpenImportDialog()
     {
+        if (_isAnyDialogOpen) { return; }
         _importContent = null;
         _importTenantId = null;
         _importPreview = null;
         _importError = null;
         _showImportDialog = true;
+        _pendingShowImport = true;
     }
 
-    private void CloseImportDialog() => _showImportDialog = false;
+    private async Task CloseImportDialogAsync()
+    {
+        if (_importDialog is not null) { await _importDialog.HideAsync().ConfigureAwait(false); }
+        _showImportDialog = false;
+    }
 
     private async Task OnImportFileSelected(InputFileChangeEventArgs e)
     {
@@ -1132,6 +1221,7 @@
             if (result?.Success == true)
             {
                 ToastService.ShowSuccess(result.Message ?? "Import completed successfully.");
+                if (_importDialog is not null) { await _importDialog.HideAsync().ConfigureAwait(false); }
                 _showImportDialog = false;
                 await LoadDataAsync();
             }
