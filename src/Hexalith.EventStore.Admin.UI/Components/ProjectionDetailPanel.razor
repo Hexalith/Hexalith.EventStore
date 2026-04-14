@@ -76,7 +76,7 @@
                                   aria-label="@($"Pause projection {_detail.Name}")">
                         @if (_isOperating && _operatingAction == "pause")
                         {
-                            <FluentProgressRing Style="width: 16px; height: 16px;" />
+                            <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                         }
                         else
                         {
@@ -92,7 +92,7 @@
                                   aria-label="@($"Resume projection {_detail.Name}")">
                         @if (_isOperating && _operatingAction == "resume")
                         {
-                            <FluentProgressRing Style="width: 16px; height: 16px;" />
+                            <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                         }
                         else
                         {
@@ -192,11 +192,11 @@
         </FluentDialogHeader>
         <FluentDialogBody>
             <p style="margin: 0 0 12px 0;">This will rebuild projection '@_detail.Name' from the specified position. This is an async operation.</p>
-            <FluentNumberField @bind-Value="_resetFromPosition"
-                               Label="From Position (leave empty to reset from beginning)"
-                               Min="0"
-                               Style="width: 100%; margin-bottom: 12px;"
-                               aria-label="Reset from position" />
+            <NumericInput TValue="long" @bind-Value="_resetFromPosition"
+                          Label="From Position (leave empty to reset from beginning)"
+                          Min="0"
+                          Style="width: 100%; margin-bottom: 12px;"
+                          aria-label="Reset from position" />
             <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-warning);">
                 &#x26A0; Warning: Resetting from the beginning will rebuild the entire projection.
             </p>
@@ -209,7 +209,7 @@
                           Style="background-color: var(--hexalith-status-error); color: white;">
                 @if (_isOperating && _operatingAction == "reset")
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -231,16 +231,16 @@
         </FluentDialogHeader>
         <FluentDialogBody>
             <p style="margin: 0 0 12px 0;">This will replay events between the specified positions for projection '@_detail.Name'.</p>
-            <FluentNumberField @bind-Value="_replayFromPosition"
-                               Label="From Position (required)"
-                               Min="0"
-                               Style="width: 100%; margin-bottom: 8px;"
-                               aria-label="Replay from position" />
-            <FluentNumberField @bind-Value="_replayToPosition"
-                               Label="To Position (required)"
-                               Min="0"
-                               Style="width: 100%; margin-bottom: 8px;"
-                               aria-label="Replay to position" />
+            <NumericInput TValue="long" @bind-Value="_replayFromPosition"
+                          Label="From Position (required)"
+                          Min="0"
+                          Style="width: 100%; margin-bottom: 8px;"
+                          aria-label="Replay from position" />
+            <NumericInput TValue="long" @bind-Value="_replayToPosition"
+                          Label="To Position (required)"
+                          Min="0"
+                          Style="width: 100%; margin-bottom: 8px;"
+                          aria-label="Replay to position" />
             @if (!string.IsNullOrEmpty(_replayValidationError))
             {
                 <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-error);">@_replayValidationError</p>
@@ -254,7 +254,7 @@
                           aria-label="Confirm replay">
                 @if (_isOperating && _operatingAction == "replay")
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {

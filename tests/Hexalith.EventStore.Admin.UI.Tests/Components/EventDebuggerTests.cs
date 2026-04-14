@@ -338,7 +338,7 @@ public class EventDebuggerTests : AdminUITestContext
         await cut.InvokeAsync(() => watchButton.Click());
 
         // Type "Count" in watch field input and add
-        AngleSharp.Dom.IElement searchInput = cut.Find("fluent-search[aria-label='Watch field path input']");
+        AngleSharp.Dom.IElement searchInput = cut.Find("fluent-text-input[aria-label='Watch field path input']");
         await cut.InvokeAsync(() => searchInput.Change("Count"));
         AngleSharp.Dom.IElement addButton = cut.FindAll("fluent-button")
             .First(b => b.GetAttribute("aria-label") == "Add watch fields");

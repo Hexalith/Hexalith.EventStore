@@ -41,7 +41,7 @@
 
 @* Filter bar *@
 <div class="storage-filter-bar">
-    <FluentSelect TOption="string" @bind-Value="_statusFilterInput"
+    <FluentSelect TOption="string" TValue="string" @bind-Value="_statusFilterInput"
                   @bind-Value:after="OnStatusFilterChanged"
                   aria-label="Filter by status"
                   style="min-width: 150px;">
@@ -49,7 +49,7 @@
         <FluentOption TOption="string" Value="@("Active")">Active</FluentOption>
         <FluentOption TOption="string" Value="@("Disabled")">Disabled</FluentOption>
     </FluentSelect>
-    <FluentTextField @bind-Value="_searchFilterInput"
+    <FluentTextInput @bind-Value="_searchFilterInput"
                      @bind-Value:after="OnSearchFilterChanged"
                      Placeholder="Filter by tenant ID or name..."
                      aria-label="Search tenants"
@@ -146,7 +146,7 @@
             <div class="tenant-detail-panel" aria-label="Tenant detail">
                 @if (_isLoadingDetail)
                 {
-                    <FluentProgressRing Style="width: 32px; height: 32px;" />
+                    <FluentSpinner Size="SpinnerSize.Medium" />
                 }
                 else if (_expandedDetail is not null)
                 {
@@ -228,7 +228,7 @@
             <h3 style="margin: 0;">Create Tenant</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_createTenantId"
+            <FluentTextInput @bind-Value="_createTenantId"
                              Label="Tenant ID" Required="true"
                              Placeholder="e.g. acme-corp"
                              Style="width: 100%; margin-bottom: 12px;"
@@ -239,11 +239,11 @@
                     Tenant ID must be lowercase alphanumeric with hyphens only.
                 </p>
             }
-            <FluentTextField @bind-Value="_createName"
+            <FluentTextInput @bind-Value="_createName"
                              Label="Name" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Name" />
-            <FluentTextField @bind-Value="_createDescription"
+            <FluentTextInput @bind-Value="_createDescription"
                              Label="Description"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Description" />
@@ -255,7 +255,7 @@
                           Disabled="@(!IsCreateFormValid() || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -283,7 +283,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnDisableConfirm"
                           Disabled="@_isOperating">
-                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
                 else { <span>Disable</span> }
             </FluentButton>
         </FluentDialogFooter>
@@ -307,7 +307,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnEnableConfirm"
                           Disabled="@_isOperating">
-                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
                 else { <span>Enable</span> }
             </FluentButton>
         </FluentDialogFooter>
@@ -324,11 +324,11 @@
             <h3 style="margin: 0;">Add User to @_expandedTenantId</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_addUserId"
+            <FluentTextInput @bind-Value="_addUserId"
                              Label="User ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="User ID" />
-            <FluentSelect TOption="string" @bind-Value="_addUserRole"
+            <FluentSelect TOption="string" TValue="string" @bind-Value="_addUserRole"
                           Label="Role"
                           Style="width: 100%; margin-bottom: 12px;"
                           aria-label="User role">
@@ -342,7 +342,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnAddUserConfirm"
                           Disabled="@(string.IsNullOrWhiteSpace(_addUserId) || _isOperating)">
-                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
                 else { <span>Add User</span> }
             </FluentButton>
         </FluentDialogFooter>
@@ -366,7 +366,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnRemoveUserConfirm"
                           Disabled="@_isOperating">
-                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
                 else { <span>Remove</span> }
             </FluentButton>
         </FluentDialogFooter>
@@ -383,7 +383,7 @@
             <h3 style="margin: 0;">Change Role for @_changeRoleTarget.UserId</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentSelect TOption="string" @bind-Value="_changeRoleNewRole"
+            <FluentSelect TOption="string" TValue="string" @bind-Value="_changeRoleNewRole"
                           Label="New Role"
                           Style="width: 100%; margin-bottom: 12px;"
                           aria-label="New role">
@@ -397,7 +397,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnChangeRoleConfirm"
                           Disabled="@(_isOperating || _changeRoleNewRole == _changeRoleTarget?.Role)">
-                @if (_isOperating) { <FluentProgressRing Style="width: 16px; height: 16px;" /> }
+                @if (_isOperating) { <FluentSpinner Size="SpinnerSize.ExtraSmall" /> }
                 else { <span>Change Role</span> }
             </FluentButton>
         </FluentDialogFooter>

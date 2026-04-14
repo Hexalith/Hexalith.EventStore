@@ -46,7 +46,7 @@
 
 @* Tenant filter *@
 <div class="storage-filter-bar">
-    <FluentTextField @bind-Value="_tenantFilterInput"
+    <FluentTextInput @bind-Value="_tenantFilterInput"
                      @bind-Value:after="OnTenantFilterChanged"
                      Placeholder="Filter by tenant ID..."
                      aria-label="Filter by tenant ID"
@@ -139,23 +139,23 @@
             <h3 style="margin: 0;">Create Snapshot Policy</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_createTenantId"
+            <FluentTextInput @bind-Value="_createTenantId"
                              Label="Tenant ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Tenant ID" />
-            <FluentTextField @bind-Value="_createDomain"
+            <FluentTextInput @bind-Value="_createDomain"
                              Label="Domain" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Domain" />
-            <FluentTextField @bind-Value="_createAggregateType"
+            <FluentTextInput @bind-Value="_createAggregateType"
                              Label="Aggregate Type" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Aggregate Type" />
-            <FluentNumberField @bind-Value="_createIntervalEvents"
-                               Label="Interval Events" Required="true"
-                               Min="1"
-                               Style="width: 100%; margin-bottom: 12px;"
-                               aria-label="Interval events" />
+            <NumericInput TValue="int" @bind-Value="_createIntervalEvents"
+                          Label="Interval Events" Required="true"
+                          Min="1"
+                          Style="width: 100%; margin-bottom: 12px;"
+                          aria-label="Interval events" />
         </FluentDialogBody>
         <FluentDialogFooter>
             <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialog">Cancel</FluentButton>
@@ -164,7 +164,7 @@
                           Disabled="@(!IsCreateFormValid || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -197,20 +197,20 @@
                 <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Aggregate Type</span>
                 <div class="snapshot-readonly-field">@_editPolicy.AggregateType</div>
             </div>
-            <FluentNumberField @bind-Value="_editIntervalEvents"
-                               Label="Interval Events" Required="true"
-                               Min="1"
-                               Style="width: 100%; margin-bottom: 12px;"
-                               aria-label="Interval events" />
+            <NumericInput TValue="int" @bind-Value="_editIntervalEvents"
+                          Label="Interval Events" Required="true"
+                          Min="1"
+                          Style="width: 100%; margin-bottom: 12px;"
+                          aria-label="Interval events" />
         </FluentDialogBody>
         <FluentDialogFooter>
             <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
             <FluentButton Appearance="ButtonAppearance.Primary"
                           OnClick="OnEditPolicyConfirm"
-                          Disabled="@(_editIntervalEvents < 1 || _isOperating)">
+                          Disabled="@(_editIntervalEvents is null or < 1 || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -245,7 +245,7 @@
                           Style="background-color: var(--hexalith-status-error); color: white;">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -266,15 +266,15 @@
             <h3 style="margin: 0;">Create Snapshot</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_snapshotTenantId"
+            <FluentTextInput @bind-Value="_snapshotTenantId"
                              Label="Tenant ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Tenant ID" />
-            <FluentTextField @bind-Value="_snapshotDomain"
+            <FluentTextInput @bind-Value="_snapshotDomain"
                              Label="Domain" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Domain" />
-            <FluentTextField @bind-Value="_snapshotAggregateId"
+            <FluentTextInput @bind-Value="_snapshotAggregateId"
                              Label="Aggregate ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Aggregate ID" />
@@ -286,7 +286,7 @@
                           Disabled="@(!IsSnapshotFormValid || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -313,12 +313,12 @@
     private string? _createTenantId;
     private string? _createDomain;
     private string? _createAggregateType;
-    private int _createIntervalEvents = 100;
+    private int? _createIntervalEvents = 100;
 
     // Edit dialog state
     private bool _showEditDialog;
     private SnapshotPolicy? _editPolicy;
-    private int _editIntervalEvents;
+    private int? _editIntervalEvents;
 
     // Delete dialog state
     private bool _showDeleteDialog;
@@ -492,7 +492,7 @@
         {
             AdminOperationResult? result = await SnapshotApi.SetSnapshotPolicyAsync(
                 _createTenantId!, _createDomain!, _createAggregateType!,
-                _createIntervalEvents, _loadCts?.Token ?? default);
+                _createIntervalEvents!.Value, _loadCts?.Token ?? default);
 
             if (result?.Success == true)
             {
@@ -560,7 +560,7 @@
         {
             AdminOperationResult? result = await SnapshotApi.SetSnapshotPolicyAsync(
                 _editPolicy.TenantId, _editPolicy.Domain, _editPolicy.AggregateType,
-                _editIntervalEvents, _loadCts?.Token ?? default);
+                _editIntervalEvents!.Value, _loadCts?.Token ?? default);
 
             if (result?.Success == true)
             {

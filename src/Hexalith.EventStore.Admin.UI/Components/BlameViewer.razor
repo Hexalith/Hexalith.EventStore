@@ -59,11 +59,16 @@
         }
 
         @* Search *@
-        <FluentSearch @bind-Value="_searchTerm"
+        <FluentTextInput @bind-Value="_searchTerm"
                       @bind-Value:after="OnSearchChanged"
                       Placeholder="Filter by field path..."
                       Style="margin-bottom: 8px; max-width: 400px;"
-                      aria-label="Search fields" />
+                      aria-label="Search fields"
+                      TextInputType="TextInputType.Search">
+            <StartTemplate>
+                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+            </StartTemplate>
+        </FluentTextInput>
 
         @* Field table *@
         <FluentDataGrid Items="@_filteredFields.AsQueryable()"

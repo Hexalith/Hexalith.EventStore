@@ -23,7 +23,7 @@
 
     @* Input form *@
     <div style="margin-top: 16px;">
-        <FluentTextField @bind-Value="_commandType"
+        <FluentTextInput @bind-Value="_commandType"
                          Label="Command Type (fully qualified)"
                          Placeholder="e.g., Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter"
                          Required="true"
@@ -42,12 +42,12 @@
         }
 
         <div style="margin-top: 12px; margin-bottom: 12px;">
-            <FluentNumberField @bind-Value="_atSequence"
-                               Label="Test Against State at Sequence"
-                               Placeholder="Latest"
-                               Min="0"
-                               Style="max-width: 250px;"
-                               aria-label="Target sequence number" />
+            <NumericInput TValue="long" @bind-Value="_atSequence"
+                          Label="Test Against State at Sequence"
+                          Placeholder="Latest"
+                          Min="0"
+                          Style="max-width: 250px;"
+                          aria-label="Target sequence number" />
             <span style="font-size: 12px; color: var(--neutral-foreground-hint); display: block; margin-top: 4px;">
                 Leave empty for latest state, 0 for empty initial state.
             </span>
@@ -141,11 +141,25 @@
             {
                 <h4 style="margin-top: 16px;">State Changes (@_result.StateChanges.Count fields changed)</h4>
 
-                <FluentSearch @bind-Value="_stateChangeSearch"
+                <FluentTextInput @bind-Value="_stateChangeSearch"
                               @bind-Value:after="OnStateChangeSearchChanged"
                               Placeholder="Filter by field path..."
                               Style="margin-bottom: 8px; max-width: 400px;"
-                              aria-label="Search state changes" />
+                              aria-label="Search state changes"
+                              TextInputType="TextInputType.Text">
+                    <StartTemplate>
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                    </StartTemplate>
+                    <EndTemplate>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      Disabled="@(string.IsNullOrEmpty(_stateChangeSearch))"
+                                      OnClick="ClearStateChangeSearch"
+                                      aria-label="Clear search"
+                                      Title="Clear search">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                        </FluentButton>
+                    </EndTemplate>
+                </FluentTextInput>
 
                 <FluentDataGrid Items="@_filteredStateChanges.AsQueryable()"
                                 TGridItem="FieldChange"
@@ -346,6 +360,12 @@
     {
         ApplyStateChangeFilter();
         StateHasChanged();
+    }
+
+    private void ClearStateChangeSearch()
+    {
+        _stateChangeSearch = string.Empty;
+        OnStateChangeSearchChanged();
     }
 
     private void ShowEventPayload(SandboxEvent evt)

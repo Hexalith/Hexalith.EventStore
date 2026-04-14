@@ -361,7 +361,7 @@ public class ConsistencyPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Running"), TimeSpan.FromSeconds(5));
 
         // Assert — spinner indicator present
-        cut.Markup.ShouldContain("fluent-progress-ring");
+        cut.Markup.ShouldContain("fluent-spinner");
     }
 
     [Fact]

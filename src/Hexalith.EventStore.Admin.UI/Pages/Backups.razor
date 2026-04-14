@@ -52,7 +52,7 @@
 
 @* Tenant filter *@
 <div class="storage-filter-bar">
-    <FluentTextField @bind-Value="_tenantFilterInput"
+    <FluentTextInput @bind-Value="_tenantFilterInput"
                      @bind-Value:after="OnTenantFilterChanged"
                      Placeholder="Filter by tenant ID..."
                      aria-label="Filter by tenant ID"
@@ -210,11 +210,11 @@
             <h3 style="margin: 0;">Create Backup</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_createTenantId"
+            <FluentTextInput @bind-Value="_createTenantId"
                              Label="Tenant ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Tenant ID" />
-            <FluentTextField @bind-Value="_createDescription"
+            <FluentTextInput @bind-Value="_createDescription"
                              Label="Description (optional)"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Description" />
@@ -253,7 +253,7 @@
                           Disabled="@(!CanCreateBackup || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -286,7 +286,7 @@
                           Disabled="@_isOperating">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -348,7 +348,7 @@
             }
             else if (_restoreStep == 2)
             {
-                <FluentTextField @bind-Value="_restorePointInTime"
+                <FluentTextInput @bind-Value="_restorePointInTime"
                                  Label="Point-in-time (UTC, optional)"
                                  Placeholder="e.g. 2026-03-20T14:30:00Z"
                                  Style="width: 100%; margin-bottom: 4px;"
@@ -382,7 +382,7 @@
                               Disabled="@_isOperating">
                     @if (_isOperating)
                     {
-                        <FluentProgressRing Style="width: 16px; height: 16px;" />
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                     }
                     else
                     {
@@ -404,19 +404,19 @@
             <h3 style="margin: 0;">Export Stream</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_exportTenantId"
+            <FluentTextInput @bind-Value="_exportTenantId"
                              Label="Tenant ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Tenant ID" />
-            <FluentTextField @bind-Value="_exportDomain"
+            <FluentTextInput @bind-Value="_exportDomain"
                              Label="Domain" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Domain" />
-            <FluentTextField @bind-Value="_exportAggregateId"
+            <FluentTextInput @bind-Value="_exportAggregateId"
                              Label="Aggregate ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Aggregate ID" />
-            <FluentSelect TOption="string" @bind-Value="_exportFormat"
+            <FluentSelect TOption="string" TValue="string" @bind-Value="_exportFormat"
                           Label="Format"
                           Style="width: 100%; margin-bottom: 12px;"
                           aria-label="Export format">
@@ -437,7 +437,7 @@
                           Disabled="@(!CanExport || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -489,7 +489,7 @@
                           Disabled="@(!CanImport || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {

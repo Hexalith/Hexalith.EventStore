@@ -35,17 +35,17 @@
                 <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
                     <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="DecrementSequence"
-                                  Disabled="@(_sequenceInput <= 0 || _fetching)"
+                                  Disabled="@(_sequenceInput is null or <= 0 || _fetching)"
                                   aria-label="Previous sequence"
                                   Title="Previous position">
                         -1
                     </FluentButton>
-                    <FluentNumberField @bind-Value="_sequenceInput"
-                                       Min="0"
-                                       Label="Sequence Number"
-                                       aria-label="Sequence number to inspect"
-                                       Style="flex: 1;"
-                                       Autofocus="true" />
+                    <NumericInput TValue="long" @bind-Value="_sequenceInput"
+                                  Min="0"
+                                  Label="Sequence Number"
+                                  aria-label="Sequence number to inspect"
+                                  Style="flex: 1;"
+                                  Autofocus="true" />
                     <FluentButton Appearance="ButtonAppearance.Outline"
                                   OnClick="IncrementSequence"
                                   Disabled="@_fetching"
@@ -57,7 +57,7 @@
             }
             else
             {
-                <FluentTextField @bind-Value="_timestampInput"
+                <FluentTextInput @bind-Value="_timestampInput"
                                  Label="Timestamp (ISO 8601)"
                                  Placeholder="2026-03-23T12:00:00Z"
                                  aria-label="ISO 8601 timestamp to inspect"
@@ -104,8 +104,8 @@
 
 @code {
     private FluentDialog? _dialog;
-    private long _sequenceInput;
-    private string? _timestampInput;
+    private long? _sequenceInput;
+    private string? _timestampInput = string.Empty;
     private bool _useTimestampMode;
     private bool _fetching;
     private bool _fetched;
@@ -174,7 +174,7 @@
             else
             {
                 _snapshot = await ApiClient.GetAggregateStateAtPositionAsync(
-                    TenantId, Domain, AggregateId, _sequenceInput).ConfigureAwait(false);
+                    TenantId, Domain, AggregateId, _sequenceInput ?? 0L).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -190,15 +190,15 @@
 
     private async Task IncrementSequence()
     {
-        _sequenceInput++;
+        _sequenceInput = (_sequenceInput ?? 0L) + 1L;
         await FetchState();
     }
 
     private async Task DecrementSequence()
     {
-        if (_sequenceInput > 0)
+        if (_sequenceInput is > 0)
         {
-            _sequenceInput--;
+            _sequenceInput = _sequenceInput.Value - 1L;
             await FetchState();
         }
     }

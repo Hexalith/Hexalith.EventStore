@@ -157,11 +157,25 @@
     @if (_overview.Subscriptions.Count > 0)
     {
         <div style="margin-bottom: 12px;">
-            <FluentSearch @bind-Value="_searchFilter"
+            <FluentTextInput @bind-Value="_searchFilter"
                           @bind-Value:after="OnFilterChanged"
                           Placeholder="Filter by topic or route..."
                           style="min-width: 200px;"
-                          aria-label="Filter subscriptions by topic or route" />
+                          aria-label="Filter subscriptions by topic or route"
+                          TextInputType="TextInputType.Text">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                </StartTemplate>
+                <EndTemplate>
+                    <FluentButton Appearance="ButtonAppearance.Transparent"
+                                  Disabled="@(string.IsNullOrEmpty(_searchFilter))"
+                                  OnClick="ClearSearchFilter"
+                                  aria-label="Clear search"
+                                  Title="Clear search">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                    </FluentButton>
+                </EndTemplate>
+            </FluentTextInput>
         </div>
 
         <FluentDataGrid Items="@FilteredSubscriptions" TGridItem="DaprSubscriptionInfo"
@@ -421,6 +435,12 @@
     {
         _filteredSubscriptionsCache = null;
         StateHasChanged();
+    }
+
+    private void ClearSearchFilter()
+    {
+        _searchFilter = string.Empty;
+        OnFilterChanged();
     }
 
     private string GetComponentCardClass(string componentName)

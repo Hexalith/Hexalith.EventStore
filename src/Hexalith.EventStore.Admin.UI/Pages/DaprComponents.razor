@@ -114,22 +114,36 @@
 {
     @* Filters (AC3) *@
     <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-        <FluentSearch @bind-Value="_searchFilter"
+        <FluentTextInput @bind-Value="_searchFilter"
                       @bind-Value:after="OnFilterChanged"
                       Placeholder="Filter by name or type..."
                       style="min-width: 200px;"
-                      aria-label="Filter components by name or type" />
-        <FluentSelect TOption="string"
+                      aria-label="Filter components by name or type"
+                      TextInputType="TextInputType.Text">
+            <StartTemplate>
+                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+            </StartTemplate>
+            <EndTemplate>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              Disabled="@(string.IsNullOrEmpty(_searchFilter))"
+                              OnClick="ClearSearchFilter"
+                              aria-label="Clear search"
+                              Title="Clear search">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                </FluentButton>
+            </EndTemplate>
+        </FluentTextInput>
+        <FluentSelect TOption="string" TValue="string"
                       Value="@_categoryFilter"
                       ValueChanged="OnCategoryFilterChanged"
                       style="min-width: 150px;"
                       aria-label="Filter by component category">
-            <FluentOption Value="">All Categories</FluentOption>
+            <FluentOption Value="@string.Empty">All Categories</FluentOption>
             <FluentOption Value="StateStore">State Store</FluentOption>
             <FluentOption Value="PubSub">Pub/Sub</FluentOption>
             <FluentOption Value="Binding">Binding</FluentOption>
             <FluentOption Value="Configuration">Configuration</FluentOption>
-            <FluentOption Value="Lock">Lock</FluentOption>
+            <FluentOption Value="@("Lock")">Lock</FluentOption>
             <FluentOption Value="SecretStore">Secret Store</FluentOption>
             <FluentOption Value="Middleware">Middleware</FluentOption>
         </FluentSelect>
@@ -203,7 +217,7 @@
     private IReadOnlyList<DaprComponentDetail> _components = [];
     private DaprComponentDetail? _selectedComponent;
     private DateTimeOffset _lastRefreshUtc;
-    private string? _searchFilter;
+    private string? _searchFilter = string.Empty;
     private string _categoryFilter = string.Empty;
 
     /// <summary>
@@ -323,6 +337,12 @@
     private void OnFilterChanged()
     {
         StateHasChanged();
+    }
+
+    private void ClearSearchFilter()
+    {
+        _searchFilter = string.Empty;
+        OnFilterChanged();
     }
 
     private void OnCategoryFilterChanged(string value)
