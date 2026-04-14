@@ -6,6 +6,8 @@
     <RootNamespace>Hexalith.EventStore.Admin.UI</RootNamespace>
     <DisableScopedCssBundling>true</DisableScopedCssBundling>
     <ScopedCssEnabled>false</ScopedCssEnabled>
+    <EnableContainer>true</EnableContainer>
+    <ContainerRepository>eventstore-admin-ui</ContainerRepository>
   </PropertyGroup>
 
   <ItemGroup>

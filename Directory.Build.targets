@@ -1,0 +1,28 @@
+<Project>
+
+  <!--
+    Container image defaults (.NET SDK container support).
+    Opt-in per project with:
+      <EnableContainer>true</EnableContainer>
+      <ContainerRepository>image-name</ContainerRepository>
+    CI/CD may override ContainerRegistry and ContainerImageTags via env or -p:.
+    Loaded as .targets (post-project) so EnableContainer set in the project is visible.
+  -->
+  <PropertyGroup Condition="'$(EnableContainer)' == 'true'">
+    <IsPackable>false</IsPackable>
+    <IsPublishable>true</IsPublishable>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
+    <ContainerFamily>alpine</ContainerFamily>
+    <ContainerRegistry Condition="'$(ContainerRegistry)' == ''">registry.hexalith.com</ContainerRegistry>
+    <ContainerImageTag Condition="'$(ContainerImageTags)' == '' and '$(ContainerImageTag)' == ''">staging-latest</ContainerImageTag>
+    <ContainerUser>app</ContainerUser>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(EnableContainer)' == 'true'">
+    <ContainerPort Include="8080" Type="tcp" />
+    <ContainerLabel Include="org.opencontainers.image.source" Value="https://github.com/Hexalith/Hexalith.EventStore" />
+    <ContainerLabel Include="org.opencontainers.image.licenses" Value="MIT" />
+    <ContainerLabel Include="org.opencontainers.image.vendor" Value="Hexalith" />
+  </ItemGroup>
+
+</Project>
