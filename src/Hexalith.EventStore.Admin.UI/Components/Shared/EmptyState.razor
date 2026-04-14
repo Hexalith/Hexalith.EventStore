@@ -10,7 +10,7 @@
         @ChildContent
     }
     <h2 style="margin: 0; font-size: 18px; font-weight: 600;">@Title</h2>
-    <p style="margin: 0; color: var(--neutral-foreground-hint); max-width: 480px;">@Description</p>
+    <p style="margin: 0; color: var(--colorNeutralForeground3); max-width: 480px;">@Description</p>
     @if (!string.IsNullOrEmpty(ActionLabel) && !string.IsNullOrEmpty(ActionHref))
     {
         <FluentAnchorButton Href="@ActionHref" Appearance="ButtonAppearance.Primary">@ActionLabel</FluentAnchorButton>

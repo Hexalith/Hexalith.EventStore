@@ -89,3 +89,9 @@
 ## Deferred from: code review of 21-7-toast-api-update.md (2026-04-14)
 
 - **AC 19/21/22 validation remains blocked by downstream compile errors** - Admin.UI still has downstream 21-8/21-9 compile blockers, so Admin.UI.Tests execution and visual verification gates are deferred. Treat as pre-existing blocker and re-run these gates once downstream stories land.
+
+## Deferred from: code review of 21-8-css-token-migration (2026-04-14)
+
+- **Card-container oracle verification pending for highest-blast-radius mapping** - AC 2b computed-style oracle for `--neutral-layer-card-container` is explicitly deferred to Task 7a because Admin.UI runtime boot is blocked by 21-9 compile failures.
+- **Core visual and accessibility sweep remains deferred until 21-9 unblocks runtime** - AC 19/20/21/22 screenshot sweep, DevTools glow verification, and Axe/WebAIM checks cannot run until Admin.UI boots.
+- **App.css spike-gate runtime smoke check deferred by the same runtime blocker** - Task 3.5 pre-inline-style browser spike was deferred to Task 7a due the 21-9 blocker.

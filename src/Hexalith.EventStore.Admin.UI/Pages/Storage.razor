@@ -512,7 +512,7 @@
 
     private static string GetGrowthBadgeColor(double? rate) => rate switch
     {
-        null => "var(--neutral-foreground-hint)",
+        null => "var(--colorNeutralForeground3)",
         < GreenThreshold => "var(--hexalith-status-success)",
         < AmberThreshold => "var(--hexalith-status-warning)",
         _ => "var(--hexalith-status-error)",

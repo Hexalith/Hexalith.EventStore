@@ -5,7 +5,7 @@
 <FluentCard Style="padding: 16px;">
     <!-- Header with close button -->
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-        <h2 style="margin: 0; font-size: 18px; font-weight: 600; font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace);">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600; font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace);">
             @CurrentTypeName
         </h2>
         <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
@@ -33,7 +33,7 @@
         <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Related Commands</h3>
         @if (EventRelatedCommands.Count == 0)
         {
-            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No related commands found.</p>
+            <p style="color: var(--colorNeutralForeground3); font-size: 13px;">No related commands found.</p>
         }
         else
         {
@@ -44,7 +44,7 @@
         <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Related Aggregates</h3>
         @if (EventRelatedAggregates.Count == 0)
         {
-            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No related aggregates found.</p>
+            <p style="color: var(--colorNeutralForeground3); font-size: 13px;">No related aggregates found.</p>
         }
         else
         {
@@ -60,10 +60,10 @@
         </div>
 
         <div style="margin-bottom: 16px;">
-            <span style="font-size: 13px; color: var(--neutral-foreground-hint);">Target Aggregate:</span>
+            <span style="font-size: 13px; color: var(--colorNeutralForeground3);">Target Aggregate:</span>
             <span role="link" tabindex="0"
                   @onclick="@(() => OnNavigateToAggregate.InvokeAsync(SelectedCommand.TargetAggregateType))"
-                  style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--accent-fill-rest); text-decoration: underline; margin-left: 8px;">
+                  style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--colorBrandBackground); text-decoration: underline; margin-left: 8px;">
                 @SelectedCommand.TargetAggregateType
             </span>
         </div>
@@ -71,7 +71,7 @@
         <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Related Events</h3>
         @if (CommandRelatedEvents.Count == 0)
         {
-            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No related events found.</p>
+            <p style="color: var(--colorNeutralForeground3); font-size: 13px;">No related events found.</p>
         }
         else
         {
@@ -82,7 +82,7 @@
         <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Sibling Commands</h3>
         @if (CommandSiblings.Count == 0)
         {
-            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No sibling commands found.</p>
+            <p style="color: var(--colorNeutralForeground3); font-size: 13px;">No sibling commands found.</p>
         }
         else
         {
@@ -113,7 +113,7 @@
         <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Events</h3>
         @if (AggregateEvents.Count == 0)
         {
-            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No events found.</p>
+            <p style="color: var(--colorNeutralForeground3); font-size: 13px;">No events found.</p>
         }
         else
         {
@@ -124,7 +124,7 @@
         <h3 style="font-size: 14px; font-weight: 600; margin: 16px 0 8px;">Commands</h3>
         @if (AggregateCommands.Count == 0)
         {
-            <p style="color: var(--neutral-foreground-hint); font-size: 13px;">No commands found.</p>
+            <p style="color: var(--colorNeutralForeground3); font-size: 13px;">No commands found.</p>
         }
         else
         {

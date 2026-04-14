@@ -146,7 +146,7 @@ else
                                 <span class="aggregate-link" role="link" tabindex="0"
                                       @onclick="@(() => NavigateToAggregate(context.TargetAggregateType))"
                                       @onkeydown="@(e => { if (e.Key == "Enter") NavigateToAggregate(context.TargetAggregateType); })"
-                                      style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--accent-fill-rest); text-decoration: underline;">
+                                      style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--colorBrandBackground); text-decoration: underline;">
                                     @context.TargetAggregateType
                                 </span>
                             </TemplateColumn>

@@ -128,7 +128,7 @@
             <dt style="font-weight: 600;">Reentrancy Max Stack Depth</dt>
             <dd style="margin: 0;">@_runtimeInfo.Configuration.ReentrancyMaxStackDepth</dd>
         </dl>
-        <div style="margin-top: 12px; color: var(--neutral-foreground-hint); font-size: 0.85em;">
+        <div style="margin-top: 12px; color: var(--colorNeutralForeground3); font-size: 0.85em;">
             Placement: DAPR consistent-hashing (not queryable via API)
         </div>
     </FluentCard>
@@ -172,7 +172,7 @@
 @if (_inspectedState is not null)
 {
     <h2 style="margin: 0 0 12px;">Actor State</h2>
-    <div style="margin-bottom: 8px; color: var(--neutral-foreground-hint); font-size: 0.85em;">
+    <div style="margin-bottom: 8px; color: var(--colorNeutralForeground3); font-size: 0.85em;">
         State shown reflects last persisted values. If the actor is currently processing a command, displayed state may be stale.
     </div>
     <FluentGrid Spacing="3" style="margin-bottom: 16px;">
@@ -205,7 +205,7 @@
         <FluentCard style="margin-bottom: 12px; padding: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <strong style="font-family: monospace;">@entry.Key</strong>
-                <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">
+                <span style="color: var(--colorNeutralForeground3); font-size: 0.85em;">
                     @TimeFormatHelper.FormatBytes(entry.EstimatedSizeBytes)
                 </span>
             </div>
@@ -215,13 +215,13 @@
             }
             else if (entry.Key.Contains('{'))
             {
-                <div style="color: var(--neutral-foreground-hint); font-style: italic;">
+                <div style="color: var(--colorNeutralForeground3); font-style: italic;">
                     Dynamic key family &mdash; specific entries depend on actor state.
                 </div>
             }
             else
             {
-                <div style="color: var(--neutral-foreground-hint); font-style: italic;">
+                <div style="color: var(--colorNeutralForeground3); font-style: italic;">
                     No data
                 </div>
             }

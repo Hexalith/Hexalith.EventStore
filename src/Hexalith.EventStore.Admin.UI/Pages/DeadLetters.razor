@@ -122,7 +122,7 @@
         @* Selection summary bar *@
         @if (_selectedIds.Count > 0)
         {
-            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; margin-bottom: 8px; background: var(--neutral-layer-card-container); border-radius: 4px;"
+            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 16px; margin-bottom: 8px; background: var(--colorNeutralBackground2); border-radius: 4px;"
                  aria-live="polite">
                 <strong>@_selectedIds.Count</strong> <span>selected</span>
                 <AuthorizedView MinimumRole="AdminRole.Operator">
@@ -145,7 +145,7 @@
             </div>
         }
 
-        <p style="font-size: 13px; color: var(--neutral-foreground-hint); margin: 0 0 8px;">
+        <p style="font-size: 13px; color: var(--colorNeutralForeground3); margin: 0 0 8px;">
             Showing @_allEntries.Count of @_totalCount entries
         </p>
 
@@ -206,9 +206,9 @@
                             <strong>Retry Count:</strong>
                             <span>@context.RetryCount</span>
                         </div>
-                        <FluentCard Style="margin-top: 8px; background: var(--neutral-layer-card-container); padding: 8px;">
+                        <FluentCard Style="margin-top: 8px; background: var(--colorNeutralBackground2); padding: 8px;">
                             <strong>Failure Reason:</strong>
-                            <pre style="margin: 6px 0 0; white-space: pre-wrap; font-family: var(--body-font); font-size: 12px;">@context.FailureReason</pre>
+                            <pre style="margin: 6px 0 0; white-space: pre-wrap; font-family: var(--fontFamilyBase); font-size: 12px;">@context.FailureReason</pre>
                         </FluentCard>
                     </FluentCard>
                 }
@@ -251,7 +251,7 @@
                 <p>Retry @_selectedIds.Count dead-letter command(s)? These commands will be resubmitted for processing.</p>
                 @if (_isOperating)
                 {
-                    <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    <p style="font-size: 13px; color: var(--colorNeutralForeground3);">
                         Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
                     </p>
                 }
@@ -287,7 +287,7 @@
                 <p>Skip @_selectedIds.Count dead-letter command(s)? These commands will be <strong>permanently</strong> removed from the dead-letter queue and will NOT be retried.</p>
                 @if (_isOperating)
                 {
-                    <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    <p style="font-size: 13px; color: var(--colorNeutralForeground3);">
                         Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
                     </p>
                 }
@@ -323,7 +323,7 @@
                 <p>Archive @_selectedIds.Count dead-letter command(s)? These commands will be moved to the archive. They can be reviewed later but will no longer appear in the active queue.</p>
                 @if (_isOperating)
                 {
-                    <p style="font-size: 13px; color: var(--neutral-foreground-hint);">
+                    <p style="font-size: 13px; color: var(--colorNeutralForeground3);">
                         Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
                     </p>
                 }

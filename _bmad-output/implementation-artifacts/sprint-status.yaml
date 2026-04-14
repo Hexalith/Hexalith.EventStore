@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-14 (Story 21-7 done after code review)
+# last_updated: 2026-04-14 (Story 21-8 review decisions resolved; one patch applied; visual sweep deferred to post-21-9)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-14 (Story 21-7 done after code review)
+last_updated: 2026-04-14 (Story 21-8 review decisions resolved; one patch applied; visual sweep deferred to post-21-9)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -246,7 +246,7 @@ development_status:
   21-5-component-renames: done  # 2026-04-14: review findings patched (clear callbacks, NumericInput ValueChangedAfter + normalization, awaited DeadLetters test event, local lock file excluded); AC 34 still deferred pending 21-7.
   21-6-dialog-restructure: done  # 2026-04-14: code review patch applied (CommandPalette OnStateChange close-state sync); all prior gates pass; AC 30 visual verification remains DEFERRED-TO-21-7-OR-EPIC-21-RETRO
   21-7-toast-api-update: done  # 2026-04-14: code review complete — decision items resolved, patches applied (Backups best-effort toasts + nullable Show*Async message contract). Visual verification remains DEFERRED-TO-21-8-OR-21-9-LAND due to downstream compile blockers.
-  21-8-css-token-migration: backlog  # REVIEW NOTE: ScopedCssEnabled=false causes .razor.css files to vanish entirely (not "apply globally") — scope must include re-including 9 Admin.UI .razor.css files
+  21-8-css-token-migration: in-progress  # 2026-04-14: code work complete (157 v4→v5 token renames, 9 .razor.css merged into app.css with ::deep stripped, RZ9986 fix, 3 bUnit smoke tests). Admin.UI 42→41 errors, slnx 60→59 (−1 RZ9986 each). Tier 1: 753/753. Review decisions resolved (CorrelationTraceMap semantic-error mapping accepted; build metric variance accepted with RZ9986_COUNT=0) and one review patch applied (`EventDebugger` watch-highlight foreground contrast). Task 7a/7b (visual sweep + Axe + deferred-AC roll-in for 21-4/21-6/21-7) DEFERRED-TO-POST-21-9 — Admin.UI boot blocked by 21-9 DataGrid CS0103 chain. Per precedent (21-4/21-6/21-7), keep story in-progress and run combined visual sweep after 21-9 lands. # story created + party-review (9 patches) + advanced-elicitation 5-method sweep (18 patches — pre-mortem, matrix, Occam, Red Team, Lessons Learned). Key additions: Task 0.0 v5 nupkg verify, AC 7b LHS decl grep, Task 2.1 count-based collision, Task 3.5 spike gate, Task 4.0 decl-ownership grep, Task 4.0.5 dead-inline detection, Task 7 split 7a/7b, bUnit exact-class, ADR-21-8-005 Option A/B matrix. Scope: 157 v4 tokens × 40 files + 9 .razor.css merge/delete (Option A) + RZ9986 verify-then-fix + Epic 21 deferred AC sweep.
   21-9-datagrid-remaining-enum-renames: backlog
   21-10-sample-blazorui-alignment: backlog
   epic-21-retrospective: optional

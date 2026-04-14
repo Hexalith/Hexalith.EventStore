@@ -61,7 +61,7 @@
                                  Placeholder="2026-03-23T12:00:00Z"
                                  aria-label="ISO 8601 timestamp to inspect"
                                  Title="Enter ISO 8601 format: YYYY-MM-DDThh:mm:ssZ" />
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">
                     Current time: @DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
                 </span>
                 @if (_timestampError is not null)
@@ -85,7 +85,7 @@
             {
                 <div>
                     <h4 style="margin: 8px 0;">State at Sequence #@_snapshot.SequenceNumber</h4>
-                    <span class="monospace" style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                    <span class="monospace" style="font-size: 12px; color: var(--colorNeutralForeground3);">
                         @_snapshot.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")
                     </span>
                     <JsonViewer Json="@_snapshot.StateJson"

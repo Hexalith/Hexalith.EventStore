@@ -79,7 +79,7 @@
                             </EndTemplate>
                         </FluentTextInput>
 
-                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 8px;">
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--colorNeutralStroke1); border-radius: 4px; padding: 8px;">
                             @foreach (string field in _filteredAvailableFields)
                             {
                                 <FluentCheckbox Value="@_selectedFieldPaths.Contains(field)"
@@ -114,7 +114,7 @@
         @* Loading phase *@
         <SkeletonCard />
         <FluentSpinner Style="margin-top: 8px;" />
-        <p style="color: var(--neutral-foreground-hint); margin-top: 8px;">
+        <p style="color: var(--colorNeutralForeground3); margin-top: 8px;">
             Running bisect — testing up to @_estimatedMaxSteps midpoints...
         </p>
     }
@@ -150,7 +150,7 @@
             </FluentStack>
 
             @* Divergent event detail *@
-            <div style="margin-bottom: 12px; padding: 12px; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px;">
+            <div style="margin-bottom: 12px; padding: 12px; border: 1px solid var(--colorNeutralStroke1); border-radius: 4px;">
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
                     <span>
                         <strong>Event Type:</strong>
@@ -205,16 +205,16 @@
                 <div style="max-height: 300px; overflow-y: auto;">
                     @foreach (BisectStep step in _result.Steps)
                     {
-                        <div style="padding: 4px 0; border-bottom: 1px solid var(--neutral-stroke-rest);">
+                        <div style="padding: 4px 0; border-bottom: 1px solid var(--colorNeutralStroke1);">
                             <span class="monospace">Step @step.StepNumber:</span>
                             seq <span class="monospace">@step.TestedSequence</span> =
                             @if (step.Verdict == "good")
                             {
-                                <span style="color: var(--success);" title="State matches expected values">&#x2714; good</span>
+                                <span style="color: var(--hexalith-status-success);" title="State matches expected values">&#x2714; good</span>
                             }
                             else
                             {
-                                <span style="color: var(--error);" title="@($"{step.DivergentFieldCount} field(s) diverged")">&#x2718; bad (@step.DivergentFieldCount divergent)</span>
+                                <span style="color: var(--hexalith-status-error);" title="@($"{step.DivergentFieldCount} field(s) diverged")">&#x2718; bad (@step.DivergentFieldCount divergent)</span>
                             }
                         </div>
                     }

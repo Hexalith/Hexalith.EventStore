@@ -150,7 +150,7 @@
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.AnomaliesFound))">
                 @if (context.AnomaliesFound > 0)
                 {
-                    <strong style="color: var(--error);">@context.AnomaliesFound.ToString("N0")</strong>
+                    <strong style="color: var(--hexalith-status-error);">@context.AnomaliesFound.ToString("N0")</strong>
                 }
                 else
                 {
@@ -203,7 +203,7 @@
             <div style="margin-bottom: 12px;">
                 @if (_expandedCheckResult.Truncated)
                 {
-                    <p style="color: var(--warning); font-size: 13px;">
+                    <p style="color: var(--hexalith-status-warning); font-size: 13px;">
                         Results truncated — @_expandedCheckResult.AnomaliesFound anomalies found, showing first 500.
                     </p>
                 }
@@ -222,7 +222,7 @@
 
         @if (_expandedCheckResult.ErrorMessage is not null)
         {
-            <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 12px;">
+            <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;">
                 <pre style="margin: 0; white-space: pre-wrap;">@_expandedCheckResult.ErrorMessage</pre>
             </FluentCard>
         }
@@ -291,8 +291,8 @@
                 </div>
                 @if (_selectedAnomaly.Details is not null)
                 {
-                    <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px;">
-                        <pre style="margin: 0; white-space: pre-wrap; font-family: var(--font-monospace);">@_selectedAnomaly.Details</pre>
+                    <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px;">
+                        <pre style="margin: 0; white-space: pre-wrap; font-family: var(--fontFamilyMonospace);">@_selectedAnomaly.Details</pre>
                     </FluentCard>
                 }
                 <div style="margin-top: 12px;">
@@ -337,7 +337,7 @@
                 </div>
                 @if (!HasAnyCheckType)
                 {
-                    <p style="color: var(--error); font-size: 13px; margin: 0 0 12px;">
+                    <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">
                         At least one check type must be selected.
                     </p>
                 }
