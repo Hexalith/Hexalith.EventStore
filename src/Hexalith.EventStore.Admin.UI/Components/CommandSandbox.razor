@@ -123,7 +123,7 @@
                     <TemplateColumn Title="Rejection">
                         @if (context.IsRejection)
                         {
-                            <FluentBadge Appearance="Appearance.Accent" Color="Color.Error">Rejection</FluentBadge>
+                            <FluentBadge Appearance="BadgeAppearance.Filled" Color="BadgeColor.Danger" Content="Rejection" />
                         }
                     </TemplateColumn>
                     <TemplateColumn Title="Payload">

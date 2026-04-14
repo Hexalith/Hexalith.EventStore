@@ -107,13 +107,12 @@
             <TemplateColumn Title="Status" Sortable="true"
                             SortBy="@(GridSort<CompactionJob>.ByAscending(j => j.Status))">
                 @{
-                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                    (BadgeAppearance appearance, string cssClass) = GetStatusBadge(context.Status);
                 }
                 <FluentBadge Appearance="@appearance"
                              Class="@cssClass"
-                             aria-label="@($"Status: {context.Status}")">
-                    @context.Status
-                </FluentBadge>
+                             aria-label="@($"Status: {context.Status}")"
+                             Content="@context.Status.ToString()" />
             </TemplateColumn>
             <TemplateColumn Title="Started" Sortable="true" IsDefaultSortColumn="true"
                             InitialSortDirection="SortDirection.Descending"
@@ -416,14 +415,14 @@
         return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
     }
 
-    private static (Appearance Appearance, string CssClass) GetStatusBadge(CompactionJobStatus status) =>
+    private static (BadgeAppearance Appearance, string CssClass) GetStatusBadge(CompactionJobStatus status) =>
         status switch
         {
-            CompactionJobStatus.Pending => (Appearance.Accent, ""),
-            CompactionJobStatus.Running => (Appearance.Lightweight, "compaction-status-running"),
-            CompactionJobStatus.Completed => (Appearance.Accent, "compaction-status-completed"),
-            CompactionJobStatus.Failed => (Appearance.Accent, "compaction-status-failed"),
-            _ => (Appearance.Accent, ""),
+            CompactionJobStatus.Pending => (BadgeAppearance.Filled, ""),
+            CompactionJobStatus.Running => (BadgeAppearance.Ghost, "compaction-status-running"),
+            CompactionJobStatus.Completed => (BadgeAppearance.Filled, "compaction-status-completed"),
+            CompactionJobStatus.Failed => (BadgeAppearance.Filled, "compaction-status-failed"),
+            _ => (BadgeAppearance.Filled, ""),
         };
 
     // Trigger dialog

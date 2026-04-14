@@ -129,7 +129,7 @@
                 <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                     @foreach (string eventType in _detail.SubscribedEventTypes)
                     {
-                        <FluentBadge Appearance="Appearance.Neutral">@eventType</FluentBadge>
+                        <FluentBadge Appearance="BadgeAppearance.Filled" Content="@eventType" />
                     }
                 </div>
             }

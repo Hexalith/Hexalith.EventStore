@@ -13,7 +13,7 @@
     <p style="margin: 0; color: var(--neutral-foreground-hint); max-width: 480px;">@Description</p>
     @if (!string.IsNullOrEmpty(ActionLabel) && !string.IsNullOrEmpty(ActionHref))
     {
-        <FluentAnchor Href="@ActionHref" Appearance="Appearance.Accent">@ActionLabel</FluentAnchor>
+        <FluentAnchorButton Href="@ActionHref" Appearance="ButtonAppearance.Primary">@ActionLabel</FluentAnchorButton>
     }
 </div>
 

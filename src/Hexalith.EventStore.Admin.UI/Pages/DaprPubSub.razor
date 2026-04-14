@@ -17,9 +17,9 @@
 
 @* Header with back-link and refresh *@
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+    <FluentLink Href="/dapr" Appearance="LinkAppearance.Default" aria-label="Back to DAPR Infrastructure">
         &larr; DAPR Infrastructure
-    </FluentAnchor>
+    </FluentLink>
 </div>
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
@@ -122,7 +122,7 @@
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
                             @foreach (string cap in component.Capabilities)
                             {
-                                <FluentBadge Appearance="Appearance.Neutral">@cap</FluentBadge>
+                                <FluentBadge Appearance="BadgeAppearance.Filled" Content="@cap" />
                             }
                         </div>
                     }
@@ -208,15 +208,15 @@
             <FluentCard style="padding: 16px;">
                 <h3 style="margin: 0 0 12px;">Publication Pipeline</h3>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-                    <FluentBadge Appearance="Appearance.Accent" style="padding: 6px 12px;">EventsStored</FluentBadge>
+                    <FluentBadge Appearance="BadgeAppearance.Filled" style="padding: 6px 12px;" Content="EventsStored" />
                     <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
-                    <FluentBadge Appearance="Appearance.Accent" style="padding: 6px 12px;">EventsPublished</FluentBadge>
+                    <FluentBadge Appearance="BadgeAppearance.Filled" style="padding: 6px 12px;" Content="EventsPublished" />
                     <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
-                    <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-success); color: white;">Completed</FluentBadge>
+                    <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-success); color: white;" Content="Completed" />
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <span style="color: var(--neutral-foreground-hint); margin-left: 24px;">&darr; on failure</span>
-                    <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-error); color: white;">PublishFailed</FluentBadge>
+                    <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-error); color: white;" Content="PublishFailed" />
                     <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
                     <span>Dead-letter routing &mdash; investigate via Dead Letter Manager</span>
                 </div>
@@ -236,11 +236,11 @@
                 <div style="margin-top: 8px;">
                     @if (!string.IsNullOrEmpty(_observabilityLinks?.TraceUrl))
                     {
-                        <FluentAnchor Href="@_observabilityLinks.TraceUrl" Target="_blank"
-                                      Appearance="Appearance.Accent"
-                                      aria-label="Open trace dashboard">
+                        <FluentAnchorButton Href="@_observabilityLinks.TraceUrl" Target="LinkTarget.Blank"
+                                            Appearance="ButtonAppearance.Primary"
+                                            aria-label="Open trace dashboard">
                             Open Trace Dashboard
-                        </FluentAnchor>
+                        </FluentAnchorButton>
                     }
                     else
                     {
@@ -255,11 +255,11 @@
                 <div style="margin-top: 8px;">
                     @if (!string.IsNullOrEmpty(_observabilityLinks?.MetricsUrl))
                     {
-                        <FluentAnchor Href="@_observabilityLinks.MetricsUrl" Target="_blank"
-                                      Appearance="Appearance.Accent"
-                                      aria-label="Open metrics dashboard">
+                        <FluentAnchorButton Href="@_observabilityLinks.MetricsUrl" Target="LinkTarget.Blank"
+                                            Appearance="ButtonAppearance.Primary"
+                                            aria-label="Open metrics dashboard">
                             Open Metrics Dashboard
-                        </FluentAnchor>
+                        </FluentAnchorButton>
                     }
                     else
                     {
@@ -274,11 +274,11 @@
                 <div style="margin-top: 8px;">
                     @if (!string.IsNullOrEmpty(_observabilityLinks?.LogsUrl))
                     {
-                        <FluentAnchor Href="@_observabilityLinks.LogsUrl" Target="_blank"
-                                      Appearance="Appearance.Accent"
-                                      aria-label="Open logs dashboard">
+                        <FluentAnchorButton Href="@_observabilityLinks.LogsUrl" Target="LinkTarget.Blank"
+                                            Appearance="ButtonAppearance.Primary"
+                                            aria-label="Open logs dashboard">
                             Open Logs Dashboard
-                        </FluentAnchor>
+                        </FluentAnchorButton>
                     }
                     else
                     {

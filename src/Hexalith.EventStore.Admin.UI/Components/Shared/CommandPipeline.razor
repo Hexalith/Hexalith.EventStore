@@ -11,9 +11,8 @@
             <FluentBadge Appearance="@GetAppearance(stage)"
                          aria-label="@($"Stage: {stage}")"
                          tabindex="0"
-                         Class="pipeline-stage">
-                @stage
-            </FluentBadge>
+                         Class="pipeline-stage"
+                         Content="@stage" />
         }
     </FluentStack>
 </div>
@@ -37,13 +36,13 @@
     [Parameter]
     public string? ActiveStage { get; set; }
 
-    private Appearance GetAppearance(string stage)
+    private BadgeAppearance GetAppearance(string stage)
     {
         if (ActiveStage is not null && string.Equals(stage, ActiveStage, StringComparison.OrdinalIgnoreCase))
         {
-            return Appearance.Accent;
+            return BadgeAppearance.Filled;
         }
 
-        return Appearance.Neutral;
+        return BadgeAppearance.Ghost;
     }
 }

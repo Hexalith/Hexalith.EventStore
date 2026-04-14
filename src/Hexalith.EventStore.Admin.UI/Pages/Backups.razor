@@ -128,23 +128,22 @@
                             SortBy="@(GridSort<BackupJob>.ByAscending(j => j.StreamId ?? ""))">
                 @if (context.StreamId is null)
                 {
-                    <FluentBadge Appearance="Appearance.Accent" aria-label="Scope: Full">Full</FluentBadge>
+                    <FluentBadge Appearance="BadgeAppearance.Filled" aria-label="Scope: Full" Content="Full" />
                 }
                 else
                 {
-                    <FluentBadge Appearance="Appearance.Neutral" aria-label="Scope: Stream">Stream</FluentBadge>
+                    <FluentBadge Appearance="BadgeAppearance.Filled" aria-label="Scope: Stream" Content="Stream" />
                 }
             </TemplateColumn>
             <TemplateColumn Title="Status" Sortable="true"
                             SortBy="@(GridSort<BackupJob>.ByAscending(j => j.Status))">
                 @{
-                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                    (BadgeAppearance appearance, string cssClass) = GetStatusBadge(context.Status);
                 }
                 <FluentBadge Appearance="@appearance"
                              Class="@cssClass"
-                             aria-label="@($"Status: {context.Status}")">
-                    @context.Status
-                </FluentBadge>
+                             aria-label="@($"Status: {context.Status}")"
+                             Content="@context.Status.ToString()" />
             </TemplateColumn>
             <TemplateColumn Title="Created" Sortable="true" IsDefaultSortColumn="true"
                             InitialSortDirection="SortDirection.Descending"
@@ -309,14 +308,12 @@
         </FluentDialogHeader>
         <FluentDialogBody>
             <div style="display: flex; gap: 8px; margin-bottom: 12px;" role="group" aria-label="Restore steps">
-                <FluentBadge Appearance="@(_restoreStep == 1 ? Appearance.Accent : Appearance.Neutral)"
-                             aria-current="@(_restoreStep == 1 ? "step" : null)">
-                    Step 1: Confirm
-                </FluentBadge>
-                <FluentBadge Appearance="@(_restoreStep == 2 ? Appearance.Accent : Appearance.Neutral)"
-                             aria-current="@(_restoreStep == 2 ? "step" : null)">
-                    Step 2: Options
-                </FluentBadge>
+                <FluentBadge Appearance="@(_restoreStep == 1 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
+                             aria-current="@(_restoreStep == 1 ? "step" : null)"
+                             Content="Step 1: Confirm" />
+                <FluentBadge Appearance="@(_restoreStep == 2 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
+                             aria-current="@(_restoreStep == 2 ? "step" : null)"
+                             Content="Step 2: Options" />
             </div>
             @if (_restoreStep == 1)
             {
@@ -792,15 +789,15 @@
         return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
     }
 
-    private static (Appearance Appearance, string CssClass) GetStatusBadge(BackupJobStatus status) =>
+    private static (BadgeAppearance Appearance, string CssClass) GetStatusBadge(BackupJobStatus status) =>
         status switch
         {
-            BackupJobStatus.Pending => (Appearance.Accent, ""),
-            BackupJobStatus.Running => (Appearance.Lightweight, "backup-status-running"),
-            BackupJobStatus.Completed => (Appearance.Accent, "backup-status-completed"),
-            BackupJobStatus.Failed => (Appearance.Accent, "backup-status-failed"),
-            BackupJobStatus.Validating => (Appearance.Lightweight, "backup-status-validating"),
-            _ => (Appearance.Accent, ""),
+            BackupJobStatus.Pending => (BadgeAppearance.Filled, ""),
+            BackupJobStatus.Running => (BadgeAppearance.Ghost, "backup-status-running"),
+            BackupJobStatus.Completed => (BadgeAppearance.Filled, "backup-status-completed"),
+            BackupJobStatus.Failed => (BadgeAppearance.Filled, "backup-status-failed"),
+            BackupJobStatus.Validating => (BadgeAppearance.Ghost, "backup-status-validating"),
+            _ => (BadgeAppearance.Filled, ""),
         };
 
     // ---- Create Backup Dialog ----

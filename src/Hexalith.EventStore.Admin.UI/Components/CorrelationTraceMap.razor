@@ -67,12 +67,11 @@
                     {
                         <span style="color: var(--neutral-foreground-hint); font-size: 14px;">&rarr;</span>
                     }
-                    <FluentBadge Appearance="@(stage.IsCurrent || stage.IsCompleted ? Appearance.Accent : Appearance.Outline)"
+                    <FluentBadge Appearance="@(stage.IsCurrent || stage.IsCompleted ? BadgeAppearance.Filled : BadgeAppearance.Outline)"
                                  Class="@(stage.IsFailed ? "pipeline-stage-failed" : "")"
                                  Style="@(stage.IsCurrent ? "font-weight: bold;" : "")"
-                                 title="@stage.Label">
-                        @stage.Label
-                    </FluentBadge>
+                                 title="@stage.Label"
+                                 Content="@stage.Label" />
                 }
             </FluentStack>
 
@@ -144,7 +143,7 @@
                     <TemplateColumn Title="Rejection">
                         @if (context.IsRejection)
                         {
-                            <FluentBadge Appearance="Appearance.Accent" Class="pipeline-stage-failed">Rejection</FluentBadge>
+                            <FluentBadge Appearance="BadgeAppearance.Filled" Class="pipeline-stage-failed" Content="Rejection" />
                         }
                     </TemplateColumn>
                 </FluentDataGrid>
@@ -167,10 +166,9 @@
                                 aria-label="Affected projections table">
                     <PropertyColumn Property="@(p => p.ProjectionName)" Title="Projection Name" />
                     <TemplateColumn Title="Status">
-                        <FluentBadge Appearance="Appearance.Accent"
-                                     Class="@GetProjectionStatusClass(context.Status)">
-                            @context.Status
-                        </FluentBadge>
+                        <FluentBadge Appearance="BadgeAppearance.Filled"
+                                     Class="@GetProjectionStatusClass(context.Status)"
+                                     Content="@context.Status" />
                     </TemplateColumn>
                     <TemplateColumn Title="Last Processed Seq">
                         <span class="monospace">@(context.LastProcessedSequence?.ToString() ?? "\u2014")</span>

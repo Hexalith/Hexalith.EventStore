@@ -102,13 +102,11 @@ else
                                             SortBy="@(GridSort<EventTypeInfo>.ByDescending(e => e.IsRejection))">
                                 @if (context.IsRejection)
                                 {
-                                    <FluentBadge Appearance="Appearance.Lightweight"
+                                    <FluentBadge Appearance="BadgeAppearance.Ghost"
                                                  BackgroundColor="rgba(227,179,65,0.15)"
-                                                 Color="#e3b341">
-                                        <FluentIcon Value="@(new Icons.Regular.Size12.Warning())"
-                                                    Style="margin-right: 4px; vertical-align: middle;" />
-                                        Rejection
-                                    </FluentBadge>
+                                                 Style="color: #e3b341;"
+                                                 IconStart="@(new Icons.Regular.Size12.Warning())"
+                                                 Content="Rejection" />
                                 }
                             </TemplateColumn>
                         </FluentDataGrid>
@@ -162,17 +160,15 @@ else
                                             SortBy="@(GridSort<AggregateTypeInfo>.ByDescending(a => a.HasProjections))">
                                 @if (context.HasProjections)
                                 {
-                                    <FluentBadge Appearance="Appearance.Lightweight"
+                                    <FluentBadge Appearance="BadgeAppearance.Ghost"
                                                  BackgroundColor="rgba(63,185,80,0.15)"
-                                                 Color="#3fb950">
-                                        <FluentIcon Value="@(new Icons.Regular.Size12.Checkmark())"
-                                                    Style="margin-right: 4px; vertical-align: middle;" />
-                                        Yes
-                                    </FluentBadge>
+                                                 Style="color: #3fb950;"
+                                                 IconStart="@(new Icons.Regular.Size12.Checkmark())"
+                                                 Content="Yes" />
                                 }
                                 else
                                 {
-                                    <FluentBadge Appearance="Appearance.Lightweight">No</FluentBadge>
+                                    <FluentBadge Appearance="BadgeAppearance.Ghost" Content="No" />
                                 }
                             </TemplateColumn>
                         </FluentDataGrid>

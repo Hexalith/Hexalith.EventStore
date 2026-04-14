@@ -4,11 +4,10 @@
     @foreach (string item in DisplayedItems)
     {
         <li>
-            <FluentBadge Appearance="Appearance.Lightweight"
+            <FluentBadge Appearance="BadgeAppearance.Ghost"
                          Style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.8em; cursor: pointer;"
-                         @onclick="@(() => OnItemClick.InvokeAsync(item))">
-                @item
-            </FluentBadge>
+                         @onclick="@(() => OnItemClick.InvokeAsync(item))"
+                         Content="@item" />
         </li>
     }
 </ul>
