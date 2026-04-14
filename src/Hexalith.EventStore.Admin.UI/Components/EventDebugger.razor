@@ -147,7 +147,7 @@
 
         @if (_showWatchPanel)
         {
-            <div style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px;">
+            <div style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--colorNeutralStroke1); border-radius: 4px;">
                 <FluentTextInput @bind-Value="_watchFieldInput"
                               Placeholder="Enter field path to watch (semicolon-separated)..."
                               Style="max-width: 400px; margin-bottom: 4px;"
@@ -210,7 +210,7 @@
                 <TemplateColumn Title="Old Value">
                     @if (_frame.SequenceNumber == 1)
                     {
-                        <span style="color: var(--neutral-foreground-hint);">&mdash;</span>
+                        <span style="color: var(--colorNeutralForeground3);">&mdash;</span>
                     }
                     else
                     {
@@ -735,7 +735,7 @@
         {
             if (fieldPath.Contains(watched, StringComparison.OrdinalIgnoreCase))
             {
-                return "background-color: var(--accent-fill-rest); color: var(--accent-foreground-rest); padding: 0 4px; border-radius: 2px;";
+                return "background-color: var(--colorBrandBackground); color: var(--colorNeutralForegroundOnBrand, #ffffff); padding: 0 4px; border-radius: 2px;";
             }
         }
 

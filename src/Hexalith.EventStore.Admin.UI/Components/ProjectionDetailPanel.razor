@@ -42,25 +42,25 @@
         </div>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
             <div>
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Lag</span>
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">Lag</span>
                 <div class="monospace" style="font-size: 18px; font-weight: 600;">@_detail.Lag.ToString("N0")</div>
             </div>
             <div>
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Throughput</span>
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">Throughput</span>
                 <div class="monospace" style="font-size: 18px; font-weight: 600;">@_detail.Throughput.ToString("F1") /s</div>
             </div>
             <div>
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Errors</span>
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">Errors</span>
                 <div class="monospace" style="font-size: 18px; font-weight: 600; @(_detail.ErrorCount > 0 ? "color: var(--hexalith-status-error);" : "")">@_detail.ErrorCount</div>
             </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
             <div>
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Last Position</span>
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">Last Position</span>
                 <div class="monospace">@_detail.LastProcessedPosition</div>
             </div>
             <div>
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">Last Processed</span>
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">Last Processed</span>
                 <div title="@_detail.LastProcessedUtc.ToString("O")">@FormatRelativeTime(_detail.LastProcessedUtc)</div>
             </div>
         </div>
@@ -122,7 +122,7 @@
             <h4 style="margin: 0 0 8px 0; font-size: 14px;">Subscribed Event Types (@_detail.SubscribedEventTypes.Count)</h4>
             @if (_detail.SubscribedEventTypes.Count == 0)
             {
-                <span style="color: var(--neutral-foreground-hint);">No subscribed event types</span>
+                <span style="color: var(--colorNeutralForeground3);">No subscribed event types</span>
             }
             else
             {

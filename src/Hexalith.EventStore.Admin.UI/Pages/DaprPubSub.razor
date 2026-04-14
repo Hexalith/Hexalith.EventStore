@@ -112,10 +112,10 @@
                                      AriaLabelPrefix="Component status" />
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <span style="color: var(--neutral-foreground-hint);">Type:</span> @component.ComponentType
+                        <span style="color: var(--colorNeutralForeground3);">Type:</span> @component.ComponentType
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <span style="color: var(--neutral-foreground-hint);">Version:</span> @(string.IsNullOrEmpty(component.Version) ? "N/A" : component.Version)
+                        <span style="color: var(--colorNeutralForeground3);">Version:</span> @(string.IsNullOrEmpty(component.Version) ? "N/A" : component.Version)
                     </div>
                     @if (component.Capabilities.Count > 0)
                     {
@@ -193,7 +193,7 @@
     }
     else if (_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available)
     {
-        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+        <div style="color: var(--colorNeutralForeground3); margin-bottom: 24px; font-style: italic;">
             No active subscriptions registered on the EventStore server sidecar.
         </div>
     }
@@ -223,15 +223,15 @@
                 <h3 style="margin: 0 0 12px;">Publication Pipeline</h3>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                     <FluentBadge Appearance="BadgeAppearance.Filled" style="padding: 6px 12px;" Content="EventsStored" />
-                    <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
+                    <span style="color: var(--colorNeutralForeground3);">&rsaquo;</span>
                     <FluentBadge Appearance="BadgeAppearance.Filled" style="padding: 6px 12px;" Content="EventsPublished" />
-                    <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
+                    <span style="color: var(--colorNeutralForeground3);">&rsaquo;</span>
                     <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-success); color: white;" Content="Completed" />
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span style="color: var(--neutral-foreground-hint); margin-left: 24px;">&darr; on failure</span>
+                    <span style="color: var(--colorNeutralForeground3); margin-left: 24px;">&darr; on failure</span>
                     <FluentBadge style="padding: 6px 12px; background: var(--hexalith-status-error); color: white;" Content="PublishFailed" />
-                    <span style="color: var(--neutral-foreground-hint);">&rsaquo;</span>
+                    <span style="color: var(--colorNeutralForeground3);">&rsaquo;</span>
                     <span>Dead-letter routing &mdash; investigate via Dead Letter Manager</span>
                 </div>
             </FluentCard>
@@ -258,7 +258,7 @@
                     }
                     else
                     {
-                        <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">Configure observability URL to enable</span>
+                        <span style="color: var(--colorNeutralForeground3); font-size: 0.85em;">Configure observability URL to enable</span>
                     }
                 </div>
             </FluentCard>
@@ -277,7 +277,7 @@
                     }
                     else
                     {
-                        <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">Configure observability URL to enable</span>
+                        <span style="color: var(--colorNeutralForeground3); font-size: 0.85em;">Configure observability URL to enable</span>
                     }
                 </div>
             </FluentCard>
@@ -296,7 +296,7 @@
                     }
                     else
                     {
-                        <span style="color: var(--neutral-foreground-hint); font-size: 0.85em;">Configure observability URL to enable</span>
+                        <span style="color: var(--colorNeutralForeground3); font-size: 0.85em;">Configure observability URL to enable</span>
                     }
                 </div>
             </FluentCard>
@@ -468,7 +468,7 @@
     {
         if (!_deadLetterCount.HasValue)
         {
-            return "var(--neutral-foreground-rest)";
+            return "var(--colorNeutralForeground1)";
         }
 
         return _deadLetterCount.Value == 0
@@ -493,7 +493,7 @@
 
 <style>
     .highlighted-card {
-        border: 2px solid var(--accent-fill-rest);
-        box-shadow: 0 0 8px var(--accent-fill-rest);
+        border: 2px solid var(--colorBrandBackground);
+        box-shadow: 0 0 8px var(--colorBrandBackground);
     }
 </style>

@@ -54,9 +54,9 @@ body {
     overflow: hidden;
     z-index: 9999;
     padding: 8px 16px;
-    background: var(--neutral-layer-1);
-    color: var(--neutral-foreground-rest);
-    border: 2px solid var(--accent-fill-rest);
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    border: 2px solid var(--colorBrandBackground);
     border-radius: 4px;
     font-size: 14px;
     text-decoration: none;
@@ -72,7 +72,7 @@ body {
 
 /* Monospace for machine-generated values */
 .monospace {
-    font-family: 'Cascadia Code', Consolas, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
 .sr-only {
@@ -94,7 +94,7 @@ body {
     transition: width 300ms ease, min-width 300ms ease;
     overflow-y: auto;
     overflow-x: hidden;
-    border-right: 1px solid var(--neutral-stroke-divider-rest);
+    border-right: 1px solid var(--colorNeutralStroke2);
 }
 
 .admin-sidebar.collapsed {
@@ -122,7 +122,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 8px 24px;
-    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+    border-bottom: 1px solid var(--colorNeutralStroke2);
     font-size: 13px;
 }
 
@@ -138,7 +138,7 @@ body {
 }
 
 .admin-breadcrumb a {
-    color: var(--accent-foreground-rest);
+    color: var(--colorBrandForegroundLink);
     text-decoration: none;
     white-space: nowrap;
 }
@@ -149,11 +149,11 @@ body {
 
 .admin-breadcrumb .separator {
     margin: 0 6px;
-    color: var(--neutral-foreground-hint);
+    color: var(--colorNeutralForeground3);
 }
 
 .admin-breadcrumb .current {
-    color: var(--neutral-foreground-rest);
+    color: var(--colorNeutralForeground1);
     white-space: nowrap;
 }
 
@@ -162,16 +162,16 @@ body {
     border: none;
     cursor: pointer;
     padding: 2px 4px;
-    border-radius: var(--layer-corner-radius);
-    color: var(--neutral-foreground-hint);
+    border-radius: var(--borderRadiusMedium);
+    color: var(--colorNeutralForeground3);
     display: flex;
     align-items: center;
     flex-shrink: 0;
 }
 
 .breadcrumb-copy-btn:hover {
-    color: var(--accent-foreground-rest);
-    background: var(--neutral-fill-stealth-hover);
+    color: var(--colorBrandForegroundLink);
+    background: var(--colorSubtleBackgroundHover);
 }
 
 .breadcrumb-truncation-btn {
@@ -179,12 +179,12 @@ body {
     border: none;
     cursor: pointer;
     font-size: 13px;
-    color: var(--neutral-foreground-hint);
+    color: var(--colorNeutralForeground3);
     padding: 0;
 }
 
 .breadcrumb-truncation-btn:hover {
-    color: var(--accent-foreground-rest);
+    color: var(--colorBrandForegroundLink);
 }
 
 /* Warning banner for narrow screens */
@@ -308,7 +308,7 @@ body {
 
 /* Pipeline chevron */
 .pipeline-chevron {
-    color: var(--neutral-foreground-hint);
+    color: var(--colorNeutralForeground3);
     padding: 0 4px;
     font-size: 12px;
 }
@@ -417,7 +417,7 @@ body {
 
 /* Snapshot dialog styles */
 .snapshot-readonly-field {
-    color: var(--neutral-foreground-hint);
+    color: var(--colorNeutralForeground3);
     font-size: 14px;
     padding: 4px 0;
 }
@@ -445,9 +445,9 @@ body {
 }
 
 .compaction-error-detail {
-    font-family: var(--body-font), 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--fontFamilyBase), 'Cascadia Code', 'Consolas', monospace;
     font-size: 13px;
-    background-color: var(--neutral-layer-card-container);
+    background-color: var(--colorNeutralBackground2);
     padding: 12px;
     margin-bottom: 16px;
 }
@@ -481,9 +481,9 @@ body {
 }
 
 .backup-error-detail {
-    font-family: var(--body-font), 'Cascadia Code', 'Consolas', monospace;
+    font-family: var(--fontFamilyBase), 'Cascadia Code', 'Consolas', monospace;
     font-size: 13px;
-    background-color: var(--neutral-layer-card-container);
+    background-color: var(--colorNeutralBackground2);
     padding: 12px;
     margin-bottom: 16px;
 }
@@ -503,7 +503,7 @@ body {
 .tenant-quota-bar {
     width: 100%;
     height: 8px;
-    background-color: var(--neutral-stroke-rest);
+    background-color: var(--colorNeutralStroke1);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -516,8 +516,8 @@ body {
 
 .tenant-detail-panel {
     padding: 16px;
-    background-color: var(--neutral-layer-card-container);
-    border-top: 1px solid var(--neutral-stroke-rest);
+    background-color: var(--colorNeutralBackground2);
+    border-top: 1px solid var(--colorNeutralStroke1);
     margin-bottom: 16px;
 }
 
@@ -528,4 +528,380 @@ body {
 
 .tenant-user-grid {
     font-size: 14px;
+}
+
+/* ============================================================
+   === MERGED SCOPED CSS (Story 21-8 — Option A) ==============
+   Content merged from 9 .razor.css files on 2026-04-14.
+   v4 FAST tokens renamed to v5 Fluent 2 equivalents.
+   Scope-id pseudo-element prefixes stripped (v5 web components emit no scope-id).
+   Source .razor.css files deleted after merge.
+   ============================================================ */
+
+/* === ActivityChart (merged from Components/ActivityChart.razor.css) === */
+.activity-chart {
+    margin-top: 24px;
+}
+
+.activity-chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+}
+
+.activity-chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+    padding: 0;
+}
+
+.activity-chart-bar-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.activity-chart-bar-wrapper:hover .activity-chart-bar {
+    background: var(--hexalith-brand, #0066CC);
+    opacity: 0.8;
+}
+
+.activity-chart-bar-wrapper:focus-visible {
+    outline: 2px solid var(--hexalith-brand, #0066CC);
+    outline-offset: 1px;
+    border-radius: 2px;
+}
+
+.activity-chart-bar {
+    width: 100%;
+    background: var(--hexalith-brand, #0066CC);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    transition: opacity 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .activity-chart-bar {
+        transition: none;
+    }
+}
+
+.activity-chart-skeleton {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+}
+
+.activity-chart-skeleton-bar {
+    flex: 1;
+    background: var(--colorNeutralBackground3, #e0e0e0);
+    border-radius: 2px 2px 0 0;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .activity-chart-skeleton-bar {
+        animation: none;
+        opacity: 0.6;
+    }
+}
+
+.activity-chart-summary {
+    display: none;
+    font-size: 14px;
+    color: var(--colorNeutralForeground3);
+    padding: 12px 0;
+}
+
+@media (max-width: 1279px) {
+    .activity-chart-bar-wrapper:nth-child(odd) {
+        display: none;
+    }
+}
+
+@media (max-width: 959px) {
+    .activity-chart-bars {
+        display: none;
+    }
+
+    .activity-chart-summary {
+        display: block;
+    }
+}
+
+@media (forced-colors: active) {
+    .activity-chart-bar {
+        background: Highlight;
+    }
+
+    .activity-chart-bar-wrapper:focus-visible {
+        outline-color: Highlight;
+    }
+}
+
+/* === CausationChainView (merged from Components/CausationChainView.razor.css) === */
+.causation-chain {
+    padding: 8px 0;
+    overflow-x: auto;
+}
+
+.chain-node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-left: 2px solid var(--colorNeutralStroke1);
+    margin-left: 12px;
+}
+
+.chain-node--command {
+    border-left-color: var(--hexalith-status-inflight);
+}
+
+.chain-node--event {
+    border-left-color: var(--hexalith-status-success);
+}
+
+.chain-node--correlation {
+    border-left-color: var(--colorNeutralStroke1);
+}
+
+.chain-node--projections {
+    border-left-color: var(--colorNeutralStroke1);
+}
+
+.chain-node__icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.chain-node__label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.chain-connector {
+    width: 2px;
+    height: 8px;
+    margin-left: 12px;
+    background: var(--colorNeutralStroke1);
+}
+
+@media (forced-colors: active) {
+    .chain-node {
+        border-left-color: CanvasText;
+    }
+
+    .chain-connector {
+        background: CanvasText;
+    }
+}
+
+/* === ProjectionDetailPanel (merged from Components/ProjectionDetailPanel.razor.css) === */
+/* Source file contained only a header comment — no rules to merge. */
+
+/* === ProjectionStatusBadge (merged from Components/ProjectionStatusBadge.razor.css) === */
+/* Source file contained only a header comment — no rules to merge. */
+
+/* === JsonViewer (merged from Components/Shared/JsonViewer.razor.css) === */
+.json-viewer {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: 4px;
+    background: var(--colorNeutralBackground2);
+}
+
+.json-viewer__empty {
+    padding: 16px;
+    color: var(--colorNeutralForeground3);
+    font-style: italic;
+}
+
+.json-viewer__warning {
+    padding: 8px 16px;
+    background: color-mix(in srgb, var(--hexalith-status-warning) 10%, transparent);
+    color: var(--hexalith-status-warning);
+    font-size: 12px;
+}
+
+.json-viewer__raw {
+    padding: 16px;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.json-viewer__code {
+    margin: 0;
+    padding: 12px 16px 12px 0;
+    overflow-x: auto;
+    white-space: pre;
+    counter-reset: json-line;
+}
+
+.json-viewer__code code {
+    display: block;
+}
+
+.json-line {
+    display: block;
+    padding-left: 4px;
+}
+
+.json-line-number {
+    display: inline-block;
+    width: 40px;
+    text-align: right;
+    padding-right: 12px;
+    color: var(--colorNeutralForeground3);
+    user-select: none;
+    opacity: 0.5;
+}
+
+.json-key { color: #0451a5; }
+.json-string { color: #a31515; }
+.json-number { color: #098658; }
+.json-boolean { color: #0000ff; }
+.json-null { color: #808080; }
+
+@media (prefers-color-scheme: dark) {
+    .json-key { color: #9cdcfe; }
+    .json-string { color: #ce9178; }
+    .json-number { color: #b5cea8; }
+    .json-boolean { color: #569cd6; }
+    .json-null { color: #808080; }
+}
+
+.json-viewer__show-all {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-top: 1px solid var(--colorNeutralStroke2);
+    background: var(--colorNeutralBackground3);
+    color: var(--colorBrandForegroundLink);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.json-viewer__show-all:hover {
+    background: var(--colorNeutralBackground4);
+}
+
+@media (forced-colors: active) {
+    .json-viewer {
+        border: 1px solid CanvasText;
+    }
+
+    .json-key,
+    .json-string,
+    .json-number,
+    .json-boolean,
+    .json-null {
+        color: CanvasText;
+    }
+}
+
+/* === StateDiffViewer (merged from Components/StateDiffViewer.razor.css — scope-id prefixes stripped) === */
+.state-diff-viewer {
+    padding: 8px 0;
+}
+
+.diff-field-path {
+    font-family: 'Cascadia Code', Consolas, monospace;
+}
+
+.diff-old-value {
+    background: rgba(207, 34, 46, 0.1);
+    font-family: 'Cascadia Code', Consolas, monospace;
+}
+
+.diff-new-value {
+    background: rgba(26, 127, 55, 0.1);
+    font-family: 'Cascadia Code', Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+    .diff-old-value {
+        background: rgba(248, 81, 73, 0.1);
+    }
+
+    .diff-new-value {
+        background: rgba(46, 160, 67, 0.1);
+    }
+}
+
+.diff-old-value span,
+.diff-new-value span {
+    display: inline-block;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+    .diff-old-value {
+        background: transparent;
+        border-left: 3px solid LinkText;
+    }
+
+    .diff-new-value {
+        background: transparent;
+        border-left: 3px solid Highlight;
+    }
+}
+
+/* === TypeDetailPanel (merged from Components/TypeDetailPanel.razor.css — scope-id prefix stripped) === */
+.aggregate-link:hover {
+    text-decoration: none;
+    opacity: 0.8;
+}
+
+/* === Health (merged from Pages/Health.razor.css — scope-id prefix stripped; .monospace deduped against app.css:74) === */
+.observability-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 4px;
+    color: var(--colorNeutralForeground1);
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.15s ease;
+}
+
+.observability-link:hover {
+    background-color: var(--colorSubtleBackgroundHover);
+    text-decoration: none;
+}
+
+.observability-link:active {
+    background-color: var(--colorSubtleBackgroundPressed);
+}
+
+/* === TypeCatalog (merged from Pages/TypeCatalog.razor.css — scope-id prefix stripped) === */
+.type-name-cell {
+    font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace);
+    font-size: 0.85em;
 }

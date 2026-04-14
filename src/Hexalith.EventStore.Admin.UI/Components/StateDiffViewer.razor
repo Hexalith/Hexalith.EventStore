@@ -12,7 +12,7 @@
             </h3>
             @if (!_loading && (_fromState is not null || _toState is not null))
             {
-                <span style="font-size: 12px; color: var(--neutral-foreground-hint);">
+                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">
                     @FormatTimestamp(_fromState) &rarr; @FormatTimestamp(_toState)
                 </span>
             }
@@ -24,7 +24,7 @@
 
     @if (_loading)
     {
-        <div style="color: var(--neutral-foreground-hint); padding: 8px;">Loading diff...</div>
+        <div style="color: var(--colorNeutralForeground3); padding: 8px;">Loading diff...</div>
         <SkeletonCard />
         <SkeletonCard />
     }
@@ -100,13 +100,13 @@
                 }
                 else if (FromSequence == 0)
                 {
-                    <div style="color: var(--neutral-foreground-hint); padding: 8px;">
+                    <div style="color: var(--colorNeutralForeground3); padding: 8px;">
                         No state at sequence 0 (initial state — all fields are additions).
                     </div>
                 }
                 else
                 {
-                    <div style="color: var(--neutral-foreground-hint); padding: 8px;">
+                    <div style="color: var(--colorNeutralForeground3); padding: 8px;">
                         State not available at this position.
                     </div>
                 }
@@ -119,7 +119,7 @@
                 }
                 else
                 {
-                    <div style="color: var(--neutral-foreground-hint); padding: 8px;">
+                    <div style="color: var(--colorNeutralForeground3); padding: 8px;">
                         State not available at this position.
                     </div>
                 }

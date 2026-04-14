@@ -26,7 +26,7 @@
         </div>
     </FluentLayoutItem>
 
-    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@(_sidebarCollapsed ? "48px" : "220px")" Class="admin-sidebar @(_sidebarCollapsed ? "collapsed" : "")">
+    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@(_sidebarCollapsed ? "48px" : "220px")" Class="@($"admin-sidebar{(_sidebarCollapsed ? " collapsed" : string.Empty)}")">
         <NavMenu Width="@(_sidebarCollapsed ? "48px" : "220px")" UserRole="_userRole" />
     </FluentLayoutItem>
 

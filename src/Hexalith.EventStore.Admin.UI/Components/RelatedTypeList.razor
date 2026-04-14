@@ -5,7 +5,7 @@
     {
         <li>
             <FluentBadge Appearance="BadgeAppearance.Ghost"
-                         Style="font-family: var(--body-font-monospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.8em; cursor: pointer;"
+                         Style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.8em; cursor: pointer;"
                          @onclick="@(() => OnItemClick.InvokeAsync(item))"
                          Content="@item" />
         </li>

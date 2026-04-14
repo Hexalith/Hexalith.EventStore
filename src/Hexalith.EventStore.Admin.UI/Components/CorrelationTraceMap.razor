@@ -52,7 +52,7 @@
         }
         else if (_traceMap.CommandStatus == "Unknown")
         {
-            <div style="padding: 8px 16px; margin-bottom: 12px; background: var(--neutral-layer-2); border-left: 3px solid var(--accent-fill-rest); font-size: 13px;">
+            <div style="padding: 8px 16px; margin-bottom: 12px; background: var(--colorNeutralBackground2); border-left: 3px solid var(--colorBrandBackground); font-size: 13px;">
                 Command status not found &mdash; the status record may have expired or the correlation ID is invalid. Events below were found by scanning the aggregate stream.
             </div>
         }
@@ -65,7 +65,7 @@
                 {
                     @if (stage.Position > 1)
                     {
-                        <span style="color: var(--neutral-foreground-hint); font-size: 14px;">&rarr;</span>
+                        <span style="color: var(--colorNeutralForeground3); font-size: 14px;">&rarr;</span>
                     }
                     <FluentBadge Appearance="@(stage.IsCurrent || stage.IsCompleted ? BadgeAppearance.Filled : BadgeAppearance.Outline)"
                                  Class="@(stage.IsFailed ? "pipeline-stage-failed" : "")"
@@ -76,7 +76,7 @@
             </FluentStack>
 
             @* Command details *@
-            <div style="font-size: 13px; color: var(--neutral-foreground-hint);">
+            <div style="font-size: 13px; color: var(--colorNeutralForeground3);">
                 @if (!string.IsNullOrEmpty(_traceMap.CommandType))
                 {
                     <div><strong>@_traceMap.CommandType</strong></div>
@@ -190,7 +190,7 @@
         }
 
         @* Timing summary footer *@
-        <div style="font-size: 12px; color: var(--neutral-foreground-hint); border-top: 1px solid var(--neutral-stroke-rest); padding-top: 8px;">
+        <div style="font-size: 12px; color: var(--colorNeutralForeground3); border-top: 1px solid var(--colorNeutralStroke1); padding-top: 8px;">
             @if (_traceMap.CommandReceivedAt.HasValue)
             {
                 <span>Command received @TimeFormatHelper.FormatRelativeTime(_traceMap.CommandReceivedAt.Value) &mdash; @_traceMap.CommandType</span>
@@ -209,7 +209,7 @@
 
 <style>
     .correlation-trace-map .pipeline-stage-failed {
-        --accent-fill-rest: var(--error, #d13438);
+        --colorBrandBackground: var(--hexalith-status-error, #d13438);
         color: white;
     }
 </style>

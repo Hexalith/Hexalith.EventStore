@@ -94,7 +94,7 @@
     <h2 style="margin: 0 0 12px;">Retry Policies</h2>
     @if (_spec.RetryPolicies.Count == 0)
     {
-        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+        <div style="color: var(--colorNeutralForeground3); margin-bottom: 24px; font-style: italic;">
             No retry policies defined.
         </div>
     }
@@ -134,7 +134,7 @@
     <h2 style="margin: 0 0 12px;">Timeout Policies</h2>
     @if (_spec.TimeoutPolicies.Count == 0)
     {
-        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+        <div style="color: var(--colorNeutralForeground3); margin-bottom: 24px; font-style: italic;">
             No timeout policies defined.
         </div>
     }
@@ -160,7 +160,7 @@
     <h2 style="margin: 0 0 12px;">Circuit Breakers</h2>
     @if (_spec.CircuitBreakerPolicies.Count == 0)
     {
-        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+        <div style="color: var(--colorNeutralForeground3); margin-bottom: 24px; font-style: italic;">
             No circuit breaker policies defined.
         </div>
     }
@@ -199,7 +199,7 @@
     <h2 style="margin: 0 0 12px;">Target Assignments</h2>
     @if (_spec.TargetBindings.Count == 0)
     {
-        <div style="color: var(--neutral-foreground-hint); margin-bottom: 24px; font-style: italic;">
+        <div style="color: var(--colorNeutralForeground3); margin-bottom: 24px; font-style: italic;">
             No target assignments defined.
         </div>
     }
@@ -269,7 +269,7 @@
                         Copy to Clipboard
                     </FluentButton>
                 </div>
-                <pre style="background: var(--neutral-layer-2); padding: 16px; border-radius: 4px; overflow-x: auto; margin: 0;"><code>@_spec.RawYamlContent</code></pre>
+                <pre style="background: var(--colorNeutralBackground2); padding: 16px; border-radius: 4px; overflow-x: auto; margin: 0;"><code>@_spec.RawYamlContent</code></pre>
             </FluentAccordionItem>
         </FluentAccordion>
     }
@@ -279,7 +279,7 @@
 @if (!_isLoading && _spec is not null && _spec.ErrorMessage is not null && !string.IsNullOrEmpty(_spec.RawYamlContent))
 {
     <h2 style="margin: 0 0 12px;">Raw YAML (parse failed)</h2>
-    <pre style="background: var(--neutral-layer-2); padding: 16px; border-radius: 4px; overflow-x: auto; margin-bottom: 24px;"><code>@_spec.RawYamlContent</code></pre>
+    <pre style="background: var(--colorNeutralBackground2); padding: 16px; border-radius: 4px; overflow-x: auto; margin-bottom: 24px;"><code>@_spec.RawYamlContent</code></pre>
 }
 
 @code {

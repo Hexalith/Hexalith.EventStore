@@ -240,8 +240,8 @@
                         This will back up all event streams for tenant <strong>@_createTenantId</strong>.
                     </p>
                 }
-                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
                         Backup is a resource-intensive operation that runs asynchronously.
                         It may temporarily increase I/O usage and state store read load.
                     </p>
@@ -329,8 +329,8 @@
                         <li>Events: @(_restoreTarget.EventCount?.ToString("N0") ?? "N/A")</li>
                         <li>Size: @TimeFormatHelper.FormatBytes(_restoreTarget.SizeBytes)</li>
                     </ul>
-                    <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 12px;">
-                        <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                    <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
                             Restoring will re-inject events from this backup into a parallel restore stream.
                             Original event streams are never overwritten.
                         </p>
@@ -430,8 +430,8 @@
                     <FluentOption TOption="string" Value="@("JSON")">JSON</FluentOption>
                     <FluentOption TOption="string" Value="@("CloudEvents")">CloudEvents</FluentOption>
                 </FluentSelect>
-                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
                         Export is limited to the most recent 50,000 events per stream.
                         If the stream exceeds this limit, older events will be truncated.
                     </p>
@@ -471,21 +471,21 @@
                     <InputFile OnChange="OnImportFileSelected"
                                accept=".json"
                                style="display: block; width: 100%;" />
-                    <p style="font-size: 13px; color: var(--neutral-foreground-hint); margin: 8px 0 0;">
+                    <p style="font-size: 13px; color: var(--colorNeutralForeground3); margin: 8px 0 0;">
                         Select a previously exported JSON file (max 10 MB).
                     </p>
                 </FluentCard>
                 @if (_importPreview is not null)
                 {
                     <p style="font-size: 14px; margin: 0 0 8px;"><strong>Preview:</strong></p>
-                    <pre style="font-size: 13px; margin: 0 0 12px; background: var(--neutral-layer-card-container); padding: 8px; border-radius: 4px;">@_importPreview</pre>
+                    <pre style="font-size: 13px; margin: 0 0 12px; background: var(--colorNeutralBackground2); padding: 8px; border-radius: 4px;">@_importPreview</pre>
                 }
                 @if (_importError is not null)
                 {
                     <p style="color: var(--hexalith-status-error); font-size: 13px; margin: 0 0 12px;">@_importError</p>
                 }
-                <FluentCard Style="background-color: var(--neutral-layer-card-container); padding: 12px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
                         Importing will append events to the target stream using new sequence numbers.
                         Existing events are never overwritten. Duplicate events (matching EventId) are automatically skipped.
                     </p>
