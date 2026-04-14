@@ -128,7 +128,7 @@
                     </TemplateColumn>
                     <TemplateColumn Title="Payload">
                         <FluentButton Appearance="ButtonAppearance.Transparent"
-                                      OnClick="@(() => ShowEventPayload(context))"
+                                      OnClick="@(() => ShowEventPayloadAsync(context))"
                                       aria-label="@($"View payload for event {context.Index}")">
                             View Payload
                         </FluentButton>
@@ -194,22 +194,21 @@
     }
 
     @* Event payload dialog *@
-    @if (_showPayloadDialog)
-    {
-        <FluentDialog @bind-Hidden="@_hidePayloadDialog" @bind-Hidden:after="OnPayloadDialogHiddenChanged" Modal="true" aria-label="Event payload">
-            <FluentDialogHeader ShowDismiss="true">
+    <FluentDialog @ref="_payloadDialog" Modal="true" aria-label="Event payload">
+        <FluentDialogBody>
+            <TitleTemplate>
                 <FluentLabel Typo="Typography.PaneHeader">
                     Event Payload — @_selectedEventTypeName
                 </FluentLabel>
-            </FluentDialogHeader>
-            <FluentDialogBody>
+            </TitleTemplate>
+            <ChildContent>
                 <JsonViewer Json="@_selectedEventPayload" AriaLabel="Event payload" MaxHeight="500" />
-            </FluentDialogBody>
-            <FluentDialogFooter>
-                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadDialog">Close</FluentButton>
-            </FluentDialogFooter>
-        </FluentDialog>
-    }
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadDialogAsync">Close</FluentButton>
+            </ActionTemplate>
+        </FluentDialogBody>
+    </FluentDialog>
 </div>
 
 @code {
@@ -222,8 +221,7 @@
     private SandboxResult? _result;
     private string _stateChangeSearch = string.Empty;
     private List<FieldChange> _filteredStateChanges = [];
-    private bool _showPayloadDialog;
-    private bool _hidePayloadDialog = true;
+    private FluentDialog? _payloadDialog;
     private string _selectedEventPayload = string.Empty;
     private string _selectedEventTypeName = string.Empty;
     private CancellationTokenSource? _cts;
@@ -368,27 +366,21 @@
         OnStateChangeSearchChanged();
     }
 
-    private void ShowEventPayload(SandboxEvent evt)
+    private async Task ShowEventPayloadAsync(SandboxEvent evt)
     {
         _selectedEventTypeName = evt.EventTypeName;
         _selectedEventPayload = evt.PayloadJson;
-        _showPayloadDialog = true;
-        _hidePayloadDialog = false;
-        StateHasChanged();
-    }
-
-    private void ClosePayloadDialog()
-    {
-        _showPayloadDialog = false;
-        _hidePayloadDialog = true;
-        StateHasChanged();
-    }
-
-    private void OnPayloadDialogHiddenChanged()
-    {
-        if (_hidePayloadDialog)
+        if (_payloadDialog is not null)
         {
-            _showPayloadDialog = false;
+            await _payloadDialog.ShowAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task ClosePayloadDialogAsync()
+    {
+        if (_payloadDialog is not null)
+        {
+            await _payloadDialog.HideAsync().ConfigureAwait(false);
         }
     }
 

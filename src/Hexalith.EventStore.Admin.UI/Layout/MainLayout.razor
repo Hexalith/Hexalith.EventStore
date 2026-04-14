@@ -98,8 +98,10 @@
     [JSInvokable]
     public async Task OnCommandPaletteShortcut()
     {
-        _commandPalette?.Open();
-        await Task.CompletedTask.ConfigureAwait(false);
+        if (_commandPalette is not null)
+        {
+            await _commandPalette.OpenAsync().ConfigureAwait(false);
+        }
     }
 
     [JSInvokable]

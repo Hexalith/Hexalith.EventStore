@@ -184,84 +184,88 @@
 @* Reset Confirmation Dialog *@
 @if (_showResetDialog && _detail is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Reset projection" @ondialogdismiss="CancelResetDialog"
+    <FluentDialog @ref="_resetDialog" Modal="true"
+                  aria-label="Reset projection"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Confirm Reset</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p style="margin: 0 0 12px 0;">This will rebuild projection '@_detail.Name' from the specified position. This is an async operation.</p>
-            <NumericInput TValue="long" @bind-Value="_resetFromPosition"
-                          Label="From Position (leave empty to reset from beginning)"
-                          Min="0"
-                          Style="width: 100%; margin-bottom: 12px;"
-                          aria-label="Reset from position" />
-            <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-warning);">
-                &#x26A0; Warning: Resetting from the beginning will rebuild the entire projection.
-            </p>
+            <TitleTemplate>
+                <h3 style="margin: 0;">Confirm Reset</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p style="margin: 0 0 12px 0;">This will rebuild projection '@_detail.Name' from the specified position. This is an async operation.</p>
+                <NumericInput TValue="long" @bind-Value="_resetFromPosition"
+                              Label="From Position (leave empty to reset from beginning)"
+                              Min="0"
+                              Style="width: 100%; margin-bottom: 12px;"
+                              aria-label="Reset from position" />
+                <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-warning);">
+                    &#x26A0; Warning: Resetting from the beginning will rebuild the entire projection.
+                </p>
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CancelResetDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="ConfirmResetAsync"
+                              Disabled="@_isOperating"
+                              Style="background-color: var(--hexalith-status-error); color: white;">
+                    @if (_isOperating && _operatingAction == "reset")
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Reset</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CancelResetDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="ConfirmResetAsync"
-                          Disabled="@_isOperating"
-                          Style="background-color: var(--hexalith-status-error); color: white;">
-                @if (_isOperating && _operatingAction == "reset")
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Reset</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
 @* Replay Confirmation Dialog *@
 @if (_showReplayDialog && _detail is not null)
 {
-    <FluentDialog Modal="true" TrapFocus="true" aria-modal="true"
-                  aria-label="Replay projection" @ondialogdismiss="CancelReplayDialog"
+    <FluentDialog @ref="_replayDialog" Modal="true"
+                  aria-label="Replay projection"
                   Style="min-width: 400px; max-width: 500px;">
-        <FluentDialogHeader>
-            <h3 style="margin: 0;">Confirm Replay</h3>
-        </FluentDialogHeader>
         <FluentDialogBody>
-            <p style="margin: 0 0 12px 0;">This will replay events between the specified positions for projection '@_detail.Name'.</p>
-            <NumericInput TValue="long" @bind-Value="_replayFromPosition"
-                          Label="From Position (required)"
-                          Min="0"
-                          Style="width: 100%; margin-bottom: 8px;"
-                          aria-label="Replay from position" />
-            <NumericInput TValue="long" @bind-Value="_replayToPosition"
-                          Label="To Position (required)"
-                          Min="0"
-                          Style="width: 100%; margin-bottom: 8px;"
-                          aria-label="Replay to position" />
-            @if (!string.IsNullOrEmpty(_replayValidationError))
-            {
-                <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-error);">@_replayValidationError</p>
-            }
+            <TitleTemplate>
+                <h3 style="margin: 0;">Confirm Replay</h3>
+            </TitleTemplate>
+            <ChildContent>
+                <p style="margin: 0 0 12px 0;">This will replay events between the specified positions for projection '@_detail.Name'.</p>
+                <NumericInput TValue="long" @bind-Value="_replayFromPosition"
+                              Label="From Position (required)"
+                              Min="0"
+                              Style="width: 100%; margin-bottom: 8px;"
+                              aria-label="Replay from position" />
+                <NumericInput TValue="long" @bind-Value="_replayToPosition"
+                              Label="To Position (required)"
+                              Min="0"
+                              Style="width: 100%; margin-bottom: 8px;"
+                              aria-label="Replay to position" />
+                @if (!string.IsNullOrEmpty(_replayValidationError))
+                {
+                    <p style="margin: 0; font-size: 12px; color: var(--hexalith-status-error);">@_replayValidationError</p>
+                }
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CancelReplayDialogAsync">Cancel</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="ConfirmReplayAsync"
+                              Disabled="@_isOperating"
+                              aria-label="Confirm replay">
+                    @if (_isOperating && _operatingAction == "replay")
+                    {
+                        <FluentSpinner Size="SpinnerSize.ExtraSmall" />
+                    }
+                    else
+                    {
+                        <span>Replay</span>
+                    }
+                </FluentButton>
+            </ActionTemplate>
         </FluentDialogBody>
-        <FluentDialogFooter>
-            <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CancelReplayDialog">Cancel</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="ConfirmReplayAsync"
-                          Disabled="@_isOperating"
-                          aria-label="Confirm replay">
-                @if (_isOperating && _operatingAction == "replay")
-                {
-                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
-                }
-                else
-                {
-                    <span>Replay</span>
-                }
-            </FluentButton>
-        </FluentDialogFooter>
     </FluentDialog>
 }
 
@@ -289,10 +293,14 @@
 
     // P2: Reset dialog state
     private bool _showResetDialog;
+    private bool _pendingShowReset;
+    private FluentDialog? _resetDialog;
     private long? _resetFromPosition;
 
     // P1: Replay dialog state
     private bool _showReplayDialog;
+    private bool _pendingShowReplay;
+    private FluentDialog? _replayDialog;
     private long? _replayFromPosition;
     private long? _replayToPosition;
     private string? _replayValidationError;
@@ -418,15 +426,36 @@
         }).ConfigureAwait(false);
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingShowReset && _resetDialog is not null)
+        {
+            await _resetDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowReset = false;
+        }
+
+        if (_pendingShowReplay && _replayDialog is not null)
+        {
+            await _replayDialog.ShowAsync().ConfigureAwait(false);
+            _pendingShowReplay = false;
+        }
+    }
+
     // P2: Reset dialog with From Position input and danger confirm
     private void ShowResetDialog()
     {
         _resetFromPosition = null;
         _showResetDialog = true;
+        _pendingShowReset = true;
     }
 
-    private void CancelResetDialog()
+    private async Task CancelResetDialogAsync()
     {
+        if (_resetDialog is not null)
+        {
+            await _resetDialog.HideAsync().ConfigureAwait(false);
+        }
+
         _showResetDialog = false;
     }
 
@@ -452,6 +481,11 @@
             else
             {
                 ToastService.ShowError("Failed to reset projection");
+            }
+
+            if (_resetDialog is not null)
+            {
+                await _resetDialog.HideAsync().ConfigureAwait(false);
             }
 
             _showResetDialog = false;
@@ -487,10 +521,16 @@
         _replayToPosition = _detail?.LastProcessedPosition;
         _replayValidationError = null;
         _showReplayDialog = true;
+        _pendingShowReplay = true;
     }
 
-    private void CancelReplayDialog()
+    private async Task CancelReplayDialogAsync()
     {
+        if (_replayDialog is not null)
+        {
+            await _replayDialog.HideAsync().ConfigureAwait(false);
+        }
+
         _showReplayDialog = false;
         _replayValidationError = null;
     }
@@ -537,6 +577,11 @@
             else
             {
                 ToastService.ShowError("Failed to replay projection");
+            }
+
+            if (_replayDialog is not null)
+            {
+                await _replayDialog.HideAsync().ConfigureAwait(false);
             }
 
             _showReplayDialog = false;
