@@ -777,11 +777,11 @@
 
             if (createResult?.Success != true)
             {
-                ToastService.ShowError(createResult?.Message ?? "Failed to create tenant.");
+                await ToastService.ShowErrorAsync(createResult?.Message ?? "Failed to create tenant.");
                 return;
             }
 
-            ToastService.ShowSuccess($"Tenant {_createTenantId} created successfully.");
+            await ToastService.ShowSuccessAsync($"Tenant {_createTenantId} created successfully.");
             if (_createDialog is not null)
             {
                 await _createDialog.HideAsync().ConfigureAwait(false);
@@ -796,15 +796,15 @@
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Tenants service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Tenants service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Failed to create tenant: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Failed to create tenant: {ex.Message}");
         }
         finally
         {
@@ -878,22 +878,22 @@
             AdminOperationResult? result = await action(_operationCts.Token);
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess(successMsg);
+                await ToastService.ShowSuccessAsync(successMsg);
                 await CloseLifecycleDialogAsync().ConfigureAwait(false);
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? failMsg);
+                await ToastService.ShowErrorAsync(result?.Message ?? failMsg);
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Tenants service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Tenants service unavailable. Try again later.");
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"{failMsg}: {ex.Message}");
+            await ToastService.ShowErrorAsync($"{failMsg}: {ex.Message}");
         }
         finally
         {
@@ -937,7 +937,7 @@
                 _expandedTenantId, _addUserId!.Trim(), _addUserRole, _operationCts.Token);
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"User {_addUserId} added.");
+                await ToastService.ShowSuccessAsync($"User {_addUserId} added.");
                 if (_addUserDialog is not null)
                 {
                     await _addUserDialog.HideAsync().ConfigureAwait(false);
@@ -948,12 +948,12 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to add user.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to add user.");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Failed to add user: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Failed to add user: {ex.Message}");
         }
         finally
         {
@@ -995,7 +995,7 @@
                 _expandedTenantId, _removeUserTarget.UserId, _operationCts.Token);
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"User {_removeUserTarget.UserId} removed.");
+                await ToastService.ShowSuccessAsync($"User {_removeUserTarget.UserId} removed.");
                 if (_removeUserDialog is not null)
                 {
                     await _removeUserDialog.HideAsync().ConfigureAwait(false);
@@ -1007,12 +1007,12 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to remove user.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to remove user.");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Failed to remove user: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Failed to remove user: {ex.Message}");
         }
         finally
         {
@@ -1055,7 +1055,7 @@
                 _expandedTenantId, _changeRoleTarget.UserId, _changeRoleNewRole, _operationCts.Token);
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"Role changed for {_changeRoleTarget.UserId}.");
+                await ToastService.ShowSuccessAsync($"Role changed for {_changeRoleTarget.UserId}.");
                 if (_changeRoleDialog is not null)
                 {
                     await _changeRoleDialog.HideAsync().ConfigureAwait(false);
@@ -1067,12 +1067,12 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to change role.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to change role.");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Failed to change role: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Failed to change role: {ex.Message}");
         }
         finally
         {

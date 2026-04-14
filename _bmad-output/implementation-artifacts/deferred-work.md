@@ -85,3 +85,7 @@
 - **ThemeState `Changed` event not thread-safe** — `ThemeState.SetMode()` reads and writes `_mode` with no synchronization. `Changed?.Invoke()` fires on the caller's thread. Low risk in single-circuit Blazor Server scoped DI. Pre-existing pattern.
 - **v4 FAST design tokens referenced in CSS not defined by v5** — `--neutral-layer-1`, `--neutral-foreground-rest`, and other FAST tokens used in `App.razor` body style and `app.css` are not defined by Fluent UI v5 (which removed FAST web components). Explicitly Story 21-8 scope.
 - **FluentTreeView nested inside FluentNavCategory — potential ARIA nesting issue** — `FluentTreeView`/`FluentTreeItem` inside `FluentNavCategory` may produce invalid ARIA semantics (nav role containing tree role). Pre-existing pattern (was `FluentNavGroup` + `FluentTreeView` in v4).
+
+## Deferred from: code review of 21-7-toast-api-update.md (2026-04-14)
+
+- **AC 19/21/22 validation remains blocked by downstream compile errors** - Admin.UI still has downstream 21-8/21-9 compile blockers, so Admin.UI.Tests execution and visual verification gates are deferred. Treat as pre-existing blocker and re-run these gates once downstream stories land.

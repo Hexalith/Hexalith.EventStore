@@ -332,7 +332,7 @@
             _detail = await ApiClient.GetProjectionDetailAsync(TenantId, ProjectionName).ConfigureAwait(false);
             if (_detail is null)
             {
-                ToastService.ShowWarning("Projection not found");
+                await ToastService.ShowWarningAsync("Projection not found");
                 await OnClose.InvokeAsync().ConfigureAwait(false);
             }
         }
@@ -382,11 +382,11 @@
                 .ConfigureAwait(false);
             if (opResult?.Success == true)
             {
-                ToastService.ShowSuccess("Projection paused successfully");
+                await ToastService.ShowSuccessAsync("Projection paused successfully");
             }
             else
             {
-                ToastService.ShowError("Failed to pause projection");
+                await ToastService.ShowErrorAsync("Failed to pause projection");
             }
 
             await Task.Delay(500).ConfigureAwait(false);
@@ -414,11 +414,11 @@
                 .ConfigureAwait(false);
             if (opResult?.Success == true)
             {
-                ToastService.ShowSuccess("Projection resumed successfully");
+                await ToastService.ShowSuccessAsync("Projection resumed successfully");
             }
             else
             {
-                ToastService.ShowError("Failed to resume projection");
+                await ToastService.ShowErrorAsync("Failed to resume projection");
             }
 
             await Task.Delay(500).ConfigureAwait(false);
@@ -476,11 +476,11 @@
                 .ConfigureAwait(false);
             if (opResult?.Success == true)
             {
-                ToastService.ShowSuccess($"Reset initiated (Operation: {opResult.OperationId})");
+                await ToastService.ShowSuccessAsync($"Reset initiated (Operation: {opResult.OperationId})");
             }
             else
             {
-                ToastService.ShowError("Failed to reset projection");
+                await ToastService.ShowErrorAsync("Failed to reset projection");
             }
 
             if (_resetDialog is not null)
@@ -493,19 +493,19 @@
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Unauthorized");
+            await ToastService.ShowErrorAsync("Unauthorized");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Forbidden — insufficient permissions");
+            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions");
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Service unavailable — try again later");
+            await ToastService.ShowErrorAsync("Service unavailable — try again later");
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Operation failed: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Operation failed: {ex.Message}");
         }
         finally
         {
@@ -572,11 +572,11 @@
                 .ConfigureAwait(false);
             if (opResult?.Success == true)
             {
-                ToastService.ShowSuccess($"Replay initiated (Operation: {opResult.OperationId})");
+                await ToastService.ShowSuccessAsync($"Replay initiated (Operation: {opResult.OperationId})");
             }
             else
             {
-                ToastService.ShowError("Failed to replay projection");
+                await ToastService.ShowErrorAsync("Failed to replay projection");
             }
 
             if (_replayDialog is not null)
@@ -589,19 +589,19 @@
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Unauthorized");
+            await ToastService.ShowErrorAsync("Unauthorized");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Forbidden — insufficient permissions");
+            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions");
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Service unavailable — try again later");
+            await ToastService.ShowErrorAsync("Service unavailable — try again later");
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Operation failed: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Operation failed: {ex.Message}");
         }
         finally
         {
@@ -621,19 +621,19 @@
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Unauthorized");
+            await ToastService.ShowErrorAsync("Unauthorized");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Forbidden — insufficient permissions");
+            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions");
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Service unavailable — try again later");
+            await ToastService.ShowErrorAsync("Service unavailable — try again later");
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Operation failed: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Operation failed: {ex.Message}");
         }
         finally
         {
@@ -667,7 +667,7 @@
             }
         }
 
-        ToastService.ShowInfo("Operation submitted — status may take a moment to update");
+        await ToastService.ShowInfoAsync("Operation submitted — status may take a moment to update");
     }
 
     // P8: Boundary-safe relative time formatting

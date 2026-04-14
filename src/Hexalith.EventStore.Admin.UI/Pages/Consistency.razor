@@ -744,35 +744,35 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess("Consistency check started.");
+                await ToastService.ShowSuccessAsync("Consistency check started.");
                 if (_triggerDialog is not null) { await _triggerDialog.HideAsync().ConfigureAwait(false); }
                 _showTriggerDialog = false;
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to trigger consistency check.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to trigger consistency check.");
             }
         }
         catch (InvalidOperationException ex)
         {
-            ToastService.ShowError(ex.Message);
+            await ToastService.ShowErrorAsync(ex.Message);
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ToastService.ShowErrorAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         catch (OperationCanceledException)
         {
@@ -816,7 +816,7 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess("Consistency check cancelled.");
+                await ToastService.ShowSuccessAsync("Consistency check cancelled.");
                 if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
                 _showCancelDialog = false;
                 _cancelCheckId = null;
@@ -824,12 +824,12 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to cancel consistency check.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to cancel consistency check.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (OperationCanceledException)
         {
@@ -853,7 +853,7 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Export failed: {ex.Message}");
+            await ToastService.ShowErrorAsync($"Export failed: {ex.Message}");
         }
     }
 

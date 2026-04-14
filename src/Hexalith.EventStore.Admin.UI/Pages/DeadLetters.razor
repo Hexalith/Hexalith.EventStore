@@ -549,7 +549,7 @@
         }
         catch (Exception)
         {
-            ToastService.ShowError("Failed to load more entries.");
+            await ToastService.ShowErrorAsync("Failed to load more entries.");
         }
         finally
         {
@@ -877,7 +877,7 @@
             if (failCount == 0)
             {
                 // Full success
-                ToastService.ShowSuccess($"{pastTense} {totalCount} dead-letter command(s).");
+                await ToastService.ShowSuccessAsync($"{pastTense} {totalCount} dead-letter command(s).");
                 _selectedIds = [];
                 await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
@@ -885,7 +885,7 @@
             else if (successCount > 0)
             {
                 // Partial failure
-                ToastService.ShowWarning($"{pastTense} {successCount} commands. {failCount} failed: {lastError}");
+                await ToastService.ShowWarningAsync($"{pastTense} {successCount} commands. {failCount} failed: {lastError}");
                 _selectedIds = [];
                 await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
@@ -893,7 +893,7 @@
             else
             {
                 // Full failure — stay on dialog, keep selection
-                ToastService.ShowError($"Failed to {actionName} entries: {lastError}");
+                await ToastService.ShowErrorAsync($"Failed to {actionName} entries: {lastError}");
             }
         }
         finally

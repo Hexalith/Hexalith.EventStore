@@ -236,7 +236,7 @@ else
                 {
                     _selectedTenantId = null;
                     _selectedProjectionName = null;
-                    ToastService.ShowWarning("Projection no longer available");
+                    await ToastService.ShowWarningAsync("Projection no longer available");
                 }
             }
 
