@@ -472,7 +472,7 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"Compaction started for {_triggerTenantId}. Refresh to check status.");
+                await ToastService.ShowSuccessAsync($"Compaction started for {_triggerTenantId}. Refresh to check status.");
                 if (_triggerDialog is not null)
                 {
                     await _triggerDialog.HideAsync().ConfigureAwait(false);
@@ -483,24 +483,24 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to trigger compaction.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to trigger compaction.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ToastService.ShowErrorAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         catch (OperationCanceledException)
         {

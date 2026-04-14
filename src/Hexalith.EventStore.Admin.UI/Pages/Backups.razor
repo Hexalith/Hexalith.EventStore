@@ -889,31 +889,31 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"Backup started for {_createTenantId}. Refresh to check status.");
+                await ShowSuccessToastBestEffortAsync($"Backup started for {_createTenantId}. Refresh to check status.");
                 if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
                 _showCreateDialog = false;
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to trigger backup.");
+                await ShowErrorToastBestEffortAsync(result?.Message ?? "Failed to trigger backup.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ShowErrorToastBestEffortAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ShowErrorToastBestEffortAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ShowErrorToastBestEffortAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         catch (OperationCanceledException)
         {
@@ -958,19 +958,19 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"Validation started for backup {TruncateId(_validateTarget.BackupId)}.");
+                await ShowSuccessToastBestEffortAsync($"Validation started for backup {TruncateId(_validateTarget.BackupId)}.");
                 if (_validateDialog is not null) { await _validateDialog.HideAsync().ConfigureAwait(false); }
                 _showValidateDialog = false;
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to start validation.");
+                await ShowErrorToastBestEffortAsync(result?.Message ?? "Failed to start validation.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
         }
         catch (OperationCanceledException)
         {
@@ -1051,19 +1051,19 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"Restore initiated from backup {TruncateId(_restoreTarget.BackupId)}.");
+                await ShowSuccessToastBestEffortAsync($"Restore initiated from backup {TruncateId(_restoreTarget.BackupId)}.");
                 if (_restoreDialog is not null) { await _restoreDialog.HideAsync().ConfigureAwait(false); }
                 _showRestoreDialog = false;
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to start restore.");
+                await ShowErrorToastBestEffortAsync(result?.Message ?? "Failed to start restore.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
         }
         catch (OperationCanceledException)
         {
@@ -1114,18 +1114,18 @@
             if (result?.Success == true && result.Content is not null && result.FileName is not null)
             {
                 await JSRuntime.InvokeVoidAsync("blazorDownloadFile", result.FileName, result.Content);
-                ToastService.ShowSuccess($"Exported {result.EventCount} events.");
+                await ShowSuccessToastBestEffortAsync($"Exported {result.EventCount} events.");
                 if (_exportDialog is not null) { await _exportDialog.HideAsync().ConfigureAwait(false); }
                 _showExportDialog = false;
             }
             else
             {
-                ToastService.ShowError(result?.ErrorMessage ?? "Failed to export stream.");
+                await ShowErrorToastBestEffortAsync(result?.ErrorMessage ?? "Failed to export stream.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
         }
         catch (OperationCanceledException)
         {
@@ -1220,19 +1220,19 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess(result.Message ?? "Import completed successfully.");
+                await ShowSuccessToastBestEffortAsync(result.Message ?? "Import completed successfully.");
                 if (_importDialog is not null) { await _importDialog.HideAsync().ConfigureAwait(false); }
                 _showImportDialog = false;
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to import stream.");
+                await ShowErrorToastBestEffortAsync(result?.Message ?? "Failed to import stream.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
         }
         catch (OperationCanceledException)
         {
@@ -1242,6 +1242,30 @@
         {
             _isOperating = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task ShowSuccessToastBestEffortAsync(string? message)
+    {
+        try
+        {
+            await ToastService.ShowSuccessAsync(message).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Toast failures must not block successful operation state transitions.
+        }
+    }
+
+    private async Task ShowErrorToastBestEffortAsync(string? message)
+    {
+        try
+        {
+            await ToastService.ShowErrorAsync(message).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Toast failures must not mask operation failures on error paths.
         }
     }
 

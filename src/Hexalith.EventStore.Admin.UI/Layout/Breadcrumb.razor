@@ -175,11 +175,11 @@
 
             if (success)
             {
-                ToastService.ShowSuccess("Link copied to clipboard");
+                await ToastService.ShowSuccessAsync("Link copied to clipboard");
             }
             else
             {
-                ToastService.ShowError("Could not copy link");
+                await ToastService.ShowErrorAsync("Could not copy link");
             }
         }
         catch (ObjectDisposedException)

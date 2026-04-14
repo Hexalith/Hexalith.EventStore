@@ -545,31 +545,31 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess("Snapshot policy created.");
+                await ToastService.ShowSuccessAsync("Snapshot policy created.");
                 if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
                 _showCreateDialog = false;
                 await LoadDataAsync();
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to create policy.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to create policy.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ToastService.ShowErrorAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         finally
         {
@@ -617,7 +617,7 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess("Snapshot policy updated.");
+                await ToastService.ShowSuccessAsync("Snapshot policy updated.");
                 if (_editDialog is not null) { await _editDialog.HideAsync().ConfigureAwait(false); }
                 _showEditDialog = false;
                 _editPolicy = null;
@@ -625,24 +625,24 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to update policy.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to update policy.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ToastService.ShowErrorAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         finally
         {
@@ -684,7 +684,7 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess("Policy deleted.");
+                await ToastService.ShowSuccessAsync("Policy deleted.");
                 if (_deleteDialog is not null) { await _deleteDialog.HideAsync().ConfigureAwait(false); }
                 _showDeleteDialog = false;
                 _deletePolicy = null;
@@ -692,24 +692,24 @@
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to delete policy.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to delete policy.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ToastService.ShowErrorAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         finally
         {
@@ -747,30 +747,30 @@
 
             if (result?.Success == true)
             {
-                ToastService.ShowSuccess($"Snapshot created for {_snapshotAggregateId}.");
+                await ToastService.ShowSuccessAsync($"Snapshot created for {_snapshotAggregateId}.");
                 if (_createSnapshotDialog is not null) { await _createSnapshotDialog.HideAsync().ConfigureAwait(false); }
                 _showCreateSnapshotDialog = false;
             }
             else
             {
-                ToastService.ShowError(result?.Message ?? "Failed to create snapshot.");
+                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to create snapshot.");
             }
         }
         catch (ServiceUnavailableException)
         {
-            ToastService.ShowError("Admin service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
         catch (UnauthorizedAccessException)
         {
-            ToastService.ShowError("Authentication required. Please sign in again.");
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
         }
         catch (ForbiddenAccessException)
         {
-            ToastService.ShowError("Access denied. Insufficient permissions.");
+            await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
         }
         catch (HttpRequestException ex)
         {
-            ToastService.ShowError($"Request failed ({(int?)ex.StatusCode ?? 0}).");
+            await ToastService.ShowErrorAsync($"Request failed ({(int?)ex.StatusCode ?? 0}).");
         }
         finally
         {
