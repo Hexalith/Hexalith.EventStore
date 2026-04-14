@@ -17,27 +17,44 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      SDK_CONTAINER_REGISTRY_UNAME: ${{ secrets.REGISTRY_USERNAME }}
+      SDK_CONTAINER_REGISTRY_PWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      IMAGE_SHA: ${{ github.event.workflow_run.head_sha }}
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           submodules: true
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Login to registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login registry.hexalith.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
 
-      - name: Build and push eventstore
+      - name: Cache NuGet packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      - name: Publish and push container images
         run: |
-          docker build -f src/Hexalith.EventStore/Dockerfile \
-            -t registry.hexalith.com/eventstore:staging-latest .
-          docker push registry.hexalith.com/eventstore:staging-latest
-
-      - name: Build and push sample
-        run: |
-          docker build -f samples/Hexalith.EventStore.Sample/Dockerfile \
-            -t registry.hexalith.com/sample:staging-latest .
-          docker push registry.hexalith.com/sample:staging-latest
+          TAGS="staging-latest;staging-${IMAGE_SHA}"
+          for project in \
+            src/Hexalith.EventStore \
+            src/Hexalith.EventStore.Admin.Server.Host \
+            src/Hexalith.EventStore.Admin.UI \
+            samples/Hexalith.EventStore.Sample \
+            samples/Hexalith.EventStore.Sample.BlazorUI \
+            Hexalith.Tenants/src/Hexalith.Tenants; do
+            echo "::group::Publishing container for $(basename $project)"
+            dotnet publish "$project" \
+              --configuration Release \
+              -t:PublishContainer \
+              -p:ContainerImageTags="$TAGS"
+            echo "::endgroup::"
+          done
 
       - name: Deploy to staging
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
@@ -46,7 +63,11 @@ jobs:
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            kubectl rollout restart deployment/eventstore -n eventstore-staging
-            kubectl rollout restart deployment/sample -n eventstore-staging
-            kubectl rollout status deployment/eventstore -n eventstore-staging --timeout=120s
-            kubectl rollout status deployment/sample -n eventstore-staging --timeout=120s
+            set -e
+            DEPLOYMENTS="eventstore eventstore-admin eventstore-admin-ui sample sample-blazor-ui tenants"
+            for d in $DEPLOYMENTS; do
+              kubectl rollout restart deployment/$d -n eventstore-staging
+            done
+            for d in $DEPLOYMENTS; do
+              kubectl rollout status deployment/$d -n eventstore-staging --timeout=180s
+            done

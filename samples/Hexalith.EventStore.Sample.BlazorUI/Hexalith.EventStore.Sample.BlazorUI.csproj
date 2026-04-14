@@ -5,6 +5,8 @@
     <IsPublishable>true</IsPublishable>
     <DisableScopedCssBundling>true</DisableScopedCssBundling>
     <ScopedCssEnabled>false</ScopedCssEnabled>
+    <EnableContainer>true</EnableContainer>
+    <ContainerRepository>sample-blazor-ui</ContainerRepository>
   </PropertyGroup>
 
   <ItemGroup>

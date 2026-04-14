@@ -3,6 +3,8 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
+    <EnableContainer>true</EnableContainer>
+    <ContainerRepository>sample</ContainerRepository>
   </PropertyGroup>
 
   <ItemGroup>

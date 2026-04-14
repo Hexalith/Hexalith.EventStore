@@ -35,6 +35,37 @@ dapr init
 dotnet test tests/Hexalith.EventStore.IntegrationTests/
 ```
 
+## Container Images
+
+Container images are produced via the **.NET SDK container support** (no Dockerfiles). Opt-in is centralized in `Directory.Build.targets` and enabled per-project via `<EnableContainer>true</EnableContainer>` + `<ContainerRepository>image-name</ContainerRepository>`.
+
+Defaults (see `Directory.Build.targets`): base `mcr.microsoft.com/dotnet/aspnet:10.0-alpine`, registry `registry.hexalith.com`, user `app` (non-root), port 8080, OCI labels.
+
+```bash
+# Publish a single container image to a local tar archive (no registry push)
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
+  --configuration Release \
+  -t:PublishContainer \
+  -p:ContainerArchiveOutputPath=/tmp/eventstore.tar.gz
+
+# Push directly to the registry (requires SDK_CONTAINER_REGISTRY_UNAME/PWORD env vars)
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
+  --configuration Release \
+  -t:PublishContainer \
+  -p:ContainerImageTags="staging-latest;staging-$(git rev-parse HEAD)"
+```
+
+Services currently containerized (6 images):
+
+| Project | Image |
+|---------|-------|
+| `src/Hexalith.EventStore` | `registry.hexalith.com/eventstore` |
+| `src/Hexalith.EventStore.Admin.Server.Host` | `registry.hexalith.com/eventstore-admin` |
+| `src/Hexalith.EventStore.Admin.UI` | `registry.hexalith.com/eventstore-admin-ui` |
+| `samples/Hexalith.EventStore.Sample` | `registry.hexalith.com/sample` |
+| `samples/Hexalith.EventStore.Sample.BlazorUI` | `registry.hexalith.com/sample-blazor-ui` |
+| `Hexalith.Tenants/src/Hexalith.Tenants` (submodule) | `registry.hexalith.com/tenants` |
+
 ## Project Structure
 
 ```

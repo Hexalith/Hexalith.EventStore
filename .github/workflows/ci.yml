@@ -106,6 +106,26 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
           dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/ --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
+      - name: Build container images (validation, no push)
+        run: |
+          mkdir -p /tmp/container-images
+          for project in \
+            src/Hexalith.EventStore \
+            src/Hexalith.EventStore.Admin.Server.Host \
+            src/Hexalith.EventStore.Admin.UI \
+            samples/Hexalith.EventStore.Sample \
+            samples/Hexalith.EventStore.Sample.BlazorUI \
+            Hexalith.Tenants/src/Hexalith.Tenants; do
+            name=$(basename "$project")
+            echo "::group::Building container for $name"
+            dotnet publish "$project" \
+              --configuration Release \
+              -t:PublishContainer \
+              -p:ContainerArchiveOutputPath="/tmp/container-images/${name}.tar.gz"
+            echo "::endgroup::"
+          done
+          ls -lh /tmp/container-images/
+
       - name: Tool Install Smoke Test
         run: |
           dotnet pack src/Hexalith.EventStore.Admin.Cli/ --configuration Release --output ./smoke-test-nupkgs
