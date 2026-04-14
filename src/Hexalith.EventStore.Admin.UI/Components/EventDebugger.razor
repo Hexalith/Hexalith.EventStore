@@ -80,7 +80,7 @@
             </FluentButton>
 
             @* Speed selector *@
-            <FluentSelect TOption="string" @bind-Value="_autoPlaySpeedStr"
+            <FluentSelect TOption="string" TValue="string" @bind-Value="_autoPlaySpeedStr"
                           Style="width: 110px; margin-left: 8px;"
                           aria-label="Auto-play speed">
                 <FluentOption TOption="string" Value="2000">Slow</FluentOption>
@@ -90,9 +90,9 @@
             </FluentSelect>
 
             @* Jump-to input *@
-            <FluentNumberField @bind-Value="_jumpToSequence" Min="1"
-                               Style="width: 100px; margin-left: 8px;"
-                               aria-label="Jump to sequence number" />
+            <NumericInput TValue="long" @bind-Value="_jumpToSequence" Min="1"
+                          Style="width: 100px; margin-left: 8px;"
+                          aria-label="Jump to sequence number" />
             <FluentButton Appearance="ButtonAppearance.Outline" OnClick="JumpToSequence"
                           Disabled="@(_loading)"
                           aria-label="Go to sequence">
@@ -148,10 +148,15 @@
         @if (_showWatchPanel)
         {
             <div style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px;">
-                <FluentSearch @bind-Value="_watchFieldInput"
+                <FluentTextInput @bind-Value="_watchFieldInput"
                               Placeholder="Enter field path to watch (semicolon-separated)..."
                               Style="max-width: 400px; margin-bottom: 4px;"
-                              aria-label="Watch field path input" />
+                              aria-label="Watch field path input"
+                              TextInputType="TextInputType.Search">
+                    <StartTemplate>
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                    </StartTemplate>
+                </FluentTextInput>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="AddWatchFields"
                               aria-label="Add watch fields">
                     Add
@@ -173,11 +178,25 @@
                 }
             </h4>
 
-            <FluentSearch @bind-Value="_fieldSearchTerm"
+            <FluentTextInput @bind-Value="_fieldSearchTerm"
                           @bind-Value:after="OnFieldSearchChanged"
                           Placeholder="Filter by field path..."
                           Style="margin-bottom: 4px; max-width: 400px;"
-                          aria-label="Search field changes" />
+                          aria-label="Search field changes"
+                          TextInputType="TextInputType.Text">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                </StartTemplate>
+                <EndTemplate>
+                    <FluentButton Appearance="ButtonAppearance.Transparent"
+                                  Disabled="@(string.IsNullOrEmpty(_fieldSearchTerm))"
+                                  OnClick="@(() => { _fieldSearchTerm = string.Empty; OnFieldSearchChanged(); })"
+                                  aria-label="Clear search"
+                                  Title="Clear search">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                    </FluentButton>
+                </EndTemplate>
+            </FluentTextInput>
 
             <FluentDataGrid Items="@GetFilteredFieldChanges()"
                             TGridItem="FieldChange"

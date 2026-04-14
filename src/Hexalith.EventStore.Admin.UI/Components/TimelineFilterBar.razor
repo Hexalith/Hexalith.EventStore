@@ -24,11 +24,25 @@
             Queries
         </FluentButton>
 
-        <FluentSearch @bind-Value="@_correlationSearch"
+        <FluentTextInput @bind-Value="@_correlationSearch"
                       @bind-Value:after="OnCorrelationChanged"
                       Placeholder="Filter by correlation ID..."
                       aria-label="Filter by correlation ID"
-                      Style="min-width: 200px;" />
+                      Style="min-width: 200px;"
+                      TextInputType="TextInputType.Text">
+            <StartTemplate>
+                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+            </StartTemplate>
+            <EndTemplate>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              Disabled="@(string.IsNullOrEmpty(_correlationSearch))"
+                              OnClick="ClearCorrelationSearchAsync"
+                              aria-label="Clear search"
+                              Title="Clear search">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                </FluentButton>
+            </EndTemplate>
+        </FluentTextInput>
 
         <div style="margin-left: auto;">
             <FluentButton Appearance="@(CompareMode ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
@@ -76,6 +90,12 @@
     {
         string? value = string.IsNullOrWhiteSpace(_correlationSearch) ? null : _correlationSearch.Trim();
         await CorrelationFilterChanged.InvokeAsync(value).ConfigureAwait(false);
+    }
+
+    private async Task ClearCorrelationSearchAsync()
+    {
+        _correlationSearch = string.Empty;
+        await OnCorrelationChanged().ConfigureAwait(false);
     }
 
     private async Task ToggleCompareMode()

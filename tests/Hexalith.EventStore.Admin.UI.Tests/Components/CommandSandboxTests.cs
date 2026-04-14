@@ -229,7 +229,7 @@ public class CommandSandboxTests : AdminUITestContext
     private static void SetCommandType(IRenderedComponent<CommandSandbox> cut, string commandType)
     {
         // Find the command type text field and set its value
-        AngleSharp.Dom.IElement? textField = cut.Find("fluent-text-field");
+        AngleSharp.Dom.IElement? textField = cut.Find("fluent-text-input");
         textField.Change(commandType);
     }
 

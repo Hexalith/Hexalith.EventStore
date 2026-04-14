@@ -4,8 +4,22 @@
 <FluentDialog @bind-Hidden="_hidden" Modal="true" TrapFocus="true" PreventDismiss="false" aria-label="Command palette"
               OnDismiss="@(() => Close())" Style="width: 560px; max-height: 480px;">
     <FluentDialogHeader ShowDismiss="true">
-        <FluentSearch @bind-Value="_searchQuery" @bind-Value:after="OnSearchChanged" Class="command-palette-search"
-                      Placeholder="Search commands, pages, actions..." Style="width: 100%;" />
+        <FluentTextInput @bind-Value="_searchQuery" @bind-Value:after="OnSearchChanged" Class="command-palette-search"
+                      Placeholder="Search commands, pages, actions..." Style="width: 100%;"
+                      TextInputType="TextInputType.Text">
+            <StartTemplate>
+                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+            </StartTemplate>
+            <EndTemplate>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              Disabled="@(string.IsNullOrEmpty(_searchQuery))"
+                              OnClick="@(() => { _searchQuery = string.Empty; OnSearchChanged(); })"
+                              aria-label="Clear search"
+                              Title="Clear search">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                </FluentButton>
+            </EndTemplate>
+        </FluentTextInput>
     </FluentDialogHeader>
     <FluentDialogBody>
         @if (_filteredResults.Count > 0)

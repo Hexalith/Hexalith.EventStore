@@ -127,7 +127,10 @@
       "mcp__fluent-ui-blazor__get_component_details",
       "Bash(grep -v '//')",
       "mcp__fluent-ui-blazor__search_documentation",
-      "Bash(grep -n \"TrackAsync\" /d/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/*.cs)"
+      "Bash(grep -n \"TrackAsync\" /d/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/*.cs)",
+      "Bash(xargs grep:*)",
+      "mcp__aspire__list_structured_logs",
+      "mcp__aspire__execute_resource_command"
     ]
   }
 }

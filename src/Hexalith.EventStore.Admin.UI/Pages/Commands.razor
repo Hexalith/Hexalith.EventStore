@@ -47,7 +47,7 @@ else
     </div>
 
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
-        <FluentSelect TOption="string" @bind-Value="_statusFilter" @bind-Value:after="OnStatusFilterChanged"
+        <FluentSelect TOption="string" TValue="string" @bind-Value="_statusFilter" @bind-Value:after="OnStatusFilterChanged"
                       Label="Status" Style="min-width: 140px;">
             <FluentOption Value="@("All")">All</FluentOption>
             <FluentOption Value="@("Completed")">Completed</FluentOption>
@@ -56,7 +56,7 @@ else
             <FluentOption Value="@("Failed")">Failed</FluentOption>
         </FluentSelect>
 
-        <FluentSelect TOption="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
+        <FluentSelect TOption="string" TValue="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
                       Label="Tenant" Style="min-width: 140px;">
             <FluentOption Value="@string.Empty">All Tenants</FluentOption>
             @foreach (string tenant in _tenantOptions)
@@ -65,7 +65,7 @@ else
             }
         </FluentSelect>
 
-        <FluentTextField @bind-Value="_commandTypeFilter" @bind-Value:after="OnCommandTypeFilterChanged"
+        <FluentTextInput @bind-Value="_commandTypeFilter" @bind-Value:after="OnCommandTypeFilterChanged"
                          Label="Command Type" Placeholder="Filter by type..."
                          Style="min-width: 180px;" />
     </div>

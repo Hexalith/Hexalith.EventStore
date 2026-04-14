@@ -17,11 +17,11 @@
     </div>
 
     @* Tenant dropdown *@
-    <FluentSelect TOption="string"
+    <FluentSelect TOption="string" TValue="string"
                   Value="@SelectedTenantId"
                   ValueChanged="OnTenantChanged"
                   Style="min-width: 160px;">
-        <FluentOption Value="">All Tenants</FluentOption>
+        <FluentOption Value="@string.Empty">All Tenants</FluentOption>
         @if (Tenants is not null)
         {
             @foreach (TenantSummary tenant in Tenants)
@@ -32,11 +32,11 @@
     </FluentSelect>
 
     @* Domain dropdown *@
-    <FluentSelect TOption="string"
+    <FluentSelect TOption="string" TValue="string"
                   Value="@SelectedDomain"
                   ValueChanged="OnDomainChanged"
                   Style="min-width: 160px;">
-        <FluentOption Value="">All Domains</FluentOption>
+        <FluentOption Value="@string.Empty">All Domains</FluentOption>
         @if (Domains is not null)
         {
             @foreach (string domain in Domains)

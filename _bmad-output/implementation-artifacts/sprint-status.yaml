@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-14 (Story 21-4 review patch fixed; set done. AC 22 remains deferred — blocked by 21-5/21-7 compile deps)
+# last_updated: 2026-04-14 (Story 21-5 review patches complete; set done)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-14 (Story 21-4 review patch fixed; set done. AC 22 remains deferred — blocked by 21-5/21-7 compile deps)
+last_updated: 2026-04-14 (Story 21-5 review patches complete; set done)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -243,7 +243,7 @@ development_status:
   21-2-layout-and-navigation-foundation: done  # merged: layout + nav are one deployable unit (Amelia/Bob)
   21-3-appearance-enum-button-appearance: done  # split from 21-4: ~215 occurrences on FluentButton (Amelia/Bob)
   21-4-appearance-enum-badge-link-appearance: done  # 2026-04-14: code review patch applied (Consistency status badge rendering). AC 22 visual contrast deferred — Admin.UI cannot compile until 21-5 (renames) + 21-7 (toast) land. Run AC 22 during 21-8 or epic retro.
-  21-5-component-renames: backlog
+  21-5-component-renames: done  # 2026-04-14: review findings patched (clear callbacks, NumericInput ValueChangedAfter + normalization, awaited DeadLetters test event, local lock file excluded); AC 34 still deferred pending 21-7.
   21-6-dialog-restructure: backlog  # highest regression risk — allocate own session (Amelia)
   21-7-toast-api-update: backlog
   21-8-css-token-migration: backlog  # REVIEW NOTE: ScopedCssEnabled=false causes .razor.css files to vanish entirely (not "apply globally") — scope must include re-including 9 Admin.UI .razor.css files

@@ -20,18 +20,18 @@
         @* Setup phase *@
         <div style="max-width: 600px;">
             <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-                <FluentNumberField @bind-Value="_goodSequence"
-                                   Label="Known Good Sequence"
-                                   Min="0"
-                                   Placeholder="e.g. 0"
-                                   Style="width: 100%;"
-                                   aria-label="Known good sequence" />
-                <FluentNumberField @bind-Value="_badSequence"
-                                   Label="Known Bad Sequence"
-                                   Min="1"
-                                   Placeholder="e.g. 100"
-                                   Style="width: 100%;"
-                                   aria-label="Known bad sequence" />
+                <NumericInput TValue="long" @bind-Value="_goodSequence"
+                              Label="Known Good Sequence"
+                              Min="0"
+                              Placeholder="e.g. 0"
+                              Style="width: 100%;"
+                              aria-label="Known good sequence" />
+                <NumericInput TValue="long" @bind-Value="_badSequence"
+                              Label="Known Bad Sequence"
+                              Min="1"
+                              Placeholder="e.g. 100"
+                              Style="width: 100%;"
+                              aria-label="Known bad sequence" />
 
                 @if (_validationError is not null)
                 {
@@ -59,11 +59,25 @@
                             </span>
                         </FluentStack>
 
-                        <FluentSearch @bind-Value="_fieldSearchTerm"
+                        <FluentTextInput @bind-Value="_fieldSearchTerm"
                                       @bind-Value:after="OnFieldSearchChanged"
                                       Placeholder="Filter fields..."
                                       Style="margin-bottom: 8px; max-width: 400px;"
-                                      aria-label="Search fields" />
+                                      aria-label="Search fields"
+                                      TextInputType="TextInputType.Text">
+                            <StartTemplate>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                            </StartTemplate>
+                            <EndTemplate>
+                                <FluentButton Appearance="ButtonAppearance.Transparent"
+                                              Disabled="@(string.IsNullOrEmpty(_fieldSearchTerm))"
+                                              OnClick="@(() => { _fieldSearchTerm = string.Empty; OnFieldSearchChanged(); })"
+                                              aria-label="Clear search"
+                                              Title="Clear search">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                                </FluentButton>
+                            </EndTemplate>
+                        </FluentTextInput>
 
                         <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--neutral-stroke-rest); border-radius: 4px; padding: 8px;">
                             @foreach (string field in _filteredAvailableFields)
@@ -99,7 +113,7 @@
     {
         @* Loading phase *@
         <SkeletonCard />
-        <FluentProgressRing Style="margin-top: 8px;" />
+        <FluentSpinner Style="margin-top: 8px;" />
         <p style="color: var(--neutral-foreground-hint); margin-top: 8px;">
             Running bisect — testing up to @_estimatedMaxSteps midpoints...
         </p>

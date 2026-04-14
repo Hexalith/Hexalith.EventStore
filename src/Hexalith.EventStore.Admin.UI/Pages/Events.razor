@@ -48,7 +48,7 @@ else
     </div>
 
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
-        <FluentSelect TOption="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
+        <FluentSelect TOption="string" TValue="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
                       Label="Tenant" Style="min-width: 140px;">
             <FluentOption Value="@string.Empty">All Tenants</FluentOption>
             @foreach (string tenant in _tenantOptions)
@@ -57,7 +57,7 @@ else
             }
         </FluentSelect>
 
-        <FluentTextField @bind-Value="_eventTypeFilter" @bind-Value:after="OnEventTypeFilterChanged"
+        <FluentTextInput @bind-Value="_eventTypeFilter" @bind-Value:after="OnEventTypeFilterChanged"
                          Label="Event Type" Placeholder="Filter by type..."
                          Style="min-width: 180px;" />
     </div>

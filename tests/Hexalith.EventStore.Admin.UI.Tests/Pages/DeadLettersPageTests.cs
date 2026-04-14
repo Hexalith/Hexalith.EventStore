@@ -603,6 +603,37 @@ public class DeadLettersPageTests : AdminUITestContext
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task DeadLettersPage_CategoryFilterBindsValueAndFiresAfterCallback()
+    {
+        // Regression lock for Story 21-5: @bind-SelectedOption → @bind-Value migration.
+        // Picking a category must (a) update the page's _failureCategory field, and
+        // (b) invoke OnCategoryChanged — which re-calls GetDeadLettersAsync with the
+        // new category value. Without this test, a silent revert to @bind-SelectedOption
+        // would compile under v5 but the :after callback would stop firing.
+        SetupEntries(CreateSampleEntries(), 2);
+
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+
+        // Clear the initial GetDeadLettersAsync call made on page load.
+        _mockDeadLetterApi.ClearReceivedCalls();
+
+        // Change the category filter via the fluent-select element.
+        IElement select = cut.Find("fluent-select[aria-label='Failure category preset']");
+        await cut.InvokeAsync(() => select.Change("Deserialization"));
+
+        // OnCategoryChanged should have fired and re-requested dead letters with the
+        // new category — proving @bind-Value:after is wired up.
+        cut.WaitForAssertion(
+            () => _mockDeadLetterApi.Received().GetDeadLettersAsync(
+                Arg.Any<string?>(),
+                Arg.Any<int>(),
+                Arg.Is<string?>(c => c == "Deserialization"),
+                Arg.Any<CancellationToken>()),
+            TimeSpan.FromSeconds(5));
+    }
+
     // ===== Helpers =====
 
     private static List<DeadLetterEntry> CreateSampleEntries() =>

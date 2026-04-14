@@ -41,7 +41,7 @@
 
 @* Tenant filter *@
 <div class="storage-filter-bar">
-    <FluentTextField @bind-Value="_tenantFilterInput"
+    <FluentTextInput @bind-Value="_tenantFilterInput"
                      @bind-Value:after="OnTenantFilterChanged"
                      Placeholder="Filter by tenant ID..."
                      aria-label="Filter by tenant ID"
@@ -160,7 +160,7 @@
             <h3 style="margin: 0;">Trigger Compaction</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_triggerTenantId"
+            <FluentTextInput @bind-Value="_triggerTenantId"
                              Label="Tenant ID" Required="true"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Tenant ID" />
@@ -170,7 +170,7 @@
                     Compaction already in progress for this tenant.
                 </p>
             }
-            <FluentTextField @bind-Value="_triggerDomain"
+            <FluentTextInput @bind-Value="_triggerDomain"
                              Label="Domain (optional)"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Domain" />
@@ -195,7 +195,7 @@
                           Disabled="@(!CanTrigger || _isOperating)">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {

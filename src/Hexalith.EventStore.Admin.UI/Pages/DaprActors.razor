@@ -136,19 +136,19 @@
     @* Instance lookup (AC3) *@
     <h2 style="margin: 0 0 12px;">Instance Lookup</h2>
     <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;">
-        <FluentSelect TOption="string"
+        <FluentSelect TOption="string" TValue="string"
                       Value="@_selectedActorType"
                       ValueChanged="OnActorTypeSelected"
                       Label="Actor Type"
                       style="min-width: 200px;"
                       aria-label="Select actor type">
-            <FluentOption Value="">Select actor type...</FluentOption>
+            <FluentOption Value="@string.Empty">Select actor type...</FluentOption>
             @foreach (DaprActorTypeInfo actorType in _runtimeInfo.ActorTypes)
             {
                 <FluentOption Value="@actorType.TypeName">@actorType.TypeName</FluentOption>
             }
         </FluentSelect>
-        <FluentTextField @bind-Value="_actorId"
+        <FluentTextInput @bind-Value="_actorId"
                          Label="Actor ID"
                          Placeholder="@GetActorIdPlaceholder()"
                          style="min-width: 300px;"

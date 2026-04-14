@@ -220,10 +220,24 @@
     }
 
     <div style="margin-bottom: 12px;">
-        <FluentSearch @bind-Value="_transitionSearch"
+        <FluentTextInput @bind-Value="_transitionSearch"
                       @bind-Value:after="OnTransitionSearchChanged"
                       Placeholder="Filter by component name..."
-                      aria-label="Filter transitions by component name" />
+                      aria-label="Filter transitions by component name"
+                      TextInputType="TextInputType.Text">
+            <StartTemplate>
+                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+            </StartTemplate>
+            <EndTemplate>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              Disabled="@(string.IsNullOrEmpty(_transitionSearch))"
+                              OnClick="ClearTransitionSearch"
+                              aria-label="Clear search"
+                              Title="Clear search">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                </FluentButton>
+            </EndTemplate>
+        </FluentTextInput>
     </div>
 
     @if (_filteredTransitions.Count == 0)
@@ -279,7 +293,7 @@
     private string? _selectedComponent;
     private bool _isLoading = true;
     private string? _errorMessage;
-    private string? _transitionSearch;
+    private string? _transitionSearch = string.Empty;
     private (string Component, TimeSlot Slot)? _cellFilter;
 
     private List<string> _componentNames = [];
@@ -387,6 +401,12 @@
     {
         UpdateFilteredTransitions();
         StateHasChanged();
+    }
+
+    private void ClearTransitionSearch()
+    {
+        _transitionSearch = string.Empty;
+        OnTransitionSearchChanged();
     }
 
     private void UpdateFilteredTransitions()

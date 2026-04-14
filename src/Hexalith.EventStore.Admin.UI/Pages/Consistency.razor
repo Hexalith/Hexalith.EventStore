@@ -43,12 +43,12 @@
 
 @* Filters *@
 <div class="storage-filter-bar" style="display: flex; gap: 12px; margin-bottom: 16px;">
-    <FluentTextField @bind-Value="_tenantFilterInput"
+    <FluentTextInput @bind-Value="_tenantFilterInput"
                      @bind-Value:after="OnTenantFilterChanged"
                      Placeholder="Filter by tenant ID..."
                      aria-label="Filter by tenant ID"
                      style="min-width: 240px;" />
-    <FluentTextField @bind-Value="_domainFilterInput"
+    <FluentTextInput @bind-Value="_domainFilterInput"
                      @bind-Value:after="OnDomainFilterChanged"
                      Placeholder="Filter by domain..."
                      aria-label="Filter by domain"
@@ -137,7 +137,7 @@
                              aria-label="@($"Status: {context.Status}")">
                     @if (context.Status == ConsistencyCheckStatus.Running)
                     {
-                        <FluentProgressRing Style="width: 12px; height: 12px; margin-right: 4px;" />
+                        <FluentSpinner Size="SpinnerSize.Tiny" Style="margin-right: 4px;" />
                     }
                     @context.Status
                 </FluentBadge>
@@ -317,11 +317,11 @@
             <h3 style="margin: 0;">Run Consistency Check</h3>
         </FluentDialogHeader>
         <FluentDialogBody>
-            <FluentTextField @bind-Value="_triggerTenantId"
+            <FluentTextInput @bind-Value="_triggerTenantId"
                              Label="Tenant ID (optional)"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Tenant ID" />
-            <FluentTextField @bind-Value="_triggerDomain"
+            <FluentTextInput @bind-Value="_triggerDomain"
                              Label="Domain (optional)"
                              Style="width: 100%; margin-bottom: 12px;"
                              aria-label="Domain" />
@@ -346,7 +346,7 @@
                           Disabled="@(!HasAnyCheckType || _isTriggering)">
                 @if (_isTriggering)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -376,7 +376,7 @@
                           Disabled="@_isCancelling">
                 @if (_isCancelling)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {

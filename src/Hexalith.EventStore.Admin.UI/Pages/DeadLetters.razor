@@ -35,14 +35,14 @@
 
 @* Filter bar *@
 <div class="storage-filter-bar" style="display: flex; gap: 12px; align-items: end; margin-bottom: 16px;">
-    <FluentTextField @bind-Value="_tenantFilterInput"
+    <FluentTextInput @bind-Value="_tenantFilterInput"
                      @bind-Value:after="OnTenantFilterChanged"
                      Placeholder="Filter by tenant ID..."
                      aria-label="Filter by tenant ID"
                      style="min-width: 220px;" />
-    <FluentSelect TOption="string"
-                  @bind-SelectedOption="_failureCategory"
-                  @bind-SelectedOption:after="OnCategoryChanged"
+    <FluentSelect TOption="string" TValue="string"
+                  @bind-Value="_failureCategory"
+                  @bind-Value:after="OnCategoryChanged"
                   aria-label="Failure category preset"
                   style="min-width: 160px;">
         <FluentOption Value="@("All")">All</FluentOption>
@@ -51,7 +51,7 @@
         <FluentOption Value="@("Authorization")">Authorization</FluentOption>
         <FluentOption Value="@("Other")">Other</FluentOption>
     </FluentSelect>
-    <FluentTextField @bind-Value="_searchFilterInput"
+    <FluentTextInput @bind-Value="_searchFilterInput"
                      @bind-Value:after="OnSearchFilterChanged"
                      Placeholder="Search command type or failure reason..."
                      aria-label="Search dead letters"
@@ -260,7 +260,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnRetryConfirm" Disabled="@_isOperating">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -294,7 +294,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnSkipConfirm" Disabled="@_isOperating">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {
@@ -328,7 +328,7 @@
             <FluentButton Appearance="ButtonAppearance.Primary" OnClick="OnArchiveConfirm" Disabled="@_isOperating">
                 @if (_isOperating)
                 {
-                    <FluentProgressRing Style="width: 16px; height: 16px;" />
+                    <FluentSpinner Size="SpinnerSize.ExtraSmall" />
                 }
                 else
                 {

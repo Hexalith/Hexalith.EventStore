@@ -16,12 +16,12 @@
 
     @if (Tenants is not null && Tenants.Count > 1)
     {
-        <FluentSelect TOption="string"
+        <FluentSelect TOption="string" TValue="string"
                       Value="@SelectedTenantId"
                       ValueChanged="OnTenantChanged"
                       aria-label="Filter by tenant"
                       Style="min-width: 160px;">
-            <FluentOption Value="">All Tenants</FluentOption>
+            <FluentOption Value="@string.Empty">All Tenants</FluentOption>
             @foreach (string tenant in Tenants)
             {
                 <FluentOption Value="@tenant">@tenant</FluentOption>

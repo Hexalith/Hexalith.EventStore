@@ -53,7 +53,7 @@ else
 
     <!-- Filters row -->
     <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
-        <FluentSelect TOption="string"
+        <FluentSelect TOption="string" TValue="string"
                       Value="@_domainFilter"
                       ValueChanged="@OnDomainFilterChanged"
                       aria-label="Filter by domain"
@@ -64,12 +64,26 @@ else
                 <FluentOption Value="@domain">@domain</FluentOption>
             }
         </FluentSelect>
-        <FluentSearch Value="@_searchText"
+        <FluentTextInput Value="@_searchText"
                       ValueChanged="@OnSearchValueChanged"
                       Immediate="true"
                       Placeholder="@SearchPlaceholder"
                       aria-label="@SearchAriaLabel"
-                      Style="flex: 1;" />
+                      Style="flex: 1;"
+                      TextInputType="TextInputType.Text">
+            <StartTemplate>
+                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+            </StartTemplate>
+            <EndTemplate>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              Disabled="@(string.IsNullOrEmpty(_searchText))"
+                              OnClick="@(() => OnSearchValueChanged(string.Empty))"
+                              aria-label="Clear search"
+                              Title="Clear search">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                </FluentButton>
+            </EndTemplate>
+        </FluentTextInput>
     </div>
 
     <!-- Grid + Detail Panel -->
