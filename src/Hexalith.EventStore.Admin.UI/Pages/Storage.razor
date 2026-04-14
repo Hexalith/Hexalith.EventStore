@@ -137,19 +137,18 @@
             <TemplateColumn Title="Growth" Sortable="true"
                             SortBy="@(GridSort<TenantStorageInfo>.ByDescending(t => t.GrowthRatePerDay ?? 0))">
                 <FluentBadge BackgroundColor="@GetGrowthBadgeColor(context.GrowthRatePerDay)"
-                             Color="white"
-                             aria-label="@($"Growth severity: {GetGrowthSeverity(context.GrowthRatePerDay)}")">
-                    @GetGrowthSeverity(context.GrowthRatePerDay)
-                </FluentBadge>
+                             Style="color: white;"
+                             aria-label="@($"Growth severity: {GetGrowthSeverity(context.GrowthRatePerDay)}")"
+                             Content="@GetGrowthSeverity(context.GrowthRatePerDay)" />
             </TemplateColumn>
             <TemplateColumn Title="Actions">
                 <div @onclick:stopPropagation="true">
                     @if (context.EventCount > 50_000)
                     {
-                        <FluentAnchor Href="@($"/compaction?tenant={Uri.EscapeDataString(context.TenantId)}")"
-                                      Appearance="Appearance.Hypertext">
+                        <FluentLink Href="@($"/compaction?tenant={Uri.EscapeDataString(context.TenantId)}")"
+                                    Appearance="LinkAppearance.Default">
                             Run Compaction
-                        </FluentAnchor>
+                        </FluentLink>
                     }
                 </div>
             </TemplateColumn>
@@ -161,9 +160,8 @@
 @if (!_isLoading && _hotStreams is not null && AtRiskStreamCount > 0)
 {
     <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-        <FluentBadge BackgroundColor="var(--hexalith-status-warning)" Color="white">
-            @AtRiskStreamCount streams have &gt; 1,000 events without snapshots.
-        </FluentBadge>
+        <FluentBadge BackgroundColor="var(--hexalith-status-warning)" Style="color: white;"
+                     Content="@($"{AtRiskStreamCount} streams have > 1,000 events without snapshots.")" />
         <a href="/snapshots" style="font-size: 13px;">Manage Snapshot Policies</a>
     </div>
 }

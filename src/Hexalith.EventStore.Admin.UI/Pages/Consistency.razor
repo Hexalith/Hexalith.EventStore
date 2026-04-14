@@ -130,7 +130,7 @@
             <TemplateColumn Title="Status" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.Status))">
                 @{
-                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                    (BadgeAppearance appearance, string cssClass) = GetStatusBadge(context.Status);
                 }
                 <FluentBadge Appearance="@appearance"
                              Class="@cssClass"
@@ -236,12 +236,11 @@
                 <TemplateColumn Title="Severity" Sortable="true"
                                 SortBy="@(GridSort<ConsistencyAnomaly>.ByDescending(a => a.Severity))">
                     @{
-                        (Appearance anomApp, string anomCss) = GetAnomalySeverityBadge(context.Severity);
+                        (BadgeAppearance anomApp, string anomCss) = GetAnomalySeverityBadge(context.Severity);
                     }
                     <FluentBadge Appearance="@anomApp" Class="@anomCss"
-                                 aria-label="@($"Severity: {context.Severity}")">
-                        @context.Severity
-                    </FluentBadge>
+                                 aria-label="@($"Severity: {context.Severity}")"
+                                 Content="@context.Severity.ToString()" />
                 </TemplateColumn>
                 <PropertyColumn Property="@(a => a.CheckType)" Title="Check Type" Sortable="true" />
                 <PropertyColumn Property="@(a => a.TenantId)" Title="Tenant" Class="monospace" Sortable="true" />
@@ -296,10 +295,10 @@
                 </FluentCard>
             }
             <div style="margin-top: 12px;">
-                <FluentAnchor Href="@($"/streams?tenant={Uri.EscapeDataString(_selectedAnomaly.TenantId)}&domain={Uri.EscapeDataString(_selectedAnomaly.Domain)}&aggregate={Uri.EscapeDataString(_selectedAnomaly.AggregateId)}")"
-                              Appearance="Appearance.Hypertext">
+                <FluentLink Href="@($"/streams?tenant={Uri.EscapeDataString(_selectedAnomaly.TenantId)}&domain={Uri.EscapeDataString(_selectedAnomaly.Domain)}&aggregate={Uri.EscapeDataString(_selectedAnomaly.AggregateId)}")"
+                            Appearance="LinkAppearance.Default">
                     Go to Stream
-                </FluentAnchor>
+                </FluentLink>
             </div>
         </FluentDialogBody>
         <FluentDialogFooter>
@@ -812,24 +811,24 @@
     }
 
     // Status badge helpers
-    private static (Appearance Appearance, string CssClass) GetStatusBadge(ConsistencyCheckStatus status) =>
+    private static (BadgeAppearance Appearance, string CssClass) GetStatusBadge(ConsistencyCheckStatus status) =>
         status switch
         {
-            ConsistencyCheckStatus.Pending => (Appearance.Accent, ""),
-            ConsistencyCheckStatus.Running => (Appearance.Lightweight, "consistency-status-running"),
-            ConsistencyCheckStatus.Completed => (Appearance.Accent, "consistency-status-completed"),
-            ConsistencyCheckStatus.Failed => (Appearance.Accent, "consistency-status-failed"),
-            ConsistencyCheckStatus.Cancelled => (Appearance.Lightweight, "consistency-status-cancelled"),
-            _ => (Appearance.Accent, ""),
+            ConsistencyCheckStatus.Pending => (BadgeAppearance.Filled, ""),
+            ConsistencyCheckStatus.Running => (BadgeAppearance.Ghost, "consistency-status-running"),
+            ConsistencyCheckStatus.Completed => (BadgeAppearance.Filled, "consistency-status-completed"),
+            ConsistencyCheckStatus.Failed => (BadgeAppearance.Filled, "consistency-status-failed"),
+            ConsistencyCheckStatus.Cancelled => (BadgeAppearance.Ghost, "consistency-status-cancelled"),
+            _ => (BadgeAppearance.Filled, ""),
         };
 
-    private static (Appearance Appearance, string CssClass) GetAnomalySeverityBadge(AnomalySeverity severity) =>
+    private static (BadgeAppearance Appearance, string CssClass) GetAnomalySeverityBadge(AnomalySeverity severity) =>
         severity switch
         {
-            AnomalySeverity.Warning => (Appearance.Lightweight, "anomaly-severity-warning"),
-            AnomalySeverity.Error => (Appearance.Accent, "anomaly-severity-error"),
-            AnomalySeverity.Critical => (Appearance.Accent, "anomaly-severity-critical"),
-            _ => (Appearance.Accent, ""),
+            AnomalySeverity.Warning => (BadgeAppearance.Ghost, "anomaly-severity-warning"),
+            AnomalySeverity.Error => (BadgeAppearance.Filled, "anomaly-severity-error"),
+            AnomalySeverity.Critical => (BadgeAppearance.Filled, "anomaly-severity-critical"),
+            _ => (BadgeAppearance.Filled, ""),
         };
 
     private static string FormatDuration(ConsistencyCheckSummary check)

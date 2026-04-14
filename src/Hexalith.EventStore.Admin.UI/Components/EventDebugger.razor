@@ -136,7 +136,7 @@
             </FluentButton>
             @foreach (string watchPath in _watchedFields)
             {
-                <FluentBadge Appearance="Appearance.Accent">
+                <FluentBadge Appearance="BadgeAppearance.Filled">
                     @watchPath
                     <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => RemoveWatchField(watchPath))"
                                   aria-label="@($"Remove watch: {watchPath}")"

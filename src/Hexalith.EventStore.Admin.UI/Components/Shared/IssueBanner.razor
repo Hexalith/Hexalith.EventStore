@@ -10,8 +10,8 @@
         {
             @if (!string.IsNullOrWhiteSpace(ActionHref))
             {
-                <FluentAnchor Href="@ActionHref" Appearance="Appearance.Stealth" Style="color: white; text-decoration: underline;">
-                    @ActionLabel</FluentAnchor>
+                <FluentLink Href="@ActionHref" Appearance="LinkAppearance.Subtle" Style="color: white; text-decoration: underline;">
+                    @ActionLabel</FluentLink>
                 }
             else
                 {

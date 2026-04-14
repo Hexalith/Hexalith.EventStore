@@ -13,9 +13,9 @@
 
 @* Header with back-link *@
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+    <FluentLink Href="/dapr" Appearance="LinkAppearance.Default" aria-label="Back to DAPR Infrastructure">
         &larr; DAPR Infrastructure
-    </FluentAnchor>
+    </FluentLink>
 </div>
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
@@ -107,9 +107,8 @@
                     <FluentCard id="@($"policy-{policy.Name}")" style="padding: 16px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                             <strong>@policy.Name</strong>
-                            <FluentBadge Appearance="@(policy.Strategy == "exponential" ? Appearance.Accent : Appearance.Neutral)">
-                                @policy.Strategy
-                            </FluentBadge>
+                            <FluentBadge Appearance="@(policy.Strategy == "exponential" ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
+                                         Content="@policy.Strategy" />
                         </div>
                         <dl style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0;">
                             <dt style="font-weight: 600;">Max Retries</dt>
@@ -174,9 +173,8 @@
                     <FluentCard id="@($"policy-{policy.Name}")" style="padding: 16px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                             <strong>@policy.Name</strong>
-                            <FluentBadge Appearance="Appearance.Lightweight" Color="Color.Warning">
-                                @policy.Trip
-                            </FluentBadge>
+                            <FluentBadge Appearance="BadgeAppearance.Ghost" Color="BadgeColor.Warning"
+                                         Content="@policy.Trip" />
                         </div>
                         <dl style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0;">
                             <dt style="font-weight: 600;">Half-Open Probes</dt>
@@ -187,9 +185,8 @@
                             <dd style="margin: 0; font-family: monospace;">@policy.Timeout</dd>
                             <dt style="font-weight: 600;">Trip Threshold</dt>
                             <dd style="margin: 0;">
-                                <FluentBadge Appearance="Appearance.Lightweight" Color="Color.Warning">
-                                    @policy.Trip
-                                </FluentBadge>
+                                <FluentBadge Appearance="BadgeAppearance.Ghost" Color="BadgeColor.Warning"
+                                             Content="@policy.Trip" />
                             </dd>
                         </dl>
                     </FluentCard>
@@ -215,9 +212,8 @@
                             IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
             <TemplateColumn Title="Target Type" Sortable="true"
                             SortBy="@(GridSort<DaprResiliencyTargetBinding>.ByAscending(b => b.TargetType))">
-                <FluentBadge Appearance="@(context.TargetType == "App" ? Appearance.Accent : Appearance.Neutral)">
-                    @context.TargetType
-                </FluentBadge>
+                <FluentBadge Appearance="@(context.TargetType == "App" ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
+                             Content="@context.TargetType" />
             </TemplateColumn>
             <TemplateColumn Title="Direction">
                 @(context.Direction ?? "\u2014")
@@ -225,9 +221,9 @@
             <TemplateColumn Title="Retry Policy">
                 @if (context.RetryPolicy is not null)
                 {
-                    <FluentAnchor Href="@($"#policy-{context.RetryPolicy}")" Appearance="Appearance.Hypertext">
+                    <FluentLink Href="@($"#policy-{context.RetryPolicy}")" Appearance="LinkAppearance.Default">
                         @context.RetryPolicy
-                    </FluentAnchor>
+                    </FluentLink>
                 }
                 else
                 {
@@ -237,9 +233,9 @@
             <TemplateColumn Title="Timeout Policy">
                 @if (context.TimeoutPolicy is not null)
                 {
-                    <FluentAnchor Href="@($"#policy-{context.TimeoutPolicy}")" Appearance="Appearance.Hypertext">
+                    <FluentLink Href="@($"#policy-{context.TimeoutPolicy}")" Appearance="LinkAppearance.Default">
                         @context.TimeoutPolicy
-                    </FluentAnchor>
+                    </FluentLink>
                 }
                 else
                 {
@@ -249,9 +245,9 @@
             <TemplateColumn Title="Circuit Breaker">
                 @if (context.CircuitBreakerPolicy is not null)
                 {
-                    <FluentAnchor Href="@($"#policy-{context.CircuitBreakerPolicy}")" Appearance="Appearance.Hypertext">
+                    <FluentLink Href="@($"#policy-{context.CircuitBreakerPolicy}")" Appearance="LinkAppearance.Default">
                         @context.CircuitBreakerPolicy
-                    </FluentAnchor>
+                    </FluentLink>
                 }
                 else
                 {

@@ -18,12 +18,10 @@
         <h1 style="margin: 0;">Health</h1>
         @if (!_isLoading && _healthReport is not null)
         {
-            <FluentBadge Fill="@GetOverallStatusFill(_healthReport.OverallStatus)"
-                         BackgroundColor="@GetOverallStatusColor(_healthReport.OverallStatus)"
-                         Color="white"
-                         aria-label="@($"Overall status: {_healthReport.OverallStatus}")">
-                @GetOverallStatusIcon(_healthReport.OverallStatus) @_healthReport.OverallStatus
-            </FluentBadge>
+            <FluentBadge BackgroundColor="@GetOverallStatusColor(_healthReport.OverallStatus)"
+                         Style="color: white;"
+                         aria-label="@($"Overall status: {_healthReport.OverallStatus}")"
+                         Content="@($"{GetOverallStatusIcon(_healthReport.OverallStatus)} {_healthReport.OverallStatus}")" />
         }
     </div>
     <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
@@ -316,8 +314,6 @@
         HealthStatus.Unhealthy => "var(--hexalith-status-error)",
         _ => "var(--hexalith-status-neutral)",
     };
-
-    private static string? GetOverallStatusFill(HealthStatus status) => null;
 
     private static string GetOverallStatusIcon(HealthStatus status) => status switch
     {

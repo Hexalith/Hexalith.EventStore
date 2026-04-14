@@ -14,9 +14,9 @@
 
 @* Header with back-link *@
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <FluentAnchor Href="/dapr" Appearance="Appearance.Hypertext" aria-label="Back to DAPR Infrastructure">
+    <FluentLink Href="/dapr" Appearance="LinkAppearance.Default" aria-label="Back to DAPR Infrastructure">
         &larr; DAPR Infrastructure
-    </FluentAnchor>
+    </FluentLink>
 </div>
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
@@ -208,9 +208,8 @@
     @if (_cellFilter is not null)
     {
         <div style="margin-bottom: 12px;">
-            <FluentBadge Appearance="Appearance.Accent">
-                Filtered: @_cellFilter.Value.Component @_cellFilter.Value.Slot.Label
-            </FluentBadge>
+            <FluentBadge Appearance="BadgeAppearance.Filled"
+                         Content="@($"Filtered: {_cellFilter.Value.Component} {_cellFilter.Value.Slot.Label}")" />
             <FluentButton Appearance="ButtonAppearance.Transparent" Size="ButtonSize.Small"
                           OnClick="ClearCellFilter"
                           aria-label="Clear filter"

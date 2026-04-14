@@ -19,15 +19,14 @@
     {
         <!-- Event detail view -->
         <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-            <FluentBadge Appearance="Appearance.Lightweight">@SelectedEvent.Domain</FluentBadge>
-            <FluentBadge Appearance="Appearance.Lightweight">v@(SelectedEvent.SchemaVersion)</FluentBadge>
+            <FluentBadge Appearance="BadgeAppearance.Ghost" Content="@SelectedEvent.Domain" />
+            <FluentBadge Appearance="BadgeAppearance.Ghost" Content="@($"v{SelectedEvent.SchemaVersion}")" />
             @if (SelectedEvent.IsRejection)
             {
-                <FluentBadge Appearance="Appearance.Lightweight"
+                <FluentBadge Appearance="BadgeAppearance.Ghost"
                              BackgroundColor="rgba(227,179,65,0.15)"
-                             Color="#e3b341">
-                    Rejection
-                </FluentBadge>
+                             Style="color: #e3b341;"
+                             Content="Rejection" />
             }
         </div>
 
@@ -57,7 +56,7 @@
     {
         <!-- Command detail view -->
         <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-            <FluentBadge Appearance="Appearance.Lightweight">@SelectedCommand.Domain</FluentBadge>
+            <FluentBadge Appearance="BadgeAppearance.Ghost" Content="@SelectedCommand.Domain" />
         </div>
 
         <div style="margin-bottom: 16px;">
@@ -95,20 +94,19 @@
     {
         <!-- Aggregate detail view -->
         <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-            <FluentBadge Appearance="Appearance.Lightweight">@SelectedAggregate.Domain</FluentBadge>
-            <FluentBadge Appearance="Appearance.Lightweight">@SelectedAggregate.EventCount events</FluentBadge>
-            <FluentBadge Appearance="Appearance.Lightweight">@SelectedAggregate.CommandCount commands</FluentBadge>
+            <FluentBadge Appearance="BadgeAppearance.Ghost" Content="@SelectedAggregate.Domain" />
+            <FluentBadge Appearance="BadgeAppearance.Ghost" Content="@($"{SelectedAggregate.EventCount} events")" />
+            <FluentBadge Appearance="BadgeAppearance.Ghost" Content="@($"{SelectedAggregate.CommandCount} commands")" />
             @if (SelectedAggregate.HasProjections)
             {
-                <FluentBadge Appearance="Appearance.Lightweight"
+                <FluentBadge Appearance="BadgeAppearance.Ghost"
                              BackgroundColor="rgba(63,185,80,0.15)"
-                             Color="#3fb950">
-                    Has Projections
-                </FluentBadge>
+                             Style="color: #3fb950;"
+                             Content="Has Projections" />
             }
             else
             {
-                <FluentBadge Appearance="Appearance.Lightweight">No Projections</FluentBadge>
+                <FluentBadge Appearance="BadgeAppearance.Ghost" Content="No Projections" />
             }
         </div>
 

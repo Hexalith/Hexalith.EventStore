@@ -109,13 +109,12 @@
             <TemplateColumn Title="Status" Sortable="true"
                             SortBy="@(GridSort<TenantSummary>.ByAscending(t => t.Status))">
                 @{
-                    (Appearance appearance, string cssClass) = GetStatusBadge(context.Status);
+                    (BadgeAppearance appearance, string cssClass) = GetStatusBadge(context.Status);
                 }
                 <FluentBadge Appearance="@appearance"
                              Class="@cssClass"
-                             aria-label="@($"Status: {context.Status}")">
-                    @context.Status
-                </FluentBadge>
+                             aria-label="@($"Status: {context.Status}")"
+                             Content="@context.Status.ToString()" />
             </TemplateColumn>
             <TemplateColumn Title="Actions">
                 <div @onclick:stopPropagation>
@@ -179,7 +178,7 @@
                                         aria-label="Tenant users">
                             <PropertyColumn Property="@(u => u.UserId)" Title="User ID" />
                             <TemplateColumn Title="Role">
-                                <FluentBadge Appearance="Appearance.Neutral" aria-label="@($"Role: {context.Role}")">@context.Role</FluentBadge>
+                                <FluentBadge Appearance="BadgeAppearance.Filled" aria-label="@($"Role: {context.Role}")" Content="@context.Role" />
                             </TemplateColumn>
                             <TemplateColumn Title="Actions">
                                 <div @onclick:stopPropagation>
@@ -659,12 +658,12 @@
     }
 
     // ---- Status badge helper ----
-    private static (Appearance Appearance, string CssClass) GetStatusBadge(TenantStatusType status) =>
+    private static (BadgeAppearance Appearance, string CssClass) GetStatusBadge(TenantStatusType status) =>
         status switch
         {
-            TenantStatusType.Active => (Appearance.Accent, "tenant-status-active"),
-            TenantStatusType.Disabled => (Appearance.Accent, "tenant-status-disabled"),
-            _ => (Appearance.Accent, ""),
+            TenantStatusType.Active => (BadgeAppearance.Filled, "tenant-status-active"),
+            TenantStatusType.Disabled => (BadgeAppearance.Filled, "tenant-status-disabled"),
+            _ => (BadgeAppearance.Filled, ""),
         };
 
     // ---- Create Tenant ----

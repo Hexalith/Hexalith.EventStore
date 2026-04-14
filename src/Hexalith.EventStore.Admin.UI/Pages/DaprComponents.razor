@@ -175,7 +175,7 @@
                     <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
                         @foreach (string cap in _selectedComponent.Capabilities)
                         {
-                            <FluentBadge Appearance="Appearance.Neutral">@cap</FluentBadge>
+                            <FluentBadge Appearance="BadgeAppearance.Filled" Content="@cap" />
                         }
                     </div>
                 </div>

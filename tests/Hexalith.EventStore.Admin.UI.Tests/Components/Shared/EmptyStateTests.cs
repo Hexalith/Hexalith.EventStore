@@ -20,10 +20,10 @@ public class EmptyStateTests : AdminUITestContext
     }
 
     [Fact]
-    public void EmptyState_RendersFluentAnchorWithAccentAppearance()
+    public void EmptyState_RendersFluentAnchorButtonWithPrimaryAppearance()
     {
-        // Migration regression marker: FluentAnchor with Appearance.Accent
-        // v4: <fluent-anchor appearance="accent"> -> v5: FluentAnchorButton with ButtonAppearance.Primary
+        // v5 migration marker: the previous FluentAnchor with Appearance.Accent
+        // has been replaced by FluentAnchorButton with ButtonAppearance.Primary.
         IRenderedComponent<EmptyState> cut = Render<EmptyState>(
             parameters => parameters
                 .Add(p => p.Title, "No Data")
@@ -32,9 +32,9 @@ public class EmptyStateTests : AdminUITestContext
                 .Add(p => p.ActionHref, "/streams/new"));
 
         string markup = cut.Markup;
-        markup.ShouldContain("fluent-anchor");
+        markup.ShouldContain("fluent-anchor-button");
         markup.ShouldContain("Create Stream");
-        markup.ShouldContain("appearance=\"accent\"");
+        markup.ShouldContain("appearance=\"primary\"");
         markup.ShouldContain("/streams/new");
     }
 
@@ -47,6 +47,6 @@ public class EmptyStateTests : AdminUITestContext
                 .Add(p => p.Description, "Nothing here."));
 
         string markup = cut.Markup;
-        markup.ShouldNotContain("fluent-anchor");
+        markup.ShouldNotContain("fluent-anchor-button");
     }
 }
