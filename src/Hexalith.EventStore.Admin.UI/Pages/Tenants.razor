@@ -45,9 +45,9 @@
                   @bind-Value:after="OnStatusFilterChanged"
                   aria-label="Filter by status"
                   style="min-width: 150px;">
-        <FluentOption TOption="string" Value="@("All")">All</FluentOption>
-        <FluentOption TOption="string" Value="@("Active")">Active</FluentOption>
-        <FluentOption TOption="string" Value="@("Disabled")">Disabled</FluentOption>
+        <FluentOption TValue="string" Value="@("All")">All</FluentOption>
+        <FluentOption TValue="string" Value="@("Active")">Active</FluentOption>
+        <FluentOption TValue="string" Value="@("Disabled")">Disabled</FluentOption>
     </FluentSelect>
     <FluentTextInput @bind-Value="_searchFilterInput"
                      @bind-Value:after="OnSearchFilterChanged"
@@ -339,9 +339,9 @@
                               Label="Role"
                               Style="width: 100%; margin-bottom: 12px;"
                               aria-label="User role">
-                    <FluentOption TOption="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
-                    <FluentOption TOption="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
-                    <FluentOption TOption="string" Value="@("TenantReader")">TenantReader</FluentOption>
+                    <FluentOption TValue="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
+                    <FluentOption TValue="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
+                    <FluentOption TValue="string" Value="@("TenantReader")">TenantReader</FluentOption>
                 </FluentSelect>
             </ChildContent>
             <ActionTemplate>
@@ -398,9 +398,9 @@
                               Label="New Role"
                               Style="width: 100%; margin-bottom: 12px;"
                               aria-label="New role">
-                    <FluentOption TOption="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
-                    <FluentOption TOption="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
-                    <FluentOption TOption="string" Value="@("TenantReader")">TenantReader</FluentOption>
+                    <FluentOption TValue="string" Value="@("TenantOwner")">TenantOwner</FluentOption>
+                    <FluentOption TValue="string" Value="@("TenantContributor")">TenantContributor</FluentOption>
+                    <FluentOption TValue="string" Value="@("TenantReader")">TenantReader</FluentOption>
                 </FluentSelect>
             </ChildContent>
             <ActionTemplate>

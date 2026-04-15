@@ -58,7 +58,7 @@ public class StateInspectorModalTests : AdminUITestContext
         IRenderedComponent<StateInspectorModal> cut = RenderInspector(42L);
 
         // Act — click Inspect button via markup
-        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='accent']");
+        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='primary']");
         inspectBtn.Click();
 
         // Assert
@@ -76,7 +76,7 @@ public class StateInspectorModalTests : AdminUITestContext
         IRenderedComponent<StateInspectorModal> cut = RenderInspector(10L);
 
         // Act — click Inspect button
-        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='accent']");
+        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='primary']");
         inspectBtn.Click();
 
         // Assert
@@ -110,7 +110,7 @@ public class StateInspectorModalTests : AdminUITestContext
         IRenderedComponent<StateInspectorModal> cut = RenderInspector(5L);
 
         // Act — click Inspect
-        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='accent']");
+        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='primary']");
         inspectBtn.Click();
 
         // Assert — modal stays open with result and title still visible
