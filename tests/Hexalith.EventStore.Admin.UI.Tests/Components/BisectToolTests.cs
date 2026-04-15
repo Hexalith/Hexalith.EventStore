@@ -97,7 +97,7 @@ public class BisectToolTests : AdminUITestContext
         IRenderedComponent<BisectTool> cut = RenderBisectTool(goodSeq: 0, badSeq: 100);
 
         // Trigger bisect
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Divergent Event"), TimeSpan.FromSeconds(5));
 
         // Assert
@@ -127,7 +127,7 @@ public class BisectToolTests : AdminUITestContext
 
         // Act
         IRenderedComponent<BisectTool> cut = RenderBisectTool(goodSeq: 0, badSeq: 100);
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No divergence detected"), TimeSpan.FromSeconds(5));
 
         // Assert
@@ -146,7 +146,7 @@ public class BisectToolTests : AdminUITestContext
 
         // Act
         IRenderedComponent<BisectTool> cut = RenderBisectTool(goodSeq: 0, badSeq: 100);
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Unable to run bisect"), TimeSpan.FromSeconds(5));
 
         // Assert
@@ -165,7 +165,7 @@ public class BisectToolTests : AdminUITestContext
 
         // Act
         IRenderedComponent<BisectTool> cut = RenderBisectTool(goodSeq: 0, badSeq: 100);
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Bisect timed out"), TimeSpan.FromSeconds(5));
 
         // Assert
@@ -190,7 +190,7 @@ public class BisectToolTests : AdminUITestContext
 
         // Act
         IRenderedComponent<BisectTool> cut = RenderBisectTool(goodSeq: 0, badSeq: 100);
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("maximum step limit"), TimeSpan.FromSeconds(5));
 
         // Assert
@@ -223,7 +223,7 @@ public class BisectToolTests : AdminUITestContext
             .Add(c => c.InitialBadSequence, (long?)100)
             .Add(c => c.OnNavigateToBlame, EventCallback.Factory.Create<long>(this, _ => { })));
 
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Blame at This Event"), TimeSpan.FromSeconds(5));
 
         // Assert

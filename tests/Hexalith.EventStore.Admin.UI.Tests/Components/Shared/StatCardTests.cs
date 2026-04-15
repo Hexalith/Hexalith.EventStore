@@ -23,7 +23,7 @@ public class StatCardTests : AdminUITestContext
     [InlineData("success", "color: var(--hexalith-status-success)")]
     [InlineData("warning", "color: var(--hexalith-status-warning)")]
     [InlineData("error", "color: var(--hexalith-status-error)")]
-    [InlineData("neutral", "color: var(--neutral-foreground-rest)")]
+    [InlineData("neutral", "color: var(--colorNeutralForeground1)")]
     public void StatCard_AppliesSeverityBasedInlineColorStyle(string severity, string expectedStyle)
     {
         IRenderedComponent<StatCard> cut = Render<StatCard>(

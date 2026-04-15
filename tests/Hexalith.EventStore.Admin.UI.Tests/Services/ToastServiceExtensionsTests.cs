@@ -10,8 +10,6 @@ using System.Threading.Tasks;
 
 using Microsoft.FluentUI.AspNetCore.Components;
 
-using NSubstitute;
-
 public class ToastServiceExtensionsTests
 {
     [Fact]
@@ -71,33 +69,21 @@ public class ToastServiceExtensionsTests
     [Fact]
     public async Task ShowSuccessAsync_WhenShowToastAsyncThrows_PropagatesException()
     {
-        IToastService mockToast = Substitute.For<IToastService>();
-        mockToast
-            .ShowToastAsync(Arg.Any<Action<ToastOptions>>())
-            .Returns(Task.FromException<ToastCloseReason>(new InvalidOperationException("provider not registered")));
+        TestToastService fake = new();
+        fake.SetupShowToast(_ => Task.FromException<ToastCloseReason>(new InvalidOperationException("provider not registered")));
 
-        await Should.ThrowAsync<InvalidOperationException>(() => mockToast.ShowSuccessAsync("x"));
+        await Should.ThrowAsync<InvalidOperationException>(() => fake.ShowSuccessAsync("x"));
     }
 
     private static async Task<ToastOptions?> CaptureOptionsAsync(
         Func<IToastService, string?, Task> act,
         string? message)
     {
-        IToastService mockToast = Substitute.For<IToastService>();
-        ToastOptions? capturedOptions = null;
+        TestToastService fake = new();
 
-        mockToast
-            .ShowToastAsync(Arg.Do<Action<ToastOptions>>(configure =>
-            {
-                capturedOptions = new ToastOptions();
-                configure(capturedOptions);
-            }))
-            .Returns(Task.FromResult<ToastCloseReason>(default!));
+        await act(fake, message).ConfigureAwait(false);
 
-        await act(mockToast, message).ConfigureAwait(false);
-
-        await mockToast.Received(1).ShowToastAsync(Arg.Any<Action<ToastOptions>>()).ConfigureAwait(false);
-
-        return capturedOptions;
+        fake.CapturedOptions.Count.ShouldBe(1);
+        return fake.LastOptions;
     }
 }

@@ -1,11 +1,13 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Services;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -21,6 +23,13 @@ public class AdminUITestContext : BunitContext {
     public AdminUITestContext() {
         // Register FluentUI components
         Services.AddFluentUIComponents();
+
+        // Replace the real IToastService with a test fake to avoid requiring a FluentToastProvider
+        // in the render tree for unit tests. Tests that need to inspect toasts can resolve
+        // TestToastService from DI instead.
+        Services.RemoveAll<IToastService>();
+        Services.AddSingleton<TestToastService>();
+        Services.AddSingleton<IToastService>(sp => sp.GetRequiredService<TestToastService>());
 
         // Mock JSInterop for FluentUI and custom interop
         JSInterop.Setup<string>("hexalithAdmin.registerShortcuts", _ => true).SetResult("shortcut-test");

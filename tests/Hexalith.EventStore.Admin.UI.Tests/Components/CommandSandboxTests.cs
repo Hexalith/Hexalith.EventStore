@@ -235,6 +235,6 @@ public class CommandSandboxTests : AdminUITestContext
 
     private static void ClickRun(IRenderedComponent<CommandSandbox> cut)
     {
-        cut.Find("fluent-button[appearance='accent']").Click();
+        cut.Find("fluent-button[appearance='primary']").Click();
     }
 }

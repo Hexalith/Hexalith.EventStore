@@ -23,7 +23,7 @@ public class NumericInputTests : AdminUITestContext
         markup.ShouldContain("fluent-text-input");
         markup.ShouldContain("type=\"number\"");
         markup.ShouldContain("min=\"0\"");
-        markup.ShouldContain("current-value=\"42\"");
+        markup.ShouldContain("value=\"42\"");
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class NumericInputTests : AdminUITestContext
 
             // Re-render with the new value to confirm format side is invariant-culture.
             cut.Render(parameters => parameters.Add(p => p.Value, 100L));
-            cut.Markup.ShouldContain("current-value=\"100\"");
+            cut.Markup.ShouldContain("value=\"100\"");
             cut.Markup.ShouldNotContain("100,00");
         }
         finally

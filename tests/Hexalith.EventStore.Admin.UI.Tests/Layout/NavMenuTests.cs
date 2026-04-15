@@ -57,7 +57,7 @@ public class NavMenuTests : AdminUITestContext
     }
 
     [Fact]
-    public void NavMenu_RendersV4StructuralElements()
+    public void NavMenu_RendersV5StructuralElements()
     {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
@@ -66,14 +66,12 @@ public class NavMenuTests : AdminUITestContext
 
         string markup = cut.Markup;
 
-        // v4 Fluent UI renders as kebab-case web component tags
-        // These are the primary migration regression markers:
-        // v4: fluent-nav-menu  -> v5: fluent-nav
-        // v4: fluent-nav-link  -> v5: fluent-nav-item
-        // v4: fluent-nav-group -> v5: fluent-nav-category
-        markup.ShouldContain("fluent-nav-menu");
-        markup.ShouldContain("fluent-nav-link");
-        markup.ShouldContain("fluent-nav-group");
+        // v5 renders as semantic HTML with Fluent UI class names (no web-component tags).
+        // v4: <fluent-nav-menu>/<fluent-nav-link>/<fluent-nav-group>
+        // v5: <nav class="fluent-nav"> / <a class="fluent-navitem"> / <button class="fluent-navcategoryitem">
+        markup.ShouldContain("class=\"fluent-nav\"");
+        markup.ShouldContain("class=\"fluent-navitem\"");
+        markup.ShouldContain("class=\"fluent-navcategoryitem\"");
     }
 
     [Fact]

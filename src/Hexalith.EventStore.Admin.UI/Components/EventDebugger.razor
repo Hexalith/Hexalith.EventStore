@@ -83,10 +83,10 @@
             <FluentSelect TOption="string" TValue="string" @bind-Value="_autoPlaySpeedStr"
                           Style="width: 110px; margin-left: 8px;"
                           aria-label="Auto-play speed">
-                <FluentOption TOption="string" Value="2000">Slow</FluentOption>
-                <FluentOption TOption="string" Value="1000">Normal</FluentOption>
-                <FluentOption TOption="string" Value="500">Fast</FluentOption>
-                <FluentOption TOption="string" Value="200">Fastest</FluentOption>
+                <FluentOption TValue="string" Value="@("2000")">Slow</FluentOption>
+                <FluentOption TValue="string" Value="@("1000")">Normal</FluentOption>
+                <FluentOption TValue="string" Value="@("500")">Fast</FluentOption>
+                <FluentOption TValue="string" Value="@("200")">Fastest</FluentOption>
             </FluentSelect>
 
             @* Jump-to input *@
