@@ -94,7 +94,7 @@ public class CommandPaletteTests : AdminUITestContext {
         System.Reflection.MethodInfo navigateMethod = GetRequiredPrivateMethod("NavigateToAsync");
         object? invokeResult = navigateMethod.Invoke(cut.Instance, new object[] { commandsItem.Href });
         invokeResult.ShouldNotBeNull();
-        invokeResult.ShouldBeOfType<Task>();
+        _ = invokeResult.ShouldBeAssignableTo<Task>();
         await cut.InvokeAsync(() => (Task)invokeResult);
 
         navigationManager.Uri.ShouldEndWith("/commands");

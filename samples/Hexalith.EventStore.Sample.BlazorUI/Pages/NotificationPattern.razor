@@ -24,9 +24,9 @@
 
 @if (_hasChanges)
 {
-    <FluentMessageBar Title="Data Changed" Intent="MessageIntent.Warning" AllowDismiss="false" Style="margin-bottom: 16px;">
+    <FluentMessageBar Title="Data Changed" Intent="MessageBarIntent.Warning" AllowDismiss="false" Style="margin-bottom: 16px;">
         Counter data has changed.
-        <FluentButton Appearance="Appearance.Accent" OnClick="RefreshDataAsync" Style="margin-left: 12px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RefreshDataAsync" Style="margin-left: 12px;">
             Refresh Now
         </FluentButton>
     </FluentMessageBar>
@@ -49,7 +49,7 @@
     }
     else if (_error is not null)
     {
-        <FluentMessageBar Title="Error" Intent="MessageIntent.Error">
+        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error">
             @_error
         </FluentMessageBar>
     }

@@ -10,15 +10,15 @@
     </p>
 
     <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px; margin-top: 16px;">
-        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => SendCommandAsync(IncrementCommandType))"
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => SendCommandAsync(IncrementCommandType))"
                       Disabled="@_isSending">
             Increment
         </FluentButton>
-        <FluentButton Appearance="Appearance.Outline" OnClick="@(() => SendCommandAsync(DecrementCommandType))"
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => SendCommandAsync(DecrementCommandType))"
                       Disabled="@_isSending">
             Decrement
         </FluentButton>
-        <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => SendCommandAsync(ResetCommandType))"
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => SendCommandAsync(ResetCommandType))"
                       Disabled="@_isSending">
             Reset
         </FluentButton>
@@ -32,7 +32,7 @@
     }
     @if (_error is not null)
     {
-        <FluentMessageBar Title="Command Failed" Intent="MessageIntent.Error" Style="margin-top: 8px;">
+        <FluentMessageBar Title="Command Failed" Intent="MessageBarIntent.Error" Style="margin-top: 8px;">
             @_error
         </FluentMessageBar>
     }
