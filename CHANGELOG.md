@@ -1,3 +1,23 @@
+# [1.4.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.3.0...v1.4.0) (2026-04-15)
+
+
+### Features
+
+* **container:** migrate CD pipeline to .NET SDK container support ([#201](https://github.com/Hexalith/Hexalith.EventStore/issues/201)) ([3f8ad99](https://github.com/Hexalith/Hexalith.EventStore/commit/3f8ad9906fc26b07aa26563ecaab91c0627327b0))
+* **ui:** fix Admin.UI.Tests runtime failures unmasked by v5 compile-green (Story 21-9.5.7) ([#206](https://github.com/Hexalith/Hexalith.EventStore/issues/206)) ([e962b2b](https://github.com/Hexalith/Hexalith.EventStore/commit/e962b2b0ee316112c42758bbafc64a5bebc01b81))
+* **ui:** migrate Admin.UI CSS v4 FAST tokens to v5 Fluent 2 and merge scoped CSS (Story 21-8) ([#203](https://github.com/Hexalith/Hexalith.EventStore/issues/203)) ([20a4538](https://github.com/Hexalith/Hexalith.EventStore/commit/20a4538adf1c12af9da09b40290fa4aef6fac128))
+* **ui:** migrate Admin.UI DataGrid enums and residual v5 renames (Story 21-9) ([#204](https://github.com/Hexalith/Hexalith.EventStore/issues/204)) ([400ecd1](https://github.com/Hexalith/Hexalith.EventStore/commit/400ecd1615c21350ec3d7f8f0d961af3e5c0411b))
+* **ui:** migrate Admin.UI.Tests to Fluent UI Blazor v5 + bUnit v2 APIs (Story 21-9.5) ([#205](https://github.com/Hexalith/Hexalith.EventStore/issues/205)) ([6f1d210](https://github.com/Hexalith/Hexalith.EventStore/commit/6f1d2102633acd3101184fa597bc8af46ed209e9))
+* **ui:** migrate FluentBadge and FluentAnchor to BadgeAppearance/LinkAppearance for Fluent UI Blazor v5 (Story 21-4) ([#197](https://github.com/Hexalith/Hexalith.EventStore/issues/197)) ([1d5c4bc](https://github.com/Hexalith/Hexalith.EventStore/commit/1d5c4bc10947f83e8360428f6997188fd031a423))
+* **ui:** migrate FluentButton Appearance enum to ButtonAppearance for Fluent UI Blazor v5 (Story 21-3) ([4a17fc3](https://github.com/Hexalith/Hexalith.EventStore/commit/4a17fc34c9d132e9bc24f8feca8d0598a83eddb1))
+* **ui:** migrate FluentTextField/NumberField/Search/ProgressRing/Select to Fluent UI Blazor v5 (Story 21-5) ([#198](https://github.com/Hexalith/Hexalith.EventStore/issues/198)) ([989f54e](https://github.com/Hexalith/Hexalith.EventStore/commit/989f54efacad7039738b7cc6a09d2ddb497c7168))
+* **ui:** migrate IToastService.Show* calls to ShowToastAsync with extension helpers (Story 21-7) ([#202](https://github.com/Hexalith/Hexalith.EventStore/issues/202)) ([a544571](https://github.com/Hexalith/Hexalith.EventStore/commit/a54457141024f663f7ca779b2e8d3341ac89d119))
+* **ui:** migrate layout, navigation, and theme to Fluent UI Blazor v5 (Story 21-2) ([515022e](https://github.com/Hexalith/Hexalith.EventStore/commit/515022e8449ec845c866752458a86a3c85a27417)), closes [#0066CC](https://github.com/Hexalith/Hexalith.EventStore/issues/0066CC)
+* **ui:** migrate layout, navigation, and theme to Fluent UI Blazor v5 (Story 21-2) ([#195](https://github.com/Hexalith/Hexalith.EventStore/issues/195)) ([5ba1c8a](https://github.com/Hexalith/Hexalith.EventStore/commit/5ba1c8a8fc816564dfec45a39159b07f41d63cc0)), closes [#0066CC](https://github.com/Hexalith/Hexalith.EventStore/issues/0066CC)
+* **ui:** migrate Sample.BlazorUI to Fluent UI Blazor v5 (Story 21-10) ([#207](https://github.com/Hexalith/Hexalith.EventStore/issues/207)) ([483149f](https://github.com/Hexalith/Hexalith.EventStore/commit/483149fc222b7123f1a6c61cc55749c6d24bbc6c))
+* **ui:** restructure dialogs to Fluent UI Blazor v5 template slots (Story 21-6) ([#200](https://github.com/Hexalith/Hexalith.EventStore/issues/200)) ([ec37c58](https://github.com/Hexalith/Hexalith.EventStore/commit/ec37c58232888b16f0622da2933868af9002018c))
+* **ui:** upgrade Fluent UI Blazor packages to v5 and update csproj infrastructure (Story 21-1) ([#194](https://github.com/Hexalith/Hexalith.EventStore/issues/194)) ([f79ec2e](https://github.com/Hexalith/Hexalith.EventStore/commit/f79ec2e55b7fa0c76b995fba7be526f57b652bef))
+
 # [1.3.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.2.6...v1.3.0) (2026-04-13)
 
 
