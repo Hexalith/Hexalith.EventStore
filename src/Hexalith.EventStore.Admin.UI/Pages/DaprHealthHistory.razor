@@ -252,7 +252,7 @@
                         Style="width: 100%; margin-bottom: 24px;"
                         aria-label="DAPR component health status transitions">
             <PropertyColumn Property="@(t => FormatTimestamp(t.Timestamp))" Title="Timestamp" Sortable="true"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending" />
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending" />
             <TemplateColumn Title="Component" Sortable="true"
                             SortBy="@(GridSort<StatusTransition>.ByAscending(t => t.ComponentName))">
                 <span style="cursor: pointer; text-decoration: underline;" @onclick="() => SelectComponent(context.ComponentName)">

@@ -142,11 +142,11 @@
                     @context.Status
                 </FluentBadge>
             </TemplateColumn>
-            <TemplateColumn Title="Streams" Align="Align.End" Sortable="true"
+            <TemplateColumn Title="Streams" Align="DataGridCellAlignment.End" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.StreamsChecked))">
                 @context.StreamsChecked.ToString("N0")
             </TemplateColumn>
-            <TemplateColumn Title="Anomalies" Align="Align.End" Sortable="true"
+            <TemplateColumn Title="Anomalies" Align="DataGridCellAlignment.End" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.AnomaliesFound))">
                 @if (context.AnomaliesFound > 0)
                 {
@@ -158,7 +158,7 @@
                 }
             </TemplateColumn>
             <TemplateColumn Title="Started" Sortable="true" IsDefaultSortColumn="true"
-                            InitialSortDirection="SortDirection.Descending"
+                            InitialSortDirection="DataGridSortDirection.Descending"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByDescending(c => c.StartedAtUtc))">
                 <span title="@context.StartedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.StartedAtUtc)</span>
             </TemplateColumn>

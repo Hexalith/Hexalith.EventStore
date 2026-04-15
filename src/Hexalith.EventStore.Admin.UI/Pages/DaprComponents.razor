@@ -139,13 +139,13 @@
                       style="min-width: 150px;"
                       aria-label="Filter by component category">
             <FluentOption Value="@string.Empty">All Categories</FluentOption>
-            <FluentOption Value="StateStore">State Store</FluentOption>
-            <FluentOption Value="PubSub">Pub/Sub</FluentOption>
-            <FluentOption Value="Binding">Binding</FluentOption>
-            <FluentOption Value="Configuration">Configuration</FluentOption>
+            <FluentOption Value="@("StateStore")">State Store</FluentOption>
+            <FluentOption Value="@("PubSub")">Pub/Sub</FluentOption>
+            <FluentOption Value="@("Binding")">Binding</FluentOption>
+            <FluentOption Value="@("Configuration")">Configuration</FluentOption>
             <FluentOption Value="@("Lock")">Lock</FluentOption>
-            <FluentOption Value="SecretStore">Secret Store</FluentOption>
-            <FluentOption Value="Middleware">Middleware</FluentOption>
+            <FluentOption Value="@("SecretStore")">Secret Store</FluentOption>
+            <FluentOption Value="@("Middleware")">Middleware</FluentOption>
         </FluentSelect>
     </div>
 
@@ -154,7 +154,7 @@
                     aria-label="DAPR component details"
                     OnRowClick="@OnRowClick">
         <PropertyColumn Property="@(c => c.Category)" Title="Category" Sortable="true"
-                        IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+                        IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
         <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
         <PropertyColumn Property="@(c => c.ComponentType)" Title="Type" Sortable="true" />
         <PropertyColumn Property="@(c => c.Version)" Title="Version" Sortable="true" />

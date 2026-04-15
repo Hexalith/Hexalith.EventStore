@@ -83,18 +83,18 @@ else
                                     SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => GetStatusSortOrder(p.Status) * 1_000_000 + p.Lag))">
                         <ProjectionStatusBadge Status="@context.Status" />
                     </TemplateColumn>
-                    <PropertyColumn Property="@(p => p.Lag)" Title="Lag" Align="Align.End" Sortable="true" />
-                    <TemplateColumn Title="Throughput" Align="Align.End"
+                    <PropertyColumn Property="@(p => p.Lag)" Title="Lag" Align="DataGridCellAlignment.End" Sortable="true" />
+                    <TemplateColumn Title="Throughput" Align="DataGridCellAlignment.End"
                                     SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => p.Throughput))">
                         @context.Throughput.ToString("F1") /s
                     </TemplateColumn>
-                    <TemplateColumn Title="Errors" Align="Align.End"
+                    <TemplateColumn Title="Errors" Align="DataGridCellAlignment.End"
                                     SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => p.ErrorCount))">
                         <span style="@(context.ErrorCount > 0 ? "color: var(--hexalith-status-error); font-weight: 600;" : "")">
                             @context.ErrorCount
                         </span>
                     </TemplateColumn>
-                    <PropertyColumn Property="@(p => p.LastProcessedPosition)" Title="Last Position" Align="Align.End" Class="monospace" Sortable="true" />
+                    <PropertyColumn Property="@(p => p.LastProcessedPosition)" Title="Last Position" Align="DataGridCellAlignment.End" Class="monospace" Sortable="true" />
                     <TemplateColumn Title="Last Processed"
                                     SortBy="@(GridSort<ProjectionStatus>.ByDescending(p => p.LastProcessedUtc))">
                         <span title="@context.LastProcessedUtc.ToString("O")">

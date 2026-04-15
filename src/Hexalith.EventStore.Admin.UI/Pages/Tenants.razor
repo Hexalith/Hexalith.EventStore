@@ -105,7 +105,7 @@
                         OnRowClick="@(row => OnRowClick(row.Item))">
             <PropertyColumn Property="@(t => t.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
             <PropertyColumn Property="@(t => t.Name)" Title="Name" Sortable="true"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
             <TemplateColumn Title="Status" Sortable="true"
                             SortBy="@(GridSort<TenantSummary>.ByAscending(t => t.Status))">
                 @{

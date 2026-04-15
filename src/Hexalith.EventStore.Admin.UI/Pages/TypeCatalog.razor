@@ -90,9 +90,9 @@ else
     <div style="display: flex; gap: 16px; @(Viewport.IsWideViewport ? "flex-direction: row;" : "flex-direction: column;")">
         <div style="flex: 1; min-width: 0;">
             <FluentTabs ActiveTabId="@_activeTab" ActiveTabIdChanged="@OnTabChanged" Style="width: 100%;">
-                <FluentTab Label="@($"Events ({_filteredEvents.Count})")" Id="events" />
-                <FluentTab Label="@($"Commands ({_filteredCommands.Count})")" Id="commands" />
-                <FluentTab Label="@($"Aggregates ({_filteredAggregates.Count})")" Id="aggregates" />
+                <FluentTab Header="@($"Events ({_filteredEvents.Count})")" Id="events" />
+                <FluentTab Header="@($"Commands ({_filteredCommands.Count})")" Id="commands" />
+                <FluentTab Header="@($"Aggregates ({_filteredAggregates.Count})")" Id="aggregates" />
             </FluentTabs>
 
             <div role="tabpanel" style="margin-top: 16px;">

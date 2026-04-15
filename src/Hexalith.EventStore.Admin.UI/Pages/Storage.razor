@@ -117,13 +117,13 @@
                         OnRowClick="@(async row => await OnTenantRowClickAsync(row.Item))">
             <PropertyColumn Property="@(t => t.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true" />
             <PropertyColumn Property="@(t => t.EventCount)" Title="Event Count" Sortable="true"
-                            Format="N0" Align="Align.End" />
+                            Format="N0" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="Size" Sortable="true"
                             SortBy="@(GridSort<TenantStorageInfo>.ByDescending(t => t.SizeBytes ?? 0))">
                 @FormatBytes(context.SizeBytes)
             </TemplateColumn>
             <TemplateColumn Title="Growth Rate" Sortable="true" IsDefaultSortColumn="true"
-                            InitialSortDirection="SortDirection.Descending"
+                            InitialSortDirection="DataGridSortDirection.Descending"
                             SortBy="@(GridSort<TenantStorageInfo>.ByDescending(t => t.GrowthRatePerDay ?? 0))">
                 @if (context.GrowthRatePerDay is not null)
                 {
@@ -191,8 +191,8 @@
                 </a>
             </TemplateColumn>
             <PropertyColumn Property="@(s => s.EventCount)" Title="Event Count" Sortable="true"
-                            Format="N0" Align="Align.End"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending" />
+                            Format="N0" Align="DataGridCellAlignment.End"
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending" />
             <TemplateColumn Title="Size" Sortable="true"
                             SortBy="@(GridSort<StreamStorageInfo>.ByDescending(s => s.SizeBytes ?? 0))">
                 @FormatBytes(context.SizeBytes)

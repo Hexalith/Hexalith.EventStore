@@ -146,7 +146,7 @@
                              Content="@context.Status.ToString()" />
             </TemplateColumn>
             <TemplateColumn Title="Created" Sortable="true" IsDefaultSortColumn="true"
-                            InitialSortDirection="SortDirection.Descending"
+                            InitialSortDirection="DataGridSortDirection.Descending"
                             SortBy="@(GridSort<BackupJob>.ByDescending(j => j.CreatedAtUtc))">
                 <span title="@context.CreatedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.CreatedAtUtc)</span>
             </TemplateColumn>
@@ -160,7 +160,7 @@
                     ? "\u2014"
                     : TimeFormatHelper.FormatBytes(context.SizeBytes))
             </TemplateColumn>
-            <TemplateColumn Title="Events" Align="Align.End" Sortable="true"
+            <TemplateColumn Title="Events" Align="DataGridCellAlignment.End" Sortable="true"
                             SortBy="@(GridSort<BackupJob>.ByDescending(j => j.EventCount ?? 0))">
                 @(context.Status is BackupJobStatus.Pending or BackupJobStatus.Running
                     ? "\u2014"

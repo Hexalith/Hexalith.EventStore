@@ -105,11 +105,11 @@
                         aria-label="Snapshot policies"
                         OnRowClick="@(row => OpenEditDialog(row.Item))">
             <PropertyColumn Property="@(p => p.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
             <PropertyColumn Property="@(p => p.Domain)" Title="Domain" Sortable="true" />
             <PropertyColumn Property="@(p => p.AggregateType)" Title="Aggregate Type" Sortable="true" />
             <PropertyColumn Property="@(p => p.IntervalEvents)" Title="Interval" Sortable="true"
-                            Format="N0" Align="Align.End" />
+                            Format="N0" Align="DataGridCellAlignment.End" />
             <TemplateColumn Title="Created" Sortable="true"
                             SortBy="@(GridSort<SnapshotPolicy>.ByDescending(p => p.CreatedAtUtc))">
                 <span title="@context.CreatedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.CreatedAtUtc)</span>
