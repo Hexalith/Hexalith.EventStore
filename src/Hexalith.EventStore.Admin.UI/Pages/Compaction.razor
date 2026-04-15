@@ -115,7 +115,7 @@
                              Content="@context.Status.ToString()" />
             </TemplateColumn>
             <TemplateColumn Title="Started" Sortable="true" IsDefaultSortColumn="true"
-                            InitialSortDirection="SortDirection.Descending"
+                            InitialSortDirection="DataGridSortDirection.Descending"
                             SortBy="@(GridSort<CompactionJob>.ByDescending(j => j.StartedAtUtc))">
                 <span title="@context.StartedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.StartedAtUtc)</span>
             </TemplateColumn>
@@ -123,7 +123,7 @@
                             SortBy="@(GridSort<CompactionJob>.ByDescending(j => (j.CompletedAtUtc ?? DateTimeOffset.UtcNow) - j.StartedAtUtc))">
                 @FormatDuration(context)
             </TemplateColumn>
-            <TemplateColumn Title="Events Compacted" Align="Align.End" Sortable="true"
+            <TemplateColumn Title="Events Compacted" Align="DataGridCellAlignment.End" Sortable="true"
                             SortBy="@(GridSort<CompactionJob>.ByDescending(j => j.EventsCompacted ?? 0))">
                 @(context.EventsCompacted?.ToString("N0") ?? "\u2014")
             </TemplateColumn>

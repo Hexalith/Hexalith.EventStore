@@ -62,7 +62,7 @@
                     <TemplateColumn Title="Aggregate ID">
                         <span class="monospace" title="@context.AggregateId">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
                     </TemplateColumn>
-                    <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="Align.End" />
+                    <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End" />
                     <TemplateColumn Title="Last Activity">
                         <span class="monospace">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
                     </TemplateColumn>

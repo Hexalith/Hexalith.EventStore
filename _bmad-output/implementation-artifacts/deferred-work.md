@@ -95,3 +95,8 @@
 - **Card-container oracle verification pending for highest-blast-radius mapping** - AC 2b computed-style oracle for `--neutral-layer-card-container` is explicitly deferred to Task 7a because Admin.UI runtime boot is blocked by 21-9 compile failures.
 - **Core visual and accessibility sweep remains deferred until 21-9 unblocks runtime** - AC 19/20/21/22 screenshot sweep, DevTools glow verification, and Axe/WebAIM checks cannot run until Admin.UI boots.
 - **App.css spike-gate runtime smoke check deferred by the same runtime blocker** - Task 3.5 pre-inline-style browser spike was deferred to Task 7a due the 21-9 blocker.
+
+## Deferred from: code review of 21-9-datagrid-remaining-enum-renames (2026-04-15)
+
+- **Manual browser validation gates still pending execution** — ACs/tasks covering the visual sweep, runtime grid interactions, accessibility audit, and dialog/toast verification are intentionally deferred to a dedicated browser session and were not executed in this code-only review pass.
+- **Admin.UI.Tests compile failures remain deferred to follow-up 21-9.5** — `dotnet build tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release` still fails (43 errors observed in this run), and this pre-existing migration fallout is already tracked as deferred in story 21-9.

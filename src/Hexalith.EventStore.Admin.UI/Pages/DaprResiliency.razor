@@ -209,7 +209,7 @@
                         Style="width: 100%; margin-bottom: 24px;"
                         aria-label="DAPR resiliency target assignments">
             <PropertyColumn Property="@(b => b.TargetName)" Title="Target Name" Sortable="true"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
             <TemplateColumn Title="Target Type" Sortable="true"
                             SortBy="@(GridSort<DaprResiliencyTargetBinding>.ByAscending(b => b.TargetType))">
                 <FluentBadge Appearance="@(context.TargetType == "App" ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"

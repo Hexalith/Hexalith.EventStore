@@ -92,7 +92,7 @@
                     aria-label="Registered DAPR actor types"
                     OnRowClick="@OnActorTypeRowClick">
         <PropertyColumn Property="@(a => a.TypeName)" Title="Type Name" Sortable="true"
-                        IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+                        IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
         <TemplateColumn Title="Active Instances" Sortable="true"
                         SortBy="@(GridSort<DaprActorTypeInfo>.ByAscending(a => a.ActiveCount))">
             @(context.ActiveCount >= 0 ? context.ActiveCount.ToString() : "N/A")

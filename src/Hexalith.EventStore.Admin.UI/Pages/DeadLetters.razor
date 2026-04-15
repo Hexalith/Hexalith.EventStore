@@ -214,11 +214,11 @@
                 }
             </TemplateColumn>
             <TemplateColumn Title="Failed At" Sortable="true" IsDefaultSortColumn="true"
-                            InitialSortDirection="SortDirection.Descending"
+                            InitialSortDirection="DataGridSortDirection.Descending"
                             SortBy="@(GridSort<DeadLetterEntry>.ByDescending(e => e.FailedAtUtc))">
                 <span title="@context.FailedAtUtc.ToString("u")">@TimeFormatHelper.FormatRelativeTime(context.FailedAtUtc)</span>
             </TemplateColumn>
-            <TemplateColumn Title="Retry Count" Align="Align.End" Sortable="true"
+            <TemplateColumn Title="Retry Count" Align="DataGridCellAlignment.End" Sortable="true"
                             SortBy="@(GridSort<DeadLetterEntry>.ByDescending(e => e.RetryCount))">
                 @context.RetryCount
             </TemplateColumn>

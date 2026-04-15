@@ -52,14 +52,14 @@ else if (_filteredItems is not null && _filteredItems.Count > 0)
                       style="cursor: pointer;"
                       @onclick="() => CopyAggregateId(context.AggregateId)">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
             </TemplateColumn>
-            <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="Align.End"
+            <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End"
                             Class="streams-col-events" />
             <TemplateColumn Title="Last Activity" Class="monospace streams-col-activity"
                             SortBy="@(GridSort<StreamSummary>.ByDescending(s => s.LastActivityUtc))"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending">
                 <span class="monospace" style="font-size: 12px;">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
             </TemplateColumn>
-            <TemplateColumn Title="Snapshot" Class="streams-col-snapshot" Align="Align.Center">
+            <TemplateColumn Title="Snapshot" Class="streams-col-snapshot" Align="DataGridCellAlignment.Center">
                 @if (context.HasSnapshot)
                 {
                     <FluentIcon Value="@(new Icons.Regular.Size16.Checkmark())" Color="Color.Success"

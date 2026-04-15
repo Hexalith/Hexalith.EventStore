@@ -96,7 +96,7 @@ else
                 </TemplateColumn>
                 <TemplateColumn Title="Timestamp" Class="monospace"
                                 SortBy="@(GridSort<CommandSummary>.ByDescending(c => c.Timestamp))"
-                                IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
+                                IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending">
                     <span class="monospace grid-cell-truncate" style="font-size: 12px;" title="@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")">@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</span>
                 </TemplateColumn>
             </FluentDataGrid>

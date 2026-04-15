@@ -182,7 +182,7 @@
                         Style="width: 100%; margin-bottom: 24px;"
                         aria-label="DAPR pub/sub subscriptions">
             <PropertyColumn Property="@(s => s.Topic)" Title="Topic" Sortable="true"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending" />
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
             <PropertyColumn Property="@(s => s.Route)" Title="Route" Sortable="true" />
             <PropertyColumn Property="@(s => s.PubSubName)" Title="PubSub Component" Sortable="true" />
             <PropertyColumn Property="@(s => s.SubscriptionType)" Title="Type" Sortable="true" />

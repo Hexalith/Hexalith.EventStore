@@ -107,7 +107,7 @@
             <PropertyColumn Property="@(c => c.ComponentType)" Title="Component Type" Sortable="true" />
             <TemplateColumn Title="Status"
                             SortBy="@(GridSort<DaprComponentHealth>.ByDescending(c => (int)c.Status))"
-                            IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Descending">
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending">
                 <StatusBadge Severity="@GetHealthSeverity(context.Status)"
                              Status="@context.Status.ToString()"
                              AriaLabelPrefix="Component status" />

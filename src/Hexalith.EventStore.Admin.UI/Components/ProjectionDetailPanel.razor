@@ -366,12 +366,11 @@
     {
         await ExecuteOperationAsync("pause", async () =>
         {
-            IDialogReference dialog = await DialogService.ShowConfirmationAsync(
+            DialogResult result = await DialogService.ShowConfirmationAsync(
                 $"Are you sure you want to pause projection '{_detail!.Name}'?",
                 "Confirm Pause",
                 "Pause",
                 "Cancel").ConfigureAwait(false);
-            DialogResult result = await dialog.Result.ConfigureAwait(false);
             if (result.Cancelled)
             {
                 return;
@@ -398,12 +397,11 @@
     {
         await ExecuteOperationAsync("resume", async () =>
         {
-            IDialogReference dialog = await DialogService.ShowConfirmationAsync(
+            DialogResult result = await DialogService.ShowConfirmationAsync(
                 $"Are you sure you want to resume projection '{_detail!.Name}'?",
                 "Confirm Resume",
                 "Resume",
                 "Cancel").ConfigureAwait(false);
-            DialogResult result = await dialog.Result.ConfigureAwait(false);
             if (result.Cancelled)
             {
                 return;
