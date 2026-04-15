@@ -7,13 +7,13 @@
     <h3>Counter History</h3>
     @if (_error is not null)
     {
-        <FluentMessageBar Title="Refresh Error" Intent="MessageIntent.Warning" Style="margin-bottom: 12px;">
+        <FluentMessageBar Title="Refresh Error" Intent="MessageBarIntent.Warning" Style="margin-bottom: 12px;">
             @_error
         </FluentMessageBar>
     }
     @if (_isLoading && _history.Count == 0)
     {
-        <FluentProgress />
+        <FluentProgressBar />
     }
     else
     {
@@ -24,7 +24,7 @@
         </FluentDataGrid>
         @if (_isLoading)
         {
-            <FluentProgress Style="margin-top: 8px;" />
+            <FluentProgressBar Style="margin-top: 8px;" />
         }
     }
 </FluentCard>

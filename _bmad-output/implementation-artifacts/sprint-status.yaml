@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-15 (Story 21-9.5.7 code-review patches applied → done; 21-9 intentionally remains in-progress)
+# last_updated: 2026-04-15 (Story 21-10 code-review patch applied → done)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-15 (Story 21-9.5.7 code-review patches applied → done; 21-9 intentionally remains in-progress)
+last_updated: 2026-04-15 (Story 21-10 code-review patch applied → done)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -250,5 +250,5 @@ development_status:
   21-9-datagrid-remaining-enum-renames: in-progress  # 2026-04-15: code-review patch round applied (AC3 baseline text corrected, sprint tracking narrative corrected). Manual browser gates (Tasks 8+9) and Admin.UI.Tests follow-up 21-9.5 remain pending.
   21-9-5-admin-ui-tests-v5-migration: done  # 2026-04-15: code-review complete — AC 1-7,9,10,11 PASS; AC 8 partial accepted with follow-up 21-9.5.7 for 62 latent runtime failures. Compile-green achieved 86→0, slnx 122→36. Decision: 21-9 remains in-progress by explicit exception.
   21-9-5-7-admin-ui-tests-v5-runtime-migration: done  # 2026-04-15: code-review patches applied and validated — Admin.UI.Tests remains 611/611 green.
-  21-10-sample-blazorui-alignment: backlog
+  21-10-sample-blazorui-alignment: done  # 2026-04-15: code-review patch applied — AC 9 / Task 6.8 deterministic trigger now uses EventStore:EventStoreUrl (runtime key consumed by Program.cs).
   epic-21-retrospective: optional

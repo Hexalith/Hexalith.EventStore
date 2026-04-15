@@ -7,7 +7,7 @@
     <h3>Current Count</h3>
     @if (_isLoading)
     {
-        <FluentProgress />
+        <FluentProgressBar />
     }
     else if (_result is not null)
     {
@@ -18,7 +18,7 @@
     }
     else if (_error is not null)
     {
-        <FluentMessageBar Title="Error" Intent="MessageIntent.Error">
+        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error">
             @_error
         </FluentMessageBar>
     }
