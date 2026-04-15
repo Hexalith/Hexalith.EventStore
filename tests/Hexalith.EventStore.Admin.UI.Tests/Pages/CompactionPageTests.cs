@@ -194,8 +194,8 @@ public class CompactionPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID via the dialog's text field
-        IReadOnlyList<IRenderedComponent<FluentTextField>> textFields = cut.FindComponents<FluentTextField>();
-        IRenderedComponent<FluentTextField> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
+        IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
         // Click Start Compaction
@@ -227,8 +227,8 @@ public class CompactionPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
-        IReadOnlyList<IRenderedComponent<FluentTextField>> textFields = cut.FindComponents<FluentTextField>();
-        IRenderedComponent<FluentTextField> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
+        IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
         // Click Start Compaction

@@ -99,7 +99,7 @@ public class NumericInputTests : AdminUITestContext
             received.ShouldBe(100L);
 
             // Re-render with the new value to confirm format side is invariant-culture.
-            cut.SetParametersAndRender(parameters => parameters.Add(p => p.Value, 100L));
+            cut.Render(parameters => parameters.Add(p => p.Value, 100L));
             cut.Markup.ShouldContain("current-value=\"100\"");
             cut.Markup.ShouldNotContain("100,00");
         }
