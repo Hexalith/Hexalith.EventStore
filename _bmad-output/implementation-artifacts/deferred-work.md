@@ -99,4 +99,4 @@
 ## Deferred from: code review of 21-9-datagrid-remaining-enum-renames (2026-04-15)
 
 - **Manual browser validation gates still pending execution** — ACs/tasks covering the visual sweep, runtime grid interactions, accessibility audit, and dialog/toast verification are intentionally deferred to a dedicated browser session and were not executed in this code-only review pass.
-- **Admin.UI.Tests compile failures remain deferred to follow-up 21-9.5** — `dotnet build tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release` still fails (43 errors observed in this run), and this pre-existing migration fallout is already tracked as deferred in story 21-9.
+- ✅ **[RESOLVED-IN-21-9-5 on 2026-04-15]** Admin.UI.Tests compile failures deferred from story 21-9 are now resolved. **Resolution:** Story 21-9.5 brought Admin.UI.Tests from 86 → 0 compile errors and slnx 122 → 36 (36 = 21-10 Sample.BlazorUI scope). AC 8 partially passed (3 MergedCssSmokeTests first-run green); 62 latent bUnit runtime failures unmasked by compile-green are deferred to new follow-up **21-9.5.7-admin-ui-tests-v5-runtime-migration**.

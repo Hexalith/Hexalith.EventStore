@@ -189,8 +189,8 @@ public class BackupsPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
-        IReadOnlyList<IRenderedComponent<FluentTextField>> textFields = cut.FindComponents<FluentTextField>();
-        IRenderedComponent<FluentTextField> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
+        IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
         // Click Start Backup
@@ -222,8 +222,8 @@ public class BackupsPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
-        IReadOnlyList<IRenderedComponent<FluentTextField>> textFields = cut.FindComponents<FluentTextField>();
-        IRenderedComponent<FluentTextField> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
+        IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
         // Click Start Backup
@@ -455,7 +455,7 @@ public class BackupsPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
 
         // Enter the same tenant
-        IRenderedComponent<FluentTextField> tenantField = cut.FindComponents<FluentTextField>()
+        IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
             .First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("tenant-a"));
 
@@ -486,7 +486,7 @@ public class BackupsPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant ID"), TimeSpan.FromSeconds(5));
 
         // Fill fields
-        IReadOnlyList<IRenderedComponent<FluentTextField>> fields = cut.FindComponents<FluentTextField>();
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> fields = cut.FindComponents<FluentTextInput>();
         await fields.First(f => f.Markup.Contains("Tenant ID")).InvokeAsync(
             () => fields.First(f => f.Markup.Contains("Tenant ID")).Instance.ValueChanged.InvokeAsync("t1"));
         await fields.First(f => f.Markup.Contains("Domain")).InvokeAsync(

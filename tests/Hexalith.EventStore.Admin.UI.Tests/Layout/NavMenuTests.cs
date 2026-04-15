@@ -11,7 +11,7 @@ public class NavMenuTests : AdminUITestContext
     {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
-                .Add(p => p.Width, 220)
+                .Add(p => p.Width, "220px")
                 .Add(p => p.UserRole, AdminRole.Admin));
 
         cut.Markup.Length.ShouldBeGreaterThan(0);
@@ -22,7 +22,7 @@ public class NavMenuTests : AdminUITestContext
     {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
-                .Add(p => p.Width, 220)
+                .Add(p => p.Width, "220px")
                 .Add(p => p.UserRole, AdminRole.Admin));
 
         // Use WaitForAssertion since topology section loads async
@@ -61,7 +61,7 @@ public class NavMenuTests : AdminUITestContext
     {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
-                .Add(p => p.Width, 220)
+                .Add(p => p.Width, "220px")
                 .Add(p => p.UserRole, AdminRole.Admin));
 
         string markup = cut.Markup;
@@ -81,7 +81,7 @@ public class NavMenuTests : AdminUITestContext
     {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
-                .Add(p => p.Width, 220)
+                .Add(p => p.Width, "220px")
                 .Add(p => p.UserRole, AdminRole.ReadOnly));
 
         cut.WaitForAssertion(() =>

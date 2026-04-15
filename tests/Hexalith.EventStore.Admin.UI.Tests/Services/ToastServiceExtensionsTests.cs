@@ -17,7 +17,7 @@ public class ToastServiceExtensionsTests
     [Fact]
     public async Task ShowSuccessAsync_CallsShowToastAsync_WithSuccessIntent()
     {
-        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowSuccessAsync(msg), "hello").ConfigureAwait(false);
+        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowSuccessAsync(msg), "hello");
 
         captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Success);
@@ -28,7 +28,7 @@ public class ToastServiceExtensionsTests
     [Fact]
     public async Task ShowErrorAsync_CallsShowToastAsync_WithErrorIntent()
     {
-        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowErrorAsync(msg), "boom").ConfigureAwait(false);
+        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowErrorAsync(msg), "boom");
 
         captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Error);
@@ -39,7 +39,7 @@ public class ToastServiceExtensionsTests
     [Fact]
     public async Task ShowWarningAsync_CallsShowToastAsync_WithWarningIntent()
     {
-        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowWarningAsync(msg), "careful").ConfigureAwait(false);
+        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowWarningAsync(msg), "careful");
 
         captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Warning);
@@ -50,7 +50,7 @@ public class ToastServiceExtensionsTests
     [Fact]
     public async Task ShowInfoAsync_CallsShowToastAsync_WithInfoIntent()
     {
-        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowInfoAsync(msg), "fyi").ConfigureAwait(false);
+        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowInfoAsync(msg), "fyi");
 
         captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Info);
@@ -61,7 +61,7 @@ public class ToastServiceExtensionsTests
     [Fact]
     public async Task ShowSuccessAsync_NullMessage_PassesNullBodyWithoutThrowing()
     {
-        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowSuccessAsync(msg), null).ConfigureAwait(false);
+        ToastOptions? captured = await CaptureOptionsAsync((svc, msg) => svc.ShowSuccessAsync(msg), null);
 
         captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Success);
@@ -74,9 +74,9 @@ public class ToastServiceExtensionsTests
         IToastService mockToast = Substitute.For<IToastService>();
         mockToast
             .ShowToastAsync(Arg.Any<Action<ToastOptions>>())
-            .Returns(Task.FromException<ToastResult>(new InvalidOperationException("provider not registered")));
+            .Returns(Task.FromException<ToastCloseReason>(new InvalidOperationException("provider not registered")));
 
-        await Should.ThrowAsync<InvalidOperationException>(() => mockToast.ShowSuccessAsync("x")).ConfigureAwait(false);
+        await Should.ThrowAsync<InvalidOperationException>(() => mockToast.ShowSuccessAsync("x"));
     }
 
     private static async Task<ToastOptions?> CaptureOptionsAsync(
@@ -92,7 +92,7 @@ public class ToastServiceExtensionsTests
                 capturedOptions = new ToastOptions();
                 configure(capturedOptions);
             }))
-            .Returns(Task.FromResult<ToastResult>(default!));
+            .Returns(Task.FromResult<ToastCloseReason>(default!));
 
         await act(mockToast, message).ConfigureAwait(false);
 
