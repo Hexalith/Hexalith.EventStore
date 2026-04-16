@@ -106,3 +106,9 @@
 - **`FluentLabel Typo=` removed property in v5** — `CommandSandbox.razor:200` uses `<FluentLabel Typo="Typography.PaneHeader">` but `Typo` was removed from `FluentLabel` in v5. Should be migrated to `<FluentText Typo="Typography.PaneHeader">`. Pre-existing, not caused by 21-9.
 - **Stale "Fluent UI v4" comment** — `AdminUIServiceExtensions.cs:27` says "Fluent UI v4 components" but the project uses v5 (`5.0.0-rc.2`). Misleading for future maintainers.
 - **`FluentDialog aria-label` splatted attribute in v5** — `CommandPalette.razor:4`, `CommandSandbox.razor:197`, `EventDebugger.razor:261` use lowercase HTML `aria-label` on `<FluentDialog>`. v5 removed the component-level `AriaLabel` property; splatted attributes should still work but need runtime ARIA verification to confirm the label reaches the correct DOM element.
+
+## Deferred from: code review of 21-8-css-token-migration (2026-04-16, round 2 — post-21-9 browser verification)
+
+- **CorrelationTraceMap `--colorBrandBackground` CSS override relies on FluentBadge internals** — `.pipeline-stage-failed` overrides `--colorBrandBackground` to inject error-red into filled badges. Works in v5 today but fragile against future Fluent releases that change internal token consumption. Consider `BackgroundColor=` parameter or `BadgeColor.Danger` in a future cleanup.
+- **`--neutral-layer-card-container` → `--colorNeutralBackground2` interim mapping pending DevTools oracle** — Both `--neutral-layer-2` and `--neutral-layer-card-container` map to the same v5 token. User completed browser tests; if cards looked correct, mapping is validated. If not, sed-replace to `--colorNeutralBackground1Hover`.
+- **bUnit MergedCssSmokeTests compilation blocked by upstream stories** — 3 new smoke tests structurally correct but cannot run until upstream CS0103 chain resolves. Tests were written compile-ready per spec.
